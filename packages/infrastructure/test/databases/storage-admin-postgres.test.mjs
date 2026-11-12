@@ -3,8 +3,8 @@ import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import test from 'node:test';
-import pg from 'pg';
 import { createPostgresStorage } from '../../dist/storage/index.js';
+import { guardedPgClient } from '../support/storage-pg-harness.mjs';
 
 test('mandatory real PostgreSQL lifecycle CLI uses a separate disposable database', async () => {
   let url;
@@ -23,15 +23,16 @@ test('mandatory real PostgreSQL lifecycle CLI uses a separate disposable databas
   };
   assert.ok([base.user, base.password, base.database].every((value) => value && !value.includes('\0')),
     'Explicit test user, password and database are required.');
-  const pool = new pg.Pool({ ...base, max: 1, connectionTimeoutMillis: 5000 });
+  const admin = guardedPgClient(base, 'admin');
   const database = `erp_cli_${randomUUID().replaceAll('-', '')}`;
   let created = false;
   let storage;
   try {
-    const identity = await pool.query("SELECT current_setting('server_version_num')::integer AS version, host(inet_server_addr()) AS host");
+    await admin.connect();
+    const identity = await admin.query("SELECT current_setting('server_version_num')::integer AS version, host(inet_server_addr()) AS host");
     assert.ok(identity.rows[0].version >= 180000 && identity.rows[0].version < 190000);
     assert.equal(identity.rows[0].host, host);
-    await pool.query(`CREATE DATABASE "${database}"`);
+    await admin.query(`CREATE DATABASE "${database}"`);
     created = true;
     const target = new URL(url);
     target.pathname = `/${database}`;
@@ -59,9 +60,9 @@ test('mandatory real PostgreSQL lifecycle CLI uses a separate disposable databas
   } finally {
     try {
       if (storage) await storage.close();
-      if (created) await pool.query(`DROP DATABASE "${database}" WITH (FORCE)`);
+      if (created) await admin.query(`DROP DATABASE "${database}" WITH (FORCE)`);
     } finally {
-      await pool.end();
+      await admin.end();
     }
   }
 });

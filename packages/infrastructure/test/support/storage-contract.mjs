@@ -303,7 +303,10 @@ export async function extendedContract(t, create) {
     });
     const outcome = assert.rejects(hanging, { code: 'TRANSACTION_TIMEOUT' });
     try {
-      await entered.promise;
+      await Promise.race([
+        entered.promise,
+        outcome.then(() => assert.fail('Writer expired before its callback started.')),
+      ]);
       await outcome;
       await storage.read(scope, async (s) => {
         assert.equal(await s.revisions.get(scope), 0);
@@ -325,11 +328,14 @@ export async function extendedContract(t, create) {
       entered.release();
       await late.promise;
     });
-    await entered.promise;
-    const closing = storage.close();
-    await assert.rejects(hanging, { code: 'TRANSACTION_TIMEOUT' });
-    await closing;
-    await assert.rejects(stale.revisions.get(scope), { code: 'CLOSED' });
-    late.release();
+    const outcome = assert.rejects(hanging, { code: 'TRANSACTION_TIMEOUT' });
+    try {
+      await Promise.race([
+        entered.promise,
+        outcome.then(() => assert.fail('Reader expired before its callback started.')),
+      ]);
+      await Promise.all([outcome, storage.close()]);
+      await assert.rejects(stale.revisions.get(scope), { code: 'CLOSED' });
+    } finally { late.release(); await storage.close(); }
   });
 }

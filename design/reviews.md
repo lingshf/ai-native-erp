@@ -132,6 +132,20 @@ revision3修正catalog数组的text[]表示、真实25P04跨闭包保留和查�
 
 lock对HEAD新增18项均SHA512/标准npm URL，13项中间恢复时的弱SRI升级属于私有过程记录，并非对HEAD又修改13个既有项；152个既有SHA1条目未在本轮改动。安全评审提醒native机制措辞后，父实查安装包无显式install/postinstall、有binding.gyp，明确npm隐式构建风险，继续禁lifecycle；不是宣称依赖本身没有安装行为。代码G6与安全结论不替代真实main和新clone；发布结果随后按实测回填。
 
+### ARCH-M02-PUBLISH-02 — 实际发布、首轮clone失败与有界测试工具修订
+
+代码`430076f4ed35568c896eaa7f0c43e6cb721f1045`已快进main，未强推或发布贸易。首次真实新clone的native/Local302/build/typecheck通过；真实双库69项在hung-read期间收到未处理`ECONNRESET`，43通过/25失败/1取消/0跳过，后续25项并未开始。失败原始脱敏日志保留；原PG服务日志当时随临时集群清理，不能补称已查明首次TCP重置原因。独立诊断的新clone验证同一精确提交，实际302+真实69/零跳过/build/types通过；额外保留脱敏PG服务日志，仅见测试预期的FATAL。两次clone、自有PG进程/集群/密码文件均清理，不能以第二次通过抹掉第一次失败。
+
+原目标作者与原G5独立核查确认仅测试工具的admin/raw `pg.Client`缺少异常监听；生产客户端已有生命周期及pool监听，未证明同类生产缺陷。三份测试文件修订为持续监听、脱敏sticky故障和可靠hung-callback清理，并增加真实idle-disconnect回归；首版独立G5明确spec/quality PASS（MODEL01），实际SQLite31和无服务连接拒绝探针通过，没有自启PG。其非阻塞建议中，真实fixture路径覆盖、等待预算及多重清理错误优先级继续窄修；修订后的真实PG、组合G6、安全与发布后最终clone尚待完成。M02/T10不标完成。
+
+### ARCH-M02-HARNESS-FINAL-01 — 四文件窄修、真实双库与组合G6释放
+
+测试工具三文件增加持续error/end监听、脱敏sticky故障和可靠hung-callback清理；真实断连回归覆盖admin/fixture及实际f.raw、后续query/close均失败、数据库已删除、再次close幂等、5秒等待清timer及多重清理保留首错。原G5独立核当前修订，实际SQLite31/语法及连接拒绝探针通过，spec/quality释放MODEL01。组合G6另找到CLI测试裸pool的同类缺口，第四文件仅复用同一guarded客户端（+7/-6），原三文件逐字未动；G6实际语法、缺PG非跳过和关闭端口脱敏探针后，CLI窄G5/spec/quality通过。基础设施/应用测试再查只剩带监听的构造工厂，无裸Client/Pool；生产源码、SQL、脚本、依赖/lock未改。
+
+最终54路径快照摘要`8d86a25e…62d2d0`保持，源与公共仅根package中三条保留贸易语法片段不同。父实际完整源422/公共302、双方各强制SQLite31+真实PG38+CLI1=70、build/typecheck/零失败取消跳过通过，正常停自有PG并清集群/密码；原G6独立重核54源/候选摘要、四份日志逐项重加及两个证据绑定，明确对源/公共specification compliance和code quality均释放**EXCEPTION (user-approved MODEL01)**，没有冒称亲跑PG或全回归。独立安全评审全读四测试差异并实际核54哈希、其余生产/SQL/lock不变，三文件及第四补充均0已确认漏洞，未运行PG/测试/外部渗透。保护本地重同步8更新/46相同/0冲突，交付副本完整302/build/typecheck通过，不改其Git/环境/账套。进度元数据回填不改已审代码；仍待修订快进main与精确新clone，T10不预标done。
+
+保留三项边界：首次TCP重置原因未知，后续通过不关闭它；断连可能在query拒绝之后被标idle，仅诊断标签、并非此前空闲的证据；管理员连接丢失时持久测试实例可能残留随机夹具库且测试明确失败，父临时集群已完整清理，不当作生产数据恢复能力。独立reviewer接受前述诊断标签延期，MODEL01只豁免模型身份核实，不豁免测试或缺陷。
+
 ## ARCH-SME-DESIGN-01：独立G3已释放MODEL01，待用户确认
 
 用户要求中小企业ERP分层和数据库选项；贸易继续暂停，本轮仅设计。作者实际gpt-6.1-sol，风险为跨库事务/多人隔离/迁移恢复高风险。新增architecture、6项ADR、3张Mermaid源及14节点SVG，AR-01..08和AT-01..11，更新现有入口而不重构运行代码。独立评审实际经宿主task请求claude-opus-5.5、保留MODEL01身份未核实例外；不复用旧贸易门禁。

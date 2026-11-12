@@ -4,6 +4,64 @@ import { Client } from 'pg';
 import { createPostgresStorage } from '../../dist/storage/index.js';
 import { postgresBackend } from '../../dist/storage/postgres.js';
 
+function safeFailure(role, phase, error) {
+  const safe = new Error(`Dedicated PostgreSQL ${role} ${phase} failed.`);
+  const code = error?.code;
+  if (typeof code === 'string' &&
+    (/^[A-Z0-9]{5}$/u.test(code) || ['ECONNRESET', 'ECONNREFUSED', 'EPIPE', 'ETIMEDOUT'].includes(code))) {
+    safe.code = code;
+  }
+  return safe;
+}
+
+export function guardedPgClient(config, role) {
+  if (!['admin', 'fixture'].includes(role)) throw new Error('Invalid PostgreSQL harness role.');
+  const client = new Client({ ...config, connectionTimeoutMillis: 1000 });
+  let phase = 'connect';
+  let closing = false;
+  let failure;
+  let disconnected;
+  const failed = new Promise((resolve) => { disconnected = resolve; });
+  const remember = (error) => {
+    failure ??= safeFailure(role, phase, error);
+    disconnected(failure);
+  };
+  // Keep these listeners through socket shutdown: pg may emit an error and a
+  // later unexpected-end error even when no query promise is outstanding.
+  client.on('error', remember);
+  client.on('end', () => { if (!closing) remember(); });
+  return {
+    failed,
+    async connect() {
+      try {
+        await client.connect();
+        if (failure) throw failure;
+        phase = 'idle';
+      } catch (error) {
+        remember(error);
+        throw failure;
+      }
+    },
+    async query(text, parameters = []) {
+      if (failure) throw failure;
+      phase = 'query';
+      try {
+        const result = await client.query(text, parameters);
+        if (failure) throw failure;
+        return result;
+      } catch (error) {
+        throw failure ?? safeFailure(role, phase, error);
+      } finally { phase = 'idle'; }
+    },
+    async end() {
+      closing = true;
+      phase = 'close';
+      try { await client.end(); } catch (error) { remember(error); }
+      if (failure) throw failure;
+    },
+  };
+}
+
 export function postgresTestConfig() {
   const explicit = process.env.ERP_TEST_DATABASE_URL;
   if (typeof explicit !== 'string' || explicit.length === 0) {
@@ -27,7 +85,7 @@ export function postgresTestConfig() {
 
 export async function pgHarness() {
   const config = postgresTestConfig();
-  const admin = new Client({ ...config, connectionTimeoutMillis: 1000 });
+  const admin = guardedPgClient(config, 'admin');
   try { await admin.connect(); } catch {
     try { await admin.end(); } finally { throw new Error('Mandatory real PostgreSQL preflight or cleanup failed.'); }
   }
@@ -52,17 +110,15 @@ export async function pgHarness() {
         storage, backend, config: connection, dialect: 'postgres',
         async raw(text, parameters = []) {
           if (!raw) {
-            raw = new Client({ ...connection, connectionTimeoutMillis: 1000 });
-            try { await raw.connect(); }
-            catch { throw new Error('Dedicated PostgreSQL fixture connection failed.'); }
+            raw = guardedPgClient(connection, 'fixture');
+            await raw.connect();
           }
           let index = 0;
-          try { return (await raw.query(text.replaceAll('?', () => `$${++index}`), parameters)).rows; }
-          catch (error) {
-            const safe = new Error('Dedicated PostgreSQL fixture statement failed.');
-            if (typeof error?.code === 'string' && /^[A-Z0-9]{5}$/u.test(error.code)) safe.code = error.code;
-            throw safe;
-          }
+          return (await raw.query(text.replaceAll('?', () => `$${++index}`), parameters)).rows;
+        },
+        rawFailure() {
+          if (!raw) throw new Error('Dedicated PostgreSQL fixture connection is not open.');
+          return raw.failed;
         },
         sibling() {
           const other = createPostgresStorage(connection);
@@ -72,30 +128,32 @@ export async function pgHarness() {
         async close() {
           if (ended) return;
           ended = true;
-          let failed = false;
+          let failure;
           try {
             const results = await Promise.allSettled([
               ...extra.map((s) => s.close()), backend.close(), storage.close(), raw?.end(),
             ]);
-            failed = results.some((result) => result.status === 'rejected');
+            failure = results.find((result) => result.status === 'rejected')?.reason;
           } finally {
             try { await admin.query(`DROP DATABASE "${name}" WITH (FORCE)`); }
-            catch { failed = true; }
+            catch (error) { failure ??= error; }
             fixtures.delete(f);
           }
-          if (failed) throw new Error('Dedicated PostgreSQL fixture cleanup failed.');
+          if (failure) throw failure;
         },
       };
       fixtures.add(f);
       return f;
     },
     async close() {
-      let failed = false;
+      let failure;
       try {
         const results = await Promise.allSettled([...fixtures].map((f) => f.close()));
-        failed = results.some((result) => result.status === 'rejected');
-      } finally { await admin.end(); }
-      if (failed) throw new Error('Dedicated PostgreSQL harness cleanup failed.');
+        failure = results.find((result) => result.status === 'rejected')?.reason;
+      } finally {
+        try { await admin.end(); } catch (error) { failure ??= error; }
+      }
+      if (failure) throw failure;
     },
   };
 }

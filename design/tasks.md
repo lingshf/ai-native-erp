@@ -14,6 +14,8 @@
 
 ### M02实施批次（revision3 G3已释放MODEL01）
 
+**T10发布后状态：** 代码`430076f4ed35568c896eaa7f0c43e6cb721f1045`已快进main；首次干净clone真实PG连接重置使矩阵中止，后续同一提交全新clone实际302+真实69/build/types通过，但首次重置原因未明。仅四份测试文件修复异常监听、故障传播及清理；源422/公共302及双方真实70、build/types/零跳过已通过，独立G5/G6按MODEL01释放，安全0已确认漏洞。本地保护重同步8更新/46相同/0冲突、交付副本302/build/types通过。四文件修订的main发布及精确新clone仍待完成；保留首次失败，T10仍in_progress。
+
 只对所核FR-AM02-01..07/D-AM02/TC-AM02-01..14拆解，作者gpt-6.1-sol统一集成；复杂DB/恢复/精度为高风险、独立强推理G5/G6请求claude-opus-5.5，实际身份不可自核保留MODEL01。实现代理若未报告实际模型ID不臆造；共享manifest/lock/入口由集成作者单写，原贸易代码只冻结核对。
 
 | 任务 | 状态 / 真实前置 | 文件所有权与追踪 | 可观察出口 / 测试先行 |
@@ -23,7 +25,7 @@
 | ARCH-T07 PostgreSQL对应切片 | done（MODEL01）；T05/T09 G5已释放 | 与T06同一目标存储作者维护共享事务核心，PG方言/锁/迁移及测试分文件；FR01..04/06，TC01..08/12..14 | 父真PG18目标37/37及生命周期CLI1、零skip，含实际FATAL销毁/继承timer/结构漂移；独立20摘要/源码/用例窄审spec/quality G5释放；未冒称reviewer自启PG |
 | ARCH-T08 旧教学只读桥 | done（MODEL01）；T05 G5已释放 | 另作者独占domain旧账投影、infrastructure legacy桥及其测试；CLI与公共exports集成作者统一接入；FR02/05/07，TC09..12/14 | 修订15hash独立重核；13桥/domain+5真实CLI由双方各18/18；双文件WAL前置保护及坏存储分类关闭，scope/旧语义/精确分页/历史/原源保护通过；本项done不是整体发布 |
 | ARCH-T09 官方PG运行时预检 | done（MODEL01）；M02 G3，与T05无依赖 | 仅私有工具/虚构临时集群及证据，不改产品源码/系统服务 | 官方18.7 ZIP/SHA/4PE签名及180007/loopback/SCRAM/错密码拒绝实证；正常停自有PID，密码/集群/ZIP清理，独立parent spec/quality及4SHA/零进程核验通过；非T07验收 |
-| ARCH-T10 M02组合与发布 | in_progress（交付/发布验证）；T06/07/08/09各G5及源/公共G6均已释放MODEL01 | 集成作者独占根manifest/lock/exports/CLI/文档/交付清单；全部TC-AM02，组合G6不由分切片G5代替 | 首轮CLI TLS阻塞经RED→GREEN和原reviewer54摘要/4项CLI/CA探针实际关闭；Local422/公共302、双方各强制双库69、build/type及额外真实TLS-only通过；哈希本地同步→独立security-review→非强制main→干净clone实跑两套完成后才done |
+| ARCH-T10 M02组合与发布 | in_progress（修订已审，待发布后新clone）；T06/07/08/09各G5及源/公共G6均已释放MODEL01 | 集成作者独占根manifest/lock/exports/CLI/文档/交付清单；全部TC-AM02，组合G6不由分切片G5代替 | TLS阻塞及四测试文件异常监听经独立G5/G6关闭；Local422/公共302、双方强制双库70/build/type/零跳过及此前同一生产代码TLS-only通过；本地8更新/46同/0冲突和交付302通过，安全0；修订非强制main及精确新clone实跑两套完成后才done |
 
 并行批次：A=T05与T09（产品公共契约 vs 私有工具，无共同写文件）；B=T05 G5后的T06/T07目标存储作者与T08旧账作者（各自模块目录，shared exports/manifest不多人写）；C=全部真实出口后的T10。T07可以先写代码但不在T09真实运行时可用前声称测试通过；T06/T07共享核心归同一作者，不把逻辑独立任务伪称同时写同文件。M03/M04尚无各自详细G3，不提前展开其业务/身份代码。
 

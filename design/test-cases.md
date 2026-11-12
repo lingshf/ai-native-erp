@@ -1,6 +1,6 @@
 # Test cases
 
-阶段详细用例见[实施基线](architecture-migration.md)：M00/M01已经验收发布；TC-AM02-01..14的G3、T05..09独立G5及当前源/公共组合G6均释放MODEL01。当前目标SQLite31+真实PG37+PG生命周期CLI1组成强制双库69项；TLS修订后完整工作区422项（旧302+边界7+workspace113）、公共54文件候选302项（182+7+113），双方各真实双库69及build/typecheck通过、零失败/跳过。Local生命周期CLI现4项，新增显式CA、SSLRequest和拒绝明文回退真实子进程RED→GREEN；另在独立TLS-only PG用运行时生成的虚构证书实际迁移/验证成功，错误CA/无TLS拒绝，证书/私钥及专属数据库清理，不冒充生产PKI。T08修订桥/domain13+CLI5由双方各18/18，目标20摘要/源码/用例及SQLite31经独立窄G5；PG未由reviewer自启。结构漂移、坏持久数据、FATAL、挂起写入及继承timer均有真实故障回归。原reviewer另实际核54摘要、源/公共各4项CLI、独立CA边界及语法后关闭B1；完整及真实PG/TLS仍明确来自父证据。交付/安全/发布后干净clone结果另记，不由G6代替。真实health-only同源壳桌面/390px及三偏好/故障恢复通过，不代表财务页面或原账迁移已完成。
+阶段详细用例见[实施基线](architecture-migration.md)：M00/M01已经验收发布；TC-AM02-01..14的G3、T05..09独立G5及当前四测试文件修订/源与公共组合G6均释放MODEL01。当前SQLite31+真实PG38+PG生命周期CLI1组成强制双库70项；完整工作区422项（旧302+边界7+workspace113）、公共54文件候选302项（182+7+113），双方各真实70及build/typecheck通过、零失败/取消/跳过。本轮真实断连覆盖guarded admin/fixture、实际f.raw故障持续拒绝、关闭仍报错但数据库已删除、再次关闭幂等、有界等待及错误优先级；不是隐藏首次clone的43通过/25失败/1取消，首次TCP重置原因仍未知。原G5和G6独立读源码/摘要及故障探针，G6另重算四份完整/双库日志，真实PG由父执行，不冒称reviewer自启。Local生命周期CLI4项及此前同一生产代码的TLS-only成功/错误CA与明文拒绝证据保持；T08桥/domain13+CLI5由双方各18/18。真实health-only壳桌面/390px、三偏好与故障恢复通过，非财务页面或原账迁移。交付与修订发布后新clone另按实际记录，不以G6代替。
 
 ## ARCH-SME-01 计划验收
 

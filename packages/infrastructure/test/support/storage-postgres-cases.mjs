@@ -5,6 +5,7 @@ import { postgresBackend } from '../../dist/storage/postgres.js';
 import { targetStorage } from '../../dist/storage/core.js';
 import { databaseCode, isCommitNotSent } from '../../dist/storage/errors.js';
 import { barrier, plan, receipt, scope } from './storage-contract.mjs';
+import { guardedPgClient } from './storage-pg-harness.mjs';
 
 const other = Object.freeze({ ...scope, companyId: 'C2' });
 const book = Object.freeze({ level: 'book', tenantId: scope.tenantId, bookId: scope.bookId });
@@ -20,7 +21,63 @@ async function setup(fixture) {
 
 function scoped(scope) { return { level: scope.level, scopes: [scope] }; }
 
+async function observedDisconnection(failed) {
+  let timer;
+  try {
+    return await Promise.race([
+      failed,
+      new Promise((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('PostgreSQL disconnection was not observed within 5000ms.')), 5000);
+      }),
+    ]);
+  } finally { clearTimeout(timer); }
+}
+
 export async function postgresCases(t, fixture) {
+  await t.test('idle harness clients retain disconnection failures through query and shutdown without uncaught errors', async () => {
+    const f = await fixture();
+    let killer;
+    let observer;
+    try {
+      killer = await f.backend.acquire(false, false);
+      for (const role of ['admin', 'fixture']) {
+        const peer = guardedPgClient(f.config, role);
+        let failure;
+        try {
+          await peer.connect();
+          const { rows: [{ pid }] } = await peer.query('SELECT pg_backend_pid() AS pid');
+          const [{ killed }] = await killer.query('SELECT pg_terminate_backend(?,5000) AS killed', [pid]);
+          assert.equal(killed, true);
+          failure = await observedDisconnection(peer.failed);
+          assert.equal(failure.message, `Dedicated PostgreSQL ${role} idle failed.`);
+          await assert.rejects(peer.query('SELECT 1'), (error) => error === failure);
+        } finally {
+          if (failure) await assert.rejects(peer.end(), (error) => error === failure);
+          else await peer.end();
+        }
+      }
+      await killer.release();
+      killer = undefined;
+      observer = await fixture();
+      killer = await observer.backend.acquire(false, false);
+      const [{ pid }] = await f.raw('SELECT pg_backend_pid() AS pid');
+      const [{ killed }] = await killer.query('SELECT pg_terminate_backend(?,5000) AS killed', [pid]);
+      assert.equal(killed, true);
+      const failure = await observedDisconnection(f.rawFailure());
+      assert.equal(failure.message, 'Dedicated PostgreSQL fixture idle failed.');
+      await assert.rejects(f.raw('SELECT 1'), (error) => error === failure);
+      await assert.rejects(f.close(), (error) => error === failure);
+      const [{ present }] = await observer.raw('SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname=?) AS present',
+        [f.config.database]);
+      assert.equal(present, false);
+      await f.close();
+    } finally {
+      try { await killer?.release(); } finally {
+        try { await f.close(); } finally { await observer?.close(); }
+      }
+    }
+  });
+
   await t.test('inherited nonzero transaction timer is rearmed for migration and business UoWs', async () => {
     const f = await fixture();
     const backend = postgresBackend(f.config);
