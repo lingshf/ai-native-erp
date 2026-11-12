@@ -2,19 +2,19 @@
 
 ## 当前授权：ARCH-M00起逐阶段实施
 
-用户已委托DC01..04与M00..09执行、恢复M06/TASK24和备份核对后切换原4173账。M00及M01各自G3已独立释放，M00工具G5/G6通过；交付/安全/发布另以实际记录为准。完整当前需求/测试及工具环境见[architecture-migration](architecture-migration.md)，下方“仅设计/暂停/0 ready”为前次交付历史，不再作为继续暂停的用户限制，但原已验收成果和剩余验收不能删除。后续FG仍0/13/31，不因授权改done。
+用户已委托DC01..04与M00..09执行、恢复M06/TASK24和备份核对后切换原4173账。M00已通过G3/G5/G6、安全审查、本地保护同步并发布main `74819f9bfa7087ac230c4ccaf96b6b40f1e740bf`，干净clone安装/182项/语法通过。M01三个增量G5、组合及公共变体G6已独立释放MODEL01，工作区358项、原302测试身份完整保留；公共候选安装/238项通过，当前进行保护交付/安全/发布，不能提前标最终交付done。完整当前需求/测试及工具环境见[architecture-migration](architecture-migration.md)，下方“仅设计/暂停/0 ready”为前次交付历史，不再作为继续暂停的用户限制，但原已验收成果和剩余验收不能删除。后续FG仍0/13/31，不因授权改done。
 
 | 实施任务 | 状态 / 前置 | 追踪 / 文件边界 / 验收 |
 | --- | --- | --- |
-| ARCH-T00 原账保护基线 | done（MODEL01）；交付发布另核 | FR-AM00/D-AM00/TC-AM00-01..04；仅scripts/ledger-snapshot.mjs、虚构测试/文档。10/10聚焦、完整302/302及语法，独立G5/G6实际释放；私有源/快照/ID3/逻辑hash核验及原源不变，公开工具不含真实hash/路径。作者gpt-6.1-sol，独立请求claude-opus-5.5/沿MODEL01；不提交未验收贸易代码 |
-| ARCH-T01 共享工程/契约 | ready；M00 G5/G6及M01 G3均释放 | FR-AM01/D-AM01/TC-AM01-01/03/05；集成作者独占根manifest/lock/TS配置/边界脚本/packages/contracts。严格health/错误DTO+单源OpenAPI，明确旧测试选择器/冻结ID，测试先行；不得写02/03专属文件 |
-| ARCH-T02 API与应用边界 | ready；同上及固定G3契约，与01/03分文件 | TC-AM01-01/02/05；独占apps/api、packages/application/infrastructure。Local显式配置、同源静态托管、统一错误及端口；坏JSON/415和强制500只由测试工厂注册，CLI无此额外路由。高风险独立G5 |
-| ARCH-T03 前端壳/偏好 | ready；同上及固定G3契约，与01/02分文件 | TC-AM01-01/04；独占apps/web、packages/ui和各自manifest/测试。真实React同源health、zh/en/红绿/教学与偏好失败可见；不引旧DOM模块、不碰原账。中风险独立spec/quality G5 |
-| ARCH-T04 骨架组合验证 | pending；01/02/03各G5 | TC-AM01-01..05组合：干净安装/类型/build、旧冻结测试无丢失、真实隔离同源UI/失败/契约/边界、G6及本地/安全/精确发布/clone。共享schema/lock/root始终单写者，不把骨架称M02/03/04已完 |
+| ARCH-T00 原账保护基线 | done（MODEL01）；已发布74819f9 | FR-AM00/D-AM00/TC-AM00-01..04；仅scripts/ledger-snapshot.mjs、虚构测试/文档。10/10聚焦、完整302/302及语法，独立G5/G6实际释放；私有源/快照/ID3/逻辑hash核验及原源不变，公开工具不含真实hash/路径。公开干净clone为原172+新10=182项，不含未验收贸易候选 |
+| ARCH-T01 共享工程/契约 | done（MODEL01）；M00及M01 G3已释放 | FR-AM01/D-AM01/TC-AM01-01/03/05；根manifest/lock/TS配置/边界脚本/contracts单写。contract3/边界7，实际JS/TS变体/空缺目录/异cwd/别名探针关闭原Medium，spec/quality G5及组合G6独立释放；原302冻结测试无丢失 |
+| ARCH-T02 API与应用边界 | done（MODEL01）；固定G3契约，与01/03分文件 | TC-AM01-01/02/05；独占apps/api、packages/application/infrastructure。application1/infra2/API11均通过，独立真实静态/编码路径/方法/端口探针通过，spec/quality G5释放。坏JSON/415/500仅测试工厂，无财务/数据访问；不替代组合G6 |
+| ARCH-T03 前端壳/偏好 | done（MODEL01）；固定G3契约，与01/02分文件 | TC-AM01-01/04；UI2/web30、严格类型/build及真实桌面/390px验收通过。两个label冲突更名并真实交叉旧资源；恢复保存清过时警示、保留其他诊断，独立原两Medium已关闭，spec/quality G5释放 |
+| ARCH-T04 骨架组合验证 | in_progress；01/02/03各G5已释放 | TC-AM01-01..05：工作区358（302+7+49）/公共候选及本地238（182+7+49）、完整build/typecheck及真实同源UI通过；组合/公共变体G6按MODEL01释放。50文件43新/7更新/0冲突，独立安全及OSV306零已知公告通过；当前精确main/新clone待完成。不把骨架称M02/03/04已完 |
 
-## ARCH-SME-01：仅设计评审，不执行重构
+## 历史提案：ARCH-SME-01（确认前，仅设计）
 
-M-TRADE继续按用户要求暂停。当前新增架构需求/ADR/迁移阶段见[architecture](architecture.md)，用例AT-01..11。本轮宏观独立G3已释放EXCEPTION (user-approved MODEL01)，但ARCH-M00..09仍待用户确认及各阶段详细G3；10 planned、0 ready，不运行安装/迁移。每个阶段仍需详细需求/用例及自己的G3。
+本节记录授权前状态：M-TRADE当时按用户要求暂停。新增架构需求/ADR/迁移阶段见[architecture](architecture.md)，用例AT-01..11。提案宏观独立G3已释放EXCEPTION (user-approved MODEL01)，当时ARCH-M00..09仍待用户确认及各阶段详细G3；10 planned、0 ready，不运行安装/迁移。当前实施授权与真实完成以本文件顶部为准。
 
 本轮只完成：现状核对→架构/ADR/用例/图→独立G3及修订→文档一致性与交付。文档作者单一归并，独立评审只读；不并发写暂停核心或schema。原TASK01..24历史计数与FG覆盖不因架构设计变化。
 

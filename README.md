@@ -19,6 +19,21 @@ npm start
 
 仓库不包含`.env`、原账套、依赖目录或任何登录凭据。首次启动会在新副本创建独立的本机教学账套；已有账套不会从其他机器自动迁移。未配置AI时仍可使用确定性手工记账。需要AI时参照`.env.example`及下文受支持的官方Copilot登录/配置方式；新机器必须独立认证并核实模型可用性，原宿主的认证不随代码迁移。
 
+## 新架构Local预览（ARCH-M01，代码与UI验收通过）
+
+旧的`npm start`继续运行现有账务工作台。新的独立React前端和Nest/Fastify API当前**只提供只读运行状态**，不打开账簿、不提供财务操作或AI；不能用这个骨架代替现有工作台或宣称迁移完成。M00保护工具已发布为`74819f9`，公开干净clone为182项；M01独立G5/G6按MODEL01释放，公共发布候选实际238项通过。工作区包含尚未发布的贸易候选，为358项；不把这些候选能力冒充公开功能。交付/安全/推送及再次干净clone以实际发布记录为准。
+
+完成上面的依赖安装后，在项目根目录执行：
+
+```powershell
+npm run verify
+npm run start:local
+```
+
+`verify`包含原测试、语法和导入边界、边界破坏探针、独立workspace测试/构建及严格类型检查。Local默认`http://127.0.0.1:4180`，同一API托管独立的`apps\web\dist`，SPA只请求同源`/api/v1/health`；不需要配置跨域。缺前端产物明确返回503，不回退旧工作台。新CLI仅读取`ERP_PROFILE/ERP_HOST/ERP_PORT`，不读取旧`.env`、`HOST/PORT/DATA_DIR`；仅Local和字面loopback主机，拒绝4173、无效端口及未实现认证的Server档案，端口占用直接失败。
+
+工程边界为`apps\web`、`apps\api`及`packages\application/contracts/infrastructure/ui`。Zod是health/错误DTO的单一来源，构建输出静态OpenAPI 3.1到`packages\contracts\dist\openapi.json`；不维护第二份手写DTO。新壳双语label和偏好独立在`packages\ui`，默认中文/红色/教学关闭，三个偏好保存于浏览器同源`erp.workspace.preferences.v1`，本阶段不读取或改写旧工作台的偏好键。不同端口的偏好互不迁移，切换不触发账务写或重新请求状态。真实数据库适配、业务页面、认证及原账切换须后续阶段门禁；当前G5/G6和交付状态见[项目进度](design/project.md)。
+
 ## 本地查看完整需求与进度
 
 **架构迁移已获委托执行，尚未实现完成：** [中小企业ERP分层与双数据库方案](design/architecture.md) · [阶段详细设计与验收](design/architecture-migration.md) · [技术选型ADR](design/adr/ADR-SME-001.md) · [14节点架构图](design/diagrams/sme-overview.svg)。首交付保持Local单人SQLite，并提供PostgreSQL/OIDC的Server试点；当前先做原账保护基线。贸易获准恢复，原未提交成果保留移植；原账须备份、核对余额/哈希并保留ID3及只读源后才切换。宏观架构通过评审不代表各阶段已完成。

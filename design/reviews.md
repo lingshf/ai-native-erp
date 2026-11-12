@@ -24,6 +24,32 @@
 
 按评审非阻塞说明，在实施任务明确坏JSON/415路径仅用测试工厂注入路由，生产/CLI不装载额外POST接口；500也仅注入测试port。M01仍依M00 G5/G6，其骨架不代表真实双库/身份/业务页已完成。公共npm端点在当前环境TLS握手失败，现有已配置registry的证书验证连接可用；不关闭TLS验证、不把宿主私有端点/配置/凭据写入公开锁文件。
 
+### ARCH-M01-INCREMENT-01：首轮G5，T01/T03因具体缺陷阻塞
+
+共享契约/边界先确认缺模块失败再实现；TS7编译通过但不提供旧compiler API，实际采用已声明Babel AST解析TypeScript/JSX/legacy decorators，不用文本正则冒充语法树。作者完整原候选302/302，逐项测试名称/数量与M00冻结清单相等；拓扑build、严格typecheck及首版workspace46项/边界4项通过。独立评审请求claude-opus-5.5，实际身份不能自核则保留MODEL01，不豁免以下三项Medium。
+
+T01：scanner漏.mts/.cts/JS等源码，且从其他cwd运行可空扫0文件仍通过；独立原探针实际重现。T03：shell.teaching/shell.loading与旧label同key异文案且缺旧资源交叉断言；成功保存偏好后不清storageWrite，恢复后仍显示“未保存/未改变”的错误。首轮T01/T03 G5 BLOCKED；T02 spec/quality独立通过并释放MODEL01，实际application1/infra2/API11、占用端口/IPv6/静态SPA/编码路径/统一错误探针通过，无服务遗留。该评审不是安全审查或最终G6。
+
+作者随后为T01增加新扩展、缺失/空src及异cwd回归，先实际重现0文件假通过；改为按工具自身定位根目录、缺失/空项目拒绝、扫描全部JS/TS扩展，7/7及真实12源边界通过。前端作者先重现2个label和3个恢复断言失败，再更名新壳key、加入真实旧label交叉测试、成功保存仅清storageWrite；UI2/web30、类型/build通过。上述为作者修订，尚不能当作独立复审关闭。真实Edge同源桌面/390px初版已验偏好、网络故障重试和损坏/拒写存储，最终修订仍须重跑及组合G6。
+
+### ARCH-M01-FINAL-01：修订G5及组合/公共变体G6已释放MODEL01
+
+同一独立评审实际逐项关闭上述三项Medium，T01/T02/T03各specification compliance及code quality均PASS，G5按**EXCEPTION (user-approved MODEL01)**释放。独立重跑完整`npm run verify`，实际302旧测试+7边界+49 workspace=358项，零跳过，所有拓扑build/typecheck通过；另从临时cwd确认仍扫12文件，真实.d.mts/.jsx/.cts跨层及junction/空缺src探针正确拒绝，删除独立夹具、无遗留服务。集成作者实际gpt-6.1-sol；两个实现代理的实际模型ID未独立核实，不虚称模型组合。评审请求claude-opus-5.5，实际身份仍不可自核，MODEL01仅涉及身份。
+
+组合G6的specification compliance及code quality均PASS并按MODEL01释放。工作区46个代码/配置文件原始字节清单摘要为cae97ae64d1c7de977da16da0de00feb4e88a7156c94744dc9f7d20730b402ab（PowerShell默认文化排序，LF分隔小写SHA与相对路径）；同一清单按ordinal字节序摘要为1a7a1b76fd5c227c7f2683942b7da6e38d899398f230de415dc353c4ad915e7c。Git换行规范化可能产生不同blob摘要，不把它当代码变化或略过逐字比对。原已批准M01设计章节1eb52614…6169未改。
+
+作者最终真实Edge/CDP使用隔离同源仅health壳，验1280/390px、默认中红/教学关闭、英绿/教学打开、重载持久、切换不重取health/不重建main；网络阻断显错并显式重试恢复、损坏偏好回默认并警示、拒写保旧值、存储恢复后显式保存清过时警示均通过，页面无未捕异常、无其他账务API。截图/浏览器私有profile不进Git，profile已清理。独立评审实际检查安全的浏览器证据及中文红色390px截图，未亲自运行Edge；不冒称其独立执行UI或旧302身份比对。
+
+另从已发布74819f9导出公共基线，叠加精确50文件，保留未提交贸易于工作区；公共package仅移除三条未发布贸易文件语法检查，其余行为完全一致。作者在该真实公共候选`npm ci`及完整verify为182+7+49=238项，零跳过。独立窄复审核45代码文件逐字相同，package只上述一行差异（公共原始SHA256 16959c4f4d03a11aba540314c0761355d07f965abf4af38fe9ebe011e27be705），原公共代码除此及四份进度文档不变；实际运行候选check及针对公共旧label的UI2/2，公共变体G6 spec/quality同样释放MODEL01。它未重复候选安装/238全套，也未打开真实账。发布前补准确状态文档；保护本地同步/独立安全/main/新clone仍须实际完成后另记，代码G6不等于已发布。
+
+### ARCH-M01-DELIVERY/SECURITY-01：本地及独立安全已完成，发布待核
+
+随后50文件按最新M00及原M-CORE的逐文件目标哈希安全同步，43新建/7匹配更新/0冲突；公共package变体与工作区保留贸易版本明确区分，不把后者复制到缺贸易文件的本地副本。不复制Git、环境、账套或node_modules；交付副本按已变更manifest独立恢复依赖，实际完整verify238项、零跳过及build/typecheck通过。29个冻结的原运行/测试/贸易文件逐字未变，已发布M00工具也未变；自建4188验收helper已停，未切换4173。
+
+另行独立security-review核50个候选SHA、源码、实际随机loopback监听器，探测静态路径编码/遍历、隐藏文件、方法/查询、跨域、测试工厂与安全错误、React/偏好及锁文件来源/完整性，未发现已确认漏洞。模型请求claude-opus-5.5、实际不能自核仍保留MODEL01；该安全结论不替代G5/G6。其live探针用已构建候选dist，未亲自重构建，未读真实账/环境/备份，无遗留helper。
+
+npm audit初次遭配置registry HTTP429（实际地址不公开）；独立补充用正常TLS向官方OSV querybatch仅发送306个公开npm名称/版本，不发送工作区包名、源代码、内部端点、账号、路径或凭据。首请求HTTP200、306结果无公告且无截断，故已知漏洞库查询缺口已补齐；只覆盖检查时OSV已知公告及锁定版本，不保证未知/未报告漏洞或已安装文件没有篡改。真实main发布和新clone验证仍以随后实际记录为准。
+
 ## ARCH-SME-DESIGN-01：独立G3已释放MODEL01，待用户确认
 
 用户要求中小企业ERP分层和数据库选项；贸易继续暂停，本轮仅设计。作者实际gpt-6.1-sol，风险为跨库事务/多人隔离/迁移恢复高风险。新增architecture、6项ADR、3张Mermaid源及14节点SVG，AR-01..08和AT-01..11，更新现有入口而不重构运行代码。独立评审实际经宿主task请求claude-opus-5.5、保留MODEL01身份未核实例外；不复用旧贸易门禁。

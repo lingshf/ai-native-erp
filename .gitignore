@@ -7,3 +7,7 @@ backups/
 *.sqlite-*
 node_modules/
 *.log
+dist/
+coverage/
+*.tsbuildinfo
+.vite/

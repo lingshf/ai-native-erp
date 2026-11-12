@@ -1,12 +1,16 @@
 # ai-native-erp
 
-## 当前优先事项：ARCH-M00实施基线，已授权架构迁移和恢复贸易
+## 当前优先事项：ARCH-M00已发布，ARCH-M01工程骨架实施中
 
-用户已委托“you do all this”，DC01..04采用推荐技术路线、首Local+Server Compose试点、预算目标非SLA、GL优先，决定均标“协调者代为决定，可调整”。授权包含恢复贸易/TASK24及备份核验后切换原4173，原库只读/ID3保留；不因授权跳过逐阶段G3/G5/G6或擅自丢弃未提交成果。详细设计见[architecture-migration](architecture-migration.md)。M00 G3/G5/G6均已独立释放MODEL01，保护工具10/10、完整302/302及语法通过，真实原源/快照逻辑与canonical相等、ID3保留且源物理摘要不变；当前准备安全交付/发布。M01已独立G3释放、可依M00门禁进行骨架，不代表数据库/业务迁移完成；后文暂停和待确认是历史，以本节为当前状态。
+用户已委托“you do all this”，DC01..04采用推荐技术路线、首Local+Server Compose试点、预算目标非SLA、GL优先，决定均标“协调者代为决定，可调整”。授权包含恢复贸易/TASK24及备份核验后切换原4173，原库只读/ID3保留；不因授权跳过逐阶段G3/G5/G6或擅自丢弃未提交成果。详细设计见[architecture-migration](architecture-migration.md)。M00已本地哈希保护交付、安全审查及快进发布main `74819f9bfa7087ac230c4ccaf96b6b40f1e740bf`，干净clone安装、公开182/182及语法通过，真实原源/快照逻辑与canonical相等、ID3保留且源物理摘要不变。M01三个增量G5、组合及公共变体G6均独立释放MODEL01，原三项Medium实际关闭；完整工作区358项、原302测试身份无丢失、严格类型/build及真实桌面/390px验收通过。公共候选为M00+M01、不含未验贸易，实际独立安装/238项通过；当前执行保护同步、安全及main/clone发布门禁，尚不宣称最终交付完成。不代表数据库/业务迁移或44FG完成，后文暂停和待确认是历史。
+
+M01随后完成50文件哈希保护本地同步（43新增/7更新/0冲突），交付副本独立安装及完整238项/build/typecheck通过，不复制Git/环境/账套/依赖目录。独立安全审查无已确认漏洞；npm漏洞库429后，以正常TLS成功查询OSV全部306公开依赖版本，未返回已知公告，不承诺未知漏洞为零。当前只剩精确main发布与新干净clone验证；所有自建验收helper已停，原4173未切换。M02双库/事务及后续阶段仍须各自G3，不因骨架通过而误标完成。
 
 执行前完整292/292及14语法通过，远端main仍3fbd75f。当前4173无监听、HTTP拒绝连接，与上轮“保持运行”的历史记录不同；已有工作区两SQLite待只读身份核对。没有发现Docker/Podman/psql，先做Local/保护基线，Server真实验证不得伪造。原32运行文件保护摘要仍作为改造前证据，不是永久禁止获准新实现。
 
-用户要求按中小企业ERP规格完善前端、API/业务与数据库分层。本轮仅设计，未获准重构、迁移真实账或提交推送；既有M-TRADE-A未提交成果原样保留。设计入口[architecture](architecture.md)、[ADR](adr/ADR-SME-001.md)、[图](diagrams/sme-overview.svg)，需求AR-01..08、计划验收AT-01..11；宏观迁移阶段ARCH-M00..09不是ready代码任务。
+### 历史：架构提案交付时状态（已被上方实施授权取代）
+
+用户要求按中小企业ERP规格完善前端、API/业务与数据库分层。提案交付时仅设计，未获准重构、迁移真实账或提交推送；既有M-TRADE-A未提交成果原样保留。设计入口[architecture](architecture.md)、[ADR](adr/ADR-SME-001.md)、[图](diagrams/sme-overview.svg)，需求AR-01..08、计划验收AT-01..11；当时宏观迁移阶段ARCH-M00..09不是ready代码任务。
 
 推荐独立React/TS前端、Nest/Fastify API、纯领域/应用服务、Kysely仓储和UoW，SQLite Local单人+PostgreSQL Server多人两档案。真实OIDC/作用域/制单复核分离、双库事务契约/迁移恢复与建议性能预算均需用户确认和逐阶段门禁。当前OQ本机模拟行为不变；44FG仍0完成/13部分/31未实现。原32运行/测试/脚本及manifest已冻结核对，架构文件不修改它们。
 
