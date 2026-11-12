@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { Book } from '../src/book.mjs';
+import { EnterpriseBook } from '../src/enterprise.mjs';
 import { createApp } from '../src/server.mjs';
 import { formatMinor } from '../public/money.js';
 import { createLabels, dictionaries } from '../public/labels.js';
+import { createEnterpriseWorkspace } from '../public/enterprise.js';
 
 const proposal = { date: '2026-01-15', memo: 'AI新候选', kind: 'normal', rationale: '虚构服务',
   lines: [{ account: '1000', debit: '10.00', credit: '0' }, { account: '4000', debit: '0', credit: '10.00' }] };
@@ -13,7 +15,7 @@ async function until(check) {
   for (let i = 0; i < 80; i++) { if (check()) return; await new Promise(r => setTimeout(r, 10)); }
   assert.ok(check(), 'Expected rendered application state');
 }
-async function fixture(t, { preference, theme, language, ai, setup, oldDraft = false, storageFailure = false, dimensions = false, twoPeriods = false, events = false, metadata = false } = {}) {
+async function fixture(t, { preference, theme, language, ai, setup, erp = false, oldDraft = false, storageFailure = false, dimensions = false, twoPeriods = false, events = false, metadata = false } = {}) {
   const book = new Book(':memory:', { today: '2026-01-15' });
   if (dimensions) { book.createDimension({ code: 'DEPT', name: '部门' }); book.createDimensionValue('DEPT', { code: 'OPS', name: '运营' }); }
   if (oldDraft) book.save({ ...proposal, memo: '保留旧草稿' });
@@ -28,7 +30,8 @@ async function fixture(t, { preference, theme, language, ai, setup, oldDraft = f
   }
   if (setup) setup(book);
   if (twoPeriods) { book.closePeriod('2026-01'); book.nextPeriod(); }
-  const server = createApp({ book, ai: {} });
+  const enterprise = erp ? new EnterpriseBook(':memory:') : undefined;
+  const server = createApp({ book, enterprise, ai: {} });
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${server.address().port}`;
   const dom = new JSDOM(await readFile(new URL('../public/index.html', import.meta.url), 'utf8'),
@@ -50,10 +53,12 @@ async function fixture(t, { preference, theme, language, ai, setup, oldDraft = f
   };
   w.formatMinor = formatMinor;
   w.createLabels = createLabels;
+  w.createEnterpriseWorkspace = createEnterpriseWorkspace;
   const source = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
   w.eval(source.replace("import { formatMinor } from './money.js';", 'const formatMinor = window.formatMinor;')
-    .replace("import { createLabels } from './labels.js';", 'const createLabels = window.createLabels;'));
-  t.after(async () => { dom.window.close(); await new Promise(r => { server.closeAllConnections(); server.close(r); }); book.close(); });
+    .replace("import { createLabels } from './labels.js';", 'const createLabels = window.createLabels;')
+    .replace("import { createEnterpriseWorkspace } from './enterprise.js';", 'const createEnterpriseWorkspace = window.createEnterpriseWorkspace;'));
+  t.after(async () => { dom.window.close(); await new Promise(r => { server.closeAllConnections(); server.close(r); }); enterprise?.close(); book.close(); });
   await until(() => w.document.querySelectorAll('#navigation button').length > 0 && w.document.querySelector('#period').options.length > 0);
   assert.ok(w.document.querySelector('#workspace').children.length, 'App rendered before absence checks');
   const d = w.document;
@@ -61,9 +66,82 @@ async function fixture(t, { preference, theme, language, ai, setup, oldDraft = f
     const b = [...d.querySelectorAll('button')].find(n => n.textContent === text);
     assert.ok(b, `Missing button ${text}`); b.click(); return b;
   };
-  return { w, d, calls, click, state: async () => (await fetch(base + '/api/state')).json(),
+  return { w, d, calls, click, enterprise, state: async () => (await fetch(base + '/api/state')).json(),
     ledger: (account, month) => book.ledger(account, month) };
 }
+async function chooseEnterprise(f, company = 'A') {
+  f.d.querySelector('[data-view="enterprise"]').click();
+  const companySelect = () => [...f.d.querySelectorAll('#workspace select')]
+    .find(select => [...select.options].some(option => option.value === company));
+  await until(() => companySelect());
+  companySelect().value = company;
+  companySelect().dispatchEvent(new f.w.Event('change', { bubbles: true }));
+  await until(() => [...f.d.querySelector('#period').options].some(option => option.value === '2026-02'));
+}
+function seedEnterprise(enterprise) {
+  enterprise.createCompany({ code: 'A', name: 'Isolated company A', year: 2026, currency: 'EUR',
+    scale: 2, reportCurrency: 'USD', reportScale: 2, chartTemplate: 'STANDARD' });
+  for (const [reference, date, lines] of [
+    ['CAPITAL', '2026-01-15', [{ account: '1000', debit: '53.27', credit: '0' }, { account: '3000', debit: '0', credit: '53.27' }]],
+    ['EXPENSE', '2026-02-15', [{ account: '5000', debit: '2.08', credit: '0' }, { account: '1000', debit: '0', credit: '2.08' }]],
+  ]) {
+    const command = { company: 'A', operation: 'journal', reference,
+      accountingDate: date, documentDate: date, taxDate: date, sourceRevision: 0,
+      data: { memo: reference, kind: 'normal', currency: 'EUR', lines } };
+    const { token } = enterprise.preview(command);
+    enterprise.post({ command, token, confirmation: 'POST' });
+  }
+}
+test('real ERP workspace owns its month and preference changes retain its existing DOM, then legacy month is restored', async t => {
+  const f = await fixture(t, { erp: true });
+  seedEnterprise(f.enterprise);
+  const old = await f.state();
+  assert.match(f.d.querySelector('footer').textContent, /教学单位/);
+  await chooseEnterprise(f);
+  assert.doesNotMatch(f.d.querySelector('footer').textContent, /教学单位/);
+  assert.match(f.d.querySelector('footer').textContent, /法人币种/);
+  preferenceChange(f.w, f.d, '#period', '2026-02');
+  await until(() => f.d.querySelector('#workspace').textContent.includes('51.19'));
+  const root = f.d.querySelector('#workspace').firstElementChild;
+  preferenceChange(f.w, f.d, '#ui-language', 'en');
+  preferenceChange(f.w, f.d, '#ui-theme', 'green');
+  f.d.querySelector('#teaching-mode').click();
+  assert.match(f.d.querySelector('footer').textContent, /company currency/);
+  assert.doesNotMatch(f.d.querySelector('footer').textContent, /teaching units/);
+  assert.equal(f.d.querySelector('#workspace').firstElementChild, root);
+  assert.equal(f.d.querySelector('#period').value, '2026-02');
+  assert.match(f.d.querySelector('#workspace').textContent, /51.19/);
+  f.d.querySelector('[data-view="overview"]').click();
+  assert.equal(f.d.querySelector('#period').value, old.reports.month);
+  assert.equal(f.d.querySelector('#period').disabled, false);
+  assert.match(f.d.querySelector('footer').textContent, /teaching units/);
+  assert.deepEqual(await f.state(), old);
+});
+for (const failed of [false, true]) test(`a late legacy ${failed ? 'failure' : 'refresh'} cannot overwrite the ERP company/month`, async t => {
+  const f = await fixture(t, { erp: true, twoPeriods: true });
+  seedEnterprise(f.enterprise);
+  const originalFetch = f.w.fetch;
+  let release;
+  f.w.fetch = (url, options) => String(url) === '/api/state?month=2026-01'
+    ? new Promise(resolve => { release = () => failed
+      ? Promise.resolve(resolve(new Response(JSON.stringify({ error: 'Old book refresh failed' }), { status: 500 })))
+      : originalFetch(url, options).then(resolve); })
+    : originalFetch(url, options);
+  preferenceChange(f.w, f.d, '#period', '2026-01');
+  await until(() => release);
+  await chooseEnterprise(f);
+  preferenceChange(f.w, f.d, '#period', '2026-02');
+  await until(() => f.d.querySelector('#workspace').textContent.includes('51.19'));
+  const root = f.d.querySelector('#workspace').firstElementChild;
+  await release();
+  await new Promise(resolve => setTimeout(resolve, 30));
+  assert.equal(f.d.querySelector('#workspace').firstElementChild, root);
+  assert.equal(f.d.querySelector('#period').value, '2026-02');
+  assert.match(f.d.querySelector('#workspace').textContent, /51.19/);
+  assert.doesNotMatch(f.d.body.textContent, /Old book refresh failed/);
+  f.d.querySelector('[data-view="overview"]').click();
+  assert.equal(f.d.querySelector('#period').value, failed ? '2026-02' : '2026-01');
+});
 function drilldownBook(book) {
   const account = book.createAccount({ code: '5300', name: '历史费用', category: 'EXPENSE' });
   const post = (amount, kind, dimensions = {}) => book.post(book.save({
@@ -275,7 +353,8 @@ test('ERP grouping, settings separation and teaching preference preserve unsaved
   const { w, d, calls, click } = await fixture(t);
   assert.equal(d.querySelector('#page-name').textContent, '业务概览');
   assert.equal(d.querySelector('#teaching-mode').checked, false);
-  assert.deepEqual([...d.querySelectorAll('.nav-group-label')].map(n => n.textContent), ['日常操作', '查询报表', '设置', 'AI']);
+  assert.deepEqual([...d.querySelectorAll('.nav-group-label')].map(n => n.textContent),
+    [dictionaries.zh['erp.navGroup'], '日常操作', '查询报表', '设置', 'AI']);
   click('日记账');
   d.querySelector('#entry-memo').value = '尚未保存';
   const node = d.querySelector('#entry-memo');

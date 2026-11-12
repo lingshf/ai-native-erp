@@ -74,7 +74,7 @@ async function body(req) {
   return value;
 }
 
-export function createApp({ book, ai = {
+export function createApp({ book, enterprise, ai = {
   provider: process.env.AI_PROVIDER || 'openai',
   baseUrl: process.env.AI_BASE_URL, key: process.env.AI_API_KEY, model: process.env.AI_MODEL,
 } }) {
@@ -98,6 +98,86 @@ export function createApp({ book, ai = {
       }
       const data = req.method === 'GET' ? null : await body(req);
       const path = url.pathname;
+      if (path.startsWith('/api/erp/')) {
+        if (!enterprise) reject('The ERP ledger is not enabled for this server instance.', 503);
+        const query = (...allowed) => {
+          for (const key of url.searchParams.keys()) {
+            if (!allowed.includes(key) || url.searchParams.getAll(key).length !== 1) reject('Invalid or repeated ERP query field.');
+          }
+        };
+        const required = (key) => {
+          const value = url.searchParams.get(key);
+          if (!value) reject(`An explicit ERP ${key} is required.`);
+          return value;
+        };
+        const selectedMonth = () => {
+          const month = required('month');
+          if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) reject('Invalid ERP month.');
+          return month;
+        };
+        const pagination = () => {
+          const options = {};
+          if (url.searchParams.has('cursor')) {
+            const cursor = required('cursor');
+            if (cursor.length > 200) reject('Invalid ERP cursor.');
+            options.cursor = cursor;
+          }
+          if (url.searchParams.has('limit')) {
+            const limit = required('limit');
+            if (!/^[1-9]\d{0,2}$/.test(limit) || Number(limit) > 200) reject('ERP page size must be 1-200.');
+            options.limit = Number(limit);
+          }
+          return options;
+        };
+        if (req.method === 'GET' && path === '/api/erp/state') {
+          query('company', 'month', 'cursor', 'limit');
+          if (!url.searchParams.size) return send(enterprise.state(undefined, undefined, {}));
+          return send(enterprise.state(required('company'), selectedMonth(), pagination()));
+        }
+        if (req.method === 'GET' && path === '/api/erp/ledger') {
+          query('company', 'month', 'account', 'dimension', 'value', 'cursor', 'limit');
+          if (url.searchParams.has('dimension') !== url.searchParams.has('value')) reject('ERP dimension and value must be provided together.');
+          return send(enterprise.ledger({ company: required('company'), month: selectedMonth(), account: required('account'),
+            ...(url.searchParams.has('dimension') ? { dimension: required('dimension'), value: required('value') } : {}), ...pagination() }));
+        }
+        if (req.method === 'GET' && path === '/api/erp/audit') {
+          query('company', 'cursor', 'limit');
+          return send(enterprise.audit(required('company'), pagination()));
+        }
+        const journal = /^\/api\/erp\/journals\/([^/]+)$/.exec(path);
+        if (req.method === 'GET' && journal) {
+          query('company');
+          const id = Number(journal[1]);
+          if (!/^[1-9]\d*$/.test(journal[1]) || !Number.isSafeInteger(id)) reject('Invalid ERP journal identity.');
+          return send(enterprise.journal(required('company'), id));
+        }
+        const source = /^\/api\/erp\/sources\/([^/]+)$/.exec(path);
+        if (req.method === 'GET' && source) {
+          query('company');
+          let reference;
+          try { reference = decodeURIComponent(source[1]); }
+          catch { reject('Invalid ERP source encoding.'); }
+          return send(enterprise.source(required('company'), reference));
+        }
+        if (req.method === 'POST') {
+          query();
+          const methods = {
+            '/api/erp/companies': 'createCompany', '/api/erp/config': 'configure',
+            '/api/erp/period': 'setPeriod', '/api/erp/preview': 'preview', '/api/erp/post': 'post',
+            '/api/erp/transfer': 'transfer', '/api/erp/withdraw': 'withdraw',
+          };
+          if (Object.hasOwn(methods, path)) {
+            if (path === '/api/erp/preview' || path === '/api/erp/post') {
+              const operation = path.endsWith('/preview') ? data.operation : data.command?.operation;
+              if (typeof operation !== 'string' || !enterprise.state().supportedOperations.includes(operation)) {
+                reject('Invalid or unsupported ERP operation.');
+              }
+            }
+            return send(enterprise[methods[path]](data));
+          }
+        }
+        reject('ERP endpoint does not exist.', 404);
+      }
       if (req.method === 'GET' && path === '/api/reconciliation') {
         return send(book.reconciliation(url.searchParams.get('month')));
       }
@@ -204,7 +284,8 @@ export function createApp({ book, ai = {
         const files = { '/': ['index.html', 'text/html'], '/app.js': ['app.js', 'text/javascript'],
           '/money.js': ['money.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'],
           '/labels.js': ['labels.js', 'text/javascript'], '/labels/zh.js': ['labels/zh.js', 'text/javascript'],
-          '/labels/en.js': ['labels/en.js', 'text/javascript'] };
+          '/labels/en.js': ['labels/en.js', 'text/javascript'],
+          '/enterprise.js': ['enterprise.js', 'text/javascript'] };
         const asset = files[path];
         if (asset) {
           const content = await readFile(join(ROOT, 'public', asset[0]));
@@ -230,10 +311,20 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const dir = resolve(process.env.DATA_DIR || join(ROOT, 'data'));
   await mkdir(dir, { recursive: true });
   const book = new Book(join(dir, 'teaching.sqlite'));
-  const server = createApp({ book });
-  server.on('error', (error) => { console.error('Cannot start local server:', error.code); book.close(); process.exitCode = 1; });
+  let enterprise;
+  try {
+    const { EnterpriseBook } = await import('./enterprise.mjs');
+    enterprise = new EnterpriseBook(join(dir, 'erp.sqlite'));
+  } catch (error) { book.close(); throw error; }
+  const server = createApp({ book, enterprise });
+  let booksClosed = false;
+  const closeBooks = () => {
+    if (booksClosed) return;
+    booksClosed = true; book.close(); enterprise.close();
+  };
+  server.on('error', (error) => { console.error('Cannot start local server:', error.code); closeBooks(); process.exitCode = 1; });
   server.listen(port, '127.0.0.1', () => console.log(`Accounting Lab: http://127.0.0.1:${port}`));
-  const stop = () => { server.close(() => book.close()); server.closeAllConnections(); };
+  const stop = () => { server.close(closeBooks); server.closeAllConnections(); };
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
 }

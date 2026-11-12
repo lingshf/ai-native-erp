@@ -1,5 +1,6 @@
 import { formatMinor } from './money.js';
 import { createLabels } from './labels.js';
+import { createEnterpriseWorkspace } from './enterprise.js';
 
 const labels = createLabels();
 const { t, resolve: resolveLabel, setText, append: appendText, attribute: setAttributeLabel, join: joinLabels } = labels;
@@ -26,8 +27,10 @@ const views = [
   ['events', '08', t('ui022'), t('ui023'), t('ui024')],
   ['ai', 'AI', t('ui025'), t('ui026'), t('ui027')],
   ['settings', '', t('ui028'), t('ui028'), t('ui029')],
+  ['enterprise', '', t('erp.name'), t('erp.title'), t('erp.description')],
 ];
 let state, month = '', view = 'overview', editingId, accountEditing, ruleEditing, eventDraft, structureEditing, ledgerTarget;
+let enterpriseWorkspace;
 let refreshRevision = 0;
 const preferenceKey = 'ai-native-erp.teaching-mode', themeKey = 'ai-native-erp.theme', languageKey = 'ai-native-erp.language';
 const preferenceFailures = [];
@@ -47,6 +50,7 @@ document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 document.documentElement.dataset.theme = theme;
 $('#ui-theme').value = theme; $('#ui-language').value = language;
 const navGroups = [
+  [t('erp.navGroup'), ['enterprise']],
   [t('ui031'), ['journals', 'events']], [t('ui032'), ['ledger', 'reports', 'close']],
   [t('ui033'), ['accounts', 'dimensions', 'settings']], [t('nav.ai'), ['ai']],
 ];
@@ -131,8 +135,12 @@ function select(options, value) {
   for (const [v, text] of options) { const opt = el('option', text); opt.value = v; node.append(opt); }
   node.value = value; return node;
 }
-function go(next, target) { ledgerTarget = next === 'ledger' ? target : undefined; view = next; notice.hidden = true; render(); }
+function go(next, target) {
+  if (view === 'enterprise' && next !== 'enterprise') enterpriseWorkspace?.deactivate();
+  ledgerTarget = next === 'ledger' ? target : undefined; view = next; notice.hidden = true; render();
+}
 async function refresh(nextMonth = month) {
+  const requestedView = view;
   const revision = ++refreshRevision;
   const previous = $('#reconciliation-result');
   if (previous) previous.replaceChildren(el('p', t('reconciliation.loading', { month: nextMonth }), 'reconciliation-loading'));
@@ -141,19 +149,23 @@ async function refresh(nextMonth = month) {
     nextState = await api('/api/state' + (nextMonth ? `?month=${encodeURIComponent(nextMonth)}` : ''));
   } catch (error) {
     if (revision !== refreshRevision) return;
+    if (view === 'enterprise' && requestedView !== 'enterprise') return;
     if (previous?.isConnected) previous.replaceChildren(el('p', diagnosticLabel(error), 'warning reconciliation-error'));
     throw error;
   }
   if (revision !== refreshRevision) return;
   state = nextState;
   month = state.reports.month;
-  const p = $('#period'); p.replaceChildren();
+  if (view === 'enterprise') return;
+  render();
+}
+function legacyPeriod() {
+  const p = $('#period'); p.disabled = false; p.replaceChildren();
   for (const period of state.periods) { const opt = el('option', period.month); opt.value = period.month; p.append(opt); }
   p.value = month;
   const status = state.periods.find((p) => p.month === month).status;
   setText($('#period-status'), status === 'open' ? t('ui052') : t('ui053'));
   $('#period-status').className = 'badge' + (status === 'closed' ? ' closed' : '');
-  render();
 }
 function isOpen() { return state.periods.find((p) => p.month === month).status === 'open'; }
 function lastDate(period) {
@@ -184,6 +196,7 @@ function metrics() {
 function chrome() {
   document.body.classList.toggle('teaching-on', teaching);
   $('#teaching-mode').checked = teaching;
+  setText($('footer [data-label="shell.measure"]'), t(view === 'enterprise' ? 'erp.measure' : 'shell.measure'));
   const nav = $('#navigation'); nav.replaceChildren();
   const navButton = (id) => {
     const original = views.find(v => v[0] === id)[2];
@@ -204,6 +217,16 @@ function chrome() {
 function render() {
   chrome();
   workspace.replaceChildren();
+  if (view === 'enterprise') {
+    enterpriseWorkspace ??= createEnterpriseWorkspace({
+      root: workspace, labels, api, notify, onError: showError,
+      period: $('#period'), periodStatus: $('#period-status'), isActive: () => view === 'enterprise',
+    });
+    enterpriseWorkspace.setTeaching(teaching);
+    enterpriseWorkspace.show().catch(error => { if (view === 'enterprise') showError(error); });
+    return;
+  }
+  legacyPeriod();
   ({ overview, journals, ledger, reports, closeView, aiView, accountsView, dimensionsView, eventsView, settingsView }[
     { close: 'closeView', ai: 'aiView', accounts: 'accountsView', dimensions: 'dimensionsView', events: 'eventsView', settings: 'settingsView' }[view] || view
   ])();
@@ -907,6 +930,10 @@ function aiPanel(inline = false) {
 }
 function parseMinor(raw) { const [whole, fraction = ''] = raw.split('.'); return Number(whole) * 100 + Number(fraction.padEnd(2, '0')); }
 $('#period').addEventListener('change', (event) => {
+  if (view === 'enterprise') {
+    enterpriseWorkspace.selectMonth(event.target.value).catch(error => { if (view === 'enterprise') showError(error); });
+    return;
+  }
   const selected = event.target.value; editingId = undefined; eventDraft = undefined;
   refresh(selected).catch((error) => { event.target.value = month; showError(error); });
 });
@@ -915,6 +942,7 @@ $('#teaching-mode').addEventListener('change', () => {
   try { localStorage.setItem(preferenceKey, next ? 'on' : 'off'); }
   catch { $('#teaching-mode').checked = teaching; notify(t('preferences.writeError', {preference: t('shell.teaching')}), true); return; }
   teaching = next;
+  enterpriseWorkspace?.setTeaching(teaching);
   if (state) { if (view === 'overview') render(); else chrome(); }
 });
 $('#ui-theme').addEventListener('change', () => {

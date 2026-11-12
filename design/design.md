@@ -1,5 +1,103 @@
 # Proposed design
 
+## D-CORE：44目标的共同契约与M-CORE基线
+
+范围为[POLICY-01及FR-C01..08](requirements.md)。旧章节的待决/仅规划措辞保留为历史，不能覆盖当前全44目标实施授权；也不能把本节写成已经实现或已经评审。
+
+### 隔离与替代方案
+
+采用模块化单体：原`Book`及`teaching.sqlite`继续服务旧教学模式，新`EnterpriseBook`在**另一个本地SQLite文件**维护新法人账。该文件内以company为每个配置/期间/业务/凭证/子账事实的强制分区键；公司间双边事务因此可同事务提交。法人不是维度，任何查询/引用都显式核所属company。新账创建无分录、不自动复制旧账；仅共享经过版本化的科目模板定义，法人覆盖彼此隔离。首次选中ERP工作区只读列举，新建法人须明确确认。
+
+拒绝直接扩展旧表并重解释累计期初/月结：旧算法没有多币、年度期初和子账源身份，静默升级可能双算期初。拒绝每模块自建独立GL或无约束表达式引擎。新内核复用现有`AppError`、安全整数思想和本机HTTP保护，但不把旧教学构造器的示例入账带进新法人。新模块首次创建空schema可写新文件，不能声称这等于修改了旧账；新模式回退只切换工作区，不降级/删除ERP数据。
+
+### 内核、持久化与金额
+
+- `src/enterprise.mjs`为唯一共享schema/事务作者；不引入运行依赖。`src/enterprise-core.mjs`可分离纯校验/计算；后续贸易、成本/税币、银行、资产关账、集团、报表为固定注册适配器，不允许请求指定任意模块/SQL/代码。`public/enterprise.js`是独立工作区渲染模块；现有app只做入口和全局期间上下文分派。
+- 单一ERP数据库的核心集合：companies；版本化chartTemplates及法人accountOverrides；configs/current及不可变configVersions；calendars/periods；drafts/typed business objects；sourceEvents/immutable receipts；journals/lines；statistics；clearingLinks；transferQueue；append-only audit。业务模块使用同一受控事务协调器增加自己的事实，不能绕过源及GL校验直接写凭证。
+- 每条货币金额为安全整数最小单位，带币种及0-4位scale；输入为十进制字符串，不通过浮点数累计。数量及单价最多6小数，汇率最多8小数，精确有理数/BigInt中间计算后按对称half-up量化；超安全整数明确拒绝。API不返回BigInt。统计数量另带unit/scale，不参与货币TB。会计类型固定五类，详细reportGroup为类型内枚举，不能重定义类型决定的损益/永久性质。
+- 币种登记为全库共享`currencies(code,scale)`，法人不能为同一币种另设精度；币种被法人/行使用后scale不可改。每条最终行固定保存`{account,currency,transactionDebit,transactionCredit,accountingCurrency,debit,credit,reportingCurrency,reportingDebit,reportingCredit,rateRefs,dimensions,dimensionOrigins,metadata}`，金额均最小单位、借贷恰有一侧为正；`rateRefs={accounting,reporting}`保留不可变率版本引用。M-CORE仅接受交易币=会计币，transaction两侧等于debit/credit，accounting率引用null。报告币相同则报告两侧相等；报告币不同则两侧和reporting率引用均null，报表显式`translated:false`/“未折算”，不能以0冒充报告币金额。后续FX补充新行的数据，不重写既有未折算行，也不伪造历史率。
+- 科目操作purpose为general/control/clearing/suspense，contraOf单独表达备抵属性；备抵须同类型、方向相反、无链环，正常方向不限制分录方向。control按注册子账用途限制来源；手工不能伪造系统/子账origin。clearing按原来源残余查询并显式零和配对，不能用任意差额抹账。suspense普通行必须有owner/reason/reviewDate，未解及逾期可查。停用不隐藏历史，已使用账户身份/类型/币种/操作purpose不能改，不能把既有手工余额转为无来源控制余额。
+- 审计包含动作/源/模拟身份保证级别/UTC时间/前后版本/原因/配置快照引用，应用及SQL触发器禁止修改已过账及历史证据；不宣称抵御拥有文件控制权的管理员。只写错误类型等诊断，不记录完整财务请求/凭据。
+
+### 日期、维度及规则的确定性顺序
+
+新账当前创建公历年度及12个自然月，经营期间连续且不重叠；后续灵活年度边界由关账里程碑实现。会计日决定经营期间，单据日/税日独立保留；日期真实有效、禁止自动挪日。Opening/Closing只能由固定系统工作流生成。期间open可按模块进一步限制，hold可凭原因重开；有未完义务的期间不得永久关闭，永久关闭不可恢复。M-CORE只允许无发生/无义务的期间永久关闭，年度工作尚未实现时不得伪造已完成年结。新月冻结只改状态、不生成损益结转；旧模式不变。
+
+M-CORE对当前发布的规则、默认/派生、固定约束、维度值等配置集合，统一使用`accountingDate`判断有效期，首尾均包含；活动状态取当前已发布版本并进入指纹，不按单据日/税日选另一版本，也不按历史时钟重放旧发布状态。三日期跨配置边界时会计日优先。单据日/税日在本里程碑仅保存；后续税、汇率等若用其自身时点须在对应G3明确，不沿用含糊的“交易日”。已过账行/快照不重新选当前配置。
+
+维度显式区分未给键与`null`清空。每个有效值有from/to（含首尾）、active及版本。取值顺序为公司默认→科目默认→单据/业务主数据默认→显式行值；后续派生规则`fill`只补缺值、`replace`按声明替换并解释，最后固定值/固定空值。显式输入与固定约束矛盾拒绝，两个有效派生给出不同结果或形成依赖环拒绝。显式空值不被普通默认回填；任何覆盖都保留provenance。最终统一核活动状态/有效期/必填/条件附加要求/允许组合，历史和精确系统冲销不重跑当前派生。
+
+`fill`只补未给键，不把显式null当缺省。明确配置为`replace`的派生可覆盖显式值（含null），保存原值/规则来源并在确认前展示；这不改变“普通默认不能回填显式空值”。固定约束与原始显式行值矛盾仍拒绝，不能借派生把原始冲突隐藏。
+
+若只有派生replace结果与固定值冲突、原始显式行未违反固定约束，则固定值最终覆盖派生结果，保留两步provenance；多个固定约束彼此冲突仍拒绝，不按先后掩盖。
+
+一个法人可显式启用一个balancingDimension及内部平衡account；普通新行必须有该维度。先校验原业务整体借贷平衡，再按值汇总借减贷，针对非零组生成反向内部平衡行，合计仍零，显示来源和内部科目。缺账户或非法组合拒绝，不能借此平衡本来不平的业务。历史查询按已保存最终组合，标签不当维度；年结归属稍后接入。
+
+科目规则使用有限typed event/lineMeaning（例如手工规则比较、现金服务参考适配器；真实AP/AR/库存/税/银行意义由各模块注册）。每条规则有有效期、对象exact/group/all、对方exact/group/all、科目、受支持维度来源及版本。候选以两个轴的specificity偏序：一个候选各轴均不弱且至少一轴强才支配另一候选；余下多个不同胜者就是冲突，不按ID/创建顺序挑。缺规则/同级重复/非法胜者拒绝，禁止退回弱规则。预览显示候选、淘汰原因、最终版本及意义，预测专用意义不允许支付适配器引用。多事件科目源选择不由AI决定。
+
+### 预览、批准、业务效果、转账与纠错
+
+`Command={company,operation,reference,accountingDate,documentDate,taxDate,sourceRevision,data}`；reference在法人内为不可重用事件身份，业务对象另有稳定objectId及修订，不能把PO号当每次收货事件号。输入严格字段/schema/大小校验。业务重复键独立于事件幂等键。固定事件适配器从只读上下文计算`Plan={lines,objectEffects,facts,explanations,checks,policySnapshots,expectedRevisions}`。不允许客户端提供可信origin、越权控制行、任意SQL或自动平账指令。
+
+M-CORE固定操作清单如下；不在表中者拒绝，后续模块在自身G3后加入。所有入口均经相同预览/明确确认，不是独立的任意GL旁路。
+
+| operation | 来源/输入与GL效果 | 允许来源状态及限制 |
+| --- | --- | --- |
+| `journal` | 手工normal/adjusting完整行；一个新凭证，data可选同步/手工待转路线 | 新reference，拒绝Opening/Closing/客户端origin及控制科目；不能传已过账ID改原账。 |
+| `cash_service` | 注册的现金服务参考适配器；服务对象/组/对方轴命中收入规则，现金与收入行 | 有效服务/规则、正金额，新reference；不是应收发票/实际银行业务。 |
+| `statistics` | 数量/unit及维度；只写独立数量事实，无货币GL | 新reference，币种金额不接受；不能用数量塞TB。 |
+| `clearing.match` | 对同一clearing/suspense账户选择原凭证行，完整未配残余零和；记录清算/暂记解决链，无新GL | 全部已过账、同公司币种/账户、未重复匹配；非零/部分匹配本轮拒绝。暂记实际金额先经普通合法凭证对冲，再配对，不用按钮直接抹余额。 |
+| `reverse` | 指定原journalId，复制原全行的相反侧（含内部平衡行），一张关联反向凭证 | 仅普通手工、替换后的普通凭证或reclassify输出；没有有效纠错的已过账正常/调整行，完整精确冲销，无部分金额；其他业务源拒绝通用GL取消。 |
+| `replace` | 指定原手工journalId及完整新行；同事务写精确反向+新普通凭证，两张均关联本事件和原账 | 未纠错的普通已过账来源，全部替换不接受部分；新行按当前规则合法，失败不留下仅冲销。 |
+| `reclassify` | 指定原手工journalId及完整重分类行；一张凭证包含原全量反向及重分类正向，分别有来源组 | 新行借/贷总额须与原经济金额相同，完整重分类不接受部分；原来源登记已纠错，不能再双重纠错。不称红字/发生额抵消。 |
+| `cash_service.cancel` | 注册服务来源专用取消，按原计划精确反向并记录取消来源 | 仅未取消的已过账cash_service；不是通用源取消接口，后续AP/AR/库存各自定义取消适配器。 |
+
+适配器在构造时以固定服务端函数及能力注册，HTTP不接受注册内容或可信origin。仅领域单元测试可构造含`testOnly`适配器的内核证明合法控制来源能入账；它不在生产注册表/HTTP公开操作清单中，不在`createApp`提供注入接口，不把测试适配器验收当真实子账完成。每个引用/关系以(company,identity)复合外键或同等SQL约束隔离，完整凭证分页顺序固定(accountingDate,journalId,lineNo)。
+
+错误reclassify可整体reverse其输出，原始交易及重分类/反向链均保留；原来源“曾纠错”历史不删除，有效纠错状态由追加事件计算。完整撤销重分类、恢复原金额后可对原来源重新预览纠错，必须新reference/token；仍有效的纠错或任何重复冲销不得叠加。replace已对原凭证做的精确反向不会因反向其新凭证而被抹除，后续纠错针对新的有效普通凭证继续关联。
+
+`preview(command)`只读、不占来源/凭证号/不改审批状态；返回规范化command、plan、token及revision。HMAC绑定完整规范输入/最终plan/相关配置和对象版本/期间；配置同值保存或改回仍变版本。持久化成功回执保存原输入、token、原计划和结果。`post({command,token,confirmation:"POST"})`先查成功同源：原输入和原token完全一致才返回原回执，不因后来关期/改配置重执行；冲突复用409。未完成来源在BEGIN IMMEDIATE内重新计算并核token/版本，人工确认后原子写业务效果、GL、回执、模拟批准和审计；任一失败全部回滚。
+
+批准保证级别固定为`simulated-local-single-operator`，角色是本机动作分类而非登录授权；同一人制单/复核明确可见，不能把请求中actor/persona当真实认证。实际机器所有者仍控制本机，真实多人/独立审批不支持。可信子账来源只能由服务端注册适配器给出，与模拟角色无关。人工改输入/源/规则/期间后必须重预览；AI晚返回同样校验。
+
+默认同步完整写入。仅已审查的手工队列路线可选择延迟GL：先保存被批准计划、源状态及pending回执；界面必须明确“业务已接受、总账未转”，不是成功凭证。显式transfer在事务中核当前期间、唯一源映射，按原批准计划写GL及transferred状态；重复转账返回原凭证。持久失败类包括期间/模块准入受限、计划格式/摘要不一致、已不兼容的计划版本及可捕获存储约束错误；锁/磁盘等导致连失败状态也无法提交时返回明确可重试错误、保留先前pending并在恢复后查询，不能伪称已持久failed。
+
+`withdraw`只允许未转的手工pending/failed，须明确原因，写终态withdrawn和审计而不写GL；引用永久占用，原批准计划/回执不改删，原post重试返回原批准证据及当前withdrawn状态而不执行。transferred不能撤回，须正常精确纠错。源批准回执不可变，队列当前处理状态作为独立带审计记录返回，不把可变状态冒充原批准证据。后续业务模块只有设计和取消/对账接入完成才可启用队列。关期检查pending/failed，不把withdrawn当未完义务；不引入后台worker或分布式成功假象。
+
+精确冲销取服务器保存的原计划全行/维度/金额，包括原内部平衡行；只允许该来源适配器的合法纠错状态，校验新日期/期间但不因当前停用/结构修改破坏原历史。普通手工来源可reverse/关联replace或reclassify；子账来源不能用通用GL反向接口冒充业务取消。一次原交易仅一条有效精确冲销，重复同事件仍幂等；已过账对象SQL层不可改删。红字/子账纠错/公司间取消各自随后验收，不能仅凭反向GL标全目标完成。
+
+M-CORE-G3-ADDENDUM-01的时序澄清：新ERP的reverse/replace/reclassify及cash_service.cancel统一要求纠错会计日不早于原凭证会计日，且不早于该原来源纠错/撤销链中最晚的会计日，包括使原来源重新可纠错的撤销事件；同日合法。这不修改旧Book。clearing.match须不早于其全部原行的最晚会计日，且同其他命令一样要求会计日所在期间open并准入clearing操作，不因无GL而绕过期间。选月未清清单只看截至选月末已发生的原行，并且仅将匹配来源会计日不晚于该月末的链接视为已清；四月的匹配不能抹除一月的未清历史。拒绝路径在非写入计划阶段给出明确诊断，不能挪会计日、改原行或删除已有链接。此补充须独立G3释放后才实现，原G3不被冒用。
+
+### API与UI边界
+
+`createApp`增加可注入的enterprise实例，原调用和全部旧API保持；启动新实例时ERP文件与旧文件不同。增加精确静态白名单`/enterprise.js`。全部`/api/erp/*`沿已有loopback/host/origin/content-type/64KiB限制：
+
+| 接口 | 输入与行为 |
+| --- | --- |
+| GET `/api/erp/state` | 无company只读列公司/支持的模板/操作，不创建法人。带company须显式month，返回该法人配置/期间/有限页凭证/统计/未解/待转及报表，分页须给总数/游标，不能默默截断。非法400、未知404。 |
+| POST `/api/erp/companies` | code/name/year/currency及scale/reportCurrency及scale/chartTemplate；明确创建空法人及日历、模板快照，无种子分录。 |
+| POST `/api/erp/config` | company/kind/code/expectedRevision/active/data，kind固定白名单和独立schema；CAS冲突409，保存版本及审计。 |
+| POST `/api/erp/period` | company/month/expectedRevision/status/modules/reason/不可逆确认；校验未完义务，记录原因。 |
+| POST `/api/erp/preview`、`/api/erp/post` | 上述command及确认封套，预览零写、确认同计划原子幂等。 |
+| GET `/api/erp/journals/:id`、`/api/erp/ledger` | 必须company，凭证/来源/完整行与口径可追；跨法人身份不存在不泄露他账。 |
+| POST `/api/erp/transfer` | company/reference，显式转被批准队列计划，结果/错误及重试可核。 |
+| POST `/api/erp/withdraw` | company/reference/reason，只撤回未转手工计划，保留原批准证据并写无GL终态。 |
+| GET `/api/erp/audit` | company及分页，历史配置/动作/源引用可追，显示模拟身份局限。 |
+
+M-CORE没有开启下一财政年度的API。选月利润表显示该月非Opening/Closing经营发生及独立YTD列；资产负债表为当前财政年期初加截至选月末发生，权益明确含未结YTD损益，不能只加本月利润。TB的opening+debit-credit=closing按同口径成立。独立预期：一月资本53.27及收入9.14，二月费用2.08，一月现金/权益62.41、当月及YTD利润9.14；二月现金/权益60.33、当月利润-2.08、YTD利润7.06。未折算报告币列为null/不可用，不与会计币总计混加；未来年度期初接入后仍只按当前财政年含Opening一次，不叠加旧年余额。
+
+复杂配置结构以明确字段和有说明的高级结构编辑器录入，不把一个无schema任意JSON框当ERP业务界面。业务工作区提供公司创建/选择、科目/维度/规则设置、凭证行编辑/预览/明确确认、来源/总账/报表、待转和未解项及期间状态。唯一全局期间控件在进入ERP时切到该法人的期间，返回旧工作区恢复原月；迟到ERP响应不得覆盖新公司/新月份/已离开的容器。
+
+新增界面文字全部进中英文label，主题仍CSS变量，教学开关只控制教学辅助；不重建未保存表单来切语言/主题。必要风险/模拟审批/不可逆/待转/数据口径永远显示。无自动AI/写账，旧控制、原八科目和未知草稿保持。UI测试执行真实模块与受控HTTP，实际浏览器在独立新ERP数据库验收，不在原4173里创建测试业务。
+
+### 备份、依赖与验证
+
+显式本机CLI（不是浏览器文件API）使用SQLite `VACUUM INTO`一致性快照到调用者指定的全新备份位置，可在服务运行时获取一个一致的读快照，无须声称已停服；摘要从完成的备份本身读取，避免与活动源的新写入混合。附schema/完整性和关键计数，不覆盖已有文件；恢复先写独立目标，核完整性、源↔凭证、平衡及原回执重试，不替换活动文件。HMAC预览密钥仅内存、不入数据库/备份，重启/恢复使未完成预览失效；成功回执按保存的原token比较，不依赖旧密钥，仍可重试。路径只在本机命令使用，不进入公开证据或浏览器API。无自动备份/RPO保证，不把普通文件复制宣称已验证恢复。
+
+M-CORE共享schema由单一作者维护；内核/API/UI在固定接口审查后才可按文件边界并行，label及app集成归单一作者或互不重叠的明确文件。后续先独立精确税/成本计算器，再由贸易编排它们并一次提交事实，结算再消费税实现/FX、银行消费结算；不建整模块假依赖环。每里程碑的FG状态按实际全部验收更新，有限底座不会令所有FG01..07完成。
+
+M-CORE风险为原子提交/历史/精度/控制来源/异步完整性/旧账保护。验收见TC-C01..C12；先聚焦缺方法/路由/行为的失败证据，再最小实现、旧80回归、实际隔离UI、独立G5和组合G6。POLICY-01只是全局默认决策，M-TRADE等仍在各自G3落实具体状态/算法/用例；当前不提前释放全部实现。
+
 ## 主题与双语架构（FR33-35）
 
 新public/labels/zh.js、en.js各一份静态字典，稳定key及具名插值；public/labels.js只负责取label/绑定更新，不联网翻译。现有app UI文本经一次AST codemod迁到资源（仅开发工具，不在运行时代替key查询），人工核英文；协议/状态值/用户及账套数据保持原样。server只追加精确白名单静态路径，未知label键/参数不回退假成功。新增模块纳入语法与HTTP资源测试，保持CSP同源限制。
