@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" data-label-content="shell.description">
+  <title data-label="brand.name"></title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/"><span class="brand-mark" data-label="brand.mark"></span><span><span data-label="brand.name"></span><small data-label="brand.subtitle"></small></span></a>
+    <p class="nav-label" data-label="nav.workspace"></p>
+    <nav id="navigation" data-label-aria="nav.workspace"></nav>
+    <div class="sidebar-note"><span class="live-dot"></span> <span data-label="shell.book"></span><p class="teaching-content" data-label="shell.learning"></p><small data-label="shell.demo"></small></div>
+  </aside>
+  <main>
+    <header class="topbar"><span class="breadcrumb"><span data-label="shell.finance"></span><span class="slash" data-label="shell.divider"></span><strong id="page-name"></strong></span><div class="global-controls">
+      <div class="period-control"><label for="period" data-label="shell.period"></label><select id="period" data-label-aria="shell.period"></select><span id="period-status" class="badge"></span></div>
+      <label class="preference-control"><span data-label="theme.label"></span><select id="ui-theme"><option value="red" data-label="theme.red"></option><option value="green" data-label="theme.green"></option></select></label>
+      <label class="preference-control"><span data-label="language.label"></span><select id="ui-language"><option value="zh" data-label="language.zh"></option><option value="en" data-label="language.en"></option></select></label>
+      <label class="mode-control"><input type="checkbox" id="teaching-mode"><span data-label="shell.teaching"></span></label>
+    </div></header>
+    <div class="page">
+      <div class="page-heading"><div><p class="eyebrow teaching-content" data-label="shell.learningTag"></p><h1 id="page-title"></h1><p id="page-description"></p></div></div>
+      <div id="notice" role="status" aria-live="polite" hidden></div>
+      <div id="workspace"><p class="loading" data-label="shell.loading"></p></div>
+      <footer><span data-label="brand.name"></span><span data-label="shell.measure"></span><span data-label="shell.disclaimer"></span></footer>
+    </div>
+  </main>
+</body>
+</html>
