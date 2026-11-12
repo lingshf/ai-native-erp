@@ -2,6 +2,8 @@
 
 阶段详细用例见[实施基线](architecture-migration.md)：M00/M01已经验收发布；TC-AM02-01..14的G3、T05..09独立G5及当前四测试文件修订/源与公共组合G6均释放MODEL01。当前SQLite31+真实PG38+PG生命周期CLI1组成强制双库70项；完整工作区422项（旧302+边界7+workspace113）、公共54文件候选302项（182+7+113），双方各真实70及build/typecheck通过、零失败/取消/跳过。本轮真实断连覆盖guarded admin/fixture、实际f.raw故障持续拒绝、关闭仍报错但数据库已删除、再次关闭幂等、有界等待及错误优先级；不是隐藏首次clone的43通过/25失败/1取消，首次TCP重置原因仍未知。原G5和G6独立读源码/摘要及故障探针，G6另重算四份完整/双库日志，真实PG由父执行，不冒称reviewer自启。Local生命周期CLI4项及此前同一生产代码的TLS-only成功/错误CA与明文拒绝证据保持；T08桥/domain13+CLI5由双方各18/18。真实health-only壳桌面/390px、三偏好与故障恢复通过，非财务页面或原账迁移。交付与修订发布后新clone另按实际记录，不以G6代替。
 
+发布后验证：精确`f9f1bcbce539c13aae80aeddec5dc7d3280d250b`从GitHub全新clone，实际`npm ci --ignore-scripts`、native int64/rollback、完整302及真实双库70/build/typecheck通过、零跳过；临时clone/自有PG进程、集群及密码文件已清理。T10/M02限定范围done（MODEL01），不是M03..09或44FG全部完成。
+
 ## ARCH-SME-01 计划验收
 
 以下AT是架构迁移的**未来验收**，不是已执行测试；本轮只进行文档/引用/DAG/运行文件不变校验及独立G3。阶段详细设计通过后实现相应自动化，用例阈值须按用户确认的Server基准冻结。

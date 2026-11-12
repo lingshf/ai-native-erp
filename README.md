@@ -19,9 +19,9 @@ npm start
 
 仓库不包含`.env`、原账套、依赖目录或任何登录凭据。首次启动会在新副本创建独立的本机教学账套；已有账套不会从其他机器自动迁移。未配置AI时仍可使用确定性手工记账。需要AI时参照`.env.example`及下文受支持的官方Copilot登录/配置方式；新机器必须独立认证并核实模型可用性，原宿主的认证不随代码迁移。
 
-## 新架构Local预览（ARCH-M01已发布）
+## 新架构Local预览（只读状态壳）
 
-旧的`npm start`继续运行现有账务工作台。新的独立React前端和Nest/Fastify API当前**只提供只读运行状态**，不打开账簿、不提供财务操作或AI；不能用这个骨架代替现有工作台或宣称迁移完成。M00保护工具已发布为`74819f9`；M01代码已快进发布main `1574db67eacdcc1b6c06cb5ca3f6f754dfedb47d`，独立G5/G6保留MODEL01例外、安全审查与本地保护交付完成。推送后全新clone实际`npm ci`、完整238项（182旧测试+7边界+49 workspace）、构建及严格类型检查通过，临时clone已删除。M01发布时开发工作区另含尚未发布的贸易候选，共358项；当前M02新增验证仍在进行，不把历史计数当本轮组合成绩或把候选能力冒充公开功能。
+旧的`npm start`继续运行现有账务工作台。新的独立React前端和Nest/Fastify API当前**只提供只读运行状态**，不打开账簿、不提供财务操作或AI；不能用状态壳代替现有工作台或宣称迁移完成。M00保护工具和M01独立工程壳均已发布，M01发布时全新clone238项/build/typecheck通过且临时clone清理；当时工作区358项包含未发布贸易，不是公开功能。当前M02已增加独立双库存储及只读CLI，修订f9f1bcb的全新clone完整302+真实双库70/build/typecheck通过，G3/G5/G6保留MODEL01。M02不把快照接到此无鉴权状态壳；真实财务只读页为M03后续范围，身份/Server和原账切换仍有各自门禁。
 
 完成上面的依赖安装后，在项目根目录执行：
 
@@ -36,9 +36,9 @@ npm run start:local
 
 ## 本地查看完整需求与进度
 
-**架构迁移已获委托执行，尚未全部完成：** [中小企业ERP分层与双数据库方案](design/architecture.md) · [阶段详细设计与验收](design/architecture-migration.md) · [技术选型ADR](design/adr/ADR-SME-001.md) · [14节点架构图](design/diagrams/sme-overview.svg)。M00原账保护与M01独立工程骨架已发布；M02双库事务/迁移与只读旧账桥代码已发布，四测试文件加固也已通过G5/G6（MODEL01）、源422/公共302及双方真实双库70/零跳过，修订发布和最终新clone尚待完成。目标存储不是业务GL、多人身份或Server试点已可用，真实原账未切换。目标保持Local单人SQLite，并另行提供PostgreSQL/OIDC的Server试点。贸易未提交成果保留到M06移植；原账须备份、核对余额/哈希并保留ID3及只读源后才切换。宏观架构通过评审不代表各阶段已完成。
+**架构迁移已获委托执行，尚未全部完成：** [中小企业ERP分层与双数据库方案](design/architecture.md) · [阶段详细设计与验收](design/architecture-migration.md) · [技术选型ADR](design/adr/ADR-SME-001.md) · [14节点架构图](design/diagrams/sme-overview.svg)。M00原账保护、M01独立工程骨架和M02双库事务/迁移与只读旧账桥均已发布；M02修订`f9f1bcbce539c13aae80aeddec5dc7d3280d250b`经G3/G5/G6（MODEL01）、源422/公共302和双方真实双库70/零跳过，精确新GitHub clone安装/native/完整302+真实70/build/types亦通过并清理。目标存储不代表业务GL、多人身份或Server试点可用，真实原账未切换。目标保持Local单人SQLite，另行提供PostgreSQL/OIDC的Server试点；下一阶段M03只读SPA页须先详细设计与G3。贸易未提交成果保留到M06移植；原账须备份、核对余额/哈希并保留ID3及只读源后才切换。44FG仍0整体完成/13部分/31未实现。
 
-### M02只读快照CLI（代码已发布，阶段验收中）
+### M02只读快照CLI（M02已验收发布）
 
 完成新工程构建后，可显式读取M00保护工具生成并重新核验的独立快照；不从`.env`或`DATA_DIR`选择原账，不读取活动源，也不创建目标业务账：
 
@@ -50,7 +50,7 @@ node scripts\read-legacy-ledger.mjs ledger --snapshot-dir backups\before-archite
 
 输出为JSON，显式标注`live: false`、快照SHA和金额`scale: 2`，金额是精确最小单位整数。试算stage可为`unadjusted`、`adjusted`或`postClosing`；总账含当月全部分录，分页只切行、不改期初/借贷合计/期末，使用返回的`nextCursor`传入`--cursor`继续。不合法的参数/快照/游标明确失败，不以空账冒充成功；完整新财务HTTP入口与真实原账切换仍未开放。
 
-### M02目标存储工具（代码已发布，阶段验收中）
+### M02目标存储工具（M02已验收发布）
 
 新目标与旧账格式不同；[14节点边界图](design/diagrams/m02-storage.svg)区分目标存储与快照只读路径。仅对显式选择的独立本机文件使用以下命令，父目录须已存在。构造/普通启动不隐式迁移，工具不从`.env`、`DATA_DIR`或旧账选择目标，不导入业务数据：
 
