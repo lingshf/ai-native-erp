@@ -30,6 +30,122 @@ const properties = (overrides = {}) => ({ normalSide: 'DEBIT', purpose: 'general
   relatedAccount: null, revision: 0, ...overrides });
 const financial = ({ accountAnalysis, ...report }) => report;
 
+const reconciliationIds = ['tb.unadjusted', 'tb.adjusted', 'tb.postClosing', 'balanceSheet', 'equitySummary', 'profit'];
+const reconciliationSnapshot = () => ({
+  month: '2026-01',
+  trialBalances: {
+    unadjusted: { debit: 101, credit: 101 },
+    adjusted: { debit: 202, credit: 202 },
+    postClosing: { debit: 303, credit: 303 },
+  },
+  assets: 707, liabilities: 202, equity: 505, equitySummary: { closing: 505 },
+  revenue: 1001, expense: 303, profit: 698,
+});
+
+test('reconciliation maps one read-only report snapshot to exactly six integer checks', (t) => {
+  const b = book(); t.after(() => b.close());
+  const snapshot = reconciliationSnapshot(), original = structuredClone(snapshot);
+  const reports = t.mock.method(b, 'reports', (month) => {
+    assert.equal(month, '2026-01');
+    assert.equal(reports.mock.callCount(), 0);
+    return snapshot;
+  });
+  const before = b.db.prepare('SELECT total_changes() AS n').get().n;
+  b.db.exec('PRAGMA query_only=ON');
+  assert.deepEqual(b.reconciliation('2026-01'), {
+    month: '2026-01',
+    checks: reconciliationIds.map((id, i) => ({
+      id, left: [101, 202, 303, 707, 505, 698][i], right: [101, 202, 303, 707, 505, 698][i],
+      difference: 0, pass: true,
+    })),
+    allPass: true,
+  });
+  assert.equal(reports.mock.callCount(), 1);
+  assert.deepEqual(snapshot, original);
+  assert.equal(b.db.prepare('SELECT total_changes() AS n').get().n, before);
+});
+
+for (const [id, change, difference] of [
+  ['tb.unadjusted', (r) => { r.trialBalances.unadjusted.debit += 1; }, 1],
+  ['tb.adjusted', (r) => { r.trialBalances.adjusted.credit += 2; }, -2],
+  ['tb.postClosing', (r) => { r.trialBalances.postClosing.debit += 3; }, 3],
+  ['balanceSheet', (r) => { r.assets -= 4; }, -4],
+  ['equitySummary', (r) => { r.equitySummary.closing += 5; }, 5],
+  ['profit', (r) => { r.profit += 6; }, -6],
+]) {
+  test(`reconciliation exposes controlled ${id} snapshot differences without writes`, (t) => {
+    const b = book(); t.after(() => b.close());
+    const snapshot = reconciliationSnapshot(); change(snapshot);
+    const original = structuredClone(snapshot), journals = b.journals(), periods = b.periods();
+    const reports = t.mock.method(b, 'reports', () => snapshot);
+    const before = b.db.prepare('SELECT total_changes() AS n').get().n;
+    b.db.exec('PRAGMA query_only=ON');
+    const result = b.reconciliation('2026-01');
+    assert.deepEqual(result.checks.map((check) => check.id), reconciliationIds);
+    assert.equal(result.allPass, false);
+    for (const check of result.checks) {
+      assert.equal(check.difference, check.id === id ? difference : 0);
+      assert.equal(check.pass, check.id !== id);
+      assert.equal(check.difference, check.left - check.right);
+    }
+    assert.equal(reports.mock.callCount(), 1);
+    assert.deepEqual(reports.mock.calls[0].arguments, ['2026-01']);
+    assert.deepEqual(snapshot, original);
+    assert.deepEqual(b.journals(), journals); assert.deepEqual(b.periods(), periods);
+    assert.equal(b.db.prepare('SELECT total_changes() AS n').get().n, before);
+  });
+}
+
+test('reconciliation preserves open, closed and next-month report semantics and rejects missing months', (t) => {
+  const b = book(); t.after(() => b.close());
+  const check = (month) => {
+    const snapshot = b.reports(month), journals = b.journals(), periods = b.periods();
+    const before = b.db.prepare('SELECT total_changes() AS n').get().n;
+    const result = b.reconciliation(month);
+    assert.equal(result.month, month); assert.equal(result.allPass, true);
+    assert.deepEqual(result.checks.map((row) => row.id), reconciliationIds);
+    assert.equal(result.checks[3].right, snapshot.liabilities + snapshot.equity);
+    assert.equal(result.checks[4].left, snapshot.equitySummary.closing);
+    assert.equal(result.checks[5].left, snapshot.revenue - snapshot.expense);
+    for (const row of result.checks) {
+      assert.equal(row.difference, 0); assert.equal(row.pass, true);
+      for (const value of [row.left, row.right, row.difference]) {
+        assert.ok(Number.isSafeInteger(value)); assert.equal(Object.is(value, -0), false);
+      }
+    }
+    assert.deepEqual(b.reports(month), snapshot);
+    assert.deepEqual(b.journals(), journals); assert.deepEqual(b.periods(), periods);
+    assert.equal(b.db.prepare('SELECT total_changes() AS n').get().n, before);
+  };
+  assert.equal(b.reports('2026-01').unclosedProfit, 200000);
+  check('2026-01'); b.closePeriod('2026-01'); check('2026-01');
+  b.nextPeriod(); check('2026-02'); check('2026-01');
+  b.db.exec('PRAGMA query_only=ON');
+  for (const month of [undefined, null, '', '2026-1', '2026-00', '2026-13', '2026-01-01', ' 2026-01', '0000-01']) {
+    assert.throws(() => b.reconciliation(month), { status: 400 });
+  }
+  assert.throws(() => b.reconciliation('2026-03'), { status: 404 });
+});
+
+test('reconciliation rejects unsafe arithmetic and normalizes signed zero without rounding cents', (t) => {
+  const b = book(); t.after(() => b.close());
+  let snapshot;
+  t.mock.method(b, 'reports', () => snapshot);
+  for (const change of [
+    (r) => { r.trialBalances.unadjusted.debit = Number.MAX_SAFE_INTEGER; r.trialBalances.unadjusted.credit = -1; },
+    (r) => { r.liabilities = Number.MAX_SAFE_INTEGER; r.equity = 1; },
+    (r) => { r.revenue = Number.MAX_SAFE_INTEGER; r.expense = -1; },
+    (r) => { r.equitySummary.closing = 0.1; },
+  ]) {
+    snapshot = reconciliationSnapshot(); change(snapshot);
+    assert.throws(() => b.reconciliation('2026-01'), { status: 400 });
+  }
+  snapshot = reconciliationSnapshot();
+  snapshot.trialBalances.unadjusted = { debit: -0, credit: 0 };
+  assert.deepEqual(b.reconciliation('2026-01').checks[0],
+    { id: 'tb.unadjusted', left: 0, right: 0, difference: 0, pass: true });
+});
+
 test('account properties enforce strict independent revisions and coherent contra links', (t) => {
   const b = book(); t.after(() => b.close());
   for (const [code, category] of [['1500', 'ASSET'], ['1510', 'ASSET'], ['1520', 'ASSET'], ['4200', 'REVENUE']]) {

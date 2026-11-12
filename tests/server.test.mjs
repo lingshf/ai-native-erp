@@ -28,6 +28,73 @@ const hostStatus = (base, host) => new Promise((resolve, reject) => {
   req.on('error', reject); req.end();
 });
 
+test('HTTP reconciliation requires an explicit valid existing month and performs no writes', async (t) => {
+  const { base, book } = await fixture(t);
+  const state = await (await fetch(base + '/api/state?month=2026-01')).json();
+  const reports = t.mock.method(book, 'reports');
+  const before = book.db.prepare('SELECT total_changes() AS n').get().n;
+  book.db.exec('PRAGMA query_only=ON');
+  const result = await getJson(await fetch(base + '/api/reconciliation?month=2026-01'));
+  assert.equal(result.status, 200);
+  const r = state.reports;
+  const values = [
+    ['tb.unadjusted', r.trialBalances.unadjusted.debit, r.trialBalances.unadjusted.credit],
+    ['tb.adjusted', r.trialBalances.adjusted.debit, r.trialBalances.adjusted.credit],
+    ['tb.postClosing', r.trialBalances.postClosing.debit, r.trialBalances.postClosing.credit],
+    ['balanceSheet', r.assets, r.liabilities + r.equity],
+    ['equitySummary', r.equitySummary.closing, r.equity],
+    ['profit', r.revenue - r.expense, r.profit],
+  ];
+  assert.deepEqual(result.data, { month: '2026-01', checks: values.map(([id, left, right]) =>
+    ({ id, left, right, difference: left - right, pass: true })), allPass: true });
+  assert.equal(reports.mock.callCount(), 1);
+  assert.deepEqual(reports.mock.calls[0].arguments, ['2026-01']);
+  for (const query of ['', '?month=', '?month=2026-1', '?month=2026-13', '?month=2026-01-01', '?month=0000-01']) {
+    const response = await getJson(await fetch(base + '/api/reconciliation' + query));
+    assert.equal(response.status, 400, query);
+    assert.equal(typeof response.data.error, 'string');
+    assert.equal(response.data.allPass, undefined);
+  }
+  assert.equal((await fetch(base + '/api/reconciliation?month=2026-02')).status, 404);
+  const after = await (await fetch(base + '/api/state?month=2026-01')).json();
+  assert.deepEqual(after, state);
+  assert.equal(book.db.prepare('SELECT total_changes() AS n').get().n, before);
+});
+
+test('HTTP reconciliation returns each controlled snapshot mismatch as a diagnostic, not an error or write', async (t) => {
+  const { base, book } = await fixture(t);
+  const original = book.reports('2026-01');
+  let snapshot;
+  const reports = t.mock.method(book, 'reports', () => snapshot);
+  const before = book.db.prepare('SELECT total_changes() AS n').get().n;
+  book.db.exec('PRAGMA query_only=ON');
+  const scenarios = [
+    ['tb.unadjusted', (r) => { r.trialBalances.unadjusted.debit += 1; }, 1],
+    ['tb.adjusted', (r) => { r.trialBalances.adjusted.credit += 2; }, -2],
+    ['tb.postClosing', (r) => { r.trialBalances.postClosing.debit += 3; }, 3],
+    ['balanceSheet', (r) => { r.assets -= 4; }, -4],
+    ['equitySummary', (r) => { r.equitySummary.closing += 5; }, 5],
+    ['profit', (r) => { r.profit += 6; }, -6],
+  ];
+  for (const [id, change, difference] of scenarios) {
+    snapshot = structuredClone(original); change(snapshot);
+    const unchanged = structuredClone(snapshot), calls = reports.mock.callCount();
+    const { status, data } = await getJson(await fetch(base + '/api/reconciliation?month=2026-01'));
+    assert.equal(status, 200); assert.equal(data.month, '2026-01');
+    assert.equal(data.allPass, false);
+    assert.deepEqual(data.checks.map((row) => row.id), scenarios.map(([id]) => id));
+    for (const row of data.checks) {
+      assert.equal(row.pass, row.id !== id);
+      assert.equal(row.difference, row.id === id ? difference : 0);
+      assert.equal(row.difference, row.left - row.right);
+    }
+    assert.equal(reports.mock.callCount(), calls + 1);
+    assert.deepEqual(reports.mock.calls.at(-1).arguments, ['2026-01']);
+    assert.deepEqual(snapshot, unchanged);
+  }
+  assert.equal(book.db.prepare('SELECT total_changes() AS n').get().n, before);
+});
+
 test('HTTP journal-to-close workflow and explicit errors', async (t) => {
   const { base } = await fixture(t);
   const state = await (await fetch(base + '/api/state')).json();

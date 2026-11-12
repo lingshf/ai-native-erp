@@ -98,6 +98,9 @@ export function createApp({ book, ai = {
       }
       const data = req.method === 'GET' ? null : await body(req);
       const path = url.pathname;
+      if (req.method === 'GET' && path === '/api/reconciliation') {
+        return send(book.reconciliation(url.searchParams.get('month')));
+      }
       if (req.method === 'GET' && path === '/api/state') {
         const periods = book.periods(), month = url.searchParams.get('month') || periods.at(-1).month;
         return send({ periods, accounts: book.accounts(), dimensions: book.dimensions(),

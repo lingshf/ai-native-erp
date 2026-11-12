@@ -13,7 +13,7 @@ async function until(check) {
   for (let i = 0; i < 80; i++) { if (check()) return; await new Promise(r => setTimeout(r, 10)); }
   assert.ok(check(), 'Expected rendered application state');
 }
-async function fixture(t, { preference, theme, language, ai, oldDraft = false, storageFailure = false, dimensions = false, twoPeriods = false, events = false, metadata = false } = {}) {
+async function fixture(t, { preference, theme, language, ai, setup, oldDraft = false, storageFailure = false, dimensions = false, twoPeriods = false, events = false, metadata = false } = {}) {
   const book = new Book(':memory:', { today: '2026-01-15' });
   if (dimensions) { book.createDimension({ code: 'DEPT', name: '部门' }); book.createDimensionValue('DEPT', { code: 'OPS', name: '运营' }); }
   if (oldDraft) book.save({ ...proposal, memo: '保留旧草稿' });
@@ -26,6 +26,7 @@ async function fixture(t, { preference, theme, language, ai, oldDraft = false, s
     book.createService({ code: 'CONSULT', name: '保留服务名称', group: 'GENERAL' });
     book.createPostingRule({ scope: 'all', match: '*', revenueAccount: '4000' });
   }
+  if (setup) setup(book);
   if (twoPeriods) { book.closePeriod('2026-01'); book.nextPeriod(); }
   const server = createApp({ book, ai: {} });
   await new Promise(r => server.listen(0, '127.0.0.1', r));
@@ -60,8 +61,216 @@ async function fixture(t, { preference, theme, language, ai, oldDraft = false, s
     const b = [...d.querySelectorAll('button')].find(n => n.textContent === text);
     assert.ok(b, `Missing button ${text}`); b.click(); return b;
   };
-  return { w, d, calls, click, state: async () => (await fetch(base + '/api/state')).json() };
+  return { w, d, calls, click, state: async () => (await fetch(base + '/api/state')).json(),
+    ledger: (account, month) => book.ledger(account, month) };
 }
+function drilldownBook(book) {
+  const account = book.createAccount({ code: '5300', name: '历史费用', category: 'EXPENSE' });
+  const post = (amount, kind, dimensions = {}) => book.post(book.save({
+    date: '2026-01-15', memo: `Drilldown ${amount}`, kind,
+    lines: [{ account: '5300', debit: amount, credit: '0', dimensions },
+      { account: '1000', debit: '0', credit: amount, dimensions }],
+  }).id);
+  post('20', 'normal', { DEPT: 'OPS' });
+  post('10', 'adjusting');
+  const reversed = post('7', 'adjusting');
+  book.post(book.reverse(reversed.id, '2026-01-16').id);
+  book.updateAccount('5300', { name: account.name, active: false, manualAllowed: false, revision: account.revision });
+}
+for (const closed of [false, true]) {
+  test(`trial account drilldown uses complete same-month ledger without stale filters (${closed ? 'closed historical nominal' : 'open adjustments'})`, async t => {
+    const { w, d, calls, click, state, ledger } = await fixture(t, {
+      dimensions: true, setup: drilldownBook, twoPeriods: closed,
+    });
+    const before = await state();
+    if (closed) {
+      preferenceChange(w, d, '#period', '2026-01');
+      await until(() => d.querySelector('#period-status').textContent === '已关账');
+    }
+    const expected = ledger('5300', '2026-01');
+    assert.equal(expected.closing, closed ? 0 : 3000);
+    for (const [stage, amount] of [['unadjusted', '20.00'], ['adjusted', '30.00'], ['postClosing', closed ? '0.00' : '30.00']]) {
+      click('总账');
+      preferenceChange(w, d, '#ledger-dimension', 'DEPT');
+      preferenceChange(w, d, '#ledger-dimension-value', 'OPS');
+      await until(() => calls.some(c => c.url.includes('dimension=DEPT&value=OPS')));
+      click('试算与报表');
+      preferenceChange(w, d, '#workspace select', stage);
+      const link = d.querySelector('.trial-ledger[data-account="5300"]');
+      assert.ok(link, 'Every trial stage exposes account navigation, including inactive accounts');
+      assert.ok(link.closest('tr').textContent.includes(amount));
+      const stageNode = d.querySelector('#workspace select');
+      const stageName = stageNode.selectedOptions[0].textContent;
+      const start = calls.length;
+      link.click();
+      await until(() => d.querySelector('#ledger-account')?.value === '5300' && d.querySelector('#workspace tbody'));
+      assert.equal(d.querySelector('#period').value, '2026-01');
+      assert.equal(d.querySelector('#ledger-dimension').value, '');
+      assert.equal(d.querySelector('#ledger-dimension-value').value, '');
+      const queries = calls.slice(start).filter(c => c.url.startsWith('/api/ledger'));
+      assert.equal(queries.length, 1);
+      assert.deepEqual([...new URL(queries[0].url, 'http://localhost').searchParams],
+        [['month', '2026-01'], ['account', '5300']]);
+      assert.match(d.querySelector('#workspace .table-note').textContent, new RegExp(formatMinor(expected.opening)));
+      assert.ok(d.querySelector('#workspace .table-note').textContent.includes(formatMinor(expected.closing)));
+      const rows = [...d.querySelectorAll('#workspace tbody tr')];
+      assert.deepEqual(rows.map(row => [...row.cells].map(cell => cell.textContent)),
+        expected.entries.map(entry => [entry.date, `#${entry.id}`, entry.memo,
+          formatMinor(entry.debit), formatMinor(entry.credit), formatMinor(entry.balance)]));
+      const context = d.querySelector('.trial-ledger-context');
+      assert.ok(context.textContent.includes(stageName));
+      assert.match(context.textContent, /2026-01/);
+      assert.match(context.textContent, /未调整.*调整.*冲销/);
+      assert.match(context.textContent, /调整后.*结转/);
+      assert.match(context.textContent, /损益.*非零.*总账.*零/);
+      preferenceChange(w, d, '#ui-language', 'en');
+      const accountNode = d.querySelector('#ledger-account');
+      assert.match(context.textContent, /Unadjusted.*adjustments.*reversals/);
+      assert.match(context.textContent, /Adjusted.*closing/);
+      assert.match(context.textContent, /nonzero.*zero/);
+      assert.equal(d.querySelector('#ledger-account'), accountNode);
+      assertEnglish(d);
+      preferenceChange(w, d, '#ui-language', 'zh');
+    }
+    preferenceChange(w, d, '#ledger-dimension', 'DEPT');
+    preferenceChange(w, d, '#ledger-dimension-value', 'OPS');
+    await until(() => d.querySelector('#workspace .table-note')?.textContent.includes('20.00'));
+    assert.equal(d.querySelector('.trial-ledger-context'), null, 'Origin context must not misdescribe a manually filtered ledger');
+    assert.equal(d.querySelector('#ledger-account').value, '5300');
+    click('总账');
+    assert.equal(d.querySelector('#ledger-account').value, '1000', 'Ordinary ledger navigation keeps its default');
+    assert.equal(d.querySelector('.trial-ledger-context'), null);
+    assert.equal(calls.filter(c => c.options?.method !== 'GET').length, 0);
+    assert.deepEqual(await state(), before);
+  });
+}
+test('trial ledger query failures keep the server diagnostic visible without writes', async t => {
+  const { w, d, calls, click } = await fixture(t);
+  const originalFetch = w.fetch;
+  w.fetch = (url, options) => {
+    if (String(url).startsWith('/api/ledger')) {
+      calls.push({ url: String(url), options });
+      return Promise.resolve(new Response(JSON.stringify({ error: 'Invalid account or month' }), { status: 400 }));
+    }
+    return originalFetch(url, options);
+  };
+  click('试算与报表');
+  d.querySelector('.trial-ledger').click();
+  await until(() => d.querySelector('#notice').className === 'error');
+  assert.match(d.querySelector('#notice').textContent, /Invalid account or month/);
+  preferenceChange(w, d, '#ui-language', 'en');
+  assert.match(d.querySelector('#notice').textContent, /Service diagnostic.*Invalid account or month/);
+  assert.equal(calls.filter(c => c.options?.method !== 'GET').length, 0);
+});
+test('reconciliation panel displays all six checks and bilingual scope without accounting writes', async t => {
+  const { w, d, calls, click, state } = await fixture(t);
+  const before = await state();
+  click('试算与报表');
+  await until(() => d.querySelector('#reconciliation .reconciliation-status')?.dataset.pass === 'true');
+  const panel = d.querySelector('#reconciliation');
+  assert.equal(d.querySelector('#teaching-mode').checked, false);
+  assert.match(panel.textContent, /2026-01/);
+  assert.match(panel.querySelector('.essential').textContent, /同源.*不是.*审计/);
+  const ids = ['tb.unadjusted', 'tb.adjusted', 'tb.postClosing', 'balanceSheet', 'equitySummary', 'profit'];
+  assert.deepEqual([...panel.querySelectorAll('[data-check-id]')].map(row => row.dataset.checkId), ids);
+  for (const row of panel.querySelectorAll('[data-check-id]')) {
+    assert.equal(row.cells[3].textContent, '0.00');
+    assert.match(row.cells[4].textContent, /通过/);
+  }
+  preferenceChange(w, d, '#ui-language', 'en');
+  assert.equal(d.querySelector('#reconciliation'), panel);
+  assert.match(panel.textContent, /Mathematical reconciliation/);
+  assert.match(panel.querySelector('.essential').textContent, /same-source.*not.*audit/i);
+  assertEnglish(d);
+  assert.equal(calls.filter(c => c.options?.method !== 'GET').length, 0);
+  assert.deepEqual(await state(), before);
+});
+test('reconciliation panel exposes exact failed differences, diagnostic failures and retry', async t => {
+  const { w, d, calls, click, state } = await fixture(t);
+  const before = await state(), original = w.fetch;
+  let mode = 'difference';
+  w.fetch = async (url, options) => {
+    const response = await original(url, options);
+    if (!String(url).startsWith('/api/reconciliation')) return response;
+    if (mode === 'error') return new Response(JSON.stringify({ error: 'Controlled unavailable diagnostic' }), { status: 503 });
+    const data = await response.json();
+    if (mode === 'difference') {
+      data.checks[5].left += 1; data.checks[5].difference = 1; data.checks[5].pass = false; data.allPass = false;
+    }
+    if (mode === 'malformed') data.allPass = 'true';
+    return new Response(JSON.stringify(data));
+  };
+  click('试算与报表');
+  await until(() => d.querySelector('#reconciliation .reconciliation-status')?.dataset.pass === 'false');
+  const failed = d.querySelector('[data-check-id="profit"]');
+  assert.equal(failed.cells[3].textContent, '0.01');
+  assert.match(failed.cells[4].textContent, /差异/);
+  assert.equal(failed.className, 'reconciliation-failed');
+  mode = 'error';
+  d.querySelector('#reconciliation button').click();
+  await until(() => d.querySelector('#reconciliation .reconciliation-error'));
+  assert.match(d.querySelector('#reconciliation').textContent, /Controlled unavailable diagnostic/);
+  assert.equal(d.querySelector('#reconciliation .reconciliation-status'), null);
+  mode = 'malformed';
+  d.querySelector('#reconciliation button').click();
+  await until(() => d.querySelector('#reconciliation .reconciliation-error')?.textContent.includes('格式'));
+  assert.equal(d.querySelector('#reconciliation .reconciliation-status'), null);
+  mode = 'ok';
+  d.querySelector('#reconciliation button').click();
+  await until(() => d.querySelector('#reconciliation .reconciliation-status')?.dataset.pass === 'true');
+  assert.equal(calls.filter(c => c.options?.method !== 'GET').length, 0);
+  assert.deepEqual(await state(), before);
+});
+test('reconciliation invalidates success immediately during a period refresh and drops obsolete state', async t => {
+  const { w, d, calls, click } = await fixture(t, { twoPeriods: true });
+  click('试算与报表');
+  await until(() => d.querySelector('#reconciliation .reconciliation-status')?.dataset.pass === 'true');
+  const original = w.fetch;
+  let release, waiting = false;
+  const gate = new Promise(resolve => { release = resolve; });
+  t.after(() => release());
+  w.fetch = async (url, options) => {
+    const response = await original(url, options);
+    if (String(url) === '/api/state?month=2026-01') { waiting = true; await gate; }
+    return response;
+  };
+  preferenceChange(w, d, '#period', '2026-01');
+  assert.equal(d.querySelector('#reconciliation .reconciliation-status'), null);
+  await until(() => waiting);
+  preferenceChange(w, d, '#period', '2026-02');
+  await until(() => d.querySelector('#reconciliation .reconciliation-status')?.dataset.pass === 'true');
+  release();
+  await new Promise(resolve => setTimeout(resolve, 40));
+  assert.equal(d.querySelector('#period').value, '2026-02');
+  assert.match(d.querySelector('#reconciliation').textContent, /2026-02/);
+  assert.doesNotMatch(d.querySelector('#reconciliation').textContent, /2026-01/);
+  assert.equal(calls.filter(c => c.options?.method !== 'GET').length, 0);
+});
+test('reconciliation ignores late same-month responses and errors belonging to a replaced panel', async t => {
+  const { w, d, click } = await fixture(t);
+  const original = w.fetch;
+  let release, held = false;
+  const gate = new Promise(resolve => { release = resolve; });
+  t.after(() => release());
+  w.fetch = async (url, options) => {
+    const response = await original(url, options);
+    if (!held && String(url).startsWith('/api/reconciliation')) {
+      held = true; await gate; throw new Error('Obsolete panel failure');
+    }
+    return response;
+  };
+  click('试算与报表');
+  await until(() => held);
+  click('业务概览');
+  click('试算与报表');
+  await until(() => d.querySelector('#reconciliation .reconciliation-status')?.dataset.pass === 'true');
+  const current = d.querySelector('#reconciliation');
+  release();
+  await new Promise(resolve => setTimeout(resolve, 40));
+  assert.equal(d.querySelector('#reconciliation'), current);
+  assert.equal(d.querySelector('#reconciliation .reconciliation-status').dataset.pass, 'true');
+  assert.doesNotMatch(d.body.textContent, /Obsolete panel failure/);
+});
 test('ERP grouping, settings separation and teaching preference preserve unsaved input', async t => {
   const { w, d, calls, click } = await fixture(t);
   assert.equal(d.querySelector('#page-name').textContent, '业务概览');

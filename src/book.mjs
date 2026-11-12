@@ -729,6 +729,22 @@ export class Book {
       },
     };
   }
+  reconciliation(month) {
+    const r = this.reports(month);
+    const check = (id, left, right) => {
+      left = safe(left) || 0; right = safe(right) || 0;
+      const difference = safe(left - right) || 0;
+      return { id, left, right, difference, pass: difference === 0 };
+    };
+    const checks = [
+      ...['unadjusted', 'adjusted', 'postClosing'].map((stage) =>
+        check(`tb.${stage}`, r.trialBalances[stage].debit, r.trialBalances[stage].credit)),
+      check('balanceSheet', r.assets, safe(r.liabilities + r.equity)),
+      check('equitySummary', r.equitySummary.closing, r.equity),
+      check('profit', safe(r.revenue - r.expense), r.profit),
+    ];
+    return { month, checks, allPass: checks.every((row) => row.pass) };
+  }
   ledger(account, month, filter = {}) {
     if (!this.accounts().some((a) => a.code === account)) fail('科目不存在。', 404);
     const filtered = Object.keys(filter).length > 0;

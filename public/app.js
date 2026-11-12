@@ -6,8 +6,11 @@ const { t, resolve: resolveLabel, setText, append: appendText, attribute: setAtt
 labels.apply(document);
 const confirmLabel = message => confirm(resolveLabel(message));
 function clientError(message) { const error = new Error(); error.label = message; return error; }
+function diagnosticLabel(error) {
+  return joinLabels([t(error.serverDiagnostic ? 'error.service' : 'error.unexpected'), error.label || error.message], ' ');
+}
 function showError(error) {
-  notify(joinLabels([t(error.serverDiagnostic ? 'error.service' : 'error.unexpected'), error.label || error.message], ' '), true);
+  notify(diagnosticLabel(error), true);
 }
 
 const $ = (selector) => document.querySelector(selector);
@@ -24,7 +27,8 @@ const views = [
   ['ai', 'AI', t('ui025'), t('ui026'), t('ui027')],
   ['settings', '', t('ui028'), t('ui028'), t('ui029')],
 ];
-let state, month = '', view = 'overview', editingId, accountEditing, ruleEditing, eventDraft, structureEditing;
+let state, month = '', view = 'overview', editingId, accountEditing, ruleEditing, eventDraft, structureEditing, ledgerTarget;
+let refreshRevision = 0;
 const preferenceKey = 'ai-native-erp.teaching-mode', themeKey = 'ai-native-erp.theme', languageKey = 'ai-native-erp.language';
 const preferenceFailures = [];
 function readPreference(key, allowed, fallback, failureKey) {
@@ -127,9 +131,21 @@ function select(options, value) {
   for (const [v, text] of options) { const opt = el('option', text); opt.value = v; node.append(opt); }
   node.value = value; return node;
 }
-function go(next) { view = next; notice.hidden = true; render(); }
+function go(next, target) { ledgerTarget = next === 'ledger' ? target : undefined; view = next; notice.hidden = true; render(); }
 async function refresh(nextMonth = month) {
-  state = await api('/api/state' + (nextMonth ? `?month=${encodeURIComponent(nextMonth)}` : ''));
+  const revision = ++refreshRevision;
+  const previous = $('#reconciliation-result');
+  if (previous) previous.replaceChildren(el('p', t('reconciliation.loading', { month: nextMonth }), 'reconciliation-loading'));
+  let nextState;
+  try {
+    nextState = await api('/api/state' + (nextMonth ? `?month=${encodeURIComponent(nextMonth)}` : ''));
+  } catch (error) {
+    if (revision !== refreshRevision) return;
+    if (previous?.isConnected) previous.replaceChildren(el('p', diagnosticLabel(error), 'warning reconciliation-error'));
+    throw error;
+  }
+  if (revision !== refreshRevision) return;
+  state = nextState;
   month = state.reports.month;
   const p = $('#period'); p.replaceChildren();
   for (const period of state.periods) { const opt = el('option', period.month); opt.value = period.month; p.append(opt); }
@@ -675,7 +691,13 @@ function fillEditor(data = { date: month + '-15', memo: '', kind: 'normal', line
 }
 function ledger() {
   const p = panel(t('ui310'), t('ui311'));
-  const account = select(state.accounts.map((a) => [a.code, `${a.code} ${a.name}`]), '1000');
+  const target = ledgerTarget?.month === month ? ledgerTarget : undefined;
+  const account = select(state.accounts.map((a) => [a.code, `${a.code} ${a.name}`]), target?.account || '1000');
+  account.id = 'ledger-account';
+  if (target) {
+    p.append(el('p', joinLabels([t('trial.ledgerContext', { month, account: target.account, stage: target.stage }),
+      t('trial.ledgerBasis')], ' '), 'essential trial-ledger-context'));
+  }
   p.append(label(t('ui312'), account));
   const dimension = select([['', t('ui313')], ...state.dimensions.map((d) =>
     [d.code, t('ui124', {p0: d.code, p1: d.name, p2: d.active ? '' : t('ui144')})])], '');
@@ -695,8 +717,10 @@ function ledger() {
       table([t('ui272'), t('ui320'), t('ui273'), t('ui046'), t('ui047'), t('ui321')],
         data.entries.map((l) => [l.date, `#${l.id}`, l.memo, fmt(l.debit), fmt(l.credit), fmt(l.balance)]), { numeric: [3, 4, 5] }));
   };
-  account.addEventListener('change', () => { load().catch(showError); });
+  const clearTarget = () => { ledgerTarget = undefined; p.querySelector('.trial-ledger-context')?.remove(); };
+  account.addEventListener('change', () => { clearTarget(); load().catch(showError); });
   dimension.addEventListener('change', () => {
+    clearTarget();
     value.replaceChildren();
     const d = state.dimensions.find((item) => item.code === dimension.value);
     for (const [code, text] of [['', t('ui314')], ...(d?.values || [])
@@ -710,15 +734,17 @@ function ledger() {
 }
 function reports() {
   workspace.append(metrics());
+  reconciliationPanel();
   const trial = panel(t('ui322'), t('ui323'));
-  trial.append(el('p', t('ui324'), 'essential'));
+  trial.append(el('p', t('ui324'), 'essential'), el('p', t('trial.ledgerBasis'), 'essential'));
   const variant = select([['unadjusted', t('ui325')], ['adjusted', t('ui326')],
     ['postClosing', isOpen() ? t('ui327') : t('ui328')]], 'adjusted');
   const result = el('div');
   const draw = () => {
     const tb = state.reports.trialBalances[variant.value];
+    const stage = variant.value === 'unadjusted' ? t('ui325') : variant.value === 'adjusted' ? t('ui326') : isOpen() ? t('ui327') : t('ui328');
     result.replaceChildren(table([t('ui055'), t('ui329'), t('ui330')],
-      tb.rows.map((a) => [reportLabel(`${a.code} ${a.name}`, a.debit - a.credit, t('ui331', {p0: variant.value === 'unadjusted' ? t('ui325') : variant.value === 'adjusted' ? t('ui326') : isOpen() ? t('ui327') : t('ui328')}), a.code), fmt(a.debit), fmt(a.credit)]),
+      tb.rows.map((a) => [reportLabel(`${a.code} ${a.name}`, a.debit - a.credit, t('ui331', {p0: stage}), a.code, stage), fmt(a.debit), fmt(a.credit)]),
       { numeric: [1, 2], footer: [t('ui332'), fmt(tb.debit), fmt(tb.credit)] }));
   };
   variant.addEventListener('change', draw); trial.append(label(t('ui333'), variant), result); draw(); workspace.append(trial);
@@ -757,6 +783,53 @@ function reports() {
       fmt(g.gross), fmt(g.contra), fmt(g.net)]), { numeric: [3, 4, 5] }));
   workspace.append(analysis, contra);
 }
+function reconciliationPanel() {
+  const requestedMonth = month;
+  const p = panel(t('reconciliation.title', { month: requestedMonth }));
+  p.id = 'reconciliation';
+  p.append(el('p', t('reconciliation.scope'), 'essential'));
+  const result = el('div');
+  result.id = 'reconciliation-result';
+  result.setAttribute('aria-live', 'polite');
+  let requestId = 0;
+  const ids = ['tb.unadjusted', 'tb.adjusted', 'tb.postClosing', 'balanceSheet', 'equitySummary', 'profit'];
+  const load = async () => {
+    const id = ++requestId, revision = refreshRevision;
+    const current = () => id === requestId && revision === refreshRevision && result.isConnected
+      && view === 'reports' && month === requestedMonth && $('#period').value === requestedMonth;
+    if (!current()) return;
+    result.replaceChildren(el('p', t('reconciliation.loading', { month: requestedMonth }), 'reconciliation-loading'));
+    try {
+      const data = await api(`/api/reconciliation?month=${encodeURIComponent(requestedMonth)}`);
+      if (!current()) return;
+      if (data.month !== requestedMonth || !Array.isArray(data.checks) || data.checks.length !== ids.length
+        || typeof data.allPass !== 'boolean'
+        || !data.checks.every((check, index) => check?.id === ids[index]
+          && [check.left, check.right, check.difference].every(Number.isSafeInteger)
+          && check.difference === check.left - check.right && check.pass === (check.difference === 0))
+        || data.allPass !== data.checks.every(check => check.pass)) {
+        throw clientError(t('reconciliation.invalid'));
+      }
+      const status = el('p', t(data.allPass ? 'reconciliation.allPass' : 'reconciliation.hasDifferences'),
+        'reconciliation-status' + (data.allPass ? '' : ' warning'));
+      status.dataset.pass = String(data.allPass);
+      const checks = table([t('reconciliation.check'), t('reconciliation.left'), t('reconciliation.right'),
+        t('reconciliation.difference'), t('reconciliation.status')],
+      data.checks.map(check => [t(`reconciliation.${check.id}`), fmt(check.left), fmt(check.right), fmt(check.difference),
+        t(check.pass ? 'reconciliation.pass' : 'reconciliation.failed')]), { numeric: [1, 2, 3] });
+      checks.querySelectorAll('tbody tr').forEach((row, index) => {
+        row.dataset.checkId = data.checks[index].id;
+        if (!data.checks[index].pass) row.className = 'reconciliation-failed';
+      });
+      result.replaceChildren(status, checks);
+    } catch (error) {
+      if (current()) result.replaceChildren(el('p', diagnosticLabel(error), 'warning reconciliation-error'));
+    }
+  };
+  p.append(button(t('reconciliation.retry'), load), result);
+  workspace.append(p);
+  load();
+}
 function closeView() {
   workspace.append(metrics());
   const p = panel(t('ui376'), t('ui377'));
@@ -781,9 +854,14 @@ function closeView() {
     }, '', state.periods.at(-1).status !== 'closed'));
   p.append(controls, preview); workspace.append(p);
 }
-function reportLabel(name, amount, basis, account) {
+function reportLabel(name, amount, basis, account, trialStage) {
   const cell = el('div', undefined, 'report-label');
-  cell.append(el('span', name), button(t('ui390'), () => {
+  const accountLabel = trialStage ? button(name, () => go('ledger', { month, account, stage: trialStage }), 'trial-ledger') : el('span', name);
+  if (trialStage) {
+    accountLabel.dataset.account = account;
+    setAttributeLabel(accountLabel, 'aria-label', t('trial.openLedger', { month, account }));
+  }
+  cell.append(accountLabel, button(t('ui390'), () => {
     aiQuestion = resolveLabel(t('ui392', {p0: month, p1: basis, p2: name, p3: account ? t('ui391', {p0: account}) : '', p4: fmt(amount)}));
     go('ai');
   }, 'explain-number'));
