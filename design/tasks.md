@@ -2,7 +2,7 @@
 
 ## 当前授权：ARCH-M00起逐阶段实施
 
-用户已委托DC01..04与M00..09执行、恢复M06/TASK24和备份核对后切换原4173账。M00已通过G3/G5/G6、安全审查、本地保护同步并发布main `74819f9bfa7087ac230c4ccaf96b6b40f1e740bf`，干净clone安装/182项/语法通过。M01三个增量G5、组合及公共变体G6已独立释放MODEL01，工作区358项、原302测试身份完整保留；公共候选安装/238项通过，当前进行保护交付/安全/发布，不能提前标最终交付done。完整当前需求/测试及工具环境见[architecture-migration](architecture-migration.md)，下方“仅设计/暂停/0 ready”为前次交付历史，不再作为继续暂停的用户限制，但原已验收成果和剩余验收不能删除。后续FG仍0/13/31，不因授权改done。
+用户已委托DC01..04与M00..09执行、恢复M06/TASK24和备份核对后切换原4173账。M00已通过G3/G5/G6、安全审查、本地保护同步并发布main `74819f9bfa7087ac230c4ccaf96b6b40f1e740bf`，干净clone安装/182项/语法通过。M01三个增量G5、组合及公共变体G6已独立释放MODEL01，工作区358项、原302测试身份完整保留；本地保护交付和安全已完成，代码快进发布main `1574db67eacdcc1b6c06cb5ca3f6f754dfedb47d`，推送后全新clone安装/238项/零跳过、build/typecheck通过并已清理。M00/M01完成，M02..09仍待各阶段详细门禁。完整当前需求/测试及工具环境见[architecture-migration](architecture-migration.md)，下方“仅设计/暂停/0 ready”为前次交付历史，不再作为继续暂停的用户限制，但原已验收成果和剩余验收不能删除。后续FG仍0/13/31，不因授权改done。
 
 | 实施任务 | 状态 / 前置 | 追踪 / 文件边界 / 验收 |
 | --- | --- | --- |
@@ -10,7 +10,7 @@
 | ARCH-T01 共享工程/契约 | done（MODEL01）；M00及M01 G3已释放 | FR-AM01/D-AM01/TC-AM01-01/03/05；根manifest/lock/TS配置/边界脚本/contracts单写。contract3/边界7，实际JS/TS变体/空缺目录/异cwd/别名探针关闭原Medium，spec/quality G5及组合G6独立释放；原302冻结测试无丢失 |
 | ARCH-T02 API与应用边界 | done（MODEL01）；固定G3契约，与01/03分文件 | TC-AM01-01/02/05；独占apps/api、packages/application/infrastructure。application1/infra2/API11均通过，独立真实静态/编码路径/方法/端口探针通过，spec/quality G5释放。坏JSON/415/500仅测试工厂，无财务/数据访问；不替代组合G6 |
 | ARCH-T03 前端壳/偏好 | done（MODEL01）；固定G3契约，与01/02分文件 | TC-AM01-01/04；UI2/web30、严格类型/build及真实桌面/390px验收通过。两个label冲突更名并真实交叉旧资源；恢复保存清过时警示、保留其他诊断，独立原两Medium已关闭，spec/quality G5释放 |
-| ARCH-T04 骨架组合验证 | in_progress；01/02/03各G5已释放 | TC-AM01-01..05：工作区358（302+7+49）/公共候选及本地238（182+7+49）、完整build/typecheck及真实同源UI通过；组合/公共变体G6按MODEL01释放。50文件43新/7更新/0冲突，独立安全及OSV306零已知公告通过；当前精确main/新clone待完成。不把骨架称M02/03/04已完 |
+| ARCH-T04 骨架组合验证 | done（MODEL01）；01/02/03各G5已释放 | TC-AM01-01..05：工作区358（302+7+49）/公开及本地238（182+7+49）、完整build/typecheck及真实同源UI通过；组合/公共变体G6按MODEL01释放。50文件43新/7更新/0冲突，独立安全及OSV306零已知公告；代码1574db67已快进main且推送后全新clone安装/完整238项/零跳过、构建/类型通过，临时clone已删除。不把骨架称M02/03/04已完 |
 
 ## 历史提案：ARCH-SME-01（确认前，仅设计）
 

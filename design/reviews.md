@@ -50,6 +50,12 @@ T01：scanner漏.mts/.cts/JS等源码，且从其他cwd运行可空扫0文件仍
 
 npm audit初次遭配置registry HTTP429（实际地址不公开）；独立补充用正常TLS向官方OSV querybatch仅发送306个公开npm名称/版本，不发送工作区包名、源代码、内部端点、账号、路径或凭据。首请求HTTP200、306结果无公告且无截断，故已知漏洞库查询缺口已补齐；只覆盖检查时OSV已知公告及锁定版本，不保证未知/未报告漏洞或已安装文件没有篡改。真实main发布和新clone验证仍以随后实际记录为准。
 
+### ARCH-M01-PUBLISH-01：实际main发布及干净clone完成
+
+精确50文件按已审公共候选选入提交，逐项核Git换行规范化及五类公开泄露规则，排除全部未提交贸易和工作区package中的三条贸易语法检查。代码以`1574db67eacdcc1b6c06cb5ca3f6f754dfedb47d`非强制快进main，实查远端分支等于该提交；带规定Co-authored-by，不开PR，不改独立本地副本Git配置。
+
+随后从GitHub main全新clone并确认该SHA，实际`npm ci --no-audit --no-fund`和`npm run verify`通过：182旧测试、7边界、49 workspace（1应用+3契约+2基础设施+2 UI+11 API+30 web），总238、零失败/跳过、全部build/typecheck通过。未含未验贸易；该证据不是仅导出工作区或复用发布前候选。专属临时clone已删除，安装与验证日志留私有宿主，不进入Git。四份入口/进度文档随后仅回填这些已发生事实，不改变已审代码/契约/设计；M01/T04完成仍保留MODEL01，不将真实双库/身份/业务或44FG标完成。
+
 ## ARCH-SME-DESIGN-01：独立G3已释放MODEL01，待用户确认
 
 用户要求中小企业ERP分层和数据库选项；贸易继续暂停，本轮仅设计。作者实际gpt-6.1-sol，风险为跨库事务/多人隔离/迁移恢复高风险。新增architecture、6项ADR、3张Mermaid源及14节点SVG，AR-01..08和AT-01..11，更新现有入口而不重构运行代码。独立评审实际经宿主task请求claude-opus-5.5、保留MODEL01身份未核实例外；不复用旧贸易门禁。
