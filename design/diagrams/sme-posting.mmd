@@ -1,0 +1,40 @@
+sequenceDiagram
+  participant U as Maker
+  participant R as Different approver
+  participant A as API / application
+  participant P as Domain planner
+  participant D as Database / UoW
+  participant W as Outbox worker
+  U->>A: Preview command + versions
+  A->>D: Consistent read / scope + current policies
+  A->>P: Deterministic plan
+  A-->>U: Read-only plan + signed dependencies
+  U->>A: Submit valid preview (no GL)
+  A->>D: Persist immutable ApprovalRequest + maker + audit
+  R->>A: Read authorized submitted request
+  A-->>R: Stored plan + dependency versions + approval expiry
+  R->>A: Explicit approval + request digest + idempotency key
+  A->>A: Authenticate / current action and scope authorization
+  alt permission now revoked
+    A-->>R: 403; never disclose old receipt
+  else currently authorized
+  A->>D: Begin / lock scope and touched objects
+  A->>D: Recheck current authorization under matching policy locks
+  A->>D: Check key fingerprint (principal / scope / payload)
+  alt key fingerprint differs
+    A-->>R: 409; no old receipt or new posting
+  else same accepted fingerprint
+    A-->>R: Original receipt; no new write
+  else new command
+    A->>D: Lock request / submitted / expiry / versions / maker != approver
+    A->>P: Same planner with current locked state
+    A->>D: Verify original digest; reject stale request, never auto-refresh
+    A->>D: Business + GL + facts + approved request + receipt + audit + outbox
+    D-->>A: Commit all or rollback all
+    A-->>R: Accepted receipt or explicit error
+    W->>D: Claim committed outbox / idempotent inbox
+    W->>A: Refresh derived report; never repair GL silently
+  end
+  end
+  Note over U,D: Reject / withdraw / expire submitted requests without GL; short preview token expiry is not approval expiry.
+  Note over A,D: Separate manual-journal queued route preserves pending/failed/transferred/withdrawn; no subledger async extension.

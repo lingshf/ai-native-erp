@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="920" viewBox="0 0 1280 920" role="img" aria-labelledby="title description">
+  <title id="title">SME ERP proposed architecture: 14 nodes</title>
+  <desc id="description">Independent SPA and API, modular application and domain, transactional persistence ports, SQLite Local or PostgreSQL Server, restricted AI, committed outbox worker and operations. Proposed only; not deployed.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#6b7280"/></marker>
+    <style>
+      text{font-family:Arial,sans-serif;fill:#172033;font-size:17px}
+      .heading{font-size:26px;font-weight:700}.small{font-size:14px;fill:#526075}
+      .node{fill:#fff;stroke:#9b3443;stroke-width:2;rx:12}
+      .infra{fill:#f4f6fb;stroke:#435877}.data{fill:#fff4e8;stroke:#a8651f}
+      .edge{fill:none;stroke:#6b7280;stroke-width:2;marker-end:url(#arrow)}
+      .optional{stroke-dasharray:6 5}
+    </style>
+  </defs>
+  <rect width="1280" height="920" fill="#fcfcfd"/>
+  <text x="40" y="42" class="heading">SME ERP: separated frontend, application, domain and persistence</text>
+  <text x="40" y="70" class="small">ARCH-SME-01 / design proposal only / shared transaction, not microservices / 14 nodes</text>
+  <g class="edges">
+    <path class="edge" d="M290 139H350"/>
+    <path class="edge" d="M590 139H650"/>
+    <path class="edge" d="M890 139H950"/>
+    <path class="edge" d="M470 102V88H1070V102"/>
+    <path class="edge" d="M1070 172V240"/>
+    <path class="edge" d="M950 277H890"/>
+    <path class="edge" d="M650 277H590"/>
+    <path class="edge" d="M770 314V380"/>
+    <path class="edge" d="M770 454V520"/>
+    <path class="edge" d="M770 594V660"/>
+    <path class="edge optional" d="M890 277H930V417H950"/>
+    <path class="edge" d="M890 417H930V557H950"/>
+    <path class="edge" d="M1070 594V660"/>
+    <path class="edge optional" d="M1190 697H1235V216H770V240"/>
+    <path class="edge optional" d="M650 697H590"/>
+  </g>
+  <g id="user"><rect class="node" x="50" y="102" width="240" height="74"/><text x="170" y="132" text-anchor="middle">Users / local operator</text><text x="170" y="157" text-anchor="middle" class="small">Profile determines assurance</text></g>
+  <g id="edge"><rect class="node infra" x="350" y="102" width="240" height="74"/><text x="470" y="132" text-anchor="middle">TLS reverse proxy</text><text x="470" y="157" text-anchor="middle" class="small">Same-origin deployment</text></g>
+  <g id="web"><rect class="node" x="650" y="102" width="240" height="74"/><text x="770" y="132" text-anchor="middle">React SPA / TypeScript</text><text x="770" y="157" text-anchor="middle" class="small">Labels / theme / teaching</text></g>
+  <g id="api"><rect class="node" x="950" y="102" width="240" height="74"/><text x="1070" y="132" text-anchor="middle">REST API / OpenAPI</text><text x="1070" y="157" text-anchor="middle" class="small">NestJS / Fastify</text></g>
+  <g id="auth"><rect class="node" x="950" y="240" width="240" height="74"/><text x="1070" y="270" text-anchor="middle">Identity / scope / approval</text><text x="1070" y="295" text-anchor="middle" class="small">Server OIDC / Local simulated</text></g>
+  <g id="application"><rect class="node" x="650" y="240" width="240" height="74"/><text x="770" y="270" text-anchor="middle">Application services</text><text x="770" y="295" text-anchor="middle" class="small">Authorized use-case orchestration</text></g>
+  <g id="domain"><rect class="node" x="350" y="240" width="240" height="74"/><text x="470" y="270" text-anchor="middle">ERP domain modules</text><text x="470" y="295" text-anchor="middle" class="small">GL / trade / cost / close / group</text></g>
+  <g id="ai"><rect class="node infra" x="950" y="380" width="240" height="74"/><text x="1070" y="410" text-anchor="middle">Restricted AI adapter</text><text x="1070" y="435" text-anchor="middle" class="small">Suggestions only / no DB writes</text></g>
+  <g id="uow"><rect class="node" x="650" y="380" width="240" height="74"/><text x="770" y="410" text-anchor="middle">Unit of work / ports</text><text x="770" y="435" text-anchor="middle" class="small">Business + GL + receipt atomically</text></g>
+  <g id="adapter"><rect class="node infra" x="650" y="520" width="240" height="74"/><text x="770" y="550" text-anchor="middle">Repositories / DB adapters</text><text x="770" y="575" text-anchor="middle" class="small">Kysely / explicit dialect contracts</text></g>
+  <g id="database"><rect class="node data" x="650" y="660" width="240" height="74"/><text x="770" y="690" text-anchor="middle">SQLite OR PostgreSQL</text><text x="770" y="715" text-anchor="middle" class="small">Local single-user / Server multi-user</text></g>
+  <g id="outbox"><rect class="node infra" x="950" y="520" width="240" height="74"/><text x="1070" y="550" text-anchor="middle">Audit / outbox / jobs</text><text x="1070" y="575" text-anchor="middle" class="small">Persisted in the same DB transaction</text></g>
+  <g id="worker"><rect class="node infra" x="950" y="660" width="240" height="74"/><text x="1070" y="690" text-anchor="middle">Worker / report projections</text><text x="1070" y="715" text-anchor="middle" class="small">Committed facts / idempotent handlers</text></g>
+  <g id="operations"><rect class="node infra" x="350" y="660" width="240" height="74"/><text x="470" y="690" text-anchor="middle">Backup / restore / telemetry</text><text x="470" y="715" text-anchor="middle" class="small">Independent recovery verification</text></g>
+  <text x="50" y="805" class="small">Solid arrows: request / calculation / transaction flow. Dashed arrows: optional AI, committed work or operations.</text>
+  <text x="50" y="837" class="small">Domain has no HTTP, SQL or AI SDK dependency. Outbox is not a substitute for atomic subledger and GL writes.</text>
+  <text x="50" y="869" class="small">No current books are migrated. Existing paused trade changes and the legacy teaching database remain preserved.</text>
+</svg>

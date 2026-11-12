@@ -1,0 +1,16 @@
+flowchart TB
+  USER["Users / local operator"] --> EDGE["TLS reverse proxy"]
+  EDGE --> WEB["React SPA / labels / theme"]
+  WEB --> API["REST API / OpenAPI"]
+  EDGE --> API
+  API --> AUTH["Identity / scope / approval"]
+  AUTH --> APP["Application services"]
+  APP --> DOMAIN["ERP domain modules"]
+  APP --> UOW["Unit of work / ports"]
+  UOW --> ADAPTER["Repositories / dialect adapters"]
+  ADAPTER --> DB["SQLite Local OR PostgreSQL Server"]
+  APP --> AI["Restricted AI adapter"]
+  UOW --> OUTBOX["Audit / outbox / jobs"]
+  OUTBOX --> WORKER["Worker / report projections"]
+  WORKER --> APP
+  DB --> OPS["Backup / restore / observability"]

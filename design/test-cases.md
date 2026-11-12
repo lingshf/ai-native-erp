@@ -1,5 +1,26 @@
 # Test cases
 
+当前ARCH-M00详细未来用例见[TC-AM00](architecture-migration.md#tc-am00先失败后实现)，G3前不实现工具。最新执行前完整候选292/292、14语法通过；这是旧运行候选基线，不代表新架构用例已执行。
+
+## ARCH-SME-01 计划验收
+
+以下AT是架构迁移的**未来验收**，不是已执行测试；本轮只进行文档/引用/DAG/运行文件不变校验及独立G3。阶段详细设计通过后实现相应自动化，用例阈值须按用户确认的Server基准冻结。
+
+| ID / 架构需求 | 正常与边界输入、执行方式 | 可观察预期 / 失败路径 |
+| --- | --- | --- |
+| AT-01 / AR-01 | 分别构建web/api/domain；依赖图加入domain→SQL或UI→application写服务反向依赖 | 正常独立构建；禁止方向CI失败，domain无需DB/DOM/SDK运行；不创建仅有目录无测试的假分层 |
+| AT-02 / AR-02 | OpenAPI与DTO/client一致；未知字段、超界金额、重复字段、非法scope/日期、兼容旧错误与分页；相同幂等键改金额/plan摘要/动作或principal | 正常typed响应；非法400/相应业务码，字段路径可定位、无SQL/内部栈泄漏；契约漂移CI阻断；键指纹冲突409且不返回旧回执，撤权403优先 |
+| AT-03 / AR-03/05 | 同一业务oracle分别用真实SQLite/PG：整数边界、JSON/布尔、排序、FK/触发器、回执/历史；不是SQLite mock PG | 精确金额/维度/来源/归档语义一致，方言非法约束显式失败；大整数不静默舍入、未知schema不自动迁移 |
+| AT-04 / AR-04 | 两个真实subject：maker零写预览后提交、退出/重启、短token已过期但审批期限未过，approver从待办取原请求；拒绝/撤回/到期/两人同时批准；提交后同法人无交叠依赖的其他对象过账、另一法人过账、第三用户权限变更，再批准；另改相关配置/期间/触及对象及ABA | 预览零写、提交只工作流/审计、合法异人批准原子一次入账；无关写入/权限变更不使请求过期，相关依赖变更必须拒绝并新提交；maker/approver可追、不复活终态、失败不留approved；自审/参与人撤权拒绝，Local仍标模拟 |
+| AT-05 / AR-02/03/05 | 两会话核同未结项、改相关配置/关期、同键不同payload/principal、锁顺序/死锁及丢响应；不同company并行与book配置独占冲突；新增更强规则/原无候选/相关余额变化与无关配置写；Local双标签/job交错；注入GL/facts/approval/audit/outbox失败 | 一次原子成功、无超核/半GL/假批准；同company串行、不同company共享上级锁并行；锁行/全局水位变化不失效待办，相关对象/余额/规则范围/期间版本变化409（含ABA），无关写不失效；键冲突409/撤权403无旧回执。Local mutex不交错、只读WAL一致/job同进程；同键有界重试 |
+| AT-06 / AR-04/05 | OIDC session过期/撤销、CSRF/Origin、RLS池连接复用、越权导出/审计、日志敏感标记探针 | 无权读写及跨租户缓存均拒绝；真实actor/批准人同事务可追，普通角色不能改历史；日志无secret/完整财务请求，TLS部署配置可核 |
+| AT-07 / AR-07 | 中英/红绿/教学切换，未保存多行、预览/迟到响应、scope切换、localStorage失败及键盘标签 | 输入/节点状态按契约保留，无自动保存；必要警告不被教学隐藏，权限不变；旧名称不被翻译改写，迟到数据不跨范围 |
+| AT-08 / AR-06 | 冻结已发布commit→新目标试迁移；默认M-CORE且贸易保持暂停，候选测试/文件在旧兼容工程保留；重复号/跨年/原回执；手工队列四状态及失败恢复；Local旧教学读写与Server探测旧接口 | 源/未知草稿原样，旧172及候选冻结清单保留；选定ERP目标语义全核，不以单GL切片代全基线。pending/failed仍阻关期，显式transfer原计划一次GL、withdraw理由终态，非journal不开放排队；Server不打开旧教学文件且接口不可用。M-CORE无需恢复贸易；未完成preview失效/旧回执原保证级别保留/盲回退拒绝 |
+| AT-09 / AR-07 | AI有效/非法候选、超时/越权/未知科目、外发未授权字段、scope改变后迟到响应 | 仅最小许可快照，非法候选拒绝且不写账；模型无DB/UoW；保存草稿及另行批准分开；无真实调用不能宣称提供方已认证 |
+| AT-10 / AR-08 | 冻结4vCPU/16GiB等试点硬件、20会话/10法人/100万GL行、热点混合负载30分钟，含完整鉴权HTTP | 记录p95/p99/吞吐/锁/错误；建议热读1秒、常规预览/确认各2秒p95，用户确认后才为门禁；零丢失/重复/越权不因性能放松，未测标not_run |
+| AT-11 / AR-08 | SQLite一致快照/PG基础备份+WAL演练、worker lease崩溃重领、消息重复、迁移中断/重复进程及升级前后版本 | 独立恢复并核业务/GL/审计，不覆盖活动库；job幂等、outbox不替代GL事务；迁移锁/校验和阻断冲突，RPO/RTO目标需实测；Local不套用Server SLA |
+
+
 ## M-CORE基线验收设计（TC-C01..C12，尚未执行）
 
 当前POLICY-01采用委托默认；本节不是旧80回归或新功能已通过的证据。每例使用独立虚构ERP库，保留原教学账摘要作前后比较。金额预期由测试独立写明，不调用被测函数当答案。M-CORE出口只对应FR-C01..08，完整TC-101..144的跨模块部分仍须后续真实对象验收。
@@ -225,3 +246,24 @@ Limitations: browser AI output was explicitly mocked for that UI-only test; inte
 TC-13 execution: before implementation, both the new teaching-context test and the added draft-context assertion failed because `period` was undefined. After implementation all 19 tests pass, including truthful open/draft/closed/zero-profit snapshots, no accounting mutation, and closed-period draft rejection without an upstream call. `npm run check` also passes. The real browser shows the revised period/closing-data disclosure; the README disclosure was checked in place. Focused independent increment/final correction review passed both compliance and quality dimensions under MODEL-01; the reviewer independently reran all 19 tests and syntax checks. No real external AI call was made.
 
 TC-14/15 execution (subsequent Copilot addition): `node --test tests\copilot.test.mjs` initially failed for missing adapter. Monetary-scale assertions later failed in both provider contracts before the fix. Current `npm test` is 26/26 and `npm run check` passes. These include old TC-13 open-with-draft/open-without-draft/actual-close/zero-profit-open-and-closed snapshots and closed-period draft rejection, plus SDK zero-tools/auth/model checks, UTF-8 exact 256 KiB boundary/excess, timeout, stop errors/hang, concurrency, mixed-case runtime-path filtering, retained temporary state on unconfirmed termination, and no writes. Independent combined review reran 25 tests/checks; correction re-review reran all seven SDK tests and closed all findings without runtime edits. Real calls are separate and all five attempts are recorded in reviews. After the scale fix, real teaching correctly states 2000.00 teaching units; after clarifying exact account property/string-code output, real draft validates 10.00 debit/credit. This does not claim model infallibility.
+## M-TRADE-A planned acceptance（金融基线G3释放，缓存补充待审）
+
+本节对应FR-T01..08 / D-TRADE-A，仅非库存A切片；源案例不用作产品测试。以下为计划预期，实际执行及失败修订见reviews，不把oracle当已跑结果。TC-T15/NFR-T01是新的缓存设计补充，另需G3后才实施缓存；其余按原已审金融基线验证。共同夹具为独立临时ERP数据库、空法人、显式伙伴/profile/税/商品配置；不使用原4173或用户草稿。
+
+| TC / FR | 层次、操作与输入 | 明确预期与异常 |
+| --- | --- | --- |
+| TC-T01 / T01 | 配置/API：创建AP/AR伙伴、expense/service商品、角色科目和期限；分别跨法人引用、错类别/控制用途、过期/停用/旧CAS、未选税码 | 合法版本可查，非法400/404/409且全状态不变；旧M-CORE配置与回执可读；不自动开启既有trade/tax期间模块。 |
+| TC-T02 / T02 | 纯函数：税外原创net73.19、12%；税内输入gross81.97；0/2/4位币种、6位数量/单价、不可抵扣50%、零税与免税 | 税外tax8.78/gross81.97；税内net73.19/tax8.78；50%抵扣4.39/进费用4.39。税内应税费随单价同为含税。零税/免税可无税科目且不造0金额行。超精度/浮点/溢出/非法码/不支持币种或库存拒绝。 |
+| TC-T03 / T02 | 纯函数：三行各税外net0.03/12%，及三行各含税gross0.03；同余稳定行序，重复计算与交换非同余行顺序 | 行模式税各0；单据模式税共0.01仅分首行。税内单据模式各行net0.02/0.03/0.03、gross各0.03。50%抵扣在分配后逐行half-up，首行抵扣0.01/不可抵扣0；不以整单比例再舍入。 |
+| TC-T04 / T03 | 领域：先preview，再post；同源同封套多次/并发；外部号含全角/大小写/首尾及内部空白；restart重试；故意约束失败 | preview零写；source/facts/GL/receipt/audit同事务且仅一次。全角Ａｂ首尾空白与AB重复，A B内部空白保留、不等于AB；新reference仍拒绝重复。已完成原token在关期/改配置/重启后仍返回原回执，失败无半子账。 |
+| TC-T05 / T04 | 领域/API：费用AP及服务AR、部分非库存订单开票；同商品两行分别净100/200，明确orderLineId；1%边界/超价/超量及例外；部分开票后取消订单 | 缺/错/重复orderLineId拒绝，不按商品猜行；100基数101允许、101.01须例外，数量始终不超。税内及应税费按保存的行净额比例比较。取消只消未开票承诺，不改GL/已开票；之后取消发票不重开已取消订单。无PO显示不适用。 |
+| TC-T06 / T05 | 领域：原创invoice net73.19/tax8.78/gross81.97；单据日2026-01-05，付款accountingDate01-12或01-13，另设allowPartialDiscount=false | 全额discount1.10/cash80.87；部分net36.60/tax4.39/discount0.55/cash40.44，remaining40.98/net36.59/tax4.39。01-13即使documentDate01-12仍拒绝折扣；false拒绝40.99及已有部分付款后的剩余折扣，仅未结原全额可用。到期02-04，原税不变。 |
+| TC-T07 / T05/06 | 领域：AP/AR预付、部分应用、贷项应用、两种退款及末次尾差；改伙伴控制profile/默认维度；商品/表头/行产生原控制维度及多段；规范序D1/D2/D3 gross2/3/2最小单位，先核销3再4；AR贷项5/D1跨发票应用5/D2；控制结构必填、后改fixed；超余额/他伙伴/他币种/重复/并发应用 | 应用仅invoice目标，两边各分净/税并尾次取尽；预收无收入，控制/预付科目及最终维度集合来自各原对象，不投新profile/伙伴默认段。三段首笔分配1/1/1、剩1/2/1，末笔分配1/2/1归零；反向首笔恢复原1/1/1。相同控制科目的跨发票应用须控制借5/D1、贷5/D2，不因科目相同省GL。新fixed改投明确拒绝，完整反向仍精确；现金/折扣用当前profile，退款不能折扣。零净GL仅许可逐科目及维度均净零的固定应用，source/target余额原子一致。 |
+| TC-T08 / T07 | 领域/API：非库存部分贷项，原税率/商品科目之后改变，已付款发票再贷项、选择仅服务贷项 | 仍用原税事实和损益/税角色科目；累计比例及尾次不超原净/税/数量。形成独立信用未结项，原已付发票不改；无物料回库。原科目停用时新贷项明确拒绝，不改投新科目；超额/无原行/重复拒绝。 |
+| TC-T09 / T03/07 | 领域：分别取消全未结invoice/credit/advance；有付款/退款/应用/有效贷项先取消；显式反向依赖后再取消；停用原科目/改维度 | 有有效依赖先拒绝；credit取消恢复可贷量，invoice取消恢复订单量，所有触及版本/日期校验。精确反向保留原行/内部平衡及链，不要求新配置有效；普通reverse不能取消贸易；重复取消拒绝。 |
+| TC-T10 / T03/07/08 | 领域：01-05发票81.97、due02-04、02-12核销40.99不拿折扣；一月另有credit10/advance5；月末查询及跨公司同ID | 01-31 notDue81.97、其余桶0；02-28 overdue1_30=40.98、其余桶0。credit10/advance5各单列、账龄字段null，不抵消发票桶；正好到期未逾期，31/61/91天正确分桶。未来核销不改一月；逆序日拒绝，同日合法。 |
+| TC-T11 / T03/08 | 集成：改配置/期间/对象后旧token、两个窗口付款；停用原控制科目；新旧法人期间trade/tax分别关闭 | 旧预览409且无写、并发不超用。新付款用原控制，停用则明确拒绝并提示恢复；完整取消仍可精确反向。创建公司不默认新模块；缺trade拒绝所有动作，缺tax拒绝发票/贷项及其取消，旧五模块不受影响。 |
+| TC-T12 / T03/08 | 完整性/恢复：普通及readOnly构造均不传adapters；完整事件/月末/GL重放；破坏事件版本/审计/事实；实际一致快照恢复 | 内置贸易描述符仍注册，CLI确实检查贸易投影/守恒；未知trade版本显式失败，不跳过。其他来源差异明示不抹平；恢复保持全部业务状态及原回执，未完成预览失效；旧无贸易v1库不迁移可检查。 |
+| TC-T13 / T08 | DOM/HTTP与独立真实浏览器：配置→AP/AR发票→preview→明确POST→部分结算→历史查询/详情；取消和失败路径 | 没有任意GL/事件JSON业务入口，无自动写账/AI；真实金额/未结/回执与API一致，跨月/法人迟到返回不能污染，空状态可行动；原3凭证/ID3不变。 |
+| TC-T14 / T08 | DOM/UI：中英、红绿、教学来回、同上下文轻刷新、切换上下文及请求失败 | label成对且口径明确，未保存输入/预览节点按约定保留；输入/版本变动撤旧批准，错误显式且按钮可恢复；教学关闭不隐藏业务边界。全旧172回归及新增聚焦、独立G5/G6实际结果另记。 |
+| TC-T15 / NFR-T01、T03/08 | 补充待审：独立文件账记录400张各五行发票首/100/300/末笔、分页及重开耗时；SQL计数探测热预览/确认/读取；同文件两句柄、两个法人、多个历史月、配置变更、旧token、失败/回滚；先缓存二月/三月切点再接受一月15日独立回填发票；热缓存后独立破坏事件/事实/GL | 热路径不重复逐事件校验已接受前缀，新增后缀完整验证；两句柄无超用/旧状态，配置变更仍撤token；失败后冷/热状态与回执一致且无超前缓存。未来核销不抹早月，回填一月发票必须同时更新已缓存二月和三月且与冷重放一致，更早切点跳过；跨法人不混。显式integrity/普通及readOnly重开/备份仍从空状态全验并拒绝坏库；性能记录不是固定毫秒SLA，不以省略完整性换速度。 |

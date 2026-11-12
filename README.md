@@ -21,6 +21,8 @@ npm start
 
 ## 本地查看完整需求与进度
 
+**架构迁移已获委托执行，尚未实现完成：** [中小企业ERP分层与双数据库方案](design/architecture.md) · [阶段详细设计与验收](design/architecture-migration.md) · [技术选型ADR](design/adr/ADR-SME-001.md) · [14节点架构图](design/diagrams/sme-overview.svg)。首交付保持Local单人SQLite，并提供PostgreSQL/OIDC的Server试点；当前先做原账保护基线。贸易获准恢复，原未提交成果保留移植；原账须备份、核对余额/哈希并保留ID3及只读源后才切换。宏观架构通过评审不代表各阶段已完成。
+
 先打开 **[项目进度总览](design/project.md)**：44FG当前为0整体完成、13部分覆盖、31未实现。这里不把“做过一部分”标为整个目标完成，也不虚构百分比。
 
 [完整功能需求/未决政策](design/requirements.md) · [架构与共享依赖](design/design.md) · [任务/并行批次](design/tasks.md) · [计划验收](design/test-cases.md) · [公开验证记录](design/reviews.md) · [公开范围索引](design/source-analysis.md)。
@@ -93,6 +95,17 @@ node scripts\enterprise-backup.mjs restore --source backups\erp-snapshot.sqlite 
 backup和restore都通过只读源连接及SQLite `VACUUM INTO`生成一致快照；先核内核完整性再独占创建目标，成功才输出SHA256、字节和快照本身的完整性/计数摘要，不输出财务明细或token。源可处于WAL使用中；并发后续写入不会混进本次快照摘要。已有文件（即使空）、同一路径、非ERP/坏库或不平衡账拒绝；竞争者中途创建目标也不覆盖。失败返回非零，不能把失败遗留文件认定为有效备份。
 
 restore只创建并校验**独立副本**，不会替换活动账本或切换当前服务。已接受来源的原回执/token可在恢复副本重试；只在内存中的未完成preview token不可迁移，必须重新预览。恢复测试核对原金额、维度、来源回执和零重复入账；完整性通过不等于发现所有“平衡但错”的业务，更不是生产灾备、加密、自动备份或跨版本迁移保证。新机器AI认证也不随账本迁移。备份包含账务数据，应由操作者妥善保护，不提交到公开仓库。
+
+### 架构迁移前的双账保护
+
+保护工具可对旧教学账及ERP账分别生成一致快照，并附全表/结构逻辑摘要、文件摘要及核验manifest；不会迁移、切换或修改源库：
+
+```powershell
+New-Item -ItemType Directory -Path backups -Force | Out-Null
+node scripts\ledger-snapshot.mjs --teaching data\teaching.sqlite --enterprise data\erp.sqlite --target backups\before-architecture
+```
+
+目标目录必须不存在，父目录必须存在。工具以只读连接包含已提交WAL页；manifest最后独占发布，任一失败非零，不把遗留目录当有效备份。两库分别一致，不是跨库同时刻快照，最终迁移仍需停写重取；既有备份不能覆盖。备份及manifest含财务证据，只保存在私有目录，不提交或上传。后续消费须使用`verifyLedgerSnapshot`重新核文件与逻辑完整性，不能仅检查manifest是否存在；不承诺未经演练的掉电恢复/生产SLA。
 
 ## 旧教学账的一次完整练习
 

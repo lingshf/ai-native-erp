@@ -1,5 +1,54 @@
 # Implementation tasks
 
+## 当前授权：ARCH-M00起逐阶段实施
+
+用户已委托DC01..04与M00..09执行、恢复M06/TASK24和备份核对后切换原4173账。M00及M01各自G3已独立释放，M00工具G5/G6通过；交付/安全/发布另以实际记录为准。完整当前需求/测试及工具环境见[architecture-migration](architecture-migration.md)，下方“仅设计/暂停/0 ready”为前次交付历史，不再作为继续暂停的用户限制，但原已验收成果和剩余验收不能删除。后续FG仍0/13/31，不因授权改done。
+
+| 实施任务 | 状态 / 前置 | 追踪 / 文件边界 / 验收 |
+| --- | --- | --- |
+| ARCH-T00 原账保护基线 | done（MODEL01）；交付发布另核 | FR-AM00/D-AM00/TC-AM00-01..04；仅scripts/ledger-snapshot.mjs、虚构测试/文档。10/10聚焦、完整302/302及语法，独立G5/G6实际释放；私有源/快照/ID3/逻辑hash核验及原源不变，公开工具不含真实hash/路径。作者gpt-6.1-sol，独立请求claude-opus-5.5/沿MODEL01；不提交未验收贸易代码 |
+| ARCH-T01 共享工程/契约 | ready；M00 G5/G6及M01 G3均释放 | FR-AM01/D-AM01/TC-AM01-01/03/05；集成作者独占根manifest/lock/TS配置/边界脚本/packages/contracts。严格health/错误DTO+单源OpenAPI，明确旧测试选择器/冻结ID，测试先行；不得写02/03专属文件 |
+| ARCH-T02 API与应用边界 | ready；同上及固定G3契约，与01/03分文件 | TC-AM01-01/02/05；独占apps/api、packages/application/infrastructure。Local显式配置、同源静态托管、统一错误及端口；坏JSON/415和强制500只由测试工厂注册，CLI无此额外路由。高风险独立G5 |
+| ARCH-T03 前端壳/偏好 | ready；同上及固定G3契约，与01/02分文件 | TC-AM01-01/04；独占apps/web、packages/ui和各自manifest/测试。真实React同源health、zh/en/红绿/教学与偏好失败可见；不引旧DOM模块、不碰原账。中风险独立spec/quality G5 |
+| ARCH-T04 骨架组合验证 | pending；01/02/03各G5 | TC-AM01-01..05组合：干净安装/类型/build、旧冻结测试无丢失、真实隔离同源UI/失败/契约/边界、G6及本地/安全/精确发布/clone。共享schema/lock/root始终单写者，不把骨架称M02/03/04已完 |
+
+## ARCH-SME-01：仅设计评审，不执行重构
+
+M-TRADE继续按用户要求暂停。当前新增架构需求/ADR/迁移阶段见[architecture](architecture.md)，用例AT-01..11。本轮宏观独立G3已释放EXCEPTION (user-approved MODEL01)，但ARCH-M00..09仍待用户确认及各阶段详细G3；10 planned、0 ready，不运行安装/迁移。每个阶段仍需详细需求/用例及自己的G3。
+
+本轮只完成：现状核对→架构/ADR/用例/图→独立G3及修订→文档一致性与交付。文档作者单一归并，独立评审只读；不并发写暂停核心或schema。原TASK01..24历史计数与FG覆盖不因架构设计变化。
+
+### 架构迁移计划索引（10阶段，全部planned，0 ready）
+
+以下不是新增产品完成项。统一状态为**等待架构确认及本阶段详细G3**，不安装、不编码、不迁移；每项还须G5及最终G6。完整验收/文件边界以[架构§9主表](architecture.md#9-从现有代码分阶段迁移建议dag不执行)为准，[DAG](diagrams/sme-migration.mmd)保留条件分支。高风险事务/身份/数据阶段独立强推理评审请求claude-opus-5.5，MODEL01仅适用于身份核实；前端阶段仍独立核输入/异步/label。
+
+| 计划ID | 真实前置 | AR / 计划AT与最小出口 | 风险 / 可并行边界 |
+| --- | --- | --- | --- |
+| ARCH-M00 | 架构G3及用户确认 | AR06/08，AT08/10/11；冻结已发布源commit/能力、技术预算和恢复点 | 高；基线/文档单写，不包含暂停贸易发布 |
+| ARCH-M01 | M00 | AR01/02，AT01/02；独立工程/契约骨架及兼容构建 | 中；共享契约/manifest单写 |
+| ARCH-M02 | M01 | AR03/05，AT03/05/11；两真实数据库/驱动/UoW迁移spike | 高；ports/schema单写，可与M03/04分文件 |
+| ARCH-M03 | M01 | AR01/07，AT01/07；一个只读SPA页和偏好/label | 中；web/ui单写，协议固定后并行 |
+| ARCH-M04 | M01 | AR04，AT04/06；真实身份/scope及审批服务接口 | 高；API授权层独占，真实联通待M02/05 |
+| ARCH-M05 | M02/03/04 | AR02..05，AT02..06；持久提交/第二人批准的单种GL闭环 | 高；事务/协议汇合串行 |
+| ARCH-M06 | M05及用户明确恢复贸易 | AR05/06，AT03/05/08；已发布贸易选入基线后的非库存链适配 | 高；条件分支，不自动启动TASK24；公共schema单写 |
+| ARCH-M07 | M05 | AR05/06/08，AT05/08/11；队列兼容、job/备份恢复 | 高；运维文件可与获准M06并行，迁移单写 |
+| ARCH-M08 | M05/M07；仅选定已发布贸易时再依M06 | AR01..08，AT01..11；全选定基线/双库/容量/UAT及G6 | 高；默认M-CORE可独立推进，非单条GL代全基线 |
+| ARCH-M09 | M08及单独真实数据停写/切换授权 | AR06/08，AT08/11；最终核对及受控切换/回退 | 高；运维串行，不以架构确认代迁移授权 |
+
+## 当前M-TRADE-A任务（G3释放，尚未验收）
+
+前置为M-TRADE-A-DESIGN-01修订G3，明确EXCEPTION (user-approved MODEL01)。仅非库存A切片，源目标整体完成状态不变。实现集成作者实际gpt-6.1-sol；宿主实现子代理未提供可核模型身份则不臆造，独立G5/G6继续请求claude-opus-5.5并保留MODEL01。会计/并发/恢复均高风险，需独立强推理审查；界面中风险也保留spec/quality两项结论。
+
+| 任务 / 状态 | FG / FR / 设计 / TC | 实际前置与独占文件 | 验收、测试先行及下一步 |
+| --- | --- | --- | --- |
+| TASK-20 / done（MODEL01） | FG09/13/20限定 / FR-T02 / D-TRADE-A精确计算 / TC-T02/03/06计算 | 修订G3；src/enterprise-trade-math.mjs、tests/enterprise-trade-math.test.mjs | 缺模块先失败已核；作者及独立7/7及语法通过，评审3000随机/累计溢出等探针无发现，spec/quality释放，允许TASK22启动。 |
+| TASK-21 / done（MODEL01） | FG09..14界面限定 / FR-T01..08 UI / D-TRADE-A API/UI / TC-T13/14 | 修订G3固定DTO；与20无彼此前置，独占public/enterprise-trade.js、两语言label及tests/enterprise-trade-ui.test.mjs | typed操作/配置、异步/确认、中英金额及输入保护；CAS与真实GL四币种槽位缺口均测试先行修复，独立第三轮65/65及探针、spec/quality释放G5。仅此界面增量完成，不代替领域及最终集成门禁。 |
+| TASK-22 / done（MODEL01） | FG03..14/20/39/42限定 / FR-T01..08、NFR-T01 / D-TRADE-A、D-TRADE-CACHE / TC-T01..12/15领域 | TASK20 G5及缓存/分段补充G3；独占原三领域文件，无共享核心并发写者 | 原两High已由独立原探针/新分段/两句柄回填/强制完整性及SQL计数实际关闭，96/96，spec/quality释放G5。父完整291/291及独立400张五行规模另有实测，保留冷月末/完整重放成本非SLA。 |
+| TASK-23 / done（MODEL01） | 同上接口限定 / FR-T03/08 / D-TRADE-A API/UI / TC-T04/11/13/14接口 | 修订G3固定契约；与21/22分文件并行。server、enterprise.js挂载、HTTP集成测试、package由集成作者独占 | 实际三项HTTP及挂载DOM通过；独立接口/挂载/真实集成47/47、spec/quality释放G5。父完整280/280、零跳过及14语法通过；真正组合交付仍等待TASK22领域G5，不以此替代内核审查。 |
+| TASK-24 / blocked（用户暂停） | 同上组合限定 / FR-T01..08、NFR-T01 / D-TRADE-A及缓存恢复与交付 / TC-T01..15组合 | TASK21/22/23各G5均已释放；恢复测试、README/design由集成作者串行 | 贸易恢复新增真实CLI用例8/8；隔离GUI只完成AP零写预览/金额/未折算，未确认POST。用户要求暂停，helper已停；G6/安全/交付/推送未做。新架构设计不自动恢复本任务。 |
+
+并行批次A为20/21/23（固定协议下薄层）；批次B为20 G5后的22，可与21/23并行；批次C为21/22/23 G5后的24组合验证。共享核心/接口各只有一名写者。统计原24项：23完成、0实施中、1用户暂停阻塞；架构设计不计入这些产品完成项，不能把尚未执行的用例标已通过。
+
 ## 当前M-CORE任务（G5及组合G6已验收）
 
 ERP-CORE-DESIGN-01按MODEL01释放FR-C01..08后新增以下任务；旧TASK01..15真实历史保留。新增4项均完成实际G5，TASK17期间刷新版本缺口已测试先行修复并由同一独立评审复审，当前组合G6按MODEL01释放。FG仍0完成/13部分/31未实现；功能验收不替代本地保护交付及远端发布证据。

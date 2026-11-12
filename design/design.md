@@ -1,5 +1,123 @@
 # Proposed design
 
+当前用户已委托执行ARCH-M00..09、恢复贸易及在完整保护旧账/ID3后切换预览。宏观架构仍见[architecture](architecture.md)，逐阶段详细设计和FR/TC见[architecture-migration](architecture-migration.md)；先M00 G3，不把高层G3当所有实现许可。
+
+## ARCH-SME-01：新的长期架构提案入口
+
+[中小企业ERP架构](architecture.md)及[选型ADR](adr/ADR-SME-001.md)是本轮设计提案，含独立前端、API/应用/领域/基础设施边界、SQLite/PG档案、真实授权、事务与迁移DAG。现有下文D-CORE/D-TRADE仍作为已实施或暂停候选行为基线保留，不被提案虚称已重构。用户要求贸易暂停继续生效；高层架构G3不批准恢复开发、迁移真实账或推送。
+
+## D-TRADE-A：权威事件投影与非库存贸易（金融基线已审，缓存补充待审）
+
+对应FR-T01..08及TC-T01..14；M-CORE发布版本为3fbd75f。金融基线修订G3已释放MODEL01；下面D-TRADE-CACHE是领域G5实测退化后新增的设计补充，另需G3后才实施缓存。M-TRADE-A完成也只代表非库存切片，B/C和其他里程碑组合仍待验收。
+
+### 状态存储选择与同事务边界
+
+选择有限schema的事件溯源：复用已受company/source复合外键约束且不可变的source_events、adapter_facts、receipts和source.accept审计，不增加第二个SQLite文件、不改旧教学库、不迁移原凭证。新的trade事实是**权威领域事件**，固定reducer重建订单/发票/预付款/结算状态，所有后续动作必须读取并验证这个状态，不是只供展示的任意JSON。相较另一套可变余额表，此方案少一套必须保持一致的状态。首候选每次完整重放已在独立G5暴露规模退化，不能作为交付状态；拟用下述可丢弃缓存复用已验证前缀，完整性与权威事件一致性不能削弱。不增加持久化缓存表或迁移。
+
+核心私有加载器只读当前company已接受的固定trade.*操作，联结source/receipt/facts及唯一source.accept审计，按整数audit.id重放，绝不按会被VACUUM重排的隐含rowid或同秒时间排序。每事件包含schemaVersion=1、类型、对象身份、前后对象版本、规范业务输入、精确分配及政策/会计角色快照；事实与receipt.plan严格相同。重复/缺失审计、版本断链、重复业务键、未知事件版本或余额/数量不守恒都显式失败，不能跳过坏记录或只取当前页。投影不暴露DB/文件句柄给适配器。
+
+预览和事务内确认用同一纯planner和reducer，计划绑定全局/配置/期间及所触及对象版本。BEGIN IMMEDIATE内核对当前版本和审计水位、补验未见后缀，取得同一事务快照下的完整逻辑投影；原回执检查优先，再核HMAC，最后一次性写领域事件、来源、GL、回执和审计。没有先改余额后发网络请求的apply回调；确认失败不能留下半个“已付款”状态。固定贸易描述符是内核内置能力，普通及readOnly构造均无条件注册，不依赖HTTP或调用者传adapters；备份CLI因此也执行同一贸易重放。贸易实现缺失/未知事件版本须显式启动或完整性失败，不能忽略已有trade.*历史。只有这些固定描述符有新能力，HTTP不得注册、传SQL、提交原始领域事件/GL/可信origin。旧第三方/测试适配器协议默认保持原行为。
+
+非金融订单事件可明确无GL并获得recorded回执；描述符指定ledgerMode=none，输入不能切换。发票/现金/贷项必须required且形成真实平衡计划；应用在相同控制账户净GL恰为零时仅可由声明optional的固定描述符记录，同时保留完整两边子账变化和解释，不能用空行规避其他金融事件。普通手工、服务、统计、队列及成功重试语义不改。
+
+### 固定配置与数据契约
+
+配置继续`company/kind/code/expectedRevision/active/data`。新增kind固定为tradeParty、tradeProduct、tradeProfile、tradeTerms、taxCode，逐种严格校验；不引入动态模块/表达式。tradeParty包含角色、AP/AR profile、terms、允许税码及默认维度；tradeProduct只接受expense/service、expense或revenue科目、允许税码及默认维度。所有引用同company且类型匹配，停用不隐藏已用历史。
+
+tradeProfile区分AP/AR；包含对应control、advance、cash、discount科目，科目类别/purpose/controlModule/报表组匹配角色。AP控制必须AP负债，AR控制必须AR资产；AP advance是AP资产，AR advance是AR负债；cash只接受非BANK控制的cash资产；折扣科目为收入类，AR借记抵减、AP贷记收入，预览说明口径。普通直接记账限制继续约束手工；新固定贸易描述符仅对自身经过类型验证的会计角色允许受限普通科目，现有适配器默认不得借此越权。商品费用/收入是显式行会计来源，控制/预付/现金/折扣来自对应profile，税来自taxCode；不允许客户端传成组任意GL行。已有M-CORE模板1300是AR控制、2100是AP控制，不套用研究资料的示意科目号或改旧类型；其他角色由用户明确选择/新建。
+
+各配置data严格字段如下（全部共有from/to含首尾；名称1..160；引用均为已有同法人有效代码，不默默创建）：
+
+| kind | data字段 |
+| --- | --- |
+| tradeParty | name、role、apProfile/arProfile（按角色必需，另一侧null）、terms、allowedTaxCodes、defaultDimensions |
+| tradeProduct | name、type=expense/service、expenseAccount/revenueAccount（按类型必需，另一侧null）、allowedTaxCodes、defaultDimensions |
+| tradeProfile | name、side=AP/AR、controlAccount、advanceAccount、cashAccount、discountAccount |
+| tradeTerms | name、dueDays整数0..3650、discountDays整数0..dueDays、discountPercent精确0..100且最多6小数、allowPartialDiscount |
+| taxCode | name、mode=ordinary/zero/exempt、rates数组（每项id/from/to/ratePercent，非重叠）、deductiblePercent、inputAccount、outputAccount；zero/exempt率必须0 |
+
+本切片不增加无行为group字段；物料/伙伴分组过账在实物流具体G3补齐。未配置的角色/类型不接受多余会计字段。ordinary税码的input/output是TAX控制的资产/负债；zero/exempt允许这两个字段均null，不生成0金额GL行但保留税事实。AR忽略抵扣比例但保留原税码快照。未确认AP/AR业务不能因为profile保存而产生余额或付款。
+
+data字段完整白名单如下，表中字段均必需，明确标可选者除外。AP/AR前缀操作不另接受side；其他操作side为AP/AR。标识沿核心code约束，版本为非负安全整数，reason为1..160文本。A中的documentId在company/side内跨invoice/credit/advance唯一；销售外部发票号另在company内唯一。全部金额操作以本法人会计币为准，带currency的操作必须相等，不接受暗中换算。
+
+| 操作 | data |
+| --- | --- |
+| trade.order.create | documentId、side、party、currency、expectedVersion=0、priceIncludesTax、roundingMode=line/document、lines |
+| trade.order.cancel | documentId、side、expectedVersion、reason；只能取消尚未开票的剩余承诺，不删除已开票部分 |
+| trade.ap.invoice / trade.ar.invoice | documentId、party、externalInvoice、currency、expectedVersion=0、priceIncludesTax、roundingMode=line/document、lines；可选headerDimensions；orderId/expectedOrderVersion必须成对，可选matchingException={confirmed:true,reason} |
+| trade.ap.payment / trade.ar.receipt | paymentId、party、target={kind:invoice/credit/advance,documentId,expectedVersion}、applyGross、takeDiscount、reason；credit/advance表示明确退款方向且禁止折扣 |
+| trade.ap.advance / trade.ar.advance | documentId、party、currency、expectedVersion=0、amount、reason |
+| trade.apply | side、source={kind:advance/credit,documentId,expectedVersion}、target={kind:invoice,documentId,expectedVersion}、amount、reason |
+| trade.credit | side、documentId、originalInvoiceId、expectedVersion（原发票当前版本）、lines=[{originalLineId,quantity}]、reason |
+| trade.document.cancel | side、kind=invoice/credit/advance、documentId、expectedVersions=[{kind,documentId,version}]、reason；集合恰含自身及需要更新的原发票/关联订单 |
+| trade.settlement.reverse | side、settlementId（原接受事件reference）、expectedVersions=[{kind,documentId,version}]、reason；集合必须恰含原动作所触及当前对象 |
+
+订单/发票lines为1..100唯一lineId的数组，每行固定lineId/product/quantity/unitPrice/discountPercent/taxableCharge/taxCode及可选dimensions。关联订单的发票每行另必填orderLineId，同张发票内不重复，必须指向该订单同商品行；无orderId则禁止该字段。taxableCharge为非负精确币种金额；priceIncludesTax=true时它与单价同为含税值，否则为税外值。discountPercent为0..100且最多6小数。缺省维度为{}；伙伴默认→商品默认→单据header→行显式值逐层覆盖并记录来源，再走核心默认/派生/固定/最终结构。核心接收固定适配器raw.headerDimensions以保留单据来源，而非把它伪称行值；现有适配器默认{}不变。
+
+订单固定保存按同一计算器求得的每行净额/税/总额作为承诺快照，不产生税负或GL。匹配必须同法人/伙伴/side/币种，以orderLineId逐行检查累计有效开票量不超过原量减已取消量。令E=half-up(订单行原净额×本次数量/订单行原数量)、I=本次发票该行净额，按整数币种单位检查100×abs(I-E)<=E；E=0时仅I=0自动通过。净额包含商业折扣及按数量比例分摊的原应税费用，剔除税；税内订单使用保存的税内提取净额，不拿当前税率重算原承诺。超价仅可有明确例外批准，超量/错行/错伙伴不能例外。部分开票后order.cancel只取消其余承诺；已开票部分保留。日后取消关联发票恢复数量：订单未取消则重新可开票，已取消则该数量并入取消量，不自动重开订单。
+
+paymentId为company/现金方向内重复键，改变事件reference也不能二次记款；不批量暗中分配。付款目标credit/advance时现金方向与其原始发票/预付相反，仅退其剩余额，不改变无关发票。发票/订单字段不接收客户端汇总金额/原始事件或GL行，matchingException并不放宽数量限制。advance/apply/credit均保留不可重用新身份及与原source的链。
+
+tradeTerms含dueDays、discountDays、discountPercent、allowPartialDiscount，默认30/7/1.5/true；伙伴可显式选已配置版本。taxCode含ordinary/zero/exempt、互不重叠且含首尾的有效税率区间、deductiblePercent、input/output科目和适用说明。普通默认12须显式配置与选取；零税/免税仍分别保存事实。所选税码必须在伙伴/商品交集；A每行一个码，多组件、自计/条件/预收税不支持时明确拒绝。税率按taxDate、其余新行配置/维度按accountingDate；保存整个发布版本及命中区间，不回填历史税。
+
+输入Command沿D-CORE，sourceRevision仍为新事件0；data中的documentId及expectedVersion才是业务对象身份/版本，不能拿事件reference重用作后续核销。所有数据字段逐操作白名单，数量/价格精确字符串、金额不接收JS浮点。日期链：每个新事件的accountingDate不得早于其全部依赖对象当前最晚事件日；同日按稳定事件序可重放，不能后月核销后再回填较早取消。单据日/税日独立保留，不自动移到开放月。
+
+固定操作族：trade.order.create/cancel（仅非库存）；trade.ap.invoice及trade.ar.invoice；trade.ap.payment及trade.ar.receipt；trade.ap.advance及trade.ar.advance；trade.apply；trade.credit；trade.document.cancel；trade.settlement.reverse。side/角色与目标类型不匹配拒绝。不接受库存类型，业务重复键独立于reference。
+
+### 精确计算与核销
+
+共享decimal计算使用BigInt系数/10的幂及对称half-up；最终金额转安全整数，API不返回BigInt。税外：数量×单价×商业折扣后加应税费用，量化净额，再算税。税内：同样计算并量化含税总额，再以1+税率提取净额，税=含税额-净额。应税费用以币种精度输入，单价/数量最多6位。输入缺税码/越有效期不返回0。
+
+行模式逐行half-up；单据模式按税码及相同税处理分组，对精确税额合计量化，以各行向下整数及最大余数分配尾差，同余按不可变输入行序。税内模式保留各行已量化含税额，再由分配税反推各行净额，保证总额守恒。采购在最终行税分配后逐行计算可抵扣=half-up(该行税×抵扣比例)，不可抵扣=该行税-可抵扣并进该行费用；不另按整单比例二次舍入。AR不扣减销项税。税事实保存原始净/税/总额、抵扣分配、算法及来源；新贷项按原事实累计比例反向，末次吃尽原余额，不按现行税率重算。
+
+付款以**选择的核销总额G**为输入，而非对现金倒算一个可能超额的核销量。对每个目标，用剩余net/tax按G/remainingGross分配，net half-up、tax=G-net，最后一次直接取尽；不得丢失净/税剩余。选择现金折扣且本次付款accountingDate在原发票documentDate..documentDate+discountDays内，折扣=half-up(本次被核销net×保存的discountPercent)，现金=G-折扣；不得以付款documentDate/taxDate回填取得折扣。allowPartialDiscount=false时仅原发票无有效结算且G等于原始全部gross可拿折扣，最后一笔剩余付款也不能追认折扣。过期/不允许部分折扣拒绝请求，不悄悄忽略选项。普通现金折扣不改原间接税。
+
+trade.apply只接受invoice目标；对source及target各自按amount/各自剩余gross分配net/tax，half-up净额、税为差额，尾次分别取尽；advance原本net=amount/tax=0。两边gross同时减少相同amount，不拿现金折扣、不重算原税、不改变无关对象。账面现金明确不等于银行生成/清算/实付状态。
+
+结算/退款/应用的控制或预付科目一律取各被核销对象的原始角色快照，不能随伙伴新profile改投别处；现金及折扣科目取动作当日有效的当前profile。部分贷项的费用/收入及税科目取原发票行快照。所有新金融行的实际科目仍须在动作日有效并满足原角色/维度；原快照科目停用时明确拒绝，提示先显式恢复原科目或撤销业务依赖后精确取消，不偷偷换科目。未用到的新profile控制科目不替代历史控制。只有下面完整历史反向免于新配置限制。
+
+原控制维度是首次落GL后的最终维度集合，不只是会被新fixed/default重解释的原输入。按“科目+完整最终维度集合”合并控制/预付段，保存原gross和未核销gross；先将维度键按ASCII码点排序生成规范JSON，再按该字符串码点序排列各段，不用localeCompare。设本次待分配整数为A、所有非零段剩余gross之和为G：除最后非零段外，依序分配half-up(A×本段剩余gross/G)，然后同时扣减A和G；最后段取剩余A，零剩余段分配0。每步都用当步剩余A/G，不是按初始总额独立舍入各段。分配后扣减各段余额；反向恢复保存的实际原分配，不重新估算。文档级net/tax继续按前述原规则分配，控制段分配的是gross，不另改变原税。
+
+整数oracle：规范序DEPT=D1/D2/D3三段剩余gross分别2/3/2，总额7个最小单位。先核销3：D1=half-up(3×2/7)=1，D2=half-up(2×3/5)=1，D3取尽1；剩余1/2/1。再结清4分配1/2/1，各段归零。反向首笔则精确恢复1/1/1，不以此后余额重算。
+
+应用的source/target分别沿自己的原段分配，不能全归新伙伴默认段。相同控制科目只有每个完整维度集合借贷均净零才可省略GL，不可仅比较科目：例如AR原贷项控制贷5/D1应用到另一发票借5/D2，应用必须产生控制借5/D1、贷5/D2两行，不能因科目相同而无GL。当前合法性校验后还须保证最终集合未被重定向，否则明确拒绝。现金/折扣仍按当前配置处理，不能反过来改原控制段；完整历史反向继续保留实际原行及内部平衡。
+
+原创独立oracle：净额73.19、普通12%税外得到税8.78/总额81.97；税内输入81.97提取net73.19/tax8.78。合格全额净额折扣1.10、现金80.87。首笔核销40.99时net36.60/tax4.39/折扣0.55/现金40.44，剩余gross40.98/net36.59/tax4.39。单据舍入例：三行各净0.03、12%，行模式税各0/整单0；单据模式精确合计0.0108，量化税0.01仅给第一行。三行各含税0.03时单据税同为0.01，行净分别0.02/0.03/0.03。用于测试的数字不是来源案例；过期第二笔不再拿折扣。
+
+### 纠错、历史与一致性
+
+非库存贷项保存原发票/原行身份、可贷数量及累计净/税分配，产生反向未结项，不偷偷修改已付原发票，不代表实物回库；通过显式apply或退款处理。document.cancel明确支持invoice/credit/advance：三者均须全额未结且无有效付款/退款/应用；invoice另须无有效贷项，credit取消另恢复原发票可贷数量，invoice取消另恢复关联订单数量。需要更新的全部对象版本及最晚事件日均纳入校验；已取消对象不能再取消。有效依赖先显式反向，不能以退款代替录错纠正。settlement.reverse恢复原核销量/分配，不能超过合法原余额，不能把反向现金称银行退票已处理。
+
+这两族完整历史反向通过描述符允许的`historicalReverse`计划意图，由核心自行查同company原source/凭证并复制全量原规范化反向行（含内部平衡），验证允许的操作族及唯一有效取消；客户端不可提交该意图，不能通过普通业务行校验绕过任意停用限制。部分贷项新行仍经当前角色、维度与科目约束；无法合法过账则全拒绝并说明，不改原账。
+
+读模型完整重放产生当前状态；月末历史投影只包含accountingDate不晚于月末的事件。依赖日期链保证被包含事件的前置也包含，未来核销不抹掉早月未结项。查询保留原profile/control/tax/terms快照，不按当前停用/新分组丢记录；历史操作仍对**最新全量状态**预览，界面明示两口径。未结净/税/总额及信用/预付符号分列，不把客户净余额误当单一AR控制余额。
+
+发票dueDate=原documentDate+保存的dueDays自然日；账龄以所选月末减dueDate的整日差计算，<=0为notDue，之后为overdue1_30、overdue31_60、overdue61_90、overdue91Plus。按剩余gross分类，不含已取消发票；credit/advance各自按正数gross单列，不填逾期桶也不与发票桶静默抵消。API每个未结项返回kind/side/documentId/party/currency/version、documentDate/dueDate、remainingNetMinor/remainingTaxMinor/remainingGrossMinor、overdueDays/ageingBucket及controlAccount/sourceReference；credit/advance的dueDate/overdueDays/ageingBucket为null。ageing汇总包含invoiceGrossMinor、上述五个桶、creditGrossMinor和advanceGrossMinor，全部来自同一未分页的asOf投影。当前全量版本与月末历史版本分开返回。
+
+完整性检查新增权威事件结构/版本重放、source/facts/receipt一致及贸易自身控制科目GL净额守恒。全部控制GL与贸易子账核对另输出未归属来源/差异，不因金额平衡称业务全对；其他注册模块/测试来源不能被悄悄吸收成贸易余额。CLI备份/恢复必须验证新投影，不只复制GL；现有v1无贸易历史库继续可只读检查和恢复，不增DDL或自动种子。
+
+### D-TRADE-CACHE：可丢弃已验证前缀（补充G2待审）
+
+对应NFR-T01、FR-T03/08及TC-T12/15。选择每个EnterpriseBook句柄内按法人隔离的私有已验证前缀，而非新增持久余额、信任receipt后像或跳过归档验证。缓存记录全局revision、最后唯一source.accept整数审计id、经完整校验的当前领域投影及历史重放所需已验证事件。初次构造（包括readOnly）在一致读快照内从空状态全验；关闭/重开丢弃缓存，不随备份迁移。
+
+每次预览/读取及BEGIN IMMEDIATE中的确认，先在该操作自己的SQLite快照内核对revision/接受水位。相同前缀直接复用；新增事件严格按审计id加载，继续执行原命令、归档配置、facts/receipt/GL/审计的完整校验，再运行同一纯planner。只有配置/其他业务改变时可复用不变的已验证领域前缀，但新动作仍读当前配置/期间并绑定新的全局版本，绝不因缓存保留旧token。另一句柄已提交的后缀必须在当前操作内补齐；水位倒退、前缀不可信或不一致显式失败或从空状态全验，不静默接受。
+
+规划不许直接修改共享缓存对象，返回的API对象也不能成为可修改缓存引用。新事件的状态仅在SQLite提交成功后发布；可选择提交后只留旧可信前缀、下次增量补验，而不是提交前乐观推进。失败、token冲突、存储异常及ROLLBACK不能缓存尚未提交事件；事务读到的候选缓存不得越过回滚后真实水位。原封套已接受重试继续优先且零新增。
+
+历史视图使用已验证事件、原归档配置及自身前置状态，不能直接把当前对象按日期筛选。同一法人年度最多保留12个月末投影。对每个新增事件，严格按接受audit.id顺序应用到**所有asOf >= accountingDate的已缓存切点**，更早切点跳过；不是只更新事件所属月份。独立单据可晚录入并回填开放早月：已缓存二月及三月后再接受一月15日独立发票，二月及三月都必须增入它；日期链仍约束已有依赖对象，不能借回填绕过。若淘汰，按已验证序列确定性重建，不再逐个查询/校验旧GL。当前版本及月末版本仍分别返回；未来结算不抹早月历史，回填也不能遗漏晚月。缓存/历史投影不可跨法人或被分页结果代替。
+
+integrity()必须绕过缓存，在一致读快照中从空状态全验全部贸易来源/归档版本/事实/GL/审计及守恒；成功后才可替换缓存。备份快照和独立恢复通过无先验缓存的readOnly构造及完整性检查同样全验，坏事件不能因热路径成功被掩盖。直接手改数据库不属于支持的写入接口；热缓存不是持续物理防篡改监视器，显式完整性和重开仍必须发现损坏。
+
+验证拒绝仅靠“耗时变短”推断正确：用SQL调用计数或等效只读探针证明热路径没有重新逐事件验证已接受前缀；独立比较热/冷当前及历史结果、两句柄新增/配置变更、失败后余额、回执与完整强制重放。另记录400张五行发票从首笔到末笔、分页读取及重开的耗时作为本次规模证据，不承诺跨机器容量。原全量检查的线性成本、GL聚合和状态安全复制仍可存在，不把所有操作虚称常数复杂度。
+
+### API、UI及边界
+
+复用configure/preview/post；增加只读GET `/api/erp/trade?company&month&kind&party&status&cursor&limit`，company/month必须，其他枚举/分页严格校验，返回明确asOf/currentVersion/总数/游标。不得用分页后的事件计算余额。详情由明确documentId或source查询，不把全部历史每次传前端。新增trade/tax期间模块，但createCompany的既有字段不扩展，所有新旧法人默认仍仅原五模块；只在期间配置明确勾选并确认后开启trade/tax，不因扩大MODULES合法值集合自动启用。固定描述符校验requiredModules数组：订单/预付/结算/应用为trade，发票/贷项及其取消同时需trade与tax；全局hold及permanent仍禁止新动作。
+
+`public/enterprise-trade.js`提供独立伙伴/商品/配置表单、发票行编辑、订单匹配、未结项选择/付款/预付款/应用/贷项及详情。不是任意JSON业务编辑器。现有ERP组件仅负责挂载/公司月上下文和刷新通知，旧核心操作选择器不把新贸易操作误渲染成手工纠错。数据/金额/版本改变即撤预览；同公司同月轻刷新保留无关输入，跨上下文迟到响应不能回填。新文字进成对label，关闭教学仍可操作且保留现金/税/非生产边界；主题/语言不重建表单。AI尚未接入新贸易，不自动外发伙伴、发票或来源。
+
+独立作者可在G3后并行实现无文件冲突的纯decimal/tax计算器与贸易UI；核心/领域事件整合归单一schema/API作者。具体任务、角色及文件白名单只在G3释放后写tasks。先TDD验证普通/精度/版本/竞争/日期/回滚，再全172旧回归、新HTTP和真实隔离UI、独立各G5及跨任务G6。不得在原4173或本地既有账套演示新业务；公开和本地交付沿前里程碑的实际hash基线。
+
 ## D-CORE：44目标的共同契约与M-CORE基线
 
 范围为[POLICY-01及FR-C01..08](requirements.md)。旧章节的待决/仅规划措辞保留为历史，不能覆盖当前全44目标实施授权；也不能把本节写成已经实现或已经评审。
