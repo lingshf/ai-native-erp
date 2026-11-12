@@ -68,3 +68,106 @@ Local发布时API仅以静态adapter托管构建后的web/dist（产物仍独立
 | TC-AM01-05 / FR-AM01 | HTTP404/405、health未知/重复query、坏JSON/错误content-type、测试注入port异常500；额外DTO字段/未知错误码/漂移OpenAPI | 各真实非200响应均严格符合全部错误schema、requestId非空，不含栈/路径/原body；静态未构建503显式；OpenAPI/生成DTO任一漂移CI阻断 |
 
 M01的精确实现任务只在其独立G3后加入tasks。M02/03/04可在固定契约后分文件并行，M01不能提前宣称这些阶段已完成。
+
+## M02双数据库与只读桥（revision3 G3已释放；实现/验收进行中）
+
+### 本阶段事实、范围与模型
+
+M00/M01已实际发布，公开M01代码1574db67、状态69cdb211的全新clone各238项、build/typecheck通过。以下不是这些既有审查所批准的实现。作者实际gpt-6.1-sol；驱动、并发、DDL与精度为高风险，独立G3/G5/G6请求claude-opus-5.5，实际身份不能独立核实时保留MODEL01，仅涉及身份、不豁免具体缺陷。
+
+本阶段交付真实SQLite/PostgreSQL仓储/UoW共同契约、显式版本迁移及旧教学库只读试算/总账桥；不开放新财务写API，不切原账，不把存储契约测试当作已实现审批或双库完整ERP。M03消费只读桥，M04实现真实身份，M05才接领域写入/持久审批与完整GL约束；贸易在M06恢复。当前无Docker/Podman/psql，真实PG运行必须解决后才能标M02完成，不用mock、pg-mem或WASM数据库替代网络PostgreSQL驱动/多会话验证。
+
+G2研究时事实（不是当前安装状态，执行记录见reviews）：CDN曾列Kysely0.29.9/better-sqlite3 13.1.1，但当时配置registry精确查询404；实际可取得的元数据候选为Kysely0.29.8、pg8.23.1、better-sqlite3 13.0.3，当时均尚未安装/运行。13.0.3的npm dry-run包清单实际含win32-x64.node及其他平台预编译模块，依赖node-addon-api；不能用旧版本V8/prebuild-install记忆替代本版本证据。后续实际确认包无显式install/postinstall脚本，但有binding.gyp，会触发npm默认的隐式node-gyp rebuild；因此本阶段支持的恢复命令仍明确使用npm ci --ignore-scripts，实际加载随包原生模块，禁止静默编译/自动装编译器。这是安装机制说明修正，不改变G3恢复门禁；后续README与干净clone保持同命令。记录包SRI、实际加载.node SHA256、Node版本/ABI/N-API及平台，不声称未测平台可用。版本、依赖完整性及当前Node/Windows真实兼容性须安装后实测，再锁入唯一package-lock。公网registry当时TLS不可达，包SRI没有独立公网交叉核实，安装只用已配置可信源；公共lock保持标准npm URL及实际完整性值，不泄漏源地址，不关闭TLS。候选来源：[Kysely](https://github.com/kysely-org/kysely)、[node-postgres](https://node-postgres.com/features/types)、[better-sqlite3](https://github.com/WiseLibs/better-sqlite3)。
+
+### FR-AM02 / AR03、05、06、08
+
+| ID | 可观察验收 |
+| --- | --- |
+| FR-AM02-01 作用域/仓储边界 | application定义异步UoW、分级作用域锁、回执/审计ports；SQL、Kysely、驱动仅在infrastructure。目标仓储必须有其类型规定的完整scope；M02回执/业务审计只支持CompanyScope，tenant/book业务回执留M05。非法/空/越级scope拒绝，关联与唯一键包含完整所属scope。无任意SQL/万能CRUD端口，controller无SQL。本阶段消费者是实际共同仓储契约套件和只读CLI，不新增无关示范业务。 |
+| FR-AM02-02 真实双库/精度 | 同一仓储契约在真实SQLite及真实PG通过。驱动精确读写有符号int64，领域/API最小单位保持安全整数、scale0..4，不静默Number转换。JSON、布尔、排序、空值及FK行为明确映射；两方言非法约束真实拒绝。 |
+| FR-AM02-03 UoW/并发 | SQLite从BEGIN IMMEDIATE到COMMIT/ROLLBACK独占写连接，支持跨await但不能交错、嵌套重入或用过期session；独立只读连接由读mutex串行持有完整WAL快照，不共享并发BEGIN。PG按高层锁先行及固定序取得tenant/book/company锁，不同company可并行，共享book/tenant配置写与下级写互斥。任一步失败全回滚，未等待仓储操作或吞掉底层失败不能假提交。 |
+| FR-AM02-04 版本迁移/不可变证据 | 只对显式新目标执行迁移，方言脚本有序/校验和/迁移锁；重复无变化，并发仅一方执行，未知/未来/缺失/改过脚本或陌生非空schema拒绝。失败不留半DDL或成功版本。回执及审计禁止UPDATE/DELETE，跨scope关联、重复业务键/不同指纹明确失败。 |
+| FR-AM02-05 只读旧库桥 | 只接受M00 manifest重新验证过的独立旧教学快照，node:sqlite readOnly连接，不调用会执行DDL/种子的Book构造器，不直接打开活动原账。提供同月三阶段试算和完整总账的只读port/CLI；保留原ID、维度、名称、停用历史及旧月结/调整冲销语义，明确显示snapshot基准而非实时。读取无新库/迁移/种子/WAL checkpoint，原源及快照内容不变。 |
+| FR-AM02-06 故障/重试/生命周期 | 只有已知“事务必已回滚”的PG40001/40P01和BEGIN前SQLite BUSY可按显式可重试策略最多3次；每次重开完整事务。网络断开/未知COMMIT结果不自动重放。关闭等待在途工作，拒绝新工作，再释放连接/锁；错误稳定分类，不回传SQL、连接串、路径、原请求或栈。 |
+| FR-AM02-07 可运行验收/保护 | 提供明确Local测试及真实双库验收命令；PG缺失是双库套件失败，不跳过或以Local通过冒充双库通过。工作区旧302测试身份及M01全部56项保留；公开旧182与M01的56项保留。真实原账/ID3/未提交贸易不改。Server HTTP档案仍拒绝，M01偏好/label/健康状态行为不变。 |
+
+### D-AM02：目标存储、事务及迁移
+
+**范围类型与最小持久模型。** 定义判别类型TenantScope={level:tenant,tenantId}、BookScope={level:book,tenantId,bookId}、CompanyScope={level:company,tenantId,bookId,companyId}，禁止越级省略或附带多余ID。各ID沿现ERP代码约束1..60个ASCII字符、首位大写字母或数字、其后大写字母/数字/`_.:-`。tenant独占模式只操作tenant技术版本；book独占模式只操作book及其所属技术范围；company模式才暴露回执/业务审计仓储，所有记录三ID NOT NULL。tenant/book业务回执与业务审计另在M05按真实用例设计，不用虚构company填空。schema迁移及独立provision CLI/port是基础设施生命周期操作，不伪装成company业务回执。scope对象由可信应用边界产生，不能把它本身当授权证明。Fiscal year归领域/后续GL存储，不用当前锁水位冒充财年或审批依赖。
+
+第一版目标迁移只建立本阶段实际消费的技术基础：tenant、book、company作用域/锁行与0..MAX_SAFE_INTEGER技术revision（增量溢出拒绝）；按CompanyScope/operation/key唯一且含principal/fingerprint/result/version的不可变回执；按CompanyScope的追加业务审计；schema_migrations版本与方言校验和。外键逐级包含所有scope字段，删除行为RESTRICT/NO ACTION，绝不级联删除证据。回执operation为1..60字符小写操作码，key为1..100字符可打印ASCII，principal为1..255字符无控制符的可信内部身份ID，fingerprint为64位小写hex。回执JSON版本1，边界限定UTF-8序列化后64KiB、深度20、每对象/数组最多2000项、安全整数及普通/null原型对象；拒BigInt、非整数/NaN/Infinity、循环对象和危险字段。以确定性canonical JSON文本保存，PG不以jsonb物理键顺序作为指纹或结果相等依据，读取也重新校验；不是无schema存整套ERP。实际GL/配置/审批表及outbox由拥有它们的M05/M07详细迁移加入，不能把基础receipt当成已有财务业务回执。测试来源使用独立`adapter.contract`操作，不对HTTP开放。
+
+作用域技术revision只用于锁定/CAS和观测，**绝不纳入持久审批依赖或业务计划摘要**；相关业务配置/期间/对象版本仍由M05单独拥有。company UoW固定“取得层级锁→查回执→比较绑定→业务/CAS及审计→提交”，不在锁外先查幂等；同company FOR UPDATE也串行化同键竞争。回执仓储比较完整scope、operation、key、principal及规范请求fingerprint；相同绑定返回同一结果，不同绑定产生冲突，不返旧结果。M04/M05调用前必须先核当前授权，本阶段没有“知道回执键就有权”的HTTP接口。审计记录实际传入的可信操作上下文；不把本阶段测试principal称真实登录者。
+
+**SQLite。** 目标采用better-sqlite3/Kysely，旧桥仍node:sqlite。只支持显式磁盘文件，不用独立`:memory:`连接伪装共享读写库；默认不从旧DATA_DIR/.env寻找数据库。首次初始化独占新建文件；已有非空文件须先以文件头application_id认定新ERP命名空间，旧教学/ERP或陌生文件在打开SQL连接/改PRAGMA前拒绝。已有目标仍需核全部schema/版本，不把标记当完整性证明。foreign_keys开启、busy_timeout=0，WAL只在新目标或确认属本应用的目标上、迁移事务外设置；BEGIN BUSY可按获准策略最多3次并异步退避25/50ms，不让同步busy_timeout阻塞事件循环1秒。写事务自定义Kysely driver的beginTransaction为BEGIN IMMEDIATE，不能假设默认BEGIN就是相同隔离。
+
+SQLite新文件的application_id必须在默认DELETE模式下先独立持久化到主文件头，再启WAL和迁移事务，不能只把标记写进尚未checkpoint的WAL而误拒合法重开。标记本身不是成功schema版本；中断后空/未完成的本应用目标仅可由显式迁移恢复，普通启动仍阻断，失败不删该文件。已有文件必须在任何写PRAGMA前完成所属schema/版本预检查；不为修正标记而checkpoint或修改旧库。
+
+写调度器只允许一个callback从BEGIN至终态占用写连接。另有一条只读连接和独立read mutex，**读UoW也从BEGIN/首次读取至COMMIT/ROLLBACK独占该读连接**；并发读先排队，不能在同一连接交错快照，写连接仍可在WAL上独立提交。读写callback内禁止再次开启同存储的read或write UoW，AsyncLocalStorage明确拒绝，不暗中路由到另一快照；写callback如需读己之写，必须用本write session的仓储。一个Local存储实例拥有这两连接，API/job共用实例，不能为每请求重复打开writer。
+
+读/写调度器各最多64个等待者、排队最多1秒；超限/超时明确busy，不入队无限等待。读callback也有10秒取消预算；挂起reader超预算后session失效、已在途操作结束后ROLLBACK再释放read mutex，晚到callback不能再访问DB，不必等待其永不解决的外部Promise才能释放连接。等待及执行预算分开记录，不能把只读操作排除在取消/关闭逻辑之外。
+
+session关闭后所有调用拒绝。callback协议要求await/return全部仓储操作；运行时保证提交前无在途操作且无sticky failure，若仍有未完成操作则先使session失效、等待/取消在途语句、回滚，不假提交。不能声称检测一个已经成功settled的Promise是否曾被await，catch底层失败也不能清除sticky failure。Local callback也有10秒取消预算，但同步原生语句不能被JS定时器即时中断，必须记录超出预算的实际耗时，不声称硬实时限制。超时不能靠Promise.race提前释放仍运行的事务；取消先使session失效、等待已提交给驱动的语句结束并回滚，再释放调度器。启动/关闭故障释放已经打开的资源，原文件不删除。
+
+Local只支持单API进程/本机磁盘，跨进程SQLite竞争只用来证明BUSY/失败不破坏原子性，不宣称多进程Server支持。同步驱动的Promise签名**不等于非阻塞IO**；记录每次有界语句和事件循环停顿实测，不能用吞吐平均值掩盖最长停顿。长报表/job及大容量出口另在M07/M08处理，未测/超预算如实保留。目标库不允许网络共享盘，配置由操作员显式选择；不靠文件名判断原账身份。
+
+**PG。** 支持PostgreSQL18，使用独立pg Pool（每池int8→BigInt解析，不改全局type parser），Kysely PostgresDialect。普通写READ COMMITTED；多查询一致读REPEATABLE READ、READ ONLY。所有锁请求在开始前确定所需模式：普通company写tenant FOR SHARE→book FOR SHARE→company FOR UPDATE；book独占写tenant FOR SHARE→book FOR UPDATE；tenant独占写tenant FOR UPDATE。跨scope先按层级，再用JS逐字符ASCII比较预排完整ID元组，**每个锁行单独一条参数化SELECT取锁**，不依赖IN/ORDER BY、localeCompare或数据库collation保证取锁顺序；不先共享再升级。独立provision port按tenant→book→company执行INSERT ON CONFLICT DO NOTHING再核/读取父子关系，避免23505使PG事务abort后又假装可继续；普通UoW不暗中创建scope。作用域创建也是同一事务，不复用来自其他scope的行。
+
+provision明确使用READ COMMITTED，使ON CONFLICT后的重新SELECT可见并发已提交行，不在REPEATABLE READ复用旧快照。分级scope及技术版本仍不构成业务授权。
+
+PG18事务内显式SET LOCAL lock_timeout=1秒、statement_timeout=5秒、transaction_timeout=10秒并验证，作为可调整运行护栏，不是性能SLA；不在不支持该参数的旧PG上静默删掉限制。rollback故障使连接销毁，不将污染连接放回池。最多3次可重试事务每次重读全部数据；仅40001/40P01可重试，其他完整性错误不重试。UoW不执行网络/AI/邮件或其他外部副作用；未知COMMIT结果交由应用原幂等键查询，不能重跑不明结果。M02不宣称已经实现Server RLS/真实身份；M04/M05另加非owner角色及真实授权/RLS池复用测试。
+
+transaction_timeout从实际设置时开始计时并可FATAL终止整个session，不是普通语句超时；归类为不可自动重试的事务超时，销毁client并重建连接验证池健康，不把此client放回池。COMMIT阶段若结果不明仍按不明结果处理，不能仅凭timeout文字重放。
+
+**整数、JSON与顺序。** better-sqlite3开启defaultSafeIntegers，PG int8保持BigInt；所有业务minor、ID、版本/计数过明确范围检查后才转number，超界显式拒绝，不把SQL类型声明当运行时转换。新增纯domain安全整数/BigInt累计行为只有在只读桥实际消费时提取，不创建空领域目录。底层有符号int64极值由测试专属临时表证明驱动无舍入；业务金额测试仍以MAX_SAFE_INTEGER边界为准。PostgreSQL NUMERIC不转浮点。布尔、JSON列由方言adapter规范到共同类型，排序使用业务显式键，不依赖数据库默认collation、rowid或自然顺序。
+
+**迁移。** 采用基于Kysely连接的自定义runner，替代宏观方案原候选Kysely Migrator：后者没有这里要求的逐版校验和，且SQLite adapter不承诺事务DDL。本阶段详细决定以本段为准，同步修订architecture§6/ADR，不同时维护两套版本表。新目标用schema_migrations（顺序ID、方言、UTF-8/LF规范SQL的SHA256，除此不trim/改内容）；不是旧user_version=1原地升级。SQLite以application_id独立标记新命名空间，未知/旧库在任何PRAGMA写前阻断；首次并发init允许一方成功、另一方明确busy/初始化中，之后重复迁移应幂等，不接管未标记陌生文件。
+
+显式CLI持有整个迁移运行的SQLite排他调度/BEGIN IMMEDIATE或PG事务advisory lock；PG先取advisory lock，**再查/创建schema_migrations**，只用专属数据库的固定public schema，不从search_path猜表。未知表/对象检查覆盖public，并拒绝意外用户schema，系统schema除外。只允许可事务DDL，禁止CREATE INDEX CONCURRENTLY/VACUUM等非事务步骤混入。重新检查当前版本及全部已应用校验和后才执行。DDL和成功版本同事务，须实测故障后表/trigger/版本全部回滚。应用启动遇落后/未来/改过/断档/混合方言版本或陌生已有表均阻断，绝不隐式迁移。前向迁移为正常路线；回退用独立备份/新目标，不编造破坏性down迁移。
+
+迁移不沿用业务1秒锁限制：PG迁移独立连接使用lock_timeout=30秒、statement_timeout=60秒、transaction_timeout=120秒，等待同一advisory锁后重新检查版本；超过预算明确失败、可显式重试，不保证无限等候。SQLite迁移沿BEGIN前最多3次异步尝试，竞争失败明确busy，迁移callback预算120秒且仍遵循原生语句不可即时中断边界。校验和精确定义为CRLF转LF后的UTF-8 SQL，拒BOM及剩余孤立CR，除此不改；实际新增.sql时同时用.gitattributes固定eol=lf，不能仅依赖作者机器core.autocrlf。
+
+两方言分别实现回执/审计不可变触发器和必要CHECK/FK/唯一约束；真实原始SQL更新/删除必须失败，PG另用BEFORE TRUNCATE语句trigger拒绝清空，父scope删除用RESTRICT/NO ACTION，不能仅测repository没提供方法。SQLite需额外typeof整数检查，PG用BIGINT类型及范围；JSON有效性/安全值在边界和DDL各自承担可验证部分。M02测试的owner可改DDL/禁trigger，不宣称抵御数据库所有者；M04再以真实非owner运行角色禁止DDL/TRUNCATE/禁触发器及越权。M05才增加GL借贷/封印等完整约束，不用本阶段技术表证明这些已存在。
+
+### D-AM02-LEGACY：旧教学只读投影
+
+只读bridge直接查已有accounts/periods/journals/lines及可用维度表，先核必需列、有效schema形状、FK/数据库完整性；未来/陌生结构明确拒绝，不回退“空账”。CLI先调用既有M00消费者重新核完整manifest、文件字节/摘要及逻辑完整性，再由可信装配配置选择其中teaching快照；不从HTTP接收文件路径，没有默认原账路径。基础设施只接受这个已核、独立且无活动writer的快照；拒不存在/空文件、目录、符号链接、WAL header或sidecar，不打开活动原源尝试“验证无写”。缺可选历史属性时仅按旧兼容规则处理，不写回填记录。关闭或异常须结束快照并释放连接。
+
+关闭M00验证连接后不能盲信后续路径未变：bridge打开自己的readOnly连接后立即BEGIN并执行首次读取，持有rollback-mode SHARED锁，再核文件头18/19均为1、物理SHA256与manifest相同及前后文件身份相同，才服务该固定快照；全过程无WAL sidecar，身份/摘要不符失败。持锁至bridge关闭，正常SQLite writer不能在此间改变该快照；明确仅信任私有目录操作员，不承诺抵抗拥有同目录写权限、绕过SQLite锁的恶意文件替换者。游标是严格有界的base64url上下文（最多1024字符），绑定snapshot SHA256、account、month及最后(date,journalId,lineId)，字段/位置无效或上下文不同拒绝；它不是授权凭据，M03/M04仍独立核scope。分页只使用该快照，不把重新验证后不同文件的游标沿用。
+
+试算输入有效month和stage=unadjusted/adjusted/postClosing；总账输入有效month/account及显式稳定游标和页大小1..100。不存在期间/科目明确not-found，停用历史不隐藏。按会计日、journal ID、line ID稳定读取，原始ID不改；维度保留原始值，名称不翻译。试算是截至所选月的累计余额：unadjusted只在当前月排除closing、adjusting及调整来源的冲销，adjusted只在当前月排除closing，postClosing全纳入；之前月份保留历史。完整总账不带试算阶段过滤、包含当月调整/冲销/结转，opening与closing覆盖完整范围，分页不能改变总计。逐行精确累计，溢出显式失败，不用返回0掩盖。
+
+新桥先用独立Book夹具对比旧reports/ledger三个阶段、跨月调整冲销、关闭月份及维度；不导入/构造真实Book来读取实际原账。单纯readOnly打开WAL在某些条件下会创建SHM，因此M02固定读经验证的独立非WAL快照，并显式返回snapshot基准，**不得偷偷checkpoint、复制主文件忽略WAL或声称实时**。测试用WAL源通过既有M00一致快照工具保护原源，桥不接原WAL路径；消费后比较原主/WAL/SHM、快照及目录名字。若VACUUM输出仍为WAL header则明确失败并返回G3解决，不修改原源或静默改快照journal_mode；不能假定任何readOnly连接均天然零写。
+
+G2已单独做原生可行性探针：当前Node26/Windows下，DELETE源header[1,1]及持有未checkpoint提交的WAL源header[2,2]，经readOnly连接VACUUM INTO均输出[1,1]独立快照、保存提交值，专属夹具已清理。这不是新桥TC通过；M02自动化仍须对真实M00工具做首个header断言。若其他受支持运行时不符，固定失败并回G3，不偷偷改变M00工具/原源或接受WAL快照。
+
+只读CLI输出所选报告及明确sourceKind/snapshot基准，不输出连接凭据；财务输出只给显式本机操作员，不自动发送AI或保存到公开证据。M03后续才冻结HTTP DTO、scope授权边界、分页上下文及React消费；M02不改health的data=unconfigured，不把桥输出接到尚无鉴权的Server入口。
+
+### D-AM02-RUNTIME：真实PG测试运行时
+
+首选官方PostgreSQL Windows页链接的[EDB portable binaries](https://www.postgresql.org/download/windows/)，固定PG18主版本（具transaction_timeout），具体补丁版先以官方元数据核实后精确固定URL/SHA256；CI真实PG也须18。只在私有专属工具目录解压，不装服务、改PATH/系统账号/防火墙，不提交或复制二进制、集群、日志和凭据。正常TLS校验证书，若发布者提供独立校验和/签名则实核，若无则明确记录“信任发布者HTTPS、首次本地指纹”，不能声称已独立验证发布者签名。未知来源/版本漂移/后续指纹不符拒绝执行。npm的embedded-postgres有EDB→Zonky→npm多次再打包及额外postinstall，不作为默认自动下载源。native SQLite只有实际预编译模块可加载才接受，不自动安装Visual Studio或其他系统编译工具；不兼容须回G3评估node:sqlite自定义Kysely driver，不能未测就静默换驱动。
+
+测试用唯一私有空数据目录、随机高位端口、随机SCRAM凭据、仅127.0.0.1监听、禁止trust认证/外网绑定；通过version()/pg_settings证明确实为真实PG。先探测端口再启动仍有竞争，必须实核启动归属与连接身份，不能误连既有用户5432。PG进程及initdb只由本次创建/记录的精确PID管理；正常/失败均先关池、优雅停自己的集群，再清理自己的确定目录，失败保留私有诊断且报告，不杀同名进程。基础二进制可在私有受控目录复用，测试数据不可跨案例复用；没有运行时双库命令非零退出。
+
+测试基线可使用无TLS的本机loopback隔离PG，这是明确的本机测试威胁边界，不当作LAN TLS验收；Server TLS/OIDC/Compose仍属M04/M08。双库套件须与Local套件分明：默认verify继续完整旧/M01及新增Local测试；单独`verify:databases`强制SQLite+真实PG全部共同契约/并发/迁移测试，两者都通过才释放M02。PG二进制只经显式私有目录配置选择（CI可显式指向其真实service），npm install/test脚本不自动联网下载或装PG。G6及推送后干净clone必须实际执行二者，PG不可用不能只报默认verify通过。CI可用真实PG service，不把CI配置存在当已执行。
+
+### TC-AM02：未来验收，不是执行证据
+
+| ID / FR | 正常、边界及故障输入 | 可观察预期 |
+| --- | --- | --- |
+| TC-AM02-01 / 01/02 | 同一ports契约用两真实库；分级scope，ID长度0/1/60/61、lowercase/非ASCII/前导下划线；两tenant/两book/同名company、错scope FK，并发provision同scope | 正常同结果、外键实际拒绝跨scope；分级类型不省略必需ID，company业务仓储拒更高层scope；provision无23505 abort、各scope恰一行且父子关系正确 |
+| TC-AM02-02 / 02 | 原始驱动int64正负极值；业务安全整数边界/超界，计数、ID、版本；JSON布尔/null、不同键序、BigInt/float/NaN/循环/危险原型、64KiB/深度20边界 | 驱动保持精确；业务超界显式拒绝；共同canonical JSON及显式排序一致，无浮点金额/全局pg类型副作用，非法JSON不落库 |
+| TC-AM02-03 / 03 | 同一SQLite UoW两并发writer；R1快照跨await、W提交、R2排队、R1再读/结束后R2启动，再穿插W2；read/write嵌套、过期session、callback返回时仍未完成的仓储操作或catch后失败；hung reader/64等待者/排队超时 | writer及reader各自完整串行、WAL独立；R1始终旧版本，R2见首个提交且跨W2稳定；嵌套拒绝，写内读用本session；在途未完/sticky失败回滚；读超预算终止、排队超限/1秒等待明确busy，后续请求可继续，晚到reader不能再写/读 |
+| TC-AM02-04 / 03 | 两真实PG会话：同company竞争，不同company同book并行，book独占与company写、tenant独占与book写；跨book/company分别以{A,B}/{B,A}请求同集合 | 实际锁冲突/并行符合层次，单行逐条取锁全序一致、不死锁；超时显式，无共享后升级或跨scope错锁 |
+| TC-AM02-05 / 03/06 | receipts、audit、scope CAS任一步故障；commit/rollback故障、回调超时与取消、真实PG transaction_timeout FATAL、池复用 | 不留半记录；未完成操作不释放连接；FATAL及rollback坏连接销毁、非自动重试，新client健康；状态/超时不串池，不把未知commit结果报成功 |
+| TC-AM02-06 / 04 | 两方言首次/再次/并发迁移、PG锁等待/超预算；半DDL失败、落后/未来/断档版本、校验和漂移、陌生旧库/已有表/用户schema；PG迁移表尚不存在；SQL的CRLF/LF、BOM/孤CR | 只一次、幂等；SQLite竞争可busy，不接管未标记文件；PG先锁后查表、预算内等待后幂等/超预算明确失败；失败DDL/版本回滚；旧库PRAGMA前拒绝；CRLF/LF同摘要，BOM/孤CR拒绝 |
+| TC-AM02-07 / 04 | 原始SQL UPDATE/DELETE回执及audit、PG TRUNCATE、删除有证据的父scope，错scope关联；并发同operation/key同/异指纹及principal | 实际trigger/FK拒改史/清空/父级级联；锁后查回执使同绑定幂等、异绑定冲突且不返旧结果；不宣称抵御owner禁trigger |
+| TC-AM02-08 / 06 | 真PG人为制造40P01/40001及连接断开，SQLite外句柄持BEGIN IMMEDIATE；记录尝试次数 | 只有获准且已知回滚的错误重试且最多3次；未知COMMIT/网络错误不重放；错误无SQL/密码/路径 |
+| TC-AM02-09 / 05 | 虚构旧Book同月三TB与完整ledger，跨月调整/冲销/结转、停用科目、维度、草稿ID3；逐项对比旧引擎 | 金额/范围/名称/ID/维度一致；完整ledger与阶段TB不同有真实原因；没有DDL/种子/写回 |
+| TC-AM02-10 / 05 | WAL有已提交未checkpoint内容，经M00生成并重验快照、首断言header[1,1]；M00验证后在bridge打开前改快照；持有bridge后普通SQLite writer尝试改快照；活动原WAL/无SHM源或损坏/空/缺路径/symlink/错schema | 原主/WAL/SHM、快照及目录项不改；已核快照含WAL提交，验证后改动拒绝，持SHARED后writer失败；活动路径/错误输入打开前拒绝；header不符阻塞回G3，不修改M00/原源 |
+| TC-AM02-11 / 05 | 总账1/100行分页、超长/篡改/错snapshot/account/month游标、非法期间/科目、插入顺序不同、超安全累计 | 稳定排序，opening/closing及总计不受页影响；跨上下文游标/非法输入/溢出明确拒绝，历史停用不丢 |
+| TC-AM02-12 / 07 | 默认Local回归及强制双库命令；故意无PG；npm ci --ignore-scripts后当前Node/Windows实际加载随包原生模块，记录包SRI/模块SHA/Node版本ABI及平台 | 完整旧测试身份无丢失；无PG双库非零而非skip；G6/干净clone同已核Node主版本、无编译fallback；模块实际加载证据不由元数据替代，其他Node/平台未经测试不冒称 |
+| TC-AM02-13 / 06/07 | 运行期间close、重复close、资源部分初始化失败；两次自建PG集群、端口已占/认证错误/异常退出 | 在途明确完成或回滚后关闭，无新请求；幂等关闭，临时数据/自己PID清理，不接/杀其他集群 |
+| TC-AM02-14 / 03/07 | 有界Local批次与单语句/事件循环监测；真实PG版本/loopback/SCRAM/迁移/多连接；原账及贸易冻结比对 | 如实记录时延及未测预算；PG不是模拟；M01 UI/health无改变，原账/ID3/贸易保持，Server档案不提前开放 |
+
+执行状态追加：上述revision3原G2/G3契约已由独立评审释放MODEL01，允许tasks中的M02实现子任务；本次只将历史“待审”改为真实状态，不借旧G3摘要覆盖新实现。T05/T09/T08各G5已释放，T06/07首轮通过后仍有加固复核，组合/发布未完成，实际执行证据见reviews/project。若实测发现改变上述契约，仍必须回到G3；研究/运行时或单项测试均不能替代整体M02验收。

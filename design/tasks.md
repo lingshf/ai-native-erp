@@ -12,6 +12,21 @@
 | ARCH-T03 前端壳/偏好 | done（MODEL01）；固定G3契约，与01/02分文件 | TC-AM01-01/04；UI2/web30、严格类型/build及真实桌面/390px验收通过。两个label冲突更名并真实交叉旧资源；恢复保存清过时警示、保留其他诊断，独立原两Medium已关闭，spec/quality G5释放 |
 | ARCH-T04 骨架组合验证 | done（MODEL01）；01/02/03各G5已释放 | TC-AM01-01..05：工作区358（302+7+49）/公开及本地238（182+7+49）、完整build/typecheck及真实同源UI通过；组合/公共变体G6按MODEL01释放。50文件43新/7更新/0冲突，独立安全及OSV306零已知公告；代码1574db67已快进main且推送后全新clone安装/完整238项/零跳过、构建/类型通过，临时clone已删除。不把骨架称M02/03/04已完 |
 
+### M02实施批次（revision3 G3已释放MODEL01）
+
+只对所核FR-AM02-01..07/D-AM02/TC-AM02-01..14拆解，作者gpt-6.1-sol统一集成；复杂DB/恢复/精度为高风险、独立强推理G5/G6请求claude-opus-5.5，实际身份不可自核保留MODEL01。实现代理若未报告实际模型ID不臆造；共享manifest/lock/入口由集成作者单写，原贸易代码只冻结核对。
+
+| 任务 | 状态 / 真实前置 | 文件所有权与追踪 | 可观察出口 / 测试先行 |
+| --- | --- | --- | --- |
+| ARCH-T05 共享port/精确值与边界 | done（MODEL01）；M02 revision3 G3 | application新storage接口/作用域/技术revision/JSON纯校验；领域金额/旧桥port由T08实际消费时提取，不提前建空domain；FR01/02，TC01/02/11 | 缺模块及边界/类型RED→GREEN；12项app及全部workspace60项/build/types/boundary通过，revision2六hash独立spec/quality G5释放；不以接口通过冒充双库 |
+| ARCH-T06 SQLite/迁移切片 | done（MODEL01）；T05 G5已释放 | 目标存储作者独占infrastructure storage目录及SQLite迁移/测试；FR01..04/06，TC01..08/12/14 | 修订20摘要独立核；双方各真实SQLite31/31及漂移/坏数据/挂起/回滚通过，spec/quality G5释放；仍非整体发布 |
+| ARCH-T07 PostgreSQL对应切片 | done（MODEL01）；T05/T09 G5已释放 | 与T06同一目标存储作者维护共享事务核心，PG方言/锁/迁移及测试分文件；FR01..04/06，TC01..08/12..14 | 父真PG18目标37/37及生命周期CLI1、零skip，含实际FATAL销毁/继承timer/结构漂移；独立20摘要/源码/用例窄审spec/quality G5释放；未冒称reviewer自启PG |
+| ARCH-T08 旧教学只读桥 | done（MODEL01）；T05 G5已释放 | 另作者独占domain旧账投影、infrastructure legacy桥及其测试；CLI与公共exports集成作者统一接入；FR02/05/07，TC09..12/14 | 修订15hash独立重核；13桥/domain+5真实CLI由双方各18/18；双文件WAL前置保护及坏存储分类关闭，scope/旧语义/精确分页/历史/原源保护通过；本项done不是整体发布 |
+| ARCH-T09 官方PG运行时预检 | done（MODEL01）；M02 G3，与T05无依赖 | 仅私有工具/虚构临时集群及证据，不改产品源码/系统服务 | 官方18.7 ZIP/SHA/4PE签名及180007/loopback/SCRAM/错密码拒绝实证；正常停自有PID，密码/集群/ZIP清理，独立parent spec/quality及4SHA/零进程核验通过；非T07验收 |
+| ARCH-T10 M02组合与发布 | in_progress（交付/发布验证）；T06/07/08/09各G5及源/公共G6均已释放MODEL01 | 集成作者独占根manifest/lock/exports/CLI/文档/交付清单；全部TC-AM02，组合G6不由分切片G5代替 | 首轮CLI TLS阻塞经RED→GREEN和原reviewer54摘要/4项CLI/CA探针实际关闭；Local422/公共302、双方各强制双库69、build/type及额外真实TLS-only通过；哈希本地同步→独立security-review→非强制main→干净clone实跑两套完成后才done |
+
+并行批次：A=T05与T09（产品公共契约 vs 私有工具，无共同写文件）；B=T05 G5后的T06/T07目标存储作者与T08旧账作者（各自模块目录，shared exports/manifest不多人写）；C=全部真实出口后的T10。T07可以先写代码但不在T09真实运行时可用前声称测试通过；T06/T07共享核心归同一作者，不把逻辑独立任务伪称同时写同文件。M03/M04尚无各自详细G3，不提前展开其业务/身份代码。
+
 ## 历史提案：ARCH-SME-01（确认前，仅设计）
 
 本节记录授权前状态：M-TRADE当时按用户要求暂停。新增架构需求/ADR/迁移阶段见[architecture](architecture.md)，用例AT-01..11。提案宏观独立G3已释放EXCEPTION (user-approved MODEL01)，当时ARCH-M00..09仍待用户确认及各阶段详细G3；10 planned、0 ready，不运行安装/迁移。当前实施授权与真实完成以本文件顶部为准。

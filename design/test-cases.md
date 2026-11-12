@@ -1,6 +1,6 @@
 # Test cases
 
-当前ARCH-M00详细未来用例见[TC-AM00](architecture-migration.md#tc-am00先失败后实现)，G3前不实现工具。最新执行前完整候选292/292、14语法通过；这是旧运行候选基线，不代表新架构用例已执行。
+阶段详细用例见[实施基线](architecture-migration.md)：M00/M01已经验收发布；TC-AM02-01..14的G3、T05..09独立G5及当前源/公共组合G6均释放MODEL01。当前目标SQLite31+真实PG37+PG生命周期CLI1组成强制双库69项；TLS修订后完整工作区422项（旧302+边界7+workspace113）、公共54文件候选302项（182+7+113），双方各真实双库69及build/typecheck通过、零失败/跳过。Local生命周期CLI现4项，新增显式CA、SSLRequest和拒绝明文回退真实子进程RED→GREEN；另在独立TLS-only PG用运行时生成的虚构证书实际迁移/验证成功，错误CA/无TLS拒绝，证书/私钥及专属数据库清理，不冒充生产PKI。T08修订桥/domain13+CLI5由双方各18/18，目标20摘要/源码/用例及SQLite31经独立窄G5；PG未由reviewer自启。结构漂移、坏持久数据、FATAL、挂起写入及继承timer均有真实故障回归。原reviewer另实际核54摘要、源/公共各4项CLI、独立CA边界及语法后关闭B1；完整及真实PG/TLS仍明确来自父证据。交付/安全/发布后干净clone结果另记，不由G6代替。真实health-only同源壳桌面/390px及三偏好/故障恢复通过，不代表财务页面或原账迁移已完成。
 
 ## ARCH-SME-01 计划验收
 

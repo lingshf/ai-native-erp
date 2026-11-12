@@ -141,7 +141,7 @@ schema中的源、凭证行、政策快照、核销/纠错链、三日期及不�
 
 ## 6. 迁移、版本与恢复
 
-两方言各维护有序、校验和不可变SQL迁移，Kysely Migrator协调执行和版本表，方言特有DDL/触发器由显式SQL管理；在M02验证实际锁/原子能力。禁止生产启动时自动`schema push`，禁止多API副本竞跑迁移。发布操作员先备份→预检查→独立迁移任务取锁→迁移→完整性/版本核验→再启动兼容应用；不支持的schema显式拒绝。
+两方言各维护有序、校验和不可变SQL迁移，方言特有DDL/触发器由显式SQL管理。宏观原候选为Kysely Migrator；M02详细G2提议改为Kysely连接上的显式事务runner及schema_migrations，补逐版校验和、SQLite事务DDL、PG先锁后查表，待本阶段G3，不假称该偏差已获批准。禁止生产启动时自动`schema push`，禁止多API副本竞跑迁移。发布操作员先备份→预检查→独立迁移任务取锁→迁移→完整性/版本核验→再启动兼容应用；不支持的schema显式拒绝。
 
 新目标schema从新的版本命名空间开始，不将旧`PRAGMA user_version=1`伪装成新schema已迁移。旧book.mjs教学SQLite**只在Local loopback独立兼容运行，不迁入PG/新ERP模型**；Server不打开该文件、禁用其读写API/入口，不将单一无scope文件共享给多用户。Server教学样本须另建有真实tenant/book/company授权的ERP sandbox；教学开关不能启用旧接口。新ERP v1导出到中间类型化manifest，附源版本/摘要/计数/映射及断点，导入**新的**目标库。源只读，不修改原触发器或删除旧数据。PG ID、布尔/JSON/排序的物理变化不改变逻辑身份/来源顺序；audit稳定接受序单独映射，不靠新ID自增偶然一致。
 

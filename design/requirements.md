@@ -4,7 +4,7 @@
 
 用户已授权按推荐方案执行ARCH-M00..09，并恢复M-TRADE/TASK24；完整备份/哈希与余额核对、保留ID3及只读原库后切换原预览。DC01..04均为**协调者代为决定，可调整**：React/Vite/TS、Nest/Fastify、Kysely；首交付Local SQLite，另提供PG+本地开发OIDC的Server Compose试点（仅虚构账号），运维/OIDC责任人为用户；预算采为目标非SLA；GL优先。各阶段G3/G5/G6与真实验收不能省略，未完成44FG不宣称完成。
 
-架构需求AR-01..08、预算及具体决策维护在[architecture](architecture.md)，对应AT-01..11计划用例；技术决策见[ADR](adr/ADR-SME-001.md)，阶段详细需求FR-AM00/设计/TC-AM00及运行时限制见[实施基线](architecture-migration.md)。每可用里程碑哈希保护本地同步、独立security-review、非强制快进main、干净clone验证；远端前进则停止并报告，不覆盖。
+架构需求AR-01..08、预算及具体决策维护在[architecture](architecture.md)，对应AT-01..11计划用例；技术决策见[ADR](adr/ADR-SME-001.md)，阶段详细需求/设计/用例及运行时限制见[实施基线](architecture-migration.md)。M00/M01已发布；当前M02的FR-AM02-01..07、D-AM02和TC-AM02-01..14是待独立G3草案，不是双库已实现。每可用里程碑哈希保护本地同步、独立security-review、非强制快进main、干净clone验证；远端前进则停止并报告，不覆盖。
 
 现有OQ-02本机模拟/非生产及OQ-09同库事务约束仍是**当前实现**。目标Server档案将引入真实身份、多用户PostgreSQL及新的租户/账套作用域，须用户确认与逐阶段门禁，不把该提案写成当前已启用功能。旧教学模式及所有既有会计政策不因架构文档改变；原44FG覆盖统计保持。
 

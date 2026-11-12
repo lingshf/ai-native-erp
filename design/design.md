@@ -1,6 +1,6 @@
 # Proposed design
 
-当前用户已委托执行ARCH-M00..09、恢复贸易及在完整保护旧账/ID3后切换预览。宏观架构仍见[architecture](architecture.md)，逐阶段详细设计和FR/TC见[architecture-migration](architecture-migration.md)；先M00 G3，不把高层G3当所有实现许可。
+当前用户已委托执行ARCH-M00..09、恢复贸易及在完整保护旧账/ID3后切换预览。宏观架构仍见[architecture](architecture.md)，逐阶段详细设计和FR/TC见[architecture-migration](architecture-migration.md)。M00/M01已发布；当前M02双库/UoW/旧库只读桥详细G2待独立G3，不把高层或前阶段G3当所有实现许可。
 
 ## ARCH-SME-01：新的长期架构提案入口
 

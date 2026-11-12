@@ -21,7 +21,7 @@ npm start
 
 ## 新架构Local预览（ARCH-M01已发布）
 
-旧的`npm start`继续运行现有账务工作台。新的独立React前端和Nest/Fastify API当前**只提供只读运行状态**，不打开账簿、不提供财务操作或AI；不能用这个骨架代替现有工作台或宣称迁移完成。M00保护工具已发布为`74819f9`；M01代码已快进发布main `1574db67eacdcc1b6c06cb5ca3f6f754dfedb47d`，独立G5/G6保留MODEL01例外、安全审查与本地保护交付完成。推送后全新clone实际`npm ci`、完整238项（182旧测试+7边界+49 workspace）、构建及严格类型检查通过，临时clone已删除。开发工作区另含尚未发布的贸易候选，为358项，不把这些候选能力冒充公开功能。
+旧的`npm start`继续运行现有账务工作台。新的独立React前端和Nest/Fastify API当前**只提供只读运行状态**，不打开账簿、不提供财务操作或AI；不能用这个骨架代替现有工作台或宣称迁移完成。M00保护工具已发布为`74819f9`；M01代码已快进发布main `1574db67eacdcc1b6c06cb5ca3f6f754dfedb47d`，独立G5/G6保留MODEL01例外、安全审查与本地保护交付完成。推送后全新clone实际`npm ci`、完整238项（182旧测试+7边界+49 workspace）、构建及严格类型检查通过，临时clone已删除。M01发布时开发工作区另含尚未发布的贸易候选，共358项；当前M02新增验证仍在进行，不把历史计数当本轮组合成绩或把候选能力冒充公开功能。
 
 完成上面的依赖安装后，在项目根目录执行：
 
@@ -36,7 +36,39 @@ npm run start:local
 
 ## 本地查看完整需求与进度
 
-**架构迁移已获委托执行，尚未全部完成：** [中小企业ERP分层与双数据库方案](design/architecture.md) · [阶段详细设计与验收](design/architecture-migration.md) · [技术选型ADR](design/adr/ADR-SME-001.md) · [14节点架构图](design/diagrams/sme-overview.svg)。M00原账保护与M01独立工程骨架已发布，下一步是M02双库/事务详细设计及独立G3。目标保持Local单人SQLite，并提供PostgreSQL/OIDC的Server试点，目前尚未实现该双库/身份能力。贸易获准恢复，原未提交成果保留到M06移植；原账须备份、核对余额/哈希并保留ID3及只读源后才切换。宏观架构通过评审不代表各阶段已完成。
+**架构迁移已获委托执行，尚未全部完成：** [中小企业ERP分层与双数据库方案](design/architecture.md) · [阶段详细设计与验收](design/architecture-migration.md) · [技术选型ADR](design/adr/ADR-SME-001.md) · [14节点架构图](design/diagrams/sme-overview.svg)。M00原账保护与M01独立工程骨架已发布；M02详细G3及共享接口G5已按MODEL01释放，当前分文件推进双库事务/迁移与只读旧账桥，未发布或切换真实原账。目标保持Local单人SQLite，并提供PostgreSQL/OIDC的Server试点，目前尚未完成该双库/身份能力。贸易获准恢复，原未提交成果保留到M06移植；原账须备份、核对余额/哈希并保留ID3及只读源后才切换。宏观架构通过评审不代表各阶段已完成。
+
+### M02只读快照CLI（实现中，尚待阶段验收/发布）
+
+完成新工程构建后，可显式读取M00保护工具生成并重新核验的独立快照；不从`.env`或`DATA_DIR`选择原账，不读取活动源，也不创建目标业务账：
+
+```powershell
+node scripts\read-legacy-ledger.mjs --help
+node scripts\read-legacy-ledger.mjs trial --snapshot-dir backups\before-architecture --month 2026-01 --stage adjusted
+node scripts\read-legacy-ledger.mjs ledger --snapshot-dir backups\before-architecture --month 2026-01 --account 1000 --limit 100
+```
+
+输出为JSON，显式标注`live: false`、快照SHA和金额`scale: 2`，金额是精确最小单位整数。试算stage可为`unadjusted`、`adjusted`或`postClosing`；总账含当月全部分录，分页只切行、不改期初/借贷合计/期末，使用返回的`nextCursor`传入`--cursor`继续。不合法的参数/快照/游标明确失败，不以空账冒充成功；完整新财务HTTP入口与真实原账切换仍未开放。
+
+### M02目标存储工具（实现中，尚待阶段验收/发布）
+
+新目标与旧账格式不同；[14节点边界图](design/diagrams/m02-storage.svg)区分目标存储与快照只读路径。仅对显式选择的独立本机文件使用以下命令，父目录须已存在。构造/普通启动不隐式迁移，工具不从`.env`、`DATA_DIR`或旧账选择目标，不导入业务数据：
+
+```powershell
+npm run build:packages
+npm run storage:admin -- --help
+npm run storage:admin -- migrate --provider sqlite --file new-target.sqlite
+npm run storage:admin -- verify --provider sqlite --file new-target.sqlite
+npm run storage:admin -- provision --provider sqlite --file new-target.sqlite --tenant T1 --book B1 --company C1
+```
+
+`provision`只建立技术作用域，不是建账、授权或已实现GL；只给tenant、加book或加company分别建立对应层级。旧库/陌生文件在打开SQL或写PRAGMA前拒绝，不覆盖或自动修复。连接关闭成功后才输出成功JSON；错误分类脱敏且非零，不打印路径、SQL或连接串。
+
+PostgreSQL18必须使用独立专属数据库。管理员在本机进程环境提供`ERP_TARGET_DATABASE_URL`后显式选择`--provider postgres --ca-file certificates\ca.crt`，不要把URI写入命令行、日志或公开文件。默认强制验证TLS证书，必须显式提供非空PEM CA文件或bundle（最大1MiB），文件只能含证书块和空白，不接受注释或`subject=`行；不从环境或`.env`选择CA，不接受URI查询参数。缺失、不可读或无效CA明确`INVALID_INPUT`，不悄悄禁TLS。`--no-tls-loopback`与`--ca-file`互斥，仅允许字面`127.0.0.1`/`::1`的隔离测试实例，不是LAN配置。此CLI不代表Server HTTP/OIDC已开放。
+
+**数据库升级边界：** 本阶段只支持PostgreSQL18。结构指纹包含该主版本生成的目录/DDL表示，不能当作跨主版本可移植值；升级数据库可能导致明确拒绝，而不是自动修复。跨主版本升级须另行设计评审、完整备份并在独立恢复副本验证迁移/重建指纹、账务核对和回退，再发布受支持的工具；当前没有在线重签或主版本升级工具。不要直接改`schema_migrations`绕过失败。指纹只证明相对受校验初始迁移的结构未变，不抵御可改版本表/DDL或安装数据库级event trigger的owner/superuser；测试角色不用于生产。逐事务校验的目录查询成本已保留，缓存与容量调优须后续有消费者和负载证据再设计，不以缓存隐藏漂移。
+
+默认`npm run verify`继续运行完整旧测试及新增Local套件；`npm run verify:databases`另行强制运行SQLite和真实PostgreSQL契约及CLI。后者需要显式的`ERP_TEST_DATABASE_URL`，只用隔离、SCRAM认证、loopback的PG18测试实例及可创建数据库/执行故障探针的测试角色；套件只创建/删除随机专属夹具数据库。不要提供业务数据库或生产角色。缺PG配置明确失败而非跳过；命令不自动下载、安装或启动数据库。运行后清除测试连接环境。当前原生恢复实测为Node26/Windows x64、禁用安装lifecycle且直接加载随包模块；其他运行时/平台未验收，不回退编译或自动装编译器。
 
 先打开 **[项目进度总览](design/project.md)**：44FG当前为0整体完成、13部分覆盖、31未实现。这里不把“做过一部分”标为整个目标完成，也不虚构百分比。
 
@@ -113,12 +145,14 @@ restore只创建并校验**独立副本**，不会替换活动账本或切换当
 
 ### 架构迁移前的双账保护
 
-保护工具可对旧教学账及ERP账分别生成一致快照，并附全表/结构逻辑摘要、文件摘要及核验manifest；不会迁移、切换或修改源库：
+保护工具可对旧教学账及ERP账分别生成一致快照，并附全表/结构逻辑摘要、文件摘要及核验manifest；不会迁移、切换或发起源会计数据写入：
 
 ```powershell
 New-Item -ItemType Directory -Path backups -Force | Out-Null
 node scripts\ledger-snapshot.mjs --teaching data\teaching.sqlite --enterprise data\erp.sqlite --target backups\before-architecture
 ```
+
+SQLite的只读WAL访问仍可能更新SHM读标记；已在隔离夹具中观察到M00创建快照时辅助SHM哈希变化，不能把“只读”解释为全部辅助文件逐字节不变。新只读桥仅消费已转换为非WAL的独立快照，并另行核对消费前后源/快照字节及文件名；这不等于已验收真实原账迁移，M08仍须独立备份、核对和回滚门禁。
 
 目标目录必须不存在，父目录必须存在。工具以只读连接包含已提交WAL页；manifest最后独占发布，任一失败非零，不把遗留目录当有效备份。两库分别一致，不是跨库同时刻快照，最终迁移仍需停写重取；既有备份不能覆盖。备份及manifest含财务证据，只保存在私有目录，不提交或上传。后续消费须使用`verifyLedgerSnapshot`重新核文件与逻辑完整性，不能仅检查manifest是否存在；不承诺未经演练的掉电恢复/生产SLA。
 

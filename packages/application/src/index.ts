@@ -1,3 +1,6 @@
+export * from './storage.js';
+export type * from './legacy-teaching.js';
+
 export interface RuntimeInfo {
   readonly service: 'ai-native-erp';
   readonly profile: 'local';

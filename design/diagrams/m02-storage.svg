@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820" role="img" aria-labelledby="title description">
+  <title id="title">M02 scoped storage and verified snapshot reader</title>
+  <desc id="description">Fourteen nodes show explicit lifecycle tools and isolated contracts using application ports, scoped transactions and two target databases, alongside filesystem preflight, M00 verification and a read-only historical projection. There is no financial HTTP API or live ledger cutover.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#79545a"/></marker>
+    <style>
+      text{font-family:Segoe UI,Arial,sans-serif;fill:#33292c}
+      .title{font-size:23px;font-weight:700}
+      .heading{font-size:16px;font-weight:650}
+      .detail{font-size:13px;fill:#65555b}
+      .node{fill:#fff;stroke:#bf8c96;stroke-width:1.6}
+      .entry{fill:#fbeef1;stroke:#a7445b;stroke-width:2}
+      .storage{fill:#fbf5f6;stroke:#a7445b;stroke-width:1.6}
+      .reader{fill:#f0f5fb;stroke:#718ca9;stroke-width:1.6}
+      .edge{fill:none;stroke:#79545a;stroke-width:1.6;marker-end:url(#arrow)}
+      .migration{fill:none;stroke:#997c83;stroke-width:1.5;stroke-dasharray:5 4;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1200" height="820" fill="#fdfbfc"/>
+  <text x="35" y="34" class="title">M02: scoped storage and verified snapshot reader</text>
+  <text x="35" y="57" class="detail">Implementation boundaries, not a claim of completed GL, identity or Server deployment.</text>
+
+  <g class="edge">
+    <path d="M540 125V140H180V175"/>
+    <path d="M630 125V150H530V175"/>
+    <path d="M740 105H980V175"/>
+    <path d="M180 235V290"/>
+    <path d="M180 350V375H115V410"/>
+    <path d="M180 350V375H355V410"/>
+    <path d="M115 470V540"/>
+    <path d="M355 470V540"/>
+    <path d="M115 600V670"/>
+    <path d="M355 600V670"/>
+    <path d="M980 235V290"/>
+    <path d="M980 360V410"/>
+    <path d="M980 480V540"/>
+    <path d="M980 600V670"/>
+  </g>
+  <g class="migration">
+    <path d="M530 235V505H115V540"/>
+    <path d="M550 235V520H355V540"/>
+  </g>
+
+  <g>
+    <rect x="500" y="75" width="260" height="50" rx="9" class="entry"/>
+    <text x="630" y="96" text-anchor="middle" class="heading">Explicit local tools</text>
+    <text x="630" y="115" text-anchor="middle" class="detail">CLI + isolated contract runner</text>
+  </g>
+  <g>
+    <rect x="70" y="175" width="220" height="60" rx="9" class="node"/>
+    <text x="180" y="199" text-anchor="middle" class="heading">Application storage ports</text>
+    <text x="180" y="220" text-anchor="middle" class="detail">Tiered scopes; canonical JSON</text>
+  </g>
+  <g>
+    <rect x="410" y="175" width="240" height="60" rx="9" class="node"/>
+    <text x="530" y="199" text-anchor="middle" class="heading">Explicit migration gate</text>
+    <text x="530" y="220" text-anchor="middle" class="detail">Checksums + atomic DDL/version</text>
+  </g>
+  <g>
+    <rect x="845" y="175" width="270" height="60" rx="9" class="reader"/>
+    <text x="980" y="199" text-anchor="middle" class="heading">Filesystem-only preflight</text>
+    <text x="980" y="220" text-anchor="middle" class="detail">Fixed pair; header and sidecar guard</text>
+  </g>
+  <g>
+    <rect x="70" y="290" width="220" height="60" rx="9" class="node"/>
+    <text x="180" y="314" text-anchor="middle" class="heading">Scoped unit of work</text>
+    <text x="180" y="335" text-anchor="middle" class="detail">Plan locks; rollback; bounded lifetime</text>
+  </g>
+  <g>
+    <rect x="845" y="290" width="270" height="70" rx="9" class="reader"/>
+    <text x="980" y="316" text-anchor="middle" class="heading">Verified M00 snapshot pair</text>
+    <text x="980" y="337" text-anchor="middle" class="detail">Manifest + bytes + logical integrity</text>
+    <text x="980" y="353" text-anchor="middle" class="detail">Independent non-WAL files; not live</text>
+  </g>
+  <g>
+    <rect x="10" y="410" width="210" height="60" rx="9" class="node"/>
+    <text x="115" y="434" text-anchor="middle" class="heading">SQLite read/write queues</text>
+    <text x="115" y="455" text-anchor="middle" class="detail">Two connections; BEGIN IMMEDIATE</text>
+  </g>
+  <g>
+    <rect x="250" y="410" width="210" height="60" rx="9" class="node"/>
+    <text x="355" y="434" text-anchor="middle" class="heading">PostgreSQL 18 pool</text>
+    <text x="355" y="455" text-anchor="middle" class="detail">RC writes; RR read-only; tier locks</text>
+  </g>
+  <g>
+    <rect x="845" y="410" width="270" height="70" rx="9" class="reader"/>
+    <text x="980" y="437" text-anchor="middle" class="heading">Read-only historical bridge</text>
+    <text x="980" y="458" text-anchor="middle" class="detail">SHARED lock + identity + SHA</text>
+    <text x="980" y="474" text-anchor="middle" class="detail">No Book constructor or source lookup</text>
+  </g>
+  <g>
+    <rect x="10" y="540" width="210" height="60" rx="9" class="storage"/>
+    <text x="115" y="564" text-anchor="middle" class="heading">New SQLite target</text>
+    <text x="115" y="585" text-anchor="middle" class="detail">Local file; application_id; WAL</text>
+  </g>
+  <g>
+    <rect x="250" y="540" width="210" height="60" rx="9" class="storage"/>
+    <text x="355" y="564" text-anchor="middle" class="heading">New PostgreSQL target</text>
+    <text x="355" y="585" text-anchor="middle" class="detail">Dedicated database; public schema</text>
+  </g>
+  <g>
+    <rect x="845" y="540" width="270" height="60" rx="9" class="reader"/>
+    <text x="980" y="564" text-anchor="middle" class="heading">Pure domain projection</text>
+    <text x="980" y="585" text-anchor="middle" class="detail">Safe minor integers; historical IDs</text>
+  </g>
+  <g>
+    <rect x="60" y="670" width="360" height="60" rx="9" class="storage"/>
+    <text x="240" y="694" text-anchor="middle" class="heading">Technical revisions + receipts + audit</text>
+    <text x="240" y="715" text-anchor="middle" class="detail">Tables inside either target; immutable evidence, not GL</text>
+  </g>
+  <g>
+    <rect x="845" y="670" width="270" height="60" rx="9" class="reader"/>
+    <text x="980" y="694" text-anchor="middle" class="heading">Snapshot JSON</text>
+    <text x="980" y="715" text-anchor="middle" class="detail">Three trial stages; full ledger pages</text>
+  </g>
+  <text x="35" y="768" class="detail">Dashed arrows: operator-requested migration only. Ordinary startup verifies; it never migrates or seeds business data.</text>
+  <text x="35" y="792" class="detail">PG tests use fictional loopback/SCRAM instances. Financial HTTP, real identity/RLS and original-ledger cutover are later stages.</text>
+</svg>

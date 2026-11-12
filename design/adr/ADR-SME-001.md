@@ -51,6 +51,8 @@
 
 后果：两套DDL迁移不是“一个连接串”；两驱动真实事务契约CI必需。不把更多数据库按钮当已支持。生产迁移仅review过的SQL及版本锁，禁schema push和启动自动变更。
 
+M02详细G2补充（待本阶段G3）：不采用Kysely Migrator直接协调版本，改用其连接上的显式事务runner/有序SQL/schema_migrations，保留逐版LF规范校验和、SQLite原子DDL及PG事务advisory lock先于迁移表查询。此偏差解决原工具不提供校验和和SQLite事务迁移承诺的问题，不引入第二个查询层；详见[阶段设计](../architecture-migration.md)。PG18是本阶段真实驱动验证目标，确切补丁版/来源/完整性仍须执行时记录；不是宣称已经运行。
+
 ## ADR-SME-005：认证、AI与任务
 
 推荐Server OIDC+BFF/session+RBAC/作用域+自审拒绝；Local保持单人模拟并明确标识。拒绝自写密码库、浏览器长效token、把教学开关当绕过权限。

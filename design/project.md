@@ -4,7 +4,17 @@
 
 用户已委托“you do all this”，DC01..04采用推荐技术路线、首Local+Server Compose试点、预算目标非SLA、GL优先，决定均标“协调者代为决定，可调整”。授权包含恢复贸易/TASK24及备份核验后切换原4173，原库只读/ID3保留；不因授权跳过逐阶段G3/G5/G6或擅自丢弃未提交成果。详细设计见[architecture-migration](architecture-migration.md)。M00已本地哈希保护交付、安全审查及快进发布main `74819f9bfa7087ac230c4ccaf96b6b40f1e740bf`，干净clone安装、公开182/182及语法通过，真实原源/快照逻辑与canonical相等、ID3保留且源物理摘要不变。M01三个增量G5、组合及公共变体G6均独立释放MODEL01，原三项Medium实际关闭；完整工作区358项、原302测试身份无丢失、严格类型/build及真实桌面/390px验收通过。公共代码已快进发布main `1574db67eacdcc1b6c06cb5ca3f6f754dfedb47d`，推送后全新clone实际安装、238项（182+7+49）/零跳过、构建与严格类型检查全部通过，临时clone已删除。不含未验贸易，不代表数据库/业务迁移或44FG完成，后文暂停和待确认是历史。
 
-M01完成50文件哈希保护本地同步（43新增/7更新/0冲突），交付副本独立安装及完整238项/build/typecheck通过，不复制Git/环境/账套/依赖目录。独立安全审查无已确认漏洞；npm漏洞库429后，以正常TLS成功查询OSV全部306公开依赖版本，未返回已知公告，不承诺未知漏洞为零。M01/T04已完成；所有自建验收helper已停，原4173未切换，29个保留的原运行/测试/贸易文件未变。下一步为M02双库/事务的详细需求、设计、用例及独立G3；尚无真实PostgreSQL/OIDC运行验收，不将其误标完成。
+M01完成50文件哈希保护本地同步（43新增/7更新/0冲突），交付副本独立安装及完整238项/build/typecheck通过，不复制Git/环境/账套/依赖目录。独立安全审查无已确认漏洞；npm漏洞库429后，以正常TLS成功查询OSV全部306公开依赖版本，未返回已知公告，不承诺未知漏洞为零。M01/T04已完成；所有自建验收helper已停，原4173未切换，29个保留的原运行/测试/贸易文件未变。M01交付时下一步为M02双库/事务详细G3；当时尚无真实PostgreSQL/OIDC验收，不将历史计划当最新执行状态。
+
+M01准确状态文档另以69cdb211bdc4fd59904a78cb409e9807bc514607快进main，该最终提交也已从全新clone实际安装、238项/build/typecheck通过并清理。其后作者gpt-6.1-sol提交M02详细G2（7项FR/14项TC）、请求claude-opus-5.5独立G3并保留MODEL01；G3前只做公开运行时研究，未启动实现。下方为实际已释放的本阶段门禁，不因宿主缺Docker而冒称双库通过。
+
+**最新M02门禁：** revision3已由独立窄评审逐项关闭原两阻塞、八澄清及新增六项，requirements/design/test充分性通过，G3释放EXCEPTION (user-approved MODEL01)。原所核architecture-migration SHA256为bd2889a2a9be447b8b6d3198b4c02421b1f360d6b07ae12317f41fe04fcd2154，全部八文件摘要保留于私有门禁证据；其后仅修正文档门禁状态，不冒称新内容已被原摘要覆盖。T05共享接口、T09运行时、T08旧桥/CLI修订及T06/07加固revision4均已独立G5释放MODEL01，正在T10组合G6/交付，不标已发布。
+
+T05 revision2六文件G5时app12/当时全部workspace60、build/typecheck通过，不把这个历史计数当本轮总数。T09真实官方PG18.7/180007、loopback/SCRAM/错密码拒绝及独立脚本/四PE摘要检查通过；每轮均正常停自有PID并清除虚构集群/凭据，私有binary可复用、不装系统服务。Kysely0.29.8/pg8.23.1/native13.0.3已真实恢复且禁lifecycle；13个新弱SRI在实际tarball/安装内容逐文件核验后升级SHA512，实际native int64/rollback通过，不替代仓储验收。
+
+T08修订15文件摘要经独立重核，13桥/domain与5真实child-process CLI由作者及reviewer各实际18/18通过；双文件WAL前置保护、坏存储分类及关闭成功后才输出均已复核。T06/07加固revision4的20摘要/源码/用例及SQLite31已独立窄G5释放MODEL01，真实PG37为父执行证据，没有冒称reviewer自启PG。组合首轮CLI默认TLS缺CA的阻塞经RED→GREEN修订，并由原reviewer重核54摘要/4项CLI/独立CA边界探针实际关闭，源与公共变体spec/quality G6均释放MODEL01。当前实际完整工作区422项（旧302+边界7+workspace113）、公共54文件候选302项（182+7+113）、双方各真实双库69项/build/typecheck及零跳过；另真实TLS-only PG验证正确CA成功、错误CA/明文拒绝并清理证书/私钥，不代表生产PKI或Server验收。独立health壳桌面/390px、三偏好/故障恢复、14节点存储图已真实浏览器复核；无财务HTTP或原账切换。T10处于交付/发布验证，结果须以实际同步、安全及远端/干净clone记录确认，不以G6代替M02完成。
+
+原两SQLite仅做文件摘要核对，2/2与M01已核ID3 draft基线完全相同，没有本轮SQL打开原源；29个旧运行/测试/贸易文件逐项hash与保护基线相同。远端main本次只读核对仍69cdb211，未推送；原4173不切换。44FG仍0整体完成/13部分/31未实现，新存储/只读CLI不是完整GL、身份、贸易或Server部署。
 
 执行前完整292/292及14语法通过，远端main仍3fbd75f。当前4173无监听、HTTP拒绝连接，与上轮“保持运行”的历史记录不同；已有工作区两SQLite待只读身份核对。没有发现Docker/Podman/psql，先做Local/保护基线，Server真实验证不得伪造。原32运行文件保护摘要仍作为改造前证据，不是永久禁止获准新实现。
 

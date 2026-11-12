@@ -56,6 +56,82 @@ npm audit初次遭配置registry HTTP429（实际地址不公开）；独立补�
 
 随后从GitHub main全新clone并确认该SHA，实际`npm ci --no-audit --no-fund`和`npm run verify`通过：182旧测试、7边界、49 workspace（1应用+3契约+2基础设施+2 UI+11 API+30 web），总238、零失败/跳过、全部build/typecheck通过。未含未验贸易；该证据不是仅导出工作区或复用发布前候选。专属临时clone已删除，安装与验证日志留私有宿主，不进入Git。四份入口/进度文档随后仅回填这些已发生事实，不改变已审代码/契约/设计；M01/T04完成仍保留MODEL01，不将真实双库/身份/业务或44FG标完成。
 
+## ARCH-M02-DESIGN-01：详细G2待独立审查
+
+作者实际gpt-6.1-sol，双库驱动/UoW、作用域锁、DDL及精度为高风险。M01代码和最终状态提交均已实际干净clone验证后，新增FR-AM02-01..07、D-AM02/LEGACY/RUNTIME、TC-AM02-01..14；范围限基础仓储、真实双库共同契约、显式迁移和旧教学只读桥，不宣称GL/审批/身份已完成。版本元数据与可移植PG来源链由独立只读研究辅助，但没有安装或运行，不作为G3或实现证据。独立评审请求claude-opus-5.5，身份未核实时沿MODEL01，不豁免具体缺陷。当前G3未释放，M02不拆实施任务或改运行代码。
+
+独立首轮实际核六份冻结摘要、HEAD/main及新章节完整差异，并读宏观架构、M00消费者、原Book报表/总账与现ports；G3 BLOCKED，两项实质阻塞为scope层级与company回执的arity冲突、共用SQLite读连接跨await并发快照不明。另八项可操作澄清涵盖超时/同步BUSY、逐行锁顺序、TRUNCATE/父FK/owner边界、自定义迁移偏差、旧快照TOCTOU/游标、WAL快照header、并发provision和native模块回退门禁。MODEL01不豁免这些问题。
+
+作者已修订分级scope/company专属业务证据、独立串行读mutex/嵌套拒绝及对应TC；其余八项均写明机制/失败与用例，并同步宏观§6及ADR的迁移runner偏差。仅为解决G2不确定性做隔离原生VACUUM可行性探针，当前Node/Windows下DELETE与WAL源经readOnly VACUUM INTO均产生[1,1]非WAL目标、提交值保留，夹具已清；不是M02桥或TC运行证据。当前仍待独立复审，不把作者修订当问题已关闭。
+
+宿主随后实际拒绝向同步评审追加消息（write_agent只支持background），因此本次修订将由新的窄范围独立评审核原B1/B2及N1..N8，不冒称原评审已读修订。另明确Promise边界：运行时拒提交时仍在途操作/已发生失败，不虚称能检测已settled Promise有没有被await；业务callback仍必须await/return全部操作。
+
+新窄评审实际核revision2八份摘要，原B1/B2与N1..N8逐项关闭，requirements/design/test三项充分性通过、G3释放EXCEPTION (user-approved MODEL01)。它只检查原生探针及JSON、没有亲跑探针/安装或访问原账。另提六项非阻塞澄清：native包真实分发/完整性、read队列预算、迁移预算、PG事务超时FATAL、换行/BOM校验、provision隔离级别；作者决定纳入而非隐藏延期，故实施仍等新窄复核。
+
+作者补所有read/write队列1秒/64等待者及read预算、独立迁移预算、FATAL销毁/不重试、CRLF规范与BOM/孤CR拒绝、READ COMMITTED provision及对应TC。原native评审沿旧包V8/prebuild-install记忆；作者新查实际13.0.3元数据及npm pack --dry-run --ignore-scripts清单，含node-addon-api依赖和随包win32-x64.node（受包SRI覆盖），默认安装仍会node-gyp rebuild（后续实测确认是binding.gyp触发npm隐式install，并非包的显式脚本），因此明确支持恢复命令使用--ignore-scripts并实核加载二进制指纹/Node ABI，不能声称已安装或可编译回退。版本可用性及官方PG18.7/已发布摘要文件仅元数据查询，不是驱动执行。此revision3澄清待独立窄复核，不冒称原评审事实推断正确或当前已完成M02。
+
+同一窄评审随后实核revision3八份摘要（仅阶段设计/本文变，其余六文件逐字相同），新增六项及候选元数据全部关闭，未发现修订新实质问题。它实际读取当前13.0.3包清单，明确撤回原旧版V8/prebuild-install及二进制不受包SRI覆盖的错误推断；以当前包原始证据为准，仍不宣称原生模块已经加载。requirements completeness、design quality、test completeness均通过，**G3为EXCEPTION (user-approved MODEL01)**，仅释放FR-AM02-01..07/D-AM02/TC-AM02-01..14实施与任务拆解。
+
+其核阶段设计SHA256为bd2889a2a9be447b8b6d3198b4c02421b1f360d6b07ae12317f41fe04fcd2154、本文41a95a8767543b11ace111ebd9032efab48cd48838b6865c63275ed1e8093b3e；其余八文件完整清单及原生探针留私有。这里只回填G3元数据，不改已核设计内容。非阻塞测试执行说明：TC03中R1正常互锁场景必须用显式barrier控制在排队预算内，hung-reader场景单独验证busy/取消，不能靠机器速度碰巧过线。评审未安装/构建/运行DB或访问原账，后续G5/G6及真实双库/发布门禁全部仍须执行。
+
+### ARCH-T05-PORTS-01 — 共享存储接口/纯边界G5
+
+作者gpt-6.1-sol；独立rubber-duck请求claude-opus-5.5、实际身份不可自核沿MODEL01。首版所核三文件SHA为storage183fe514…/index067771ef…/test6e137514…，评审实际运行10项及额外边界探针，specification compliance与code quality均接受、无阻塞，可按MODEL01释放；它明确未重跑编译与boundary，作者另有真实workspace58项/构建/全类型及boundary证据。此非security-review，也非DB验收。
+
+作者在下游启动前选择收紧其非阻塞建议：RevisionReader/Writer按session层级泛型化（不代替运行时完整scope membership）；统一parseAuditQuery的0..safe游标/显式1..100上限；对象字段从descriptor快照读取，拒accessor而不触发Proxy property get。任意host Proxy的反射trap仍可执行，输入来自可信应用装配，不宣称JS sandbox。新增三个负向类型断言先实测unused directive失败、缺query parser先实测缺export失败，然后新12项app测试、build/type/负向类型和boundary实际通过；六文件revision2冻结后正独立窄复核，**当前新增修订尚未释放G5，不启动依赖任务**。回执JSON保持canonical TEXT而非jsonb；write callback保留判别union让消费者显式核level，不为仅语法便利增加overload。领域目录仍未创建，只在T08实际投影消费时提取。
+
+随后独立窄复核实际核六摘要（storage a5118b98…/index067771ef…/testc48c43b1…/package9e54f5dc…/testConfiga42e658d…/typeFixture39a761b9…），12项另实跑及额外边界探针通过，三建议均关闭，无新阻塞、不需回G3，specification compliance及code quality再次明确接受。**当前revision2 G5释放EXCEPTION (user-approved MODEL01)，T05 done，释放T06/07/08。** 作者另实跑全部workspace60项（12+3+2+2+11+30）/build/全typecheck含负向fixture通过。方法参数bivariance可能被显式宽化、同层跨ID也无编译授权，所以T06/07必须实测exact plan membership及禁止共享父锁写入；T05不声称类型即运行时隔离。Book writer本轮只需自身技术revision，下级company行为待真实后续消费者设计，不提前扩权。
+
+### ARCH-T09-RUNTIME-01 — 隔离PostgreSQL预检
+
+实现为general-purpose子代理（宿主未返回实际模型ID），独立于该实现的主集成者gpt-6.1-sol审其两份私有脚本及实际证据，specification compliance与code quality接受，身份差异无法自核保留MODEL01。官方18.7 ZIP实际389515503字节、发布者HTTPS SHA256匹配ead0bbc…；四个PE实际Authenticode Valid/EnterpriseDB并记录SHA，不能把同源checksum称独立签名。真正server_version_num180007、loopback-only/SCRAM/错密码拒绝及正常停自有PID已运行；独立重核四文件SHA与零私有PG进程。虚构集群/密码/ZIP已删，保留私有binary，不装系统服务/账户或改全局环境。
+
+复用helper只在callback暴露进程级PG*，finally恢复；父调用显式URI编码并以finally管理ERP_TEST_DATABASE_URL、错误只报安全分类，不把密码/连接串写入日志。T09 G5仅释放运行时，不能算T07仓储/事务/迁移通过。Windows启动pipe与inet地址格式两次失败均在证据中保留并正确清理，不删失败记录冒充首跑成功。
+
+依赖真实恢复时npm给13个新依赖记录SHA1（其中native与G3已核npm-pack SHA512不同算法），前置guard按预期拒绝执行。作者另取实际tarball、同时核原SHA1及计算SHA512，native与原已核强摘要完全相同；逐个比对13包全部已安装regular文件（native68个）后仅将对应lock.integrity升级SHA512。所有版本/依赖不变、URL仍标准npm地址，无lifecycle/编译回退。OneDrive云文件ReparsePoint与真正SymbolicLink/Junction分开，内容摘要检查未放宽。随后真native加载、int64两极值与磁盘事务rollback通过，专属夹具与13个明确命名临时包已清理；本段只是可用性/供应链证据，不是完整target UoW验收。
+
+### ARCH-T08-LEGACY-01 — 实现、修订与G5闭环
+
+旧账桥/domain由独立实现子代理交付（模型ID宿主未返回），CLI/共享集成由gpt-6.1-sol完成；当前11桥/纯domain及3个真实child-process CLI测试、严格独立编译通过，尚待独立spec/quality G5，不标T08完成。CLI先缺入口RED→3 GREEN，新增verifier消费用例用注入写负控制实证失败再恢复11 GREEN。代码只针对虚构fixture；实际未知ID3未访问。基础设施用显式subpath，不令M01未接账health根入口因import打开数据库。
+
+准确的物理保护范围：初次未pin的虚构WAL源在M00创建/验证阶段SHM读标记发生变化，main/WAL不变；修订夹具只证明先pin源read版本的创建情况，不冒称一般WAL读天然零写。另在创建完成之后、消费者之前捕获完整目录，重新verify及bridge close后各自核源main/WAL/SHM和snapshot字节/名字不变；负控制可抓写入。此限制须纳入后续M08真实备份设计，不默改M00或隐瞒首次失败。下一步独立评审实际冻结旧桥/CLI及调用边界，target存储仍另作者进行。
+
+首轮独立评审实际核15hash、14项复跑，另在移除未发布贸易的独立副本同14项通过；spec/quality通过，但发现畸形WAL header配套改manifest时CLI先M00 verifier会建sidecar后才拒绝。虽非阻塞，作者仍修复：旧桥共享导出纯文件系统`preflightLegacySnapshotPair`，固定teaching.sqlite/erp.sqlite而非取不可信manifest路径，CLI先检查再verify；保留bridge持SHARED后摘要/身份/头复核。真实CLI两种文件各RED（原3通过/新增2失败）→GREEN；domain存储坏数据改INVALID_SNAPSHOT，OVERFLOW及真实参数错误不变；成功JSON延至close之后。
+
+revision2独立窄审实际重核15hash、18/18（13桥/domain+5真实CLI）及原探针，再次明确spec/quality PASS，无新发现，T08 G5释放MODEL01。root新增目标管理CLI/强制数据库命令的实际实现不在该G5范围，须组合审查；infra lock/依赖、domain与T07必须同一个白名单M02候选发布，不能单独提交本项造成npm ci不一致。
+
+### ARCH-T06/T07-G5-01 — 首轮通过、加固待复核
+
+独立rubber-duck请求claude-opus-5.5（MODEL01保留）实际核19hash，SQLite27项复跑两次、队列/BEGIN异步退避及路径探针；真实PG30项为作者日志、reviewer未自行运行，不冒称双方PG复跑。parent另用官方隔离PG18.7真实运行30项，首次inet地址/32表示断言失败已以host()修正、保留失败日志；接parent目标CLI后`verify:databases`58项（SQLite27+PG31）通过，所有私有集群/凭据/自有PID已清理。
+
+首轮spec/quality均PASS、不需回G3，三个非阻塞N1..3仍选择修复：归一化后的UNC/device路径保护、pg_catalog优先防public阴影、完整结构漂移检测而非仅对象名。另补持久坏JSON/日期、hung write回滚、真实core FATAL连接销毁及COMMIT返回ROLLBACK；已请求原作者处理、不得把首次PASS冒充修订已验收。checksum缓存优化不为性能提前引入，0byte且无标记未知文件仍拒绝而不冒认归属。T06/07保持in_progress，修订后实际两库及窄审/G6未完成。
+
+加固首轮Local31项通过；真实强制矩阵68项首次65通过/3失败（两种实际失败加外层汇总），0跳过。结构漂移/坏存储/挂起写入回滚均通过；剩余为PG name[]返回表示断言，以及真实core FATAL超时被误归STORAGE_FAILURE。交原作者修复，不降低预期或抹去失败。新SQL尚未发布，仅用全新虚构目标，不对已有账套迁移。官方OSV另实际查询324个公开依赖版本，0公告匹配；这不是代码安全审查或未知漏洞保证。
+
+revision3修正catalog数组的text[]表示、真实25P04跨闭包保留和查询协议drain；FATAL夹具先停当前计时器再重置1秒，断言移出生产错误脱敏边界，不把断言失败伪装成存储故障。父实际68/68、零跳过及无原并发query弃用警告。随后发现同样计时问题也适用于真实BEGIN继承非零数据库默认值：revision4在业务/迁移BEGIN后先停已有事务timer再设置10/120秒，并补真实继承1秒默认、迁移/读/写跨1秒仍健康的用例，未降低原FATAL断言。父完整`npm run verify`实际421项（旧302+边界7+workspace112）、构建/严格类型通过，强制双库实际69/69（SQLite31+PG37+PG生命周期CLI1），零失败/跳过；自有PG正常停止、集群/凭据清理。当前20文件冻结并交原独立评审窄G5，未用作者成绩代替审查关闭。
+
+父另实际用独立health-only同源壳验证1280/390px、中红/英绿、教学开关、三偏好重载/不重建main及不重取health、网络显错重试、坏偏好/拒写及恢复显式保存；无其他财务API或未捕页面异常，自有helper/浏览器profile已清。14节点被动存储SVG已真实浏览器检查；不是新财务页面截图。独立虚构100次公司UoW（CAS+receipt+audit）实测p95为5.78ms、最慢7.81ms；4000次native操作最慢1.36ms，事件循环最大延迟7.27ms。它是当前机器有界顺序样本、包含driver包装/可能嵌套计时，不是生产容量或SLA，不为达标修改预算。
+
+随后原独立评审实际核20/20摘要、另实跑SQLite31/31及源码/故障用例，原N1..3/T1..4/S1及继承timer缺口全部关闭，不需回G3，specification compliance与code quality均PASS，T06/07修订G5释放**EXCEPTION (user-approved MODEL01)**。PG37与CLI1仍为父真实运行证据，评审没有自启PG。其非阻塞运维意见已写README：指纹与PG主版本有关，本阶段不支持自动跨主版本升级/重签，必须另行备份、恢复副本验收、迁移设计与回退；owner/superuser重写版本表/DDL和event trigger不在防篡改承诺内。查询成本缓存、无归属0byte崩溃文件恢复及跨进程首次初始化友好重试明确延后，当前分别保留即时校验、显式拒绝与失败而不冒认归属。集成作者按已委托技术决策接受这些边界，不增加未审缓存或升级工具。父目标管理CLI、双库命令、根lock/元数据仍须组合G6，不以两切片G5代替它。
+
+### ARCH-M02-FINAL-01 — 公共候选真实验证，组合G6待审
+
+父从已发布69cdb211导出，叠加精确54文件；root package只去除三条已知未发布贸易语法检查，其余JSON深比较相同，贸易运行/测试全部留在活工作区。候选实际`npm ci --ignore-scripts`、随包native加载/int64/rollback、完整verify301项（182旧+7边界+112 workspace）、强制双库69项、build/typecheck通过；不是复用原421成绩。候选与源代码摘要冻结，文档仅按实际结果回填并补主版本升级边界；组合G6尚待独立审查，不声称本地同步、安全或发布已完成。
+
+独立首轮组合G6实际核54/54源/候选摘要、其余73个已跟踪文件与HEAD逐字一致、公共package仅三条语法片段差异；独立候选19项CLI/application、44项SQLite/旧桥、边界7项与check通过，源CLI8项/check通过，缺PG实际非零/零skip及native两极值加载通过，没有重复父完整或真实PG。发现一项阻塞B1：CLI默认TLS未提供adapter必需的CA，始终在连接前INVALID_INPUT，只有显式无TLS能运行；这是向安全方向拒绝的功能缺陷，不冒充已完成security-review。G6为BLOCKED，未交付或发布。父先新增真实child-process SSLRequest/拒绝明文回退回归并实际3通过/新增1失败，再加显式`--ca-file`、PEM/大小校验和与无TLS互斥；当前4项Local CLI GREEN，完整回归、真实PG/TLS及原reviewer窄复核仍须实际完成。
+
+随后修订实际完整工作区422项（302+7+113）、精确公共候选302项（182+7+113），双方各真实强制双库69项、build/typecheck及零跳过通过。另在同一自有PG18上生成仅供隔离验收的临时自签证书，启用TLS并以HBA拒绝所有新明文连接，CLI显式CA的migrate/verify实际成功，错误CA与显式明文均实际STORAGE_FAILURE/零成功输出；专属DB、证书/私钥删除，配置原样恢复后自有PG正常停止，未发布密钥。此证据不等于生产PKI、LAN或OIDC验收。新54文件摘要冻结后仍须原reviewer实际关闭B1，不能仅凭作者GREEN释放G6。
+
+原reviewer随后实际核revision2全部54源/公共摘要、相对首轮恰为两代码及五文档变更，源与候选各4项CLI/候选check通过；另独立单CA/双证书bundle/尾随垃圾/空/超大/目录/坏base64/注释头/SQLite误选CA及仅环境CA探针，均符合显式配置与脱敏，实际关闭B1、无新阻塞或非阻塞发现。其读父真实TLS脚本/日志及完整测试摘要，没有自启PG/重跑完整，也未自称重加113总数。**源与公共变体的specification compliance/code quality G6均释放EXCEPTION (user-approved MODEL01)**；仅建议在README说清PEM不接受注释/subject行，已补。当前G6所核54文件revision2清单与源码摘要留私有，后续仅回填实际交付元数据不改变已审代码；本地同步/独立security-review/非强制main与推送后干净clone仍须真实执行后再记。
+
+### ARCH-M02-DELIVERY/SECURITY-01 — 本地与独立安全完成，发布待核
+
+54文件按M01及更早逐文件目标哈希保护交付，初次39新建/15匹配更新/0冲突；仅进度前置ID修正再1更新/53相同。未复制Git、环境、账套或依赖目录；本地独立`npm ci --ignore-scripts`、真实native int64/rollback和完整302项/build/typecheck通过、零跳过，全部54目标摘要与公共payload相同。11个明确命名作者临时日志已逐个SHA核对后移存私有证据，不进Git。
+
+专门security-review请求claude-opus-5.5、保留MODEL01，实际读已暂存生产核心及补充domain/SQLite DDL/types/exports/lock，初轮和补充均0已确认漏洞。补充实际独立核54源/候选摘要与暂存路径集合、Git规范化后54/54一致；root package只保留已知三条贸易语法片段差异，工作区贸易未发布。另实际扫描完整暂存差异，无私钥、凭据、私有路径或内部registry；没有运行测试、网络/PG/TLS或外部渗透，完整/真实双库/TLS/OSV/安装证据仍来自父，不能冒称安全评审亲跑。可信本机操作员/数据库owner边界保持，不承诺抵御同OS用户或恶意owner、生产PKI/OIDC与容量。
+
+lock对HEAD新增18项均SHA512/标准npm URL，13项中间恢复时的弱SRI升级属于私有过程记录，并非对HEAD又修改13个既有项；152个既有SHA1条目未在本轮改动。安全评审提醒native机制措辞后，父实查安装包无显式install/postinstall、有binding.gyp，明确npm隐式构建风险，继续禁lifecycle；不是宣称依赖本身没有安装行为。代码G6与安全结论不替代真实main和新clone；发布结果随后按实测回填。
+
 ## ARCH-SME-DESIGN-01：独立G3已释放MODEL01，待用户确认
 
 用户要求中小企业ERP分层和数据库选项；贸易继续暂停，本轮仅设计。作者实际gpt-6.1-sol，风险为跨库事务/多人隔离/迁移恢复高风险。新增architecture、6项ADR、3张Mermaid源及14节点SVG，AR-01..08和AT-01..11，更新现有入口而不重构运行代码。独立评审实际经宿主task请求claude-opus-5.5、保留MODEL01身份未核实例外；不复用旧贸易门禁。
