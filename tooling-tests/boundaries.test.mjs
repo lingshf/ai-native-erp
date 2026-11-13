@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import * as boundaries from '../scripts/check-boundaries.mjs';
 
@@ -77,4 +78,28 @@ test('CLI resolves its own repository regardless of the invoking working directo
   const result = spawnSync(process.execPath, [checker], { cwd, encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /passed for [1-9]\d* source files/);
+});
+
+test('Local Vite serves same-origin assets without reflecting cross-origin CORS headers', async t => {
+  const web = new URL('../apps/web/', import.meta.url);
+  const require = createRequire(new URL('package.json', web));
+  const { createServer } = await import(pathToFileURL(require.resolve('vite')).href);
+  const server = await createServer({
+    root: fileURLToPath(web),
+    configFile: fileURLToPath(new URL('vite.config.ts', web)),
+    logLevel: 'silent',
+    server: { host: '127.0.0.1', port: 0, strictPort: true }
+  });
+  t.after(() => server.close());
+  await server.listen();
+  const address = server.httpServer.address();
+  assert.ok(address && typeof address === 'object');
+  const origin = `http://127.0.0.1:${address.port}`;
+  for (const source of [origin, 'http://127.0.0.1:5188', 'https://example.invalid']) {
+    const response = await fetch(origin, { headers: { Origin: source, Connection: 'close' } });
+    await response.arrayBuffer();
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('access-control-allow-origin'), null);
+    assert.equal(response.headers.get('access-control-allow-credentials'), null);
+  }
 });

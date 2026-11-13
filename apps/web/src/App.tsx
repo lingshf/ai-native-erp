@@ -1,19 +1,32 @@
 import { useEffect, useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { HashRouter, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import {
   label, loadPreferences, persistPreferences,
   type LabelKey, type Preferences, type PreferenceIssue
 } from "@erp/ui";
 import { useHealth } from "./health.js";
+import { ReportIndex, Reports } from "./Reports.js";
 import "./styles.css";
 
 const storage = () => window.localStorage;
 
 export function App() {
+  const [client] = useState(() => new QueryClient({
+    defaultOptions: { queries: {
+      staleTime: Infinity, gcTime: Infinity, retry: false, retryOnMount: false, refetchOnReconnect: false,
+      refetchOnWindowFocus: false, refetchOnMount: false, refetchInterval: false
+    } }
+  }));
+  return <QueryClientProvider client={client}><HashRouter><Workspace /></HashRouter></QueryClientProvider>;
+}
+
+function Workspace() {
+  const { pathname, search } = useLocation();
+  const reportSearch = pathname === "/reports" || pathname.startsWith("/reports/") ? search : "";
   const [initial] = useState(() => loadPreferences(storage));
   const [preferences, setPreferences] = useState(initial.preferences);
   const [issues, setIssues] = useState(initial.issues);
-  const [attempt, setAttempt] = useState(0);
-  const health = useHealth(attempt);
   const language = preferences.language;
   const t = (key: Exclude<LabelKey, "shell.httpError">) => label(language, key);
 
@@ -40,11 +53,18 @@ export function App() {
 
   return (
     <div className="workspace" data-theme={preferences.theme}>
-      <a className="skip-link" href="#workspace-main">{t("shell.skip")}</a>
+      <a className="skip-link" href="#workspace-main" onClick={event => {
+        event.preventDefault();
+        document.getElementById("workspace-main")?.focus();
+      }}>{t("shell.skip")}</a>
       <header className="workspace-header">
         <h1>{t("shell.title")}</h1>
         <nav aria-label={t("shell.navigation")}>
-          <a href="#workspace-main" aria-current="page">{t("shell.overview")}</a>
+          <NavLink to="/" end>{t("shell.overview")}</NavLink>
+          <div className="navigation-group">
+            <span>{t("reports.group")}</span>
+            <NavLink to={{ pathname: "/reports/trial", search: reportSearch }}>{t("reports.trial")}</NavLink>
+          </div>
         </nav>
       </header>
       <div className="workspace-layout">
@@ -83,6 +103,24 @@ export function App() {
           )}
         </aside>
         <main id="workspace-main" tabIndex={-1}>
+          <Routes>
+            <Route path="/" element={<Overview preferences={preferences} />} />
+            <Route path="/reports" element={<ReportIndex />} />
+            <Route path="/reports/*" element={<Reports preferences={preferences} />} />
+            <Route path="*" element={<p role="alert"><span aria-hidden="true">⚠ </span>{t("reports.routeMissing")}</p>} />
+          </Routes>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function Overview({ preferences }: { preferences: Preferences }) {
+  const [attempt, setAttempt] = useState(0);
+  const health = useHealth(attempt);
+  const language = preferences.language;
+  const t = (key: Exclude<LabelKey, "shell.httpError">) => label(language, key);
+  return <>
           <p className="intro">{t("shell.intro")}</p>
           <section className="status-card" aria-labelledby="health-heading">
             <h2 id="health-heading">{t("shell.healthHeading")}</h2>
@@ -112,8 +150,5 @@ export function App() {
             <p><span aria-hidden="true">⚠ </span>{t("shell.dataWarning")}</p>
           </section>
           {preferences.teaching && <p className="teaching">{t("shell.teachingNote")}</p>}
-        </main>
-      </div>
-    </div>
-  );
+  </>;
 }

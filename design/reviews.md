@@ -2,6 +2,76 @@
 
 本文件只保留可公开的产品验证结论。私有研究资料、原始来源案例、机器路径、内部依赖地址及宿主操作记录不随代码发布。它不是原本机审查日志的逐字副本。
 
+## ARCH-M03-DESIGN-01：revision3 G3已释放MODEL01
+
+作者实际gpt-6.1-sol，设计前模型/风险计划已记project；本轮FR-AM03-01..08、D-AM03和TC-AM03-01..14已写齐。范围为显式M00已验证快照→M02只读桥→应用查询→严格REST/OpenAPI→React真实试算/同月完整总账；Local财务披露/来源绑定/精确金额/异步查询为高风险。计划通过宿主task请求claude-opus-5.5独立审requirements/design/tests，以当前六份文档的实际摘要固定审查版本，沿MODEL01，不把请求名当实际身份。作者已交叉核对八FR均有TC、旧health/偏好/CLI保护及无Server/写账边界；这不是独立通过。本轮尚无G3结论，不拆实施任务或更改产品/依赖，不借M02 G6批准新增接口。
+
+首轮独立G3实际核六摘要一致、读M03与相关源码；所核D全文SHA256为a253e9f89f793d584f075d47064d095e44e400b39abef5c33243c0f9585eddab。requirements充分，设计可行，但**G3 BLOCKED**：B1真实同源Vite GET不发Origin，原“必须配置dev origin才能proxy成功”用例不可成立。另N1..06为非阻塞澄清：跨页应按lineId而非journal id查重、存储错误映射、Query默认值、listen前fail-closed、skip/overview两链接、root package公共变体与trade保护。作者revision2逐项写入D/TC并澄清FR07；尚待同一独立评审实际复核，不能把自称修复当释放。没有执行测试/PG/浏览器，没有称此设计审查为最终安全审查。
+
+宿主拒绝向sync评审发送复核消息，故另开独立窄修订评审，仅核上述七项及交互，不重复声称原评审亲自复核。该评审实际核revision2六摘要及相关源码，D全文c90a64a0185deabc5b81ee639b52af13fb64ce771055613d4938b531ca0a66dc；B1/N1..06全部关闭，requirements/design/test充分，限定G3释放**EXCEPTION (user-approved MODEL01)**。另S1非阻塞建议保留Vite默认allowedHosts并测外域Host，因为proxy改写后API不能验证原Host；作者revision3已补一句及TC07、固定4180/5173配对说明，待该窄评审复核新增文本。无安全漏洞实测结论，依赖/代码/详细任务仍未改。
+
+随后该窄评审实际核revision3六摘要，D全文8709809b593ab05784f7a559c1671f70e10f16d7ca224c3538e2a8b7a7c33560；S1关闭、没有新增问题，requirements/design/tests及**当前revision3 G3明确释放EXCEPTION (user-approved MODEL01)**，仅允许启动M03分解/实现。未运行测试/服务或打开真实账，不代表G5/G6、安全/发布或后续阶段已通过。之后project/reviews/tasks的门禁状态回填不是改写所核详细D。
+
+### ARCH-T11-G5：r2已独立释放MODEL01
+
+实现作者gpt-6.1-sol；独立高风险评审请求claude-opus-5.5，实际身份未独立核实，沿MODEL01。首审实际核16文件摘要及源码，独立43项通过、零失败/跳过；specification compliance通过，code quality因新锁中六条非公共包源而阻塞，T12/T13未启动。作者首轮完整workspace/build123及类型/边界通过不能抵销此发布缺陷。
+
+r2仅改锁及真实互操作测试两个文件：六URL规范到公共npm，完整锁非link包源正向限定公共origin；唯一新增弱摘要Cookie以真实归档SHA1匹配原锁、实际SHA512匹配打包摘要、完整六文件树逐字节匹配后升级强摘要，其余五个新依赖摘要不变。逆向还原六URL及单一摘要后精确等于首审锁SHA256，未把非公共地址写入公开证据。四种客户端正常TLS公网连接失败，未关闭证书校验；公共元数据独立核实和匿名在线安装未完成。首次严格离线`npm ci --ignore-scripts`因Cookie归档缓存缺失失败，失败保留；仅缓存已核归档后，同一公共锁/禁止registry替换/严格离线安装实际成功，不冒称在线通过。
+
+按首审建议补真实reader→应用查询→context/三阶段试算/完整月总账schema互操作与跨100行分页，并核目录字节不变。r2完整workspace/build124（15+6+60+2+11+30）、严格类型及7项边界全部通过、零跳过；16文件r2摘要已冻结并交同一独立评审窄复核。目前仍待其specification及quality明确结论，不自放行G5，不称M03 G6或最终安全审查已完成。
+
+同一独立评审随后实际重核r2全部16摘要、所核D全文及相对r1仅两文件变化，独立完成六URL/一摘要逆向还原、归档SHA1/SHA512及新增真实schema分页测试检查，并重新执行44项、零失败/跳过。明确**specification compliance通过、code quality通过、T11 G5 EXCEPTION (user-approved MODEL01)**，允许放行T12/T13，不代表组合G6、安全批准或公开发布。其未重新核web30格式输出及类型/边界日志，这些仍为作者实际执行结果，不冒称评审者重跑。非阻塞建议由当前授权的实现决策保留：测试的相对contracts/dist导入依赖现有根构建顺序、边界允许且不进入生产图；无需为该真实互操作测试扩大生产依赖，独立包测试拆分时再整理。既有锁的其他历史SHA1不属于本轮新增，不以本轮单包加固宣称全锁强摘要。正常TLS公网/匿名在线未验限制保留。
+
+### ARCH-T13-G5：r4当前已独立释放MODEL01
+
+分文件实现者由宿主general-purpose任务承载，实际模型身份未独立核实；父集成作者gpt-6.1-sol。八文件当前摘要已冻结，T11全部16摘要及G3详细D不变。实现者报告先缺实现、后路由断言RED，随后web53（原30保持）、UI2及作用域类型/生产构建通过，未改manifest或锁；这是实现证据，不是独立批准或实际浏览器。独立强推理评审通过宿主请求claude-opus-5.5，沿MODEL01，正在核当前八文件、原测试、D-AM03-WEB及TC03/09..12；尚无specification/quality结论。API/CLI在另一个独占域继续实现，未混入此G5。
+
+首审随后实际核八摘要/G3详细D/共享16及原web30/UI2测试文件不变，独立web53、UI2、UI/web/test类型及web生产构建均通过。明确specification compliance及code quality通过、r1 G5释放**EXCEPTION (user-approved MODEL01)**；真实browser/CLI/Vite外域Host及组合G6仍未验。四非阻塞项：focus/online事件测试没有真实切换Query管理器；未设retryOnMount会在错误无数据查询重新挂载时请求；主导航丢合法source/month/stage；教学开启未正向断言；另需G6核403/409实际messageKey。前三行为/测试问题选择现在修正，保持原断言并新增用例，r2仍须同一独立审查，不把r1通过带到已变代码。无害generation计数器在离开后重置仅多一次context读取，保留，不扩大重构。
+
+同一独立评审随后实际核r2全部八摘要，确认恰App/Reports/报告测试三文件变化，其余五文件、共享16和D不变；独立58web（28报告+原30）、UI2、web/test类型及生产构建通过，旧测试仍无差异。逐项关闭：retryOnMount:false加按source/month的Trial key阻止同组件换月后默认重试、stage不入key；主导航保留非末期间/阶段及显式错误参数；focus/online manager实际状态转换并恢复；教学开/关均有正向断言。**r2 specification compliance及code quality均通过，T13 G5 EXCEPTION (user-approved MODEL01)释放**；用户重试在离开时取消后回到先前错误、需再手工重试符合设计，不增隐式请求。真实UI/390px、实际API及403/409标签、Vite外域Host、安全与组合G6仍不由本门禁代替。
+
+真实浏览器随后观察到Vite默认对许可loopback Origin添加CORS头，违反D-AM03-LOCAL的无跨域响应约束。父作者在现有root边界测试加入真实临时Vite listener，实际RED反射头，再仅加`server.cors:false`；八边界GREEN。r3九摘要为原八文件加根测试，原七个其他前端文件/共享16/详细D均不变；同一独立评审全部重核，独立58web、UI2、8边界、类型/build通过，另做默认/修订的实际GET、代理死目标及OPTIONS对照，均验证头移除。**r3 specification compliance及code quality通过，G5 EXCEPTION (user-approved MODEL01)**；非阻塞建议为回归增加代理/OPTIONS覆盖，由当前授权决策保留：真实GET回归覆盖全局中间件，父实际proxy与独立探针均已补实证，不为此扩大测试服务夹具。不是G6、安全或发布批准。
+
+### ARCH-T12-G5：r3当前已独立释放MODEL01
+
+实现者模型身份未独立报告，沿父模型计划及MODEL01；作者报告先观察真实context404、launcher不存在与坏财务路径头/DTO不符的RED，再实现六文件。实际API build/严格类型、launcher语法及旧health11与新增真实listener/CLI合计27项通过、零skip，夹具清理。Windows子进程退出不冒充graceful callback证明，另有组合root真实close次序/失败测试。新六摘要冻结且T11/详细D未变，独立高风险评审请求claude-opus-5.5正在审，尚无当前specification/quality结论；未把根入口尚未接入说成已发布。
+
+首审独立27项、类型/build、原始socket路径别名与重复信号探针通过并释放MODEL01。父选择补真实async onSend下early return、隔离runtime注入的重复信号仅一次关闭及API→reader次序、成功无exitCode和失败安全CloseError/exitCode1自动化；r2六摘要及恰四文件变化由同评审重核，独立30项/类型/build通过，规范/质量G5释放。首个完整`npm run verify`随后实际失败API25通过/5失败：CLI测试按cwd定位scripts，npm workspace运行目录不同导致MODULE_NOT_FOUND，失败日志保留。
+
+r3父作者gpt-6.1-sol仅将该测试定位改为`fileURLToPath(new URL(...,import.meta.url))`，无生产变化；同一独立评审重核六摘要、共享16和详细D，独立实际workspace30/根CLI9均零失败/跳过，**specification compliance和code quality均通过、G5 EXCEPTION (user-approved MODEL01)**。r2原文件未完整留存，评审未虚称能逐字diff该未跟踪文件的旧版，但核当前完整断言且计数不变。非阻塞建议保留：HTTP测试的故意missing-web路径也依赖cwd，但两目录均不存在、不改变所测行为，未扩大修订。
+
+随后r3组合G6的非阻塞N1指出概览“不能查看任何账簿”与已联通的只读快照矛盾。父选择即时修正，r4只改中英四个现有label：intro/unconfigured/dataWarning/teachingNote，明确目标业务账套尚未配置、显式已验证快照仍可读、无财务写入或AI。其他八文件、共享16和详细D未变；同一独立评审实际核九摘要及唯一差异，独立UI2/web58，并重算父完整源481日志，规范/质量均通过，**r4 G5 EXCEPTION (user-approved MODEL01)**。组件测试按key取文案，不冒称其验证文字含义；实际新概览文字由独立人工审查及随后真实浏览器精确断言核验。
+
+### ARCH-M03-COMBINATION-01：r4 G6已释放，交付待完成
+
+同一独立评审随后实际重核当前79份源/公共摘要及规范化、68代码摘要、r4冻结和仅label变化；确认最新公共树仅状态文档更新，实际执行的是同代码的前一树。重算源481/公共361/公共真实70日志、清理及恢复生效配置，实际查看中英新概览截图，N1/N2关闭；**当前r4 specification compliance和code quality均释放G6 EXCEPTION (user-approved MODEL01)**。纠正旧报告将182项公共测试数误写为文件数：HEAD127、其中清单内64/外63、清单新增15，公共树142文件；当前临时index实际全142 blob/40修改/330公共依赖URL核验通过，不把heuristic泄漏检查当独立安全审查。实际交付、安全及发布仍未完成。
+
+独立组合评审实际核r3的79份源/公共摘要、三个增量冻结、详细D、源481/公共361/双方真实70日志，另独立真实API19项及Host/Origin/路径/查询/分页探针通过；规范与质量G6均释放**EXCEPTION (user-approved MODEL01)**。Edge/全量/PG仍为作者执行，未冒称reviewer重跑。N1概览文案选择现在关闭，故此批准不直接覆盖r4；N2安装证据需记录argv与生效配置，新的公共恢复日志已补；N3交付逐文件hash/锁可在后项冲突时留下前项安全更新，明确接受该非阻塞局限，不称整批原子性。
+
+r4重新导出公共树、实际禁生命周期/严格公共锁离线恢复，日志包含精确argv及四项生效配置；源完整481、公共361/build/types及公共真实SQLite/PG18强制70、零失败/取消/跳过全部通过并清理。新source代码摘要cd763f59938720a2b25d0de782e353b2b0943ed06df000a881f65a4ea2a8edb6，公共摘要8d04d289f931384ca161228c41fdb6c0bc8843c4508d78789b3f19b9a7f347b4；代码相对r3仅labels变化，详细D未改。
+
+重建后的真实Edge全场景再次通过并清理，新增中英概览文字和零财务查询精确断言及两张概览截图，共六图。新profile单样本load122.4ms/FCP280ms、health-ready观测344.3ms、首次试算ready观测94.4ms；旧静态样本仅为r3历史。一次误用私有脚本参数的失败发生在启动任何helper前，原日志保留，随后按真实位置参数执行，不改产品或降断言。r4独立组合窄复核、本地、安全、main/精确新clone仍待完成；下段旧摘要及“待G6”均为过程时序。
+
+完整源第二轮480（302+7+15+6+60+2+30+58）/build/types及真实SQLite/PG18强制70、零失败/取消/跳过通过；最后Vite修订后完整源尚在重跑，期望481不是已通过事实。M03相对已发布M02的原测试身份未删，保留贸易仍未公开。真实Edge最终四图覆盖三试算逐分/原始名称、104行两页完整总账、双击单次请求、实际403 label及409明确重载到不同SHA最后期间、历史调整/冲销/结转/维度/停用、偏好持久及无额外查询、键盘/390px、Vite无Origin200/外域Host403/显式Origin拒绝后许可且无CORS；源/快照/原两库及29保护文件字节不变。操作使用真实`runPreview`参数/配置/API/reader组合根，隔离runtime注入是进程内调用，不冒称OS CLI子进程；实际OS子进程由完整自动套件独立覆盖。
+
+验收失败均留存：前六轮私有脚本的oracle嵌套、HTML错误注入、保留ledger路由、中文按钮定位及ANSI就绪读取等错误，修正后不改产品断言；其中一次同端口重启后Node fetch出现ECONNRESET，确切底层原因未证明，单次新TCP就绪探针无复用且无重试，不声称修复生产网络栈。第七轮真实Vite CORS缺口按上述RED→GREEN及独立G5关闭，第八轮全部真实验收及清理通过，失败不由重跑抹除。
+
+Local单人预算：同一Node26/Windows x64、16逻辑CPU、约64GiB主机；5预热+100试算及100完整104行两页总账，HTTP/JSON/严格schema计时，p95/p99为3.664/4.385ms与7.966/8.228ms、0错误，满足1秒目标。首次静态UI尚未单独计时；不是SLA、生产/多人/认证/PostgreSQL容量或M08耐久结论。当前完整源/公共候选回归、独立当前G6、本地同步、安全/main/精确新clone仍待实际完成，不把增量G5合并当G6。
+
+后续当前修订全源实际481（302+8+15+6+60+2+30+58）、build/types及真实70均零失败/取消/跳过；最终真实Edge同代码全部场景再次通过并清理。静态UI另以全新浏览器profile单次测得导航load135.7ms、DOMContentLoaded135.5ms、FCP268ms，health-ready观测338.9ms、首次试算ready观测78.9ms；观测含CDP轮询，不混入后端热读样本。详细设计全文8709809b…33560、共享16和T12r3/T13r3冻结代码均不变；这覆盖前段“重跑/静态计时尚待”的过程状态。公共候选/G6/交付/安全/发布仍未实际完成。
+
+公共候选随后实际从HEAD3d7e1f0导出，叠加79白名单payload；只将源package中的三条未发布trade检查去掉，其他选中文本仅UTF-8 CRLF→LF，全部工作区原字节不变。代码清单source摘要bf126614416f76fff7c2e635c5b8f6adfedf823a8ca5752f84979165eea9fc93，公共摘要3fee14431147b3358a871f5d7691a8f09b67d9fe1c10952ee8292a82467abb21；未选入的暂停贸易仍为HEAD公共原版。该独立树实际严格公共锁/禁止registry替换/禁生命周期/离线恢复成功，完整361（182+8+15+6+60+2+30+58）及build/types、真实双库70零失败/取消/跳过通过，自有PG清理。不是匿名公共网络亲验，亦不是独立G6。8FR/14TC、10入口85相对链接、无环M03 DAG及当前三份冻结代码均核；当前规范/质量组合G6尚待独立结论。
+
+### ARCH-M03-SECURITY-01：独立审查无已确认漏洞，发布待完成
+
+独立security-review请求claude-opus-5.5，MODEL01仍仅涉及身份。评审读取精确公共树而非含暂停贸易的脏工作区，实际核142文件/40差异及全部330锁定公共包源；完整阅读新API、CLI、严格schema、查询、旧桥和配置，前端App/Reports仅风险模式检索，不冒称逐行全审。另在已执行同代码树用虚构reader/临时端口做真实raw-socket Host/Origin/Fetch Metadata/重复头/路径/查询/方法探针，拒绝结果符合Local威胁模型，临时脚本清理。没有碰原4173、ID3、真实账或.env；**本轮范围无已确认可利用漏洞**，不是完整ERP认证。
+
+| # | Severity | File | Lines | Vulnerability | Confidence |
+|---|----------|------|-------|---------------|------------|
+| — | — | — | — | 无已确认漏洞 | — |
+
+未做在线依赖公告查询、匿名公网安装/TLS亲验、全回归或浏览器重跑；后三类验收由作者证据分别记录，不能冒称安全评审亲跑。旧152项SHA1、无敏感字段的health/static未做Host门禁，以及dev代理依赖Vite默认allowedHosts均为明确范围内的非漏洞加固建议，不制造LOW项。原始TCP重置原因未知；预算仅为样本。实际本地保护交付25更新/15新增/39相同/0冲突，随后独立恢复/native int64/rollback、完整361/build/types和79交付hash复核通过，Git配置未变、本地原无data目录且仍无；原工作区两库另按迁移前物理hash精确核对不变。尚未stage/commit/push/新clone，T14不done。
+
 ## ARCH-M00-DESIGN-01：实施授权后的保护基线G2
 
 用户已委托DC01..04决策/执行、恢复贸易与备份核验后切换原账。作者gpt-6.1-sol；FR-AM00/D-AM00/TC-AM00-01..04见architecture-migration。原候选执行前完整292/292及14语法通过，不复用这些作为新工具通过。独立G3请求claude-opus-5.5，MODEL01仍只涉及身份。当前尚未独立审查，不写新工具/测试；不因本轮授权冒称宏观提案已实现或所有阶段G3已释放。

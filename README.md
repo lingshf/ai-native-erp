@@ -19,9 +19,9 @@ npm start
 
 仓库不包含`.env`、原账套、依赖目录或任何登录凭据。首次启动会在新副本创建独立的本机教学账套；已有账套不会从其他机器自动迁移。未配置AI时仍可使用确定性手工记账。需要AI时参照`.env.example`及下文受支持的官方Copilot登录/配置方式；新机器必须独立认证并核实模型可用性，原宿主的认证不随代码迁移。
 
-## 新架构Local预览（只读状态壳）
+## 新架构Local预览（已验证快照，只读）
 
-旧的`npm start`继续运行现有账务工作台。新的独立React前端和Nest/Fastify API当前**只提供只读运行状态**，不打开账簿、不提供财务操作或AI；不能用状态壳代替现有工作台或宣称迁移完成。M00保护工具和M01独立工程壳均已发布，M01发布时全新clone238项/build/typecheck通过且临时clone清理；当时工作区358项包含未发布贸易，不是公开功能。当前M02已增加独立双库存储及只读CLI，修订f9f1bcb的全新clone完整302+真实双库70/build/typecheck通过，G3/G5/G6保留MODEL01。M02不把快照接到此无鉴权状态壳；真实财务只读页为M03后续范围，身份/Server和原账切换仍有各自门禁。
+旧的`npm start`继续运行现有账务工作台。独立React前端和Nest/Fastify API现可显式读取M00保护工具生成并重新验证的快照，显示真实试算及同月完整总账；**不是活动账套，也不能编辑、过账、调用AI或替代原工作台**。M03详细G3及各增量门禁、组合与发布的实时状态见[项目进度](design/project.md)和[评审](design/reviews.md)，不把代码已实现当作本阶段已发布。身份/Server和原账切换仍有独立门禁。
 
 完成上面的依赖安装后，在项目根目录执行：
 
@@ -30,13 +30,27 @@ npm run verify
 npm run start:local
 ```
 
-`verify`包含原测试、语法和导入边界、边界破坏探针、独立workspace测试/构建及严格类型检查。Local默认`http://127.0.0.1:4180`，同一API托管独立的`apps\web\dist`，SPA只请求同源`/api/v1/health`；不需要配置跨域。缺前端产物明确返回503，不回退旧工作台。新CLI仅读取`ERP_PROFILE/ERP_HOST/ERP_PORT`，不读取旧`.env`、`HOST/PORT/DATA_DIR`；仅Local和字面loopback主机，拒绝4173、无效端口及未实现认证的Server档案，端口占用直接失败。
+`verify`包含原测试、语法和导入边界、真实Vite访问边界探针、独立workspace测试/构建及严格类型检查。Local默认`http://127.0.0.1:4180`，API托管`apps\web\dist`，浏览器只请求同源相对URL。普通`start:local`不打开账簿：首页仍只查询health，财务页返回明确503，不以空账冒充成功；`health.data:unconfigured`描述目标业务账未接，不是旧快照状态。缺前端产物也返回503，不回退旧工作台。
 
-工程边界为`apps\web`、`apps\api`及`packages\application/contracts/infrastructure/ui`。Zod是health/错误DTO的单一来源，构建输出静态OpenAPI 3.1到`packages\contracts\dist\openapi.json`；不维护第二份手写DTO。新壳双语label和偏好独立在`packages\ui`，默认中文/红色/教学关闭，三个偏好保存于浏览器同源`erp.workspace.preferences.v1`，本阶段不读取或改写旧工作台的偏好键。不同端口的偏好互不迁移，切换不触发账务写或重新请求状态。真实数据库适配、业务页面、认证及原账切换须后续阶段门禁；当前G5/G6和交付状态见[项目进度](design/project.md)。
+需要真实只读报表时，先构建，再显式选择**独立的M00已验证快照目录**，不能传活动账套的`data`目录：
+
+```powershell
+npm run build
+$snapshotDir = Read-Host 'M00 verified snapshot directory'
+npm run preview:legacy -- --snapshot-dir "$snapshotDir"
+```
+
+成功启动不打印就绪行；打开`http://127.0.0.1:4180`，或检查同源`/api/v1/legacy/context`返回200及所选快照身份确认就绪。源无效、档案/地址不符或端口占用明确失败，关闭时先停API再关reader。此CLI只读取`ERP_PROFILE/ERP_HOST/ERP_PORT`，不读取旧`.env`、`HOST/PORT/DATA_DIR`；仅Local和字面loopback，拒绝4173、非规范端口和未实现认证的Server，不从环境选择账套。
+
+财务页使用HashRouter，只有一个来自快照的期间选择，初次默认最后可用期间/调整后试算。三阶段切换不重新请求；科目下钻包含同月全部调整、冲销与结转，不带stage过滤。总计不随分页变化，按行ID而非凭证ID保留多行；超过100行可明确加载下一页。来源变更409须点击“重新加载快照”，清旧缓存/游标并读取新context后才采用新来源最后期间；可保留原总账科目路由，不自动切账。错误不自动重试，提供显式操作。金额按`scale:2`精确显示，不猜币种或翻译原名称/摘要/维度。
+
+开发时API固定4180、Vite固定5173/strictPort。在第二终端运行`npm run dev --workspace @erp/web`；普通同源GET无Origin也可代理，无需额外许可。确实带`Origin:http://127.0.0.1:5173`的请求，只有API启动时另加`--dev-origin http://127.0.0.1:5173`才允许。API与Vite均不提供跨域CORS响应，Vite拒绝外域Host，不设`allowedHosts:true`。改API端口须显式同步并验证代理目标，不能扩大来源许可掩盖错配；开发origin不是认证，不开放LAN。
+
+工程边界为`apps\web`、`apps\api`及`packages\application/contracts/domain/infrastructure/ui`。Zod是health/错误及context/trial/ledger DTO单一来源，构建输出OpenAPI 3.1到`packages\contracts\dist\openapi.json`。双语label和偏好独立在`packages\ui`，默认中文/红色/教学关闭，保存于浏览器同源`erp.workspace.preferences.v1`，不改旧偏好键。不同端口偏好独立；切换不触发账务写或额外财务查询。M02双库技术存储不等于已迁移业务；认证、业务写入及原账切换仍待后续阶段。
 
 ## 本地查看完整需求与进度
 
-**架构迁移已获委托执行，尚未全部完成：** [中小企业ERP分层与双数据库方案](design/architecture.md) · [阶段详细设计与验收](design/architecture-migration.md) · [技术选型ADR](design/adr/ADR-SME-001.md) · [14节点架构图](design/diagrams/sme-overview.svg)。M00原账保护、M01独立工程骨架和M02双库事务/迁移与只读旧账桥均已发布；M02修订`f9f1bcbce539c13aae80aeddec5dc7d3280d250b`经G3/G5/G6（MODEL01）、源422/公共302和双方真实双库70/零跳过，精确新GitHub clone安装/native/完整302+真实70/build/types亦通过并清理。目标存储不代表业务GL、多人身份或Server试点可用，真实原账未切换。目标保持Local单人SQLite，另行提供PostgreSQL/OIDC的Server试点；下一阶段M03只读SPA页须先详细设计与G3。贸易未提交成果保留到M06移植；原账须备份、核对余额/哈希并保留ID3及只读源后才切换。44FG仍0整体完成/13部分/31未实现。
+**架构迁移已获委托执行，尚未全部完成：** [分层与双数据库方案](design/architecture.md) · [阶段详细设计与验收](design/architecture-migration.md) · [技术选型ADR](design/adr/ADR-SME-001.md) · [14节点架构图](design/diagrams/sme-overview.svg)。M00/M01/M02已发布；当前M03只读SPA进入组合验收，实时门禁/交付见[项目进度](design/project.md)，后文M02计数是历史，不冒充M03结果。真实身份/Server、业务写入和原账切换未完成。贸易候选保护到M06，原账先备份核对并保留ID3及只读源再切换。44FG仍0整体完成/13部分/31未实现。
 
 ### M02只读快照CLI（M02已验收发布）
 
@@ -48,7 +62,7 @@ node scripts\read-legacy-ledger.mjs trial --snapshot-dir backups\before-architec
 node scripts\read-legacy-ledger.mjs ledger --snapshot-dir backups\before-architecture --month 2026-01 --account 1000 --limit 100
 ```
 
-输出为JSON，显式标注`live: false`、快照SHA和金额`scale: 2`，金额是精确最小单位整数。试算stage可为`unadjusted`、`adjusted`或`postClosing`；总账含当月全部分录，分页只切行、不改期初/借贷合计/期末，使用返回的`nextCursor`传入`--cursor`继续。不合法的参数/快照/游标明确失败，不以空账冒充成功；完整新财务HTTP入口与真实原账切换仍未开放。
+输出为JSON，显式标注`live: false`、快照SHA和金额`scale: 2`，金额是精确最小单位整数。试算stage可为`unadjusted`、`adjusted`或`postClosing`；总账含当月全部分录，分页只切行、不改期初/借贷合计/期末，使用返回的`nextCursor`传入`--cursor`继续。不合法的参数/快照/游标明确失败，不以空账冒充成功。M03显式快照服务的三个GET是`/api/v1/legacy/context`、`trial`、`ledger`；普通无快照启动不启用该reader，真实原账仍未切换。
 
 ### M02目标存储工具（M02已验收发布）
 

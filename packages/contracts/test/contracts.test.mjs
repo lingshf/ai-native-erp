@@ -39,5 +39,7 @@ test('static OpenAPI artifact exactly matches every generated DTO and rejects de
     assert.throws(() => verifyOpenApi(changed), /OpenAPI/);
   }
   assert.equal(emitted.openapi, '3.1.0');
-  assert.deepEqual(Object.keys(emitted.components.schemas).sort(), ['ErrorResponse', 'HealthResponse']);
+  assert.deepEqual(Object.keys(emitted.components.schemas).sort(), [
+    'ErrorResponse', 'HealthResponse', 'LegacyContextResponse', 'LegacyLedgerResponse', 'LegacyTrialResponse',
+  ]);
 });

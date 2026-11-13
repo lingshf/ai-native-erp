@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import {
+  legacyContextSchema, legacyTrialSchema, legacyLedgerSchema,
+  legacyTrialQuerySchema, legacyLedgerQuerySchema,
+} from './legacy.js';
+export * from './legacy.js';
 
 export const healthSchema = z.strictObject({
   service: z.literal('ai-native-erp'),
@@ -8,7 +13,8 @@ export const healthSchema = z.strictObject({
 });
 
 export const errorCodeSchema = z.enum([
-  'INVALID_REQUEST', 'NOT_FOUND', 'METHOD_NOT_ALLOWED', 'UNSUPPORTED_MEDIA_TYPE', 'UNAVAILABLE', 'INTERNAL_ERROR',
+  'INVALID_REQUEST', 'FORBIDDEN', 'NOT_FOUND', 'METHOD_NOT_ALLOWED', 'CONFLICT',
+  'UNSUPPORTED_MEDIA_TYPE', 'UNAVAILABLE', 'INTERNAL_ERROR',
 ]);
 
 export const errorSchema = z.strictObject({
@@ -28,10 +34,31 @@ const response = (description: string, schema: string) => ({
   content: { 'application/json': { schema: { $ref: `#/components/schemas/${schema}` } } },
 });
 
+function legacyOperation(operationId: string, schema: string,
+  query?: typeof legacyTrialQuerySchema | typeof legacyLedgerQuerySchema) {
+  const querySchema = query ? z.toJSONSchema(query, { target: 'draft-2020-12' }) : undefined;
+  return {
+    get: {
+      operationId,
+      parameters: Object.entries(querySchema?.properties ?? {}).map(([name, value]) => ({
+        name, in: 'query', required: querySchema?.required?.includes(name) ?? false, schema: value,
+      })),
+      responses: {
+        '200': response('Explicit verified read-only snapshot; not a live business ledger.', schema),
+        ...Object.fromEntries([400, 403, 404, 405, 409, 415, 500, 503].map(status =>
+          [String(status), response('Explicit redacted snapshot query error.', 'ErrorResponse')])),
+      },
+    },
+  };
+}
+
 export const openApiDocument = {
   openapi: '3.1.0',
   info: { title: 'AI Native ERP Local runtime contract', version: '1' },
   paths: {
+    '/api/v1/legacy/context': legacyOperation('getLegacyContext', 'LegacyContextResponse'),
+    '/api/v1/legacy/trial': legacyOperation('getLegacyTrial', 'LegacyTrialResponse', legacyTrialQuerySchema),
+    '/api/v1/legacy/ledger': legacyOperation('getLegacyLedger', 'LegacyLedgerResponse', legacyLedgerQuerySchema),
     '/api/v1/health': {
       get: {
         operationId: 'getRuntimeHealth',
@@ -47,6 +74,9 @@ export const openApiDocument = {
     schemas: {
       HealthResponse: z.toJSONSchema(healthSchema, { target: 'draft-2020-12' }),
       ErrorResponse: z.toJSONSchema(errorSchema, { target: 'draft-2020-12' }),
+      LegacyContextResponse: z.toJSONSchema(legacyContextSchema, { target: 'draft-2020-12' }),
+      LegacyTrialResponse: z.toJSONSchema(legacyTrialSchema, { target: 'draft-2020-12' }),
+      LegacyLedgerResponse: z.toJSONSchema(legacyLedgerSchema, { target: 'draft-2020-12' }),
     },
   },
 };

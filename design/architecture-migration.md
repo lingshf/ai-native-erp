@@ -170,4 +170,85 @@ G2已单独做原生可行性探针：当前Node26/Windows下，DELETE源header[
 | TC-AM02-13 / 06/07 | 运行期间close、重复close、资源部分初始化失败；两次自建PG集群、端口已占/认证错误/异常退出 | 在途明确完成或回滚后关闭，无新请求；幂等关闭，临时数据/自己PID清理，不接/杀其他集群 |
 | TC-AM02-14 / 03/07 | 有界Local批次与单语句/事件循环监测；真实PG版本/loopback/SCRAM/迁移/多连接；原账及贸易冻结比对 | 如实记录时延及未测预算；PG不是模拟；M01 UI/health无改变，原账/ID3/贸易保持，Server档案不提前开放 |
 
-执行状态追加：上述revision3原G2/G3契约已由独立评审释放MODEL01，允许tasks中的M02实现子任务；本次只将历史“待审”改为真实状态，不借旧G3摘要覆盖新实现。T05/T09/T08各G5已释放，T06/07首轮通过后仍有加固复核，组合/发布未完成，实际执行证据见reviews/project。若实测发现改变上述契约，仍必须回到G3；研究/运行时或单项测试均不能替代整体M02验收。
+执行状态：上述revision3 G3及M02各增量/组合G5/G6均已独立释放MODEL01；最终发布main3d7e1f0的精确新clone完整302+真实SQLite31/PG38/CLI1=70/build/typecheck通过，详见reviews/project。首次clone失败及未知TCP原因保留，不由后续通过抹除；后续改变契约仍需G3。下节为新增M03 G2，不复用M02许可。
+
+## ARCH-M03 / D-AM03：显式快照的真实只读SPA（G2，待独立G3）
+
+关联FR-AM03-01..08、AR-01/02/07及AT-01/02/07；作者及独立模型计划见project。基线为已发布3d7e1f0和M02真实reader。此阶段不改目标DDL/UoW，不开启Server/登录/审批/财务写入/AI，不迁移或切换原4173；未提交贸易原样保留。M03前端可按既定协议与其他阶段分文件工作，但真实只读验收必须消费M02已验收桥，不能用mock替代。没有真实法人/币种的旧教学快照不编造company/currency；Local操作员不是模拟OIDC用户，snapshot身份不是授权凭据。
+
+### D-AM03-SOURCE：组合根、期间与所有权
+
+在根scripts提取已有只读CLI的公共打开组合：`preflightLegacySnapshotPair` → M00 `verifyLedgerSnapshot` → `openLegacyTeachingSnapshot`，原CLI复用它并保持原错误分类/参数/输出/关闭后成功语义。此模块仅组合已有验证，不复制SQL/校验器。新显式快照预览CLI解析`--snapshot-dir`、可选单个`--dev-origin`和原ERP_PROFILE/HOST/PORT运行配置；不读`.env`/DATA_DIR选择账，不接受HTTP目录。**先**用现有Local配置校验拒绝Server、非literal loopback及4173，才触碰快照。相对目录只由操作员在CLI解析为绝对路径；响应/日志不回传路径。有效配置后才打开快照并注入Nest组合根，失败非零且不回退unconfigured成功；原无快照bootstrap继续仅提供health壳，财务查询503。
+
+`LegacyTeachingReader`增加只读`periods(): readonly {month,status:'open'|'closed'}[]`，在既有SHARED事务中按month升序读原periods表并验证格式/状态；closed reader、坏持久数据明确失败，不增加表或写PRAGMA。原trialBalances/ledger字段及算法不变，默认/最大分页仍100，account仍四位非零开头数字。application新增只读查询服务：context取真实期间与来源info；trial/ledger先核请求snapshot SHA，再调用同一reader，不重新计算会计/过滤历史或把草稿计入。读取能力只涵盖该单一显式快照，不把它映射为已有企业company。
+
+root CLI拥有reader，API只借用；停服先drain/close API再close reader，重复信号幂等，启动/监听失败也释放全部已建资源。任一关闭失败明确非零/安全错误事件，不能记录成功。快照持SHARED至关闭，源/快照物理hash和目录不变；不把跨两库分别快照说成原子同时快照。
+
+root package由集成作者单写：允许添加本轮CLI的npm入口/语法check，活工作副本必须原样保留三条未发布trade check。公开候选及本地交付以HEAD package为底只加入本轮已审M03入口，排除trade段并分别验证，不能直接整文件提交工作副本。29个保护源文件不含root package，它们仍要求逐字节不变；新增依赖/lock单写，禁止UI/API并发改共享lock。
+
+### D-AM03-HTTP：来源绑定和单源契约
+
+新增三个精确GET路径：`/api/v1/legacy/context`、`/api/v1/legacy/trial`、`/api/v1/legacy/ledger`。health v1保持原严格DTO；其中`data=unconfigured`仍指未接入新目标业务账，不能拿它代表快照可用性，快照仅由context证明。普通API启动未配置reader时三个财务路径503，不返回空账200。
+
+- context：无query，返回`contractVersion:'1'`、M02只读snapshot info和真实periods；不含目录、连接信息、假法人/币种或任何草稿正文。
+- trial：严格query为snapshot（64小写hex）、month（YYYY-MM）；返回snapshot info、month及M02的三个完整trialBalances。阶段是客户端显示选择，不是服务端改会计规则。没有任意对象投影、维度过滤或客户端总额参数。
+- ledger：严格query为snapshot/month/account以及可选limit/cursor；limit十进制规范整数1..100，默认100，cursor沿既有base64url最多1024字符。返回snapshot info、month及原完整月ledger（account/opening/closing/debit/credit/totalEntries/entries/nextCursor）。**不接受stage/维度过滤**，entry中的原ID/date/kind/source_kind/维度及借正贷负balance保留，分页只切行。
+
+Zod strict请求/响应DTO及OpenAPI路径/参数/所有状态单源生成并测试，unknown/重复query或非规范limit400；month沿domain的1900-01..9998-12，不仅检查字符串形状。金额/ID/总数为安全整数，scale恒2，禁止浮点/NaN/超安全整数或静默数值强转。响应来源SHA与请求一致，来源换了409，不能自动改读另一来源；金额超界或坏持久数据503而非0。没有币种证据时只标“金额（2位精度）”，不加货币符号或从另一企业库拿币种。前端按BigInt分解已核安全整数做精确分组/两位格式，不用浮点除100再四舍五入或重新加总会计结果。
+
+错误统一沿既有`code/messageKey/params/fieldErrors/requestId/retryable`；追加403 FORBIDDEN与409 CONFLICT并更新OpenAPI，保留原400/404/405/415/500/503行为。未知期间/科目404、来源冲突409、输入/游标400、不可用/溢出/损坏503；其他异常500。真实非200，不暴露原SQL/路径/原异常，日志仍仅服务器requestId和安全错误类型；不以requestId反射任意header。所有财务成功/失败响应`Cache-Control:no-store`及`X-Content-Type-Options:nosniff`。
+
+只读错误映射固定如下，不能把坏源当输入错，也不能因异常被M02包装而改成空成功：
+
+| 抛出的类型/码 | HTTP |
+| --- | --- |
+| StorageError INVALID_INPUT / INVALID_CURSOR，DomainError INVALID_INPUT | 400 |
+| StorageError / DomainError NOT_FOUND | 404 |
+| StorageError CONFLICT（请求快照与当前显式源不符） | 409 |
+| StorageError INVALID_SNAPSHOT / SCHEMA_MISMATCH / OVERFLOW / BUSY / CLOSED / STORAGE_FAILURE，DomainError OVERFLOW | 503 |
+| 其余不应出现在本只读服务的存储码及非存储异常 | 500 |
+
+### D-AM03-LOCAL：浏览器请求边界与开发代理
+
+财务路由的实际controller/guard独立校验，不能仅按原始URL前缀决定是否加保护：请求Host必须匹配当前API实际监听的literal loopback origin（测试端口0以listen后的真实端口为准）；尚未完成listen时拒绝403，不能以配置端口0/默认inject Host放行。财务集成测试用实际listen，旧health inject测试保持。不采信Forwarded/X-Forwarded-*。Origin存在时只能是该API origin或操作员显式配置的单个开发origin；`Origin:null`、其他来源和`Sec-Fetch-Site:cross-site`拒绝403。Origin缺省保留同机操作员/正常直接导航能力，不声称抵御同OS用户。无通配CORS、无任意Origin反射；查询只读也不得被宽松跨域代理暴露。编码/双斜线等路由别名不能绕过guard，非法方法405，未知路径404，快照身份不能充当认证token。
+
+开发origin默认无；如显式`--dev-origin`，必须是规范http origin、literal 127.0.0.1或[::1]、有效端口且非4173，无用户名/密码/path/query/hash或通配，不开放LAN。Vite固定127.0.0.1:5173/strictPort，`/api/v1` proxy `changeOrigin:true`只改Host、不注入Origin；浏览器继续相对API URL，普通同源GET无Origin时按上述缺省规则允许，**无需**配置开发origin才能proxy成功。`--dev-origin`只决定真实带Origin header的请求：如`Origin:http://127.0.0.1:5173`存在，仅显式许可才接受。测试用实际浏览器证明缺省proxy联通，另用可控请求验证有header时的许可/拒绝，不伪造浏览器必发Origin的oracle。无跨域CORS响应；构建后的web+API同源默认不用此选项，Server/真实身份另属M04；dev origin不是登录、授权或可信proxy认证。
+
+proxy重写Host后不能靠API再次识别原始浏览器Host，所以Vite必须保持默认`server.allowedHosts`或显式空列表，绝不设true/任意外部域名，仍只绑定loopback；TC07实际向5173发外域Host并确认由Vite拒绝。开发命令配套固定API4180与web5173，不宣称改API端口后原固定proxy仍自动适配；需要不同端口时先显式同步并验证proxy目标，不能扩大Host许可来掩盖错配。
+
+### D-AM03-WEB：真实路由、查询与偏好
+
+按已接受ADR消费React Router和TanStack Query：本阶段用HashRouter避免Local静态服务虚假history fallback，overview仍是现有health壳；新增reports/trial及reports/ledger/:account路由和真实分组导航，不添加未实现业务按钮。选用已核公开元数据的react-router-dom7.18.5、@tanstack/react-query5.106.1（适配现React19.3.1/Node26）；G3前不改manifest或安装，实施时精确锁定及验证SRI/新依赖，元数据不是安装/安全通过。React Hook Form待真实编辑表单消费者，不为只读页面加空依赖。
+
+report路由才查询context，不把新查询插入原overview的health-only行为；QueryClient/Router及偏好位于稳定上层，切语言/主题/教学不重建它们。context成功后初次采用最后可用期间、adjusted阶段；URL已明确source/month时必须验证，不静默换来源或非法期间。只有一个全局期间选择，合法空期间列表有明确无期间空态，不制造当月；切月同步撤销旧试算/总账页面与旧游标。来源scope为snapshot SHA而非假companyId；显示旧快照/live:false，旧账套原始科目名、摘要和维度不翻译。
+
+trial query key包含source/month；stage纯显示切换，不重新取数。ledger包含source/month/account/limit并用受控infinite query页参数；返回保留month/stage，阶段不传给ledger API。快照不可变，明确设置`staleTime:Infinity`、`retry:false`、`refetchOnReconnect:false`、`refetchOnWindowFocus:false`、`refetchOnMount:false`，无后台轮询，错误由按钮重试，不依赖库的默认重试/过期策略。更换上下文取消在途，前端严格解析DTO并检查响应source/month/account与请求一致；迟到结果不能回填新key，旧数据不作新上下文placeholder。load-more在途禁止重复，跨页以唯一`lineId`查重（journal `id`可重复）；重复cursor、不一致总计、累计行数超totalEntries、末页累计不等于totalEntries或空页却有nextCursor都明确invalid-response，不静默去重/追加或无限循环。分页失败可以保留同一上下文已成功页但标明失败，不能冒充已完整加载。来源409提供用户明确触发的“重新加载快照”，清除旧来源缓存/游标、重新读context，才可采用新来源最后期间；不能自动改读另一账。
+
+所有新标题/表头/选项/提示/空态/错误/aria在packages/ui的两语言资源，按key引用；借贷不平衡/错误有图标和文字，不只靠红主题区分。教学关隐藏概念扩展，仍保留快照/完整月/金额方向等必要业务边界。下钻用可键盘操作的button/link，返回恢复选择；桌面与390px由真实浏览器验证，表格可以有明确横向滚动区域但页面无溢出遮挡。原三偏好和保存失败提示行为、原旧工作台/未保存贸易代码不变。
+
+HashRouter与现有skip/overview链接共享fragment：skip须拦截默认hash导航并聚焦main，不把`#workspace-main`变成新业务路由；overview须改为真正Router Link并保持aria-current，不能遗留旧anchor。两者各有断言，保留可见焦点与原有可访问性。显式无效的URL期间/来源显示错误和未选择状态，不能由select浏览器默认第一项伪装成合法选择。
+
+### D-AM03-VERIFY：验收、预算与交付
+
+基线原302公开/422完整工作区测试身份及M02真实70保留，新增聚焦用例以失败先行；用现有legacyFixture生成独立虚构M00快照（含草稿ID3、关闭月、调整/冲销/维度/停用历史及多页），真实HTTP和React只消费该快照。模拟fetch只证明组件竞态/错误，不代替实际CLI/API/SPA联通。关闭前后对比fixture源/快照全目录及物理摘要；原真实两库仅FS hash保护，不SQL打开，不重启4173。
+
+在同一已记录Local硬件/Node环境测完整HTTP热读样本的p95/p99/错误，按宏观热读p95不超过1秒预算记录是否达标；UI静态加载单列，不混平均数或把snapshot同步SQLite说成非阻塞。此为单人只读有界样本，不代替M08的30分钟/多人/认证/双库容量与故障验收，也不改其预算或声称SLA。独立G5/G6、精确金额及真实桌面/390px验收后，才白名单哈希保护交付、安全审查、远端未前进时快进main和精确新clone；不发布私有快照/路径/账务/原知识库，不提交贸易候选。
+
+### TC-AM03：计划用例，尚未执行
+
+| ID / FR | 正常、边界及故障输入 | 可观察预期 |
+| --- | --- | --- |
+| TC-AM03-01 / 01/06 | 新CLI正常/缺参数/错目录/WAL快照；Server/0.0.0.0/4173与坏目录同时提供；bind失败、重复信号 | 正常真实只读服务；先拒运行档案才触快照，FS前置/M00验证不绕过，无env账套兜底；失败非零、无路径/SQL，全部资源关闭 |
+| TC-AM03-02 / 01/02 | 空/多期间、open/closed、坏持久month/status、closed reader、正常原三TB | 原期间升序/无假今天；坏数据/closed明确失败，新只读方法不改旧算法/目录/hash |
+| TC-AM03-03 / 02/07 | 所有DTO/OpenAPI正反例、unknown/重复query、limit0/1/100/101/01、浮点/超界/NaN、extra响应字段 | 单源契约完整一致；无数值强转/悄悄截断，真实400/503或客户端invalid-response，不渲染0成功 |
+| TC-AM03-04 / 02/03 | 同月三阶段、跨月调整/冲销/结转、停用1100/维度、草稿ID3 | HTTP每项等于M02；草稿不计入，完整ledger不带stage，阶段TB与完整月差异不冒充漏账 |
+| TC-AM03-05 / 02/03/04 | ledger1/100行及多页，同日同journal多line；篡改/错source/account/month/位置游标 | 顺序及行身份稳定；每页月总计相同，末页无next；非法400，不跨来源合并 |
+| TC-AM03-06 / 01/06/07 | 实际loopback端口、Host攻击域/错端口/IPv6、外Origin/null、cross-site、伪Forwarded、编码路径/方法；listen前inject | 财务保护不能由URL别名绕过，403/404/405符合DTO，无CORS反射；listen前拒绝，原health/static兼容 |
+| TC-AM03-07 / 06 | 实际Vite5173同源GET/proxy且无Origin；可控请求显式带5173 Origin的有/无许可两种配置；发给Vite的外域Host；4173/外网/带path/用户信息配置 | 无Origin的真实proxy按Host/缺省规则成功，不声称必须dev许可；显式Origin仅匹配许可成功，否则403；Vite自己拒绝外域Host，不设allowedHosts:true；非法配置启动前拒绝，Server始终拒绝，不把dev来源当认证 |
+| TC-AM03-08 / 04/07 | 初始无reader503、查询时故障/新来源409、未知月/科目404、500、恢复重试 | 每个真实非200遵循脱敏DTO/requestId/no-store/nosniff；无旧成功/空0兜底，刷新来源需明确操作 |
+| TC-AM03-09 / 03/04 | 试算阶段下钻与返回，global month切换、来源参数错、旧请求晚到 | 同月完整账，month/stage恢复；新上下文立即撤销旧数据，迟到/取消不回填，不静默改source |
+| TC-AM03-10 / 04 | 快速load-more、失败重试、重复cursor/lineId、相同journal id不同lineId跨页、变总计/错echo/空却有next/末页数量不符 | 只按lineId查重，合法同journal多line保留；不并发重复追加，不丢页/无限循环；坏响应明确失败，同上下文已加载页标明未完整 |
+| TC-AM03-11 / 02/05 | 正/负/0及安全整数边界的scale2值、中英格式、旧双语科目/摘要/维度 | 两位显示与整数逐分一致，不用float舍入/猜币种，不改账套内容 |
+| TC-AM03-12 / 04/05 | 三偏好切换/刷新、存储损坏/拒写再恢复；overview/report查询计数、重连/焦点/返回缓存、skip及overview链接 | 已声明默认/错误提示保留，语言/主题/教学不增查询或丢选择；无库默认额外重试/refetch，旧overview不偷偷取财务数据；skip聚焦main不改路由，overview真导航 |
+| TC-AM03-13 / 01/03/05 | 独立真实CLI/API/构建SPA、桌面/390px、键盘下钻返回及两语言/主题/教学 | 实际来源/期间/金额/页数可核，关键截图；关闭后源/快照/原两库及29保护文件hash不变，无4173切换 |
+| TC-AM03-14 / 08 | 原测试身份、全verify/真实70、预算样本、故意无PG、公开发布/新clone | 原断言不降级，新增聚焦失败→通过，build/types/无skip，p95/p99与未测边界如实；保护同步0覆盖冲突，安全0不冒称未知漏洞为零，精确新clone真实验证 |

@@ -29,6 +29,19 @@
 
 并行批次：A=T05与T09（产品公共契约 vs 私有工具，无共同写文件）；B=T05 G5后的T06/T07目标存储作者与T08旧账作者（各自模块目录，shared exports/manifest不多人写）；C=全部真实出口后的T10。T07可以先写代码但不在T09真实运行时可用前声称测试通过；T06/T07共享核心归同一作者，不把逻辑独立任务伪称同时写同文件。M03/M04尚无各自详细G3，不提前展开其业务/身份代码。
 
+### M03实施批次（revision3 G3已释放MODEL01）
+
+只对FR-AM03-01..08 / D-AM03 / TC-AM03-01..14分解；所核D全文8709809b593ab05784f7a559c1671f70e10f16d7ca224c3538e2a8b7a7c33560。M02实际已完成；宏观M03与M04可分文件，但本批不提前实施身份/财务写入。集成作者实际gpt-6.1-sol；独立高风险G5/G6通过宿主请求claude-opus-5.5，实际身份不能核实沿MODEL01，不豁免实现/测试缺陷。实现代理如未提供身份依据不臆造；工作量按真实出口而非文件数量判断。
+
+| 任务 | 状态 / 真实前置 | 独占文件 / 追踪 / 风险与作者 | 可观察出口 / 测试先行 / 评审 |
+| --- | --- | --- | --- |
+| ARCH-T11 只读契约与查询基础 | done（MODEL01）；M03 revision3 G3、M02旧桥及M01 | 集成作者独占contracts、application查询及legacy port、infrastructure legacy的periods方法/聚焦测试、纯root快照opener与旧CLI提取、共享manifest/lock/exports；FR01/02/07/08、TC01..05/08；高风险精确值/来源接口 | 先RED后实现；r1六非公共包源阻塞已独立关闭。r2公共锁及实际Cookie归档SHA512、真实桥到schema跨页互操作；严格离线恢复成功，workspace/build124、类型与边界7通过，独立44项零失败/skip、16摘要重核及spec/quality G5释放。公网匿名在线安装未验证；test-only相对dist依赖沿根构建顺序，非阻塞建议保留 |
+| ARCH-T12 Local财务HTTP与启动生命周期 | done（MODEL01）；r3 G5已独立释放；T11 G5已释放 | API作者独占apps/api/src与其test、新scripts/preview-legacy-snapshot.mjs及其CLI集成测试；根script/check由集成作者合入。FR01/02/06/07、TC01/03..08；高风险财务披露/关闭与错误 | r2补early return、真实重复信号及失败关闭测试后独立30/类型/build通过。组合首轮暴露测试cwd路径错误，r3仅按模块URL定位测试脚本，五个其他文件不变；同评审独立workspace30和根CLI9通过，六摘要/共享16/D重核，规范/质量G5释放，原失败保留 |
+| ARCH-T13 真实试算/总账SPA | done（MODEL01）；r4 G5已独立释放；T11 G5已释放；与12无依赖 | 前端作者独占apps/web、packages/ui；根边界测试由集成作者单写，不改manifest/lock；FR03..05、TC03/09..12/07；高风险迟到/精度及Local边界 | r2查询/导航/管理器/教学修复、r3真实Vite CORS的RED→GREEN及独立九摘要/58web/UI2/8边界/类型/build已核。r4只改四现有label/语言，区分未配置目标业务账与可读快照，其他八文件/共享16/D不变；同评审独立58web/UI2及九摘要重核，规范/质量G5释放。当前真实UI/组合由14收口 |
+| ARCH-T14 M03组合与公开交付 | in_progress；T11r2/T12r3/T13r4各G5已释放MODEL01 | 集成作者单写根入口/文档/候选与交付白名单/私有验收helper；全部FR/TC；高风险组合/公开持久化 | r4源完整481/重新导出公共361/build/types及公共真实70/零skip通过；源保留trade检查，79文件候选仅移除三条trade检查及Git文本换行规范化。重建后真实Edge六图含中英概览零财务查询、逐分oracle/104行两页、403/409/历史/偏好/键盘/390px/proxy/保护hash通过，静态UI单列load122.4ms/FCP280ms，helper清理。当前r4规范/质量组合G6亦已独立释放MODEL01；本地25更新15新增39同0冲突及副本361/native/build/types通过，独立安全审查无已确认漏洞；非强制main与精确新clone仍须完成才done |
+
+真实DAG：`M03 G3 + M02 -> T11 G5 -> {T12, T13} -> T14`。批次A为单写共享基础；B仅API/CLI与web/ui两个独占文件域并行，二者不得改contracts/manifest/lock；C为组合/验收/文档/交付串行。T11未过G5不启动B；分项通过不能代替T14当前组合G6。原全部44FG状态仍0整体完成/13部分/31未实现。
+
 ## 历史提案：ARCH-SME-01（确认前，仅设计）
 
 本节记录授权前状态：M-TRADE当时按用户要求暂停。新增架构需求/ADR/迁移阶段见[architecture](architecture.md)，用例AT-01..11。提案宏观独立G3已释放EXCEPTION (user-approved MODEL01)，当时ARCH-M00..09仍待用户确认及各阶段详细G3；10 planned、0 ready，不运行安装/迁移。当前实施授权与真实完成以本文件顶部为准。

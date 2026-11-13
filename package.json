@@ -17,6 +17,7 @@
     "start": "node --env-file-if-exists=.env src/server.mjs",
     "start:local": "npm start --workspace @erp/api",
     "ledger:read": "node scripts/read-legacy-ledger.mjs",
+    "preview:legacy": "node scripts/preview-legacy-snapshot.mjs",
     "storage:admin": "node scripts/storage-admin.mjs",
     "test": "node --test tests/*.test.mjs",
     "build:packages": "npm run build --workspace packages/domain && npm run build --workspace packages/contracts && npm run build --workspace packages/application && npm run build --workspace packages/infrastructure && npm run build --workspace packages/ui",
@@ -27,7 +28,7 @@
     "test:boundaries": "node --test tooling-tests/boundaries.test.mjs",
     "verify": "npm test && npm run check && npm run test:boundaries && npm run test:workspaces && npm run typecheck",
     "verify:databases": "npm run build:packages && node --test packages/infrastructure/test/storage-sqlite.test.mjs packages/infrastructure/test/databases/*.test.mjs",
-    "check": "node --check src/book.mjs && node --check src/server.mjs && node --check src/copilot-ai.mjs && node --check src/enterprise.mjs && node --check scripts/enterprise-backup.mjs && node --check public/app.js && node --check public/enterprise.js && node --check public/money.js && node --check public/labels.js && node --check public/labels/zh.js && node --check public/labels/en.js && node --check scripts/ledger-snapshot.mjs && node --check scripts/read-legacy-ledger.mjs && node --check scripts/storage-admin.mjs && npm run check:boundaries"
+    "check": "node --check src/book.mjs && node --check src/server.mjs && node --check src/copilot-ai.mjs && node --check src/enterprise.mjs && node --check scripts/enterprise-backup.mjs && node --check public/app.js && node --check public/enterprise.js && node --check public/money.js && node --check public/labels.js && node --check public/labels/zh.js && node --check public/labels/en.js && node --check scripts/ledger-snapshot.mjs && node --check scripts/read-legacy-ledger.mjs && node --check scripts/storage-admin.mjs && node --check scripts/legacy-snapshot-reader.mjs && node --check scripts/preview-legacy-snapshot.mjs && npm run check:boundaries"
   },
   "devDependencies": {
     "@babel/parser": "7.29.13",

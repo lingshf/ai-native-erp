@@ -25,6 +25,11 @@ export interface LegacyTeachingSnapshotInfo {
   readonly scale: 2;
 }
 
+export interface LegacyTeachingPeriod {
+  readonly month: string;
+  readonly status: 'open' | 'closed';
+}
+
 export interface LegacyTrialBalanceRow {
   readonly code: string;
   readonly name: string;
@@ -86,6 +91,7 @@ export interface LegacyTeachingLedger {
 /** Explicit local operator snapshot access, not an authorization or live-data port. */
 export interface LegacyTeachingReader {
   readonly info: LegacyTeachingSnapshotInfo;
+  periods(): readonly LegacyTeachingPeriod[];
   trialBalances(month: string): LegacyTeachingTrialBalances;
   ledger(query: LegacyTeachingLedgerQuery): LegacyTeachingLedger;
   close(): void;

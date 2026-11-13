@@ -1,10 +1,10 @@
 # Proposed design
 
-当前用户已委托执行ARCH-M00..09、恢复贸易及在完整保护旧账/ID3后切换预览。宏观架构仍见[architecture](architecture.md)，逐阶段详细设计和FR/TC见[architecture-migration](architecture-migration.md)。M00/M01已发布；当前M02双库/UoW/旧库只读桥详细G2待独立G3，不把高层或前阶段G3当所有实现许可。
+当前用户已委托执行ARCH-M00..09、恢复贸易及在完整保护旧账/ID3后切换预览。宏观架构见[architecture](architecture.md)，详细设计和FR/TC见[architecture-migration](architecture-migration.md)。M00/M01/M02已限定验收发布。D-AM03/FR-AM03-01..08/TC-AM03-01..14的revision3独立G3及T11 r2/T12 r3/T13 r4各G5均释放MODEL01，当前r4组合规范/质量G6亦已释放MODEL01，正在交付与发布；当前证据见[项目](project.md)、[评审](reviews.md)。所核详细D全文8709809b…33560未改，旧标题“计划/待审”保留当时设计状态，不覆盖此门禁记录。M03不开放Server、真实身份或业务写入；本轮实际修复Vite默认CORS行为以符合原同源设计，没有扩展会计政策或改原账。
 
 ## ARCH-SME-01：新的长期架构提案入口
 
-[中小企业ERP架构](architecture.md)及[选型ADR](adr/ADR-SME-001.md)是本轮设计提案，含独立前端、API/应用/领域/基础设施边界、SQLite/PG档案、真实授权、事务与迁移DAG。现有下文D-CORE/D-TRADE仍作为已实施或暂停候选行为基线保留，不被提案虚称已重构。用户要求贸易暂停继续生效；高层架构G3不批准恢复开发、迁移真实账或推送。
+[中小企业ERP架构](architecture.md)及[选型ADR](adr/ADR-SME-001.md)的推荐方案已获委托分阶段执行，含独立前端、API/应用/领域/基础设施边界、SQLite/PG档案、真实授权及迁移DAG。下文D-CORE/D-TRADE保留原已实施或未发布候选行为；贸易保留到M06恢复并迁移，旧暂停记录为历史，不是禁止继续架构工作。真实原账切换、各业务实现及发布仍须各自实际门禁与保护，不因高层G3自动通过。
 
 ## D-TRADE-A：权威事件投影与非库存贸易（金融基线已审，缓存补充待审）
 

@@ -6,7 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import type { SQLOutputValue } from 'node:sqlite';
 import { StorageError } from '@erp/application';
 import type {
-  LegacyTeachingLedger, LegacyTeachingLedgerQuery, LegacyTeachingReader,
+  LegacyTeachingLedger, LegacyTeachingLedgerQuery, LegacyTeachingPeriod, LegacyTeachingReader,
   LegacyTeachingSnapshotInfo, LegacyTeachingTrialBalances, VerifiedTeachingSnapshotConfiguration,
 } from '@erp/application';
 import {
@@ -291,6 +291,17 @@ class SnapshotReader implements LegacyTeachingReader {
     }
     if (!all(this.db, 'SELECT month FROM periods WHERE month=?', value).length) return fail('NOT_FOUND');
     return value;
+  }
+
+  periods(): readonly LegacyTeachingPeriod[] {
+    return mapped(() => {
+      if (this.closed) return fail('CLOSED');
+      return all(this.db, 'SELECT month,status FROM periods ORDER BY month').map(row => {
+        const month = checkedTeachingMonth(text(row.month)), status = text(row.status);
+        if (status !== 'open' && status !== 'closed') return fail('INVALID_SNAPSHOT');
+        return { month, status };
+      });
+    });
   }
 
   trialBalances(month: string): LegacyTeachingTrialBalances {

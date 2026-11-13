@@ -1,4 +1,7 @@
+import { reportEn, reportZh } from "./report-labels.js";
+
 export const zh = {
+  ...reportZh,
   "shell.title": "ERP 工作区 / 架构迁移",
   "shell.documentTitle": "ERP 工作区 · 架构迁移",
   "shell.navigation": "工作区导航",
@@ -12,7 +15,7 @@ export const zh = {
   "shell.themeRed": "专业红",
   "shell.themeGreen": "专业绿",
   "shell.showTeachingExplanations": "显示教学说明",
-  "shell.intro": "此工作区仅提供架构迁移阶段的只读运行状态，不提供账务操作或 AI 服务。",
+  "shell.intro": "此工作区提供运行状态和已验证快照的只读报表，不提供账务写入或 AI 服务。",
   "shell.healthHeading": "本地 API 状态",
   "shell.healthLoading": "正在读取本地 API 状态…",
   "shell.connected": "本地 API 已连接",
@@ -21,9 +24,9 @@ export const zh = {
   "shell.profile": "运行档案",
   "shell.local": "本地",
   "shell.data": "数据状态",
-  "shell.unconfigured": "未配置",
-  "shell.dataWarning": "数据尚未配置。此工作区未连接任何账簿，不能查看或更改财务数据。",
-  "shell.teachingNote": "教学说明：状态由同源的只读 health 接口实时返回。连接成功并不代表账簿已配置。",
+  "shell.unconfigured": "目标业务账套未配置",
+  "shell.dataWarning": "尚未连接目标业务账套。若已启动经校验的快照，可在只读报表查看；此处不提供财务写入。",
+  "shell.teachingNote": "教学说明：状态由同源的只读 health 接口实时返回。连接成功并不代表目标业务账套已配置。",
   "shell.networkError": "无法连接本地 API。请检查服务后重试。",
   "shell.invalidResponse": "本地 API 返回了不符合契约的响应。未确认连接状态。",
   "shell.httpError": "本地 API 请求失败（HTTP {status}）。请检查服务后重试。",
@@ -39,6 +42,7 @@ export type Language = "zh" | "en";
 export type LabelResources = Readonly<Record<LabelKey, string>>;
 
 export const en = {
+  ...reportEn,
   "shell.title": "ERP workspace / architecture migration",
   "shell.documentTitle": "ERP workspace · architecture migration",
   "shell.navigation": "Workspace navigation",
@@ -52,7 +56,7 @@ export const en = {
   "shell.themeRed": "Professional red",
   "shell.themeGreen": "Professional green",
   "shell.showTeachingExplanations": "Show teaching explanations",
-  "shell.intro": "This workspace provides read-only runtime status for the architecture migration only. It offers no accounting operations or AI services.",
+  "shell.intro": "This workspace provides runtime status and read-only reports from verified snapshots. It offers no financial writes or AI services.",
   "shell.healthHeading": "Local API status",
   "shell.healthLoading": "Reading local API status…",
   "shell.connected": "Local API connected",
@@ -61,9 +65,9 @@ export const en = {
   "shell.profile": "Runtime profile",
   "shell.local": "Local",
   "shell.data": "Data status",
-  "shell.unconfigured": "Unconfigured",
-  "shell.dataWarning": "Data is unconfigured. This workspace is not connected to any ledger and cannot view or change financial data.",
-  "shell.teachingNote": "Teaching note: status is returned live by the same-origin, read-only health endpoint. A successful connection does not mean a ledger is configured.",
+  "shell.unconfigured": "Target business ledger unconfigured",
+  "shell.dataWarning": "The target business ledger is not connected. Verified snapshots, when started, are available under Read-only reports. Financial writes are not available.",
+  "shell.teachingNote": "Teaching note: status is returned live by the same-origin, read-only health endpoint. A successful connection does not mean the target business ledger is configured.",
   "shell.networkError": "Cannot connect to the local API. Check the service and retry.",
   "shell.invalidResponse": "The local API returned a response that does not match the contract. Connection status is unconfirmed.",
   "shell.httpError": "The local API request failed (HTTP {status}). Check the service and retry.",

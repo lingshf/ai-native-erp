@@ -54,11 +54,31 @@ dd { margin: 0; font-weight: 600; }
 .error { border-left: 4px solid #b58420; padding: 1rem; line-height: 1.6; }
 button { background: var(--accent); color: white; border: 0; border-radius: .3rem; padding: .65rem 1rem; cursor: pointer; font-weight: 600; }
 button:hover { filter: brightness(.9); }
+button:disabled { opacity: .65; cursor: wait; }
+.navigation-group { display: inline-flex; align-items: center; flex-wrap: wrap; gap: .75rem; margin-left: 1.5rem; }
+.navigation-group > span { font-weight: 650; }
+nav a[aria-current="page"] { border-bottom: 3px solid var(--accent); }
+.reports > label { display: block; font-weight: 650; margin: 1rem 0 .5rem; }
+.snapshot-boundary { font-weight: 650; }
+.snapshot-identity { margin-bottom: 1rem; }
+.snapshot-identity code { display: block; overflow-wrap: anywhere; margin-top: .5rem; }
+.report-card { min-width: 0; background: white; border: 1px solid #d6dae0; border-radius: .5rem; padding: 1rem; }
+.report-card > select { margin: .5rem 0 1rem; }
+.report-boundary { line-height: 1.6; }
+.report-scroll { max-width: 100%; overflow-x: auto; margin: 1rem 0; border: 1px solid #d6dae0; }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+caption { text-align: left; font-weight: 650; padding: .8rem; }
+th, td { padding: .75rem; border-bottom: 1px solid #d6dae0; text-align: left; vertical-align: top; min-width: 6rem; }
+thead, tfoot { background: var(--accent-soft); }
+.amount { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.report-totals { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin: 1rem 0; }
+.report-totals dd { margin-top: .35rem; font-variant-numeric: tabular-nums; }
 .teaching { border-left: 3px solid #798492; padding-left: 1rem; color: #515b68; line-height: 1.7; }
 @media (max-width: 680px) {
   .workspace-header { padding: 1rem; }
   .workspace-layout { grid-template-columns: minmax(0, 1fr); padding: 1rem; gap: 1rem; }
   .status-card { padding: 1rem; }
+  .navigation-group { margin: .5rem 0 0; display: flex; }
   dl { grid-template-columns: minmax(0, 1fr); gap: .35rem; }
   dd { margin-bottom: .65rem; }
 }

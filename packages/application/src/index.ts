@@ -1,5 +1,7 @@
 export * from './storage.js';
 export type * from './legacy-teaching.js';
+export * from './legacy-query.js';
+export { DomainError } from '@erp/domain';
 
 export interface RuntimeInfo {
   readonly service: 'ai-native-erp';

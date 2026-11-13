@@ -50,16 +50,11 @@ try {
       }
     }
     phase = 'startup';
-    const [{ verifyLedgerSnapshot }, { preflightLegacySnapshotPair, openLegacyTeachingSnapshot }] = await Promise.all([
-      import('./ledger-snapshot.mjs'),
-      import('@erp/infrastructure/legacy-teaching'),
-    ]);
+    const { openVerifiedTeachingReader } = await import('./legacy-snapshot-reader.mjs');
     const directory = resolve(values['snapshot-dir']);
     phase = 'snapshot';
-    preflightLegacySnapshotPair(directory);
-    const verifiedManifest = verifyLedgerSnapshot(directory);
+    const reader = openVerifiedTeachingReader(directory);
     phase = 'reader';
-    const reader = openLegacyTeachingSnapshot({ directory, verifiedManifest });
     let output;
     try {
       const query = command === 'trial'
