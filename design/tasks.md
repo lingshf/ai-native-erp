@@ -2,7 +2,7 @@
 
 ## 当前授权：ARCH-M00起逐阶段实施
 
-用户已委托DC01..04与M00..09执行、恢复M06/TASK24和备份核对后切换原4173账。M00已通过G3/G5/G6、安全审查、本地保护同步并发布main `74819f9bfa7087ac230c4ccaf96b6b40f1e740bf`，干净clone安装/182项/语法通过。M01三个增量G5、组合及公共变体G6已独立释放MODEL01，工作区358项、原302测试身份完整保留；本地保护交付和安全完成，代码1574db67及状态69cdb211的全新clone各238项/build/typecheck通过且已清理。M00/M01/M02现已完成限定验收，M02修订f9f1bcb精确新clone302+真实70/build/typecheck通过；M03..09仍须各阶段详细门禁。完整需求/工具环境见[architecture-migration](architecture-migration.md)，下方“仅设计/暂停/0 ready”为前次交付历史，不再限制继续开发，但原成果和剩余验收不能删除。44FG仍0/13/31，不因授权改done。
+用户已委托DC01..04与M00..09执行、恢复M06/TASK24和备份核对后切换原4173账。M00已通过G3/G5/G6、安全审查、本地保护同步并发布main `74819f9bfa7087ac230c4ccaf96b6b40f1e740bf`，干净clone安装/182项/语法通过。M01三个增量G5、组合及公共变体G6已独立释放MODEL01，工作区358项、原302测试身份完整保留；本地保护交付和安全完成，代码1574db67及状态69cdb211的全新clone各238项/build/typecheck通过且已清理。M00/M01/M02现已完成限定验收，M02修订f9f1bcb精确新clone302+真实70/build/typecheck通过；M03现已独立G3/G5/G6、安全/本地交付并发布a608ee1，精确新clone361+真实70/build/types通过；M04..09仍须各阶段详细门禁。完整需求/工具环境见[architecture-migration](architecture-migration.md)，下方“仅设计/暂停/0 ready”为前次交付历史，不再限制继续开发，但原成果和剩余验收不能删除。44FG仍0/13/31，不因授权改done。
 
 | 实施任务 | 状态 / 前置 | 追踪 / 文件边界 / 验收 |
 | --- | --- | --- |
@@ -38,7 +38,7 @@
 | ARCH-T11 只读契约与查询基础 | done（MODEL01）；M03 revision3 G3、M02旧桥及M01 | 集成作者独占contracts、application查询及legacy port、infrastructure legacy的periods方法/聚焦测试、纯root快照opener与旧CLI提取、共享manifest/lock/exports；FR01/02/07/08、TC01..05/08；高风险精确值/来源接口 | 先RED后实现；r1六非公共包源阻塞已独立关闭。r2公共锁及实际Cookie归档SHA512、真实桥到schema跨页互操作；严格离线恢复成功，workspace/build124、类型与边界7通过，独立44项零失败/skip、16摘要重核及spec/quality G5释放。公网匿名在线安装未验证；test-only相对dist依赖沿根构建顺序，非阻塞建议保留 |
 | ARCH-T12 Local财务HTTP与启动生命周期 | done（MODEL01）；r3 G5已独立释放；T11 G5已释放 | API作者独占apps/api/src与其test、新scripts/preview-legacy-snapshot.mjs及其CLI集成测试；根script/check由集成作者合入。FR01/02/06/07、TC01/03..08；高风险财务披露/关闭与错误 | r2补early return、真实重复信号及失败关闭测试后独立30/类型/build通过。组合首轮暴露测试cwd路径错误，r3仅按模块URL定位测试脚本，五个其他文件不变；同评审独立workspace30和根CLI9通过，六摘要/共享16/D重核，规范/质量G5释放，原失败保留 |
 | ARCH-T13 真实试算/总账SPA | done（MODEL01）；r4 G5已独立释放；T11 G5已释放；与12无依赖 | 前端作者独占apps/web、packages/ui；根边界测试由集成作者单写，不改manifest/lock；FR03..05、TC03/09..12/07；高风险迟到/精度及Local边界 | r2查询/导航/管理器/教学修复、r3真实Vite CORS的RED→GREEN及独立九摘要/58web/UI2/8边界/类型/build已核。r4只改四现有label/语言，区分未配置目标业务账与可读快照，其他八文件/共享16/D不变；同评审独立58web/UI2及九摘要重核，规范/质量G5释放。当前真实UI/组合由14收口 |
-| ARCH-T14 M03组合与公开交付 | in_progress；T11r2/T12r3/T13r4各G5已释放MODEL01 | 集成作者单写根入口/文档/候选与交付白名单/私有验收helper；全部FR/TC；高风险组合/公开持久化 | r4源完整481/重新导出公共361/build/types及公共真实70/零skip通过；源保留trade检查，79文件候选仅移除三条trade检查及Git文本换行规范化。重建后真实Edge六图含中英概览零财务查询、逐分oracle/104行两页、403/409/历史/偏好/键盘/390px/proxy/保护hash通过，静态UI单列load122.4ms/FCP280ms，helper清理。当前r4规范/质量组合G6亦已独立释放MODEL01；本地25更新15新增39同0冲突及副本361/native/build/types通过，独立安全审查无已确认漏洞；非强制main与精确新clone仍须完成才done |
+| ARCH-T14 M03组合与公开交付 | done（MODEL01）；T11r2/T12r3/T13r4各G5及当前组合G6已释放 | 集成作者单写根入口/文档/候选与交付白名单/私有验收helper；全部FR/TC；高风险组合/公开持久化 | r4源481/公共及副本361/build/types、公共真实70/零skip、重建Edge六图/中英概览零财务查询/104行两页/403/409/历史/偏好/390px/proxy/保护hash通过；静态单样本load122.4ms/FCP280ms。79文件保护交付25更新15新增39同0冲突，安全无已确认漏洞。代码a608ee1已非强制main，精确新GitHub clone实际361+真实70/native/build/types/零skip通过且clone/PG清理；限定TC验收完成，状态文档另行发布核验。不发布保留trade/不切4173 |
 
 真实DAG：`M03 G3 + M02 -> T11 G5 -> {T12, T13} -> T14`。批次A为单写共享基础；B仅API/CLI与web/ui两个独占文件域并行，二者不得改contracts/manifest/lock；C为组合/验收/文档/交付串行。T11未过G5不启动B；分项通过不能代替T14当前组合G6。原全部44FG状态仍0整体完成/13部分/31未实现。
 

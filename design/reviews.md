@@ -62,7 +62,7 @@ Local单人预算：同一Node26/Windows x64、16逻辑CPU、约64GiB主机；5�
 
 公共候选随后实际从HEAD3d7e1f0导出，叠加79白名单payload；只将源package中的三条未发布trade检查去掉，其他选中文本仅UTF-8 CRLF→LF，全部工作区原字节不变。代码清单source摘要bf126614416f76fff7c2e635c5b8f6adfedf823a8ca5752f84979165eea9fc93，公共摘要3fee14431147b3358a871f5d7691a8f09b67d9fe1c10952ee8292a82467abb21；未选入的暂停贸易仍为HEAD公共原版。该独立树实际严格公共锁/禁止registry替换/禁生命周期/离线恢复成功，完整361（182+8+15+6+60+2+30+58）及build/types、真实双库70零失败/取消/跳过通过，自有PG清理。不是匿名公共网络亲验，亦不是独立G6。8FR/14TC、10入口85相对链接、无环M03 DAG及当前三份冻结代码均核；当前规范/质量组合G6尚待独立结论。
 
-### ARCH-M03-SECURITY-01：独立审查无已确认漏洞，发布待完成
+### ARCH-M03-SECURITY-01：独立审查无已确认漏洞（发布前记录）
 
 独立security-review请求claude-opus-5.5，MODEL01仍仅涉及身份。评审读取精确公共树而非含暂停贸易的脏工作区，实际核142文件/40差异及全部330锁定公共包源；完整阅读新API、CLI、严格schema、查询、旧桥和配置，前端App/Reports仅风险模式检索，不冒称逐行全审。另在已执行同代码树用虚构reader/临时端口做真实raw-socket Host/Origin/Fetch Metadata/重复头/路径/查询/方法探针，拒绝结果符合Local威胁模型，临时脚本清理。没有碰原4173、ID3、真实账或.env；**本轮范围无已确认可利用漏洞**，不是完整ERP认证。
 
@@ -71,6 +71,10 @@ Local单人预算：同一Node26/Windows x64、16逻辑CPU、约64GiB主机；5�
 | — | — | — | — | 无已确认漏洞 | — |
 
 未做在线依赖公告查询、匿名公网安装/TLS亲验、全回归或浏览器重跑；后三类验收由作者证据分别记录，不能冒称安全评审亲跑。旧152项SHA1、无敏感字段的health/static未做Host门禁，以及dev代理依赖Vite默认allowedHosts均为明确范围内的非漏洞加固建议，不制造LOW项。原始TCP重置原因未知；预算仅为样本。实际本地保护交付25更新/15新增/39相同/0冲突，随后独立恢复/native int64/rollback、完整361/build/types和79交付hash复核通过，Git配置未变、本地原无data目录且仍无；原工作区两库另按迁移前物理hash精确核对不变。尚未stage/commit/push/新clone，T14不done。
+
+### ARCH-M03-RELEASE-01：代码已发布，精确新clone验证通过
+
+公共代码`a608ee1d898821900052b66e645f0041f9d22d6b`已从3d7e1f0非强制快进main；真实Git index全142 blob/40修改/330公共依赖URL核验通过且提交tree精确等于批准index，未发布暂停贸易或三条专属检查。新GitHub clone实际选择精确a608ee1、严格公共锁离线禁lifecycle恢复（argv与四项配置留证）、native int64/rollback、完整361/真实SQLite及PG18强制70/build/types、零失败/取消/跳过通过，临时clone/自有PG/集群/密码已清理。匿名公网安装与在线公告未亲验，不以缓存代替。M03限定功能和TC已验收；状态文档单独发布/复核，最终提交以实际报告为准，不预写未发生的clone结论。
 
 ## ARCH-M00-DESIGN-01：实施授权后的保护基线G2
 
