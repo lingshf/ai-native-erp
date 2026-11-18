@@ -53,10 +53,11 @@ queue permits 64 waiters/one second, callbacks have a ten-second budget, and
 sessions become invalid before cleanup. Pending driver work is drained before
 rollback/release. Synchronous native statements cannot be interrupted by a JS
 timer: this is a measured guardrail, not hard realtime or asynchronous native IO.
-Writable target connections use `journal_mode=WAL`, `synchronous=NORMAL`,
-`foreign_keys=ON`, and `busy_timeout=5000`, after schema validation and before
-transactions. Read connections also enable NORMAL, foreign keys and the same
-busy timeout, without changing journal mode. SQLite handles the bounded busy
+Target connections configure `busy_timeout=5000` when opened, before schema
+inspection or a journal-mode switch. Writable connections then use
+`journal_mode=WAL`, `synchronous=NORMAL`, and `foreign_keys=ON`, after schema
+validation and before transactions. Read connections also enable NORMAL and
+foreign keys, without changing journal mode. SQLite handles the bounded busy
 wait; no outer retries multiply that budget or replay callbacks. A synchronous
 busy wait can block the event loop for up to five seconds under contention.
 The separate legacy snapshot reader remains read-only and never enables WAL.

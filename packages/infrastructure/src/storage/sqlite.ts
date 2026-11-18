@@ -92,7 +92,7 @@ export function sqliteBackend(config: SqliteStorageConfig): Backend {
       await knownFile(filename, migrating);
       let resource = readOnly ? reader : writer;
       if (!resource) {
-        const database = new Database(filename, { readonly: readOnly, fileMustExist: true, timeout: 0 });
+        const database = new Database(filename, { readonly: readOnly, fileMustExist: true, timeout: 5000 });
         database.defaultSafeIntegers(true);
         const db = adapter(database, !readOnly);
         resource = { database, db };
@@ -132,7 +132,6 @@ export function sqliteBackend(config: SqliteStorageConfig): Backend {
       }
       database.pragma('synchronous = NORMAL');
       database.pragma('foreign_keys = ON');
-      database.pragma('busy_timeout = 5000');
       return connection;
     },
     async close() {
