@@ -5,30 +5,19 @@ import { plan, receipt, receiptBinding, scope } from './storage-contract.mjs';
 
 export async function rawContract(t, fixture) {
   await t.test('same-name structural drift is rejected, not mistaken for verified migration history', async () => {
-    const sample = await fixture();
-    const dialect = sample.dialect;
-    await sample.close();
-    const changes = dialect === 'sqlite' ? [
+    const changes = [
       ['DROP TRIGGER audit_no_delete', "CREATE TRIGGER audit_no_delete BEFORE DELETE ON audit BEGIN SELECT 1; END"],
       ['ALTER TABLE companies ADD COLUMN unexpected TEXT DEFAULT \'changed\''],
-    ] : [
-      ['ALTER TABLE public.audit DISABLE TRIGGER audit_no_delete'],
-      ['ALTER TABLE public.companies DROP CONSTRAINT companies_tenant_id_book_id_fkey'],
-      ['ALTER TABLE public.companies DROP CONSTRAINT companies_revision_check'],
-      ['ALTER TABLE public.companies ADD COLUMN unexpected TEXT'],
-      ['ALTER TABLE public.companies ALTER COLUMN revision SET DEFAULT 17'],
-      ['CREATE RULE unexpected_rule AS ON INSERT TO public.companies DO INSTEAD NOTHING'],
-      ['CREATE POLICY unexpected_policy ON public.companies USING (true)'],
-      ['ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY'],
-      ["CREATE OR REPLACE FUNCTION public.reject_evidence_change() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END; $$"],
     ];
     for (const statements of changes) {
       const f = await fixture();
       try {
         await f.storage.migrate();
         for (const sql of statements) await f.raw(sql);
+        const before = await f.bytes();
         await assert.rejects(f.storage.verifySchema(), { code: 'SCHEMA_MISMATCH' }, statements.join(';'));
         await assert.rejects(f.storage.migrate(), { code: 'SCHEMA_MISMATCH' });
+        assert.deepEqual(await f.bytes(), before, 'Rejected structural drift must not change database or WAL bytes');
       } finally { await f.close(); }
     }
   });
@@ -88,12 +77,7 @@ export async function rawContract(t, fixture) {
         "INSERT INTO receipts SELECT tenant_id,book_id,company_id,operation,'bad-json',principal,fingerprint,'not-json',version FROM receipts",
         "INSERT INTO receipts SELECT tenant_id,book_id,company_id,operation,'bad-principal',char(1),fingerprint,result,version FROM receipts",
         "INSERT INTO receipts SELECT tenant_id,book_id,company_id,operation,'bad-fingerprint',principal,'NO',result,version FROM receipts",
-      ]) await assert.rejects(f.raw(f.dialect === 'postgres' ? statement.replaceAll('char(', 'chr(') : statement), undefined, statement);
-      if (f.dialect === 'postgres') {
-        await assert.rejects(f.raw('TRUNCATE receipts'));
-        await assert.rejects(f.raw('TRUNCATE audit'));
-        await assert.rejects(f.raw('TRUNCATE tenants CASCADE'));
-      }
+      ]) await assert.rejects(f.raw(statement), undefined, statement);
       const rows = await f.raw('SELECT result FROM receipts');
       assert.equal(rows[0].result, '{"a":[true,1],"z":null}');
       assert.equal((await f.raw('SELECT sequence FROM audit')).length, 1);
@@ -107,7 +91,7 @@ export async function rawContract(t, fixture) {
     try {
       await f.storage.migrate();
       connection = await f.backend.acquire(false, false);
-      await connection.begin(false);
+      await connection.begin();
       await connection.query('CREATE TEMP TABLE driver_int64_probe(value BIGINT NOT NULL)');
       await connection.query('INSERT INTO driver_int64_probe(value) VALUES(?),(?)',
         [-9223372036854775808n, 9223372036854775807n]);
@@ -129,21 +113,18 @@ export async function rawContract(t, fixture) {
     let connection;
     try {
       connection = await f.backend.acquire(false, true);
-      await connection.begin(false);
-      if (f.dialect === 'postgres') await connection.query('SELECT pg_advisory_xact_lock(1163022386,2)');
+      await connection.begin();
       const fault = { ...connection, async script(sql) {
         await connection.script(sql);
         if (sql.includes('CREATE TABLE') && sql.includes('tenants')) {
           await connection.query('SELECT * FROM deliberately_missing_migration_failure');
         }
       } };
-      await assert.rejects(migrateConnection(fault, f.dialect));
+      await assert.rejects(migrateConnection(fault));
       await connection.rollback();
       await connection.release();
       connection = undefined;
-      const rows = f.dialect === 'sqlite'
-        ? await f.raw("SELECT name FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%'")
-        : await f.raw("SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public'");
+      const rows = await f.raw("SELECT name FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%'");
       assert.deepEqual(rows, []);
       await assert.rejects(f.storage.verifySchema(), { code: 'SCHEMA_MISMATCH' });
       await f.storage.migrate();
@@ -157,33 +138,22 @@ export async function rawContract(t, fixture) {
   await t.test('unknown schema, missing objects, future/gapped/mixed/edited migration history rejected', async () => {
     for (const statement of [
       'CREATE TABLE unrelated_user_data(id INTEGER)',
-      'DROP TRIGGER audit_no_delete ON audit',
+      'DROP TRIGGER audit_no_delete',
       'UPDATE schema_migrations SET version=2',
       'INSERT INTO schema_migrations(version,dialect,checksum,schema_fingerprint) SELECT version+2,dialect,checksum,schema_fingerprint FROM schema_migrations',
       "UPDATE schema_migrations SET checksum='0000000000000000000000000000000000000000000000000000000000000000'",
-      "UPDATE schema_migrations SET dialect='OTHER'",
+      // The immutable 001 CHECK allows this historical value; runtime verification must reject it.
+      "UPDATE schema_migrations SET dialect='postgres'",
       'DELETE FROM schema_migrations',
     ]) {
       const f = await fixture();
       try {
         await f.storage.migrate();
-        let sql = statement;
-        if (f.dialect === 'sqlite') sql = sql.replace('DROP TRIGGER audit_no_delete ON audit', 'DROP TRIGGER audit_no_delete');
-        if (statement.includes("dialect='OTHER'")) {
-          sql = `UPDATE schema_migrations SET dialect='${f.dialect === 'sqlite' ? 'postgres' : 'sqlite'}'`;
-        }
-        await f.raw(sql);
+        await f.raw(statement);
         await assert.rejects(f.storage.verifySchema(), { code: 'SCHEMA_MISMATCH' });
         await assert.rejects(f.storage.migrate(), { code: 'SCHEMA_MISMATCH' });
       } finally { await f.close(); }
     }
-    const f = await fixture();
-    try {
-      if (f.dialect === 'postgres') {
-        await f.raw('CREATE SCHEMA unexpected');
-        await assert.rejects(f.storage.migrate(), { code: 'SCHEMA_MISMATCH' });
-      }
-    } finally { await f.close(); }
   });
 
   await t.test('migration checksum normalization is exact LF, rejects BOM and lone CR', () => {

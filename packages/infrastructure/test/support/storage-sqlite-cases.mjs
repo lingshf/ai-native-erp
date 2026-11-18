@@ -148,7 +148,23 @@ export async function sqliteCases(t, directory) {
     });
   }
 
-  await t.test('external BEGIN IMMEDIATE contention retries only BEGIN 3 times with async 25/50ms waits', async () => {
+  await t.test('new target connections use WAL, NORMAL, foreign keys and a five-second busy timeout', async () => {
+    const c = config();
+    const storage = await ready(c);
+    const backend = sqliteBackend(c);
+    try {
+      for (const readOnly of [false, true]) {
+        const connection = await backend.acquire(readOnly, false);
+        try {
+          for (const [name, expected] of [
+            ['journal_mode', 'wal'], ['synchronous', 1n], ['foreign_keys', 1n], ['busy_timeout', 5000n],
+          ]) assert.equal(Object.values((await connection.query(`PRAGMA ${name}`))[0])[0], expected, name);
+        } finally { await connection.release(); }
+      }
+    } finally { await backend.close(); await storage.close(); }
+  });
+
+  await t.test('external BEGIN IMMEDIATE contention returns BUSY without replay and recovers after release', async () => {
     const c = config();
     const original = await ready(c);
     await original.close();
@@ -159,20 +175,18 @@ export async function sqliteCases(t, directory) {
     let attempts = 0;
     const storage = targetStorage({ ...backend, async acquire(...args) {
       const connection = await backend.acquire(...args);
+      // Exercise BUSY without spending the production five-second wait budget in CI.
+      await connection.query('PRAGMA busy_timeout=1');
       return { ...connection, async begin(...settings) { attempts++; return connection.begin(...settings); } };
     } });
     const start = performance.now();
-    let ticks = 0;
-    const interval = setInterval(() => ticks++, 5);
     try {
       await assert.rejects(storage.write(plan, () => assert.fail('BUSY transaction entered callback')), { code: 'BUSY' });
-      assert.equal(attempts, 3);
-      assert.ok(ticks > 0, 'async BUSY backoff must allow the event loop to advance');
-      t.diagnostic(JSON.stringify({ beginAttempts: attempts, elapsedMs: performance.now() - start, eventLoopTicks: ticks }));
+      assert.equal(attempts, 1);
+      t.diagnostic(JSON.stringify({ beginAttempts: attempts, elapsedMs: performance.now() - start }));
       raw.exec('ROLLBACK');
       await storage.write(plan, (s) => s.revisions.advance(scope, 0));
     } finally {
-      clearInterval(interval);
       if (raw.inTransaction) raw.exec('ROLLBACK');
       raw.close(); await storage.close();
     }
