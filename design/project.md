@@ -1,6 +1,8 @@
 # ai-native-erp
 
-## 当前检查点：M03限定交付已完成，下一阶段M04待详细G3
+> **当前状态以 [roadmap.md](roadmap.md) 和 [tasks/README.md](tasks/README.md) 为准。** 用户已批准技术栈调整（M0）并改为轻量团队流程（设计/开发/PR 评审角色）；原 M04 身份权限延后，M-TRADE 贸易代码暂停于 stash `b9f00dbf`（TASK24 GUI 验收前），将在 M1 于新架构重做。以下内容为历史记录：其中 G3/G5/G6、MODEL01、PG/Server、M04..M09 排期已被取代。
+
+## 历史检查点：M03限定交付已完成，下一阶段M04待详细G3
 
 M03代码`a608ee1d898821900052b66e645f0041f9d22d6b`已非强制快进main，并从GitHub全新clone精确验证该提交：公共361项、native int64/rollback、真实SQLite/PG18强制70、零失败/取消/跳过、全部build/typecheck通过；临时clone、自有PG集群/进程和虚构密码已清理。状态文档另行发布后按同一流程核验，当前代码验收不依赖未来阶段。
 
