@@ -48,8 +48,10 @@ export function parseRuntimeConfiguration(
 
 export class LocalRuntimeInfo implements RuntimeInfoPort {
   private readonly configuration: RuntimeConfiguration;
+  private readonly data: RuntimeInfo["data"];
 
-  constructor(configuration: RuntimeConfiguration) {
+  constructor(configuration: RuntimeConfiguration, data: RuntimeInfo["data"] = "unconfigured") {
+    this.data = data;
     this.configuration = parseRuntimeConfiguration(
       {
         ERP_PROFILE: configuration.profile,
@@ -64,7 +66,7 @@ export class LocalRuntimeInfo implements RuntimeInfoPort {
     return {
       service: "ai-native-erp",
       profile: this.configuration.profile,
-      data: "unconfigured",
+      data: this.data,
     };
   }
 }

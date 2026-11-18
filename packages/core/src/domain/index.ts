@@ -1,4 +1,5 @@
-export type DomainErrorCode = "INVALID_INPUT" | "OVERFLOW" | "NOT_FOUND";
+export * from "./master-data.ts";
+export type DomainErrorCode = "INVALID_INPUT" | "OVERFLOW" | "NOT_FOUND" | "CONFLICT";
 
 export class DomainError extends Error {
   readonly code: DomainErrorCode;

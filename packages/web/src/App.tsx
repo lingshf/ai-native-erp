@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import {
@@ -14,6 +14,9 @@ import { ReportIndex, Reports } from "./Reports.tsx";
 import "./styles.css";
 
 const storage = () => window.localStorage;
+const Accounts = lazy(() =>
+  import("./Accounts.tsx").then((module) => ({ default: module.Accounts })),
+);
 
 export function App() {
   const [client] = useState(
@@ -87,20 +90,24 @@ function Workspace() {
       </a>
       <header className="workspace-header">
         <h1>{t("shell.title")}</h1>
-        <nav aria-label={t("shell.navigation")}>
-          <NavLink to="/" end>
-            {t("shell.overview")}
-          </NavLink>
-          <div className="navigation-group">
-            <span>{t("reports.group")}</span>
-            <NavLink to={{ pathname: "/reports/trial", search: reportSearch }}>
-              {t("reports.trial")}
-            </NavLink>
-          </div>
-        </nav>
       </header>
       <div className="workspace-layout">
         <aside>
+          <nav aria-label={t("shell.navigation")}>
+            <NavLink to="/" end>
+              {t("shell.overview")}
+            </NavLink>
+            <div className="navigation-group">
+              <span>{t("master.group")}</span>
+              <NavLink to="/accounts">{t("master.title")}</NavLink>
+            </div>
+            <div className="navigation-group">
+              <span>{t("reports.group")}</span>
+              <NavLink to={{ pathname: "/reports/trial", search: reportSearch }}>
+                {t("reports.trial")}
+              </NavLink>
+            </div>
+          </nav>
           <fieldset className="preferences">
             <legend>{t("shell.preferences")}</legend>
             <label htmlFor="workspace-language">{t("shell.language")}</label>
@@ -157,6 +164,14 @@ function Workspace() {
         </aside>
         <main id="workspace-main" tabIndex={-1}>
           <Routes>
+            <Route
+              path="/accounts"
+              element={
+                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                  <Accounts preferences={preferences} />
+                </Suspense>
+              }
+            />
             <Route path="/" element={<Overview preferences={preferences} />} />
             <Route path="/reports" element={<ReportIndex />} />
             <Route path="/reports/*" element={<Reports preferences={preferences} />} />
@@ -199,7 +214,11 @@ function Overview({ preferences }: { preferences: Preferences }) {
                 <dt>{t("shell.profile")}</dt>
                 <dd>{t("shell.local")}</dd>
                 <dt>{t("shell.data")}</dt>
-                <dd>{t("shell.unconfigured")}</dd>
+                <dd>
+                  {t(
+                    health.health.data === "configured" ? "shell.configured" : "shell.unconfigured",
+                  )}
+                </dd>
               </dl>
             </>
           )}
@@ -222,12 +241,14 @@ function Overview({ preferences }: { preferences: Preferences }) {
           </button>
         )}
       </section>
-      <section className="warning data-warning" aria-label={t("shell.data")}>
-        <p>
-          <span aria-hidden="true">⚠ </span>
-          {t("shell.dataWarning")}
-        </p>
-      </section>
+      {!(health.kind === "ready" && health.health.data === "configured") && (
+        <section className="warning data-warning" aria-label={t("shell.data")}>
+          <p>
+            <span aria-hidden="true">⚠ </span>
+            {t("shell.dataWarning")}
+          </p>
+        </section>
+      )}
       {preferences.teaching && <p className="teaching">{t("shell.teachingNote")}</p>}
     </>
   );

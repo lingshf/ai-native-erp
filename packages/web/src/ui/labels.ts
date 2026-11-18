@@ -1,7 +1,9 @@
 import { reportEn, reportZh } from "./report-labels.ts";
+import { masterEn, masterZh } from "./master-labels.ts";
 
 export const zh = {
   ...reportZh,
+  ...masterZh,
   "shell.title": "ERP 工作区 / 架构迁移",
   "shell.documentTitle": "ERP 工作区 · 架构迁移",
   "shell.navigation": "工作区导航",
@@ -15,7 +17,8 @@ export const zh = {
   "shell.themeRed": "专业红",
   "shell.themeGreen": "专业绿",
   "shell.showTeachingExplanations": "显示教学说明",
-  "shell.intro": "此工作区提供运行状态和已验证快照的只读报表，不提供账务写入或 AI 服务。",
+  "shell.intro":
+    "此工作区提供公司科目配置、运行状态和已验证快照的只读报表；尚不提供凭证过账或 AI 服务。",
   "shell.healthHeading": "本地 API 状态",
   "shell.healthLoading": "正在读取本地 API 状态…",
   "shell.connected": "本地 API 已连接",
@@ -45,6 +48,7 @@ export type LabelResources = Readonly<Record<LabelKey, string>>;
 
 export const en = {
   ...reportEn,
+  ...masterEn,
   "shell.title": "ERP workspace / architecture migration",
   "shell.documentTitle": "ERP workspace · architecture migration",
   "shell.navigation": "Workspace navigation",
@@ -59,7 +63,7 @@ export const en = {
   "shell.themeGreen": "Professional green",
   "shell.showTeachingExplanations": "Show teaching explanations",
   "shell.intro":
-    "This workspace provides runtime status and read-only reports from verified snapshots. It offers no financial writes or AI services.",
+    "This workspace provides company account configuration, runtime status and read-only reports from verified snapshots. Journal posting and AI services are not available.",
   "shell.healthHeading": "Local API status",
   "shell.healthLoading": "Reading local API status…",
   "shell.connected": "Local API connected",

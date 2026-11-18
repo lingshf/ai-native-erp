@@ -1,4 +1,5 @@
 export * from "./storage.ts";
+export * from "./master-data.ts";
 export type * from "./legacy-teaching.ts";
 export * from "./legacy-query.ts";
 export { DomainError } from "@erp/core/domain";
@@ -6,7 +7,7 @@ export { DomainError } from "@erp/core/domain";
 export interface RuntimeInfo {
   readonly service: "ai-native-erp";
   readonly profile: "local";
-  readonly data: "unconfigured";
+  readonly data: "unconfigured" | "configured";
 }
 
 export interface RuntimeInfoPort {
