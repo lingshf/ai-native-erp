@@ -48,6 +48,23 @@ published 001 SQL are not permitted: its historical dialect CHECK value is
 preserved to keep existing checksums valid, but runtime verification accepts
 only `sqlite`. There is no compatibility migration or automatic metadata rewrite.
 
+M0-08 adds immutable `002-master-data.sql`. Explicit migration verifies an
+existing 001 target before appending 002; startup refuses an outdated target.
+Every migration checksum is checked, and the latest migration's fingerprint
+binds the complete current schema. Historical 001 fingerprints/checksums are
+not rewritten.
+
+`ledger_companies` holds typed business metadata over the existing technical
+`companies` identities, using fixed LOCAL tenant/book IDs. `accounts` has the
+unique `(company_id, code)` primary-key access path; `periods` is likewise typed.
+`config_history` is append-only, with actor fixed to LOCAL and an indexed
+as-of lookup. It is history, not a generic JSON current-configuration table.
+The master-data store reuses the validated SQLite backend and bounded queue;
+each write use case, including default seeding and CAS/history, is one
+BEGIN IMMEDIATE transaction. HTTP never supplies the actor. The composition
+root accepts only an explicit absolute ERP_SQLITE_FILE; it verifies before
+business seeding, and never opens a legacy Book.
+
 SQLite holds separate read/write queues and connections across awaits. Each
 queue permits 64 waiters/one second, callbacks have a ten-second budget, and
 sessions become invalid before cleanup. Pending driver work is drained before

@@ -64,7 +64,7 @@ describe("M01 read-only health shell", () => {
     ["wrong service", { ...healthy, service: "other-service" }],
     ["wrong contract", { ...healthy, contractVersion: "2" }],
     ["wrong profile", { ...healthy, profile: "server" }],
-    ["configured data claim", { ...healthy, data: "configured" }],
+    ["unknown data state", { ...healthy, data: "unknown" }],
     ["missing field", { service: healthy.service, profile: "local", data: "unconfigured" }],
     ["null", null],
   ])("rejects malformed health: %s", async (_name, body) => {
@@ -114,7 +114,7 @@ describe("M01 read-only health shell", () => {
     const late = pending<Response>();
     const fetchMock = mockFetch()
       .mockReturnValueOnce(late.promise)
-      .mockResolvedValueOnce(response({ ...healthy, data: "configured" }));
+      .mockResolvedValueOnce(response({ ...healthy, data: "unknown" }));
     const old = render(<App />);
     const signal = fetchMock.mock.calls[0]?.[1]?.signal;
     old.unmount();

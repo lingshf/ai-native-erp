@@ -41,7 +41,7 @@ export class LocalFinanceBoundary {
     this.devOrigin = devOrigin;
   }
 
-  assert(request: FastifyRequest, reply: FastifyReply): void {
+  assert(request: FastifyRequest, reply: FastifyReply, methods: readonly string[] = ["GET"]): void {
     financeHeaders(reply);
     const origin = this.origin;
     const site = request.headers["sec-fetch-site"];
@@ -55,7 +55,10 @@ export class LocalFinanceBoundary {
     ) {
       throw httpError(403);
     }
-    if (request.method !== "GET") throw httpError(405);
+    if (!methods.includes(request.method)) {
+      reply.header("Allow", methods.join(", "));
+      throw httpError(405);
+    }
   }
 }
 

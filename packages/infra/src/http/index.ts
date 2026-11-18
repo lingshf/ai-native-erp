@@ -7,6 +7,8 @@ import Fastify from "fastify";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { LegacyTeachingQueryService, RuntimeInfoService } from "@erp/core/application";
 import type { LegacyTeachingReader, RuntimeInfoPort } from "@erp/core/application";
+import type { MasterDataService } from "@erp/core/application";
+import { isMasterDataPath, registerMasterDataRoutes } from "./master-data.ts";
 import { healthSchema } from "@erp/core/contracts";
 import { LocalRuntimeInfo, parseRuntimeConfiguration } from "@erp/infra";
 import type { RuntimeConfiguration, RuntimeEnvironment } from "@erp/infra";
@@ -34,6 +36,7 @@ export interface CreateApiOptions {
   /** Borrowed explicit snapshot: the composition root retains ownership. */
   readonly legacyReader?: LegacyTeachingReader;
   readonly devOrigin?: string;
+  readonly masterData?: MasterDataService;
   /** Factory-only test seam. The CLI never registers extra routes. */
   readonly registerTestRoutes?: (server: FastifyInstance) => void | Promise<void>;
 }
@@ -57,7 +60,8 @@ export async function createApi(options: CreateApiOptions = {}): Promise<LocalAp
   const log = options.logError ?? defaultErrorLogger;
   const boundary = new LocalFinanceBoundary(validateDevOrigin(options.devOrigin));
   const runtime = new RuntimeInfoService(
-    options.runtimeInfoPort ?? new LocalRuntimeInfo(configuration),
+    options.runtimeInfoPort ??
+      new LocalRuntimeInfo(configuration, options.masterData ? "configured" : "unconfigured"),
   );
   const server = Fastify({
     logger: false,
@@ -89,7 +93,7 @@ export async function createApi(options: CreateApiOptions = {}): Promise<LocalAp
         sendHttpError(httpError(405), request, reply, log);
         return reply;
       } else if (path === "/api" || path?.startsWith("/api/")) {
-        if (path !== HEALTH_PATH) {
+        if (path !== HEALTH_PATH && !isMasterDataPath(path)) {
           sendHttpError(httpError(404), request, reply, log);
           return reply;
         }
@@ -104,6 +108,7 @@ export async function createApi(options: CreateApiOptions = {}): Promise<LocalAp
       options.legacyReader ? new LegacyTeachingQueryService(options.legacyReader) : undefined,
       boundary,
     );
+    registerMasterDataRoutes(server, options.masterData, boundary);
     const root = options.webRoot ?? defaultWebRoot();
     if (!isAbsolute(root)) throw new TypeError("Web root must be absolute");
     let built = false;

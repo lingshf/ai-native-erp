@@ -57,11 +57,13 @@ export function sendHttpError(
     status =
       error.code === "INVALID_INPUT"
         ? 400
-        : error.code === "NOT_FOUND"
-          ? 404
-          : error.code === "OVERFLOW"
-            ? 503
-            : 500;
+        : error.code === "CONFLICT"
+          ? 409
+          : error.code === "NOT_FOUND"
+            ? 404
+            : error.code === "OVERFLOW"
+              ? 503
+              : 500;
   } else if (
     error !== null &&
     typeof error === "object" &&
@@ -87,10 +89,13 @@ export function sendHttpError(
   const body: ErrorResponse = errorSchema.parse({
     ...definition,
     params: {},
-    fieldErrors: [],
+    fieldErrors:
+      error instanceof DomainError && error.issue
+        ? [{ path: error.issue.path, messageKey: `api.error.account.${error.issue.rule}` }]
+        : [],
     requestId,
     retryable: status === 503,
   });
-  if (status === 405) reply.header("Allow", "GET");
+  if (status === 405 && !reply.hasHeader("Allow")) reply.header("Allow", "GET");
   reply.code(status).send(body);
 }

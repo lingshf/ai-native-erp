@@ -27,11 +27,11 @@ npm start
 
 更新依赖前确认`npm config get registry`为`https://registry.npmjs.org/`；本机镜像配置可能写入不可移植的lockfile地址，不能提交私有源配置或凭据。CI轻量检查会拒绝非公共npm源的tarball地址，本地workspace链接不属于tarball。
 
-## 新架构Local预览（已验证快照，只读）
+## 新架构Local工作区
 
 历史M03限定只读闭环已交付，代码a608ee1当时在精确新clone实际通过361项、历史双库70、构建和类型检查；历史记录见[项目记录](design/project.md)。这不是原账切换或全部ERP功能完成；Server/PG已延后、不维护。
 
-旧的`npm start`继续运行现有账务工作台。独立React前端和纯Fastify API现可显式读取M00保护工具生成并重新验证的快照，显示真实试算及同月完整总账；**不是活动账套，也不能编辑、过账、调用AI或替代原工作台**。当前技术栈调整与迁移任务见[任务总表](design/tasks/README.md)；旧G1–G6门禁不再用于当前开发，身份/Server已延后，原账切换须单独授权。
+旧的`npm start`继续运行现有账务工作台。独立React前端和纯Fastify API支持新目标库的公司、科目、期间配置；也可显式读取M00保护工具生成并重新验证的快照，显示真实试算及同月完整总账。**新目标库不导入原账；快照仍只读，不可编辑、过账或调用AI，也不替代原工作台**。当前技术栈调整与迁移任务见[任务总表](design/tasks/README.md)；旧G1–G6门禁不再用于当前开发，身份/Server已延后，原账切换须单独授权。
 
 完成上面的依赖安装后，在项目根目录执行：
 
@@ -41,6 +41,21 @@ npm run start:local
 ```
 
 `verify`依次运行Biome、一次严格类型检查、目录导入边界、根Vitest全部新架构测试、旧node:test套件，最后仅构建web一次。测试和启动不依赖构建产物：Node 26直接执行TS源码，`npm run start:local`等价于`node packages/infra/src/main.ts`。Local默认`http://127.0.0.1:4180`，API托管`npm run build`生成的`packages\web\dist`，浏览器只请求同源相对URL。普通启动不打开账簿：health的`data:unconfigured`描述目标业务账未接，财务页明确503；缺前端产物也返回503，不回退旧工作台。
+
+### M0-08：独立新目标库的主数据
+
+先显式迁移一个新的本机文件，再把其**绝对路径**交给组合根；不要选择原账或快照：
+
+```powershell
+npm run storage:admin -- migrate --provider sqlite --file new-target.sqlite
+$env:ERP_SQLITE_FILE = (Resolve-Path .\new-target.sqlite).Path
+npm run build
+npm run start:local
+```
+
+启动只校验最新 schema，不自动迁移；旧的 001 目标库也须先显式运行 migrate 升级到 002，001 SQL/checksum 保持不变。首次连接有效目标库时，在固定 LOCAL tenant/book 下建立 DEFAULT 月度教学公司（CNY、精度 2、当前财年）、旧 Book 对应的八科目和 12 个开放期间；重复启动不覆盖已有主数据，不创建凭证。未设置 ERP_SQLITE_FILE 的启动与快照 CLI 仍不打开业务库。已配置时 health 返回 `data:configured`。
+
+左侧“基础配置 → 科目表”提供公司选择、科目新建/编辑/停用；教学公司的内置八科目保持不可修改。统驭模块必须显式选择，不默认推断为 AP。中英、红绿、教学切换不清空编辑器。写入用 revision CAS，版本冲突返回 409 并保留输入，要求显式重新载入；可修正的科目规则校验返回 400 和安全的 fieldErrors，在对应字段说明如何修正，保留草稿且不提示无效重载。列表每次取 100 行，可继续加载；超过 100 行启用 TanStack Virtual。`/api/v1/companies`（GET/POST）、`/accounts`（GET/POST/PUT）、`/periods`（GET/PUT）使用有界游标分页；科目历史可用 `GET /api/v1/accounts/1500?company=DEFAULT&at=2026-01-02T12%3A00%3A00.000Z` 查询。期间冻结可重开，关闭须明确确认且不可重开；有业务活动后的结账流程留待 M0-11。此切片没有维度、凭证或公司创建/期间管理界面。
 
 需要真实只读报表时，先构建，再显式选择**独立的M00已验证快照目录**，不能传活动账套的`data`目录：
 
@@ -56,7 +71,7 @@ npm run preview:legacy -- --snapshot-dir "$snapshotDir"
 
 开发时API固定4180、Vite固定5173/strictPort。在第二终端运行`npm run dev --workspace @erp/web`；普通同源GET无Origin也可代理，无需额外许可。确实带`Origin:http://127.0.0.1:5173`的请求，只有API启动时另加`--dev-origin http://127.0.0.1:5173`才允许。API与Vite均不提供跨域CORS响应，Vite拒绝外域Host，不设`allowedHosts:true`。改API端口须显式同步并验证代理目标，不能扩大来源许可掩盖错配；开发origin不是认证，不开放LAN。
 
-工程只有三个workspace：`@erp/core`（domain/application/contracts）、`@erp/infra`（storage/http/legacy及组合根）、`@erp/web`（React及`src/ui`的labels/偏好），没有`apps/`。包导出直指`.ts`，相对TS导入使用`.ts`/`.tsx`；`npm run typecheck`一次覆盖源码和TS测试，不输出JS。目录边界禁止core反向导入infra、domain导入application、web导入Node或存储驱动。Zod是DTO单一来源；需要OpenAPI文件时显式执行`npm run openapi -- openapi.json`，不挂测试前置构建。偏好仍保存于同源`erp.workspace.preferences.v1`，默认中文/红色/教学关闭，不改旧偏好键。现有技术存储不等于已迁移业务；认证、业务写入及原账切换仍待后续阶段。
+工程只有三个workspace：`@erp/core`（domain/application/contracts）、`@erp/infra`（storage/http/legacy及组合根）、`@erp/web`（React及`src/ui`的labels/偏好），没有`apps/`。包导出直指`.ts`，相对TS导入使用`.ts`/`.tsx`；`npm run typecheck`一次覆盖源码和TS测试，不输出JS。目录边界禁止core反向导入infra、domain导入application、web导入Node或存储驱动。Zod是DTO单一来源；需要OpenAPI文件时显式执行`npm run openapi -- openapi.json`，不挂测试前置构建。偏好仍保存于同源`erp.workspace.preferences.v1`，默认中文/红色/教学关闭，不改旧偏好键。现有主数据不等于已迁移凭证/GL；认证、过账及原账切换仍待后续阶段。
 
 `npm test`运行根Vitest的core/infra（Node独立进程）及web（jsdom）项目；`npm run test:changed`只运行相对`origin/main`受影响的测试。旧`tests/*.test.mjs`单独用`npm run test:legacy`运行，完整验证使用`npm run verify`。`npm run check`使用Biome recommended lint与formatter覆盖`packages/`、`scripts/`，不再维护`node --check`列表。旧`src/`、`public/`、`tests/`不改文件、不检查格式或lint规则；其override保持linter解析引擎启用但`preset:none`，避免完全禁用引擎时跳过语法解析，这个过渡配置在M0-15随旧代码移除。边界解析仍用Babel：当前TypeScript 7仅导出版本信息，没有所需AST API；`acorn`仍被旧labels测试实际消费。
 

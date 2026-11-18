@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { masterDataOpenApi } from "./master-data.ts";
 import {
   legacyContextSchema,
   legacyTrialSchema,
@@ -7,12 +8,13 @@ import {
   legacyLedgerQuerySchema,
 } from "./legacy.ts";
 export * from "./legacy.ts";
+export * from "./master-data.ts";
 
 export const healthSchema = z.strictObject({
   service: z.literal("ai-native-erp"),
   contractVersion: z.literal("1"),
   profile: z.literal("local"),
-  data: z.literal("unconfigured"),
+  data: z.enum(["unconfigured", "configured"]),
 });
 
 export const errorCodeSchema = z.enum([
@@ -78,6 +80,7 @@ export const openApiDocument = {
   openapi: "3.1.0",
   info: { title: "AI Native ERP Local runtime contract", version: "1" },
   paths: {
+    ...masterDataOpenApi.paths,
     "/api/v1/legacy/context": legacyOperation("getLegacyContext", "LegacyContextResponse"),
     "/api/v1/legacy/trial": legacyOperation(
       "getLegacyTrial",
@@ -106,6 +109,7 @@ export const openApiDocument = {
   },
   components: {
     schemas: {
+      ...masterDataOpenApi.schemas,
       HealthResponse: z.toJSONSchema(healthSchema, { target: "draft-2020-12" }),
       ErrorResponse: z.toJSONSchema(errorSchema, { target: "draft-2020-12" }),
       LegacyContextResponse: z.toJSONSchema(legacyContextSchema, { target: "draft-2020-12" }),
