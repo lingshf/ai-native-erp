@@ -8,6 +8,9 @@
   },
   "include": [
     "vitest.config.ts",
+    "scripts/ci.ts",
+    "packages/infra/bench/**/*.ts",
+    "packages/infra/test/tooling/ci.test.ts",
     "packages/core/src/**/*.ts",
     "packages/core/test-types/**/*.ts",
     "packages/infra/src/**/*.ts",
