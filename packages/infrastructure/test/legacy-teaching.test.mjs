@@ -314,16 +314,18 @@ test('100-row ledger page retains totals and resumes with original IDs', t => {
 });
 
 test('held shared snapshot blocks an explicit child writer, retains read version and releases on close', t => {
-  const f = legacyFixture(t), reader = open(f);
+  const f = legacyFixture(t);
+  // Hashing opens/closes the same file and would drop the reader's POSIX locks.
   const hashes = captureDirectory(f.directory);
+  const reader = open(f);
   const before = reader.trialBalances(f.month);
   const result = spawnSync(process.execPath,
     [fileURLToPath(new URL('./support/legacy-writer.mjs', import.meta.url)), f.snapshot], { encoding: 'utf8' });
-  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(result.stdout.trim(), 'BUSY');
   assert.deepEqual(reader.trialBalances(f.month), before);
-  assert.deepEqual(captureDirectory(f.directory), hashes);
   reader.close();
+  assert.deepEqual(captureDirectory(f.directory), hashes);
   const db = new DatabaseSync(f.snapshot);
   db.exec("UPDATE accounts SET name='Changed after close' WHERE code='1000'"); db.close();
   assert.throws(() => open(f), code('INVALID_SNAPSHOT'));

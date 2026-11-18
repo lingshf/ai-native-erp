@@ -1,5 +1,9 @@
 # AI Native ERP
 
+产品目标是覆盖完整ERP场景，优先实现小企业易用、可追溯的主流程；教学是可关闭辅助，不改变会计正确性。UI与素材保持原创，性能从设计开始，热读p95目标≤1秒、≤100行预览/确认各p95目标≤2秒，不把目标当作已达标声明。完整准则见[产品准则](design/product-guidelines.md)。
+
+当前路线只做SQLite、本机单用户、loopback无登录；PostgreSQL、Docker、登录和权限已延后。按任务逐步调整技术栈并迁移统一账模型，当前计划以[路线图](design/roadmap.md)和[任务总表](design/tasks/README.md)为准；下文旧阶段编号与验收计数仅描述历史，不是当前实施计划。
+
 本质是ERP财务工作台，同时提供可关闭的会计教学辅助。当前本机单人总账支持日记账 → 过账 → 总账 → 试算与调整 → 报表 → 关账；不把尚未开发的应付、应收、库存等模块宣称可用。
 使用通用权责发生制和复式记账，现有示例账套金额仍为“教学单位”。当前为非生产演示版，不承诺符合某国会计准则；关闭教学不会改变金额口径或升级为生产财务系统。
 当前包含自定义科目及正常方向/备抵解释、基础行维度、显式科目维度结构与确定性现金服务事件闭环；首阶段有限收口标准及完整目标状态见 `design\project.md`。
@@ -11,19 +15,19 @@
 ```powershell
 git clone https://github.com/lingshf/ai-native-erp.git
 Set-Location ai-native-erp
-npm ci --ignore-scripts
+npm ci
 npm test
 npm run check
 npm start
 ```
 
-仓库不包含`.env`、原账套、依赖目录或任何登录凭据。首次启动会在新副本创建独立的本机教学账套；已有账套不会从其他机器自动迁移。未配置AI时仍可使用确定性手工记账。需要AI时参照`.env.example`及下文受支持的官方Copilot登录/配置方式；新机器必须独立认证并核实模型可用性，原宿主的认证不随代码迁移。
+仓库不包含`.env`、原账套、依赖目录或任何登录凭据。npm 11按根`package.json`的`allowScripts`仅放行`better-sqlite3`安装脚本，`koffi`脚本保持禁用，不全局开放生命周期脚本。首次启动会在新副本创建独立的本机教学账套；已有账套不会从其他机器自动迁移。未配置AI时仍可使用确定性手工记账。需要AI时参照`.env.example`及下文受支持的官方Copilot登录/配置方式；新机器必须独立认证并核实模型可用性，原宿主的认证不随代码迁移。
 
 ## 新架构Local预览（已验证快照，只读）
 
-M03限定只读闭环已交付，代码a608ee1已发布main并在精确新clone实际通过361项、真实双库70、构建和类型检查；完整进度见design\project.md。这不是原账切换、生产Server或全部ERP功能完成。
+历史M03限定只读闭环已交付，代码a608ee1当时在精确新clone实际通过361项、历史双库70、构建和类型检查；历史记录见[项目记录](design/project.md)。这不是原账切换或全部ERP功能完成；Server/PG已延后、不维护。
 
-旧的`npm start`继续运行现有账务工作台。独立React前端和Nest/Fastify API现可显式读取M00保护工具生成并重新验证的快照，显示真实试算及同月完整总账；**不是活动账套，也不能编辑、过账、调用AI或替代原工作台**。M03详细G3及各增量门禁、组合与发布的实时状态见[项目进度](design/project.md)和[评审](design/reviews.md)，不把代码已实现当作本阶段已发布。身份/Server和原账切换仍有独立门禁。
+旧的`npm start`继续运行现有账务工作台。独立React前端和Nest/Fastify API现可显式读取M00保护工具生成并重新验证的快照，显示真实试算及同月完整总账；**不是活动账套，也不能编辑、过账、调用AI或替代原工作台**。当前技术栈调整与迁移任务见[任务总表](design/tasks/README.md)；旧G1–G6门禁不再用于当前开发，身份/Server已延后，原账切换须单独授权。
 
 完成上面的依赖安装后，在项目根目录执行：
 
@@ -52,7 +56,9 @@ npm run preview:legacy -- --snapshot-dir "$snapshotDir"
 
 ## 本地查看完整需求与进度
 
-**架构迁移已获委托执行，尚未全部完成：** [分层与双数据库方案](design/architecture.md) · [阶段详细设计与验收](design/architecture-migration.md) · [技术选型ADR](design/adr/ADR-SME-001.md) · [14节点架构图](design/diagrams/sme-overview.svg)。M00/M01/M02已发布；当前M03只读SPA进入组合验收，实时门禁/交付见[项目进度](design/project.md)，后文M02计数是历史，不冒充M03结果。真实身份/Server、业务写入和原账切换未完成。贸易候选保护到M06，原账先备份核对并保留ID3及只读源再切换。44FG仍0整体完成/13部分/31未实现。
+**当前计划：** [路线图](design/roadmap.md) · [M0目标架构](design/m0-architecture.md) · [任务总表](design/tasks/README.md)。按一个任务一个PR推进，评审通过且CI全绿后合并；设计角色维护任务文档。原账切换不在当前任务范围，4173账套、ID3草稿和暂停现场保持不动。44FG历史统计为0整体完成/13部分/31未实现，不因技术栈调整宣称业务已完成。
+
+[旧分层与双数据库方案](design/architecture.md)、[旧阶段设计](design/architecture-migration.md)、[旧ADR](design/adr/ADR-SME-001.md)及[旧架构图](design/diagrams/sme-overview.svg)仅作历史参考；其中PG、Server、身份及M04等阶段安排不是当前路线，已由上述M0计划取代。
 
 ### M02只读快照CLI（M02已验收发布）
 
@@ -80,13 +86,9 @@ npm run storage:admin -- provision --provider sqlite --file new-target.sqlite --
 
 `provision`只建立技术作用域，不是建账、授权或已实现GL；只给tenant、加book或加company分别建立对应层级。旧库/陌生文件在打开SQL或写PRAGMA前拒绝，不覆盖或自动修复。连接关闭成功后才输出成功JSON；错误分类脱敏且非零，不打印路径、SQL或连接串。
 
-PostgreSQL18必须使用独立专属数据库。管理员在本机进程环境提供`ERP_TARGET_DATABASE_URL`后显式选择`--provider postgres --ca-file certificates\ca.crt`，不要把URI写入命令行、日志或公开文件。默认强制验证TLS证书，必须显式提供非空PEM CA文件或bundle（最大1MiB），文件只能含证书块和空白，不接受注释或`subject=`行；不从环境或`.env`选择CA，不接受URI查询参数。缺失、不可读或无效CA明确`INVALID_INPUT`，不悄悄禁TLS。`--no-tls-loopback`与`--ca-file`互斥，仅允许字面`127.0.0.1`/`::1`的隔离测试实例，不是LAN配置。此CLI不代表Server HTTP/OIDC已开放。
+**PostgreSQL/Server已延后、不维护。** 仓库暂留的PG适配器、连接参数和历史运行记录不是当前支持承诺；不按旧指南部署、升级或连接业务数据库，后续由M0-03清理。
 
-**数据库升级边界：** 本阶段只支持PostgreSQL18。结构指纹包含该主版本生成的目录/DDL表示，不能当作跨主版本可移植值；升级数据库可能导致明确拒绝，而不是自动修复。跨主版本升级须另行设计评审、完整备份并在独立恢复副本验证迁移/重建指纹、账务核对和回退，再发布受支持的工具；当前没有在线重签或主版本升级工具。不要直接改`schema_migrations`绕过失败。指纹只证明相对受校验初始迁移的结构未变，不抵御可改版本表/DDL或安装数据库级event trigger的owner/superuser；测试角色不用于生产。逐事务校验的目录查询成本已保留，缓存与容量调优须后续有消费者和负载证据再设计，不以缓存隐藏漂移。
-
-默认`npm run verify`继续运行完整旧测试及新增Local套件；`npm run verify:databases`另行强制运行SQLite和真实PostgreSQL契约及CLI。后者需要显式的`ERP_TEST_DATABASE_URL`，只用隔离、SCRAM认证、loopback的PG18测试实例及可创建数据库/执行故障探针的测试角色；套件只创建/删除随机专属夹具数据库。不要提供业务数据库或生产角色。缺PG配置明确失败而非跳过；命令不自动下载、安装或启动数据库。运行后清除测试连接环境。当前原生恢复实测为Node26/Windows x64、禁用安装lifecycle且直接加载随包模块；其他运行时/平台未验收，不回退编译或自动装编译器。
-
-故障探针会主动终止自己创建的连接，连接异常会使测试及清理明确失败，不当作成功。若管理员连接丢失，持久测试实例可能留下随机夹具库；优先使用可完整清理的专属临时集群，持久实例需由操作员辨认并清理本次夹具，不能删除业务库。首次发布后clone的TCP重置原因仍未知，后续通过不抹除失败，详见[评审记录](design/reviews.md)。
+默认`npm run verify`运行完整旧测试及新增Local套件，不需要PostgreSQL、Docker、外部服务或密钥。旧`npm run verify:databases`包含强制真实PG测试，**已延后、不维护，不用于当前开发或CI**；SQLite专项入口与PG测试归档由M0-03处理，本任务不提前拆分。
 
 先打开 **[项目进度总览](design/project.md)**：44FG当前为0整体完成、13部分覆盖、31未实现。这里不把“做过一部分”标为整个目标完成，也不虚构百分比。
 
@@ -170,7 +172,7 @@ New-Item -ItemType Directory -Path backups -Force | Out-Null
 node scripts\ledger-snapshot.mjs --teaching data\teaching.sqlite --enterprise data\erp.sqlite --target backups\before-architecture
 ```
 
-SQLite的只读WAL访问仍可能更新SHM读标记；已在隔离夹具中观察到M00创建快照时辅助SHM哈希变化，不能把“只读”解释为全部辅助文件逐字节不变。新只读桥仅消费已转换为非WAL的独立快照，并另行核对消费前后源/快照字节及文件名；这不等于已验收真实原账迁移，M08仍须独立备份、核对和回滚门禁。
+SQLite的只读WAL访问仍可能更新SHM读标记；已在隔离夹具中观察到M00创建快照时辅助SHM哈希变化，不能把“只读”解释为全部辅助文件逐字节不变。新只读桥仅消费已转换为非WAL的独立快照，并另行核对消费前后源/快照字节及文件名；这不等于已验收真实原账迁移，后续M2迁移仍须用户授权、独立备份、核对和回滚准备。
 
 目标目录必须不存在，父目录必须存在。工具以只读连接包含已提交WAL页；manifest最后独占发布，任一失败非零，不把遗留目录当有效备份。两库分别一致，不是跨库同时刻快照，最终迁移仍需停写重取；既有备份不能覆盖。备份及manifest含财务证据，只保存在私有目录，不提交或上传。后续消费须使用`verifyLedgerSnapshot`重新核文件与逻辑完整性，不能仅检查manifest是否存在；不承诺未经演练的掉电恢复/生产SLA。
 
@@ -299,4 +301,4 @@ npm run check
 首阶段按 `design\project.md` 的A1-A7有限教学底座收口：科目及解释、维度与显式结构、旧月度期间控制、一个真实教学事件规则及预览/确认、不可变链路与冲销、共用校验/受限AI/安全本地交付。这七项已具备代码、验证及最终评审/本地交付证据，满足该有限版本的收口条件。其余控制子账/清算与暂记流程、复杂维度/法人/财政日历/年结/新业务规则属于后续可选扩展，不通过追加它们让首阶段永不结束；这不表示源44项目标或FG01-07整体完成。没有新增真实AI调用；另开终端的Copilot环境认证仍不保证。
 上一现金服务版已完成40项回归/独立评审/浏览器与本地交付；其4173原3张凭证/期间/ID3仍受保护，不把上一版预览与交付冒充维度结构版本。
 需求、设计、测试与评审证据在 [design](design/project.md)。已安装的 [developer agent](.github/agents/developer.agent.md) 不等于宿主已选中该 agent。
-用户已批准评审模型能力例外：独立调用请求 `claude-opus-5.5`，但宿主不能核实实际评审模型身份；完整评审、测试与阻塞问题处理仍必须完成，交付保留例外标记。
+以上G1–G6、模型能力例外和交付记录均为历史；当前流程以[路线图§5](design/roadmap.md#5-团队流程)为准，不执行旧门禁、模型计划或MODEL01例外流程。开发角色不维护`design/`，每任务提交一个PR，由PR评审角色按任务验收标准审查，收到`VERDICT: APPROVED`且CI全绿后才合并。
