@@ -14,7 +14,7 @@ export class MasterDataFailure extends Error {
 export async function masterRequest<T>(
   path: string,
   schema: ContractSchema<T>,
-  options: { signal?: AbortSignal; body?: unknown; method?: "POST" | "PUT" } = {},
+  options: { signal?: AbortSignal; body?: unknown; method?: "POST" | "PUT" | "DELETE" } = {},
 ): Promise<T> {
   let response: Response;
   try {

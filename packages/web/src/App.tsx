@@ -20,6 +20,9 @@ const Accounts = lazy(() =>
 const Dimensions = lazy(() =>
   import("./Dimensions.tsx").then((module) => ({ default: module.Dimensions })),
 );
+const Journals = lazy(() =>
+  import("./Journals.tsx").then((module) => ({ default: module.Journals })),
+);
 
 export function App() {
   const [client] = useState(
@@ -106,6 +109,10 @@ function Workspace() {
               <NavLink to="/dimensions">{t("dim.title")}</NavLink>
             </div>
             <div className="navigation-group">
+              <span>{t("journal.group")}</span>
+              <NavLink to="/journals">{t("journal.title")}</NavLink>
+            </div>
+            <div className="navigation-group">
               <span>{t("reports.group")}</span>
               <NavLink to={{ pathname: "/reports/trial", search: reportSearch }}>
                 {t("reports.trial")}
@@ -173,6 +180,14 @@ function Workspace() {
               element={
                 <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
                   <Dimensions preferences={preferences} />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/journals"
+              element={
+                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                  <Journals preferences={preferences} />
                 </Suspense>
               }
             />

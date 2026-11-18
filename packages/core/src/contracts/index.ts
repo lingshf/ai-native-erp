@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { masterDataOpenApi } from "./master-data.ts";
 import { dimensionsOpenApi } from "./dimensions.ts";
+import { journalsOpenApi } from "./journals.ts";
 export * from "./dimensions.ts";
 import {
   legacyContextSchema,
@@ -83,6 +84,7 @@ export const openApiDocument = {
   info: { title: "AI Native ERP Local runtime contract", version: "1" },
   paths: {
     ...dimensionsOpenApi.paths,
+    ...journalsOpenApi.paths,
     ...masterDataOpenApi.paths,
     "/api/v1/legacy/context": legacyOperation("getLegacyContext", "LegacyContextResponse"),
     "/api/v1/legacy/trial": legacyOperation(
@@ -113,6 +115,7 @@ export const openApiDocument = {
   components: {
     schemas: {
       ...dimensionsOpenApi.schemas,
+      ...journalsOpenApi.schemas,
       ...masterDataOpenApi.schemas,
       HealthResponse: z.toJSONSchema(healthSchema, { target: "draft-2020-12" }),
       ErrorResponse: z.toJSONSchema(errorSchema, { target: "draft-2020-12" }),
@@ -140,3 +143,4 @@ export function verifyOpenApi(document: unknown): void {
     throw new Error("OpenAPI artifact differs from its single-source runtime contracts.");
   }
 }
+export * from "./journals.ts";

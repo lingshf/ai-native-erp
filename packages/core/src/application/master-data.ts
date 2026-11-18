@@ -19,14 +19,16 @@ import {
   type Period,
 } from "@erp/core/domain";
 import type { DimensionRepository } from "./dimensions.ts";
+import type { JournalRepository } from "./journals.ts";
 
-export interface MasterDataRepository extends DimensionRepository {
+export interface MasterDataRepository extends DimensionRepository, JournalRepository {
   company(code: string): Promise<Company | null>;
   companies(query: PageQuery): Promise<Page<Company>>;
   currencyScale(currency: string): Promise<number | null>;
   insertCompany(company: Company): Promise<void>;
   account(company: string, code: string, at?: string): Promise<Account | null>;
   accounts(company: string, query: PageQuery): Promise<Page<Account>>;
+  accountsByCodes(company: string, codes: readonly string[]): Promise<readonly Account[]>;
   contraChildren(company: string, code: string): Promise<readonly Account[]>;
   saveAccount(company: string, account: Account, expected: number): Promise<void>;
   periods(company: string, query: PageQuery): Promise<Page<Period>>;

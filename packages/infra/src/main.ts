@@ -14,15 +14,17 @@ try {
   const [
     { createApi },
     { defaultErrorLogger },
-    { MasterDataService, DimensionService },
+    { MasterDataService, DimensionService, JournalService },
     { createSqliteStorage },
     { createMasterDataStore },
+    { journalTools },
   ] = await Promise.all([
     import("./http/index.ts"),
     import("./http/errors.ts"),
     import("@erp/core/application"),
     import("./storage/index.ts"),
     import("./storage/master-data.ts"),
+    import("./storage/journals.ts"),
   ]);
   let masterData: MasterDataService | undefined;
   if (process.env.ERP_SQLITE_FILE !== undefined) {
@@ -39,7 +41,13 @@ try {
   }
   const api = await createApi({
     environment,
-    ...(masterData && store ? { masterData, dimensions: new DimensionService(store) } : {}),
+    ...(masterData && store
+      ? {
+          masterData,
+          dimensions: new DimensionService(store),
+          journals: new JournalService(store, journalTools),
+        }
+      : {}),
   });
   await api.listen();
   const close = () => {

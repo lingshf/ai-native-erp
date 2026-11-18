@@ -94,7 +94,7 @@ export function sendHttpError(
         ? [
             {
               path: error.issue.path,
-              messageKey: `api.error.${"scope" in error.issue ? "dimensions" : "account"}.${error.issue.rule}`,
+              messageKey: `api.error.${"scope" in error.issue ? error.issue.scope : "account"}.${error.issue.rule}`,
             },
           ]
         : [],

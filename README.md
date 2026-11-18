@@ -53,13 +53,23 @@ npm run build
 npm run start:local
 ```
 
-启动只校验最新 schema，不自动迁移；旧的 001/002 目标库也须先显式运行 migrate 升级到 003，001/002 SQL/checksum 保持不变。首次连接有效目标库时，在固定 LOCAL tenant/book 下建立 DEFAULT 月度教学公司（CNY、精度 2、当前财年）、旧 Book 对应的八科目和 12 个开放期间；重复启动不覆盖已有主数据，不创建凭证。未设置 ERP_SQLITE_FILE 的启动与快照 CLI 仍不打开业务库。已配置时 health 返回 `data:configured`。
+启动只校验最新 schema，不自动迁移；旧的 001/002/003 目标库也须先显式运行 migrate 升级到 004，已发布 SQL/checksum 保持不变。首次连接有效目标库时，在固定 LOCAL tenant/book 下建立 DEFAULT 月度教学公司（CNY、精度 2、当前财年）、旧 Book 对应的八科目和 12 个开放期间；重复启动不覆盖已有主数据，不创建凭证。未设置 ERP_SQLITE_FILE 的启动与快照 CLI 仍不打开业务库。已配置时 health 返回 `data:configured`。
 
-左侧“基础配置 → 科目表”提供公司选择、科目新建/编辑/停用；教学公司的内置八科目保持不可修改。统驭模块必须显式选择，不默认推断为 AP。中英、红绿、教学切换不清空编辑器。写入用 revision CAS，版本冲突返回 409 并保留输入，要求显式重新载入；可修正的科目规则校验返回 400 和安全的 fieldErrors，在对应字段说明如何修正，保留草稿且不提示无效重载。列表每次取 100 行，可继续加载；超过 100 行启用 TanStack Virtual。`/api/v1/companies`（GET/POST）、`/accounts`（GET/POST/PUT）、`/periods`（GET/PUT）使用有界游标分页；科目历史可用 `GET /api/v1/accounts/1500?company=DEFAULT&at=2026-01-02T12%3A00%3A00.000Z` 查询。期间冻结可重开，关闭须明确确认且不可重开；有业务活动后的结账流程留待 M0-11。尚无凭证或公司创建/期间管理界面。
+左侧“基础配置 → 科目表”提供公司选择、科目新建/编辑/停用；教学公司的内置八科目保持不可修改。统驭模块必须显式选择，不默认推断为 AP。中英、红绿、教学切换不清空编辑器。写入用 revision CAS，版本冲突返回 409 并保留输入，要求显式重新载入；可修正的科目规则校验返回 400 和安全的 fieldErrors，在对应字段说明如何修正，保留草稿且不提示无效重载。列表每次取 100 行，可继续加载；超过 100 行启用 TanStack Virtual。`/api/v1/companies`（GET/POST）、`/accounts`（GET/POST/PUT）、`/periods`（GET/PUT）使用有界游标分页；科目历史可用 `GET /api/v1/accounts/1500?company=DEFAULT&at=2026-01-02T12%3A00%3A00.000Z` 查询。期间冻结可重开，关闭须明确确认且不可重开；有业务活动后的结账流程留待 M0-11。公司创建/期间管理界面仍未提供；凭证界面见下文 M0-10。
 
 “基础配置 → 财务维度”维护维度、有效值、科目结构（必填/可选/禁止）、默认、派生和平衡配置，支持启停及有效期。列表按公司隔离，每页100项，维度值按所属维度过滤，超过100项虚拟滚动。`/api/v1/dimensions` 的 GET 使用 company、kind、dimension（仅 value）、limit、cursor；POST/PUT 接受严格的 `{company, config}`，revision=0 新建，否则 CAS 更新；每次成功写入同事务追加不可变历史。
 
-**D5：允许组合统一采用 Enterprise 的 subset 口径，没有模式开关**：只约束组合列出的维度，未列出不限制；必填/禁止/固定值仍独立校验。相对旧 Book exact，组合没填的可选段现在代表不限制该段。例如组合只列 DEPT=A、COST 为可选，行上额外填写任意有效 COST 值也可匹配；行上 COST 留空仍可匹配。这是统一规则的有意放宽，不是双轨兼容；不提供旧账转换/导入工具。配置保存检查引用存在；应用规则时才检查维度/值的启停和包含端点的有效期，便于先配置未来生效的规则。禁止段连显式 null 键也须移除。默认按账套→科目→主数据→抬头→显式行值覆盖，再按依赖顺序派生，fill 保留显式 null，最后稳定条件固定值并校验结构。平衡纯函数先要求业务借贷相等，再输出精确整数的内部清算候选；凭证调用、清算行重校验及来源链路留待 M0-10，本切片不保存或过账凭证。
+**D5：允许组合统一采用 Enterprise 的 subset 口径，没有模式开关**：只约束组合列出的维度，未列出不限制；必填/禁止/固定值仍独立校验。相对旧 Book exact，组合没填的可选段现在代表不限制该段。例如组合只列 DEPT=A、COST 为可选，行上额外填写任意有效 COST 值也可匹配；行上 COST 留空仍可匹配。这是统一规则的有意放宽，不是双轨兼容；不提供旧账转换/导入工具。配置保存检查引用存在；应用规则时才检查维度/值的启停和包含端点的有效期，便于先配置未来生效的规则。禁止段连显式 null 键也须移除。默认按账套→科目→主数据→抬头→显式行值覆盖，再按依赖顺序派生，fill 保留显式 null，最后稳定条件固定值并校验结构。平衡纯函数先要求业务借贷相等，再输出精确整数的内部清算候选；M0-09 切片仅输出候选，凭证调用、清算行重校验及来源链路已由下述 M0-10 接通。
+
+### M0-10：凭证草稿、预览与明确确认
+
+“凭证”页只写上述独立新目标库。草稿可保存不完整输入、修改或明确删除，revision CAS 冲突保留输入；记账日期必须显式填写。业务行 Enter 移到下一行、末行 Enter/末字段 Tab 新增，Ctrl+Enter 先保存再预览。预览不写 GL/回执/审计，展示实际维度、来源解释、内部平衡与历史镜像；必须另外点击“确认过账”。确认结果不确定时保留同一幂等键及计划，只允许明确同键重试，不自动再次记账。语言/主题/教学切换不清空编辑内容。
+
+`/api/v1/journals` 按 company、status=draft|posted、limit、cursor 分页；`/drafts` POST、`/drafts/:id` GET/PUT/DELETE 提供草稿维护；`/preview`、`/confirm` POST 使用草稿版本及指纹，确认另须 `confirmation:POST`。`/reverse`、`/replace`、`/reclassify` 仅创建纠错草稿，仍须预览和明确确认；`/:id` GET 返回不可修改的已过账凭证与全部纠错链。业务草稿最多 500 行，列表每页 100 项，超过 100 项虚拟滚动。确认在同一 SQLite 写事务内重读当前同公司科目/期间/维度、重算指纹、校验全部生成行并原子写凭证/回执/审计、删除草稿；同键同内容返回持久原回执，公司内来源引用唯一。
+
+**D6：历史反向行逐项精确镜像同公司原已过账行**，即使原科目已停用/禁止手工或原维度值已失效；不重跑默认/派生。仍检查原凭证、同公司科目、金额正好取反、镜像证据及不能重复冲回。新业务/自动清算行均按当前启用、用途及维度结构校验。替换原子生成反向和新凭证；重分类必须全额，合并展示原反向与新分配，仅允许再全额冲回；纠错日期不能早于原凭证及其任何后代。金额以精确最小单位计算，单项/凭证/公司累计借贷金额均不能超过安全整数范围；公司累计值保存在不可变封存记录，通过索引读取末值，不逐次扫描全 GL。
+
+004 复用已发布 001 的 `receipts` 与 `audit`，为新凭证增加来源/幂等唯一索引，`audit_log` 是同一真实审计存储的只读投影，不写两份审计。完整目标库新 GL 报表留 M0-12；业务事件/过账规则及后续结账留 M0-11，不提供旧账转换/导入。`npm run bench` 另测 100 行 × 3 维度的真实 loopback HTTP（含客户端响应/契约解析，确认包含事务提交），输出 p95/p99 及事件循环延迟；当前仅独立小库，**不等于已通过百万 GL 容量验收**，须等 M0-12 合成生成器。
 
 需要真实只读报表时，先构建，再显式选择**独立的M00已验证快照目录**，不能传活动账套的`data`目录：
 
@@ -75,13 +85,13 @@ npm run preview:legacy -- --snapshot-dir "$snapshotDir"
 
 开发时API固定4180、Vite固定5173/strictPort。在第二终端运行`npm run dev --workspace @erp/web`；普通同源GET无Origin也可代理，无需额外许可。确实带`Origin:http://127.0.0.1:5173`的请求，只有API启动时另加`--dev-origin http://127.0.0.1:5173`才允许。API与Vite均不提供跨域CORS响应，Vite拒绝外域Host，不设`allowedHosts:true`。改API端口须显式同步并验证代理目标，不能扩大来源许可掩盖错配；开发origin不是认证，不开放LAN。
 
-工程只有三个workspace：`@erp/core`（domain/application/contracts）、`@erp/infra`（storage/http/legacy及组合根）、`@erp/web`（React及`src/ui`的labels/偏好），没有`apps/`。包导出直指`.ts`，相对TS导入使用`.ts`/`.tsx`；`npm run typecheck`一次覆盖源码和TS测试，不输出JS。目录边界禁止core反向导入infra、domain导入application、web导入Node或存储驱动。Zod是DTO单一来源；需要OpenAPI文件时显式执行`npm run openapi -- openapi.json`，不挂测试前置构建。偏好仍保存于同源`erp.workspace.preferences.v1`，默认中文/红色/教学关闭，不改旧偏好键。现有主数据不等于已迁移凭证/GL；认证、过账及原账切换仍待后续阶段。
+工程只有三个workspace：`@erp/core`（domain/application/contracts）、`@erp/infra`（storage/http/legacy及组合根）、`@erp/web`（React及`src/ui`的labels/偏好），没有`apps/`。包导出直指`.ts`，相对TS导入使用`.ts`/`.tsx`；`npm run typecheck`一次覆盖源码和TS测试，不输出JS。目录边界禁止core反向导入infra、domain导入application、web导入Node或存储驱动。Zod是DTO单一来源；需要OpenAPI文件时显式执行`npm run openapi -- openapi.json`，不挂测试前置构建。偏好仍保存于同源`erp.workspace.preferences.v1`，默认中文/红色/教学关闭，不改旧偏好键。凭证/GL 仅在独立新目标库写入；认证、业务事件及原账切换仍待后续阶段。
 
 `npm test`运行根Vitest的core/infra（Node独立进程）及web（jsdom）项目；`npm run test:changed`只运行相对`origin/main`受影响的测试。旧`tests/*.test.mjs`单独用`npm run test:legacy`运行，完整验证使用`npm run verify`。`npm run check`使用Biome recommended lint与formatter覆盖`packages/`、`scripts/`，不再维护`node --check`列表。旧`src/`、`public/`、`tests/`不改文件、不检查格式或lint规则；其override保持linter解析引擎启用但`preset:none`，避免完全禁用引擎时跳过语法解析，这个过渡配置在M0-15随旧代码移除。边界解析仍用Babel：当前TypeScript 7仅导出版本信息，没有所需AST API；`acorn`仍被旧labels测试实际消费。
 
 PR CI限时10分钟：安装、Biome、类型和边界检查后，对实际PR base运行受影响Vitest；任意workspace的`package.json`/lock、Vitest或`tsconfig*`改动回退全部非慢测试。只有旧`src/`、`public/`、`tests/`改动才运行旧套件（M0-15删除此分支）。`*.slow.test.ts`/`*.slow.test.tsx`不进入PR或`test:changed`，只进入完整运行；本地`npm test`/`verify`仍是完整模式。CI/Full的summary合并Vitest与实际执行的旧套件，列出最慢10个测试。
 
-Full在push到main及每天03:17 UTC触发；Bench每天03:47 UTC及手动触发。每晚检查所检出main提交的committer时间，过去24小时无新提交时跳过安装、测试、构建/基准，仅保留checkout、Node/npm缓存与门控开销；push和手动运行不受该门控限制。所有job有超时、同层并发取消和npm缓存。`npm run bench`只在独立临时SQLite文件上测1万行占位插入/热查询，不代表M0-12的百万GL行基准；结果写入summary，`artifacts/ci/bench.json`及`.md`由Bench工作流保留14天，不修改活动账套。
+Full在push到main及每天03:17 UTC触发；Bench每天03:47 UTC及手动触发。每晚检查所检出main提交的committer时间，过去24小时无新提交时跳过安装、测试、构建/基准，仅保留checkout、Node/npm缓存与门控开销；push和手动运行不受该门控限制。所有job有超时、同层并发取消和npm缓存。`npm run bench`只在独立临时SQLite文件上测1万行占位插入/热查询、100×3维度纯规则及凭证真实HTTP预览/确认，不代表M0-12的百万GL行基准；结果写入summary，`artifacts/ci/bench.json`及`.md`由Bench工作流保留14天，不修改活动账套。
 
 ## 本地查看完整需求与进度
 

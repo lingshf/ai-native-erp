@@ -1,6 +1,7 @@
 export * from "./storage.ts";
 export * from "./master-data.ts";
 export * from "./dimensions.ts";
+export * from "./journals.ts";
 export type * from "./legacy-teaching.ts";
 export * from "./legacy-query.ts";
 export { DomainError } from "@erp/core/domain";

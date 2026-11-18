@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { compileDimensionRules, dimensionBalance, type DimensionConfig } from "@erp/core/domain";
+import { journalBenchmark } from "./journals.ts";
 
 function dimensionBenchmark() {
   const base = { revision: 1, active: true, from: "2026-01-01", to: "2026-12-31" };
@@ -129,6 +130,7 @@ try {
     const p95 = durations[94];
     if (p50 === undefined || p95 === undefined) throw new Error("Missing benchmark samples");
     const dimensions = dimensionBenchmark();
+    const journals = await journalBenchmark();
     const report = {
       kind: "placeholder-not-million-GL",
       node: process.version,
@@ -136,6 +138,7 @@ try {
       insertMs,
       query: { rows: 100, samples: durations.length, p50Ms: p50, p95Ms: p95 },
       dimensions,
+      journals,
     };
     const markdown = [
       "## SQLite placeholder benchmark",
@@ -154,6 +157,14 @@ try {
       `100 samples: p50 ${dimensions.p50Ms.toFixed(3)} ms; p95 ${dimensions.p95Ms.toFixed(3)} ms; p95 budget < ${dimensions.budgetMs} ms.`,
       "",
       "No product tests run in this job; slowest-10 test timings are in CI/Full summaries.",
+      "",
+      "## Journal loopback HTTP benchmark",
+      "",
+      `100 business lines × 3 dimensions; 10 warmups and 100 samples. Timed from fetch through response.json and the shared client contract parse; confirm includes validation, transaction and commit. Initial GL rows: ${journals.initialGlRows}. Million-row capacity verified: **${journals.millionGlBaselineVerified}** (M0-12 generator pending).`,
+      "",
+      `Preview p95 ${journals.preview.p95Ms.toFixed(3)} ms; confirm p95 ${journals.confirm.p95Ms.toFixed(3)} ms; each budget ≤ ${journals.budgetMs} ms. Event-loop max ${journals.eventLoopMaxMs.toFixed(3)} ms.`,
+      "",
+      `Hot paged read (${journals.listRows} summaries; HTTP + client parse) p95 ${journals.list.p95Ms.toFixed(3)} ms; budget ≤ ${journals.readBudgetMs} ms.`,
       "",
     ].join("\n");
     mkdirSync("artifacts/ci", { recursive: true });

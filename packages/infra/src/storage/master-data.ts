@@ -16,6 +16,7 @@ import { sqliteBackend } from "./sqlite.ts";
 import { storageError } from "./errors.ts";
 import { inspectSchema } from "./migrations.ts";
 import { dimensionRepository } from "./dimensions.ts";
+import { journalRepository } from "./journals.ts";
 import type { Connection, Row, SqliteStorageConfig } from "./types.ts";
 
 function decode<T>(schema: ContractSchema<T>, value: unknown): T {
@@ -75,6 +76,7 @@ function page<T>(
 function repository(db: Connection): MasterDataRepository {
   return {
     ...dimensionRepository(db),
+    ...journalRepository(db),
     async company(code) {
       const rows = await db.query("SELECT * FROM ledger_companies WHERE company_id=?", [code]);
       return rows[0] ? companyRow(rows[0]) : null;
@@ -148,6 +150,15 @@ function repository(db: Connection): MasterDataRepository {
     async contraChildren(company, code) {
       return (
         await db.query("SELECT * FROM accounts WHERE company_id=? AND contra_of=?", [company, code])
+      ).map(accountRow);
+    },
+    async accountsByCodes(company, codes) {
+      if (!codes.length) return [];
+      return (
+        await db.query(
+          `SELECT * FROM accounts WHERE company_id=? AND code IN(${codes.map(() => "?").join(",")}) ORDER BY code`,
+          [company, ...codes],
+        )
       ).map(accountRow);
     },
     async saveAccount(company, account, expected) {
