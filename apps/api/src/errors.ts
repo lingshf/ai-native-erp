@@ -1,6 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { Catch, HttpException } from '@nestjs/common';
-import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import { errorSchema } from '@erp/contracts';
 import type { ErrorResponse } from '@erp/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -16,6 +14,10 @@ export type SafeErrorLogger = (event: SafeErrorEvent) => void;
 export const defaultErrorLogger: SafeErrorLogger = event => {
   console.error(JSON.stringify(event));
 };
+
+export function httpError(statusCode: number): Error & { statusCode: number } {
+  return Object.assign(new Error('HTTP request rejected'), { statusCode });
+}
 
 const errors: Record<number, { code: ErrorResponse['code']; messageKey: string }> = {
   400: { code: 'INVALID_REQUEST', messageKey: 'api.error.invalidRequest' },
@@ -35,7 +37,7 @@ export function sendHttpError(
   log: SafeErrorLogger,
 ): void {
   if (reply.sent) return;
-  let status = error instanceof HttpException ? error.getStatus() : 500;
+  let status = 500;
   if (error instanceof StorageError) {
     if (error.code === 'INVALID_INPUT' || error.code === 'INVALID_CURSOR') status = 400;
     else if (error.code === 'NOT_FOUND') status = 404;
@@ -68,14 +70,4 @@ export function sendHttpError(
   });
   if (status === 405) reply.header('Allow', 'GET');
   reply.code(status).send(body);
-}
-
-@Catch()
-export class UnifiedHttpExceptionFilter implements ExceptionFilter {
-  constructor(private readonly log: SafeErrorLogger) {}
-
-  catch(error: unknown, host: ArgumentsHost): void {
-    const http = host.switchToHttp();
-    sendHttpError(error, http.getRequest<FastifyRequest>(), http.getResponse<FastifyReply>(), this.log);
-  }
 }
