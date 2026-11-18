@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { test } from "vitest";
 import { createApi, defaultWebRoot } from "@erp/infra/http";
 import { errorSchema, healthSchema } from "@erp/core/contracts";
@@ -271,6 +271,18 @@ test("real IPv6 loopback is supported when the host provides it", async (t) => {
 
 test("CLI rejects Server, unsafe hosts and forbidden port strings with safe fatal diagnostics", () => {
   const bootstrap = resolve(here, "..", "..", "src", "main.ts");
+  const importGuard = `data:text/javascript,${encodeURIComponent(`
+    import { registerHooks } from "node:module";
+    registerHooks({
+      resolve(specifier, context, nextResolve) {
+        if (context.parentURL === ${JSON.stringify(pathToFileURL(bootstrap).href)}
+          && !specifier.startsWith("node:") && specifier !== "./index.ts") {
+          throw new Error("Runtime validation must precede application imports.");
+        }
+        return nextResolve(specifier, context);
+      }
+    });
+  `)}`;
   for (const override of [
     { ERP_PROFILE: "server" },
     { ERP_HOST: "0.0.0.0" },
@@ -282,7 +294,7 @@ test("CLI rejects Server, unsafe hosts and forbidden port strings with safe fata
     { ERP_PORT: "65536" },
     { ERP_PORT: " " },
   ]) {
-    const child = spawnSync(process.execPath, [bootstrap], {
+    const child = spawnSync(process.execPath, ["--import", importGuard, bootstrap], {
       encoding: "utf8",
       timeout: 10000,
       env: {
