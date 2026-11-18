@@ -13,9 +13,9 @@ npm run build
 ```
 
 Tests and development use source directly, without a package build. Labels and
-preferences are local modules in `src/ui`; the former UI package's two node:test
-cases run before the existing 58 Vitest/jsdom cases. Framework migration is
-deferred to M0-05. Root typechecking includes source, test types and Vite configs.
+preferences are local modules in `src/ui`. All 60 web tests, including the former
+UI package's two compatibility cases, use the root Vitest web/jsdom project.
+Root typechecking includes source, test types and Vite configs.
 
 Vite emits `dist` only on `build`. The Local HTTP adapter serves those assets
 and `/api/v1` on the same origin. Development uses loopback with only `/api/v1`

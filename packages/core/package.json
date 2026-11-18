@@ -8,8 +8,10 @@
     "./application": "./src/application/index.ts",
     "./contracts": "./src/contracts/index.ts"
   },
-  "dependencies": { "zod": "4.6.7" },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
   "scripts": {
-    "test": "node --test test/application/*.test.mjs test/contracts/*.test.mjs"
+    "test": "vitest run --config ../../vitest.config.ts --project core"
   }
 }

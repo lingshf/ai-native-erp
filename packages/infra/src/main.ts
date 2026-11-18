@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
-import { createApi } from './http/index.ts';
-import { defaultErrorLogger } from './http/errors.ts';
+import { randomUUID } from "node:crypto";
+import { createApi } from "./http/index.ts";
+import { defaultErrorLogger } from "./http/errors.ts";
 
 try {
   const api = await createApi({
@@ -13,17 +13,19 @@ try {
   await api.listen();
   const close = () => {
     api.close().catch(() => {
-      defaultErrorLogger({ requestId: randomUUID(), errorType: 'InternalError' });
+      defaultErrorLogger({ requestId: randomUUID(), errorType: "InternalError" });
       process.exitCode = 1;
     });
   };
-  process.once('SIGINT', close);
-  process.once('SIGTERM', close);
+  process.once("SIGINT", close);
+  process.once("SIGTERM", close);
 } catch (error) {
-  const kind = error !== null && typeof error === 'object' && 'code' in error
-    && error.code === 'EADDRINUSE' ? 'AddressInUse'
-    : error instanceof Error && error.name === 'RuntimeConfigurationError'
-      ? 'RuntimeConfigurationError' : 'StartupError';
+  const kind =
+    error !== null && typeof error === "object" && "code" in error && error.code === "EADDRINUSE"
+      ? "AddressInUse"
+      : error instanceof Error && error.name === "RuntimeConfigurationError"
+        ? "RuntimeConfigurationError"
+        : "StartupError";
   console.error(JSON.stringify({ requestId: randomUUID(), errorType: kind }));
   process.exitCode = 1;
 }

@@ -36,7 +36,7 @@ npm run verify
 npm run start:local
 ```
 
-`verify`包含原测试、语法和目录导入边界、真实Vite访问边界探针、三个workspace测试及一次严格类型检查；不运行包编译或web构建。Node 26直接执行TS源码，`npm run start:local`等价于`node packages/infra/src/main.ts`，启动也不依赖tsc产物。Local默认`http://127.0.0.1:4180`，API托管单独`npm run build`生成的`packages\web\dist`，浏览器只请求同源相对URL。普通启动不打开账簿：health的`data:unconfigured`描述目标业务账未接，财务页明确503；缺前端产物也返回503，不回退旧工作台。
+`verify`依次运行Biome、一次严格类型检查、目录导入边界、根Vitest全部新架构测试、旧node:test套件，最后仅构建web一次。测试和启动不依赖构建产物：Node 26直接执行TS源码，`npm run start:local`等价于`node packages/infra/src/main.ts`。Local默认`http://127.0.0.1:4180`，API托管`npm run build`生成的`packages\web\dist`，浏览器只请求同源相对URL。普通启动不打开账簿：health的`data:unconfigured`描述目标业务账未接，财务页明确503；缺前端产物也返回503，不回退旧工作台。
 
 需要真实只读报表时，先构建，再显式选择**独立的M00已验证快照目录**，不能传活动账套的`data`目录：
 
@@ -53,6 +53,8 @@ npm run preview:legacy -- --snapshot-dir "$snapshotDir"
 开发时API固定4180、Vite固定5173/strictPort。在第二终端运行`npm run dev --workspace @erp/web`；普通同源GET无Origin也可代理，无需额外许可。确实带`Origin:http://127.0.0.1:5173`的请求，只有API启动时另加`--dev-origin http://127.0.0.1:5173`才允许。API与Vite均不提供跨域CORS响应，Vite拒绝外域Host，不设`allowedHosts:true`。改API端口须显式同步并验证代理目标，不能扩大来源许可掩盖错配；开发origin不是认证，不开放LAN。
 
 工程只有三个workspace：`@erp/core`（domain/application/contracts）、`@erp/infra`（storage/http/legacy及组合根）、`@erp/web`（React及`src/ui`的labels/偏好），没有`apps/`。包导出直指`.ts`，相对TS导入使用`.ts`/`.tsx`；`npm run typecheck`一次覆盖源码和TS测试，不输出JS。目录边界禁止core反向导入infra、domain导入application、web导入Node或存储驱动。Zod是DTO单一来源；需要OpenAPI文件时显式执行`npm run openapi -- openapi.json`，不挂测试前置构建。偏好仍保存于同源`erp.workspace.preferences.v1`，默认中文/红色/教学关闭，不改旧偏好键。现有技术存储不等于已迁移业务；认证、业务写入及原账切换仍待后续阶段。
+
+`npm test`运行根Vitest的core/infra（Node独立进程）及web（jsdom）项目；`npm run test:changed`只运行相对`origin/main`受影响的测试。旧`tests/*.test.mjs`单独用`npm run test:legacy`运行，完整验证使用`npm run verify`。`npm run check`使用Biome recommended lint与formatter覆盖`packages/`、`scripts/`，不再维护`node --check`列表。旧`src/`、`public/`、`tests/`不改文件、不检查格式或lint规则；其override保持linter解析引擎启用但`preset:none`，避免完全禁用引擎时跳过语法解析，这个过渡配置在M0-15随旧代码移除。边界解析仍用Babel：当前TypeScript 7仅导出版本信息，没有所需AST API；`acorn`仍被旧labels测试实际消费。
 
 ## 本地查看完整需求与进度
 

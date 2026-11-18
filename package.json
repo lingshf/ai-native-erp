@@ -22,22 +22,27 @@
     "ledger:read": "node scripts/read-legacy-ledger.mjs",
     "preview:legacy": "node scripts/preview-legacy-snapshot.mjs",
     "storage:admin": "node scripts/storage-admin.mjs",
-    "test": "node --test tests/*.test.mjs",
+    "test": "vitest run",
+    "test:changed": "vitest run --changed origin/main",
+    "test:legacy": "node --test tests/*.test.mjs",
     "build": "npm run build --workspace @erp/web",
     "openapi": "node packages/core/generate-openapi.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test:workspaces": "npm run test --workspaces --if-present",
+    "test:workspaces": "vitest run",
     "check:boundaries": "node scripts/check-boundaries.mjs",
-    "test:boundaries": "node --test tooling-tests/boundaries.test.mjs",
-    "verify": "npm test && npm run check && npm run test:boundaries && npm run test:workspaces && npm run typecheck",
-    "verify:sqlite": "node --test packages/infra/test/storage-sqlite.test.mjs packages/infra/test/storage-admin-cli.test.mjs",
-    "check": "node --check src/book.mjs && node --check src/server.mjs && node --check src/copilot-ai.mjs && node --check src/enterprise.mjs && node --check scripts/enterprise-backup.mjs && node --check public/app.js && node --check public/enterprise.js && node --check public/money.js && node --check public/labels.js && node --check public/labels/zh.js && node --check public/labels/en.js && node --check scripts/ledger-snapshot.mjs && node --check scripts/read-legacy-ledger.mjs && node --check scripts/storage-admin.mjs && node --check scripts/legacy-snapshot-reader.mjs && node --check scripts/preview-legacy-snapshot.mjs && npm run check:boundaries"
+    "test:boundaries": "vitest run packages/infra/test/tooling/boundaries.test.ts",
+    "verify": "npm run check && npm run typecheck && npm run check:boundaries && npm test && npm run test:legacy && npm run build",
+    "verify:sqlite": "vitest run packages/infra/test/storage-sqlite.test.ts packages/infra/test/storage-admin-cli.test.ts",
+    "check": "biome ci"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.6",
     "@babel/parser": "7.29.13",
     "@types/node": "26.6.6",
     "acorn": "^8.19.0",
     "jsdom": "^30.1.3",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "@vitejs/plugin-react": "5.2.0",
+    "vitest": "5.1.0"
   }
 }

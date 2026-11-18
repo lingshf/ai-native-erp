@@ -1,37 +1,44 @@
-export type DomainErrorCode = 'INVALID_INPUT' | 'OVERFLOW' | 'NOT_FOUND';
+export type DomainErrorCode = "INVALID_INPUT" | "OVERFLOW" | "NOT_FOUND";
 
 export class DomainError extends Error {
   readonly code: DomainErrorCode;
   constructor(code: DomainErrorCode) {
-    super(code === 'OVERFLOW' ? 'The exact integer range was exceeded.' : 'Invalid projection input.');
+    super(
+      code === "OVERFLOW" ? "The exact integer range was exceeded." : "Invalid projection input.",
+    );
     this.code = code;
-    this.name = 'DomainError';
+    this.name = "DomainError";
   }
 }
 
 const bound = 9007199254740991n;
 
 export function checkedMinor(value: unknown, scale: number): number {
-  if (!Number.isInteger(scale) || scale < 0 || scale > 4) throw new DomainError('INVALID_INPUT');
-  if (typeof value === 'number' && !Number.isSafeInteger(value)) {
-    throw new DomainError(Number.isInteger(value) ? 'OVERFLOW' : 'INVALID_INPUT');
+  if (!Number.isInteger(scale) || scale < 0 || scale > 4) throw new DomainError("INVALID_INPUT");
+  if (typeof value === "number" && !Number.isSafeInteger(value)) {
+    throw new DomainError(Number.isInteger(value) ? "OVERFLOW" : "INVALID_INPUT");
   }
-  if (typeof value !== 'bigint' && typeof value !== 'number') throw new DomainError('INVALID_INPUT');
+  if (typeof value !== "bigint" && typeof value !== "number")
+    throw new DomainError("INVALID_INPUT");
   const exact = BigInt(value);
-  if (exact < -bound || exact > bound) throw new DomainError('OVERFLOW');
+  if (exact < -bound || exact > bound) throw new DomainError("OVERFLOW");
   return Number(exact);
 }
 
 export function checkedTeachingMonth(month: unknown): string {
-  if (typeof month !== 'string' || !/^\d{4}-(?:0[1-9]|1[0-2])$/.test(month) ||
-    month < '1900-01' || month > '9998-12') {
-    throw new DomainError('INVALID_INPUT');
+  if (
+    typeof month !== "string" ||
+    !/^\d{4}-(?:0[1-9]|1[0-2])$/.test(month) ||
+    month < "1900-01" ||
+    month > "9998-12"
+  ) {
+    throw new DomainError("INVALID_INPUT");
   }
   return month;
 }
 
-export type AccountCategory = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
-export type JournalKind = 'normal' | 'adjusting' | 'reversal' | 'closing';
+export type AccountCategory = "ASSET" | "LIABILITY" | "EQUITY" | "REVENUE" | "EXPENSE";
+export type JournalKind = "normal" | "adjusting" | "reversal" | "closing";
 
 export interface ProjectionAccount {
   readonly code: string;
@@ -54,7 +61,10 @@ export interface PostedTeachingLine {
 }
 
 export interface TrialBalance {
-  readonly rows: readonly (ProjectionAccount & { readonly debit: number; readonly credit: number })[];
+  readonly rows: readonly (ProjectionAccount & {
+    readonly debit: number;
+    readonly credit: number;
+  })[];
   readonly debit: number;
   readonly credit: number;
 }
@@ -68,7 +78,9 @@ export interface TeachingTrialBalances {
   };
 }
 
-export interface TeachingLedgerEntry extends PostedTeachingLine { readonly balance: number }
+export interface TeachingLedgerEntry extends PostedTeachingLine {
+  readonly balance: number;
+}
 export interface TeachingLedgerProjection {
   readonly account: string;
   readonly month: string;
@@ -86,56 +98,86 @@ function exact(value: bigint): bigint {
 }
 
 function movement(line: PostedTeachingLine): bigint {
-  const debit = checkedMinor(line.debit, 2), credit = checkedMinor(line.credit, 2);
-  if (debit < 0 || credit < 0 || (debit > 0) === (credit > 0)) throw new DomainError('INVALID_INPUT');
+  const debit = checkedMinor(line.debit, 2),
+    credit = checkedMinor(line.credit, 2);
+  if (debit < 0 || credit < 0 || debit > 0 === credit > 0) throw new DomainError("INVALID_INPUT");
   return BigInt(debit) - BigInt(credit);
 }
 
 function compare(left: PostedTeachingLine, right: PostedTeachingLine): number {
-  return left.date < right.date ? -1 : left.date > right.date ? 1 :
-    left.id < right.id ? -1 : left.id > right.id ? 1 :
-      left.lineId < right.lineId ? -1 : left.lineId > right.lineId ? 1 : 0;
+  return left.date < right.date
+    ? -1
+    : left.date > right.date
+      ? 1
+      : left.id < right.id
+        ? -1
+        : left.id > right.id
+          ? 1
+          : left.lineId < right.lineId
+            ? -1
+            : left.lineId > right.lineId
+              ? 1
+              : 0;
 }
 
 function throughMonth(lines: readonly PostedTeachingLine[], month: string): PostedTeachingLine[] {
   checkedTeachingMonth(month);
-  return lines.filter(line => line.date < `${month}-32`).sort(compare);
+  return lines.filter((line) => line.date < `${month}-32`).sort(compare);
 }
 
 export function projectTrialBalances(
-  accounts: readonly ProjectionAccount[], lines: readonly PostedTeachingLine[], month: string,
+  accounts: readonly ProjectionAccount[],
+  lines: readonly PostedTeachingLine[],
+  month: string,
 ): TeachingTrialBalances {
-  const rows = throughMonth(lines, month), start = `${month}-01`;
+  const rows = throughMonth(lines, month),
+    start = `${month}-01`;
   const trial = (selected: readonly PostedTeachingLine[]): TrialBalance => {
-    const balances = new Map(accounts.map(account => [account.code, 0n]));
+    const balances = new Map(accounts.map((account) => [account.code, 0n]));
     for (const row of selected) {
       const current = balances.get(row.account);
-      if (current === undefined) throw new DomainError('NOT_FOUND');
+      if (current === undefined) throw new DomainError("NOT_FOUND");
       balances.set(row.account, exact(current + movement(row)));
     }
-    let debit = 0n, credit = 0n;
-    const result = accounts.map(account => {
+    let debit = 0n,
+      credit = 0n;
+    const result = accounts.map((account) => {
       const balance = balances.get(account.code);
-      if (balance === undefined) throw new DomainError('NOT_FOUND');
-      const dr = balance > 0n ? balance : 0n, cr = balance < 0n ? -balance : 0n;
-      debit = exact(debit + dr); credit = exact(credit + cr);
+      if (balance === undefined) throw new DomainError("NOT_FOUND");
+      const dr = balance > 0n ? balance : 0n,
+        cr = balance < 0n ? -balance : 0n;
+      debit = exact(debit + dr);
+      credit = exact(credit + cr);
       return { ...account, debit: Number(dr), credit: Number(cr) };
     });
     return { rows: result, debit: Number(debit), credit: Number(credit) };
   };
-  return { month, trialBalances: {
-    unadjusted: trial(rows.filter(row => row.date < start ||
-      (row.kind !== 'closing' && row.kind !== 'adjusting' && row.source_kind !== 'adjusting'))),
-    adjusted: trial(rows.filter(row => row.date < start || row.kind !== 'closing')),
-    postClosing: trial(rows),
-  } };
+  return {
+    month,
+    trialBalances: {
+      unadjusted: trial(
+        rows.filter(
+          (row) =>
+            row.date < start ||
+            (row.kind !== "closing" && row.kind !== "adjusting" && row.source_kind !== "adjusting"),
+        ),
+      ),
+      adjusted: trial(rows.filter((row) => row.date < start || row.kind !== "closing")),
+      postClosing: trial(rows),
+    },
+  };
 }
 
 export function projectTeachingLedger(
-  lines: readonly PostedTeachingLine[], account: string, month: string,
+  lines: readonly PostedTeachingLine[],
+  account: string,
+  month: string,
 ): TeachingLedgerProjection {
-  const rows = throughMonth(lines, month).filter(line => line.account === account);
-  let balance = 0n, opening = 0n, debit = 0n, credit = 0n;
+  const rows = throughMonth(lines, month).filter((line) => line.account === account);
+  let balance = 0n,
+    opening = 0n,
+    debit = 0n,
+    credit = 0n;
   const entries: TeachingLedgerEntry[] = [];
   for (const row of rows) {
     balance = exact(balance + movement(row));
@@ -146,6 +188,14 @@ export function projectTeachingLedger(
       entries.push({ ...row, balance: Number(balance) });
     }
   }
-  return { account, month, opening: Number(opening), closing: Number(balance),
-    debit: Number(debit), credit: Number(credit), totalEntries: entries.length, entries };
+  return {
+    account,
+    month,
+    opening: Number(opening),
+    closing: Number(balance),
+    debit: Number(debit),
+    credit: Number(credit),
+    totalEntries: entries.length,
+    entries,
+  };
 }
