@@ -60,6 +60,10 @@ npm run preview:legacy -- --snapshot-dir "$snapshotDir"
 
 `npm test`运行根Vitest的core/infra（Node独立进程）及web（jsdom）项目；`npm run test:changed`只运行相对`origin/main`受影响的测试。旧`tests/*.test.mjs`单独用`npm run test:legacy`运行，完整验证使用`npm run verify`。`npm run check`使用Biome recommended lint与formatter覆盖`packages/`、`scripts/`，不再维护`node --check`列表。旧`src/`、`public/`、`tests/`不改文件、不检查格式或lint规则；其override保持linter解析引擎启用但`preset:none`，避免完全禁用引擎时跳过语法解析，这个过渡配置在M0-15随旧代码移除。边界解析仍用Babel：当前TypeScript 7仅导出版本信息，没有所需AST API；`acorn`仍被旧labels测试实际消费。
 
+PR CI限时10分钟：安装、Biome、类型和边界检查后，对实际PR base运行受影响Vitest；任意workspace的`package.json`/lock、Vitest或`tsconfig*`改动回退全部非慢测试。只有旧`src/`、`public/`、`tests/`改动才运行旧套件（M0-15删除此分支）。`*.slow.test.ts`/`*.slow.test.tsx`不进入PR或`test:changed`，只进入完整运行；本地`npm test`/`verify`仍是完整模式。CI/Full的summary合并Vitest与实际执行的旧套件，列出最慢10个测试。
+
+Full在push到main及每天03:17 UTC触发；Bench每天03:47 UTC及手动触发。每晚检查所检出main提交的committer时间，过去24小时无新提交时跳过安装、测试、构建/基准，仅保留checkout、Node/npm缓存与门控开销；push和手动运行不受该门控限制。所有job有超时、同层并发取消和npm缓存。`npm run bench`只在独立临时SQLite文件上测1万行占位插入/热查询，不代表M0-12的百万GL行基准；结果写入summary，`artifacts/ci/bench.json`及`.md`由Bench工作流保留14天，不修改活动账套。
+
 ## 本地查看完整需求与进度
 
 **当前计划：** [路线图](design/roadmap.md) · [M0目标架构](design/m0-architecture.md) · [任务总表](design/tasks/README.md)。按一个任务一个PR推进，评审通过且CI全绿后合并；设计角色维护任务文档。原账切换不在当前任务范围，4173账套、ID3草稿和暂停现场保持不动。44FG历史统计为0整体完成/13部分/31未实现，不因技术栈调整宣称业务已完成。

@@ -1,0 +1,63 @@
+name: Full
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: full-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      CI_TEST_LAYER: full
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "26.x"
+          cache: npm
+      - name: Check recent main activity
+        id: gate
+        run: node scripts/ci.ts gate
+      - name: Check public npm registry
+        if: steps.gate.outputs.run == 'true'
+        run: node scripts/check-lockfile-registry.mjs
+      - name: Install dependencies
+        if: steps.gate.outputs.run == 'true'
+        run: npm ci --no-audit --no-fund
+      - name: Biome
+        if: steps.gate.outputs.run == 'true'
+        run: npm run check
+      - name: Typecheck
+        if: steps.gate.outputs.run == 'true'
+        run: npm run typecheck
+      - name: Import boundaries
+        if: steps.gate.outputs.run == 'true'
+        run: npm run check:boundaries
+      - name: All tests including slow tests
+        id: tests
+        if: steps.gate.outputs.run == 'true'
+        run: npm run test:ci
+      - name: Legacy tests
+        id: legacy
+        if: steps.gate.outputs.run == 'true'
+        run: npm run test:legacy:ci
+      - name: Web build
+        if: steps.gate.outputs.run == 'true'
+        run: npm run build
+      - name: Test timing summary
+        if: always() && steps.gate.outputs.run == 'true'
+        env:
+          TEST_OUTCOME: ${{ steps.tests.outcome }}
+          LEGACY_OUTCOME: ${{ steps.legacy.outcome }}
+        run: node scripts/ci.ts summary

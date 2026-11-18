@@ -23,7 +23,9 @@
     "preview:legacy": "node scripts/preview-legacy-snapshot.mjs",
     "storage:admin": "node scripts/storage-admin.mjs",
     "test": "vitest run",
-    "test:changed": "vitest run --changed origin/main",
+    "test:changed": "vitest run --changed origin/main --exclude \"**/*.slow.test.{ts,tsx}\"",
+    "test:ci": "vitest run --reporter=default --reporter=json --outputFile=artifacts/ci/vitest.json",
+    "test:legacy:ci": "node --test --test-reporter=spec --test-reporter=./scripts/ci.ts --test-reporter-destination=stdout --test-reporter-destination=artifacts/ci/legacy.json tests/*.test.mjs",
     "test:legacy": "node --test tests/*.test.mjs",
     "build": "npm run build --workspace @erp/web",
     "openapi": "node packages/core/generate-openapi.mjs",
@@ -33,7 +35,8 @@
     "test:boundaries": "vitest run packages/infra/test/tooling/boundaries.test.ts",
     "verify": "npm run check && npm run typecheck && npm run check:boundaries && npm test && npm run test:legacy && npm run build",
     "verify:sqlite": "vitest run packages/infra/test/storage-sqlite.test.ts packages/infra/test/storage-admin-cli.test.ts",
-    "check": "biome ci"
+    "check": "biome ci",
+    "bench": "node packages/infra/bench/sqlite.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.6",
