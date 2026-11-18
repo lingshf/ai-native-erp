@@ -55,7 +55,7 @@ npm run start:local
 
 启动只校验最新 schema，不自动迁移；旧的 001 目标库也须先显式运行 migrate 升级到 002，001 SQL/checksum 保持不变。首次连接有效目标库时，在固定 LOCAL tenant/book 下建立 DEFAULT 月度教学公司（CNY、精度 2、当前财年）、旧 Book 对应的八科目和 12 个开放期间；重复启动不覆盖已有主数据，不创建凭证。未设置 ERP_SQLITE_FILE 的启动与快照 CLI 仍不打开业务库。已配置时 health 返回 `data:configured`。
 
-左侧“基础配置 → 科目表”提供公司选择、科目新建/编辑/停用；教学公司的内置八科目保持不可修改。中英、红绿、教学切换不清空编辑器。写入用 revision CAS，冲突保留输入并要求显式重新载入。列表每次取 100 行，可继续加载；超过 100 行启用 TanStack Virtual。`/api/v1/companies`（GET/POST）、`/accounts`（GET/POST/PUT）、`/periods`（GET/PUT）使用有界游标分页；科目历史可用 `GET /api/v1/accounts/1500?company=DEFAULT&at=2026-01-02T12%3A00%3A00.000Z` 查询。期间冻结可重开，关闭须明确确认且不可重开；有业务活动后的结账流程留待 M0-11。此切片没有维度、凭证或公司创建/期间管理界面。
+左侧“基础配置 → 科目表”提供公司选择、科目新建/编辑/停用；教学公司的内置八科目保持不可修改。统驭模块必须显式选择，不默认推断为 AP。中英、红绿、教学切换不清空编辑器。写入用 revision CAS，版本冲突返回 409 并保留输入，要求显式重新载入；可修正的科目规则校验返回 400 和安全的 fieldErrors，在对应字段说明如何修正，保留草稿且不提示无效重载。列表每次取 100 行，可继续加载；超过 100 行启用 TanStack Virtual。`/api/v1/companies`（GET/POST）、`/accounts`（GET/POST/PUT）、`/periods`（GET/PUT）使用有界游标分页；科目历史可用 `GET /api/v1/accounts/1500?company=DEFAULT&at=2026-01-02T12%3A00%3A00.000Z` 查询。期间冻结可重开，关闭须明确确认且不可重开；有业务活动后的结账流程留待 M0-11。此切片没有维度、凭证或公司创建/期间管理界面。
 
 需要真实只读报表时，先构建，再显式选择**独立的M00已验证快照目录**，不能传活动账套的`data`目录：
 

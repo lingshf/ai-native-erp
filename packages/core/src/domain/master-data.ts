@@ -1,4 +1,9 @@
-import { DomainError, checkedTeachingMonth, type AccountCategory } from "./index.ts";
+import {
+  DomainError,
+  checkedTeachingMonth,
+  type AccountCategory,
+  type AccountFieldIssue,
+} from "./index.ts";
 
 export const reportGroups = {
   ASSET: ["cash", "receivables", "inventory", "prepayments", "fixedAssets", "otherAssets"],
@@ -57,8 +62,8 @@ export interface PageQuery {
   readonly limit: number;
   readonly cursor?: string;
 }
-const invalid = (): never => {
-  throw new DomainError("INVALID_INPUT");
+const invalid = (issue?: AccountFieldIssue): never => {
+  throw new DomainError("INVALID_INPUT", issue);
 };
 const conflict = (): never => {
   throw new DomainError("CONFLICT");
@@ -128,7 +133,8 @@ export function checkedAccount(input: AccountInput): AccountInput {
   } else if (input.controlModule !== null) invalid();
   if (input.contraOf !== null) {
     checkedAccountCode(input.contraOf);
-    if (input.purpose !== "general" || input.contraOf === input.code) conflict();
+    if (input.purpose !== "general" || input.contraOf === input.code)
+      invalid({ path: "contraOf", rule: "contraParent" });
   }
   return { ...input, name: checkedName(input.name) };
 }
@@ -148,18 +154,18 @@ export function assertAccountRelationships(
       parent.normalSide !== normal(parent.category) ||
       input.normalSide === parent.normalSide)
   )
-    conflict();
-  if (
-    children.some(
-      (child) =>
-        input.purpose !== "general" ||
-        input.contraOf !== null ||
-        input.category !== child.category ||
-        input.normalSide !== normal(input.category) ||
-        input.normalSide === child.normalSide,
+    invalid({ path: "contraOf", rule: "contraParent" });
+  if (children.length) {
+    if (input.purpose !== "general") invalid({ path: "purpose", rule: "contraChildren" });
+    if (input.contraOf !== null) invalid({ path: "contraOf", rule: "contraChildren" });
+    if (children.some((child) => input.category !== child.category))
+      invalid({ path: "category", rule: "contraChildren" });
+    if (
+      input.normalSide !== normal(input.category) ||
+      children.some((child) => input.normalSide === child.normalSide)
     )
-  )
-    conflict();
+      invalid({ path: "normalSide", rule: "contraChildren" });
+  }
 }
 export function changedPeriod(
   old: Period,

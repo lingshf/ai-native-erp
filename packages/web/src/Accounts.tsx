@@ -16,11 +16,25 @@ import { MasterDataFailure, masterRequest } from "./master-data-client.ts";
 
 type T = (key: Exclude<LabelKey, "shell.httpError">) => string;
 function failure(error: unknown): "master.error" | "master.invalid" | "master.conflict" {
-  return error instanceof MasterDataFailure && error.status === 409
+  return error instanceof MasterDataFailure &&
+    error.status === 409 &&
+    error.detail?.code === "CONFLICT"
     ? "master.conflict"
-    : error instanceof MasterDataFailure && error.kind === "invalid"
+    : error instanceof MasterDataFailure && (error.kind === "invalid" || error.status === 400)
       ? "master.invalid"
       : "master.error";
+}
+const fieldMessages = {
+  "api.error.account.contraParent": "master.contraInvalid",
+  "api.error.account.contraChildren": "master.contraChildren",
+  "api.error.account.readOnly": "master.readonly",
+} as const;
+function fieldMessage(error: unknown, path: keyof AccountCommand) {
+  const issue =
+    error instanceof MasterDataFailure
+      ? error.detail?.fieldErrors.find((item) => item.path === path)
+      : undefined;
+  return Object.entries(fieldMessages).find(([key]) => key === issue?.messageKey)?.[1];
 }
 const groups = {
   ASSET: ["cash", "receivables", "inventory", "prepayments", "fixedAssets", "otherAssets"],
@@ -312,7 +326,7 @@ function AccountEditor({
     event.preventDefault();
     if (busy) return;
     const parsed = accountCommandSchema.safeParse(draft);
-    if (!parsed.success) {
+    if (!parsed.success || (draft.purpose === "control" && draft.controlModule === null)) {
       setError(new MasterDataFailure("invalid"));
       return;
     }
@@ -340,6 +354,10 @@ function AccountEditor({
     key: K,
     value: string,
   ) => {
+    if (key === "controlModule" && value === "") {
+      patch({ controlModule: null });
+      return;
+    }
     const parsed = accountFieldsSchema.shape[key].safeParse(value);
     if (!parsed.success) {
       setError(new MasterDataFailure("invalid"));
@@ -356,11 +374,19 @@ function AccountEditor({
       const purpose = accountFieldsSchema.shape.purpose.parse(value);
       patch({
         purpose,
-        controlModule: purpose === "control" ? "AP" : null,
+        controlModule: null,
         ...(purpose === "control" ? { manualAllowed: false } : {}),
       });
     } else patch({ [key]: parsed.data });
   };
+  function issue(path: keyof AccountCommand) {
+    const key = fieldMessage(error, path);
+    return key ? (
+      <p id={`account-${path}-error`} role="alert">
+        {t(key)}
+      </p>
+    ) : null;
+  }
   return (
     <form className="account-editor" onSubmit={(event) => void submit(event)}>
       <h3>{t(initial.revision === 0 ? "master.new" : "master.edit")}</h3>
@@ -373,7 +399,10 @@ function AccountEditor({
           required
           pattern="[1-9][0-9]{3}"
           onChange={(event) => patch({ code: event.target.value })}
+          aria-invalid={fieldMessage(error, "code") ? true : undefined}
+          aria-describedby={fieldMessage(error, "code") ? "account-code-error" : undefined}
         />
+        {issue("code")}
         <label htmlFor="account-name">{t("master.name")}</label>
         <input
           id="account-name"
@@ -387,6 +416,8 @@ function AccountEditor({
           id="account-category"
           value={draft.category}
           onChange={(event) => changeChoice("category", event.target.value)}
+          aria-invalid={fieldMessage(error, "category") ? true : undefined}
+          aria-describedby={fieldMessage(error, "category") ? "account-category-error" : undefined}
         >
           {accountFieldsSchema.shape.category.options.map((value) => (
             <option key={value} value={value}>
@@ -394,6 +425,7 @@ function AccountEditor({
             </option>
           ))}
         </select>
+        {issue("category")}
         <label htmlFor="account-report">{t("master.reportGroup")}</label>
         <select
           id="account-report"
@@ -411,6 +443,10 @@ function AccountEditor({
           id="account-side"
           value={draft.normalSide}
           onChange={(event) => changeChoice("normalSide", event.target.value)}
+          aria-invalid={fieldMessage(error, "normalSide") ? true : undefined}
+          aria-describedby={
+            fieldMessage(error, "normalSide") ? "account-normalSide-error" : undefined
+          }
         >
           {accountFieldsSchema.shape.normalSide.options.map((value) => (
             <option key={value} value={value}>
@@ -418,11 +454,14 @@ function AccountEditor({
             </option>
           ))}
         </select>
+        {issue("normalSide")}
         <label htmlFor="account-purpose">{t("master.purpose")}</label>
         <select
           id="account-purpose"
           value={draft.purpose}
           onChange={(event) => changeChoice("purpose", event.target.value)}
+          aria-invalid={fieldMessage(error, "purpose") ? true : undefined}
+          aria-describedby={fieldMessage(error, "purpose") ? "account-purpose-error" : undefined}
         >
           {accountFieldsSchema.shape.purpose.options.map((value) => (
             <option key={value} value={value}>
@@ -430,20 +469,25 @@ function AccountEditor({
             </option>
           ))}
         </select>
+        {issue("purpose")}
         {draft.purpose === "control" && (
           <>
             <label htmlFor="account-module">{t("master.controlModule")}</label>
             <select
               id="account-module"
-              value={draft.controlModule ?? "AP"}
+              value={draft.controlModule ?? ""}
+              required
+              aria-describedby="account-module-hint"
               onChange={(event) => changeChoice("controlModule", event.target.value)}
             >
+              <option value="">{t("master.chooseModule")}</option>
               {accountFieldsSchema.shape.controlModule.unwrap().options.map((value) => (
                 <option key={value} value={value}>
                   {t(`master.module.${value}`)}
                 </option>
               ))}
             </select>
+            <p id="account-module-hint">{t("master.moduleHint")}</p>
           </>
         )}
         <label htmlFor="account-contra">{t("master.contraOf")}</label>
@@ -453,7 +497,10 @@ function AccountEditor({
           placeholder={t("master.none")}
           pattern="[1-9][0-9]{3}"
           onChange={(event) => patch({ contraOf: event.target.value || null })}
+          aria-invalid={fieldMessage(error, "contraOf") ? true : undefined}
+          aria-describedby={fieldMessage(error, "contraOf") ? "account-contraOf-error" : undefined}
         />
+        {issue("contraOf")}
         <label>
           <input
             type="checkbox"

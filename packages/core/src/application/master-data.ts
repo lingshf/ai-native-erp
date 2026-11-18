@@ -133,7 +133,8 @@ export class MasterDataService {
       const owner = required(await repo.company(company));
       const old = await repo.account(company, fields.code);
       cas(old?.revision ?? 0, expected);
-      if (old?.builtin && owner.closeMode === "monthly-teaching") throw new DomainError("CONFLICT");
+      if (old?.builtin && owner.closeMode === "monthly-teaching")
+        throw new DomainError("INVALID_INPUT", { path: "code", rule: "readOnly" });
       assertAccountRelationships(
         fields,
         fields.contraOf === null ? null : await repo.account(company, fields.contraOf),

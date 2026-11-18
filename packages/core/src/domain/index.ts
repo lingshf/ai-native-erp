@@ -1,13 +1,19 @@
 export * from "./master-data.ts";
 export type DomainErrorCode = "INVALID_INPUT" | "OVERFLOW" | "NOT_FOUND" | "CONFLICT";
 
+export interface AccountFieldIssue {
+  readonly path: "code" | "contraOf" | "purpose" | "category" | "normalSide";
+  readonly rule: "contraParent" | "contraChildren" | "readOnly";
+}
 export class DomainError extends Error {
   readonly code: DomainErrorCode;
-  constructor(code: DomainErrorCode) {
+  readonly issue: AccountFieldIssue | undefined;
+  constructor(code: DomainErrorCode, issue?: AccountFieldIssue) {
     super(
       code === "OVERFLOW" ? "The exact integer range was exceeded." : "Invalid projection input.",
     );
     this.code = code;
+    this.issue = issue;
     this.name = "DomainError";
   }
 }

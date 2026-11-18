@@ -143,6 +143,10 @@ describe("master data HTTP and real SQLite use cases", () => {
       ),
     );
     expect(saves.map((reply) => reply.statusCode).sort()).toEqual([200, 409]);
+    expect(saves.find((reply) => reply.statusCode === 409)?.json()).toMatchObject({
+      code: "CONFLICT",
+      fieldErrors: [],
+    });
     const accepted = saves.find((reply) => reply.statusCode === 200);
     if (!accepted) throw new Error("Missing successful CAS response");
     const winner = accepted.json();
@@ -166,9 +170,34 @@ describe("master data HTTP and real SQLite use cases", () => {
     ]);
     expect(page.json().nextCursor).toBe("1500");
     expect((await service.accounts("DEFAULT", { limit: 500 })).items).toHaveLength(10);
-    await expect(
-      service.saveAccount("DEFAULT", { ...winner, purpose: "clearing" }, 2),
-    ).rejects.toMatchObject({ code: "CONFLICT" });
+    const invalidParent = await api.app.inject({
+      method: "POST",
+      url: "/api/v1/accounts",
+      headers: headers(),
+      payload: { ...input, code: "1591", normalSide: "CREDIT", contraOf: "9999" },
+    });
+    expect(invalidParent.statusCode).toBe(400);
+    expect(invalidParent.json()).toMatchObject({
+      code: "INVALID_REQUEST",
+      fieldErrors: [{ path: "contraOf", messageKey: "api.error.account.contraParent" }],
+    });
+    const invalidPurpose = await api.app.inject({
+      method: "PUT",
+      url: "/api/v1/accounts",
+      headers: headers(),
+      payload: {
+        ...input,
+        name: winner.name,
+        revision: 2,
+        active: false,
+        purpose: "clearing",
+      },
+    });
+    expect(invalidPurpose.statusCode).toBe(400);
+    expect(invalidPurpose.json()).toMatchObject({
+      code: "INVALID_REQUEST",
+      fieldErrors: [{ path: "purpose", messageKey: "api.error.account.contraChildren" }],
+    });
     await expect(service.account("MISSING", "1500")).rejects.toMatchObject({ code: "NOT_FOUND" });
     const raw = new Database(join(directory, "target.sqlite"));
     try {
@@ -218,7 +247,7 @@ describe("master data HTTP and real SQLite use cases", () => {
           payload: { ...input, code: "1000", revision: 1 },
         })
       ).statusCode,
-    ).toBe(409);
+    ).toBe(400);
   });
   it("lists periods and applies revisioned freeze, reopen and irreversible explicit close", async () => {
     const page = await api.app.inject({

@@ -22,7 +22,13 @@ export const masterZh = {
   "master.normalSide": "正常方向",
   "master.purpose": "用途",
   "master.controlModule": "统驭模块",
+  "master.chooseModule": "请选择统驭模块（必选）",
+  "master.moduleHint": "模块决定哪个子系统可使用此科目，必须明确选择，不会自动推断。",
   "master.contraOf": "备抵关联原值科目",
+  "master.contraInvalid":
+    "请选择同公司、同类型、一般用途且未关联备抵的原值科目；不能选自身。原值方向须为类别默认方向，备抵方向须与之相反；否则请清空关联或修正用途/方向。",
+  "master.contraChildren":
+    "此原值科目已有备抵子项。请保留一般用途、原类型、类别默认方向且不关联其他原值；若需改变，请先逐个解除子项的备抵关联。",
   "master.manualAllowed": "允许手工记账",
   "master.active": "启用",
   "master.builtin": "内置",
@@ -93,7 +99,14 @@ export const masterEn = {
   "master.normalSide": "Normal side",
   "master.purpose": "Purpose",
   "master.controlModule": "Control module",
+  "master.chooseModule": "Choose a control module (required)",
+  "master.moduleHint":
+    "The module determines which subsystem may use this account. Choose explicitly; it is never inferred.",
   "master.contraOf": "Contra parent account",
+  "master.contraInvalid":
+    "Choose a different same-company, same-category general parent with no contra link. Its side must be the category default and opposite to this account; otherwise clear the link or correct the purpose/side.",
+  "master.contraChildren":
+    "This parent has contra children. Keep its general purpose, original category, category-default side and no parent link; unlink each child first if these must change.",
   "master.manualAllowed": "Allow manual posting",
   "master.active": "Active",
   "master.builtin": "Built-in",

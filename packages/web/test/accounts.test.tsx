@@ -62,7 +62,7 @@ function install(initial: AccountDto[] = [], save?: (command: AccountCommand) =>
   return fetcher;
 }
 describe("account editing", () => {
-  it("creates and deactivates an account without losing draft data or fetching again on language/theme changes", async () => {
+  it("requires an explicit control module and creates/deactivates without losing drafts on preference changes", async () => {
     const fetcher = install();
     render(<App />);
     fireEvent.click(await screen.findByRole("button", { name: label("zh", "master.new") }));
@@ -71,6 +71,17 @@ describe("account editing", () => {
     });
     const name = screen.getByLabelText<HTMLInputElement>(label("zh", "master.name"));
     fireEvent.change(name, { target: { value: "Retained draft" } });
+    fireEvent.change(screen.getByLabelText(label("zh", "master.purpose")), {
+      target: { value: "control" },
+    });
+    const module = screen.getByLabelText<HTMLSelectElement>(label("zh", "master.controlModule"));
+    expect(module.value).toBe("");
+    expect(module.required).toBe(true);
+    expect(screen.getByText(label("zh", "master.moduleHint"))).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: label("zh", "master.save") }));
+    expect(fetcher.mock.calls.filter(([, init]) => init?.method)).toHaveLength(0);
+    expect(name.value).toBe("Retained draft");
+    fireEvent.change(module, { target: { value: "AR" } });
     const requests = fetcher.mock.calls.length;
     fireEvent.change(screen.getByLabelText(label("zh", "shell.language")), {
       target: { value: "en" },
@@ -94,21 +105,57 @@ describe("account editing", () => {
         .filter(([, init]) => init?.method)
         .map(([, init]) => JSON.parse(String(init?.body)).revision),
     ).toEqual([0, 1]);
+    expect(
+      fetcher.mock.calls
+        .filter(([, init]) => init?.method)
+        .map(([, init]) => JSON.parse(String(init?.body)).controlModule),
+    ).toEqual(["AR", "AR"]);
   });
-  it("keeps conflicting input visible and never automatically retries or overwrites the server version", async () => {
-    const fetcher = install([account], () => response(conflict, 409));
+  it("retains drafts with actionable field validation and distinguishes CAS without retrying or overwriting", async () => {
+    let rejected = {
+      status: 400,
+      body: {
+        ...conflict,
+        code: "INVALID_REQUEST",
+        messageKey: "api.error.invalidRequest",
+        fieldErrors: [{ path: "contraOf", messageKey: "api.error.account.contraParent" }],
+      },
+    };
+    const fetcher = install([account], () => response(rejected.body, rejected.status));
     render(<App />);
     fireEvent.click(await screen.findByRole("button", { name: "编辑 1500" }));
     fireEvent.change(screen.getByLabelText(label("zh", "master.name")), {
       target: { value: "My pending edit" },
     });
+    const parent = screen.getByLabelText<HTMLInputElement>(label("zh", "master.contraOf"));
+    fireEvent.change(parent, { target: { value: "9999" } });
+    fireEvent.click(screen.getByRole("button", { name: label("zh", "master.save") }));
+    expect(await screen.findByText(label("zh", "master.contraInvalid"))).toBeTruthy();
+    expect(parent.getAttribute("aria-describedby")).toBe("account-contraOf-error");
+    expect(parent.value).toBe("9999");
+    expect(screen.queryByRole("button", { name: label("zh", "master.reload") })).toBeNull();
+    rejected.body.fieldErrors = [
+      { path: "purpose", messageKey: "api.error.account.contraChildren" },
+    ];
+    fireEvent.change(parent, { target: { value: "" } });
+    const purpose = screen.getByLabelText(label("zh", "master.purpose"));
+    fireEvent.change(purpose, { target: { value: "clearing" } });
+    fireEvent.click(screen.getByRole("button", { name: label("zh", "master.save") }));
+    expect(await screen.findByText(label("zh", "master.contraChildren"))).toBeTruthy();
+    expect(purpose.getAttribute("aria-describedby")).toBe("account-purpose-error");
+    expect(screen.getByLabelText<HTMLInputElement>(label("zh", "master.name")).value).toBe(
+      "My pending edit",
+    );
+    expect(screen.queryByRole("button", { name: label("zh", "master.reload") })).toBeNull();
+    rejected = { status: 409, body: conflict };
+    fireEvent.change(purpose, { target: { value: "general" } });
     fireEvent.click(screen.getByRole("button", { name: label("zh", "master.save") }));
     expect(await screen.findByText(label("zh", "master.conflict"))).toBeTruthy();
     expect(screen.getByLabelText<HTMLInputElement>(label("zh", "master.name")).value).toBe(
       "My pending edit",
     );
     expect(screen.getByText("Equipment")).toBeTruthy();
-    expect(fetcher.mock.calls.filter(([, init]) => init?.method)).toHaveLength(1);
+    expect(fetcher.mock.calls.filter(([, init]) => init?.method)).toHaveLength(3);
     fireEvent.click(screen.getByRole("button", { name: label("zh", "master.reload") }));
     await waitFor(() => expect(screen.queryByLabelText(label("zh", "master.name"))).toBeNull());
   });

@@ -89,7 +89,10 @@ export function sendHttpError(
   const body: ErrorResponse = errorSchema.parse({
     ...definition,
     params: {},
-    fieldErrors: [],
+    fieldErrors:
+      error instanceof DomainError && error.issue
+        ? [{ path: error.issue.path, messageKey: `api.error.account.${error.issue.rule}` }]
+        : [],
     requestId,
     retryable: status === 503,
   });
