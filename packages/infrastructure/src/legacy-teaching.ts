@@ -276,7 +276,7 @@ class SnapshotReader implements LegacyTeachingReader {
   private closed = false;
   readonly info: LegacyTeachingSnapshotInfo;
 
-  constructor(private readonly db: DatabaseSync, entry: SnapshotEntry) {
+  constructor(private readonly db: DatabaseSync, private readonly fd: number, entry: SnapshotEntry) {
     this.info = Object.freeze({ sourceKind: 'verified-teaching-snapshot', baseline: 'M00-verified-snapshot',
       live: false, snapshotSha256: entry.sha256, snapshotBytes: entry.bytes, scale: 2 });
   }
@@ -343,7 +343,11 @@ class SnapshotReader implements LegacyTeachingReader {
     if (this.closed) return;
     this.closed = true;
     mapped(() => {
-      try { this.db.exec('ROLLBACK'); } finally { this.db.close(); }
+      try {
+        try { this.db.exec('ROLLBACK'); } finally { this.db.close(); }
+      } finally {
+        closeSync(this.fd);
+      }
     });
   }
 }
@@ -379,8 +383,9 @@ export function openLegacyTeachingSnapshot(config: VerifiedTeachingSnapshotConfi
     if (!sameFile(before, regularPath(file)) || !sameFile(before, fstatSync(fd, { bigint: true }))) {
       return fail('INVALID_SNAPSHOT');
     }
-    const reader = new SnapshotReader(db, entry);
-    closeSync(fd); fd = undefined; db = undefined;
+    // POSIX close() on any descriptor for this file drops this process's SQLite locks.
+    const reader = new SnapshotReader(db, fd, entry);
+    fd = undefined; db = undefined;
     return reader;
   } catch (error) {
     if (db) {
