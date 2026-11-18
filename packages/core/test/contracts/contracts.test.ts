@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -59,7 +59,7 @@ test("all error fields are strictly typed and unknown framework or diagnostic co
 
 test("on-demand OpenAPI artifact exactly matches every generated DTO and rejects deliberate drift", (t) => {
   const directory = mkdtempSync(join(tmpdir(), "erp-openapi-"));
-  t.after(() => rmSync(directory, { recursive: true }));
+  t.onTestFinished(() => rmSync(directory, { recursive: true }));
   const output = join(directory, "openapi.json");
   execFileSync(process.execPath, [
     fileURLToPath(new URL("../../generate-openapi.mjs", import.meta.url)),

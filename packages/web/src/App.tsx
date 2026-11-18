@@ -74,6 +74,7 @@ function Workspace() {
 
   return (
     <div className="workspace" data-theme={preferences.theme}>
+      {/* biome-ignore lint/a11y/useValidAnchor: Skip links move focus without changing the HashRouter fragment. */}
       <a
         className="skip-link"
         href="#workspace-main"

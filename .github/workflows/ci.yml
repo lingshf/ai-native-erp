@@ -26,5 +26,3 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Verify
         run: npm run verify
-      - name: Build web
-        run: npm run build

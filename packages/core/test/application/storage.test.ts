@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import {
   StorageError,
   canonicalJson,
@@ -63,7 +63,7 @@ test("scope rejects missing, extra, malformed, newline and accessor IDs without 
       parseScope({
         ...company,
         get companyId() {
-          assert.fail("getter executed");
+          return assert.fail("getter executed");
         },
       }),
     "INVALID_SCOPE",
@@ -88,6 +88,7 @@ test("lock plans are copied, ASCII sorted and reject tier mixing or duplicate lo
     { level: "book", scopes: [company] },
     { level: "company", scopes: [company, { ...company }] },
     { level: "company", scopes: Array(1) },
+    // biome-ignore lint/suspicious/noSparseArray: Deliberate malformed lock plan must be rejected.
     { level: "company", scopes: [company, , company] },
     {
       level: "company",
@@ -141,7 +142,7 @@ test("canonical JSON is deterministic and ignores neither unsafe values nor dang
     Object.defineProperty({}, "hidden", { value: 1 }),
     {
       get x() {
-        assert.fail("JSON getter executed");
+        return assert.fail("JSON getter executed");
       },
     },
     Object.assign([1], { extra: "ignored by JSON.stringify" }),

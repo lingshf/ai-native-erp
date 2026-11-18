@@ -26,4 +26,4 @@ source module rather than the working directory. Missing assets return 503.
 
 Application services and ports are exported by `@erp/core/application`, DTOs
 by `@erp/core/contracts`, and runtime configuration by `@erp/infra`.
-Run HTTP tests with `node --test packages/infra/test/http/*.test.mjs`.
+Run HTTP tests with `npm test -- packages/infra/test/http`.

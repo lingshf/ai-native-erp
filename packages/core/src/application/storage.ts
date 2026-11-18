@@ -319,11 +319,14 @@ export function canonicalJson(value: unknown): string {
   };
   const visit = (item: unknown, depth: number): void => {
     if (depth > 20) invalid();
-    if (item === null || typeof item === "string" || typeof item === "boolean")
-      return primitive(item);
+    if (item === null || typeof item === "string" || typeof item === "boolean") {
+      primitive(item);
+      return;
+    }
     if (typeof item === "number") {
       if (!Number.isSafeInteger(item)) invalid();
-      return primitive(item);
+      primitive(item);
+      return;
     }
     if (typeof item !== "object" || ancestors.has(item)) invalid();
     ancestors.add(item);
@@ -402,6 +405,7 @@ function principal(value: unknown): string {
     typeof value !== "string" ||
     value.length < 1 ||
     value.length > 255 ||
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Principals must reject control characters and lone surrogates.
     /[\x00-\x1f\x7f-\x9f\ud800-\udfff]/u.test(value)
   )
     invalid();

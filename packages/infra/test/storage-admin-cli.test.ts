@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:f
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import test from "node:test";
+import { test } from "vitest";
 
 const root = resolve(import.meta.dirname, "..", "..", "..");
 const script = resolve(root, "scripts", "storage-admin.mjs");
@@ -19,7 +19,7 @@ function run(args) {
 }
 function fixture(t) {
   const directory = mkdtempSync(resolve(tmpdir(), "erp-storage-cli-"));
-  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  t.onTestFinished(() => rmSync(directory, { recursive: true, force: true }));
   return directory;
 }
 

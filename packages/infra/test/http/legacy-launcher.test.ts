@@ -4,7 +4,7 @@ import { EventEmitter, once } from "node:events";
 import { writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { fileURLToPath } from "node:url";
-import test from "node:test";
+import { test } from "vitest";
 import { captureDirectory, legacyFixture } from "../support/legacy-fixture.mjs";
 
 const script = fileURLToPath(
@@ -18,7 +18,7 @@ async function reserve(t) {
     server.once("error", reject);
     server.listen(0, "127.0.0.1", resolveListen);
   });
-  t.after(() => new Promise((resolveClose) => server.close(resolveClose)));
+  t.onTestFinished(() => new Promise((resolveClose) => server.close(resolveClose)));
   return { server, port: server.address().port };
 }
 
@@ -122,7 +122,7 @@ test("composition startup/bind/close failures release resources, preserve close 
   const f = legacyFixture(t);
   const before = captureDirectory(f.directory);
   const blocker = await reserve(t);
-  let reader;
+  let reader: ReturnType<typeof openVerifiedTeachingReader>;
   await assert.rejects(
     startLegacyPreview({
       snapshotDirectory: f.target,
@@ -208,16 +208,16 @@ async function signalFixture(t, failClose = false) {
     "../../../../scripts/legacy-snapshot-reader.mjs"
   );
   const { createApi } = await import("@erp/infra/http");
-  let preview;
-  t.after(() => preview?.close().catch(() => {}));
+  let preview: Awaited<ReturnType<typeof startLegacyPreview>> | undefined;
+  t.onTestFinished(() => preview?.close().catch(() => {}));
   const f = legacyFixture(t);
   const before = captureDirectory(f.directory);
   const runtime = new EventEmitter();
   const events = [];
   runtime.stderr = { write: (line) => events.push(JSON.parse(line)) };
   const order = [];
-  let api;
-  let reader;
+  let api: Awaited<ReturnType<typeof createApi>>;
+  let reader: ReturnType<typeof openVerifiedTeachingReader>;
   const listenerCounts = ["SIGINT", "SIGTERM"].map((signal) => process.listenerCount(signal));
   preview = await runPreview(
     ["--snapshot-dir", f.target],
@@ -333,14 +333,14 @@ test("actual CLI opens explicit fixture, serves financial data and terminates af
   child.stderr.on("data", (chunk) => {
     stderr += chunk;
   });
-  t.after(async () => {
+  t.onTestFinished(async () => {
     if (child.exitCode === null && child.signalCode === null) {
       child.kill();
       await once(child, "exit");
     }
   });
   const address = `http://127.0.0.1:${reserved.port}`;
-  let response;
+  let response: Response | undefined;
   for (let attempt = 0; attempt < 100; attempt++) {
     try {
       response = await fetch(`${address}/api/v1/legacy/context`);

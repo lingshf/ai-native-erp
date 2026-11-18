@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
-import * as boundaries from "../scripts/check-boundaries.mjs";
+import * as boundaries from "../../../../scripts/check-boundaries.mjs";
 
 const { checkImportBoundaries } = boundaries;
 const required = [
@@ -18,7 +18,7 @@ const required = [
 ];
 function repositoryFixture(t) {
   const root = mkdtempSync(join(tmpdir(), "erp-boundary-regression-"));
-  t.after(() => rmSync(root, { recursive: true }));
+  t.onTestFinished(() => rmSync(root, { recursive: true }));
   for (const project of required) {
     mkdirSync(join(root, project), { recursive: true });
     writeFileSync(join(root, project, "index.ts"), "export const present = true;");
@@ -136,15 +136,17 @@ test("missing and empty required source projects cannot pass vacuously", (t) => 
 });
 
 test("CLI resolves its own repository regardless of the invoking working directory", () => {
-  const checker = fileURLToPath(new URL("../scripts/check-boundaries.mjs", import.meta.url));
-  const cwd = fileURLToPath(new URL("../packages/", import.meta.url));
+  const checker = fileURLToPath(
+    new URL("../../../../scripts/check-boundaries.mjs", import.meta.url),
+  );
+  const cwd = fileURLToPath(new URL("../../../../packages/", import.meta.url));
   const result = spawnSync(process.execPath, [checker], { cwd, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /passed for [1-9]\d* source files/);
 });
 
 test("Local Vite serves same-origin assets without reflecting cross-origin CORS headers", async (t) => {
-  const web = new URL("../packages/web/", import.meta.url);
+  const web = new URL("../../../../packages/web/", import.meta.url);
   const require = createRequire(new URL("package.json", web));
   const { createServer } = await import(pathToFileURL(require.resolve("vite")).href);
   const server = await createServer({
@@ -153,7 +155,7 @@ test("Local Vite serves same-origin assets without reflecting cross-origin CORS 
     logLevel: "silent",
     server: { host: "127.0.0.1", port: 0, strictPort: true },
   });
-  t.after(() => server.close());
+  t.onTestFinished(() => server.close());
   await server.listen();
   const address = server.httpServer.address();
   assert.ok(address && typeof address === "object");

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { LocalRuntimeInfo, parseRuntimeConfiguration, RuntimeConfigurationError } from "@erp/infra";
 
 test("explicit configuration defaults and Local runtime info", () => {

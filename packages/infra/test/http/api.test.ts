@@ -5,7 +5,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import test from "node:test";
+import { test } from "vitest";
 import { createApi, defaultWebRoot } from "@erp/infra/http";
 import { errorSchema, healthSchema } from "@erp/core/contracts";
 
@@ -49,7 +49,7 @@ async function fixture(t, options = {}) {
     logError: (event) => events.push(event),
     ...options,
   });
-  t.after(() => api.close());
+  t.onTestFinished(() => api.close());
   return { ...api, events };
 }
 
@@ -195,7 +195,7 @@ test("production factory has no test, JSON, or financial endpoints; missing web 
 test("built static assets and health work on the same ephemeral listener without traversal", async (t) => {
   const root = resolve(here, "..", `.test-artifacts-${randomUUID()}`);
   await mkdir(join(root, "web"), { recursive: true });
-  t.after(async () => {
+  t.onTestFinished(async () => {
     await rm(root, { recursive: true, force: true });
   });
   await writeFile(join(root, "web", "index.html"), "<!doctype html><title>M01 shell</title>");
@@ -230,7 +230,7 @@ test("occupied port fails without fallback and can be released", async (t) => {
     blocker.once("error", reject);
     blocker.listen(0, "127.0.0.1", resolveListen);
   });
-  t.after(() => new Promise((resolveClose) => blocker.close(resolveClose)));
+  t.onTestFinished(() => new Promise((resolveClose) => blocker.close(resolveClose)));
   const address = blocker.address();
   assert.ok(address && typeof address === "object");
   const api = await fixture(t, { environment: { ERP_PORT: String(address.port) } });
@@ -253,7 +253,7 @@ test("occupied port fails without fallback and can be released", async (t) => {
 
 test("real IPv6 loopback is supported when the host provides it", async (t) => {
   const api = await fixture(t, { environment: { ERP_HOST: "::1", ERP_PORT: "0" } });
-  let address;
+  let address: string;
   try {
     address = await api.listen();
   } catch (error) {

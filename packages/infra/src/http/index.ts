@@ -135,7 +135,8 @@ export async function createApi(options: CreateApiOptions = {}): Promise<LocalAp
     let closing: Promise<void> | undefined;
     const close = (): Promise<void> => {
       boundary.origin = undefined;
-      return (closing ??= server.close());
+      closing ??= server.close();
+      return closing;
     };
     return {
       app: server,

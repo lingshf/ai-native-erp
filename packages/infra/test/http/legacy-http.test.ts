@@ -3,7 +3,7 @@ import { request } from "node:http";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
-import test from "node:test";
+import { test } from "vitest";
 import { createApi } from "@erp/infra/http";
 import { DomainError, StorageError } from "@erp/core/application";
 import {
@@ -67,7 +67,7 @@ async function apiFixture(t, options = {}) {
     logError: () => {},
     ...options,
   });
-  t.after(() => api.close());
+  t.onTestFinished(() => api.close());
   return { api, address: await api.listen() };
 }
 
@@ -180,8 +180,8 @@ test("actual listener paginates over 100 real rows with stable totals and line i
 
 test("finance fails closed before listen, checks actual Host/Origin and ignores forwarded headers", async (t) => {
   const webRoot = await mkdtemp(resolve(tmpdir(), "erp-http-static-"));
-  let api;
-  t.after(async () => {
+  let api: Awaited<ReturnType<typeof createApi>> | undefined;
+  t.onTestFinished(async () => {
     await api?.close();
     await rm(webRoot, { recursive: true });
   });
@@ -387,8 +387,8 @@ test("all declared storage/domain errors are mapped and sanitized, output failur
   const f = legacyFixture(t);
   const reader = openVerifiedTeachingReader(f.target);
   f.readers.push(reader);
-  let fault;
-  let invalid;
+  let fault: Error | undefined;
+  let invalid: unknown;
   const events = [];
   const borrowed = {
     info: reader.info,
@@ -449,8 +449,8 @@ test("strict trial and flat ledger output reject unsafe amounts, extra fields an
   const f = legacyFixture(t);
   const reader = openVerifiedTeachingReader(f.target);
   f.readers.push(reader);
-  let badTrial;
-  let badLedger;
+  let badTrial: ReturnType<typeof reader.trialBalances>;
+  let badLedger: ReturnType<typeof reader.ledger>;
   const { address } = await apiFixture(t, {
     legacyReader: {
       info: reader.info,

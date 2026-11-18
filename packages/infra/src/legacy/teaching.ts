@@ -167,7 +167,7 @@ export function preflightLegacySnapshotPair(directory: string): void {
     }
   } catch (error) {
     if (error instanceof StorageError) throw error;
-    return fail("INVALID_SNAPSHOT");
+    fail("INVALID_SNAPSHOT");
   }
 }
 

@@ -21,6 +21,6 @@
   },
   "scripts": {
     "start": "node src/main.ts",
-    "test": "node --test test/*.test.mjs test/http/*.test.mjs"
+    "test": "vitest run --config ../../vitest.config.ts --project infra"
   }
 }

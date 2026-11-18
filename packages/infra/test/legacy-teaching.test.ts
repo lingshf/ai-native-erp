@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { join } from "node:path";
@@ -155,7 +155,7 @@ test("all three TB stages and whole-month ledger match old oracle across closing
   assert.equal(disabled.closing, 725);
   const complete = reader.ledger({ month: "2026-02", account: "1000", limit: 100 });
   const entries = [];
-  let cursor;
+  let cursor: string | undefined;
   do {
     const page = reader.ledger({ month: "2026-02", account: "1000", limit: 1, cursor });
     assert.equal(page.opening, complete.opening);

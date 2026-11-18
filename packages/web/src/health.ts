@@ -9,6 +9,7 @@ export type HealthState =
 
 export function useHealth(attempt: number): HealthState {
   const [state, setState] = useState<HealthState>({ kind: "loading" });
+  // biome-ignore lint/correctness/useExhaustiveDependencies: attempt explicitly triggers a new request on Retry.
   useEffect(() => {
     const controller = new AbortController();
     let active = true;

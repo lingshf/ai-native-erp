@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { afterAll, beforeAll, describe, test, vi } from "vitest";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { extendedContract, plan, scope, storageContract } from "./support/storage-contract.mjs";
@@ -11,44 +11,43 @@ import { sqliteBackend } from "../src/storage/sqlite.ts";
 import { rawContract } from "./support/storage-raw-contract.mjs";
 import { sqliteCases } from "./support/storage-sqlite-cases.mjs";
 
-test("SQLite real target contract", async (t) => {
+describe("SQLite real target contract", () => {
   const directory = resolve(".storage-test-fixtures", `sqlite-${process.pid}`);
-  await mkdir(directory, { recursive: true });
+  beforeAll(() => mkdir(directory, { recursive: true }));
+  afterAll(() => rm(directory, { recursive: true, force: true }));
   let serial = 0;
-  try {
-    const create = async () =>
-      createSqliteStorage({
-        filename: resolve(directory, `target-${serial++}.sqlite`),
-      });
-    await storageContract(t, create);
-    await extendedContract(t, create);
-    await rawContract(t, async () => {
-      const config = { filename: resolve(directory, `raw-${serial++}.sqlite`) };
-      const storage = createSqliteStorage(config);
-      const backend = sqliteBackend(config);
-      let raw;
-      return {
-        storage,
-        backend,
-        bytes: () => Promise.all([readFile(config.filename), readFile(`${config.filename}-wal`)]),
-        async raw(text, parameters = []) {
-          raw ??= new Database(config.filename);
-          raw.defaultSafeIntegers(true);
-          raw.pragma("foreign_keys=ON");
-          const query = raw.prepare(text);
-          return query.reader ? query.all(...parameters) : (query.run(...parameters), []);
-        },
-        async close() {
-          raw?.close();
-          await backend.close();
-          await storage.close();
-        },
-      };
+  const create = async () =>
+    createSqliteStorage({
+      filename: resolve(directory, `target-${serial++}.sqlite`),
     });
-    await sqliteCases(t, directory);
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
+  storageContract(create);
+  extendedContract(create);
+  rawContract(async () => {
+    const config = { filename: resolve(directory, `raw-${serial++}.sqlite`) };
+    const storage = createSqliteStorage(config);
+    const backend = sqliteBackend(config);
+    let raw: InstanceType<typeof Database> | undefined;
+    return {
+      storage,
+      backend,
+      bytes: () => Promise.all([readFile(config.filename), readFile(`${config.filename}-wal`)]),
+      async raw(text, parameters = []) {
+        raw ??= new Database(config.filename);
+        raw.defaultSafeIntegers(true);
+        raw.pragma("foreign_keys=ON");
+        const query = raw.prepare(text);
+        if (query.reader) return query.all(...parameters);
+        query.run(...parameters);
+        return [];
+      },
+      async close() {
+        raw?.close();
+        await backend.close();
+        await storage.close();
+      },
+    };
+  });
+  sqliteCases(directory);
 });
 
 test("existing DELETE target configures busy timeout at its first WAL switch", {
@@ -58,8 +57,8 @@ test("existing DELETE target configures busy timeout at its first WAL switch", {
   await mkdir(directory, { recursive: true });
   const config = { filename: resolve(directory, "target.sqlite") };
   const storage = createSqliteStorage(config);
-  let child;
-  let exited;
+  let child: ReturnType<typeof spawn> | undefined;
+  let exited: ReturnType<typeof once> | undefined;
   let stderr = "";
   try {
     const seed = createSqliteStorage(config);
@@ -107,7 +106,10 @@ test("existing DELETE target configures busy timeout at its first WAL switch", {
     );
     let walSwitches = 0;
     const pragma = Database.prototype.pragma;
-    t.mock.method(Database.prototype, "pragma", function (text, ...options) {
+    const spy = vi.spyOn(Database.prototype, "pragma").mockImplementation(function (
+      text,
+      ...options
+    ) {
       if (this.name === config.filename && text === "journal_mode = WAL") {
         walSwitches++;
         assert.equal(pragma.call(this, "journal_mode", { simple: true }), "delete");
@@ -116,6 +118,7 @@ test("existing DELETE target configures busy timeout at its first WAL switch", {
       }
       return pragma.call(this, text, ...options);
     });
+    t.onTestFinished(() => spy.mockRestore());
     let callbacks = 0;
     await storage.write(plan, (session) => {
       callbacks++;

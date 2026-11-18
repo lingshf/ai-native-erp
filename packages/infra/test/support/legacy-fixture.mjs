@@ -29,7 +29,7 @@ export function legacyFixture(t, { wal = false, history = false, many = false } 
   const book = new Book(teaching, { today: "2026-01-15" });
   const erp = new EnterpriseBook(enterprise);
   const readers = [];
-  t.after(() => {
+  t.onTestFinished(() => {
     for (const reader of readers) reader.close();
     book.close();
     erp.close();
