@@ -2,8 +2,10 @@ import { reportEn, reportZh } from "./report-labels.ts";
 import { masterEn, masterZh } from "./master-labels.ts";
 import { dimensionEn, dimensionZh } from "./dimension-labels.ts";
 import { journalEn, journalZh } from "./journal-labels.ts";
+import { businessEn, businessZh } from "./business-labels.ts";
 
 export const zh = {
+  ...businessZh,
   ...journalZh,
   ...dimensionZh,
   ...reportZh,
@@ -52,6 +54,7 @@ export type LabelResources = Readonly<Record<LabelKey, string>>;
 
 export const en = {
   ...journalEn,
+  ...businessEn,
   ...dimensionEn,
   ...reportEn,
   ...masterEn,

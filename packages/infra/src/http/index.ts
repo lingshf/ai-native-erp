@@ -7,9 +7,15 @@ import Fastify from "fastify";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { LegacyTeachingQueryService, RuntimeInfoService } from "@erp/core/application";
 import type { LegacyTeachingReader, RuntimeInfoPort } from "@erp/core/application";
-import type { MasterDataService, DimensionService, JournalService } from "@erp/core/application";
+import type {
+  MasterDataService,
+  DimensionService,
+  JournalService,
+  BusinessEventService,
+} from "@erp/core/application";
 import { registerDimensionRoutes } from "./dimensions.ts";
 import { registerJournalRoutes } from "./journals.ts";
+import { registerBusinessRoutes } from "./business-events.ts";
 import { isMasterDataPath, registerMasterDataRoutes } from "./master-data.ts";
 import { healthSchema } from "@erp/core/contracts";
 import { LocalRuntimeInfo, parseRuntimeConfiguration } from "@erp/infra";
@@ -41,6 +47,7 @@ export interface CreateApiOptions {
   readonly masterData?: MasterDataService;
   readonly dimensions?: DimensionService;
   readonly journals?: JournalService;
+  readonly events?: BusinessEventService;
   /** Factory-only test seam. The CLI never registers extra routes. */
   readonly registerTestRoutes?: (server: FastifyInstance) => void | Promise<void>;
 }
@@ -115,6 +122,7 @@ export async function createApi(options: CreateApiOptions = {}): Promise<LocalAp
     registerMasterDataRoutes(server, options.masterData, boundary);
     registerDimensionRoutes(server, options.dimensions, boundary);
     registerJournalRoutes(server, options.journals, boundary);
+    registerBusinessRoutes(server, options.events, boundary);
     const root = options.webRoot ?? defaultWebRoot();
     if (!isAbsolute(root)) throw new TypeError("Web root must be absolute");
     let built = false;

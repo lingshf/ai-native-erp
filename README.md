@@ -53,7 +53,7 @@ npm run build
 npm run start:local
 ```
 
-启动只校验最新 schema，不自动迁移；旧的 001/002/003 目标库也须先显式运行 migrate 升级到 004，已发布 SQL/checksum 保持不变。首次连接有效目标库时，在固定 LOCAL tenant/book 下建立 DEFAULT 月度教学公司（CNY、精度 2、当前财年）、旧 Book 对应的八科目和 12 个开放期间；重复启动不覆盖已有主数据，不创建凭证。未设置 ERP_SQLITE_FILE 的启动与快照 CLI 仍不打开业务库。已配置时 health 返回 `data:configured`。
+启动只校验最新 schema，不自动迁移；旧的 001–004 目标库也须先显式运行 migrate 升级到 005，已发布 SQL/checksum 保持不变。首次连接有效目标库时，在固定 LOCAL tenant/book 下建立 DEFAULT 月度教学公司（CNY、精度 2、当前财年）、旧 Book 对应的八科目和 12 个开放期间；重复启动不覆盖已有主数据，不创建凭证。未设置 ERP_SQLITE_FILE 的启动与快照 CLI 仍不打开业务库。已配置时 health 返回 `data:configured`。
 
 左侧“基础配置 → 科目表”提供公司选择、科目新建/编辑/停用；教学公司的内置八科目保持不可修改。统驭模块必须显式选择，不默认推断为 AP。中英、红绿、教学切换不清空编辑器。写入用 revision CAS，版本冲突返回 409 并保留输入，要求显式重新载入；可修正的科目规则校验返回 400 和安全的 fieldErrors，在对应字段说明如何修正，保留草稿且不提示无效重载。列表每次取 100 行，可继续加载；超过 100 行启用 TanStack Virtual。`/api/v1/companies`（GET/POST）、`/accounts`（GET/POST/PUT）、`/periods`（GET/PUT）使用有界游标分页；科目历史可用 `GET /api/v1/accounts/1500?company=DEFAULT&at=2026-01-02T12%3A00%3A00.000Z` 查询。期间冻结可重开，关闭须明确确认且不可重开；有业务活动后的结账流程留待 M0-11。公司创建/期间管理界面仍未提供；凭证界面见下文 M0-10。
 
@@ -69,7 +69,17 @@ npm run start:local
 
 **D6：历史反向行逐项精确镜像同公司原已过账行**，即使原科目已停用/禁止手工或原维度值已失效；不重跑默认/派生。仍检查原凭证、同公司科目、金额正好取反、镜像证据及不能重复冲回。新业务/自动清算行均按当前启用、用途及维度结构校验。替换原子生成反向和新凭证；重分类必须全额，合并展示原反向与新分配，仅允许再全额冲回；纠错日期不能早于原凭证及其任何后代。金额以精确最小单位计算，单项/凭证/公司累计借贷金额均不能超过安全整数范围；公司累计值保存在不可变封存记录，通过索引读取末值，不逐次扫描全 GL。
 
-004 复用已发布 001 的 `receipts` 与 `audit`，为新凭证增加来源/幂等唯一索引，`audit_log` 是同一真实审计存储的只读投影，不写两份审计。完整目标库新 GL 报表留 M0-12；业务事件/过账规则及后续结账留 M0-11，不提供旧账转换/导入。`npm run bench` 另测 100 行 × 3 维度的真实 loopback HTTP（含客户端响应/契约解析，确认包含事务提交），输出 p95/p99 及事件循环延迟；当前仅独立小库，**不等于已通过百万 GL 容量验收**，须等 M0-12 合成生成器。
+004 复用已发布 001 的 `receipts` 与 `audit`，为新凭证增加来源/幂等唯一索引，`audit_log` 是同一真实审计存储的只读投影，不写两份审计。完整目标库新 GL 报表留 M0-12，完整期间结账留 M0-13，不提供旧账转换/导入。`npm run bench` 另测 100 行 × 3 维度的真实 loopback HTTP（含客户端响应/契约解析，确认包含事务提交），输出 p95/p99 及事件循环延迟；当前仅独立小库，**不等于已通过百万 GL 容量验收**，须等 M0-12 合成生成器。
+
+### M0-11：业务事件、过账规则与待转队列
+
+“总账 → 业务事件”提供服务/往来对象与规则维护、现金收付、取消、统计和清算匹配。事件预览只读当前输入，用户明确确认后，业务来源、凭证、回执、统计或清算证据、审计在同一 SQLite 事务提交。现金账户及收入/费用账户都须显式配置规则，不推断现金科目 1000，也不保留 forecast。规则在服务与往来两个轴分别按精确→组→全部匹配；只有同时不弱于其他候选的唯一规则才胜出，互不支配或同级重复都报明确歧义，不自动让服务轴优先。每公司最多 5000 条规则；当前事务内预建 Map，单次匹配最多查九个桶，确认仍重读科目及配置、重算指纹。
+
+现金事件维度按往来→服务→规则→事件叠加，再复用统一的默认/派生/结构规则。统计数量采用固定六位精度，允许正、负和零，只记录事实，不产生 GL。清算按 entryId+lineNo 选择本公司同科目的完整来源行，排除内部平衡行、已匹配行和未来行，要求净额为零，不支持部分匹配。取消从业务来源进入，按 D6 精确镜像原现金凭证；业务事件所属 GL 详情提供来源链接，不允许手工纠错绕过业务取消。
+
+普通凭证独立保存、预览后，可选择“排队，暂不过账”；排队与立即过账是不同的明确命令，不后台保存。接受回执及原计划不可变，队列按状态有界分页，超过100行虚拟滚动。转入前按**当前**配置重新预览并明确确认；失效科目不能沿用旧冻结计划转入，失败保留可重试状态。撤回须填写原因，撤回后不能确认转入；相同原因重试返回原结果，不同原因返回409。任何写入结果未知时，保留原键、计划和命令，只允许明确重试，不能改成另一命令。待转/失败项目阻止冻结或关闭所属期间。
+
+API：`/api/v1/services`、`/parties`、`/posting-rules` 提供 GET 和 revision CAS 的 POST；`/events` GET、`/events/:id` GET、`/events/preview` POST、`/events/confirm` POST；`/events/open-items` 按 company/account/date 分页；`/transfer-queue` GET/POST，`/:id/preview|confirm|withdraw` POST。005 新增类型化配置、不可变事件/统计/清算证据及队列状态表，复用唯一 receipts/audit。`npm run bench` 还在独立合成库用5000条规则、10次预热和100次采样测真实HTTP预览/确认及100项热读，计时包含完整JSON和共享客户端契约解析；原始采样与p50/p95/p99写入既有Bench artifact，不增加PR快速测试。
 
 需要真实只读报表时，先构建，再显式选择**独立的M00已验证快照目录**，不能传活动账套的`data`目录：
 
@@ -85,7 +95,7 @@ npm run preview:legacy -- --snapshot-dir "$snapshotDir"
 
 开发时API固定4180、Vite固定5173/strictPort。在第二终端运行`npm run dev --workspace @erp/web`；普通同源GET无Origin也可代理，无需额外许可。确实带`Origin:http://127.0.0.1:5173`的请求，只有API启动时另加`--dev-origin http://127.0.0.1:5173`才允许。API与Vite均不提供跨域CORS响应，Vite拒绝外域Host，不设`allowedHosts:true`。改API端口须显式同步并验证代理目标，不能扩大来源许可掩盖错配；开发origin不是认证，不开放LAN。
 
-工程只有三个workspace：`@erp/core`（domain/application/contracts）、`@erp/infra`（storage/http/legacy及组合根）、`@erp/web`（React及`src/ui`的labels/偏好），没有`apps/`。包导出直指`.ts`，相对TS导入使用`.ts`/`.tsx`；`npm run typecheck`一次覆盖源码和TS测试，不输出JS。目录边界禁止core反向导入infra、domain导入application、web导入Node或存储驱动。Zod是DTO单一来源；需要OpenAPI文件时显式执行`npm run openapi -- openapi.json`，不挂测试前置构建。偏好仍保存于同源`erp.workspace.preferences.v1`，默认中文/红色/教学关闭，不改旧偏好键。凭证/GL 仅在独立新目标库写入；认证、业务事件及原账切换仍待后续阶段。
+工程只有三个workspace：`@erp/core`（domain/application/contracts）、`@erp/infra`（storage/http/legacy及组合根）、`@erp/web`（React及`src/ui`的labels/偏好），没有`apps/`。包导出直指`.ts`，相对TS导入使用`.ts`/`.tsx`；`npm run typecheck`一次覆盖源码和TS测试，不输出JS。目录边界禁止core反向导入infra、domain导入application、web导入Node或存储驱动。Zod是DTO单一来源；需要OpenAPI文件时显式执行`npm run openapi -- openapi.json`，不挂测试前置构建。偏好仍保存于同源`erp.workspace.preferences.v1`，默认中文/红色/教学关闭，不改旧偏好键。凭证/GL 及业务事件仅在独立新目标库写入；认证及原账切换仍待后续阶段。
 
 `npm test`运行根Vitest的core/infra（Node独立进程）及web（jsdom）项目；`npm run test:changed`只运行相对`origin/main`受影响的测试。旧`tests/*.test.mjs`单独用`npm run test:legacy`运行，完整验证使用`npm run verify`。`npm run check`使用Biome recommended lint与formatter覆盖`packages/`、`scripts/`，不再维护`node --check`列表。旧`src/`、`public/`、`tests/`不改文件、不检查格式或lint规则；其override保持linter解析引擎启用但`preset:none`，避免完全禁用引擎时跳过语法解析，这个过渡配置在M0-15随旧代码移除。边界解析仍用Babel：当前TypeScript 7仅导出版本信息，没有所需AST API；`acorn`仍被旧labels测试实际消费。
 

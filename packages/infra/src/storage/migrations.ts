@@ -54,11 +54,38 @@ const journalNames = [
     (name) => [`trigger:${name}_no_update`, `trigger:${name}_no_delete`],
   ),
 ];
+const businessNames = [
+  ...[
+    "business_services",
+    "business_parties",
+    "posting_rules",
+    "business_config_history",
+    "business_events",
+    "business_event_journals",
+    "statistics_facts",
+    "business_clearing_links",
+    "transfer_queue",
+  ].map((name) => `table:${name}`),
+  ...["business_event_cancel", "journal_lines_open_items", "transfer_queue_status_created"].map(
+    (name) => `index:${name}`,
+  ),
+  ...["transfer_queue_source", "transfer_queue_transition", "transfer_queue_no_delete"].map(
+    (name) => `trigger:${name}`,
+  ),
+  ...[
+    "business_config_history",
+    "business_events",
+    "business_event_journals",
+    "statistics_facts",
+    "business_clearing_links",
+  ].flatMap((name) => [`trigger:${name}_no_update`, `trigger:${name}_no_delete`]),
+];
 const filenames = [
   "001-storage.sql",
   "002-master-data.sql",
   "003-dimensions.sql",
   "004-journals.sql",
+  "005-business-events.sql",
 ];
 
 export function normalizeMigration(text: string): string {
@@ -108,6 +135,7 @@ export async function inspectSchema(
       ...(latest >= 2 ? masterNames : []),
       ...(latest >= 3 ? dimensionNames : []),
       ...(latest >= 4 ? journalNames : []),
+      ...(latest >= 5 ? businessNames : []),
     ])
   )
     throw new StorageError("SCHEMA_MISMATCH");

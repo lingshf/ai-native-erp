@@ -143,6 +143,37 @@ and dimension rules. Reclassification is full economic value, excluding internal
 balancing turnover; replacement writes both output journals atomically and links
 both outputs. No old-ledger import/conversion is provided.
 
+M0-11 appends `005-business-events.sql` without changing 001-004. Typed
+services, parties and two-axis posting rules share entity CAS and append-only
+history. Event acceptance reuses the journal transaction's plan/commit pipeline
+and the single receipts/audit stores; source events, journal ownership links,
+signed six-place statistics and complete source-line clearing links are immutable.
+Statistics/clearing acceptance may have no GL output.
+
+Rules use a date-specific Map and at most nine exact/group/all buckets per
+match. Incomparable two-axis winners are ambiguous, never service-prioritized;
+both cash and offset rules are explicit. Dimensions overlay party, service,
+winning rule and event in that order before the common dimension resolver.
+Current accounts are re-read inside preview/confirmation transactions. D6
+cancellation is the only historical-availability exception; manual correction
+of a business-owned journal is rejected in favor of its source action. A queued
+ordinary journal remains an ordinary journal after transfer and keeps normal
+manual correction; its queue wrapper is not a cash-service source.
+
+Queued journals preserve their acceptance receipt/plan but require a new
+current-configuration preview before explicit transfer. The transfer, ownership
+links and audit commit atomically; failures persist a safe failed state.
+`transfer_queue(company_id,status,created_at,id)` supports bounded keyset pages.
+Pending/failed items block period freezing/closing. Withdrawal is terminal:
+same normalized reason retries return the original result without another write,
+different reasons conflict, and withdrawn items cannot transfer.
+
+`npm run bench` includes 5,000-rule synthetic events over real loopback HTTP,
+complete response JSON and shared client DTO decoding, with 10 warmups and
+100 measured samples. Preview/confirm include index compilation and current-state
+validation; confirm includes commit. Raw samples and p50/p95/p99 are stored in the
+existing bench artifacts. This remains separate from million-GL capacity acceptance.
+
 ## Validation
 
 From repository root, after `npm ci`:

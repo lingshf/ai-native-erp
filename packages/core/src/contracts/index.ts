@@ -2,6 +2,7 @@ import { z } from "zod";
 import { masterDataOpenApi } from "./master-data.ts";
 import { dimensionsOpenApi } from "./dimensions.ts";
 import { journalsOpenApi } from "./journals.ts";
+import { businessEventsOpenApi } from "./business-events.ts";
 export * from "./dimensions.ts";
 import {
   legacyContextSchema,
@@ -85,6 +86,7 @@ export const openApiDocument = {
   paths: {
     ...dimensionsOpenApi.paths,
     ...journalsOpenApi.paths,
+    ...businessEventsOpenApi.paths,
     ...masterDataOpenApi.paths,
     "/api/v1/legacy/context": legacyOperation("getLegacyContext", "LegacyContextResponse"),
     "/api/v1/legacy/trial": legacyOperation(
@@ -116,6 +118,7 @@ export const openApiDocument = {
     schemas: {
       ...dimensionsOpenApi.schemas,
       ...journalsOpenApi.schemas,
+      ...businessEventsOpenApi.schemas,
       ...masterDataOpenApi.schemas,
       HealthResponse: z.toJSONSchema(healthSchema, { target: "draft-2020-12" }),
       ErrorResponse: z.toJSONSchema(errorSchema, { target: "draft-2020-12" }),
@@ -144,3 +147,4 @@ export function verifyOpenApi(document: unknown): void {
   }
 }
 export * from "./journals.ts";
+export * from "./business-events.ts";

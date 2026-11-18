@@ -10,6 +10,7 @@ import {
   type DimensionConfig,
   type DimensionMap,
   type Period,
+  type BusinessOperation,
 } from "./index.ts";
 
 export type JournalOperation = "journal" | "reverse" | "replace" | "reclassify";
@@ -22,6 +23,7 @@ export interface JournalFieldIssue {
     | "balance"
     | "balanceAccount"
     | "dimensionLimit"
+    | "businessSource"
     | "account"
     | "manual"
     | "suspense"
@@ -124,7 +126,7 @@ export interface JournalReceipt {
   readonly draftId: string;
   readonly draftRevision: number;
   readonly fingerprint: string;
-  readonly operation: JournalOperation;
+  readonly operation: JournalOperation | BusinessOperation;
   readonly journalIds: readonly string[];
   readonly postedAt: string;
 }
@@ -180,7 +182,7 @@ function totals(lines: readonly JournalLine[]) {
   if (!debit || debit !== credit) journalError("lines", "balance");
   return { debit, credit };
 }
-function checkedJournalDay(day: string, path: string, rule: "shape" | "suspense" = "shape") {
+export function checkedJournalDay(day: string, path: string, rule: "shape" | "suspense" = "shape") {
   try {
     checkedDimensionDay(day, path);
   } catch (error) {
@@ -197,6 +199,7 @@ export function buildJournalPlan(input: {
   readonly original: JournalEntry | null;
   readonly corrections: readonly JournalCorrection[];
   readonly turnover: number;
+  readonly master?: readonly DimensionMap[];
 }): JournalPlan {
   const { draft, company, period, original, corrections } = input;
   checkedJournalDraft(draft);
@@ -220,6 +223,7 @@ export function buildJournalPlan(input: {
         day: draft.date,
         header,
         explicit: raw.dimensions,
+        master: input.master?.[index],
       });
       if (Object.keys(resolved.dimensions).length > 32)
         journalError(`lines.${index}.dimensions`, "dimensionLimit");

@@ -76,6 +76,8 @@ export const journalEn = {
   "journal.rule.correction":
     "The journal is already corrected, or the correction predates its chain. Check the original and latest correction date.",
   "journal.rule.amount": "Reclassification must preserve the full business amount.",
+  "journal.rule.businessSource":
+    "This journal belongs to a business event. Open the source event and use its cancellation action instead of a manual correction.",
   "journal.rule.dimensions":
     "Check this line's required, fixed, allowed and active dimension values.",
   "journal.teaching":
@@ -154,6 +156,8 @@ export const journalZh: Record<keyof typeof journalEn, string> = {
   "journal.rule.correction":
     "该凭证已有生效纠错，或纠错日期早于纠错链。请核对原凭证及最近纠错日期。",
   "journal.rule.amount": "重分类必须保留全部业务金额。",
+  "journal.rule.businessSource":
+    "此凭证来自业务事件，请打开来源事件并使用其取消操作，不可直接手工纠错。",
   "journal.rule.dimensions": "请检查该行的必填、固定、允许组合及有效维度值。",
   "journal.teaching":
     "先保存草稿，再核对包含内部平衡行的计划，最后明确确认。历史镜像保留原金额及维度（D6）。",

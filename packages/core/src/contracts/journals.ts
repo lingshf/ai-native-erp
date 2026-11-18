@@ -116,6 +116,7 @@ const correction = z.strictObject({
 export const journalDetailSchema = z.strictObject({
   entry: journalEntrySchema,
   chain: z.array(correction),
+  businessEventId: id.nullable(),
 });
 export const journalPlanSchema = z.strictObject({
   version: z.literal(1),
@@ -139,8 +140,17 @@ export const journalReceiptSchema = z.strictObject({
   draftId: id,
   draftRevision: revisionSchema,
   fingerprint,
-  operation,
-  journalIds: z.array(id).min(1).max(2),
+  operation: z.enum([
+    "journal",
+    "reverse",
+    "replace",
+    "reclassify",
+    "cash_service",
+    "cash_service.cancel",
+    "statistics",
+    "clearing.match",
+  ]),
+  journalIds: z.array(id).max(2),
   postedAt: z.iso.datetime(),
 });
 export const journalPageSchema = z.strictObject({

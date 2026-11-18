@@ -20,8 +20,13 @@ import {
 } from "@erp/core/domain";
 import type { DimensionRepository } from "./dimensions.ts";
 import type { JournalRepository } from "./journals.ts";
+import type { BusinessRepository } from "./business-events.ts";
+import { businessError } from "@erp/core/domain";
 
-export interface MasterDataRepository extends DimensionRepository, JournalRepository {
+export interface MasterDataRepository
+  extends DimensionRepository,
+    JournalRepository,
+    BusinessRepository {
   company(code: string): Promise<Company | null>;
   companies(query: PageQuery): Promise<Page<Company>>;
   currencyScale(currency: string): Promise<number | null>;
@@ -184,6 +189,8 @@ export class MasterDataService {
       const old = required(await repo.period(company, month));
       cas(old.revision, expected);
       const next = changedPeriod(old, status, reason, confirmed);
+      if (next.status !== "open" && (await repo.pendingTransfers(company, month)))
+        businessError("status", "pending", true);
       await repo.savePeriod(company, next, expected);
       await repo.history(company, "period", month, next.revision, next, this.now(), reason.trim());
       return next;
