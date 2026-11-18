@@ -1,6 +1,6 @@
 # M0-08 迁移切片 1：公司、科目、期间 + 应用外壳
 
-- 里程碑：M0　依赖：M0-05、**D1**　建议分支：`ledger-companies-accounts`
+- 里程碑：M0　依赖：M0-05（D1 已定：合并为一个总账模型）　建议分支：`ledger-companies-accounts`
 
 ## 目标
 
