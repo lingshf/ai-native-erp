@@ -38,7 +38,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always() && steps.gate.outputs.run == 'true'
         with:
-          name: sqlite-placeholder-${{ github.run_id }}
+          name: sqlite-placeholder-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/ci/bench.*
           retention-days: 14
           if-no-files-found: error
