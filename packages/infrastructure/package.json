@@ -12,12 +12,10 @@
     "@erp/application": "0.1.0",
     "@erp/domain": "0.1.0",
     "better-sqlite3": "13.0.3",
-    "kysely": "0.29.8",
-    "pg": "8.23.1"
+    "kysely": "0.29.8"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "9.6.0",
-    "@types/pg": "8.23.1"
+    "@types/better-sqlite3": "9.6.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

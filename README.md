@@ -86,9 +86,9 @@ npm run storage:admin -- provision --provider sqlite --file new-target.sqlite --
 
 `provision`只建立技术作用域，不是建账、授权或已实现GL；只给tenant、加book或加company分别建立对应层级。旧库/陌生文件在打开SQL或写PRAGMA前拒绝，不覆盖或自动修复。连接关闭成功后才输出成功JSON；错误分类脱敏且非零，不打印路径、SQL或连接串。
 
-**PostgreSQL/Server已延后、不维护。** 仓库暂留的PG适配器、连接参数和历史运行记录不是当前支持承诺；不按旧指南部署、升级或连接业务数据库，后续由M0-03清理。
+**当前目标存储仅支持SQLite。** PG适配器、专属迁移、依赖和测试已删除，CLI的`--provider`只接受`sqlite`，不再提供TLS/CA连接选项。目标读写连接统一启用WAL、NORMAL、外键和5000ms忙等待；只读旧账路径不改变journal模式。已发布SQLite 001迁移保留历史dialect允许值以保持checksum兼容，运行时仍拒绝非sqlite的迁移记录，不新增兼容迁移。详情见[存储说明](packages/infrastructure/README.md)。
 
-默认`npm run verify`运行完整旧测试及新增Local套件，不需要PostgreSQL、Docker、外部服务或密钥。旧`npm run verify:databases`包含强制真实PG测试，**已延后、不维护，不用于当前开发或CI**；SQLite专项入口与PG测试归档由M0-03处理，本任务不提前拆分。
+默认`npm run verify`运行完整旧测试及新增Local套件，不需要外部数据库、Docker、外部服务或密钥。SQLite存储和CLI专项使用`npm run verify:sqlite`（包含packages构建）；旧`verify:databases`已移除。
 
 先打开 **[项目进度总览](design/project.md)**：44FG当前为0整体完成、13部分覆盖、31未实现。这里不把“做过一部分”标为整个目标完成，也不虚构百分比。
 

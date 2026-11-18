@@ -87,7 +87,6 @@ export function sqliteBackend(config: SqliteStorageConfig): Backend {
   let closed = false;
 
   return {
-    dialect: 'sqlite',
     async acquire(readOnly, migrating) {
       if (closed) throw new StorageError('CLOSED');
       await knownFile(filename, migrating);
@@ -108,7 +107,7 @@ export function sqliteBackend(config: SqliteStorageConfig): Backend {
           return result.rows;
         },
         async script(text) { database.exec(text); },
-        async begin(_read) {
+        async begin() {
           transaction = await db.startTransaction().execute();
         },
         async commit() {
@@ -126,14 +125,14 @@ export function sqliteBackend(config: SqliteStorageConfig): Backend {
       };
       if (!readOnly) {
         // Validate existing targets before any writable PRAGMA.
-        await inspectSchema(connection, 'sqlite', migrating);
-        database.pragma('foreign_keys = ON');
-        database.pragma('busy_timeout = 0');
+        await inspectSchema(connection, migrating);
         database.pragma('journal_mode = WAL');
       } else {
         database.pragma('query_only = ON');
-        database.pragma('busy_timeout = 0');
       }
+      database.pragma('synchronous = NORMAL');
+      database.pragma('foreign_keys = ON');
+      database.pragma('busy_timeout = 5000');
       return connection;
     },
     async close() {

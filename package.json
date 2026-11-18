@@ -31,7 +31,7 @@
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "test:boundaries": "node --test tooling-tests/boundaries.test.mjs",
     "verify": "npm test && npm run check && npm run test:boundaries && npm run test:workspaces && npm run typecheck",
-    "verify:databases": "npm run build:packages && node --test packages/infrastructure/test/storage-sqlite.test.mjs packages/infrastructure/test/databases/*.test.mjs",
+    "verify:sqlite": "npm run build:packages && node --test packages/infrastructure/test/storage-sqlite.test.mjs packages/infrastructure/test/storage-admin-cli.test.mjs",
     "check": "node --check src/book.mjs && node --check src/server.mjs && node --check src/copilot-ai.mjs && node --check src/enterprise.mjs && node --check scripts/enterprise-backup.mjs && node --check public/app.js && node --check public/enterprise.js && node --check public/money.js && node --check public/labels.js && node --check public/labels/zh.js && node --check public/labels/en.js && node --check scripts/ledger-snapshot.mjs && node --check scripts/read-legacy-ledger.mjs && node --check scripts/storage-admin.mjs && node --check scripts/legacy-snapshot-reader.mjs && node --check scripts/preview-legacy-snapshot.mjs && npm run check:boundaries"
   },
   "devDependencies": {

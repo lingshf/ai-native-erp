@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import { extendedContract, storageContract } from './support/storage-contract.mjs';
 import { createSqliteStorage } from '../dist/storage/index.js';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdir, readFile, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import Database from 'better-sqlite3';
 import { sqliteBackend } from '../dist/storage/sqlite.js';
@@ -24,7 +24,8 @@ test('SQLite real target contract', async (t) => {
       const backend = sqliteBackend(config);
       let raw;
       return {
-        storage, backend, dialect: 'sqlite',
+        storage, backend,
+        bytes: () => Promise.all([readFile(config.filename), readFile(`${config.filename}-wal`)]),
         async raw(text, parameters = []) {
           raw ??= new Database(config.filename);
           raw.defaultSafeIntegers(true);

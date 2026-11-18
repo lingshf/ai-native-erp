@@ -8,7 +8,7 @@ import type {
 } from '@erp/application';
 import { performance } from 'node:perf_hooks';
 import { storageError } from './errors.js';
-import type { Backend, Connection, Parameters, Row } from './types.js';
+import type { Connection, Parameters, Row } from './types.js';
 
 export function scopeValues(scope: StorageScope): readonly string[] {
   switch (scope.level) {
@@ -202,7 +202,7 @@ export class Session {
   }
 }
 
-export async function lockScopes(connection: Connection, dialect: Backend['dialect'], plan: LockPlan): Promise<void> {
+export async function lockScopes(connection: Connection, plan: LockPlan): Promise<void> {
   const tiers: StorageScope[][] = [[], [], []];
   for (const scope of plan.scopes) {
     tiers[0].push({ level: 'tenant', tenantId: scope.tenantId });
@@ -215,8 +215,7 @@ export async function lockScopes(connection: Connection, dialect: Backend['diale
     for (const scope of tier) {
       if (previous && compareScopes(previous, scope) === 0) continue;
       previous = scope;
-      const suffix = dialect === 'postgres' ? scope.level === plan.level ? ' FOR UPDATE' : ' FOR SHARE' : '';
-      const rows = await connection.query(`SELECT revision FROM ${scopeTable(scope)} WHERE ${scopeWhere(scope)}${suffix}`, scopeValues(scope));
+      const rows = await connection.query(`SELECT revision FROM ${scopeTable(scope)} WHERE ${scopeWhere(scope)}`, scopeValues(scope));
       if (rows.length !== 1) throw new StorageError('NOT_FOUND');
     }
   }
