@@ -1,8 +1,10 @@
 import { reportEn, reportZh } from "./report-labels.ts";
 import { masterEn, masterZh } from "./master-labels.ts";
 import { dimensionEn, dimensionZh } from "./dimension-labels.ts";
+import { journalEn, journalZh } from "./journal-labels.ts";
 
 export const zh = {
+  ...journalZh,
   ...dimensionZh,
   ...reportZh,
   ...masterZh,
@@ -20,7 +22,7 @@ export const zh = {
   "shell.themeGreen": "专业绿",
   "shell.showTeachingExplanations": "显示教学说明",
   "shell.intro":
-    "此工作区提供公司科目配置、运行状态和已验证快照的只读报表；尚不提供凭证过账或 AI 服务。",
+    "此工作区提供公司科目与维度维护、凭证预览确认，以及已验证快照的只读报表；尚不提供 AI 服务。",
   "shell.healthHeading": "本地 API 状态",
   "shell.healthLoading": "正在读取本地 API 状态…",
   "shell.connected": "本地 API 已连接",
@@ -49,6 +51,7 @@ export type Language = "zh" | "en";
 export type LabelResources = Readonly<Record<LabelKey, string>>;
 
 export const en = {
+  ...journalEn,
   ...dimensionEn,
   ...reportEn,
   ...masterEn,
@@ -66,7 +69,7 @@ export const en = {
   "shell.themeGreen": "Professional green",
   "shell.showTeachingExplanations": "Show teaching explanations",
   "shell.intro":
-    "This workspace provides company account configuration, runtime status and read-only reports from verified snapshots. Journal posting and AI services are not available.",
+    "This workspace provides company accounts and dimensions, journal preview/confirmation, and read-only reports from verified snapshots. AI services are not available.",
   "shell.healthHeading": "Local API status",
   "shell.healthLoading": "Reading local API status…",
   "shell.connected": "Local API connected",

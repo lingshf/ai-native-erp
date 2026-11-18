@@ -76,7 +76,7 @@ uses only subset allowed combinations (unlisted keys are unrestricted),
 including rules ported from Book. There is no exact-mode column, selector,
 compatibility branch or legacy-data conversion tool. Core compiles lookup
 maps once for in-memory per-line validation; actual journal integration and
-revalidating generated clearing lines are M0-10 work.
+revalidating generated clearing lines are integrated by M0-10.
 
 Balancing candidates require the current same-company clearing account as an
 explicit input. After checking business balance, the pure function rejects a
@@ -109,7 +109,39 @@ JSON is canonical UTF-8 TEXT. Native int64 remains bigint; public
 revisions/audit sequences undergo safe-integer checks. Evidence has real
 UPDATE/DELETE triggers, full-scope unique/FKs and
 restricted parent deletion. This does not resist database-owner DDL tampering
-or deliver GL/approvals/outbox.
+or deliver approvals/outbox.
+
+M0-10 appends `004-journals.sql`; 001–003 remain unchanged. The typed journal
+tables share the master-data store's read/write transactions. Preview is one
+consistent read snapshot of the supplied current `{company,draft}` editor content,
+including unsaved revision-zero drafts, with no draft writes or revision changes.
+The Web preview never calls save; unsaved edits must be explicitly saved with the
+separate Save button and re-previewed before posting. Final composed business and
+generated-line dimension maps are capped at 32 keys during planning, returning a
+field-local 400 rather than failing the response contract. Confirmation re-reads current
+same-company accounts, periods, dimensions, history stamps and correction edges,
+recomputes the fingerprint and validates the full generated plan inside a single
+BEGIN IMMEDIATE. Receipt, all entries/lines/seals/correction edges, audit and
+draft deletion commit together or roll back together.
+
+Existing 001 receipts/audit remain the single stores: nullable source/key
+columns preserve generic receipt operations; new unique indexes enforce journal
+source identity and global idempotency keys. `audit_log` is a read-only projection
+of journal confirmations from `audit`, not a second audit copy. Completed retries
+return the persisted receipt before mutable restrictions, including after a
+restart or period freeze. Sealed entries/lines and correction edges cannot be
+updated/deleted; deferred foreign keys require every committed entry to be
+sealed, and sealed entries reject appended lines. Each immutable seal records
+company cumulative turnover; an indexed latest-entry lookup and sealing trigger
+preserve the existing exact-safe cumulative limit without scanning all GL.
+
+D6 mirrors historical posted lines exactly without applying current defaults,
+derivations, account activity/manual restrictions or dimension validity. It still
+checks same-company account existence, original evidence, swapped exact amounts,
+correction state and dates. Every other new/generated line uses current account
+and dimension rules. Reclassification is full economic value, excluding internal
+balancing turnover; replacement writes both output journals atomically and links
+both outputs. No old-ledger import/conversion is provided.
 
 ## Validation
 

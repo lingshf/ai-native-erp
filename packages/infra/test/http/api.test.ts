@@ -175,11 +175,11 @@ test("unknown Fastify failures use the same safe error contract", async (t) => {
   assert.equal(response.body.includes("private-body"), false);
 });
 
-test("production factory has no test, JSON, or financial endpoints; missing web is explicit", async (t) => {
+test("production factory has no test or old ledger endpoints; missing web and unconfigured journals are explicit", async (t) => {
   const api = await fixture(t);
   assertError(await api.server.inject("/"), 503, "UNAVAILABLE");
   assertError(await api.server.inject("/assets/index.js"), 503, "UNAVAILABLE");
-  for (const path of ["/api/v1/ledger", "/api/v1/journals", "/api/v1/__test/failure"]) {
+  for (const path of ["/api/v1/ledger", "/api/v1/__test/failure"]) {
     assertError(await api.server.inject(path), 404, "NOT_FOUND");
   }
   assertError(
@@ -189,6 +189,15 @@ test("production factory has no test, JSON, or financial endpoints; missing web 
     }),
     404,
     "NOT_FOUND",
+  );
+  const base = await api.listen();
+  assertError(
+    await api.server.inject({
+      url: "/api/v1/journals?company=DEFAULT&status=draft&limit=1",
+      headers: { host: new URL(base).host },
+    }),
+    503,
+    "UNAVAILABLE",
   );
 });
 

@@ -31,7 +31,35 @@ const dimensionNames = [
   "trigger:dimension_history_no_update",
   "trigger:dimension_history_no_delete",
 ];
-const filenames = ["001-storage.sql", "002-master-data.sql", "003-dimensions.sql"];
+const journalNames = [
+  ...[
+    "journal_drafts",
+    "journal_entries",
+    "journal_lines",
+    "journal_seals",
+    "journal_corrections",
+  ].map((name) => `table:${name}`),
+  ...[
+    "receipts_idempotency",
+    "receipts_source",
+    "receipts_journal_company",
+    "journal_lines_period_account",
+    "journal_entries_page",
+    "journal_entries_recent",
+  ].map((name) => `index:${name}`),
+  "view:audit_log",
+  "trigger:journal_seal_balance",
+  "trigger:journal_lines_sealed",
+  ...["journal_entries", "journal_lines", "journal_seals", "journal_corrections"].flatMap(
+    (name) => [`trigger:${name}_no_update`, `trigger:${name}_no_delete`],
+  ),
+];
+const filenames = [
+  "001-storage.sql",
+  "002-master-data.sql",
+  "003-dimensions.sql",
+  "004-journals.sql",
+];
 
 export function normalizeMigration(text: string): string {
   const normalized = text.replaceAll("\r\n", "\n");
@@ -79,6 +107,7 @@ export async function inspectSchema(
       ...baseNames,
       ...(latest >= 2 ? masterNames : []),
       ...(latest >= 3 ? dimensionNames : []),
+      ...(latest >= 4 ? journalNames : []),
     ])
   )
     throw new StorageError("SCHEMA_MISMATCH");

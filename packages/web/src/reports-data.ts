@@ -106,14 +106,15 @@ export function parseLedgerPage(
     return invalid();
   return page;
 }
-export function formatMinor(value: number, language: Language): string {
-  if (!Number.isSafeInteger(value)) return invalid();
+export function formatMinor(value: number, language: Language, scale = 2): string {
+  if (!Number.isSafeInteger(value) || !Number.isInteger(scale) || scale < 0 || scale > 4)
+    return invalid();
   const integer = BigInt(value);
   const magnitude = integer < 0n ? -integer : integer;
   const whole = new Intl.NumberFormat(language, { maximumFractionDigits: 0 }).format(
-    magnitude / 100n,
+    magnitude / 10n ** BigInt(scale),
   );
-  return `${integer < 0n ? "-" : ""}${whole}.${String(magnitude % 100n).padStart(2, "0")}`;
+  return `${integer < 0n ? "-" : ""}${whole}${scale ? `.${String(magnitude % 10n ** BigInt(scale)).padStart(scale, "0")}` : ""}`;
 }
 export async function readReport<T>(
   path: string,

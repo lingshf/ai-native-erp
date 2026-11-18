@@ -378,7 +378,7 @@ it("upgrades an authentic immutable 001 target only on explicit migration, prese
       expect(raw.prepare("SELECT tenant_id FROM tenants").all()).toEqual([{ tenant_id: "KEEP" }]);
       expect(
         raw.prepare("SELECT version,checksum FROM schema_migrations ORDER BY version").all(),
-      ).toMatchObject([{ version: 1, checksum }, { version: 2 }, { version: 3 }]);
+      ).toMatchObject([{ version: 1, checksum }, { version: 2 }, { version: 3 }, { version: 4 }]);
     } finally {
       raw.close();
     }
