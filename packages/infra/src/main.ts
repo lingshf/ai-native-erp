@@ -1,10 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { createApi } from "./http/index.ts";
-import { defaultErrorLogger } from "./http/errors.ts";
-import { MasterDataService, DimensionService } from "@erp/core/application";
+import type { MasterDataService } from "@erp/core/application";
 import { parseRuntimeConfiguration } from "./index.ts";
-import { createSqliteStorage } from "./storage/index.ts";
-import { createMasterDataStore } from "./storage/master-data.ts";
+import type { createMasterDataStore } from "./storage/master-data.ts";
 
 let store: ReturnType<typeof createMasterDataStore> | undefined;
 try {
@@ -14,6 +11,19 @@ try {
     ...(process.env.ERP_PORT !== undefined ? { ERP_PORT: process.env.ERP_PORT } : {}),
   };
   parseRuntimeConfiguration(environment);
+  const [
+    { createApi },
+    { defaultErrorLogger },
+    { MasterDataService, DimensionService },
+    { createSqliteStorage },
+    { createMasterDataStore },
+  ] = await Promise.all([
+    import("./http/index.ts"),
+    import("./http/errors.ts"),
+    import("@erp/core/application"),
+    import("./storage/index.ts"),
+    import("./storage/master-data.ts"),
+  ]);
   let masterData: MasterDataService | undefined;
   if (process.env.ERP_SQLITE_FILE !== undefined) {
     const config = { filename: process.env.ERP_SQLITE_FILE };
@@ -45,7 +55,7 @@ try {
   process.once("SIGTERM", close);
 } catch (error) {
   await store?.close().catch(() => {
-    defaultErrorLogger({ requestId: randomUUID(), errorType: "InternalError" });
+    console.error(JSON.stringify({ requestId: randomUUID(), errorType: "InternalError" }));
   });
   const kind =
     error !== null && typeof error === "object" && "code" in error && error.code === "EADDRINUSE"
