@@ -91,7 +91,12 @@ export function sendHttpError(
     params: {},
     fieldErrors:
       error instanceof DomainError && error.issue
-        ? [{ path: error.issue.path, messageKey: `api.error.account.${error.issue.rule}` }]
+        ? [
+            {
+              path: error.issue.path,
+              messageKey: `api.error.${"scope" in error.issue ? "dimensions" : "account"}.${error.issue.rule}`,
+            },
+          ]
         : [],
     requestId,
     retryable: status === 503,

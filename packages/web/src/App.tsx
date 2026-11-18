@@ -17,6 +17,9 @@ const storage = () => window.localStorage;
 const Accounts = lazy(() =>
   import("./Accounts.tsx").then((module) => ({ default: module.Accounts })),
 );
+const Dimensions = lazy(() =>
+  import("./Dimensions.tsx").then((module) => ({ default: module.Dimensions })),
+);
 
 export function App() {
   const [client] = useState(
@@ -100,6 +103,7 @@ function Workspace() {
             <div className="navigation-group">
               <span>{t("master.group")}</span>
               <NavLink to="/accounts">{t("master.title")}</NavLink>
+              <NavLink to="/dimensions">{t("dim.title")}</NavLink>
             </div>
             <div className="navigation-group">
               <span>{t("reports.group")}</span>
@@ -164,6 +168,14 @@ function Workspace() {
         </aside>
         <main id="workspace-main" tabIndex={-1}>
           <Routes>
+            <Route
+              path="/dimensions"
+              element={
+                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                  <Dimensions preferences={preferences} />
+                </Suspense>
+              }
+            />
             <Route
               path="/accounts"
               element={

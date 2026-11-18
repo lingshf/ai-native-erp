@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { masterDataOpenApi } from "./master-data.ts";
+import { dimensionsOpenApi } from "./dimensions.ts";
+export * from "./dimensions.ts";
 import {
   legacyContextSchema,
   legacyTrialSchema,
@@ -80,6 +82,7 @@ export const openApiDocument = {
   openapi: "3.1.0",
   info: { title: "AI Native ERP Local runtime contract", version: "1" },
   paths: {
+    ...dimensionsOpenApi.paths,
     ...masterDataOpenApi.paths,
     "/api/v1/legacy/context": legacyOperation("getLegacyContext", "LegacyContextResponse"),
     "/api/v1/legacy/trial": legacyOperation(
@@ -109,6 +112,7 @@ export const openApiDocument = {
   },
   components: {
     schemas: {
+      ...dimensionsOpenApi.schemas,
       ...masterDataOpenApi.schemas,
       HealthResponse: z.toJSONSchema(healthSchema, { target: "draft-2020-12" }),
       ErrorResponse: z.toJSONSchema(errorSchema, { target: "draft-2020-12" }),

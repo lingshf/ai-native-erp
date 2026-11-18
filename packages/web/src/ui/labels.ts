@@ -1,7 +1,9 @@
 import { reportEn, reportZh } from "./report-labels.ts";
 import { masterEn, masterZh } from "./master-labels.ts";
+import { dimensionEn, dimensionZh } from "./dimension-labels.ts";
 
 export const zh = {
+  ...dimensionZh,
   ...reportZh,
   ...masterZh,
   "shell.title": "ERP 工作区 / 架构迁移",
@@ -47,6 +49,7 @@ export type Language = "zh" | "en";
 export type LabelResources = Readonly<Record<LabelKey, string>>;
 
 export const en = {
+  ...dimensionEn,
   ...reportEn,
   ...masterEn,
   "shell.title": "ERP workspace / architecture migration",

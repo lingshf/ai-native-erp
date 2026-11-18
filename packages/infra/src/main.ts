@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createApi } from "./http/index.ts";
 import { defaultErrorLogger } from "./http/errors.ts";
-import { MasterDataService } from "@erp/core/application";
+import { MasterDataService, DimensionService } from "@erp/core/application";
 import { parseRuntimeConfiguration } from "./index.ts";
 import { createSqliteStorage } from "./storage/index.ts";
 import { createMasterDataStore } from "./storage/master-data.ts";
@@ -29,7 +29,7 @@ try {
   }
   const api = await createApi({
     environment,
-    ...(masterData ? { masterData } : {}),
+    ...(masterData && store ? { masterData, dimensions: new DimensionService(store) } : {}),
   });
   await api.listen();
   const close = () => {

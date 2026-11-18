@@ -15,6 +15,7 @@ import { Queue } from "./queue.ts";
 import { sqliteBackend } from "./sqlite.ts";
 import { storageError } from "./errors.ts";
 import { inspectSchema } from "./migrations.ts";
+import { dimensionRepository } from "./dimensions.ts";
 import type { Connection, Row, SqliteStorageConfig } from "./types.ts";
 
 function decode<T>(schema: ContractSchema<T>, value: unknown): T {
@@ -73,6 +74,7 @@ function page<T>(
 }
 function repository(db: Connection): MasterDataRepository {
   return {
+    ...dimensionRepository(db),
     async company(code) {
       const rows = await db.query("SELECT * FROM ledger_companies WHERE company_id=?", [code]);
       return rows[0] ? companyRow(rows[0]) : null;

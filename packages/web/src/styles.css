@@ -359,3 +359,17 @@ tfoot {
   min-height: 44px;
   min-width: 0;
 }
+.dimensions > label {
+  display: block;
+  margin-top: 0.75rem;
+}
+.dimension-editor fieldset > div {
+  display: grid;
+  gap: 0.35rem;
+}
+.dimension-editor textarea {
+  width: 100%;
+  min-width: 0;
+  resize: vertical;
+  font: inherit;
+}
