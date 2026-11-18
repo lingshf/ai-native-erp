@@ -1,8 +1,10 @@
 export * from "./master-data.ts";
 export * from "./dimensions.ts";
 export * from "./journals.ts";
+export * from "./business-events.ts";
 import type { DimensionFieldIssue } from "./dimensions.ts";
 import type { JournalFieldIssue } from "./journals.ts";
+import type { BusinessIssue } from "./business-events.ts";
 export type DomainErrorCode = "INVALID_INPUT" | "OVERFLOW" | "NOT_FOUND" | "CONFLICT";
 
 export interface AccountFieldIssue {
@@ -11,10 +13,10 @@ export interface AccountFieldIssue {
 }
 export class DomainError extends Error {
   readonly code: DomainErrorCode;
-  readonly issue: AccountFieldIssue | DimensionFieldIssue | JournalFieldIssue | undefined;
+  readonly issue: AccountFieldIssue | DimensionFieldIssue | JournalFieldIssue | BusinessIssue | undefined;
   constructor(
     code: DomainErrorCode,
-    issue?: AccountFieldIssue | DimensionFieldIssue | JournalFieldIssue,
+    issue?: AccountFieldIssue | DimensionFieldIssue | JournalFieldIssue | BusinessIssue,
   ) {
     super(
       code === "OVERFLOW" ? "The exact integer range was exceeded." : "Invalid projection input.",

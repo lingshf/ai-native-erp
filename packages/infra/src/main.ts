@@ -14,7 +14,7 @@ try {
   const [
     { createApi },
     { defaultErrorLogger },
-    { MasterDataService, DimensionService, JournalService },
+    { MasterDataService, DimensionService, JournalService, BusinessEventService },
     { createSqliteStorage },
     { createMasterDataStore },
     { journalTools },
@@ -46,6 +46,7 @@ try {
           masterData,
           dimensions: new DimensionService(store),
           journals: new JournalService(store, journalTools),
+          events: new BusinessEventService(store, journalTools),
         }
       : {}),
   });

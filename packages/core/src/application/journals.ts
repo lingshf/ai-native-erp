@@ -15,6 +15,7 @@ import {
   type JournalSummary,
   type Page,
   type PageQuery,
+  type DimensionMap,
 } from "@erp/core/domain";
 import type { MasterDataRepository, MasterDataStore } from "./master-data.ts";
 export interface JournalRepository {
@@ -90,6 +91,7 @@ export class JournalService {
       return {
         entry: required(await repo.journalEntry(company, id)),
         chain: await repo.journalChain(company, id),
+        businessEventId: await repo.journalBusinessEvent(company, id),
       };
     });
   }
@@ -119,14 +121,13 @@ export class JournalService {
       return { deleted: id };
     });
   }
-  private async compute(
+  async plan(
     repo: MasterDataRepository,
     company: string,
     draft: JournalDraft,
+    master: readonly DimensionMap[] = [],
   ): Promise<JournalPreview> {
     const configuration = required(await repo.company(company));
-    if (await repo.journalSourceExists(company, draft.sourceRef))
-      journalError("sourceRef", "source", true);
     const catalog = await repo.dimensionCatalog(company);
     const original = draft.originalId
       ? required(await repo.journalEntry(company, draft.originalId))
@@ -154,6 +155,7 @@ export class JournalService {
       original,
       corrections,
       turnover,
+      master,
     });
     const { lines, ...draftHeader } = draft;
     const fingerprint = this.tools.hash([
@@ -180,7 +182,8 @@ export class JournalService {
       const saved = await repo.journalDraft(company, draft.id);
       if ((saved?.revision ?? 0) !== draft.revision || (await repo.journalEntry(company, draft.id)))
         journalError("revision", "stale", true);
-      return this.compute(repo, company, draft);
+      await this.manualSource(repo, company, draft);
+      return this.plan(repo, company, draft);
     });
   }
   confirm(input: JournalConfirm): Promise<JournalReceipt> {
@@ -196,19 +199,32 @@ export class JournalService {
         if (
           previous.draftId !== input.draftId ||
           previous.draftRevision !== input.revision ||
-          previous.fingerprint !== input.fingerprint
+          previous.fingerprint !== input.fingerprint ||
+          await repo.businessByReceipt(input.company, input.idempotencyKey)
         )
           journalError("idempotencyKey", "source", true);
         return previous;
       }
       const draft = required(await repo.journalDraft(input.company, input.draftId));
       if (draft.revision !== input.revision) journalError("revision", "stale", true);
-      const current = await this.compute(repo, input.company, draft);
+      await this.manualSource(repo, input.company, draft);
+      const current = await this.plan(repo, input.company, draft);
       if (current.fingerprint !== input.fingerprint) journalError("fingerprint", "stale", true);
-      const postedAt = this.tools.now();
-      const entries: JournalEntry[] = current.plan.journals.map((journal, index) => ({
+      const receipt = await this.commit(repo, current, input.idempotencyKey);
+      await repo.deleteJournalDraft(input.company, input.draftId, input.revision);
+      return receipt;
+    });
+  }
+  private async manualSource(repo: MasterDataRepository, company: string, draft: JournalDraft) {
+    if (await repo.journalSourceExists(company, draft.sourceRef))
+      journalError("sourceRef", "source", true);
+    if (draft.originalId && await repo.journalBusinessEvent(company, draft.originalId))
+      journalError("originalId", "businessSource");
+  }
+  private entries(current: JournalPreview, postedAt: string): JournalEntry[] {
+    return current.plan.journals.map((journal, index) => ({
         ...journal,
-        id: index === 0 ? input.draftId : this.tools.id(),
+        id: index === 0 ? current.plan.draftId : this.tools.id(),
         sourceRef: current.plan.sourceRef,
         operation: current.plan.operation,
         date: current.plan.date,
@@ -216,26 +232,36 @@ export class JournalService {
         fingerprint: current.fingerprint,
         postedAt,
       }));
+  }
+  async writeEntries(repo: MasterDataRepository, current: JournalPreview, key: string, entries: readonly JournalEntry[]) {
+    for (const entry of entries) {
+      await repo.insertJournalEntry(current.plan.company, entry, key);
+      if (current.plan.originalId)
+        await repo.insertJournalCorrection(current.plan.company, current.plan.originalId, entry);
+    }
+  }
+  async commit(repo: MasterDataRepository, current: JournalPreview, key: string, operation: JournalReceipt["operation"] = current.plan.operation): Promise<JournalReceipt> {
+      const postedAt = this.tools.now();
+      const entries = this.entries(current, postedAt);
       const receipt: JournalReceipt = {
-        company: input.company,
+        company: current.plan.company,
         sourceRef: current.plan.sourceRef,
-        idempotencyKey: input.idempotencyKey,
-        draftId: input.draftId,
-        draftRevision: input.revision,
-        fingerprint: input.fingerprint,
-        operation: current.plan.operation,
+        idempotencyKey: key,
+        draftId: current.plan.draftId,
+        draftRevision: current.plan.draftRevision,
+        fingerprint: current.fingerprint,
+        operation,
         journalIds: entries.map((entry) => entry.id),
         postedAt,
       };
       await repo.insertJournalReceipt(receipt);
-      for (const entry of entries) {
-        await repo.insertJournalEntry(input.company, entry, input.idempotencyKey);
-        if (current.plan.originalId)
-          await repo.insertJournalCorrection(input.company, current.plan.originalId, entry);
-      }
+      await this.writeEntries(repo, current, key, entries);
       await repo.insertJournalAudit(receipt);
-      await repo.deleteJournalDraft(input.company, input.draftId, input.revision);
       return receipt;
-    });
+  }
+  async transfer(repo: MasterDataRepository, current: JournalPreview, key: string): Promise<readonly string[]> {
+    const entries = this.entries(current, this.tools.now());
+    await this.writeEntries(repo, current, key, entries);
+    return entries.map(entry => entry.id);
   }
 }

@@ -23,6 +23,9 @@ const Dimensions = lazy(() =>
 const Journals = lazy(() =>
   import("./Journals.tsx").then((module) => ({ default: module.Journals })),
 );
+const BusinessEvents = lazy(() =>
+  import("./BusinessEvents.tsx").then((module) => ({ default: module.BusinessEvents })),
+);
 
 export function App() {
   const [client] = useState(
@@ -111,6 +114,7 @@ function Workspace() {
             <div className="navigation-group">
               <span>{t("journal.group")}</span>
               <NavLink to="/journals">{t("journal.title")}</NavLink>
+              <NavLink to="/events">{t("business.title")}</NavLink>
             </div>
             <div className="navigation-group">
               <span>{t("reports.group")}</span>
@@ -175,6 +179,14 @@ function Workspace() {
         </aside>
         <main id="workspace-main" tabIndex={-1}>
           <Routes>
+            <Route
+              path="/events"
+              element={
+                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                  <BusinessEvents preferences={preferences} />
+                </Suspense>
+              }
+            />
             <Route
               path="/dimensions"
               element={

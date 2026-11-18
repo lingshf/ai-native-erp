@@ -864,7 +864,7 @@ function CompanyJournals({
     </>
   );
 }
-function DimensionFields({
+export function DimensionFields({
   keys,
   value,
   title,
@@ -894,7 +894,7 @@ function DimensionFields({
     </div>
   );
 }
-function Modal({
+export function Modal({
   title,
   children,
   busy,
@@ -932,7 +932,7 @@ function Modal({
         if (event.key === "Tab") {
           const nodes = Array.from(
             event.currentTarget.querySelectorAll<HTMLElement>(
-              "button:not(:disabled),[tabindex='0']",
+              "button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled),[tabindex='0']",
             ),
           );
           const first = nodes[0],
@@ -962,7 +962,7 @@ function Modal({
     </dialog>
   );
 }
-function JournalError({ error, t, uncertain }: { error: unknown; t: T; uncertain: boolean }) {
+export function JournalError({ error, t, uncertain }: { error: unknown; t: T; uncertain: boolean }) {
   const issue = error instanceof MasterDataFailure ? error.detail?.fieldErrors[0] : undefined;
   const rule = issue?.messageKey.split(".").at(-1);
   const rules = [
@@ -978,6 +978,7 @@ function JournalError({ error, t, uncertain }: { error: unknown; t: T; uncertain
     "source",
     "correction",
     "amount",
+    "businessSource",
   ] as const;
   const key = rules.find((value) => value === rule);
   const fields = [
@@ -1026,7 +1027,7 @@ function JournalError({ error, t, uncertain }: { error: unknown; t: T; uncertain
     </p>
   );
 }
-function LinePlan({
+export function LinePlan({
   lines,
   company,
   language,
@@ -1099,7 +1100,7 @@ function LinePlan({
     </>
   );
 }
-function VirtualRows<T>({
+export function VirtualRows<T>({
   items,
   title,
   header,
