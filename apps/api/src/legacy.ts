@@ -1,13 +1,11 @@
-import { All, Controller, HttpException, Inject, Req, Res } from '@nestjs/common';
-import type { FastifyReply, FastifyRequest } from 'fastify';
-import { LegacyTeachingQueryService } from '@erp/application';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { LegacyTeachingQueryService } from '@erp/application';
 import {
   legacyContextSchema, legacyTrialSchema, legacyLedgerSchema,
   legacyTrialQuerySchema, legacyLedgerQuerySchema,
 } from '@erp/contracts';
+import { httpError } from './errors.js';
 
-export const LEGACY_SERVICE = Symbol('LegacyTeachingQueryService');
-export const LEGACY_BOUNDARY = Symbol('LocalFinanceBoundary');
 export const LEGACY_PATHS = new Set([
   '/api/v1/legacy/context', '/api/v1/legacy/trial', '/api/v1/legacy/ledger',
 ]);
@@ -39,9 +37,9 @@ export class LocalFinanceBoundary {
       || (request.headers.origin !== undefined && request.headers.origin !== origin
         && request.headers.origin !== this.devOrigin)
       || (site !== undefined && !['same-origin', 'same-site', 'none'].includes(String(site)))) {
-      throw new HttpException('Forbidden', 403);
+      throw httpError(403);
     }
-    if (request.method !== 'GET') throw new HttpException('Method not allowed', 405);
+    if (request.method !== 'GET') throw httpError(405);
   }
 }
 
@@ -49,65 +47,60 @@ function queryValues(request: FastifyRequest): Record<string, string> {
   const query = new URLSearchParams(request.url.split('?').slice(1).join('?'));
   const values: Record<string, string> = Object.create(null);
   for (const [key, value] of query) {
-    if (Object.hasOwn(values, key)) throw new HttpException('Invalid query', 400);
+    if (Object.hasOwn(values, key)) throw httpError(400);
     values[key] = value;
   }
   return values;
 }
 
-@Controller('api/v1/legacy')
-export class LegacyController {
-  constructor(
-    @Inject(LEGACY_SERVICE) private readonly service: LegacyTeachingQueryService | undefined,
-    @Inject(LEGACY_BOUNDARY) private readonly boundary: LocalFinanceBoundary,
-  ) {}
-
-  private prepare(request: FastifyRequest, reply: FastifyReply): Record<string, string> {
+export function registerLegacyRoutes(
+  server: FastifyInstance,
+  service: LegacyTeachingQueryService | undefined,
+  boundary: LocalFinanceBoundary,
+): void {
+  const prepare = (request: FastifyRequest, reply: FastifyReply): Record<string, string> => {
     // Protect the matched handler itself, including any router-normalized path.
-    this.boundary.assert(request, reply);
+    boundary.assert(request, reply);
     return queryValues(request);
-  }
+  };
 
-  private reader(): LegacyTeachingQueryService {
-    if (!this.service) throw new HttpException('Snapshot unavailable', 503);
-    return this.service;
-  }
+  const reader = (): LegacyTeachingQueryService => {
+    if (!service) throw httpError(503);
+    return service;
+  };
 
-  @All('context')
-  context(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const query = this.prepare(request, reply);
-    if (Object.keys(query).length) throw new HttpException('Invalid query', 400);
-    const parsed = legacyContextSchema.safeParse({ contractVersion: '1', ...this.reader().context() });
-    if (!parsed.success) throw new HttpException('Snapshot unavailable', 503);
+  server.all('/api/v1/legacy/context', (request, reply) => {
+    const query = prepare(request, reply);
+    if (Object.keys(query).length) throw httpError(400);
+    const parsed = legacyContextSchema.safeParse({ contractVersion: '1', ...reader().context() });
+    if (!parsed.success) throw httpError(503);
     return parsed.data;
-  }
+  });
 
-  @All('trial')
-  trial(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const query = legacyTrialQuerySchema.safeParse(this.prepare(request, reply));
-    if (!query.success) throw new HttpException('Invalid query', 400);
+  server.all('/api/v1/legacy/trial', (request, reply) => {
+    const query = legacyTrialQuerySchema.safeParse(prepare(request, reply));
+    if (!query.success) throw httpError(400);
     const { snapshot, month } = query.data;
     const parsed = legacyTrialSchema.safeParse({
-      contractVersion: '1', ...this.reader().trial(snapshot, month),
+      contractVersion: '1', ...reader().trial(snapshot, month),
     });
-    if (!parsed.success) throw new HttpException('Snapshot unavailable', 503);
+    if (!parsed.success) throw httpError(503);
     return parsed.data;
-  }
+  });
 
-  @All('ledger')
-  ledger(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
-    const query = legacyLedgerQuerySchema.safeParse(this.prepare(request, reply));
-    if (!query.success) throw new HttpException('Invalid query', 400);
+  server.all('/api/v1/legacy/ledger', (request, reply) => {
+    const query = legacyLedgerQuerySchema.safeParse(prepare(request, reply));
+    if (!query.success) throw httpError(400);
     const { snapshot, month, account, limit, cursor } = query.data;
     const parsed = legacyLedgerSchema.safeParse({
       contractVersion: '1',
-      ...this.reader().ledger(snapshot, {
+      ...reader().ledger(snapshot, {
         month, account,
         ...(limit !== undefined ? { limit: Number(limit) } : {}),
         ...(cursor !== undefined ? { cursor } : {}),
       }),
     });
-    if (!parsed.success) throw new HttpException('Snapshot unavailable', 503);
+    if (!parsed.success) throw httpError(503);
     return parsed.data;
-  }
+  });
 }

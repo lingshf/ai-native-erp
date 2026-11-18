@@ -9,12 +9,7 @@
     "@erp/contracts": "0.1.0",
     "@erp/infrastructure": "0.1.0",
     "@fastify/static": "10.1.10",
-    "@nestjs/common": "12.3.3",
-    "@nestjs/core": "12.3.3",
-    "@nestjs/platform-fastify": "12.3.3",
-    "fastify": "5.12.8",
-    "reflect-metadata": "0.2.2",
-    "rxjs": "7.8.2"
+    "fastify": "5.12.8"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

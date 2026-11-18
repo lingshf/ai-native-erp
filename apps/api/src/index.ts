@@ -1,44 +1,26 @@
-import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { statSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fastifyStatic from '@fastify/static';
-import { Controller, Get, HttpException, Inject, Module, Query } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
-import { FastifyAdapter } from '@nestjs/platform-fastify';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import Fastify from 'fastify';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { LegacyTeachingQueryService, RuntimeInfoService } from '@erp/application';
 import type { LegacyTeachingReader, RuntimeInfoPort } from '@erp/application';
 import { healthSchema } from '@erp/contracts';
-import type { HealthResponse } from '@erp/contracts';
 import { LocalRuntimeInfo, parseRuntimeConfiguration } from '@erp/infrastructure';
 import type { RuntimeConfiguration, RuntimeEnvironment } from '@erp/infrastructure';
-import { defaultErrorLogger, sendHttpError, UnifiedHttpExceptionFilter } from './errors.js';
+import { defaultErrorLogger, httpError, sendHttpError } from './errors.js';
 import type { SafeErrorLogger } from './errors.js';
 import {
-  LEGACY_BOUNDARY, LEGACY_PATHS, LEGACY_SERVICE, LegacyController,
+  LEGACY_PATHS, registerLegacyRoutes,
   LocalFinanceBoundary, financeHeaders, validateDevOrigin,
 } from './legacy.js';
 
 export type { SafeErrorEvent, SafeErrorLogger } from './errors.js';
-export { UnifiedHttpExceptionFilter } from './errors.js';
 export { validateDevOrigin } from './legacy.js';
 
 const HEALTH_PATH = '/api/v1/health';
-const RUNTIME_SERVICE = Symbol('RuntimeInfoService');
-
-@Controller('api/v1')
-class HealthController {
-  constructor(@Inject(RUNTIME_SERVICE) private readonly runtime: RuntimeInfoService) {}
-
-  @Get('health')
-  health(@Query() query: Record<string, unknown>): HealthResponse {
-    if (Object.keys(query).length !== 0) throw new HttpException('Invalid query', 400);
-    return healthSchema.parse({ ...this.runtime.getRuntimeInfo(), contractVersion: '1' });
-  }
-}
 
 export interface CreateApiOptions {
   readonly environment?: RuntimeEnvironment;
@@ -54,7 +36,7 @@ export interface CreateApiOptions {
 }
 
 export interface LocalApi {
-  readonly app: NestFastifyApplication;
+  readonly app: FastifyInstance;
   readonly server: FastifyInstance;
   readonly configuration: RuntimeConfiguration;
   listen(): Promise<string>;
@@ -72,34 +54,20 @@ export async function createApi(options: CreateApiOptions = {}): Promise<LocalAp
   const log = options.logError ?? defaultErrorLogger;
   const boundary = new LocalFinanceBoundary(validateDevOrigin(options.devOrigin));
   const runtime = new RuntimeInfoService(options.runtimeInfoPort ?? new LocalRuntimeInfo(configuration));
-  @Module({
-    controllers: [HealthController, LegacyController],
-    providers: [
-      { provide: RUNTIME_SERVICE, useValue: runtime },
-      { provide: LEGACY_SERVICE, useValue: options.legacyReader
-        ? new LegacyTeachingQueryService(options.legacyReader) : null },
-      { provide: LEGACY_BOUNDARY, useValue: boundary },
-    ],
-  })
-  class LocalApiModule {}
-
-  const adapter = new FastifyAdapter({
+  const server = Fastify({
     logger: false,
     requestIdHeader: false,
     genReqId: () => randomUUID(),
     exposeHeadRoutes: false,
     frameworkErrors(error: unknown, request: FastifyRequest, reply: FastifyReply) {
-      // Router decoding can fail before onRequest and Nest's exception filter.
+      // Router decoding can fail before onRequest and the error handler.
       if (request.url.split('?')[0]?.startsWith('/api/v1/legacy/')) financeHeaders(reply);
       sendHttpError(error, request, reply, log);
     },
   });
-  const app = await NestFactory.create<NestFastifyApplication>(LocalApiModule, adapter, {
-    logger: false,
-    abortOnError: false,
-  });
-  const server = adapter.getInstance();
   try {
+    server.setErrorHandler((error, request, reply) => sendHttpError(error, request, reply, log));
+    server.setNotFoundHandler((request, reply) => sendHttpError(httpError(404), request, reply, log));
     server.addHook('onRequest', async (request, reply) => {
       const path = request.url.split('?')[0];
       if (path?.startsWith('/api/v1/legacy/')) financeHeaders(reply);
@@ -111,15 +79,21 @@ export async function createApi(options: CreateApiOptions = {}): Promise<LocalAp
           return reply;
         }
       } else if (path === HEALTH_PATH && request.method !== 'GET') {
-        sendHttpError(new HttpException('Method not allowed', 405), request, reply, log);
+        sendHttpError(httpError(405), request, reply, log);
         return reply;
       } else if (path === '/api' || path?.startsWith('/api/')) {
         if (path !== HEALTH_PATH) {
-          sendHttpError(new HttpException('Not found', 404), request, reply, log);
+          sendHttpError(httpError(404), request, reply, log);
           return reply;
         }
       }
     });
+    server.get<{ Querystring: Record<string, unknown> }>(HEALTH_PATH, async request => {
+      if (Object.keys(request.query).length) throw httpError(400);
+      return healthSchema.parse({ ...runtime.getRuntimeInfo(), contractVersion: '1' });
+    });
+    registerLegacyRoutes(server, options.legacyReader
+      ? new LegacyTeachingQueryService(options.legacyReader) : undefined, boundary);
     const root = options.webRoot ?? defaultWebRoot();
     if (!isAbsolute(root)) throw new TypeError('Web root must be absolute');
     let built = false;
@@ -130,29 +104,25 @@ export async function createApi(options: CreateApiOptions = {}): Promise<LocalAp
         && (error.code === 'ENOENT' || error.code === 'ENOTDIR'))) throw error;
     }
     if (built) {
-      await server.register(fastifyStatic, { root, dotfiles: 'deny', index: ['index.html'] });
+      server.register(fastifyStatic, { root, dotfiles: 'deny', index: ['index.html'] });
     } else {
-      server.get('/', async () => { throw new HttpException('Web build unavailable', 503); });
-      server.get('/*', async () => { throw new HttpException('Web build unavailable', 503); });
+      server.get('/', async () => { throw httpError(503); });
+      server.get('/*', async () => { throw httpError(503); });
     }
     await options.registerTestRoutes?.(server);
-    app.useGlobalFilters(new UnifiedHttpExceptionFilter(log));
-    // Nest's Fastify error and not-found handlers both dispatch through this filter.
-    await app.init();
     await server.ready();
     let closing: Promise<void> | undefined;
     const close = (): Promise<void> => {
       boundary.origin = undefined;
-      return closing ??= app.close();
+      return closing ??= server.close();
     };
     return {
-      app,
+      app: server,
       server,
       configuration,
       async listen() {
         try {
-          await app.listen(configuration.port, configuration.host);
-          const address = await app.getUrl();
+          const address = await server.listen({ port: configuration.port, host: configuration.host });
           boundary.origin = new URL(address).origin;
           return address;
         } catch (error) {
@@ -163,7 +133,7 @@ export async function createApi(options: CreateApiOptions = {}): Promise<LocalAp
       close,
     };
   } catch (error) {
-    await app.close();
+    await server.close();
     throw error;
   }
 }

@@ -112,7 +112,7 @@ test('Fastify parser errors are strict 400/415 using factory-only body routes', 
   assert.equal(JSON.stringify(api.events).includes('sensitive'), false);
 });
 
-test('unknown Nest application failure is sanitized and IDs ignore incoming headers', async t => {
+test('unknown application failure is sanitized and IDs ignore incoming headers', async t => {
   const secret = 'private-ledger-path-and-body';
   const api = await fixture(t, {
     runtimeInfoPort: { getRuntimeInfo() { throw new Error(secret); } },
