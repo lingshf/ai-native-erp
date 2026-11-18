@@ -15,13 +15,13 @@
 ```powershell
 git clone https://github.com/lingshf/ai-native-erp.git
 Set-Location ai-native-erp
-npm ci --ignore-scripts
+npm ci
 npm test
 npm run check
 npm start
 ```
 
-仓库不包含`.env`、原账套、依赖目录或任何登录凭据。首次启动会在新副本创建独立的本机教学账套；已有账套不会从其他机器自动迁移。未配置AI时仍可使用确定性手工记账。需要AI时参照`.env.example`及下文受支持的官方Copilot登录/配置方式；新机器必须独立认证并核实模型可用性，原宿主的认证不随代码迁移。
+仓库不包含`.env`、原账套、依赖目录或任何登录凭据。npm 11按根`package.json`的`allowScripts`仅放行`better-sqlite3`安装脚本，`koffi`脚本保持禁用，不全局开放生命周期脚本。首次启动会在新副本创建独立的本机教学账套；已有账套不会从其他机器自动迁移。未配置AI时仍可使用确定性手工记账。需要AI时参照`.env.example`及下文受支持的官方Copilot登录/配置方式；新机器必须独立认证并核实模型可用性，原宿主的认证不随代码迁移。
 
 ## 新架构Local预览（已验证快照，只读）
 

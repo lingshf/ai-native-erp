@@ -10,6 +10,10 @@
   "engines": {
     "node": ">=24"
   },
+  "allowScripts": {
+    "better-sqlite3": true,
+    "koffi": false
+  },
   "dependencies": {
     "@github/copilot-sdk": "1.0.31"
   },
