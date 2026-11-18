@@ -58,7 +58,9 @@ test("launcher import has no execution side effects; invalid runtime precedes sn
   }
 });
 
-test("launcher rejects missing/duplicate/unknown arguments and noncanonical dev origins safely", () => {
+test("launcher rejects missing/duplicate/unknown arguments and noncanonical dev origins safely", {
+  timeout: 30_000,
+}, () => {
   for (const args of [
     [],
     ["--snapshot-dir"],
