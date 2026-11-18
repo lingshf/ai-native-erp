@@ -1,0 +1,50 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    versioning-strategy: increase
+    open-pull-requests-limit: 3
+    groups:
+      react:
+        patterns:
+          - react
+          - react-dom
+          - react-router-dom
+          - "@tanstack/*"
+          - "@testing-library/*"
+        update-types:
+          - minor
+          - patch
+      vite-vitest:
+        patterns:
+          - vite
+          - vitest
+          - "@vitejs/*"
+          - "@vitest/*"
+        update-types:
+          - minor
+          - patch
+      types:
+        patterns:
+          - "@types/*"
+        update-types:
+          - minor
+          - patch
+      other-dev:
+        dependency-type: development
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 1
+    groups:
+      github-actions:
+        patterns:
+          - "*"
