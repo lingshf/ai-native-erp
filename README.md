@@ -25,6 +25,8 @@ npm start
 
 依赖声明均为精确版本，根`.npmrc`以`save-exact=true`保持新增依赖的版本格式；Node引擎与CI统一为`26.x`。Dependabot每周检查npm升级，按React、Vite/Vitest、types及其它开发依赖分组次要/补丁更新，主版本单独提PR，同时最多打开3个版本升级PR；Actions每月检查并合为一组，同时最多打开1个版本升级PR。这些是并发上限，不是周/月累计配额；升级PR同样先评审、CI通过后再合并，不自动合并。
 
+更新依赖前确认`npm config get registry`为`https://registry.npmjs.org/`；本机镜像配置可能写入不可移植的lockfile地址，不能提交私有源配置或凭据。CI轻量检查会拒绝非公共npm源的tarball地址，本地workspace链接不属于tarball。
+
 ## 新架构Local预览（已验证快照，只读）
 
 历史M03限定只读闭环已交付，代码a608ee1当时在精确新clone实际通过361项、历史双库70、构建和类型检查；历史记录见[项目记录](design/project.md)。这不是原账切换或全部ERP功能完成；Server/PG已延后、不维护。
