@@ -172,7 +172,7 @@ New-Item -ItemType Directory -Path backups -Force | Out-Null
 node scripts\ledger-snapshot.mjs --teaching data\teaching.sqlite --enterprise data\erp.sqlite --target backups\before-architecture
 ```
 
-SQLite的只读WAL访问仍可能更新SHM读标记；已在隔离夹具中观察到M00创建快照时辅助SHM哈希变化，不能把“只读”解释为全部辅助文件逐字节不变。新只读桥仅消费已转换为非WAL的独立快照，并另行核对消费前后源/快照字节及文件名；这不等于已验收真实原账迁移，M08仍须独立备份、核对和回滚门禁。
+SQLite的只读WAL访问仍可能更新SHM读标记；已在隔离夹具中观察到M00创建快照时辅助SHM哈希变化，不能把“只读”解释为全部辅助文件逐字节不变。新只读桥仅消费已转换为非WAL的独立快照，并另行核对消费前后源/快照字节及文件名；这不等于已验收真实原账迁移，后续M2迁移仍须用户授权、独立备份、核对和回滚准备。
 
 目标目录必须不存在，父目录必须存在。工具以只读连接包含已提交WAL页；manifest最后独占发布，任一失败非零，不把遗留目录当有效备份。两库分别一致，不是跨库同时刻快照，最终迁移仍需停写重取；既有备份不能覆盖。备份及manifest含财务证据，只保存在私有目录，不提交或上传。后续消费须使用`verifyLedgerSnapshot`重新核文件与逻辑完整性，不能仅检查manifest是否存在；不承诺未经演练的掉电恢复/生产SLA。
 
