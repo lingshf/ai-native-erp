@@ -45,7 +45,7 @@ test('SQLite real target contract', async (t) => {
   }
 });
 
-test('existing DELETE target waits for a short reader before its first WAL switch', { timeout: 10000 }, async () => {
+test('existing DELETE target configures busy timeout at its first WAL switch', { timeout: 10000 }, async (t) => {
   const directory = resolve('.storage-test-fixtures', `sqlite-wal-switch-${process.pid}`);
   await mkdir(directory, { recursive: true });
   const config = { filename: resolve(directory, 'target.sqlite') };
@@ -59,29 +59,40 @@ test('existing DELETE target waits for a short reader before its first WAL switc
     const raw = new Database(config.filename);
     try { assert.equal(raw.pragma('journal_mode=DELETE', { simple: true }), 'delete'); }
     finally { raw.close(); }
-    // A separate process can release the read lock during the parent's synchronous busy wait.
+    // Keep the read lock until the parent reaches the actual WAL PRAGMA.
     child = spawn(process.execPath, ['--input-type=module', '-e', `
       import Database from 'better-sqlite3';
       const database = new Database(process.argv[1], { readonly: true });
       database.exec('BEGIN');
       database.prepare('SELECT revision FROM companies').all();
-      process.once('message', () => setTimeout(() => {
+      process.once('message', () => {
         database.exec('ROLLBACK');
         database.close();
         process.disconnect();
-      }, 300));
+      });
       process.send('locked');
     `, config.filename], { stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
     exited = once(child, 'exit');
     child.stderr.setEncoding('utf8').on('data', (chunk) => { stderr += chunk; });
     assert.equal((await once(child, 'message', { signal: AbortSignal.timeout(5000) }))[0], 'locked');
-    child.send('release');
+    let walSwitches = 0;
+    const pragma = Database.prototype.pragma;
+    t.mock.method(Database.prototype, 'pragma', function (text, ...options) {
+      if (this.name === config.filename && text === 'journal_mode = WAL') {
+        walSwitches++;
+        assert.equal(pragma.call(this, 'journal_mode', { simple: true }), 'delete');
+        assert.equal(pragma.call(this, 'busy_timeout', { simple: true }), 5000n);
+        child.send('release');
+      }
+      return pragma.call(this, text, ...options);
+    });
     let callbacks = 0;
     await storage.write(plan, (session) => {
       callbacks++;
       return session.revisions.advance(scope, 0);
     });
     assert.deepEqual(await exited, [0, null], stderr);
+    assert.equal(walSwitches, 1);
     assert.equal(callbacks, 1);
     assert.equal(await storage.read(scope, (session) => session.revisions.get(scope)), 1);
     const check = new Database(config.filename, { readonly: true });
