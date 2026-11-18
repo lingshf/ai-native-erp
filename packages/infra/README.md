@@ -78,6 +78,18 @@ compatibility branch or legacy-data conversion tool. Core compiles lookup
 maps once for in-memory per-line validation; actual journal integration and
 revalidating generated clearing lines are M0-10 work.
 
+Balancing candidates require the current same-company clearing account as an
+explicit input. After checking business balance, the pure function rejects a
+missing/inactive/non-clearing or mismatched account before producing candidates.
+Account maintenance itself remains unrestricted by balancing configuration:
+callers must read the current account for each generation, within the journal
+use-case transaction when M0-10 integrates this rule, not reuse its save-time
+snapshot. This is one generation-time policy, not a second account-edit gate.
+
+D5 also intentionally relaxes Book's saved-combination restrictions: an allowed
+combination may omit required segments and may name existing dimensions not
+declared required/optional. Required line values remain independently checked.
+
 SQLite holds separate read/write queues and connections across awaits. Each
 queue permits 64 waiters/one second, callbacks have a ten-second budget, and
 sessions become invalid before cleanup. Pending driver work is drained before

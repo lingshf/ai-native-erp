@@ -93,6 +93,15 @@ describe("dimension rules", () => {
         explicit: { DEPT: "B", COST: "A" },
       }).dimensions,
     ).toEqual({ DEPT: "B", COST: "A" });
+    const undeclared = { ...structure, required: ["DEPT"], allowed: [{ COST: "A" }] };
+    validateDimensionConfig(undeclared, [...catalog, undeclared]);
+    expect(
+      compileDimensionRules([...catalog, undeclared]).resolve({
+        account: "1000",
+        day: "2026-01-15",
+        explicit: { DEPT: "B", COST: "A" },
+      }).dimensions,
+    ).toEqual({ DEPT: "B", COST: "A" });
     for (const [explicit, path, rule] of [
       [{ COST: "A" }, "dimensions.DEPT", "required"],
       [{ DEPT: "A", SITE: null }, "dimensions.SITE", "forbidden"],
@@ -136,7 +145,12 @@ describe("dimension rules", () => {
   it("reports configuration paths for missing references, duplicate constraints, bad windows and dependency cycles", () => {
     const cases: readonly [DimensionConfig, string, string][] = [
       [{ ...structure, required: ["MISSING"] }, "required.0", "reference"],
-      [{ ...structure, required: ["DEPT"], forbidden: ["DEPT"] }, "forbidden", "duplicate"],
+      [
+        { ...structure, required: ["DEPT"], optional: ["DEPT"], forbidden: [] },
+        "optional.0",
+        "duplicate",
+      ],
+      [{ ...structure, required: ["DEPT"], forbidden: ["DEPT"] }, "forbidden.0", "duplicate"],
       [{ ...structure, from: "2026-02-01", to: "2026-01-01" }, "to", "window"],
       [{ ...structure, from: "2026-02-30" }, "from", "window"],
       [
@@ -246,13 +260,25 @@ describe("dimension rules", () => {
       { debit: 0, credit: 1300, dimensions: { DEPT: "B" } },
     ];
     const before = JSON.stringify(lines);
-    expect(dimensionBalance(config, "2026-01-15", lines)).toMatchObject([
+    const account = { code: "2800", active: true, purpose: "clearing" as const };
+    expect(dimensionBalance(config, "2026-01-15", lines, account)).toMatchObject([
       { account: "2800", debit: 0, credit: 1300, dimensions: { DEPT: "A" }, businessNet: 1300 },
       { account: "2800", debit: 1300, credit: 0, dimensions: { DEPT: "B" }, businessNet: -1300 },
     ]);
     expect(JSON.stringify(lines)).toBe(before);
+    for (const changed of [
+      null,
+      { ...account, active: false },
+      { ...account, purpose: "general" as const },
+      { ...account, code: "2900" },
+    ])
+      expect(() => dimensionBalance(config, "2026-01-15", lines, changed)).toThrow(
+        expect.objectContaining({
+          issue: { scope: "dimensions", path: "account", rule: "reference" },
+        }),
+      );
     expect(() =>
-      dimensionBalance(config, "2026-01-15", [{ debit: 1, credit: 0, dimensions: {} }]),
+      dimensionBalance(config, "2026-01-15", [{ debit: 1, credit: 0, dimensions: {} }], account),
     ).toThrow(
       expect.objectContaining({
         issue: expect.objectContaining({ path: "lines", rule: "balance" }),
@@ -263,6 +289,6 @@ describe("dimension rules", () => {
       [{ ...lines[0], dimensions: {} }, lines[1]],
       [{ ...lines[0], debit: Number.MAX_SAFE_INTEGER + 1 }, lines[1]],
     ])
-      expect(() => dimensionBalance(config, "2026-01-15", changed)).toThrow();
+      expect(() => dimensionBalance(config, "2026-01-15", changed, account)).toThrow();
   });
 });

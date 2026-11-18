@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { MasterDataService, DimensionService } from "@erp/core/application";
+import { dimensionBalance } from "@erp/core/domain";
 import { dimensionConfigSchema, errorSchema, type DimensionCommand } from "@erp/core/contracts";
 import { createSqliteStorage } from "../../src/storage/index.ts";
 import { sqliteBackend } from "../../src/storage/sqlite.ts";
@@ -116,7 +117,7 @@ describe("dimension HTTP and typed persistence", () => {
       ).status,
     ).toBe(201);
     const masterData = new MasterDataService(store);
-    await masterData.saveAccount(
+    let account = await masterData.saveAccount(
       "DEFAULT",
       {
         code: "2800",
@@ -132,17 +133,35 @@ describe("dimension HTTP and typed persistence", () => {
       },
       0,
     );
-    expect(
-      (
-        await write({
-          ...base,
-          kind: "balance",
-          code: "LEDGER",
-          dimension: "DEPT",
-          account: "2800",
-        })
-      ).status,
-    ).toBe(201);
+    const balance = {
+      ...base,
+      kind: "balance" as const,
+      code: "LEDGER",
+      dimension: "DEPT",
+      account: "2800",
+    };
+    const savedBalance = await write(balance);
+    expect(savedBalance.status).toBe(201);
+    expect(savedBalance.body).toEqual({ ...balance, revision: 1 });
+    const lines = [
+      { debit: 100, credit: 0, dimensions: { DEPT: "A" } },
+      { debit: 0, credit: 100, dimensions: { DEPT: "B" } },
+    ];
+    for (const changes of [{ active: false }, { active: true, purpose: "general" as const }]) {
+      account = await masterData.saveAccount(
+        "DEFAULT",
+        { ...account, ...changes },
+        account.revision,
+      );
+      const current = await masterData.account("DEFAULT", "2800");
+      expect(() =>
+        dimensionBalance({ ...balance, revision: 1 }, "2026-01-15", lines, current),
+      ).toThrow(
+        expect.objectContaining({
+          issue: { scope: "dimensions", path: "account", rule: "reference" },
+        }),
+      );
+    }
     const page = await fetch(
       `${url}/api/v1/dimensions?company=DEFAULT&kind=value&dimension=DEPT&limit=1&cursor=A`,
     );

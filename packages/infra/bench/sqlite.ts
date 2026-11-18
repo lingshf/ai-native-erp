@@ -60,6 +60,7 @@ function dimensionBenchmark() {
     dimension: "DEPT",
     account: "2800",
   };
+  const account = { code: "2800", active: true, purpose: "clearing" as const };
   const run = () => {
     const lines = inputs.map((input, index) => ({
       debit: index % 2 ? 0 : 100,
@@ -68,7 +69,7 @@ function dimensionBenchmark() {
     }));
     if (
       lines.some((line) => Object.keys(line.dimensions).length !== 3) ||
-      dimensionBalance(balance, "2026-01-15", lines).length !== 2
+      dimensionBalance(balance, "2026-01-15", lines, account).length !== 2
     )
       throw new Error("Invalid dimension benchmark result");
   };

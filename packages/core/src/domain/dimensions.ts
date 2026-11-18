@@ -1,4 +1,4 @@
-import { DomainError, checkedMinor } from "./index.ts";
+import { DomainError, checkedMinor, type Account } from "./index.ts";
 
 export type DimensionMap = Readonly<Record<string, string | null>>;
 interface Base {
@@ -166,8 +166,13 @@ export function validateDimensionConfig(
     list(config.required, "required");
     list(config.optional, "optional");
     list(config.forbidden, "forbidden");
-    const fields = [...config.required, ...config.optional, ...config.forbidden];
-    if (new Set(fields).size !== fields.length) dimensionError("forbidden", "duplicate");
+    const fields = new Set<string>();
+    for (const field of ["required", "optional", "forbidden"] as const) {
+      for (const [index, key] of config[field].entries()) {
+        if (fields.has(key)) dimensionError(`${field}.${index}`, "duplicate");
+        fields.add(key);
+      }
+    }
     map(config.fixed, "fixed");
     if (config.forbidden.some((key) => Object.hasOwn(config.fixed, key)))
       dimensionError("fixed", "forbidden");
@@ -320,6 +325,7 @@ export function dimensionBalance(
   config: Extract<DimensionConfig, { kind: "balance" }> | undefined,
   day: string,
   lines: readonly { debit: number; credit: number; dimensions: DimensionMap }[],
+  account: Pick<Account, "code" | "active" | "purpose"> | null,
 ) {
   checkedDimensionDay(day);
   const groups = new Map<string, bigint>();
@@ -338,6 +344,13 @@ export function dimensionBalance(
   }
   if (total !== 0n) dimensionError("lines", "balance");
   if (!config || !effective(config, day)) return [];
+  if (
+    !account ||
+    account.code !== config.account ||
+    !account.active ||
+    account.purpose !== "clearing"
+  )
+    dimensionError("account", "reference");
   for (const [index, line] of lines.entries()) {
     const value = line.dimensions[config.dimension];
     if (value == null) dimensionError(`lines.${index}.dimensions.${config.dimension}`, "required");
