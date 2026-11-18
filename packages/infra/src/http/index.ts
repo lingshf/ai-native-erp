@@ -7,7 +7,12 @@ import Fastify from "fastify";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { LegacyTeachingQueryService, RuntimeInfoService } from "@erp/core/application";
 import type { LegacyTeachingReader, RuntimeInfoPort } from "@erp/core/application";
-import type { MasterDataService, DimensionService, JournalService, BusinessEventService } from "@erp/core/application";
+import type {
+  MasterDataService,
+  DimensionService,
+  JournalService,
+  BusinessEventService,
+} from "@erp/core/application";
 import { registerDimensionRoutes } from "./dimensions.ts";
 import { registerJournalRoutes } from "./journals.ts";
 import { registerBusinessRoutes } from "./business-events.ts";

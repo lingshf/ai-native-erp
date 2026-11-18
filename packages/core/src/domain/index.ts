@@ -13,7 +13,12 @@ export interface AccountFieldIssue {
 }
 export class DomainError extends Error {
   readonly code: DomainErrorCode;
-  readonly issue: AccountFieldIssue | DimensionFieldIssue | JournalFieldIssue | BusinessIssue | undefined;
+  readonly issue:
+    | AccountFieldIssue
+    | DimensionFieldIssue
+    | JournalFieldIssue
+    | BusinessIssue
+    | undefined;
   constructor(
     code: DomainErrorCode,
     issue?: AccountFieldIssue | DimensionFieldIssue | JournalFieldIssue | BusinessIssue,

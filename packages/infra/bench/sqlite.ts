@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { compileDimensionRules, dimensionBalance, type DimensionConfig } from "@erp/core/domain";
 import { journalBenchmark } from "./journals.ts";
+import { businessEventBenchmark } from "./business-events.ts";
 
 function dimensionBenchmark() {
   const base = { revision: 1, active: true, from: "2026-01-01", to: "2026-12-31" };
@@ -131,6 +132,7 @@ try {
     if (p50 === undefined || p95 === undefined) throw new Error("Missing benchmark samples");
     const dimensions = dimensionBenchmark();
     const journals = await journalBenchmark();
+    const businessEvents = await businessEventBenchmark();
     const report = {
       kind: "placeholder-not-million-GL",
       node: process.version,
@@ -139,6 +141,7 @@ try {
       query: { rows: 100, samples: durations.length, p50Ms: p50, p95Ms: p95 },
       dimensions,
       journals,
+      businessEvents,
     };
     const markdown = [
       "## SQLite placeholder benchmark",
@@ -165,6 +168,14 @@ try {
       `Preview p95 ${journals.preview.p95Ms.toFixed(3)} ms; confirm p95 ${journals.confirm.p95Ms.toFixed(3)} ms; each budget ≤ ${journals.budgetMs} ms. Event-loop max ${journals.eventLoopMaxMs.toFixed(3)} ms.`,
       "",
       `Hot paged read (${journals.listRows} summaries; HTTP + client parse) p95 ${journals.list.p95Ms.toFixed(3)} ms; budget ≤ ${journals.readBudgetMs} ms.`,
+      "",
+      "## Business event loopback HTTP benchmark",
+      "",
+      `${businessEvents.rules} rules; ${businessEvents.warmup} warmups and ${businessEvents.samples} samples, including index compilation and client contract decoding. Initial/final GL rows: ${businessEvents.initialGlRows}/${businessEvents.finalGlRows}; not million-GL capacity acceptance.`,
+      "",
+      `Preview p95 ${businessEvents.preview.p95Ms.toFixed(3)} ms; confirm p95 ${businessEvents.confirm.p95Ms.toFixed(3)} ms; budget ≤ ${businessEvents.budgetMs} ms. Event-loop max ${businessEvents.eventLoopMaxMs.toFixed(3)} ms.`,
+      "",
+      `Hot ${businessEvents.listRows}-item event list p95 ${businessEvents.list.p95Ms.toFixed(3)} ms; budget ≤ ${businessEvents.readBudgetMs} ms. JSON artifact includes all measured raw samples and p50/p95/p99.`,
       "",
     ].join("\n");
     mkdirSync("artifacts/ci", { recursive: true });

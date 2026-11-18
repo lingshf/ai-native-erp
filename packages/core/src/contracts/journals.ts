@@ -140,7 +140,16 @@ export const journalReceiptSchema = z.strictObject({
   draftId: id,
   draftRevision: revisionSchema,
   fingerprint,
-  operation: z.enum(["journal", "reverse", "replace", "reclassify", "cash_service", "cash_service.cancel", "statistics", "clearing.match"]),
+  operation: z.enum([
+    "journal",
+    "reverse",
+    "replace",
+    "reclassify",
+    "cash_service",
+    "cash_service.cancel",
+    "statistics",
+    "clearing.match",
+  ]),
   journalIds: z.array(id).max(2),
   postedAt: z.iso.datetime(),
 });

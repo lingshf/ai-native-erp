@@ -43,14 +43,17 @@ export const businessEn = {
   "business.select": "Select source line",
   "business.openItems": "Load open items",
   "business.selected": "Selected source lines",
-  "business.clearHelp": "Select complete, opposite same-account lines with zero residual. Loading another page does not clear your selection.",
+  "business.clearHelp":
+    "Select complete, opposite same-account lines with zero residual. Loading another page does not clear your selection.",
   "business.confirm": "Confirm event",
   "business.transfer": "Confirm transfer",
   "business.withdraw": "Withdraw",
   "business.withdrawConfirm": "Confirm withdrawal",
   "business.enqueue": "Queue without posting",
-  "business.enqueued": "Queued. No GL entry was posted. Review the current rules in the transfer queue before confirming transfer.",
-  "business.done": "Accepted. The immutable acceptance receipt and resulting entries are shown below.",
+  "business.enqueued":
+    "Queued. No GL entry was posted. Review the current rules in the transfer queue before confirming transfer.",
+  "business.done":
+    "Accepted. The immutable acceptance receipt and resulting entries are shown below.",
   "business.noGl": "This event records evidence only; it creates no GL lines.",
   "business.receipt": "Original acceptance receipt",
   "business.currentPlan": "Confirmed transfer plan",
@@ -65,18 +68,29 @@ export const businessEn = {
   "business.cancelled": "Cancelled",
   "business.empty": "No items.",
   "business.rule.shape": "Complete the event or configuration fields. For an All scope use *.",
-  "business.rule.missing": "No applicable posting rule. Configure both cash and revenue/expense rules for this date and direction, then preview again.",
-  "business.rule.ambiguous": "Multiple non-dominated posting rules match. Remove the tie or add one rule that is at least as specific on both service and party axes, then preview again.",
-  "business.rule.account": "The selected rule/account is no longer valid. Cash requires an active general cash asset; the other side requires revenue for receipts or expense for payments. Clearing requires an active clearing/suspense account. Fix the current configuration; there is no fallback to weaker rules.",
-  "business.rule.reference": "Choose an existing active service/party and valid dimension references in this company.",
-  "business.rule.stale": "Configuration or source changed. Your input is retained. Review current settings and preview again; do not overwrite another editor's revision.",
-  "business.rule.source": "This source or clearing line is already accepted, cancelled or matched. Open its existing receipt instead of creating another event.",
-  "business.rule.queue": "This queue item is already transferred or withdrawn. Refresh its current state.",
-  "business.rule.pending": "Transfer or withdraw all pending/failed items in this period before freezing it.",
-  "business.rule.quantity": "Enter a signed decimal quantity with at most six fractional digits, within the exact safe integer range.",
-  "business.rule.line": "Select at least two complete, same-account, unbalanced-source-free lines from this company, not later than the event date, whose debit minus credit total is zero.",
+  "business.rule.missing":
+    "No applicable posting rule. Configure both cash and revenue/expense rules for this date and direction, then preview again.",
+  "business.rule.ambiguous":
+    "Multiple non-dominated posting rules match. Remove the tie or add one rule that is at least as specific on both service and party axes, then preview again.",
+  "business.rule.account":
+    "The selected rule/account is no longer valid. Cash requires an active general cash asset; the other side requires revenue for receipts or expense for payments. Clearing requires an active clearing/suspense account. Fix the current configuration; there is no fallback to weaker rules.",
+  "business.rule.reference":
+    "Choose an existing active service/party and valid dimension references in this company.",
+  "business.rule.stale":
+    "Configuration or source changed. Your input is retained. Review current settings and preview again; do not overwrite another editor's revision.",
+  "business.rule.source":
+    "This source or clearing line is already accepted, cancelled or matched. Open its existing receipt instead of creating another event.",
+  "business.rule.queue":
+    "This queue item is already transferred or withdrawn. Refresh its current state.",
+  "business.rule.pending":
+    "Transfer or withdraw all pending/failed items in this period before freezing it.",
+  "business.rule.quantity":
+    "Enter a signed decimal quantity with at most six fractional digits, within the exact safe integer range.",
+  "business.rule.line":
+    "Select at least two complete, same-account, unbalanced-source-free lines from this company, not later than the event date, whose debit minus credit total is zero.",
   "business.rule.limit": "Use at most 5,000 posting rules and 32 dimension keys.",
-  "business.teaching": "Previews never save or post. Check the matched rules and generated lines, then explicitly confirm. Queue transfer re-reads current accounts/rules; cancellation preserves exact historical mirrors (D6).",
+  "business.teaching":
+    "Previews never save or post. Check the matched rules and generated lines, then explicitly confirm. Queue transfer re-reads current accounts/rules; cancellation preserves exact historical mirrors (D6).",
 } as const;
 export const businessZh: Record<keyof typeof businessEn, string> = {
   "business.title": "业务事件",
@@ -145,16 +159,23 @@ export const businessZh: Record<keyof typeof businessEn, string> = {
   "business.cancelled": "已取消",
   "business.empty": "暂无记录。",
   "business.rule.shape": "请补齐事件或配置字段；匹配范围为全部时编码须为 *。",
-  "business.rule.missing": "没有适用的过账规则。请配置对应日期及收付方向的现金、收入或费用两侧规则，再重新预览。",
-  "business.rule.ambiguous": "存在多条互不支配的规则。请消除同级冲突，或补一条在服务、往来两个方向都不低于现有规则的规则，再重新预览。",
-  "business.rule.account": "命中规则或科目已失效。现金须为启用的一般用途现金资产，收款对方为收入、付款对方为费用；清算须为启用的清算或暂记科目。请修正当前配置，不会降级采用较弱规则。",
+  "business.rule.missing":
+    "没有适用的过账规则。请配置对应日期及收付方向的现金、收入或费用两侧规则，再重新预览。",
+  "business.rule.ambiguous":
+    "存在多条互不支配的规则。请消除同级冲突，或补一条在服务、往来两个方向都不低于现有规则的规则，再重新预览。",
+  "business.rule.account":
+    "命中规则或科目已失效。现金须为启用的一般用途现金资产，收款对方为收入、付款对方为费用；清算须为启用的清算或暂记科目。请修正当前配置，不会降级采用较弱规则。",
   "business.rule.reference": "请选择本公司存在、已启用的服务或往来对象，并检查维度引用。",
-  "business.rule.stale": "配置或来源已变化，输入已保留。请核对当前设置后重新预览，不要覆盖其他编辑者的版本。",
+  "business.rule.stale":
+    "配置或来源已变化，输入已保留。请核对当前设置后重新预览，不要覆盖其他编辑者的版本。",
   "business.rule.source": "此来源或清算行已被接受、取消或匹配，请查看原回执，不要重复提交。",
   "business.rule.queue": "此队列项已转入或撤回，请刷新查看当前状态。",
   "business.rule.pending": "本期间仍有待转或失败的队列项，请先全部转入或撤回，再冻结期间。",
-  "business.rule.quantity": "请输入最多六位小数、允许正负的十进制数量，且缩放后的整数不得超出安全范围。",
-  "business.rule.line": "请选择本公司不晚于事件日期、同一科目的至少两条完整来源行，不含内部平衡行，且借方减贷方合计为零。",
+  "business.rule.quantity":
+    "请输入最多六位小数、允许正负的十进制数量，且缩放后的整数不得超出安全范围。",
+  "business.rule.line":
+    "请选择本公司不晚于事件日期、同一科目的至少两条完整来源行，不含内部平衡行，且借方减贷方合计为零。",
   "business.rule.limit": "过账规则最多 5000 条，维度键最多 32 个。",
-  "business.teaching": "预览不保存、不入账。请核对命中规则及生成行后明确确认；队列转入时重读当前科目和规则，取消时保留精确历史镜像（D6）。",
+  "business.teaching":
+    "预览不保存、不入账。请核对命中规则及生成行后明确确认；队列转入时重读当前科目和规则，取消时保留精确历史镜像（D6）。",
 };

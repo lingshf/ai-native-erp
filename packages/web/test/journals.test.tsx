@@ -107,6 +107,8 @@ describe("journal editor", () => {
       writes = 0;
     const previews: JournalDraftDto[] = [];
     const confirmations: unknown[] = [];
+    const queues: unknown[] = [];
+    let eventOwned = false;
     vi.stubGlobal(
       "fetch",
       vi.fn<typeof fetch>().mockImplementation(async (path, options) => {
@@ -133,6 +135,42 @@ describe("journal editor", () => {
             nextCursor: null,
           });
         const body = options?.body ? JSON.parse(String(options.body)) : undefined;
+        if (url.pathname === "/api/v1/transfer-queue") {
+          queues.push(body);
+          if (queues.length === 1) throw new TypeError("Lost queue response");
+          return response({
+            event: saved,
+            preview: { ...preview(saved!), matches: [], statistics: null, clearing: [] },
+            receipt: {
+              company: "DEFAULT",
+              sourceRef: saved!.sourceRef,
+              idempotencyKey: body.idempotencyKey,
+              draftId: saved!.id,
+              draftRevision: saved!.revision,
+              fingerprint: body.fingerprint,
+              operation: "journal",
+              journalIds: [],
+              postedAt: "2026-01-15T10:00:00.000Z",
+            },
+            createdAt: "2026-01-15T10:00:00.000Z",
+            status: "pending",
+            journalIds: [],
+            queue: {
+              id: saved!.id,
+              sourceRef: saved!.sourceRef,
+              date: saved!.date,
+              memo: saved!.memo,
+              status: "pending",
+              createdAt: "2026-01-15T10:00:00.000Z",
+              revision: 1,
+              journalIds: [],
+              fingerprint: null,
+              plan: null,
+              error: null,
+              reason: null,
+            },
+          });
+        }
         if (url.pathname.endsWith("/preview")) {
           previews.push(body.draft);
           return response(preview(body.draft));
@@ -168,7 +206,7 @@ describe("journal editor", () => {
           postedAt: "2026-01-15T10:00:00.000Z",
           fingerprint: "a".repeat(64),
         };
-        return response({ entry, chain: [] });
+        return response({ entry, chain: [], businessEventId: eventOwned ? saved!.id : null });
       }),
     );
     render(<App />);
@@ -226,6 +264,11 @@ describe("journal editor", () => {
       within(dialog).getByRole<HTMLButtonElement>("button", { name: label("en", "journal.back") })
         .disabled,
     ).toBe(true);
+    expect(
+      within(dialog).getByRole<HTMLButtonElement>("button", {
+        name: label("en", "business.enqueue"),
+      }).disabled,
+    ).toBe(true);
     fireEvent.click(within(dialog).getByRole("button", { name: label("en", "journal.confirm") }));
     await screen.findByText(label("en", "journal.postedNotice"));
     expect(confirmations).toHaveLength(2);
@@ -238,7 +281,42 @@ describe("journal editor", () => {
       "",
     );
     expect(screen.getByLabelText<HTMLInputElement>(label("en", "journal.date")).value).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: label("en", "journal.cancel") }));
+    eventOwned = true;
+    fireEvent.click(
+      screen.getAllByRole("button", { name: `${label("en", "journal.view")} ${saved!.id}` })[0],
+    );
+    await screen.findByRole("link", { name: label("en", "business.original") });
+    expect(screen.queryByRole("button", { name: label("en", "journal.reverse") })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: label("en", "journal.new") }));
+    for (const [key, value] of [
+      ["sourceRef", "QUEUE-UI"],
+      ["date", "2026-01-15"],
+      ["memo", "Queue only"],
+    ] as const)
+      fireEvent.change(screen.getByLabelText(label("en", `journal.${key}`)), { target: { value } });
+    fireEvent.change(line(1, "account", "en"), { target: { value: "1000" } });
+    fireEvent.change(line(1, "debit", "en"), { target: { value: "1" } });
+    fireEvent.change(line(2, "account", "en"), { target: { value: "3000" } });
+    fireEvent.change(line(2, "credit", "en"), { target: { value: "1" } });
+    fireEvent.click(screen.getByRole("button", { name: label("en", "journal.save") }));
+    await screen.findByText(label("en", "journal.saved"));
+    fireEvent.click(screen.getByRole("button", { name: label("en", "journal.preview") }));
+    dialog = await screen.findByRole("dialog", { name: label("en", "journal.previewTitle") });
+    fireEvent.click(within(dialog).getByRole("button", { name: label("en", "business.enqueue") }));
+    await within(dialog).findByText(label("en", "journal.network"));
+    expect(
+      within(dialog).getByRole<HTMLButtonElement>("button", {
+        name: label("en", "journal.confirm"),
+      }).disabled,
+    ).toBe(true);
+    expect(writes).toBe(2);
+    fireEvent.click(within(dialog).getByRole("button", { name: label("en", "business.enqueue") }));
+    await screen.findByText(label("en", "business.enqueued"));
+    expect(queues).toHaveLength(2);
+    expect(queues[0]).toEqual(queues[1]);
     expect(confirmations).toHaveLength(2);
+    expect(writes).toBe(2);
   });
   it("loads bounded virtual pages and retains editable input after field validation and stale confirmation", async () => {
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(

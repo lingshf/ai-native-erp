@@ -200,7 +200,7 @@ export class JournalService {
           previous.draftId !== input.draftId ||
           previous.draftRevision !== input.revision ||
           previous.fingerprint !== input.fingerprint ||
-          await repo.businessByReceipt(input.company, input.idempotencyKey)
+          (await repo.businessByReceipt(input.company, input.idempotencyKey))
         )
           journalError("idempotencyKey", "source", true);
         return previous;
@@ -218,50 +218,64 @@ export class JournalService {
   private async manualSource(repo: MasterDataRepository, company: string, draft: JournalDraft) {
     if (await repo.journalSourceExists(company, draft.sourceRef))
       journalError("sourceRef", "source", true);
-    if (draft.originalId && await repo.journalBusinessEvent(company, draft.originalId))
+    if (draft.originalId && (await repo.journalBusinessEvent(company, draft.originalId)))
       journalError("originalId", "businessSource");
   }
   private entries(current: JournalPreview, postedAt: string): JournalEntry[] {
     return current.plan.journals.map((journal, index) => ({
-        ...journal,
-        id: index === 0 ? current.plan.draftId : this.tools.id(),
-        sourceRef: current.plan.sourceRef,
-        operation: current.plan.operation,
-        date: current.plan.date,
-        memo: current.plan.memo,
-        fingerprint: current.fingerprint,
-        postedAt,
-      }));
+      ...journal,
+      id: index === 0 ? current.plan.draftId : this.tools.id(),
+      sourceRef: current.plan.sourceRef,
+      operation: current.plan.operation,
+      date: current.plan.date,
+      memo: current.plan.memo,
+      fingerprint: current.fingerprint,
+      postedAt,
+    }));
   }
-  async writeEntries(repo: MasterDataRepository, current: JournalPreview, key: string, entries: readonly JournalEntry[]) {
+  async writeEntries(
+    repo: MasterDataRepository,
+    current: JournalPreview,
+    key: string,
+    entries: readonly JournalEntry[],
+  ) {
     for (const entry of entries) {
       await repo.insertJournalEntry(current.plan.company, entry, key);
       if (current.plan.originalId)
         await repo.insertJournalCorrection(current.plan.company, current.plan.originalId, entry);
     }
   }
-  async commit(repo: MasterDataRepository, current: JournalPreview, key: string, operation: JournalReceipt["operation"] = current.plan.operation): Promise<JournalReceipt> {
-      const postedAt = this.tools.now();
-      const entries = this.entries(current, postedAt);
-      const receipt: JournalReceipt = {
-        company: current.plan.company,
-        sourceRef: current.plan.sourceRef,
-        idempotencyKey: key,
-        draftId: current.plan.draftId,
-        draftRevision: current.plan.draftRevision,
-        fingerprint: current.fingerprint,
-        operation,
-        journalIds: entries.map((entry) => entry.id),
-        postedAt,
-      };
-      await repo.insertJournalReceipt(receipt);
-      await this.writeEntries(repo, current, key, entries);
-      await repo.insertJournalAudit(receipt);
-      return receipt;
+  async commit(
+    repo: MasterDataRepository,
+    current: JournalPreview,
+    key: string,
+    operation: JournalReceipt["operation"] = current.plan.operation,
+  ): Promise<JournalReceipt> {
+    const postedAt = this.tools.now();
+    const entries = this.entries(current, postedAt);
+    const receipt: JournalReceipt = {
+      company: current.plan.company,
+      sourceRef: current.plan.sourceRef,
+      idempotencyKey: key,
+      draftId: current.plan.draftId,
+      draftRevision: current.plan.draftRevision,
+      fingerprint: current.fingerprint,
+      operation,
+      journalIds: entries.map((entry) => entry.id),
+      postedAt,
+    };
+    await repo.insertJournalReceipt(receipt);
+    await this.writeEntries(repo, current, key, entries);
+    await repo.insertJournalAudit(receipt);
+    return receipt;
   }
-  async transfer(repo: MasterDataRepository, current: JournalPreview, key: string): Promise<readonly string[]> {
+  async transfer(
+    repo: MasterDataRepository,
+    current: JournalPreview,
+    key: string,
+  ): Promise<readonly string[]> {
     const entries = this.entries(current, this.tools.now());
     await this.writeEntries(repo, current, key, entries);
-    return entries.map(entry => entry.id);
+    return entries.map((entry) => entry.id);
   }
 }

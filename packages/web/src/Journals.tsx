@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { Link } from "react-router-dom";
 import {
   companiesPageSchema,
   accountsPageSchema,
@@ -11,12 +12,14 @@ import {
   journalPreviewSchema,
   journalReceiptSchema,
   journalDeletedSchema,
+  businessResultSchema,
   type CompanyDto,
   type JournalDraftDto,
   type JournalEntryDto,
   type JournalPreviewDto,
   type JournalReceiptDto,
   type JournalDetailDto,
+  type BusinessResultDto,
 } from "@erp/core/contracts";
 import { label, type LabelKey, type Language, type Preferences } from "./ui/index.ts";
 import { MasterDataFailure, masterRequest } from "./master-data-client.ts";
@@ -114,7 +117,10 @@ function CompanyJournals({
   const [draft, setDraft] = useState<JournalDraftDto | null>(null),
     [detail, setDetail] = useState<JournalDetailDto | null>(null);
   const [dirty, setDirty] = useState(false);
-  const [plan, setPlan] = useState<(JournalPreviewDto & { key: string }) | null>(null);
+  const [plan, setPlan] = useState<
+    (JournalPreviewDto & { key: string; command: "POST" | "QUEUE" }) | null
+  >(null);
+  const [queued, setQueued] = useState<BusinessResultDto | null>(null);
   const [receipt, setReceipt] = useState<JournalReceiptDto | null>(null),
     [notice, setNotice] = useState<"saved" | null>(null);
   const [error, setError] = useState<unknown>(),
@@ -245,27 +251,42 @@ function CompanyJournals({
         method: "POST",
         body: { company: company.code, draft },
       });
-      if (alive.current) setPlan({ ...result, key: crypto.randomUUID() });
+      if (alive.current) setPlan({ ...result, key: crypto.randomUUID(), command: "POST" });
     });
-  const confirm = () =>
+  const confirm = (command: "POST" | "QUEUE") =>
     run(async () => {
-      if (!plan || dirty) return;
+      if (!plan || dirty || (uncertain && command !== plan.command)) return;
+      const request = {
+        company: company.code,
+        draftId: plan.plan.draftId,
+        revision: plan.plan.draftRevision,
+        fingerprint: plan.fingerprint,
+        idempotencyKey: plan.key,
+        confirmation: command,
+      };
+      setPlan({ ...plan, command });
       try {
-        const result = await masterRequest("/api/v1/journals/confirm", journalReceiptSchema, {
-          method: "POST",
-          body: {
-            company: company.code,
-            draftId: plan.plan.draftId,
-            revision: plan.plan.draftRevision,
-            fingerprint: plan.fingerprint,
-            idempotencyKey: plan.key,
-            confirmation: "POST",
-          },
-        });
+        const result =
+          command === "QUEUE"
+            ? await masterRequest("/api/v1/transfer-queue", businessResultSchema, {
+                method: "POST",
+                body: request,
+              })
+            : await masterRequest("/api/v1/journals/confirm", journalReceiptSchema, {
+                method: "POST",
+                body: request,
+              });
         if (alive.current) {
           edit(null);
-          setReceipt(result);
-          setStatus("posted");
+          if ("event" in result) {
+            setQueued(result);
+            setReceipt(null);
+            void client.invalidateQueries({ queryKey: ["business", company.code] });
+          } else {
+            setReceipt(result);
+            setQueued(null);
+            setStatus("posted");
+          }
           setDetail(null);
           void client.invalidateQueries({ queryKey: ["journals", company.code] });
         }
@@ -356,6 +377,7 @@ function CompanyJournals({
           onClick={() => {
             edit(fresh());
             setReceipt(null);
+            setQueued(null);
             setDetail(null);
           }}
         >
@@ -784,13 +806,36 @@ function CompanyJournals({
             </section>
           ))}
           {error !== undefined && <JournalError error={error} t={t} uncertain={uncertain} />}
-          <button type="button" disabled={busy || dirty} onClick={() => void confirm()}>
+          <button
+            type="button"
+            disabled={busy || dirty || (uncertain && plan.command !== "POST")}
+            onClick={() => void confirm("POST")}
+          >
             {t("journal.confirm")}
           </button>
+          {draft?.operation === "journal" && (
+            <button
+              type="button"
+              disabled={busy || dirty || (uncertain && plan.command !== "QUEUE")}
+              onClick={() => void confirm("QUEUE")}
+            >
+              {t("business.enqueue")}
+            </button>
+          )}
           <button type="button" disabled={busy || uncertain} onClick={() => setPlan(null)}>
             {t("journal.back")}
           </button>
         </Modal>
+      )}
+      {queued && (
+        <section>
+          <p role="status">{t("business.enqueued")}</p>
+          <Link
+            to={`/events?company=${encodeURIComponent(company.code)}&id=${queued.event.id}&view=queue`}
+          >
+            {t("business.queue")}
+          </Link>
+        </section>
       )}
       {receipt && (
         <section aria-label={t("journal.posted")}>
@@ -825,7 +870,15 @@ function CompanyJournals({
           </h3>
           <p>{detail.entry.memo}</p>
           <LinePlan lines={detail.entry.lines} company={company} language={language} t={t} />
-          {detail.entry.role !== "reversal" &&
+          {detail.businessEventId && (
+            <Link
+              to={`/events?company=${encodeURIComponent(company.code)}&id=${detail.businessEventId}`}
+            >
+              {t("business.original")}
+            </Link>
+          )}
+          {!detail.businessEventId &&
+            detail.entry.role !== "reversal" &&
             (["reverse", "replace", "reclassify"] as const)
               .filter((action) => detail.entry.role !== "reclassification" || action === "reverse")
               .map((action) => (
@@ -962,7 +1015,15 @@ export function Modal({
     </dialog>
   );
 }
-export function JournalError({ error, t, uncertain }: { error: unknown; t: T; uncertain: boolean }) {
+export function JournalError({
+  error,
+  t,
+  uncertain,
+}: {
+  error: unknown;
+  t: T;
+  uncertain: boolean;
+}) {
   const issue = error instanceof MasterDataFailure ? error.detail?.fieldErrors[0] : undefined;
   const rule = issue?.messageKey.split(".").at(-1);
   const rules = [

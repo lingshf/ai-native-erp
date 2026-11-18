@@ -1,7 +1,8 @@
 # Local web
 
-React/Vite read-only runtime shell and verified legacy-snapshot reports.
-This is not the active ledger and has no financial write or AI endpoint.
+React/Vite Local workspace with verified read-only legacy-snapshot reports and
+explicit writes to an independently configured target ledger. It never writes
+the protected active legacy ledger and has no AI write endpoint.
 
 After `npm ci` at the repository root:
 
@@ -13,7 +14,7 @@ npm run build
 ```
 
 Tests and development use source directly, without a package build. Labels and
-preferences are local modules in `src/ui`. All 60 web tests, including the former
+preferences are local modules in `src/ui`. Web tests, including the former
 UI package's two compatibility cases, use the root Vitest web/jsdom project.
 Root typechecking includes source, test types and Vite configs.
 
@@ -29,3 +30,13 @@ Preferences remain at `erp.workspace.preferences.v1`, defaulting to
 Chinese/red/teaching-off. Preference updates do not refetch reports or write
 financial data. Storage failures remain visible. Legacy label imports exist
 only in compatibility tests, not in production source.
+
+The lazy Business events page maintains services/parties/rules and previews
+cash receipts/payments, source cancellations, signed statistics and complete-line
+clearing matches. Preview never saves. The Journals preview offers separate POST
+and QUEUE actions only after explicit saving; business-owned GL links to its
+source rather than manual correction. Queue transfer previews current rules.
+Unknown submission results lock the original command, key/plan and withdrawal
+reason for explicit same-command retries. Same-reason withdrawal is idempotent.
+Lists use 100-item pages and virtualize after 100 loaded items. Labels are bilingual;
+language/theme/teaching preferences never save or change business input.
