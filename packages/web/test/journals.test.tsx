@@ -103,7 +103,9 @@ afterEach(() => window.history.replaceState(null, "", "/"));
 describe("journal editor", () => {
   it("adds rows with Enter/Tab, retains preference state, previews explicitly and retries uncertain confirmation with the same identity", async () => {
     let saved: JournalDraftDto | undefined,
-      posted = false;
+      posted = false,
+      writes = 0;
+    const previews: JournalDraftDto[] = [];
     const confirmations: unknown[] = [];
     vi.stubGlobal(
       "fetch",
@@ -131,7 +133,10 @@ describe("journal editor", () => {
             nextCursor: null,
           });
         const body = options?.body ? JSON.parse(String(options.body)) : undefined;
-        if (url.pathname.endsWith("/preview")) return response(preview(saved!));
+        if (url.pathname.endsWith("/preview")) {
+          previews.push(body.draft);
+          return response(preview(body.draft));
+        }
         if (url.pathname.endsWith("/confirm")) {
           confirmations.push(body);
           posted = true;
@@ -149,6 +154,7 @@ describe("journal editor", () => {
           });
         }
         if (body?.draft) {
+          writes++;
           saved = { ...body.draft, revision: body.draft.revision + 1 };
           return response(saved);
         }
@@ -193,9 +199,27 @@ describe("journal editor", () => {
     expect(screen.getByLabelText<HTMLSelectElement>(label("en", "master.company")).disabled).toBe(
       true,
     );
+    fireEvent.submit(line(1, "debit", "en").closest("form")!);
+    expect(writes).toBe(0);
     fireEvent.keyDown(line(1, "debit", "en"), { key: "Enter", ctrlKey: true });
-    const dialog = await screen.findByRole("dialog", { name: label("en", "journal.previewTitle") });
+    let dialog = await screen.findByRole("dialog", { name: label("en", "journal.previewTitle") });
     expect(confirmations).toHaveLength(0);
+    expect(saved).toBeUndefined();
+    expect(writes).toBe(0);
+    expect(previews[0]).toMatchObject({ revision: 0, memo: "Keep my input" });
+    expect(within(dialog).getByText(label("en", "journal.unsaved"))).toBeDefined();
+    expect(
+      within(dialog).getByRole<HTMLButtonElement>("button", {
+        name: label("en", "journal.confirm"),
+      }).disabled,
+    ).toBe(true);
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    fireEvent.click(screen.getByRole("button", { name: label("en", "journal.save") }));
+    await screen.findByText(label("en", "journal.saved"));
+    fireEvent.click(screen.getByRole("button", { name: label("en", "journal.preview") }));
+    dialog = await screen.findByRole("dialog", { name: label("en", "journal.previewTitle") });
+    expect(writes).toBe(1);
+    expect(previews[1].revision).toBe(1);
     fireEvent.click(within(dialog).getByRole("button", { name: label("en", "journal.confirm") }));
     await within(dialog).findByText(label("en", "journal.network"));
     expect(
@@ -246,7 +270,8 @@ describe("journal editor", () => {
       ],
     };
     let previews = 0,
-      confirms = 0;
+      confirms = 0,
+      writes = 0;
     vi.stubGlobal(
       "fetch",
       vi.fn<typeof fetch>().mockImplementation(async (path, options) => {
@@ -273,6 +298,9 @@ describe("journal editor", () => {
         }
         if (url.pathname.endsWith("/preview")) {
           previews++;
+          const current = JSON.parse(String(options?.body)).draft;
+          expect(current.revision).toBe(saved.revision);
+          expect(current.memo).toBe("Still mine");
           if (previews === 1) return failure(400, "money");
           if (previews === 2)
             return response(
@@ -288,13 +316,14 @@ describe("journal editor", () => {
               },
               400,
             );
-          return response(preview(saved));
+          return response(preview(current));
         }
         if (url.pathname.endsWith("/confirm")) {
           confirms++;
           return failure(409, "stale");
         }
         if (options?.body) {
+          writes++;
           const body = JSON.parse(String(options.body));
           saved = { ...body.draft, revision: body.draft.revision + 1 };
         }
@@ -319,6 +348,8 @@ describe("journal editor", () => {
     fireEvent.click(screen.getByRole("button", { name: label("zh", "journal.preview") }));
     await screen.findByText(label("zh", "journal.rule.money"), { exact: false });
     expect(memo.value).toBe("Still mine");
+    expect(writes).toBe(0);
+    expect(saved.revision).toBe(1);
     await waitFor(() => expect(document.activeElement).toBe(memo));
     fireEvent.click(screen.getByRole("button", { name: label("zh", "journal.preview") }));
     const owner = await screen.findByLabelText(label("zh", "journal.owner"));
@@ -332,10 +363,17 @@ describe("journal editor", () => {
     memo.focus();
     fireEvent.click(screen.getByRole("button", { name: label("zh", "journal.preview") }));
     let dialog = await screen.findByRole("dialog", { name: label("zh", "journal.previewTitle") });
+    expect(writes).toBe(0);
+    expect(saved.revision).toBe(1);
+    expect(within(dialog).getByText(label("zh", "journal.unsaved"))).toBeDefined();
     fireEvent.keyDown(dialog, { key: "Escape" });
     await waitFor(() => expect(document.activeElement).toBe(memo));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(confirms).toBe(0);
+    fireEvent.click(screen.getByRole("button", { name: label("zh", "journal.save") }));
+    await screen.findByText(label("zh", "journal.saved"));
+    expect(writes).toBe(1);
+    expect(saved.revision).toBe(2);
     fireEvent.click(screen.getByRole("button", { name: label("zh", "journal.preview") }));
     dialog = await screen.findByRole("dialog", { name: label("zh", "journal.previewTitle") });
     fireEvent.click(within(dialog).getByRole("button", { name: label("zh", "journal.confirm") }));
@@ -344,5 +382,6 @@ describe("journal editor", () => {
     expect(memo.value).toBe("Still mine");
     await waitFor(() => expect(document.activeElement).toBe(memo));
     expect(confirms).toBe(1);
+    expect(writes).toBe(1);
   });
 });

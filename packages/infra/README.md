@@ -113,7 +113,12 @@ or deliver approvals/outbox.
 
 M0-10 appends `004-journals.sql`; 001–003 remain unchanged. The typed journal
 tables share the master-data store's read/write transactions. Preview is one
-consistent read snapshot with no business writes. Confirmation re-reads current
+consistent read snapshot of the supplied current `{company,draft}` editor content,
+including unsaved revision-zero drafts, with no draft writes or revision changes.
+The Web preview never calls save; unsaved edits must be explicitly saved with the
+separate Save button and re-previewed before posting. Final composed business and
+generated-line dimension maps are capped at 32 keys during planning, returning a
+field-local 400 rather than failing the response contract. Confirmation re-reads current
 same-company accounts, periods, dimensions, history stamps and correction edges,
 recomputes the fingerprint and validates the full generated plan inside a single
 BEGIN IMMEDIATE. Receipt, all entries/lines/seals/correction edges, audit and

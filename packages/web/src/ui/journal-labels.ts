@@ -49,6 +49,10 @@ export const journalEn = {
   "journal.postedNotice":
     "Posted. The receipt is shown below; posted entries cannot be edited or deleted.",
   "journal.pending": "Request in progress…",
+  "journal.unsaved":
+    "This read-only preview includes unsaved changes. Return to the draft, explicitly save, then preview again before confirming posting.",
+  "journal.rule.dimensionLimit":
+    "A final line may contain at most 32 dimensions after combining defaults, header and line values, derivations and fixed values. Remove dimensions from this line or its configuration.",
   "journal.network":
     "The result is uncertain. Your draft is retained. Retry confirmation with the same button and key.",
   "journal.error": "Request failed. Your input is retained; check the local service and retry.",
@@ -126,6 +130,9 @@ export const journalZh: Record<keyof typeof journalEn, string> = {
   "journal.reviewDate": "复核日期",
   "journal.postedNotice": "已过账，下方为原始回执；已过账凭证不可修改或删除。",
   "journal.pending": "请求处理中…",
+  "journal.unsaved": "此只读预览包含未保存的改动。请返回草稿，明确点击保存，再重新预览并确认过账。",
+  "journal.rule.dimensionLimit":
+    "合并默认、抬头、行值、派生及固定值后，每行最多允许 32 个维度。请减少该行或相关配置中的维度。",
   "journal.network": "请求结果尚未确定，输入已保留。请使用同一确认按钮和幂等键重试。",
   "journal.error": "请求失败，输入已保留。请检查本地服务后重试。",
   "journal.invalid": "请检查指出的字段，再次预览；本次未接受过账。",

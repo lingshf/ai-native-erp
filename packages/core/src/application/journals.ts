@@ -122,12 +122,9 @@ export class JournalService {
   private async compute(
     repo: MasterDataRepository,
     company: string,
-    id: string,
-    revision: number,
+    draft: JournalDraft,
   ): Promise<JournalPreview> {
     const configuration = required(await repo.company(company));
-    const draft = required(await repo.journalDraft(company, id));
-    if (draft.revision !== revision) journalError("revision", "stale", true);
     if (await repo.journalSourceExists(company, draft.sourceRef))
       journalError("sourceRef", "source", true);
     const catalog = await repo.dimensionCatalog(company);
@@ -176,11 +173,15 @@ export class JournalService {
     ]);
     return { fingerprint, plan };
   }
-  preview(company: string, id: string, revision: number) {
+  preview(company: string, draft: JournalDraft) {
     checkedCode(company);
-    checkedJournalId(id);
-    checkedExpectedRevision(revision);
-    return this.store.read((repo) => this.compute(repo, company, id, revision));
+    checkedJournalDraft(draft);
+    return this.store.read(async (repo) => {
+      const saved = await repo.journalDraft(company, draft.id);
+      if ((saved?.revision ?? 0) !== draft.revision || (await repo.journalEntry(company, draft.id)))
+        journalError("revision", "stale", true);
+      return this.compute(repo, company, draft);
+    });
   }
   confirm(input: JournalConfirm): Promise<JournalReceipt> {
     checkedCode(input.company);
@@ -200,7 +201,9 @@ export class JournalService {
           journalError("idempotencyKey", "source", true);
         return previous;
       }
-      const current = await this.compute(repo, input.company, input.draftId, input.revision);
+      const draft = required(await repo.journalDraft(input.company, input.draftId));
+      if (draft.revision !== input.revision) journalError("revision", "stale", true);
+      const current = await this.compute(repo, input.company, draft);
       if (current.fingerprint !== input.fingerprint) journalError("fingerprint", "stale", true);
       const postedAt = this.tools.now();
       const entries: JournalEntry[] = current.plan.journals.map((journal, index) => ({

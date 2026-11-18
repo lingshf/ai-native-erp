@@ -113,6 +113,7 @@ function CompanyJournals({
   const [status, setStatus] = useState<"draft" | "posted">("draft");
   const [draft, setDraft] = useState<JournalDraftDto | null>(null),
     [detail, setDetail] = useState<JournalDetailDto | null>(null);
+  const [dirty, setDirty] = useState(false);
   const [plan, setPlan] = useState<(JournalPreviewDto & { key: string }) | null>(null);
   const [receipt, setReceipt] = useState<JournalReceiptDto | null>(null),
     [notice, setNotice] = useState<"saved" | null>(null);
@@ -196,6 +197,7 @@ function CompanyJournals({
   function edit(value: JournalDraftDto | null) {
     lineKeys.current = value?.lines.map(() => crypto.randomUUID()) ?? [];
     setDraft(value);
+    setDirty(value !== null && value.revision === 0);
     lock(value !== null);
     setPlan(null);
     setUncertain(false);
@@ -231,22 +233,23 @@ function CompanyJournals({
     );
     if (alive.current) {
       setDraft(saved);
+      setDirty(false);
       void client.invalidateQueries({ queryKey: ["journals", company.code] });
     }
     return saved;
   }
   const preview = () =>
     run(async () => {
-      const saved = await save();
+      if (!draft) return;
       const result = await masterRequest("/api/v1/journals/preview", journalPreviewSchema, {
         method: "POST",
-        body: { company: company.code, draftId: saved.id, revision: saved.revision },
+        body: { company: company.code, draft },
       });
       if (alive.current) setPlan({ ...result, key: crypto.randomUUID() });
     });
   const confirm = () =>
     run(async () => {
-      if (!plan) return;
+      if (!plan || dirty) return;
       try {
         const result = await masterRequest("/api/v1/journals/confirm", journalReceiptSchema, {
           method: "POST",
@@ -284,6 +287,7 @@ function CompanyJournals({
   function change(patch: Partial<JournalDraftDto>) {
     if (draft) {
       setDraft({ ...draft, ...patch });
+      setDirty(true);
       setNotice(null);
       setError(undefined);
     }
@@ -438,13 +442,7 @@ function CompanyJournals({
         <form
           className="journal-editor"
           ref={form}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void run(async () => {
-              await save();
-              if (alive.current) setNotice("saved");
-            });
-          }}
+          onSubmit={(event) => event.preventDefault()}
           onKeyDown={(event) => {
             if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
               event.preventDefault();
@@ -669,7 +667,17 @@ function CompanyJournals({
               </>
             )}
             <div className="journal-actions">
-              <button type="submit">{t("journal.save")}</button>
+              <button
+                type="button"
+                onClick={() =>
+                  void run(async () => {
+                    await save();
+                    if (alive.current) setNotice("saved");
+                  })
+                }
+              >
+                {t("journal.save")}
+              </button>
               <button type="button" onClick={() => void preview()}>
                 {t("journal.preview")}
               </button>
@@ -755,6 +763,7 @@ function CompanyJournals({
             {plan.plan.sourceRef} · {plan.plan.date} · {plan.plan.currency}
           </p>
           <p>{plan.plan.memo}</p>
+          {dirty && <p role="status">{t("journal.unsaved")}</p>}
           {plan.plan.journals.map((journal, index) => (
             <section key={journal.role}>
               <h4>
@@ -775,7 +784,7 @@ function CompanyJournals({
             </section>
           ))}
           {error !== undefined && <JournalError error={error} t={t} uncertain={uncertain} />}
-          <button type="button" disabled={busy} onClick={() => void confirm()}>
+          <button type="button" disabled={busy || dirty} onClick={() => void confirm()}>
             {t("journal.confirm")}
           </button>
           <button type="button" disabled={busy || uncertain} onClick={() => setPlan(null)}>
@@ -961,6 +970,7 @@ function JournalError({ error, t, uncertain }: { error: unknown; t: T; uncertain
     "money",
     "balance",
     "balanceAccount",
+    "dimensionLimit",
     "account",
     "manual",
     "suspense",

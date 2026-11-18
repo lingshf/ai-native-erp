@@ -21,6 +21,7 @@ export interface JournalFieldIssue {
     | "money"
     | "balance"
     | "balanceAccount"
+    | "dimensionLimit"
     | "account"
     | "manual"
     | "suspense"
@@ -214,12 +215,15 @@ export function buildJournalPlan(input: {
     header: DimensionMap,
   ) {
     try {
-      return compiled.resolve({
+      const resolved = compiled.resolve({
         account: raw.account,
         day: draft.date,
         header,
         explicit: raw.dimensions,
       });
+      if (Object.keys(resolved.dimensions).length > 32)
+        journalError(`lines.${index}.dimensions`, "dimensionLimit");
+      return resolved;
     } catch (error) {
       if (
         error instanceof DomainError &&

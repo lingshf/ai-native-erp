@@ -85,9 +85,7 @@ export function registerJournalRoutes(
     boundary.assert(request, reply, ["POST"]);
     const app = ready(request);
     const input = parse(journalPreviewRequestSchema, request.body);
-    return journalPreviewSchema.parse(
-      await app.preview(input.company, input.draftId, input.revision),
-    );
+    return journalPreviewSchema.parse(await app.preview(input.company, input.draft));
   });
   server.all("/api/v1/journals/confirm", async (request, reply) => {
     boundary.assert(request, reply, ["POST"]);

@@ -106,11 +106,7 @@ export async function journalBenchmark() {
         journalDraftSchema,
       );
       let start = performance.now();
-      const plan = await post(
-        "preview",
-        { company: "DEFAULT", draftId: id, revision: draft.revision },
-        journalPreviewSchema,
-      );
+      const plan = await post("preview", { company: "DEFAULT", draft }, journalPreviewSchema);
       const previewMs = performance.now() - start;
       if (plan.plan.journals[0].lines.length !== 100 || plan.plan.journals[0].debit !== 5050)
         throw new Error("Invalid journal benchmark plan");

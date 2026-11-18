@@ -37,7 +37,7 @@ export const journalSaveSchema = z.strictObject({
   draft: journalDraftSchema,
 });
 const selection = { company: companyCodeSchema, draftId: id, revision: revisionSchema };
-export const journalPreviewRequestSchema = z.strictObject(selection);
+export const journalPreviewRequestSchema = journalSaveSchema;
 export const journalConfirmSchema = z.strictObject({
   ...selection,
   fingerprint,

@@ -87,7 +87,7 @@ describe("journal application on real SQLite", () => {
   }
   async function preview(draft: JournalDraft) {
     const saved = await service.save("DEFAULT", draft);
-    const result = await service.preview("DEFAULT", saved.id, saved.revision);
+    const result = await service.preview("DEFAULT", saved);
     return {
       saved,
       result,
@@ -107,6 +107,10 @@ describe("journal application on real SQLite", () => {
   }
 
   it("keeps preview read-only, enforces draft CAS and durable idempotency, and uses indexed identities", async () => {
+    const unsaved = journalDraft();
+    const empty = counts();
+    expect((await service.preview("DEFAULT", unsaved)).plan.draftRevision).toBe(0);
+    expect(counts()).toEqual(empty);
     const unused = await service.save("DEFAULT", journalDraft());
     await expect(service.save("DEFAULT", unused)).resolves.toMatchObject({ revision: 2 });
     await expect(service.remove("DEFAULT", unused.id, 1)).rejects.toMatchObject({
@@ -118,7 +122,7 @@ describe("journal application on real SQLite", () => {
       code: "CONFLICT",
     });
     const before = counts();
-    const result = await service.preview("DEFAULT", draft.id, draft.revision);
+    const result = await service.preview("DEFAULT", draft);
     expect(counts()).toEqual(before);
     const input = {
       company: "DEFAULT",
@@ -193,16 +197,16 @@ describe("journal application on real SQLite", () => {
       code: "CONFLICT",
       issue: { rule: "stale" },
     });
-    const fresh = await service.preview("DEFAULT", p.saved.id, p.saved.revision);
+    const fresh = await service.preview("DEFAULT", p.saved);
     const edited = await service.save("DEFAULT", { ...p.saved, memo: "Edited" });
     await expect(
       service.confirm({ ...p.input, fingerprint: fresh.fingerprint }),
     ).rejects.toMatchObject({ code: "CONFLICT" });
-    const final = await service.preview("DEFAULT", edited.id, edited.revision);
+    const final = await service.preview("DEFAULT", edited);
     const input = { ...p.input, revision: edited.revision, fingerprint: final.fingerprint };
     const receipt = await service.confirm(input);
     const other = await service.save("DEFAULT", journalDraft({ sourceRef: edited.sourceRef }));
-    await expect(service.preview("DEFAULT", other.id, other.revision)).rejects.toMatchObject({
+    await expect(service.preview("DEFAULT", other)).rejects.toMatchObject({
       code: "CONFLICT",
     });
     await master.createCompany({
@@ -217,7 +221,7 @@ describe("journal application on real SQLite", () => {
       "OTHER",
       journalDraft({ operation: "reverse", originalId: receipt.journalIds[0], lines: [] }),
     );
-    await expect(service.preview("OTHER", wrong.id, wrong.revision)).rejects.toMatchObject({
+    await expect(service.preview("OTHER", wrong)).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
     const otherDraft = await service.save(
@@ -229,7 +233,7 @@ describe("journal application on real SQLite", () => {
         })),
       }),
     );
-    const otherPlan = await service.preview("OTHER", otherDraft.id, otherDraft.revision);
+    const otherPlan = await service.preview("OTHER", otherDraft);
     await expect(
       service.confirm({
         ...input,
@@ -249,13 +253,13 @@ describe("journal application on real SQLite", () => {
       [[{ ...base.lines[0], debit: "90071992547409.92" }, base.lines[1]], { rule: "money" }],
     ] as const) {
       const saved = await service.save("DEFAULT", journalDraft({ lines }));
-      await expect(service.preview("DEFAULT", saved.id, saved.revision)).rejects.toMatchObject({
+      await expect(service.preview("DEFAULT", saved)).rejects.toMatchObject({
         issue,
       });
     }
     const p = await preview(base);
     await changeAccount("1100", { active: false });
-    await expect(service.preview("DEFAULT", p.saved.id, p.saved.revision)).rejects.toMatchObject({
+    await expect(service.preview("DEFAULT", p.saved)).rejects.toMatchObject({
       issue: { rule: "account" },
     });
     await expect(service.confirm(p.input)).rejects.toMatchObject({ issue: { rule: "account" } });
@@ -265,11 +269,11 @@ describe("journal application on real SQLite", () => {
       controlModule: "AP",
       manualAllowed: false,
     });
-    await expect(service.preview("DEFAULT", p.saved.id, p.saved.revision)).rejects.toMatchObject({
+    await expect(service.preview("DEFAULT", p.saved)).rejects.toMatchObject({
       issue: { rule: "manual" },
     });
     await changeAccount("1100", { purpose: "suspense", controlModule: null, manualAllowed: true });
-    await expect(service.preview("DEFAULT", p.saved.id, p.saved.revision)).rejects.toMatchObject({
+    await expect(service.preview("DEFAULT", p.saved)).rejects.toMatchObject({
       issue: { rule: "suspense" },
     });
     const fixed = await service.save("DEFAULT", {
@@ -279,9 +283,7 @@ describe("journal application on real SQLite", () => {
         suspense: { owner: "Local operator", reason: "Investigate", reviewDate: "2026-02-01" },
       })),
     });
-    await expect(service.preview("DEFAULT", fixed.id, fixed.revision)).resolves.toHaveProperty(
-      "fingerprint",
-    );
+    await expect(service.preview("DEFAULT", fixed)).resolves.toHaveProperty("fingerprint");
     const maximum = await preview(
       journalDraft({
         lines: [
@@ -300,11 +302,11 @@ describe("journal application on real SQLite", () => {
         ],
       }),
     );
-    await expect(service.preview("DEFAULT", extra.id, extra.revision)).rejects.toMatchObject({
+    await expect(service.preview("DEFAULT", extra)).rejects.toMatchObject({
       issue: { scope: "journals", rule: "money" },
     });
     await master.setPeriod("DEFAULT", "2026-01", 1, "frozen", "Review", true);
-    await expect(service.preview("DEFAULT", fixed.id, fixed.revision)).rejects.toMatchObject({
+    await expect(service.preview("DEFAULT", fixed)).rejects.toMatchObject({
       issue: { rule: "period" },
     });
     expect(counts()).toMatchObject({ journal_entries: 1, receipts: 1, audit: 1 });
@@ -358,14 +360,14 @@ describe("journal application on real SQLite", () => {
       "balance",
     ]);
     await changeAccount("1900", { active: false });
-    await expect(service.preview("DEFAULT", p.saved.id, p.saved.revision)).rejects.toMatchObject({
+    await expect(service.preview("DEFAULT", p.saved)).rejects.toMatchObject({
       issue: { scope: "journals", rule: "balanceAccount" },
     });
     await expect(service.confirm(p.input)).rejects.toMatchObject({
       issue: { rule: "balanceAccount" },
     });
     await changeAccount("1900", { active: true, purpose: "general" });
-    await expect(service.preview("DEFAULT", p.saved.id, p.saved.revision)).rejects.toMatchObject({
+    await expect(service.preview("DEFAULT", p.saved)).rejects.toMatchObject({
       issue: { rule: "balanceAccount" },
     });
     await changeAccount("1900", { purpose: "clearing" });
@@ -380,7 +382,7 @@ describe("journal application on real SQLite", () => {
       fixed: { DEPT: "A" },
       conditionals: [],
     });
-    await expect(service.preview("DEFAULT", p.saved.id, p.saved.revision)).rejects.toMatchObject({
+    await expect(service.preview("DEFAULT", p.saved)).rejects.toMatchObject({
       issue: { scope: "dimensions", rule: "conflict" },
     });
     await dimensions.save("DEFAULT", {
@@ -396,7 +398,7 @@ describe("journal application on real SQLite", () => {
       fixed: {},
       conditionals: [],
     });
-    const valid = await service.preview("DEFAULT", p.saved.id, p.saved.revision);
+    const valid = await service.preview("DEFAULT", p.saved);
     const accepted = await service.confirm({ ...p.input, fingerprint: valid.fingerprint });
     await changeAccount("1100", { active: false, manualAllowed: false });
     await changeAccount("1900", { active: false });
@@ -438,7 +440,7 @@ describe("journal application on real SQLite", () => {
         lines: [],
       }),
     );
-    await expect(service.preview("DEFAULT", twice.id, twice.revision)).rejects.toMatchObject({
+    await expect(service.preview("DEFAULT", twice)).rejects.toMatchObject({
       code: "CONFLICT",
       issue: { rule: "correction" },
     });
@@ -505,7 +507,7 @@ describe("journal application on real SQLite", () => {
       sourceRef: "EARLY",
       date: "2026-04-01",
     });
-    await expect(service.preview("DEFAULT", early.id, early.revision)).rejects.toMatchObject({
+    await expect(service.preview("DEFAULT", early)).rejects.toMatchObject({
       issue: { rule: "correction" },
     });
     const partial = await service.save("DEFAULT", {
@@ -519,7 +521,7 @@ describe("journal application on real SQLite", () => {
         credit: line.credit ? "50" : "",
       })),
     });
-    await expect(service.preview("DEFAULT", partial.id, partial.revision)).rejects.toMatchObject({
+    await expect(service.preview("DEFAULT", partial)).rejects.toMatchObject({
       issue: { rule: "amount" },
     });
     const replacement = await preview({
