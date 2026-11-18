@@ -1,4 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   selectPrTests,
   shouldRun,
@@ -30,6 +35,67 @@ describe("CI selection and reporting", () => {
       all: false,
       legacy: true,
     });
+  });
+
+  it("runs legacy tests when Git recognizes a rename out of the legacy tree", () => {
+    const directory = mkdtempSync(join(tmpdir(), "erp-ci-rename-"));
+    const git = (...args: string[]) =>
+      execFileSync(
+        "git",
+        [
+          "-c",
+          "user.name=CI fixture",
+          "-c",
+          "user.email=ci-fixture@example.invalid",
+          "-c",
+          "commit.gpgsign=false",
+          ...args,
+        ],
+        { cwd: directory, encoding: "utf8" },
+      );
+    const commit = (message: string) =>
+      git(
+        "commit",
+        "--quiet",
+        "-m",
+        message,
+        "-m",
+        "Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>",
+      );
+    try {
+      git("init", "--quiet");
+      git("config", "diff.renames", "true");
+      mkdirSync(join(directory, "src"));
+      mkdirSync(join(directory, "packages", "infra"), { recursive: true });
+      writeFileSync(join(directory, "src", "example.mjs"), "export const amount = 100;\n");
+      git("add", ".");
+      commit("Legacy source fixture");
+      git("update-ref", "refs/remotes/origin/main", "HEAD");
+      git("mv", join("src", "example.mjs"), join("packages", "infra", "example.mjs"));
+      commit("Move source out of legacy tree");
+      expect(git("diff", "--name-status", "-M", "origin/main...HEAD")).toMatch(/^R100\t/);
+      const output = join(directory, "outputs.txt");
+      const stdout = execFileSync(
+        process.execPath,
+        [fileURLToPath(new URL("../../../../scripts/ci.ts", import.meta.url)), "plan"],
+        {
+          cwd: directory,
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            BASE_REF: "main",
+            GITHUB_OUTPUT: output,
+            GITHUB_STEP_SUMMARY: join(directory, "summary.md"),
+          },
+        },
+      );
+      expect(readFileSync(output, "utf8")).toMatch(/^legacy=true$/m);
+      expect(JSON.parse(stdout).files).toEqual(
+        expect.arrayContaining(["src/example.mjs", "packages/infra/example.mjs"]),
+      );
+    } finally {
+      rmSync(directory, { recursive: true });
+    }
   });
 
   it("skips inactive nights but not a push/manual run", () => {

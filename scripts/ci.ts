@@ -150,9 +150,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   if (command === "plan") {
     const base = process.env.BASE_REF;
     if (!base) throw new Error("BASE_REF is required");
-    const files = execFileSync("git", ["diff", "--name-only", "-z", `origin/${base}...HEAD`], {
-      encoding: "utf8",
-    })
+    const files = execFileSync(
+      "git",
+      ["diff", "--no-renames", "--name-only", "-z", `origin/${base}...HEAD`],
+      { encoding: "utf8" },
+    )
       .split("\0")
       .filter(Boolean);
     const scope = selectPrTests(files);
