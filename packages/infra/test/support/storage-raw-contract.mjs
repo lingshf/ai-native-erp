@@ -204,8 +204,8 @@ export function rawContract(fixture) {
     for (const statement of [
       "CREATE TABLE unrelated_user_data(id INTEGER)",
       "DROP TRIGGER audit_no_delete",
-      "UPDATE schema_migrations SET version=3 WHERE version=2",
-      "INSERT INTO schema_migrations(version,dialect,checksum,schema_fingerprint) SELECT version+2,dialect,checksum,schema_fingerprint FROM schema_migrations",
+      "UPDATE schema_migrations SET version=4 WHERE version=3",
+      "DELETE FROM schema_migrations WHERE version=2",
       "UPDATE schema_migrations SET checksum='0000000000000000000000000000000000000000000000000000000000000000'",
       // The immutable 001 CHECK allows this historical value; runtime verification must reject it.
       "UPDATE schema_migrations SET dialect='postgres'",

@@ -18,8 +18,9 @@ import {
   type PageQuery,
   type Period,
 } from "@erp/core/domain";
+import type { DimensionRepository } from "./dimensions.ts";
 
-export interface MasterDataRepository {
+export interface MasterDataRepository extends DimensionRepository {
   company(code: string): Promise<Company | null>;
   companies(query: PageQuery): Promise<Page<Company>>;
   currencyScale(currency: string): Promise<number | null>;

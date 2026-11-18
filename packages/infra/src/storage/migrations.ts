@@ -18,7 +18,20 @@ const masterNames = [
   "trigger:config_history_no_update",
   "trigger:config_history_no_delete",
 ];
-const filenames = ["001-storage.sql", "002-master-data.sql"];
+const dimensionNames = [
+  ...[
+    "dimensions",
+    "dimension_values",
+    "dimension_defaults",
+    "dimension_derivations",
+    "dimension_structures",
+    "dimension_balances",
+    "dimension_history",
+  ].map((name) => `table:${name}`),
+  "trigger:dimension_history_no_update",
+  "trigger:dimension_history_no_delete",
+];
+const filenames = ["001-storage.sql", "002-master-data.sql", "003-dimensions.sql"];
 
 export function normalizeMigration(text: string): string {
   const normalized = text.replaceAll("\r\n", "\n");
@@ -62,7 +75,11 @@ export async function inspectSchema(
     latest < 1 ||
     latest > filenames.length ||
     (!allowOutdated && latest !== filenames.length) ||
-    !same(names, latest === 1 ? baseNames : [...baseNames, ...masterNames])
+    !same(names, [
+      ...baseNames,
+      ...(latest >= 2 ? masterNames : []),
+      ...(latest >= 3 ? dimensionNames : []),
+    ])
   )
     throw new StorageError("SCHEMA_MISMATCH");
   for (const [index, version] of versions.entries()) {

@@ -87,6 +87,9 @@ test("on-demand OpenAPI artifact exactly matches every generated DTO and rejects
   for (const name of [
     "Company",
     "Account",
+    "DimensionWrite",
+    "DimensionConfiguration",
+    "DimensionPage",
     "Period",
     "ErrorResponse",
     "HealthResponse",

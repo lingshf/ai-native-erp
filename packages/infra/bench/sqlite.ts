@@ -3,6 +3,92 @@ import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "n
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
+import { compileDimensionRules, dimensionBalance, type DimensionConfig } from "@erp/core/domain";
+
+function dimensionBenchmark() {
+  const base = { revision: 1, active: true, from: "2026-01-01", to: "2026-12-31" };
+  const catalog: DimensionConfig[] = ["DEPT", "COST", "SITE"].flatMap((code) => [
+    { ...base, kind: "dimension" as const, code, name: code },
+    ...["A", "B"].map((value) => ({
+      ...base,
+      kind: "value" as const,
+      dimension: code,
+      code: value,
+      name: value,
+    })),
+  ]);
+  catalog.push(
+    { ...base, kind: "defaults", code: "LEDGER", values: { COST: "A", SITE: "A" } },
+    {
+      ...base,
+      kind: "derivation",
+      code: "COST_A",
+      when: { DEPT: "A" },
+      values: { COST: "A" },
+      mode: "fill",
+    },
+    {
+      ...base,
+      kind: "derivation",
+      code: "COST_B",
+      when: { DEPT: "B" },
+      values: { COST: "B" },
+      mode: "replace",
+    },
+    {
+      ...base,
+      kind: "structure",
+      code: "1000",
+      required: ["DEPT", "COST", "SITE"],
+      optional: [],
+      forbidden: [],
+      allowed: [{ DEPT: "A" }, { DEPT: "B" }],
+      fixed: {},
+      conditionals: [{ when: { SITE: "B" }, required: ["COST"], fixed: { COST: "B" } }],
+    },
+  );
+  const compiled = compileDimensionRules(catalog);
+  const inputs = Array.from({ length: 100 }, (_, index) => ({
+    account: "1000",
+    day: "2026-01-15",
+    explicit: { DEPT: index % 2 ? "A" : "B", SITE: index % 3 ? "A" : "B" },
+  }));
+  const balance = {
+    ...base,
+    kind: "balance" as const,
+    code: "LEDGER",
+    dimension: "DEPT",
+    account: "2800",
+  };
+  const account = { code: "2800", active: true, purpose: "clearing" as const };
+  const run = () => {
+    const lines = inputs.map((input, index) => ({
+      debit: index % 2 ? 0 : 100,
+      credit: index % 2 ? 100 : 0,
+      dimensions: compiled.resolve(input).dimensions,
+    }));
+    if (
+      lines.some((line) => Object.keys(line.dimensions).length !== 3) ||
+      dimensionBalance(balance, "2026-01-15", lines, account).length !== 2
+    )
+      throw new Error("Invalid dimension benchmark result");
+  };
+  for (let index = 0; index < 10; index++) run();
+  const samples = Array.from({ length: 100 }, () => {
+    const start = performance.now();
+    run();
+    return performance.now() - start;
+  }).sort((a, b) => a - b);
+  return {
+    lines: 100,
+    dimensionsPerLine: 3,
+    warmup: 10,
+    samples: 100,
+    p50Ms: samples[49],
+    p95Ms: samples[94],
+    budgetMs: 10,
+  };
+}
 
 const directory = mkdtempSync(join(tmpdir(), "erp-ci-bench-"));
 try {
@@ -42,12 +128,14 @@ try {
     const p50 = durations[49];
     const p95 = durations[94];
     if (p50 === undefined || p95 === undefined) throw new Error("Missing benchmark samples");
+    const dimensions = dimensionBenchmark();
     const report = {
       kind: "placeholder-not-million-GL",
       node: process.version,
       rows: count.rows,
       insertMs,
       query: { rows: 100, samples: durations.length, p50Ms: p50, p95Ms: p95 },
+      dimensions,
     };
     const markdown = [
       "## SQLite placeholder benchmark",
@@ -59,6 +147,12 @@ try {
       `| Transaction insert | 10000 | 1 | ${insertMs.toFixed(3)} | n/a |`,
       `| Hot indexed select | 100 | 100 | ${p50.toFixed(3)} | ${p95.toFixed(3)} |`,
       "",
+      "## Dimension rule benchmark",
+      "",
+      "Compiled in-memory rules; 100 lines × 3 dimensions per sample, defaults → derivation → conditional fixed/required/subset checks → exact integer balancing. 10 warmups; no HTTP/DB latency claimed.",
+      "",
+      `100 samples: p50 ${dimensions.p50Ms.toFixed(3)} ms; p95 ${dimensions.p95Ms.toFixed(3)} ms; p95 budget < ${dimensions.budgetMs} ms.`,
+      "",
       "No product tests run in this job; slowest-10 test timings are in CI/Full summaries.",
       "",
     ].join("\n");
@@ -69,6 +163,8 @@ try {
       appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdown);
     }
     console.log(markdown);
+    if (dimensions.p95Ms >= dimensions.budgetMs)
+      throw new Error("Dimension validation exceeds 10ms p95 budget");
   } finally {
     database.close();
   }

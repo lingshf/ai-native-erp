@@ -22,7 +22,7 @@ import type { LocalFinanceBoundary } from "./legacy.ts";
 import { httpError } from "./errors.ts";
 
 export function isMasterDataPath(path: string): boolean {
-  return /^\/api\/v1\/(?:companies|accounts|periods)(?:\/|$)/u.test(path);
+  return /^\/api\/v1\/(?:companies|accounts|periods|dimensions)(?:\/|$)/u.test(path);
 }
 function parse<T>(schema: ContractSchema<T>, input: unknown): T {
   const parsed = schema.safeParse(input);

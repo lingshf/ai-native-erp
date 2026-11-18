@@ -49,10 +49,14 @@ preserved to keep existing checksums valid, but runtime verification accepts
 only `sqlite`. There is no compatibility migration or automatic metadata rewrite.
 
 M0-08 adds immutable `002-master-data.sql`. Explicit migration verifies an
-existing 001 target before appending 002; startup refuses an outdated target.
+existing 001 target before appending 002; M0-09 appends `003-dimensions.sql`
+with typed dimension/value/default/derivation/structure/balance tables and
+append-only `dimension_history`. The value primary key is
+`(company_id, dimension_code, value_code)`; list requests are keyset-paged
+within that scope. Startup refuses an outdated target.
 Every migration checksum is checked, and the latest migration's fingerprint
 binds the complete current schema. Historical 001 fingerprints/checksums are
-not rewritten.
+not rewritten, including the published 002 migration.
 
 `ledger_companies` holds typed business metadata over the existing technical
 `companies` identities, using fixed LOCAL tenant/book IDs. `accounts` has the
@@ -64,6 +68,27 @@ each write use case, including default seeding and CAS/history, is one
 BEGIN IMMEDIATE transaction. HTTP never supplies the actor. The composition
 root accepts only an explicit absolute ERP_SQLITE_FILE; it verifies before
 business seeding, and never opens a legacy Book.
+
+`/api/v1/dimensions` shares that store and transaction lifecycle. POST/PUT
+use entity revision CAS and record history atomically; validation returns
+bounded safe field paths, not SQL or raw exception messages. D5 deliberately
+uses only subset allowed combinations (unlisted keys are unrestricted),
+including rules ported from Book. There is no exact-mode column, selector,
+compatibility branch or legacy-data conversion tool. Core compiles lookup
+maps once for in-memory per-line validation; actual journal integration and
+revalidating generated clearing lines are M0-10 work.
+
+Balancing candidates require the current same-company clearing account as an
+explicit input. After checking business balance, the pure function rejects a
+missing/inactive/non-clearing or mismatched account before producing candidates.
+Account maintenance itself remains unrestricted by balancing configuration:
+callers must read the current account for each generation, within the journal
+use-case transaction when M0-10 integrates this rule, not reuse its save-time
+snapshot. This is one generation-time policy, not a second account-edit gate.
+
+D5 also intentionally relaxes Book's saved-combination restrictions: an allowed
+combination may omit required segments and may name existing dimensions not
+declared required/optional. Required line values remain independently checked.
 
 SQLite holds separate read/write queues and connections across awaits. Each
 queue permits 64 waiters/one second, callbacks have a ten-second budget, and
