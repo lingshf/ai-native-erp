@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createApi, validateDevOrigin } from '@erp/api';
-import { parseRuntimeConfiguration } from '@erp/infrastructure';
+import { createApi, validateDevOrigin } from '@erp/infra/http';
+import { parseRuntimeConfiguration } from '@erp/infra';
 import { openVerifiedTeachingReader } from './legacy-snapshot-reader.mjs';
 
 function argumentsError() {

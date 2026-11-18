@@ -36,7 +36,7 @@ npm run verify
 npm run start:local
 ```
 
-`verify`包含原测试、语法和导入边界、真实Vite访问边界探针、独立workspace测试/构建及严格类型检查。Local默认`http://127.0.0.1:4180`，API托管`apps\web\dist`，浏览器只请求同源相对URL。普通`start:local`不打开账簿：首页仍只查询health，财务页返回明确503，不以空账冒充成功；`health.data:unconfigured`描述目标业务账未接，不是旧快照状态。缺前端产物也返回503，不回退旧工作台。
+`verify`包含原测试、语法和目录导入边界、真实Vite访问边界探针、三个workspace测试及一次严格类型检查；不运行包编译或web构建。Node 26直接执行TS源码，`npm run start:local`等价于`node packages/infra/src/main.ts`，启动也不依赖tsc产物。Local默认`http://127.0.0.1:4180`，API托管单独`npm run build`生成的`packages\web\dist`，浏览器只请求同源相对URL。普通启动不打开账簿：health的`data:unconfigured`描述目标业务账未接，财务页明确503；缺前端产物也返回503，不回退旧工作台。
 
 需要真实只读报表时，先构建，再显式选择**独立的M00已验证快照目录**，不能传活动账套的`data`目录：
 
@@ -52,7 +52,7 @@ npm run preview:legacy -- --snapshot-dir "$snapshotDir"
 
 开发时API固定4180、Vite固定5173/strictPort。在第二终端运行`npm run dev --workspace @erp/web`；普通同源GET无Origin也可代理，无需额外许可。确实带`Origin:http://127.0.0.1:5173`的请求，只有API启动时另加`--dev-origin http://127.0.0.1:5173`才允许。API与Vite均不提供跨域CORS响应，Vite拒绝外域Host，不设`allowedHosts:true`。改API端口须显式同步并验证代理目标，不能扩大来源许可掩盖错配；开发origin不是认证，不开放LAN。
 
-工程边界为`apps\web`、`apps\api`及`packages\application/contracts/domain/infrastructure/ui`。Zod是health/错误及context/trial/ledger DTO单一来源，构建输出OpenAPI 3.1到`packages\contracts\dist\openapi.json`。双语label和偏好独立在`packages\ui`，默认中文/红色/教学关闭，保存于浏览器同源`erp.workspace.preferences.v1`，不改旧偏好键。不同端口偏好独立；切换不触发账务写或额外财务查询。M02双库技术存储不等于已迁移业务；认证、业务写入及原账切换仍待后续阶段。
+工程只有三个workspace：`@erp/core`（domain/application/contracts）、`@erp/infra`（storage/http/legacy及组合根）、`@erp/web`（React及`src/ui`的labels/偏好），没有`apps/`。包导出直指`.ts`，相对TS导入使用`.ts`/`.tsx`；`npm run typecheck`一次覆盖源码和TS测试，不输出JS。目录边界禁止core反向导入infra、domain导入application、web导入Node或存储驱动。Zod是DTO单一来源；需要OpenAPI文件时显式执行`npm run openapi -- openapi.json`，不挂测试前置构建。偏好仍保存于同源`erp.workspace.preferences.v1`，默认中文/红色/教学关闭，不改旧偏好键。现有技术存储不等于已迁移业务；认证、业务写入及原账切换仍待后续阶段。
 
 ## 本地查看完整需求与进度
 
@@ -77,7 +77,6 @@ node scripts\read-legacy-ledger.mjs ledger --snapshot-dir backups\before-archite
 新目标与旧账格式不同；[14节点边界图](design/diagrams/m02-storage.svg)区分目标存储与快照只读路径。仅对显式选择的独立本机文件使用以下命令，父目录须已存在。构造/普通启动不隐式迁移，工具不从`.env`、`DATA_DIR`或旧账选择目标，不导入业务数据：
 
 ```powershell
-npm run build:packages
 npm run storage:admin -- --help
 npm run storage:admin -- migrate --provider sqlite --file new-target.sqlite
 npm run storage:admin -- verify --provider sqlite --file new-target.sqlite
@@ -86,9 +85,9 @@ npm run storage:admin -- provision --provider sqlite --file new-target.sqlite --
 
 `provision`只建立技术作用域，不是建账、授权或已实现GL；只给tenant、加book或加company分别建立对应层级。旧库/陌生文件在打开SQL或写PRAGMA前拒绝，不覆盖或自动修复。连接关闭成功后才输出成功JSON；错误分类脱敏且非零，不打印路径、SQL或连接串。
 
-**当前目标存储仅支持SQLite。** PG适配器、专属迁移、依赖和测试已删除，CLI的`--provider`只接受`sqlite`，不再提供TLS/CA连接选项。目标读写连接统一启用WAL、NORMAL、外键和5000ms忙等待；只读旧账路径不改变journal模式。已发布SQLite 001迁移保留历史dialect允许值以保持checksum兼容，运行时仍拒绝非sqlite的迁移记录，不新增兼容迁移。详情见[存储说明](packages/infrastructure/README.md)。
+**当前目标存储仅支持SQLite。** PG适配器、专属迁移、依赖和测试已删除，CLI的`--provider`只接受`sqlite`，不再提供TLS/CA连接选项。目标读写连接统一启用WAL、NORMAL、外键和5000ms忙等待；只读旧账路径不改变journal模式。已发布SQLite 001迁移保留历史dialect允许值以保持checksum兼容，运行时仍拒绝非sqlite的迁移记录，不新增兼容迁移。详情见[存储说明](packages/infra/README.md)。
 
-默认`npm run verify`运行完整旧测试及新增Local套件，不需要外部数据库、Docker、外部服务或密钥。SQLite存储和CLI专项使用`npm run verify:sqlite`（包含packages构建）；旧`verify:databases`已移除。
+默认`npm run verify`运行完整旧测试及新增Local套件，不需要外部数据库、Docker、外部服务或密钥。SQLite存储和CLI专项使用`npm run verify:sqlite`，直接运行源码；旧`verify:databases`和`build:packages`已移除。旧根`npm start`继续运行原工作台，`src/`、`public/`、`tests/`未迁移。
 
 先打开 **[项目进度总览](design/project.md)**：44FG当前为0整体完成、13部分覆盖、31未实现。这里不把“做过一部分”标为整个目标完成，也不虚构百分比。
 

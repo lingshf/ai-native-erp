@@ -1,0 +1,24 @@
+{
+  "name": "@erp/infra",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./http": "./src/http/index.ts",
+    "./storage": "./src/storage/index.ts",
+    "./legacy-teaching": "./src/legacy/teaching.ts"
+  },
+  "dependencies": {
+    "@erp/core": "0.1.0",
+    "@fastify/static": "10.1.10",
+    "better-sqlite3": "13.0.3",
+    "fastify": "5.12.8",
+    "kysely": "0.29.8"
+  },
+  "devDependencies": { "@types/better-sqlite3": "9.6.0" },
+  "scripts": {
+    "start": "node src/main.ts",
+    "test": "node --test test/*.test.mjs test/http/*.test.mjs"
+  }
+}

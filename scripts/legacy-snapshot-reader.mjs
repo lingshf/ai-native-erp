@@ -1,5 +1,5 @@
-import { StorageError } from '@erp/application';
-import { preflightLegacySnapshotPair, openLegacyTeachingSnapshot } from '@erp/infrastructure/legacy-teaching';
+import { StorageError } from '@erp/core/application';
+import { preflightLegacySnapshotPair, openLegacyTeachingSnapshot } from '@erp/infra/legacy-teaching';
 import { verifyLedgerSnapshot } from './ledger-snapshot.mjs';
 
 export function openVerifiedTeachingReader(directory) {

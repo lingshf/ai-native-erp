@@ -5,19 +5,26 @@ import { builtinModules } from 'node:module';
 import { parse } from '@babel/parser';
 
 const projects = {
-  domain: 'packages/domain/', application: 'packages/application/', infrastructure: 'packages/infrastructure/',
-  contracts: 'packages/contracts/', ui: 'packages/ui/', web: 'apps/web/', api: 'apps/api/',
+  domain: 'packages/core/src/domain/', application: 'packages/core/src/application/',
+  contracts: 'packages/core/src/contracts/', infra: 'packages/infra/src/', web: 'packages/web/src/',
 };
 const edges = {
+  core: [],
   domain: ['domain'], application: ['application', 'domain'],
-  infrastructure: ['infrastructure', 'application', 'domain'],
-  contracts: ['contracts'], ui: ['ui', 'contracts'],
-  web: ['web', 'ui', 'contracts'], api: ['api', 'application', 'contracts', 'infrastructure'],
+  contracts: ['contracts'], infra: ['infra', 'application', 'domain', 'contracts'],
+  web: ['web', 'contracts'],
+};
+const external = {
+  core: [],
+  domain: [], application: [], contracts: ['zod'],
+  infra: ['kysely', 'better-sqlite3', 'fastify', '@fastify/static', '@github/copilot-sdk'],
+  web: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query', '@tanstack/react-virtual'],
 };
 const browser = new Set(['document', 'window', 'navigator', 'localStorage', 'sessionStorage', 'fetch',
   'XMLHttpRequest', 'WebSocket', 'HTMLElement', 'Request', 'Response', 'process']);
 const builtins = new Set(builtinModules.map(name => name.replace(/^node:/, '')));
-const projectOf = file => Object.entries(projects).find(([, prefix]) => file.startsWith(prefix))?.[0];
+const projectOf = file => Object.entries(projects).find(([, prefix]) => file.startsWith(prefix))?.[0]
+  ?? (file.startsWith('packages/core/src/') ? 'core' : undefined);
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 
 export function checkImportBoundaries(file, text) {
@@ -35,15 +42,13 @@ export function checkImportBoundaries(file, text) {
     }
     const name = specifier.value;
     const destination = name.startsWith('.') ? projectOf(posix.normalize(posix.join(posix.dirname(normalized), name)))
-      : name.startsWith('@erp/') ? name.split('/')[1] : undefined;
+      : /^@erp\/core\/(domain|application|contracts)$/.exec(name)?.[1]
+        ?? (/^@erp\/infra(?:\/|$)/.test(name) ? 'infra' : /^@erp\/web(?:\/|$)/.test(name) ? 'web' : undefined);
     if (name.startsWith('.') || name.startsWith('@erp/')) {
       if (!destination || !edges[owner].includes(destination)) report(node, `${owner} cannot import ${name}.`);
-    } else if (['domain', 'application'].includes(owner)) {
-      report(node, `${owner} has no external runtime dependencies: ${name}.`);
-    } else if (['web', 'ui', 'contracts'].includes(owner)
-      && (name.startsWith('node:') || builtins.has(name)
-        || /^(?:(?:pg|mysql2|better-sqlite3|kysely)(?:\/|$)|@nestjs\/|@github\/copilot-sdk)/.test(name))) {
-      report(node, `Browser-facing ${owner} cannot import server infrastructure: ${name}.`);
+    } else if (!(owner === 'infra' && builtins.has(name.replace(/^node:/, '')))
+      && !external[owner].some(allowed => name === allowed || name.startsWith(`${allowed}/`))) {
+      report(node, `${owner} cannot import external dependency: ${name}.`);
     }
   };
   const visit = node => {
@@ -82,16 +87,16 @@ function sourceFiles(directory) {
 
 export function checkRepositoryBoundaries(root = repositoryRoot) {
   const files = [];
-  for (const [owner, prefix] of Object.entries(projects)) {
-    const project = join(root, prefix);
-    if (owner === 'domain' && !existsSync(project)) continue;
-    const directory = join(project, 'src');
-    if (!existsSync(directory)) throw new Error(`Missing required source directory: ${prefix}src`);
+  for (const prefix of Object.values(projects)) {
+    const directory = join(root, prefix);
+    if (!existsSync(directory)) throw new Error(`Missing required source directory: ${prefix}`);
     const entry = lstatSync(directory);
-    if (!entry.isDirectory() || entry.isSymbolicLink()) throw new Error(`Invalid source directory: ${prefix}src`);
+    if (!entry.isDirectory() || entry.isSymbolicLink()) throw new Error(`Invalid source directory: ${prefix}`);
     const found = sourceFiles(directory);
-    if (!found.length) throw new Error(`Empty required source directory: ${prefix}src`);
-    files.push(...found);
+    if (!found.length) throw new Error(`Empty required source directory: ${prefix}`);
+  }
+  for (const prefix of ['packages/core/src', 'packages/infra/src', 'packages/web/src']) {
+    files.push(...sourceFiles(join(root, prefix)));
   }
   if (!files.length) throw new Error('Empty repository source scan cannot pass import boundaries.');
   return {
