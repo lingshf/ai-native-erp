@@ -1,4 +1,4 @@
-import { StorageError } from '@erp/core/application';
+import { StorageError } from "@erp/core/application";
 
 interface Waiter {
   readonly grant: (release: () => void) => void;
@@ -12,18 +12,19 @@ export class Queue {
   private readonly waiters: Waiter[] = [];
 
   async acquire(): Promise<() => void> {
-    if (this.closed) throw new StorageError('CLOSED');
+    if (this.closed) throw new StorageError("CLOSED");
     if (!this.held) {
       this.held = true;
       return () => this.release();
     }
-    if (this.waiters.length >= 64) throw new StorageError('BUSY');
+    if (this.waiters.length >= 64) throw new StorageError("BUSY");
     return new Promise((grant, reject) => {
       const waiter: Waiter = {
-        grant, reject,
+        grant,
+        reject,
         timer: setTimeout(() => {
           this.waiters.splice(this.waiters.indexOf(waiter), 1);
-          reject(new StorageError('BUSY'));
+          reject(new StorageError("BUSY"));
         }, 1000),
       };
       this.waiters.push(waiter);
@@ -34,7 +35,7 @@ export class Queue {
     this.closed = true;
     for (const waiter of this.waiters.splice(0)) {
       clearTimeout(waiter.timer);
-      waiter.reject(new StorageError('CLOSED'));
+      waiter.reject(new StorageError("CLOSED"));
     }
   }
 

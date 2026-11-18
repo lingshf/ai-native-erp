@@ -7,13 +7,13 @@ const healthy = {
   service: "ai-native-erp",
   contractVersion: "1",
   profile: "local",
-  data: "unconfigured"
+  data: "unconfigured",
 } as const;
 
 function response(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json" }
+    headers: { "content-type": "application/json" },
   });
 }
 
@@ -25,7 +25,9 @@ function mockFetch() {
 
 function pending<T>() {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>(resolvePromise => { resolve = resolvePromise; });
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
   return { promise, resolve };
 }
 
@@ -64,7 +66,7 @@ describe("M01 read-only health shell", () => {
     ["wrong profile", { ...healthy, profile: "server" }],
     ["configured data claim", { ...healthy, data: "configured" }],
     ["missing field", { service: healthy.service, profile: "local", data: "unconfigured" }],
-    ["null", null]
+    ["null", null],
   ])("rejects malformed health: %s", async (_name, body) => {
     mockFetch().mockResolvedValue(response(body));
     render(<App />);
@@ -92,7 +94,9 @@ describe("M01 read-only health shell", () => {
   });
 
   it("rejects a raw server error without exposing body or parsing errors", async () => {
-    mockFetch().mockResolvedValue(response({ message: "private-path", stack: "private-stack" }, 500));
+    mockFetch().mockResolvedValue(
+      response({ message: "private-path", stack: "private-stack" }, 500),
+    );
     render(<App />);
     expect(await screen.findByText(label("zh", "shell.invalidResponse"))).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/private-path|private-stack/);
@@ -117,7 +121,10 @@ describe("M01 read-only health shell", () => {
     expect(signal?.aborted).toBe(true);
     render(<App />);
     expect(await screen.findByText(label("zh", "shell.invalidResponse"))).toBeTruthy();
-    await act(async () => { late.resolve(response(healthy)); await late.promise; });
+    await act(async () => {
+      late.resolve(response(healthy));
+      await late.promise;
+    });
     expect(screen.queryByText(label("zh", "shell.connected"))).toBeNull();
     expect(screen.getByText(label("zh", "shell.invalidResponse"))).toBeTruthy();
   });
@@ -129,7 +136,10 @@ describe("M01 read-only health shell", () => {
     const mounted = render(<App />);
     await waitFor(() => expect(json).toHaveBeenCalledTimes(1));
     mounted.unmount();
-    await act(async () => { body.resolve(healthy); await body.promise; });
+    await act(async () => {
+      body.resolve(healthy);
+      await body.promise;
+    });
     expect(screen.queryByRole("status")).toBeNull();
   });
 });
@@ -165,9 +175,14 @@ describe("M01 preferences and state protection", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[1]?.signal?.aborted).toBe(false);
     expect(JSON.parse(window.localStorage.getItem(preferenceStorageKey)!)).toEqual({
-      language: "en", theme: "green", teaching: true
+      language: "en",
+      theme: "green",
+      teaching: true,
     });
-    await act(async () => { request.resolve(response(healthy)); await request.promise; });
+    await act(async () => {
+      request.resolve(response(healthy));
+      await request.promise;
+    });
     expect(await screen.findByText(label("en", "shell.connected"))).toBeTruthy();
     fireEvent.click(teaching);
     fireEvent.change(theme, { target: { value: "red" } });
@@ -177,15 +192,22 @@ describe("M01 preferences and state protection", () => {
     expect(screen.getByText(label("zh", "shell.connected"))).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(JSON.parse(window.localStorage.getItem(preferenceStorageKey)!)).toEqual({
-      language: "zh", theme: "red", teaching: false
+      language: "zh",
+      theme: "red",
+      teaching: false,
     });
   });
 
   it("restores all saved preferences after remount", async () => {
     mockFetch().mockResolvedValue(response(healthy));
-    window.localStorage.setItem(preferenceStorageKey, JSON.stringify({
-      language: "en", theme: "green", teaching: true
-    }));
+    window.localStorage.setItem(
+      preferenceStorageKey,
+      JSON.stringify({
+        language: "en",
+        theme: "green",
+        teaching: true,
+      }),
+    );
     render(<App />);
     expect(languageSelect().value).toBe("en");
     expect(themeSelect().value).toBe("green");
@@ -202,8 +224,8 @@ describe("M01 preferences and state protection", () => {
     '{"language":"en","theme":"blue","teaching":true}',
     '{"language":"en","theme":"green","teaching":"false"}',
     '{"language":"en","theme":"green"}',
-    '{"language":"en","theme":"green","teaching":true,"extra":1}'
-  ])("notifies and uses complete defaults for corrupt saved values: %s", async serialized => {
+    '{"language":"en","theme":"green","teaching":true,"extra":1}',
+  ])("notifies and uses complete defaults for corrupt saved values: %s", async (serialized) => {
     mockFetch().mockResolvedValue(response(healthy));
     window.localStorage.setItem(preferenceStorageKey, serialized);
     render(<App />);
@@ -217,8 +239,12 @@ describe("M01 preferences and state protection", () => {
 
   it("aggregates read and write failures visibly without changing the last accepted preferences", async () => {
     mockFetch().mockResolvedValue(response(healthy));
-    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("private-path"); });
-    const write = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("private-path"); });
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("private-path");
+    });
+    const write = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("private-path");
+    });
     render(<App />);
     expect(screen.getByRole("alert").textContent).toContain(label("zh", "shell.storageRead"));
     fireEvent.change(languageSelect(), { target: { value: "en" } });
@@ -242,7 +268,9 @@ describe("M01 preferences and state protection", () => {
 
   it("notifies when the localStorage getter is blocked", async () => {
     mockFetch().mockResolvedValue(response(healthy));
-    vi.spyOn(window, "localStorage", "get").mockImplementation(() => { throw new Error("denied"); });
+    vi.spyOn(window, "localStorage", "get").mockImplementation(() => {
+      throw new Error("denied");
+    });
     render(<App />);
     expect(screen.getByRole("alert").textContent).toContain(label("zh", "shell.storageRead"));
     fireEvent.change(themeSelect(), { target: { value: "green" } });
@@ -256,7 +284,9 @@ describe("M01 preferences and state protection", () => {
     render(<App />);
     fireEvent.change(languageSelect(), { target: { value: "en" } });
     const before = window.localStorage.getItem(preferenceStorageKey);
-    const write = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("denied"); });
+    const write = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("denied");
+    });
     fireEvent.change(languageSelect(), { target: { value: "zh" } });
     fireEvent.change(themeSelect(), { target: { value: "green" } });
     expect(languageSelect().value).toBe("en");
@@ -267,7 +297,9 @@ describe("M01 preferences and state protection", () => {
     fireEvent.change(themeSelect(), { target: { value: "green" } });
     expect(themeSelect().value).toBe("green");
     expect(JSON.parse(window.localStorage.getItem(preferenceStorageKey)!)).toEqual({
-      language: "en", theme: "green", teaching: false
+      language: "en",
+      theme: "green",
+      teaching: false,
     });
     expect(screen.queryByText(label("en", "shell.storageWrite"))).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
@@ -278,7 +310,9 @@ describe("M01 preferences and state protection", () => {
     mockFetch().mockResolvedValue(response(healthy));
     window.localStorage.setItem(preferenceStorageKey, "{broken");
     render(<App />);
-    const write = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("denied"); });
+    const write = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("denied");
+    });
     fireEvent.change(themeSelect(), { target: { value: "green" } });
     expect(screen.getByRole("alert").textContent).toContain(label("zh", "shell.storageCorrupt"));
     expect(screen.getByRole("alert").textContent).toContain(label("zh", "shell.storageWrite"));

@@ -12,7 +12,9 @@ export function useHealth(attempt: number): HealthState {
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
-    const update = (next: HealthState) => { if (active) setState(next); };
+    const update = (next: HealthState) => {
+      if (active) setState(next);
+    };
     setState({ kind: "loading" });
     void (async () => {
       let response: Response;
@@ -30,15 +32,15 @@ export function useHealth(attempt: number): HealthState {
         return;
       }
       if (!response.ok) {
-        update(errorSchema.safeParse(body).success
-          ? { kind: "httpError", status: response.status }
-          : { kind: "invalidResponse" });
+        update(
+          errorSchema.safeParse(body).success
+            ? { kind: "httpError", status: response.status }
+            : { kind: "invalidResponse" },
+        );
         return;
       }
       const parsed = healthSchema.safeParse(body);
-      update(parsed.success
-        ? { kind: "ready", health: parsed.data }
-        : { kind: "invalidResponse" });
+      update(parsed.success ? { kind: "ready", health: parsed.data } : { kind: "invalidResponse" });
     })();
     return () => {
       active = false;

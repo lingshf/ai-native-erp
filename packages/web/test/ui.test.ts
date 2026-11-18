@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { en, zh, label, loadPreferences, persistPreferences, defaultPreferences } from "../src/ui/index.ts";
+import {
+  en,
+  zh,
+  label,
+  loadPreferences,
+  persistPreferences,
+  defaultPreferences,
+} from "../src/ui/index.ts";
 
 function placeholders(value: string) {
-  return [...value.matchAll(/\{([^{}]+)\}/g)].map(match => match[1]).sort();
+  return [...value.matchAll(/\{([^{}]+)\}/g)].map((match) => match[1]).sort();
 }
 
 describe("independent UI resources", () => {
@@ -25,14 +32,19 @@ describe("independent UI resources", () => {
     let writes = 0;
     const storage = {
       getItem: () => "{broken",
-      setItem: () => { writes++; }
+      setItem: () => {
+        writes++;
+      },
     };
     expect(loadPreferences(() => storage)).toEqual({
-      preferences: defaultPreferences, issues: ["storageCorrupt"]
+      preferences: defaultPreferences,
+      issues: ["storageCorrupt"],
     });
     expect(writes).toBe(0);
     expect(Object.isFrozen(defaultPreferences)).toBe(true);
-    expect(persistPreferences(() => storage, { language: "en", theme: "green", teaching: true })).toBeUndefined();
+    expect(
+      persistPreferences(() => storage, { language: "en", theme: "green", teaching: true }),
+    ).toBeUndefined();
     expect(writes).toBe(1);
   });
 });

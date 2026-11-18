@@ -1,26 +1,29 @@
-import { randomUUID } from 'node:crypto';
-import { statSync } from 'node:fs';
-import { isAbsolute, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import fastifyStatic from '@fastify/static';
-import Fastify from 'fastify';
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { LegacyTeachingQueryService, RuntimeInfoService } from '@erp/core/application';
-import type { LegacyTeachingReader, RuntimeInfoPort } from '@erp/core/application';
-import { healthSchema } from '@erp/core/contracts';
-import { LocalRuntimeInfo, parseRuntimeConfiguration } from '@erp/infra';
-import type { RuntimeConfiguration, RuntimeEnvironment } from '@erp/infra';
-import { defaultErrorLogger, httpError, sendHttpError } from './errors.ts';
-import type { SafeErrorLogger } from './errors.ts';
+import { randomUUID } from "node:crypto";
+import { statSync } from "node:fs";
+import { isAbsolute, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import fastifyStatic from "@fastify/static";
+import Fastify from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { LegacyTeachingQueryService, RuntimeInfoService } from "@erp/core/application";
+import type { LegacyTeachingReader, RuntimeInfoPort } from "@erp/core/application";
+import { healthSchema } from "@erp/core/contracts";
+import { LocalRuntimeInfo, parseRuntimeConfiguration } from "@erp/infra";
+import type { RuntimeConfiguration, RuntimeEnvironment } from "@erp/infra";
+import { defaultErrorLogger, httpError, sendHttpError } from "./errors.ts";
+import type { SafeErrorLogger } from "./errors.ts";
 import {
-  LEGACY_PATHS, registerLegacyRoutes,
-  LocalFinanceBoundary, financeHeaders, validateDevOrigin,
-} from './legacy.ts';
+  LEGACY_PATHS,
+  registerLegacyRoutes,
+  LocalFinanceBoundary,
+  financeHeaders,
+  validateDevOrigin,
+} from "./legacy.ts";
 
-export type { SafeErrorEvent, SafeErrorLogger } from './errors.ts';
-export { validateDevOrigin } from './legacy.ts';
+export type { SafeErrorEvent, SafeErrorLogger } from "./errors.ts";
+export { validateDevOrigin } from "./legacy.ts";
 
-const HEALTH_PATH = '/api/v1/health';
+const HEALTH_PATH = "/api/v1/health";
 
 export interface CreateApiOptions {
   readonly environment?: RuntimeEnvironment;
@@ -44,7 +47,7 @@ export interface LocalApi {
 }
 
 export function defaultWebRoot(): string {
-  return fileURLToPath(new URL('../../../web/dist/', import.meta.url));
+  return fileURLToPath(new URL("../../../web/dist/", import.meta.url));
 }
 
 export async function createApi(options: CreateApiOptions = {}): Promise<LocalApi> {
@@ -53,7 +56,9 @@ export async function createApi(options: CreateApiOptions = {}): Promise<LocalAp
   });
   const log = options.logError ?? defaultErrorLogger;
   const boundary = new LocalFinanceBoundary(validateDevOrigin(options.devOrigin));
-  const runtime = new RuntimeInfoService(options.runtimeInfoPort ?? new LocalRuntimeInfo(configuration));
+  const runtime = new RuntimeInfoService(
+    options.runtimeInfoPort ?? new LocalRuntimeInfo(configuration),
+  );
   const server = Fastify({
     logger: false,
     requestIdHeader: false,
@@ -61,16 +66,18 @@ export async function createApi(options: CreateApiOptions = {}): Promise<LocalAp
     exposeHeadRoutes: false,
     frameworkErrors(error: unknown, request: FastifyRequest, reply: FastifyReply) {
       // Router decoding can fail before onRequest and the error handler.
-      if (request.url.split('?')[0]?.startsWith('/api/v1/legacy/')) financeHeaders(reply);
+      if (request.url.split("?")[0]?.startsWith("/api/v1/legacy/")) financeHeaders(reply);
       sendHttpError(error, request, reply, log);
     },
   });
   try {
     server.setErrorHandler((error, request, reply) => sendHttpError(error, request, reply, log));
-    server.setNotFoundHandler((request, reply) => sendHttpError(httpError(404), request, reply, log));
-    server.addHook('onRequest', async (request, reply) => {
-      const path = request.url.split('?')[0];
-      if (path?.startsWith('/api/v1/legacy/')) financeHeaders(reply);
+    server.setNotFoundHandler((request, reply) =>
+      sendHttpError(httpError(404), request, reply, log),
+    );
+    server.addHook("onRequest", async (request, reply) => {
+      const path = request.url.split("?")[0];
+      if (path?.startsWith("/api/v1/legacy/")) financeHeaders(reply);
       if (path && LEGACY_PATHS.has(path)) {
         try {
           boundary.assert(request, reply);
@@ -78,43 +85,57 @@ export async function createApi(options: CreateApiOptions = {}): Promise<LocalAp
           sendHttpError(error, request, reply, log);
           return reply;
         }
-      } else if (path === HEALTH_PATH && request.method !== 'GET') {
+      } else if (path === HEALTH_PATH && request.method !== "GET") {
         sendHttpError(httpError(405), request, reply, log);
         return reply;
-      } else if (path === '/api' || path?.startsWith('/api/')) {
+      } else if (path === "/api" || path?.startsWith("/api/")) {
         if (path !== HEALTH_PATH) {
           sendHttpError(httpError(404), request, reply, log);
           return reply;
         }
       }
     });
-    server.get<{ Querystring: Record<string, unknown> }>(HEALTH_PATH, async request => {
+    server.get<{ Querystring: Record<string, unknown> }>(HEALTH_PATH, async (request) => {
       if (Object.keys(request.query).length) throw httpError(400);
-      return healthSchema.parse({ ...runtime.getRuntimeInfo(), contractVersion: '1' });
+      return healthSchema.parse({ ...runtime.getRuntimeInfo(), contractVersion: "1" });
     });
-    registerLegacyRoutes(server, options.legacyReader
-      ? new LegacyTeachingQueryService(options.legacyReader) : undefined, boundary);
+    registerLegacyRoutes(
+      server,
+      options.legacyReader ? new LegacyTeachingQueryService(options.legacyReader) : undefined,
+      boundary,
+    );
     const root = options.webRoot ?? defaultWebRoot();
-    if (!isAbsolute(root)) throw new TypeError('Web root must be absolute');
+    if (!isAbsolute(root)) throw new TypeError("Web root must be absolute");
     let built = false;
     try {
-      built = statSync(root).isDirectory() && statSync(join(root, 'index.html')).isFile();
+      built = statSync(root).isDirectory() && statSync(join(root, "index.html")).isFile();
     } catch (error) {
-      if (!(error !== null && typeof error === 'object' && 'code' in error
-        && (error.code === 'ENOENT' || error.code === 'ENOTDIR'))) throw error;
+      if (
+        !(
+          error !== null &&
+          typeof error === "object" &&
+          "code" in error &&
+          (error.code === "ENOENT" || error.code === "ENOTDIR")
+        )
+      )
+        throw error;
     }
     if (built) {
-      server.register(fastifyStatic, { root, dotfiles: 'deny', index: ['index.html'] });
+      server.register(fastifyStatic, { root, dotfiles: "deny", index: ["index.html"] });
     } else {
-      server.get('/', async () => { throw httpError(503); });
-      server.get('/*', async () => { throw httpError(503); });
+      server.get("/", async () => {
+        throw httpError(503);
+      });
+      server.get("/*", async () => {
+        throw httpError(503);
+      });
     }
     await options.registerTestRoutes?.(server);
     await server.ready();
     let closing: Promise<void> | undefined;
     const close = (): Promise<void> => {
       boundary.origin = undefined;
-      return closing ??= server.close();
+      return (closing ??= server.close());
     };
     return {
       app: server,
@@ -122,7 +143,10 @@ export async function createApi(options: CreateApiOptions = {}): Promise<LocalAp
       configuration,
       async listen() {
         try {
-          const address = await server.listen({ port: configuration.port, host: configuration.host });
+          const address = await server.listen({
+            port: configuration.port,
+            host: configuration.host,
+          });
           boundary.origin = new URL(address).origin;
           return address;
         } catch (error) {

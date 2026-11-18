@@ -62,7 +62,7 @@ export const reportZh = {
   "reports.conflict": "快照来源已变更。请明确重新加载快照后再读取。",
   "reports.unavailable": "已验证快照不可用或未配置。请检查服务后重试。",
   "reports.internal": "只读服务无法完成报表请求，请检查服务后重试。",
-  "reports.routeMissing": "此报表路由不存在。"
+  "reports.routeMissing": "此报表路由不存在。",
 } as const;
 
 export const reportEn = {
@@ -79,12 +79,16 @@ export const reportEn = {
   "reports.postClosing": "Post-closing",
   "reports.snapshot": "Verified teaching snapshot · Not a live ledger",
   "reports.source": "Snapshot SHA-256",
-  "reports.fullMonth": "Full-month ledger: includes adjustments, reversals and closing entries, regardless of the trial stage.",
-  "reports.sign": "Amounts have two decimal places; no currency is assumed. Signed balances retain the original ledger direction; debit and credit are separate.",
-  "reports.teaching": "Teaching note: trial stage changes local display only. Drill-down always reads the same period's full-month ledger.",
+  "reports.fullMonth":
+    "Full-month ledger: includes adjustments, reversals and closing entries, regardless of the trial stage.",
+  "reports.sign":
+    "Amounts have two decimal places; no currency is assumed. Signed balances retain the original ledger direction; debit and credit are separate.",
+  "reports.teaching":
+    "Teaching note: trial stage changes local display only. Drill-down always reads the same period's full-month ledger.",
   "reports.loading": "Reading the read-only snapshot…",
   "reports.noPeriods": "This snapshot has no available accounting periods.",
-  "reports.invalidSelection": "The URL source, period or stage is invalid. No valid period is selected and no financial report was requested.",
+  "reports.invalidSelection":
+    "The URL source, period or stage is invalid. No valid period is selected and no financial report was requested.",
   "reports.emptyTrial": "No account rows in this stage.",
   "reports.emptyLedger": "No posted entries for this account and period.",
   "reports.back": "Back to trial balance",
@@ -93,7 +97,8 @@ export const reportEn = {
   "reports.debit": "Debit",
   "reports.credit": "Credit",
   "reports.total": "Total",
-  "reports.unbalanced": "Debit and credit totals are unbalanced in this stage; amounts are shown as recorded in the snapshot.",
+  "reports.unbalanced":
+    "Debit and credit totals are unbalanced in this stage; amounts are shown as recorded in the snapshot.",
   "reports.opening": "Month opening balance",
   "reports.closing": "Month closing balance",
   "reports.totalEntries": "Full-month entry lines",
@@ -115,19 +120,25 @@ export const reportEn = {
   "reports.ledgerScroll": "Account ledger, horizontally scrollable",
   "reports.more": "Load next page",
   "reports.loadingMore": "Loading next page…",
-  "reports.partial": "Full-month detail is not yet loaded; totals above always cover the full month.",
-  "reports.incomplete": "Pagination failed; detail is incomplete. Only validated lines in this context are retained.",
+  "reports.partial":
+    "Full-month detail is not yet loaded; totals above always cover the full month.",
+  "reports.incomplete":
+    "Pagination failed; detail is incomplete. Only validated lines in this context are retained.",
   "reports.complete": "All full-month detail has been loaded.",
   "reports.retry": "Retry report",
   "reports.reload": "Reload snapshot",
   "reports.networkError": "Cannot connect to the read-only snapshot service. Retry explicitly.",
-  "reports.invalidResponse": "The response violates the report contract or pagination boundaries and was not accepted.",
+  "reports.invalidResponse":
+    "The response violates the report contract or pagination boundaries and was not accepted.",
   "reports.httpError": "The read-only report request failed. Raw server errors are not displayed.",
   "reports.invalidRequest": "Invalid report request. Check the source and period.",
   "reports.forbidden": "The local read-only service does not permit this request.",
   "reports.notFound": "The requested period or account does not exist in this snapshot.",
-  "reports.conflict": "The snapshot source has changed. Explicitly reload the snapshot before reading again.",
-  "reports.unavailable": "A verified snapshot is unavailable or unconfigured. Check the service and retry.",
-  "reports.internal": "The read-only service could not complete the report request. Check the service and retry.",
-  "reports.routeMissing": "This report route does not exist."
+  "reports.conflict":
+    "The snapshot source has changed. Explicitly reload the snapshot before reading again.",
+  "reports.unavailable":
+    "A verified snapshot is unavailable or unconfigured. Check the service and retry.",
+  "reports.internal":
+    "The read-only service could not complete the report request. Check the service and retry.",
+  "reports.routeMissing": "This report route does not exist.",
 } as const satisfies Record<keyof typeof reportZh, string>;

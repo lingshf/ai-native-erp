@@ -9,8 +9,8 @@ export default defineConfig({
     strictPort: true,
     cors: false,
     proxy: {
-      "/api/v1": { target: "http://127.0.0.1:4180", changeOrigin: true }
-    }
+      "/api/v1": { target: "http://127.0.0.1:4180", changeOrigin: true },
+    },
   },
-  build: { outDir: "dist", emptyOutDir: true }
+  build: { outDir: "dist", emptyOutDir: true },
 });

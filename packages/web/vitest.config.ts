@@ -8,6 +8,6 @@ export default defineConfig({
     include: ["test/**/*.test.ts", "test/**/*.test.tsx"],
     setupFiles: ["./test/setup.ts"],
     clearMocks: true,
-    restoreMocks: true
-  }
+    restoreMocks: true,
+  },
 });

@@ -1,4 +1,4 @@
-import type { StorageScope, UnitOfWork } from '@erp/core/application';
+import type { StorageScope, UnitOfWork } from "@erp/core/application";
 
 export interface TargetStorage extends UnitOfWork {
   verifySchema(): Promise<void>;
@@ -6,7 +6,9 @@ export interface TargetStorage extends UnitOfWork {
   provision(scope: StorageScope): Promise<void>;
 }
 
-export interface SqliteStorageConfig { readonly filename: string }
+export interface SqliteStorageConfig {
+  readonly filename: string;
+}
 
 export type Row = Record<string, unknown>;
 export type Parameters = readonly (string | number | bigint | null)[];
