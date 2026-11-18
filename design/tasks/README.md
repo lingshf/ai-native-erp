@@ -8,12 +8,13 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 
 | ID | 标题 | 依赖 | 状态 | PR |
 | --- | --- | --- | --- | --- |
-| [M0-01](M0-01-ci-and-paused-docs.md) | 落地暂停现场文档 + 建立 CI | — | todo | |
-| [M0-02](M0-02-api-pure-fastify.md) | API 去掉 NestJS，改为纯 Fastify | M0-01 | todo | |
-| [M0-03](M0-03-remove-postgres-sqlite-hardening.md) | 删除 PostgreSQL；SQLite WAL 与连接设置 | M0-01 | todo | |
-| [M0-04](M0-04-merge-packages.md) | 6 包合并为 core/infra/web，直接运行 TS 源码 | M0-02, M0-03 | todo | |
-| [M0-05](M0-05-vitest-biome.md) | 统一 Vitest；引入 Biome | M0-04 | todo | |
-| [M0-06](M0-06-pin-deps-dependabot.md) | 锁定依赖版本；配置 Dependabot | M0-04 | todo | |
+| [M0-01](M0-01-ci-and-paused-docs.md) | 落地暂停现场文档 + 建立 CI | — | done | [#3](https://github.com/lingshf/ai-native-erp/pull/3) |
+| [M0-02](M0-02-api-pure-fastify.md) | API 去掉 NestJS，改为纯 Fastify | M0-01 | done | [#4](https://github.com/lingshf/ai-native-erp/pull/4) |
+| [M0-03](M0-03-remove-postgres-sqlite-hardening.md) | 删除 PostgreSQL；SQLite WAL 与连接设置 | M0-01 | done | [#5](https://github.com/lingshf/ai-native-erp/pull/5) |
+| [M0-04](M0-04-merge-packages.md) | 6 包合并为 core/infra/web，直接运行 TS 源码 | M0-02, M0-03 | done | [#6](https://github.com/lingshf/ai-native-erp/pull/6) |
+| [M0-05](M0-05-vitest-biome.md) | 统一 Vitest；引入 Biome | M0-04 | done | [#7](https://github.com/lingshf/ai-native-erp/pull/7) |
+| [M0-06](M0-06-pin-deps-dependabot.md) | 锁定依赖版本；配置 Dependabot | M0-04 | done | [#8](https://github.com/lingshf/ai-native-erp/pull/8) |
+| [M0-06a](M0-06a-lockfile-public-registry.md) | lockfile 地址改回公共 registry + 防回归检查 | M0-06 | in-progress | |
 | [M0-07](M0-07-ci-layering.md) | CI 分层与预算 | M0-05 | todo | |
 | [M0-08](M0-08-ledger-companies-accounts.md) | 迁移 1：公司、科目、期间 + 应用外壳 | M0-05 | todo | |
 | [M0-09](M0-09-ledger-dimensions.md) | 迁移 2：财务维度 | M0-08 | todo | |
@@ -23,7 +24,7 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 | [M0-13](M0-13-ledger-period-close.md) | 迁移 6：结账与期间推进 | M0-12 | todo | |
 | [M0-14](M0-14-ai-assistant.md) | 迁移 7：AI 助手（候选） | M0-10 | todo | |
 | [M0-15](M0-15-remove-legacy-code.md) | 删除旧代码 | M0-08..M0-14 | todo | |
-| [M0-R](M0-R-milestone-review.md) | M0 里程碑评审 + 测试审计（设计角色） | M0-15, M0-06, M0-07 | todo | |
+| [M0-R](M0-R-milestone-review.md) | M0 里程碑评审 + 测试审计（设计角色） | M0-15, M0-06, M0-06a, M0-07 | todo | |
 
 ## M1：贸易 AP/AR（非库存）
 
