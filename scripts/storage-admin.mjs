@@ -45,10 +45,10 @@ try {
       safety: 'Explicit new target only; no .env, DATA_DIR, original-ledger defaults, implicit migration or business seeding.',
     }));
   } else {
-    const application = await import('@erp/application');
+    const application = await import('@erp/core/application');
     StorageFailure = application.StorageError;
     const scope = command.scope ? application.parseScope(command.scope) : undefined;
-    const { createSqliteStorage } = await import('@erp/infrastructure/storage');
+    const { createSqliteStorage } = await import('@erp/infra/storage');
     const storage = createSqliteStorage(command.configuration);
     try {
       if (command.action === 'migrate') await storage.migrate();

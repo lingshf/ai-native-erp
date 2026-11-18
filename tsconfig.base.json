@@ -7,10 +7,9 @@
     "verbatimModuleSyntax": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": false,
-    "declaration": true,
-    "sourceMap": false,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "types": ["node"]
   }
 }

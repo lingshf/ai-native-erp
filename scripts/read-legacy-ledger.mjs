@@ -4,7 +4,7 @@ import { parseArgs } from 'node:util';
 let StorageErrorType;
 let phase = 'startup';
 try {
-  const { StorageError } = await import('@erp/application');
+  const { StorageError } = await import('@erp/core/application');
   StorageErrorType = StorageError;
   phase = 'arguments';
   const { values, positionals } = parseArgs({

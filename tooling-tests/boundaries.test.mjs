@@ -9,46 +9,52 @@ import { spawnSync } from 'node:child_process';
 import * as boundaries from '../scripts/check-boundaries.mjs';
 
 const { checkImportBoundaries } = boundaries;
-const required = ['packages/application', 'packages/infrastructure', 'packages/contracts', 'packages/ui', 'apps/api', 'apps/web'];
+const required = ['packages/core/src/domain', 'packages/core/src/application', 'packages/core/src/contracts',
+  'packages/infra/src', 'packages/web/src'];
 function repositoryFixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'erp-boundary-regression-'));
   t.after(() => rmSync(root, { recursive: true }));
   for (const project of required) {
-    mkdirSync(join(root, project, 'src'), { recursive: true });
-    writeFileSync(join(root, project, 'src', 'index.ts'), 'export const present = true;');
+    mkdirSync(join(root, project), { recursive: true });
+    writeFileSync(join(root, project, 'index.ts'), 'export const present = true;');
   }
   return root;
 }
 
 test('pure domain rejects infrastructure and ambient browser access including type-only imports', () => {
-  for (const source of ["import type { Pool } from 'pg';", "export { db } from '../../infrastructure/src/db.js';",
+  for (const source of ["import type { Pool } from 'pg';", "export { db } from '../../../infra/src/index.ts';",
+    "import { x } from '@erp/core/application';",
     "const w = window;", "const f = await import('node:fs');"]) {
-    assert.ok(checkImportBoundaries('packages/domain/src/money.ts', source).length);
+    assert.ok(checkImportBoundaries('packages/core/src/domain/money.ts', source).length);
   }
-  assert.deepEqual(checkImportBoundaries('packages/domain/src/money.ts', 'export const add = (a: bigint, b: bigint) => a + b;'), []);
+  assert.deepEqual(checkImportBoundaries('packages/core/src/domain/money.ts', 'export const add = (a: bigint, b: bigint) => a + b;'), []);
 });
 
 test('application and web reject concrete or relative backdoors but allow their declared edges', () => {
-  assert.ok(checkImportBoundaries('packages/application/src/post.ts', "import { x } from '@erp/infrastructure';").length);
-  assert.ok(checkImportBoundaries('apps/web/src/app.tsx', "import { x } from '../../../packages/application/src/post.js';").length);
-  assert.ok(checkImportBoundaries('apps/web/src/app.tsx', "import type { Post } from '@erp/domain';").length);
-  assert.deepEqual(checkImportBoundaries('apps/web/src/app.tsx',
-    "import React from 'react'; import { healthSchema } from '@erp/contracts'; import { labels } from '@erp/ui';"), []);
+  assert.ok(checkImportBoundaries('packages/core/src/application/post.ts', "import { x } from '@erp/infra';").length);
+  for (const source of [
+    "import { x } from '../../core/src/application/index.ts';",
+    "import type { Post } from '@erp/core/domain';",
+    "import { readFile } from 'node:fs';",
+    "import Database from 'better-sqlite3';",
+  ]) assert.ok(checkImportBoundaries('packages/web/src/app.tsx', source).length);
+  assert.deepEqual(checkImportBoundaries('packages/web/src/app.tsx',
+    "import React from 'react'; import { healthSchema } from '@erp/core/contracts'; import { labels } from './ui/index.ts';"), []);
 });
 
 test('computed dynamic imports and require cannot evade pure-layer checks', () => {
   for (const source of ["const x = require('pg');", "const x = import('p' + 'g');",
-    "type Db = import('pg').Pool;", "import type { Db } from '@erp/infrastructure';"]) {
-    assert.ok(checkImportBoundaries('packages/domain/src/value.ts', source).length);
+    "type Db = import('pg').Pool;", "import type { Db } from '@erp/infra';"]) {
+    assert.ok(checkImportBoundaries('packages/core/src/domain/value.ts', source).length);
   }
-  assert.deepEqual(checkImportBoundaries('packages/application/src/info.ts',
-    "import type { Money } from '@erp/domain'; export interface RuntimeInfo { profile: 'local' }"), []);
+  assert.deepEqual(checkImportBoundaries('packages/core/src/application/info.ts',
+    "import type { Money } from '@erp/core/domain'; export interface RuntimeInfo { profile: 'local' }"), []);
 });
 
-test('boundary parsing supports the actual legacy-decorator and JSX workspace syntax', () => {
-  assert.deepEqual(checkImportBoundaries('apps/api/src/controller.ts',
-    "import { Controller, Get } from '@nestjs/common'; @Controller() export class Health { @Get() get() { return 'local'; } }"), []);
-  assert.deepEqual(checkImportBoundaries('apps/web/src/app.tsx',
+test('boundary parsing supports actual erasable TypeScript and JSX workspace syntax', () => {
+  assert.deepEqual(checkImportBoundaries('packages/infra/src/http/health.ts',
+    "import type { FastifyInstance } from 'fastify'; export function health(server: FastifyInstance) { return server; }"), []);
+  assert.deepEqual(checkImportBoundaries('packages/web/src/app.tsx',
     "import React from 'react'; export const App = () => <main aria-label=\"runtime\" />;"), []);
 });
 
@@ -56,32 +62,33 @@ test('all supported TypeScript and JavaScript source extensions are scanned', t 
   const root = repositoryFixture(t);
   const extensions = ['ts', 'tsx', 'mts', 'cts', 'js', 'jsx', 'mjs', 'cjs'];
   for (const extension of extensions) {
-    writeFileSync(join(root, 'packages', 'application', 'src', `violation.${extension}`),
-      "import { x } from '@erp/infrastructure';");
+    writeFileSync(join(root, 'packages', 'core', 'src', 'application', `violation.${extension}`),
+      "import { x } from '@erp/infra';");
   }
+  writeFileSync(join(root, 'packages', 'core', 'src', 'unlayered.ts'), "import { x } from '@erp/infra';");
   const result = boundaries.checkRepositoryBoundaries(root);
-  assert.equal(result.violations.length, extensions.length);
-  assert.equal(result.files.length, required.length + extensions.length);
+  assert.equal(result.violations.length, extensions.length + 1);
+  assert.equal(result.files.length, required.length + extensions.length + 1);
 });
 
 test('missing and empty required source projects cannot pass vacuously', t => {
   const root = repositoryFixture(t);
-  rmSync(join(root, 'packages', 'application', 'src', 'index.ts'));
+  rmSync(join(root, 'packages', 'core', 'src', 'application', 'index.ts'));
   assert.throws(() => boundaries.checkRepositoryBoundaries(root), /Empty required source directory/);
-  rmSync(join(root, 'packages', 'application', 'src'), { recursive: true });
+  rmSync(join(root, 'packages', 'core', 'src', 'application'), { recursive: true });
   assert.throws(() => boundaries.checkRepositoryBoundaries(root), /Missing required source directory/);
 });
 
 test('CLI resolves its own repository regardless of the invoking working directory', () => {
   const checker = fileURLToPath(new URL('../scripts/check-boundaries.mjs', import.meta.url));
-  const cwd = fileURLToPath(new URL('../apps/', import.meta.url));
+  const cwd = fileURLToPath(new URL('../packages/', import.meta.url));
   const result = spawnSync(process.execPath, [checker], { cwd, encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /passed for [1-9]\d* source files/);
 });
 
 test('Local Vite serves same-origin assets without reflecting cross-origin CORS headers', async t => {
-  const web = new URL('../apps/web/', import.meta.url);
+  const web = new URL('../packages/web/', import.meta.url);
   const require = createRequire(new URL('package.json', web));
   const { createServer } = await import(pathToFileURL(require.resolve('vite')).href);
   const server = await createServer({

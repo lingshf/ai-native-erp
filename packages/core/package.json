@@ -1,0 +1,15 @@
+{
+  "name": "@erp/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./domain": "./src/domain/index.ts",
+    "./application": "./src/application/index.ts",
+    "./contracts": "./src/contracts/index.ts"
+  },
+  "dependencies": { "zod": "4.6.7" },
+  "scripts": {
+    "test": "node --test test/application/*.test.mjs test/contracts/*.test.mjs"
+  }
+}
