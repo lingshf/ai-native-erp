@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import {
@@ -11,7 +11,6 @@ import {
 } from "./ui/index.ts";
 import { useHealth } from "./health.ts";
 import { ReportIndex, Reports } from "./Reports.tsx";
-import "./styles.css";
 
 const storage = () => window.localStorage;
 const Migration = lazy(() =>
@@ -92,6 +91,16 @@ function Workspace() {
     document.title = label(language, "shell.documentTitle");
   }, [language]);
 
+  // On narrow screens the navigation is a horizontal strip; keep the current page in view.
+  const navigation = useRef<HTMLElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: aria-current moves when the route changes.
+  useEffect(() => {
+    const nav = navigation.current;
+    const current = nav?.querySelector<HTMLElement>('a[aria-current="page"]');
+    if (!nav || !current || nav.scrollWidth <= nav.clientWidth) return;
+    nav.scrollLeft = current.offsetLeft - nav.offsetLeft - 8;
+  }, [pathname]);
+
   function changePreferences(next: Preferences) {
     const issue = persistPreferences(storage, next);
     if (issue) {
@@ -121,43 +130,16 @@ function Workspace() {
       >
         {t("shell.skip")}
       </a>
-      <header className="workspace-header">
+      <header className="appbar">
+        <span className="brand-mark" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </span>
         <h1>{t("shell.title")}</h1>
-      </header>
-      <div className="workspace-layout">
-        <aside>
-          <nav aria-label={t("shell.navigation")}>
-            <NavLink to="/" end>
-              {t("shell.overview")}
-            </NavLink>
-            <NavLink to="/migration">{t("migration.title")}</NavLink>
-            <div className="navigation-group">
-              <span>{t("master.group")}</span>
-              <NavLink to="/accounts">{t("master.title")}</NavLink>
-              <NavLink to="/dimensions">{t("dim.title")}</NavLink>
-              <NavLink to="/trade">{t("trade.title")}</NavLink>
-            </div>
-            <div className="navigation-group">
-              <span>{t("journal.group")}</span>
-              <NavLink to="/journals">{t("journal.title")}</NavLink>
-              <NavLink to="/events">{t("business.title")}</NavLink>
-              <NavLink to="/trade-invoices">{t("tinv.title")}</NavLink>
-              <NavLink to="/trade-settlements">{t("tset.title")}</NavLink>
-              <NavLink to="/trade-adjustments">{t("tadj.title")}</NavLink>
-              <NavLink to="/trade-reports">{t("trpt.title")}</NavLink>
-              <NavLink to="/ledger-reports">{t("ledger.title")}</NavLink>
-              <NavLink to="/ledger">{t("ledger.detail")}</NavLink>
-              <NavLink to="/period-close">{t("close.title")}</NavLink>
-            </div>
-            <div className="navigation-group">
-              <span>{t("reports.group")}</span>
-              <NavLink to={{ pathname: "/reports/trial", search: reportSearch }}>
-                {t("reports.trial")}
-              </NavLink>
-            </div>
-          </nav>
-          <fieldset className="preferences">
-            <legend>{t("shell.preferences")}</legend>
+        <fieldset className="appbar-prefs">
+          <legend>{t("shell.preferences")}</legend>
+          <div className="appbar-pref">
             <label htmlFor="workspace-language">{t("shell.language")}</label>
             <select
               id="workspace-language"
@@ -171,6 +153,8 @@ function Workspace() {
               <option value="zh">{t("shell.languageZh")}</option>
               <option value="en">{t("shell.languageEn")}</option>
             </select>
+          </div>
+          <div className="appbar-pref">
             <label htmlFor="workspace-theme">{t("shell.theme")}</label>
             <select
               id="workspace-theme"
@@ -184,18 +168,56 @@ function Workspace() {
               <option value="red">{t("shell.themeRed")}</option>
               <option value="green">{t("shell.themeGreen")}</option>
             </select>
-            <label className="checkbox-label" htmlFor="workspace-teaching">
-              <input
-                id="workspace-teaching"
-                type="checkbox"
-                checked={preferences.teaching}
-                onChange={(event) =>
-                  changePreferences({ ...preferences, teaching: event.target.checked })
-                }
-              />
-              {t("shell.showTeachingExplanations")}
-            </label>
-          </fieldset>
+          </div>
+          <label className="checkbox-label" htmlFor="workspace-teaching">
+            <input
+              id="workspace-teaching"
+              type="checkbox"
+              checked={preferences.teaching}
+              onChange={(event) =>
+                changePreferences({ ...preferences, teaching: event.target.checked })
+              }
+            />
+            <span>{t("shell.showTeachingExplanations")}</span>
+          </label>
+        </fieldset>
+      </header>
+      <div className="shell">
+        <aside className="sidebar">
+          <nav className="nav" ref={navigation} aria-label={t("shell.navigation")}>
+            <div className="nav-group">
+              <NavLink to="/" end>
+                {t("shell.overview")}
+              </NavLink>
+              <NavLink to="/migration">{t("migration.title")}</NavLink>
+            </div>
+            <div className="nav-group">
+              <span>{t("master.group")}</span>
+              <NavLink to="/accounts">{t("master.title")}</NavLink>
+              <NavLink to="/dimensions">{t("dim.title")}</NavLink>
+              <NavLink to="/trade">{t("trade.title")}</NavLink>
+            </div>
+            <div className="nav-group">
+              <span>{t("journal.group")}</span>
+              <NavLink to="/journals">{t("journal.title")}</NavLink>
+              <NavLink to="/events">{t("business.title")}</NavLink>
+              <NavLink to="/trade-invoices">{t("tinv.title")}</NavLink>
+              <NavLink to="/trade-settlements">{t("tset.title")}</NavLink>
+              <NavLink to="/trade-adjustments">{t("tadj.title")}</NavLink>
+              <NavLink to="/trade-reports">{t("trpt.title")}</NavLink>
+              <NavLink to="/ledger-reports">{t("ledger.title")}</NavLink>
+              <NavLink to="/ledger">{t("ledger.detail")}</NavLink>
+              <NavLink to="/period-close">{t("close.title")}</NavLink>
+            </div>
+            <div className="nav-group">
+              <span>{t("reports.group")}</span>
+              <NavLink to={{ pathname: "/reports/trial", search: reportSearch }}>
+                {t("reports.trial")}
+              </NavLink>
+            </div>
+          </nav>
+        </aside>
+        <div className="shell-body">
           {issues.length > 0 && (
             <section className="warning" role="alert" aria-labelledby="preference-warning">
               <h2 id="preference-warning">
@@ -209,122 +231,122 @@ function Workspace() {
               </ul>
             </section>
           )}
-        </aside>
-        <main id="workspace-main" tabIndex={-1}>
-          <Routes>
-            <Route
-              path="/migration"
-              element={
-                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
-                  <Migration preferences={preferences} />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/trade-adjustments"
-              element={
-                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
-                  <TradeAdjustments preferences={preferences} />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/trade"
-              element={
-                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
-                  <TradeMaster preferences={preferences} />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/trade-reports"
-              element={
-                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
-                  <TradeReports preferences={preferences} />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/trade-invoices"
-              element={
-                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
-                  <TradeInvoices preferences={preferences} />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/trade-settlements"
-              element={
-                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
-                  <TradeSettlements preferences={preferences} />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/period-close"
-              element={
-                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
-                  <PeriodClose preferences={preferences} />
-                </Suspense>
-              }
-            />
-            {["/ledger-reports", "/ledger"].map((path) => (
+          <main id="workspace-main" tabIndex={-1}>
+            <Routes>
               <Route
-                key={path}
-                path={path}
+                path="/migration"
                 element={
                   <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
-                    <LedgerReports preferences={preferences} />
+                    <Migration preferences={preferences} />
                   </Suspense>
                 }
               />
-            ))}
-            <Route
-              path="/events"
-              element={
-                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
-                  <BusinessEvents preferences={preferences} />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/dimensions"
-              element={
-                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
-                  <Dimensions preferences={preferences} />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/journals"
-              element={
-                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
-                  <Journals preferences={preferences} />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/accounts"
-              element={
-                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
-                  <Accounts preferences={preferences} />
-                </Suspense>
-              }
-            />
-            <Route path="/" element={<Overview preferences={preferences} />} />
-            <Route path="/reports" element={<ReportIndex />} />
-            <Route path="/reports/*" element={<Reports preferences={preferences} />} />
-            <Route
-              path="*"
-              element={
-                <p role="alert">
-                  <span aria-hidden="true">⚠ </span>
-                  {t("reports.routeMissing")}
-                </p>
-              }
-            />
-          </Routes>
-        </main>
+              <Route
+                path="/trade-adjustments"
+                element={
+                  <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                    <TradeAdjustments preferences={preferences} />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/trade"
+                element={
+                  <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                    <TradeMaster preferences={preferences} />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/trade-reports"
+                element={
+                  <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                    <TradeReports preferences={preferences} />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/trade-invoices"
+                element={
+                  <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                    <TradeInvoices preferences={preferences} />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/trade-settlements"
+                element={
+                  <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                    <TradeSettlements preferences={preferences} />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/period-close"
+                element={
+                  <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                    <PeriodClose preferences={preferences} />
+                  </Suspense>
+                }
+              />
+              {["/ledger-reports", "/ledger"].map((path) => (
+                <Route
+                  key={path}
+                  path={path}
+                  element={
+                    <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                      <LedgerReports preferences={preferences} />
+                    </Suspense>
+                  }
+                />
+              ))}
+              <Route
+                path="/events"
+                element={
+                  <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                    <BusinessEvents preferences={preferences} />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/dimensions"
+                element={
+                  <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                    <Dimensions preferences={preferences} />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/journals"
+                element={
+                  <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                    <Journals preferences={preferences} />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/accounts"
+                element={
+                  <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                    <Accounts preferences={preferences} />
+                  </Suspense>
+                }
+              />
+              <Route path="/" element={<Overview preferences={preferences} />} />
+              <Route path="/reports" element={<ReportIndex />} />
+              <Route path="/reports/*" element={<Reports preferences={preferences} />} />
+              <Route
+                path="*"
+                element={
+                  <p role="alert">
+                    <span aria-hidden="true">⚠ </span>
+                    {t("reports.routeMissing")}
+                  </p>
+                }
+              />
+            </Routes>
+          </main>
+        </div>
       </div>
     </div>
   );
