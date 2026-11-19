@@ -46,7 +46,7 @@ import { masterDataRepository } from "./master-data.ts";
 import { journalTools } from "./journals.ts";
 import { APPLICATION_ID } from "./sqlite.ts";
 import { advanceWriteSequence } from "./write-sequence.ts";
-import { checkLegacyReconciliation, saveReconciliation } from "../legacy/reconcile.ts";
+import { reconcileLegacy, saveReconciliation } from "../legacy/reconcile.ts";
 import type { Connection, Row } from "./types.ts";
 
 type Planned = {
@@ -449,7 +449,10 @@ async function apply(
 export async function executeLegacyImport(
   snapshot: LegacyImportSnapshot,
   request: { target: string; choices: ImportChoices; batchLines?: number },
-  hooks: { beforeBatchCommit?: (batch: number) => void; beforeReconcile?: () => void } = {},
+  hooks: {
+    beforeBatchCommit?: (batch: number) => void;
+    beforeReconcile?: (db: Database.Database) => void;
+  } = {},
 ): Promise<{ runId: string; status: "imported"; batches: number }> {
   const batchLines = request.batchLines ?? 5000;
   if (
@@ -523,6 +526,7 @@ export async function executeLegacyImport(
       raw = connection(db);
     }
     db.pragma("foreign_keys=ON");
+    db.pragma("temp_store=FILE");
     if (!existed) {
       await raw.begin();
       try {
@@ -555,7 +559,8 @@ export async function executeLegacyImport(
     let index = 0,
       batch = 0,
       pending: Planned[] = [],
-      lines = 0;
+      lines = 0,
+      failedReconciliation = false;
     async function flush(final = false) {
       if (!db) throw new StorageError("CLOSED");
       await raw.begin();
@@ -571,9 +576,21 @@ export async function executeLegacyImport(
             at,
           );
         if (pending.length) await advanceWriteSequence(raw);
+        if (final) {
+          db.prepare("UPDATE legacy_import_runs SET status='imported' WHERE id=?").run(runId);
+          hooks.beforeReconcile?.(db);
+          const report = await reconcileLegacy(snapshot, db);
+          saveReconciliation(db, report);
+          failedReconciliation = report.verdict === "difference";
+        }
         db.prepare(
           "UPDATE legacy_import_runs SET cursor=?,counts=?,write_sequence=(SELECT value FROM write_seq WHERE id=1),status=? WHERE id=?",
-        ).run(index, tableCounts(db), final ? "imported" : "importing", runId);
+        ).run(
+          index,
+          tableCounts(db),
+          final ? (failedReconciliation ? "failed" : "imported") : "importing",
+          runId,
+        );
         hooks.beforeBatchCommit?.(++batch);
         await raw.commit();
       } catch (error) {
@@ -595,19 +612,7 @@ export async function executeLegacyImport(
       index++;
     }
     await flush(true);
-    hooks.beforeReconcile?.();
-    const report = await checkLegacyReconciliation(snapshot, target);
-    await raw.begin();
-    try {
-      saveReconciliation(db, report);
-      if (report.verdict === "difference")
-        db.prepare("UPDATE legacy_import_runs SET status='failed' WHERE id=?").run(runId);
-      await raw.commit();
-    } catch (error) {
-      await raw.rollback();
-      throw error;
-    }
-    if (report.verdict === "difference") {
+    if (failedReconciliation) {
       const error = new StorageError("CONFLICT");
       error.message =
         "Imported target failed reconciliation; retained for inspection and blocked from runtime.";

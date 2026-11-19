@@ -9,6 +9,7 @@ import {
   checkLegacyReconciliation,
   confirmLegacyReconciliation,
   reconciliationSha256,
+  saveReconciliation,
 } from "../src/legacy/reconcile.ts";
 import { executeLegacyImport } from "../src/storage/legacy-import.ts";
 import { readMigrationStatus } from "../src/storage/reconciliation.ts";
@@ -202,6 +203,42 @@ test("stale list confirmation stays pending and preserves every target byte", as
   assert.deepEqual(readFileSync(f.targetFile), before);
   assert.equal(state(f.targetFile).run.status, "imported");
 });
+test("first confirmation survives UPDATE, DELETE and both REPLACE forms with recursive triggers disabled", async (t) => {
+  const f = await fixture(t);
+  const beforeConfirmation = new Database(f.targetFile);
+  try {
+    saveReconciliation(beforeConfirmation, {
+      ...f.report,
+      checks: [...f.report.checks, { section: "fictional-refresh", expected: [], actual: [] }],
+    });
+    assert.ok(
+      JSON.parse(
+        beforeConfirmation.prepare("SELECT report FROM legacy_reconciliations").get().report,
+      ).checks.some((check) => check.section === "fictional-refresh"),
+    );
+  } finally {
+    beforeConfirmation.close();
+  }
+  await confirmLegacyReconciliation(f.snapshotReader, f.targetFile, f.confirmation);
+  const before = state(f.targetFile);
+  const db = new Database(f.targetFile);
+  try {
+    db.pragma("recursive_triggers=OFF");
+    for (const sql of [
+      "UPDATE legacy_reconciliations SET baseline=baseline+1",
+      "DELETE FROM legacy_reconciliations",
+      ...["INSERT OR REPLACE", "REPLACE"].map(
+        (insert) => `${insert} INTO legacy_reconciliations
+          SELECT run_id,report,report_sha,confirmation_sha,baseline+1 FROM legacy_reconciliations`,
+      ),
+    ]) {
+      assert.throws(() => db.exec(sql), /immutable reconciliation/);
+      assert.deepEqual(state(f.targetFile), before);
+    }
+  } finally {
+    db.close();
+  }
+});
 test.for([
   [
     "amount",
@@ -296,13 +333,8 @@ test("import-time differences persist failed report and block business runtime",
       snapshot,
       { target, choices },
       {
-        beforeReconcile() {
-          const db = new Database(target);
-          try {
-            db.exec("UPDATE periods SET status='frozen'");
-          } finally {
-            db.close();
-          }
+        beforeReconcile(db) {
+          db.exec("UPDATE periods SET status='frozen'");
         },
       },
     ),

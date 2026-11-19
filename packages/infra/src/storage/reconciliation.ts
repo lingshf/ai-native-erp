@@ -19,6 +19,7 @@ export function openReconciliationTarget(target: string, readonly = true): Datab
     throw new StorageError("CONFLICT");
   const db = new Database(target, { readonly, fileMustExist: true });
   db.defaultSafeIntegers(true);
+  db.pragma("temp_store=FILE");
   if (Number(db.pragma("application_id", { simple: true })) !== APPLICATION_ID) {
     db.close();
     throw new StorageError("SCHEMA_MISMATCH");

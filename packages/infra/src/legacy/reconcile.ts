@@ -117,8 +117,7 @@ export async function reconcileLegacy(
         report.differences.push({ section, key: id, expected: a, actual: b });
     }
   };
-  db.exec(`PRAGMA temp_store=FILE;
-    CREATE TEMP TABLE reconciliation_expected(
+  db.exec(`CREATE TEMP TABLE reconciliation_expected(
       source TEXT,object TEXT,legacy TEXT,evidence TEXT,target TEXT,
       PRIMARY KEY(source,object,legacy)) WITHOUT ROWID;`);
   try {

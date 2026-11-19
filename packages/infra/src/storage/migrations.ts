@@ -382,6 +382,7 @@ export async function inspectSchema(
         ? [
             "table:legacy_reconciliations",
             "trigger:legacy_reconciliation_baseline",
+            "trigger:legacy_reconciliation_no_replace",
             "trigger:legacy_reconciliation_no_delete",
           ]
         : []),
