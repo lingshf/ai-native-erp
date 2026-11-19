@@ -328,7 +328,12 @@ function ActionEntry({
         });
       const next = { ...saved, pending };
       try {
-        sessionStorage.setItem(key(company.code), JSON.stringify(next));
+        const value = JSON.stringify(next);
+        sessionStorage.setItem(key(company.code), value);
+        if (sessionStorage.getItem(key(company.code)) !== value) {
+          setStorageFailed(true);
+          return;
+        }
       } catch {
         setStorageFailed(true);
         return;

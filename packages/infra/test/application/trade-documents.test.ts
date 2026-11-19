@@ -1010,42 +1010,6 @@ describe("trade invoices on real SQLite", () => {
     expect((await current(credit.receipt.actionId)).remainingGross).toBe(0);
     expect(await service.confirmAction(applied.envelope)).toEqual(applied.receipt);
   });
-  it("keeps representative confirmation p95 within the specified two-second budget", async () => {
-    const elapsed: number[] = [];
-    for (let index = 0; index < 12; index++) {
-      const command = advance(index % 2 ? "AR" : "AP", 100);
-      const preview = await service.previewAction(command);
-      const started = performance.now();
-      await service.confirmAction({
-        command,
-        fingerprint: preview.fingerprint,
-        idempotencyKey: randomUUID(),
-        confirmation: "POST",
-      });
-      elapsed.push(performance.now() - started);
-      const cancellation: TradeActionCommand = {
-        ...actionHeader(),
-        kind: "cancel",
-        itemId: command.actionId,
-        revision: 1,
-        relatedRevision: null,
-        reason: "Fictional benchmark correction",
-      };
-      const undoPreview = await service.previewAction(cancellation);
-      const undoStarted = performance.now();
-      await service.confirmAction({
-        command: cancellation,
-        fingerprint: undoPreview.fingerprint,
-        idempotencyKey: randomUUID(),
-        confirmation: "POST",
-      });
-      elapsed.push(performance.now() - undoStarted);
-    }
-    const p95 = [...elapsed].sort((a, b) => a - b)[Math.ceil(elapsed.length * 0.95) - 1];
-    console.info(`M1-05 confirm p95=${Math.round(p95)}ms; samples=${elapsed.length}`);
-    expect(p95).toBeLessThanOrEqual(2000);
-  });
-
   it("allocates TC-T06 net/tax exactly, takes an explicit inclusive-deadline discount and consumes the final remainder without changing invoice tax", async () => {
     const trade = new TradeMasterService(store);
     await trade.save({

@@ -266,6 +266,39 @@ describe("typed trade adjustments", () => {
         });
     },
   );
+  it.each(["missing", "changed", "unreadable"] as const)(
+    "does not post when the saved confirmation envelope is %s on readback",
+    async (failure) => {
+      const { posts } = mockApi();
+      await open();
+      fireEvent.change(screen.getByLabelText(t("tinv.party")), { target: { value: "V1" } });
+      fireEvent.change(screen.getByLabelText(t("tadj.gross")), { target: { value: "500" } });
+      await plan();
+      const storage = sessionStorage;
+      const read = Storage.prototype.getItem;
+      const write = vi.spyOn(Storage.prototype, "setItem");
+      vi.spyOn(Storage.prototype, "getItem").mockImplementation(function (
+        this: Storage,
+        key: string,
+      ) {
+        if (this === storage && key === "erp.tradeActions.v1.DEFAULT") {
+          if (failure === "unreadable") throw new Error("Fictional unavailable storage");
+          return failure === "missing" ? null : "{}";
+        }
+        return read.call(this, key);
+      });
+      fireEvent.click(screen.getByRole("button", { name: t("tadj.confirm") }));
+      await screen.findByText(t("tinv.storageFailed"));
+      expect(write).toHaveBeenCalledWith(
+        "erp.tradeActions.v1.DEFAULT",
+        expect.stringContaining('"pending":{'),
+      );
+      expect(posts).toHaveLength(0);
+      expect(screen.getByRole("button", { name: t("tadj.confirm") }).matches(":disabled")).toBe(
+        true,
+      );
+    },
+  );
   it("locks unknown outcomes and replays exactly the stored confirmation after remount and language switch", async () => {
     const { posts } = mockApi(true);
     const first = render(<App />);

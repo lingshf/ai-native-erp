@@ -93,7 +93,7 @@ D6 历史反向逐行精确镜像同公司原已过账行，即使科目/维度�
 
 ### 预付、贷项、专用取消与反向（M1-05）
 
-`/trade-adjustments` 提供类型化预付/预收、贷项、应用、取消与反向表单；`POST /api/v1/trade/actions/preview` 零写预览，`POST /api/v1/trade/actions` 以 `{command, fingerprint, idempotencyKey, confirmation:"POST"}` 原子确认。每个新动作使用新的 UUID `actionId`，共同字段为 `company`、`accountingDate`、`documentDate`、`taxDate`，不接受客户端 GL/税额。未知写结果锁定并保存原确认封套供安全重试，切语言保留输入；不自动调用 AI。
+`/trade-adjustments` 提供类型化预付/预收、贷项、应用、取消与反向表单；`POST /api/v1/trade/actions/preview` 零写预览，`POST /api/v1/trade/actions` 以 `{command, fingerprint, idempotencyKey, confirmation:"POST"}` 原子确认。每个新动作使用新的 UUID `actionId`，共同字段为 `company`、`accountingDate`、`documentDate`、`taxDate`，不接受客户端 GL/税额。确认前同步保存并读回核对完整原封套；拒写、不能读回或内容不一致均显式报错且不发确认 POST。未知写结果锁定并保存原确认封套供安全重试，切语言保留输入；不自动调用 AI。
 
 | `command.kind` | 专用字段与规则 |
 | --- | --- |
@@ -108,6 +108,8 @@ D6 历史反向逐行精确镜像同公司原已过账行，即使科目/维度�
 控制/预付维度按原最终集合分段，键按 ASCII 规范序排列，逐段按当步剩余金额比例 half-up，末段取尽。新发票逐行固化控制维度（包含商品/表头/行维度）；原已过账发票保留原单段，不重写历史。相同控制科目的跨维度应用仍写真实转移分录，只有逐科目及完整维度均净零才可无 GL，但业务来源、回执、双边余额及链路仍完整持久化。新写入验证当前有效角色/结构，不能改投新伙伴默认或 profile；完整专用取消/反向复制服务器原凭证全行（含内部平衡），不因当前停用/结构变化阻断。
 
 迁移 **012** 追加来源身份、不可变动作/关联/贷项行及控制分段；事务内重建 `open_items` 和其直接外键子表以支持三类未结项及取消状态，逐列保留原数据、余额、版本、核销和条款，既有发票回填原控制单段；001–011 不修改。011 及之前的原核销回执仍可精确反向，原幂等封套继续返回原回执。月末历史余额/账龄不是本页面的当前余额口径，另由后续查询切片提供。
+
+独立非门槛采样可运行 `node packages\infra\bench\trade-adjustments.ts`，仅创建并清理自有临时合成库；AP/AR 预付确认及取消分别预热 4 次、记录 24 次 raw/p50/p95/p99，不混合路径。计时包含 application 确认与事务持久化，不含预览/HTTP/建库，不代表生产 SLA；普通 PR 套件不运行该采样或设置其墙钟性能门槛。
 
 ### 贸易计算器（M1-02）
 
