@@ -25,20 +25,30 @@ does not bypass the gate or exercise future P-inclusive opening reconciliation.
 
 ## Three-round evidence
 
+Measured source head: `886ce2435547cf8caea7984656786aaa14aa32ca`; the subsequent
+evidence-only commit changes this document, not the measured code. This rerun
+includes the reviewed atomic final-batch/report/status transaction.
+
 Local run on Windows x64, Node v26.13.0, AMD EPYC 7763, 16 available logical
-processors. The environment was shared with validation work; these are measured
-results, not predictions. Initial import including its final reconciliation took
-240.981 seconds; that is not the standalone check budget.
+processors. No build, test or other benchmark from this session ran concurrently.
+This is a shared machine; that does not establish host-wide idleness or
+environmental stability. Initial import including its final reconciliation took
+197.105 seconds; that is not the standalone check budget.
 
 | Round | Complete check | Warm HTTP p95 | HTTP response bytes |
 |---|---:|---:|---:|
-| 1 | 23.769 s | 12.854 ms | 14,021 |
-| 2 | 34.991 s | 42.742 ms | 14,021 |
-| 3 | 49.697 s | 21.024 ms | 14,021 |
+| 1 | 24.379 s | 17.967 ms | 14,021 |
+| 2 | 23.788 s | 11.378 ms | 14,021 |
+| 3 | 23.657 s | 10.942 ms | 14,021 |
 
 Budgets are 120 seconds for reconciliation and 1 second for warm HTTP p95.
 The runner enforces D18's stricter 80% guards: **96 seconds / 800 ms**.
-Worst measured results use 41.42% / 4.28% of their full budgets, below both guards.
+Worst measured results use 20.32% / 1.80% of their full budgets, below both guards
+(25.40% / 2.25% of the stricter D18 guards).
+
+These replace the pre-review 23.769 / 34.991 / 49.697 second check figures and
+12.854 / 42.742 / 21.024 ms HTTP p95 figures. No performance optimization was
+made; this rerun validates the atomic finalization path, not a causal speedup claim.
 
 The checker stages expected references in temporary SQLite tables, aggregates
 exact smallest-unit amounts in SQLite, and joins line references using indexed
