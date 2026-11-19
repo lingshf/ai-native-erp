@@ -294,4 +294,25 @@ describe("trade historical reports", () => {
     expect(screen.queryByText("LATE-FEBRUARY")).toBeNull();
     expect(screen.getByRole("button", { name: "INV-HISTORY" })).toBeTruthy();
   });
+  it("marks the current view as pressed and renders the teaching tip only when teaching is on", async () => {
+    mockApi();
+    render(<App />);
+    await screen.findByRole("button", { name: "INV-HISTORY" });
+    const views = within(screen.getByRole("navigation", { name: t("trpt.title") }));
+    const pressed = () =>
+      (["openItems", "ageing", "reconciliation"] as const).map((key) =>
+        views.getByRole("button", { name: t(`trpt.${key}`) }).getAttribute("aria-pressed"),
+      );
+    expect(pressed()).toEqual(["true", "false", "false"]);
+    expect(screen.queryByRole("complementary", { name: "教学说明" })).toBeNull();
+    expect(screen.getByText(t("trpt.boundary"))).toBeTruthy();
+    fireEvent.click(views.getByRole("button", { name: t("trpt.reconciliation") }));
+    await screen.findByRole("table", { name: t("trpt.reconciliation") });
+    expect(pressed()).toEqual(["false", "false", "true"]);
+    expect(screen.getByText(t("trpt.reconcileNote"))).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(t("shell.showTeachingExplanations")));
+    expect(screen.getByRole("complementary", { name: "教学说明" }).textContent).toContain(
+      t("trpt.teaching"),
+    );
+  });
 });

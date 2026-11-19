@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   balanceShards,
   fileWeights,
+  guiStartupSummary,
   selectPrTests,
   selectShardFiles,
   shouldRun,
@@ -157,5 +158,50 @@ describe("CI selection and reporting", () => {
         }
       }
     }
+  });
+
+  it("isolates the storage CLI without losing files under mixed execution workers", () => {
+    const isolated = "packages/infra/test/storage-admin-cli.test.ts";
+    const files = [isolated, "a", "b", "c", "d", "e"];
+    const weights = Object.fromEntries(files.map((file, index) => [file, index + 1]));
+    const projects = Object.fromEntries(files.map((file) => [file, "infra"]));
+    for (const workers of [
+      [1, 1, 1, 1, 1, 1],
+      [2, 3, 1, 8, 3, 2],
+    ]) {
+      const shards = workers.map((maxWorkers, index) => {
+        const config = { maxWorkers, shard: { index: index + 1, count: workers.length } };
+        return selectShardFiles([...files].reverse(), weights, config, projects);
+      });
+      expect(shards[5]).toEqual([isolated]);
+      expect(shards.flat().sort()).toEqual([...files].sort());
+      expect(new Set(shards.flat()).size).toBe(files.length);
+    }
+    expect(
+      selectShardFiles(files, weights, { shard: { index: 1, count: 1 } }, projects).sort(),
+    ).toEqual([...files].sort());
+    const browserFiles = ["gui-a", "gui-b"];
+    expect(
+      [1, 2]
+        .flatMap((index) => selectShardFiles(browserFiles, {}, { shard: { index, count: 2 } }, {}))
+        .sort(),
+    ).toEqual(browserFiles);
+  });
+
+  it("preserves GUI phases and only warns above ten seconds of startup", () => {
+    const phase = (name: string, ms: number) =>
+      JSON.stringify({ event: "trade-gui-phase", scenario: "migration", phase: name, ms });
+    const phases = [phase("browser", 8000), phase("page", 1000), phase("page", 1000)];
+    expect(guiStartupSummary(phases.join("\n")).markdown).not.toContain("Warning");
+    phases.push(phase("interaction", 20_000));
+    expect(guiStartupSummary(phases.join("\n")).markdown).not.toContain("Warning");
+    phases.push(phase("page", 1));
+    const report = guiStartupSummary(["Vitest unrelated output", ...phases].join("\n"));
+    expect(report.phases).toHaveLength(5);
+    expect(report.markdown).toContain("total: 10001ms");
+    expect(report.markdown).toContain("Warning");
+    expect(report.markdown).toContain("diagnostic only");
+    expect(() => guiStartupSummary(phase("page", -1))).toThrow("Invalid GUI phase timing");
+    expect(guiStartupSummary("No browser in this ordinary shard").phases).toEqual([]);
   });
 });

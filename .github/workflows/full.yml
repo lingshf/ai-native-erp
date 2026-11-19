@@ -18,12 +18,16 @@ jobs:
       fail-fast: false
       matrix:
         lane: [unit, browser]
-        shard: [1, 2, 3, 4, 5]
+        shard: [1, 2, 3, 4, 5, 6]
+        exclude:
+          - lane: browser
+            shard: 6
     concurrency:
       group: full-${{ github.ref }}-${{ matrix.lane }}-${{ matrix.shard }}
       cancel-in-progress: true
     env:
       CI_TEST_LAYER: full
+      CI_TEST_LANE: ${{ matrix.lane }}
       ERP_E2E_BROWSER_CHANNEL: chrome
       ERP_E2E_ARTIFACTS: artifacts/ci/trade-e2e
     steps:
@@ -59,10 +63,12 @@ jobs:
         id: tests
         if: steps.gate.outputs.run == 'true'
         run: |
+          set -o pipefail
+          mkdir -p artifacts/ci
           if [ "${{ matrix.lane }}" = "browser" ]; then
-            npm run test:ci -- --project=infra-browser --maxWorkers=1 --shard=${{ matrix.shard }}/5
+            npm run test:ci -- --project=infra-browser --maxWorkers=1 --shard=${{ matrix.shard }}/5 2>&1 | tee artifacts/ci/vitest.log
           else
-            npm run test:ci -- '--project=!infra-browser' --shard=${{ matrix.shard }}/5
+            npm run test:ci -- '--project=!infra-browser' --shard=${{ matrix.shard }}/6 2>&1 | tee artifacts/ci/vitest.log
           fi
       - name: Web build
         if: steps.gate.outputs.run == 'true' && matrix.lane == 'unit' && matrix.shard == 2
@@ -76,7 +82,10 @@ jobs:
         if: always() && steps.gate.outputs.run == 'true'
         with:
           name: vitest-shard-${{ matrix.lane }}-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/ci/vitest.json
+          path: |
+            artifacts/ci/vitest.json
+            artifacts/ci/vitest.log
+            artifacts/ci/gui-phases.json
           if-no-files-found: ignore
           retention-days: 14
       - uses: actions/upload-artifact@v7

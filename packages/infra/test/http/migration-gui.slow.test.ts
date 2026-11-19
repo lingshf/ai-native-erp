@@ -1,7 +1,7 @@
 import { mkdtemp, mkdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { afterAll, beforeAll, expect, test } from "vitest";
+import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { chromium, type Browser } from "playwright";
 import { build } from "vite";
 import { createApi } from "../../src/http/index.ts";
@@ -9,6 +9,7 @@ import { MigrationReader } from "../../src/workers/migration-reader.ts";
 import { executeLegacyImport } from "../../src/storage/legacy-import.ts";
 import { LegacyImportSnapshot, type ImportChoices } from "../../src/legacy/import-plan.ts";
 import { legacyFixture, openingItemsFile } from "../support/legacy-fixture.mjs";
+import { guiPhase, tabTo } from "../support/trade-gui-scenario.ts";
 
 let directory: string, browser: Browser;
 const artifacts = resolve(process.env.ERP_E2E_ARTIFACTS ?? "artifacts\\ci\\migration-e2e");
@@ -21,7 +22,9 @@ beforeAll(async () => {
     logLevel: "error",
     build: { outDir: join(directory, "web") },
   });
+  const started = performance.now();
   browser = await chromium.launch({ headless: true, channel: process.env.ERP_E2E_BROWSER_CHANNEL });
+  guiPhase("migration", "browser", started);
 }, 60_000);
 afterAll(async () => {
   await browser?.close();
@@ -50,7 +53,9 @@ for (const language of ["zh", "en"] as const)
         allowPortZero: true,
         environment: { ERP_PORT: "0" },
       });
+      const started = performance.now();
       const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+      guiPhase("migration", "page", started);
       try {
         const origin = await api.listen();
         await page.addInitScript(
@@ -96,3 +101,26 @@ for (const language of ["zh", "en"] as const)
       }
     }, 30_000);
   }
+
+test("chooses the short keyboard path after probing an unknown focus position", async ({
+  onTestFinished,
+}) => {
+  const started = performance.now();
+  const page = await browser.newPage();
+  guiPhase("migration", "page", started);
+  onTestFinished(() => page.close());
+  await page.setContent(
+    Array.from(
+      { length: 100 },
+      (_, index) => `<button id="stop-${index}">Stop ${index}</button>`,
+    ).join(""),
+  );
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+  const press = vi.spyOn(page.keyboard, "press");
+  const target = page.locator("#stop-98");
+  await tabTo(page, target);
+  expect(
+    await target.evaluate((element) => element === document.activeElement && document.hasFocus()),
+  ).toBe(true);
+  expect(press.mock.calls.length).toBeLessThanOrEqual(8);
+});
