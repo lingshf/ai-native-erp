@@ -19,21 +19,15 @@ export function registerReportRoutes(
       if (!service) throw httpError(503);
       const parsed = reportQuerySchema.safeParse(request.query);
       if (!parsed.success) throw httpError(400);
-      const { company, month, stage, watermark } = parsed.data;
+      const { company, month, stage, watermark, accountRevision } = parsed.data;
+      const snapshot =
+        watermark === undefined || accountRevision === undefined
+          ? undefined
+          : { watermark: Number(watermark), accountRevision: Number(accountRevision) };
       return reportSchema.parse(
         await (kind === "reconciliation"
-          ? service.reconciliation(
-              company,
-              month,
-              stage,
-              watermark === undefined ? undefined : Number(watermark),
-            )
-          : service.report(
-              company,
-              month,
-              stage,
-              watermark === undefined ? undefined : Number(watermark),
-            )),
+          ? service.reconciliation(company, month, stage, snapshot)
+          : service.report(company, month, stage, snapshot)),
       );
     });
   }
@@ -42,13 +36,25 @@ export function registerReportRoutes(
     if (!service) throw httpError(503);
     const parsed = ledgerQuerySchema.safeParse(request.query);
     if (!parsed.success) throw httpError(400);
-    const { company, account, month, limit, cursor, dimension, value, stage, watermark } =
-      parsed.data;
+    const {
+      company,
+      account,
+      month,
+      limit,
+      cursor,
+      dimension,
+      value,
+      stage,
+      watermark,
+      accountRevision,
+    } = parsed.data;
     return ledgerSchema.parse(
       await service.ledger(company, account, month, {
         limit: Number(limit),
         stage,
-        ...(watermark === undefined ? {} : { watermark: Number(watermark) }),
+        ...(watermark === undefined || accountRevision === undefined
+          ? {}
+          : { watermark: Number(watermark), accountRevision: Number(accountRevision) }),
         ...(cursor ? { cursor } : {}),
         ...(dimension && value !== undefined
           ? { dimension, value: value === "~" ? null : value }

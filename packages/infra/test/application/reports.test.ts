@@ -218,16 +218,17 @@ it("pages chronological same-entry lines with exact running balances and a stabl
   await post("2026-02-03", "3", "1000", "4000", "adjusting");
   await post("2026-02-02", "2", "1000", "1000");
   const source = await reports.report("A", "2026-02");
+  const snapshot = { watermark: source.watermark, accountRevision: source.accountRevision };
   await post("2026-02-01", "7");
   let page = ledgerSchema.parse(
-    await reports.ledger("A", "1000", "2026-02", { limit: 1, watermark: source.watermark }),
+    await reports.ledger("A", "1000", "2026-02", { limit: 1, ...snapshot }),
   );
   expect(page).toMatchObject({ opening: 1000, debit: 800, credit: 200, closing: 1600, total: 5 });
   const balances = [page.items[0].balance],
     ids = [`${page.items[0].entryId}:${page.items[0].lineNo}`];
   expect(page.watermark).toBe(source.watermark);
-  expect(await reports.report("A", "2026-02", "adjusted", source.watermark)).toEqual(source);
-  const historical = await reports.reconciliation("A", "2026-02", "unadjusted", source.watermark);
+  expect(await reports.report("A", "2026-02", "adjusted", snapshot)).toEqual(source);
+  const historical = await reports.reconciliation("A", "2026-02", "unadjusted", snapshot);
   expect(historical.watermark).toBe(source.watermark);
   expect(historical.trial.rows.find((row) => row.code === "1000")?.closing).toBe(1300);
   expect(historical.reconciliation.allPass).toBe(true);
@@ -244,16 +245,20 @@ it("pages chronological same-entry lines with exact running balances and a stabl
   expect(balances[0]).toBe(1100);
   expect(balances.at(-1)).toBe(1600);
   expect((await reports.ledger("A", "1000", "2026-02", { limit: 100 })).total).toBe(6);
-  expect(await reports.ledger("A", "1000", "2026-02", { limit: 1, watermark: 0 })).toMatchObject({
+  expect(
+    await reports.ledger("A", "1000", "2026-02", { limit: 1, ...snapshot, watermark: 0 }),
+  ).toMatchObject({
     total: 0,
     closing: 0,
     watermark: 0,
   });
-  await expect(reports.report("A", "2026-02", "adjusted", 999)).rejects.toMatchObject({
+  await expect(
+    reports.report("A", "2026-02", "adjusted", { ...snapshot, watermark: 999 }),
+  ).rejects.toMatchObject({
     code: "CONFLICT",
   });
   await expect(
-    reports.ledger("A", "1000", "2026-02", { limit: 1, watermark: 999 }),
+    reports.ledger("A", "1000", "2026-02", { limit: 1, ...snapshot, watermark: 999 }),
   ).rejects.toMatchObject({ code: "CONFLICT" });
   expect(
     await reports.ledger("A", "1000", "2026-02", { limit: 100, dimension: "DEPT", value: "A" }),
@@ -268,6 +273,7 @@ it("pages chronological same-entry lines with exact running balances and a stabl
       limit: 1,
       cursor: first.nextCursor!,
       watermark: source.watermark,
+      accountRevision: source.accountRevision,
     }),
   ).rejects.toMatchObject({ code: "INVALID_INPUT" });
   await expect(
@@ -307,6 +313,8 @@ it("pages chronological same-entry lines with exact running balances and a stabl
 });
 it("enforces read-only HTTP contracts, company isolation and exact request scope", async () => {
   await post("2026-01-01", "1.23");
+  const original = await reports.report("A", "2026-01");
+  const pin = `watermark=${original.watermark}&accountRevision=${original.accountRevision}`;
   const api = await createApi({
     environment: { ERP_PORT: "0" },
     allowPortZero: true,
@@ -338,14 +346,14 @@ it("enforces read-only HTTP contracts, company isolation and exact request scope
       expect(reply.headers["cache-control"]).toContain("no-store");
     }
     const get = await api.app.inject({
-      url: "/api/v1/ledger?company=A&month=2026-01&account=1000&limit=1&watermark=1",
+      url: `/api/v1/ledger?company=A&month=2026-01&account=1000&limit=1&${pin}`,
       headers,
     });
     expect(ledgerSchema.parse(get.json()).closing).toBe(123);
     await post("2026-01-02", "0.20");
     for (const kind of ["trial", "income", "balance-sheet", "reconciliation"]) {
       const pinned = await api.app.inject({
-        url: `/api/v1/reports/${kind}?company=A&month=2026-01&watermark=1`,
+        url: `/api/v1/reports/${kind}?company=A&month=2026-01&${pin}`,
         headers,
       });
       expect(pinned.statusCode).toBe(200);
@@ -354,7 +362,7 @@ it("enforces read-only HTTP contracts, company isolation and exact request scope
       ).toBe(123);
     }
     const pinnedLedger = await api.app.inject({
-      url: "/api/v1/ledger?company=A&month=2026-01&account=1000&watermark=1",
+      url: `/api/v1/ledger?company=A&month=2026-01&account=1000&${pin}`,
       headers,
     });
     expect(ledgerSchema.parse(pinnedLedger.json())).toMatchObject({
@@ -363,7 +371,7 @@ it("enforces read-only HTTP contracts, company isolation and exact request scope
       total: 1,
     });
     for (const path of ["reports/trial", "ledger"]) {
-      const query = `company=A&month=2026-01${path === "ledger" ? "&account=1000" : ""}`;
+      const query = `company=A&month=2026-01&accountRevision=${original.accountRevision}${path === "ledger" ? "&account=1000" : ""}`;
       expect(
         (await api.app.inject({ url: `/api/v1/${path}?${query}&watermark=999`, headers }))
           .statusCode,
@@ -372,6 +380,22 @@ it("enforces read-only HTTP contracts, company isolation and exact request scope
         expect(
           (await api.app.inject({ url: `/api/v1/${path}?${query}&watermark=${value}`, headers }))
             .statusCode,
+        ).toBe(400);
+      }
+      for (const suffix of [
+        "watermark=1",
+        `accountRevision=${original.accountRevision}`,
+        "watermark=1&accountRevision=-1",
+        "watermark=1&accountRevision=9007199254740992",
+        "watermark=1&accountRevision=8&accountRevision=9",
+      ]) {
+        expect(
+          (
+            await api.app.inject({
+              url: `/api/v1/${path}?company=A&month=2026-01${path === "ledger" ? "&account=1000" : ""}&${suffix}`,
+              headers,
+            })
+          ).statusCode,
         ).toBe(400);
       }
     }
@@ -397,6 +421,95 @@ it("enforces read-only HTTP contracts, company isolation and exact request scope
     expect(
       (await api.app.inject({ url: "/api/v1/reports/trial", method: "POST", headers })).statusCode,
     ).toBe(405);
+    await master.saveAccount(
+      "A",
+      {
+        code: "4400",
+        name: "Custom sales",
+        category: "REVENUE",
+        reportGroup: "sales",
+        normalSide: "CREDIT",
+        purpose: "general",
+        controlModule: null,
+        contraOf: null,
+        manualAllowed: true,
+        active: true,
+      },
+      0,
+    );
+    for (let index = 0; index < 3; index++) {
+      const cash = await master.account("A", "1000");
+      await master.saveAccount("A", { ...cash, name: `Cash ${index}` }, cash.revision);
+    }
+    await post("2026-01-03", "30", "1000", "4400");
+    const source = await reports.report("A", "2026-01");
+    const snapshot = { watermark: source.watermark, accountRevision: source.accountRevision };
+    const sourcePin = new URLSearchParams({
+      watermark: String(snapshot.watermark),
+      accountRevision: String(snapshot.accountRevision),
+    }).toString();
+    const beforePage = ledgerSchema.parse(
+      await reports.ledger("A", "1000", "2026-01", { limit: 1, ...snapshot }),
+    );
+    expect(source.groups.find((row) => row.reportGroup === "sales")?.accounts).toContain("4400");
+    await master.createCompany({
+      code: "B",
+      name: "B",
+      currency: "CNY",
+      scale: 2,
+      year: 2026,
+      closeMode: "annual",
+    });
+    const other = await master.account("B", "1000");
+    await master.saveAccount("B", { ...other, name: "Another company cash" }, other.revision);
+    expect(await reports.report("A", "2026-01", "adjusted", snapshot)).toEqual(source);
+    const revenue = await master.account("A", "4400");
+    await master.saveAccount("A", { ...revenue, reportGroup: "otherRevenue" }, revenue.revision);
+    const changed = await reports.report("A", "2026-01");
+    expect(changed.watermark).toBe(source.watermark);
+    expect(changed.accountRevision).toBe(source.accountRevision + 1);
+    expect((await master.account("A", "1000")).revision).toBeGreaterThan(
+      (await master.account("A", "4400")).revision,
+    );
+    expect(changed.groups.find((row) => row.reportGroup === "sales")?.accounts).not.toContain(
+      "4400",
+    );
+    expect(changed.groups.find((row) => row.reportGroup === "otherRevenue")).toMatchObject({
+      activity: 3000,
+      accounts: ["4400"],
+    });
+    for (const kind of ["trial", "income", "balance-sheet", "reconciliation"]) {
+      expect(
+        (
+          await api.app.inject({
+            url: `/api/v1/reports/${kind}?company=A&month=2026-01&${sourcePin}`,
+            headers,
+          })
+        ).statusCode,
+      ).toBe(409);
+    }
+    expect(
+      (
+        await api.app.inject({
+          url: `/api/v1/ledger?company=A&month=2026-01&account=4400&${sourcePin}`,
+          headers,
+        })
+      ).statusCode,
+    ).toBe(409);
+    expect(beforePage.nextCursor).not.toBeNull();
+    expect(
+      (
+        await api.app.inject({
+          url: `/api/v1/ledger?company=A&month=2026-01&account=1000&cursor=${beforePage.nextCursor}`,
+          headers,
+        })
+      ).statusCode,
+    ).toBe(409);
+    const moved = await master.account("A", "4400");
+    await master.saveAccount("A", { ...moved, reportGroup: "sales" }, moved.revision);
+    await expect(reports.report("A", "2026-01", "adjusted", snapshot)).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
   } finally {
     await api.close();
   }

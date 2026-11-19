@@ -1,6 +1,8 @@
 export const ledgerZh = {
   "ledger.watermark": "账簿水位",
-  "ledger.snapshotUnavailable": "来源账簿水位不可用。请显式刷新为最新账簿；不会自动替换来源快照。",
+  "ledger.accountRevision": "科目配置版本",
+  "ledger.snapshotUnavailable":
+    "来源账簿水位不可用或科目配置已变更。请显式刷新为最新账簿；不会自动替换来源快照。",
   "ledger.reportActivity": "本期金额（报表方向）",
   "ledger.incomeAccounts": "利润表科目",
   "ledger.reconciliationScope": "同源账簿的数学勾稽，不是独立审计或外部对账证明。",
@@ -58,12 +60,14 @@ export const ledgerZh = {
   "ledger.abnormal": "反常余额",
   "ledger.teaching":
     "金额为公司本位币；余额借正贷负。按当前科目配置归类，停用不隐藏历史。利润表为本期及日历年累计；资产负债表保留全部历史未结转损益。点击类别金额 → 科目 → 总账行 → 原凭证。",
-  "ledger.snapshot": "报表下钻继承来源水位；独立账页固定首屏水位。显式刷新后才显示新过账行。",
+  "ledger.snapshot":
+    "报表下钻继承 GL 水位和科目配置版本；独立账页固定首屏两者。科目配置变更须显式刷新，新过账行也仅在刷新后显示。",
 } as const;
 export const ledgerEn = {
   "ledger.watermark": "Posting watermark",
+  "ledger.accountRevision": "Account configuration revision",
   "ledger.snapshotUnavailable":
-    "The source posting watermark is unavailable. Explicitly refresh to the latest ledger; the source snapshot is never replaced automatically.",
+    "The source posting watermark is unavailable or account configuration has changed. Explicitly refresh to the latest ledger; the source snapshot is never replaced automatically.",
   "ledger.reportActivity": "Period amount (statement direction)",
   "ledger.incomeAccounts": "Income statement accounts",
   "ledger.reconciliationScope":
@@ -124,5 +128,5 @@ export const ledgerEn = {
   "ledger.teaching":
     "Company currency; debit-positive signed balances. Current account configuration classifies all history, including inactive accounts. Income is period and calendar YTD; the balance sheet retains all unclosed historical earnings. Select group amount → account → ledger line → original journal.",
   "ledger.snapshot":
-    "Report drilldowns inherit the source watermark; standalone pages pin their first read. Explicitly refresh to include new postings.",
+    "Report drilldowns inherit both the GL watermark and account configuration revision; standalone pages pin both on their first read. Configuration changes require an explicit refresh, which also includes new postings.",
 } as const satisfies Record<keyof typeof ledgerZh, string>;

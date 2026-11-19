@@ -57,7 +57,8 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
     { ...account, opening: 10000, debit: 3000, credit: 0, closing: 13000, yearNet: 3000 },
     {
       ...account,
-      code: "4000",
+      code: "4400",
+      builtin: false,
       name: "Revenue",
       category: "REVENUE",
       reportGroup: "sales",
@@ -70,6 +71,7 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
     },
   ]);
   let latestWatermark = 1,
+    accountRevision = 8,
     broken = false;
   let resolveOriginal: (() => void) | undefined;
   let originalSignal: AbortSignal | null | undefined;
@@ -79,6 +81,22 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
     vi.fn<typeof fetch>().mockImplementation(async (path, options) => {
       const url = new URL(String(path), "http://localhost");
       requests.push(url.pathname + url.search);
+      if (
+        (url.pathname.startsWith("/api/v1/reports/") || url.pathname === "/api/v1/ledger") &&
+        url.searchParams.has("accountRevision") &&
+        Number(url.searchParams.get("accountRevision")) !== accountRevision
+      )
+        return reply(
+          {
+            code: "CONFLICT",
+            messageKey: "api.error.conflict",
+            params: {},
+            fieldErrors: [],
+            requestId: id,
+            retryable: false,
+          },
+          409,
+        );
       if (url.pathname === "/api/v1/companies")
         return reply({ items: [company], nextCursor: null });
       if (url.pathname === "/api/v1/periods")
@@ -88,8 +106,18 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
         });
       if (url.pathname.startsWith("/api/v1/reports/"))
         return reply({
-          ...report,
+          ...(accountRevision === 8
+            ? report
+            : buildReports(
+                company,
+                "2026-01",
+                "unadjusted",
+                report.trial.rows.map((row) =>
+                  row.code === "4400" ? { ...row, reportGroup: "otherRevenue", revision: 2 } : row,
+                ),
+              )),
           watermark: Number(url.searchParams.get("watermark") ?? latestWatermark),
+          accountRevision,
         });
       if (url.pathname === "/api/v1/ledger") {
         const watermark = Number(url.searchParams.get("watermark") ?? latestWatermark);
@@ -107,7 +135,7 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
           );
         if (broken) return reply({ invalid: true });
         const firstPage = !url.searchParams.has("cursor"),
-          revenue = url.searchParams.get("account") === "4000",
+          revenue = url.searchParams.get("account") === "4400",
           direction = revenue ? -1 : 1,
           monthly = watermark === 1 ? 3000 : 5000;
         return reply({
@@ -123,6 +151,7 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
           closing: direction * (10000 + monthly),
           total: 2,
           watermark,
+          accountRevision,
           items: [
             {
               entryId: id,
@@ -173,7 +202,7 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
               fingerprint: "a".repeat(64),
               debit: 3000,
               credit: 3000,
-              lines: ["1000", "4000"].map((code, index) => ({
+              lines: ["1000", "4400"].map((code, index) => ({
                 account: code,
                 debit: index ? 0 : 3000,
                 credit: index ? 3000 : 0,
@@ -201,6 +230,38 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
     }),
   );
   render(<App />);
+  await screen.findByRole("table", { name: "报表类别" });
+  fireEvent.change(screen.getByLabelText("报表"), { target: { value: "income" } });
+  const originalSales = await screen.findByRole("row", { name: "销售收入 30.00" });
+  fireEvent.click(within(originalSales).getByRole("link", { name: "30.00" }));
+  await screen.findByRole("table", { name: "利润表科目" });
+  expect(window.location.hash).toContain("accountRevision=8");
+  accountRevision = 9;
+  const beforeReclassificationRead = requests.length;
+  fireEvent.click(
+    within(screen.getByRole("row", { name: "销售收入 30.00" })).getByRole("link", {
+      name: "30.00",
+    }),
+  );
+  expect((await screen.findByRole("alert")).textContent).toContain("科目配置已变更");
+  expect(screen.queryByRole("table", { name: "利润表科目" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "重试" }));
+  await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("科目配置已变更"));
+  expect(window.location.hash).toContain("accountRevision=8");
+  expect(
+    requests
+      .slice(beforeReclassificationRead)
+      .filter((path) => path.startsWith("/api/v1/reports/"))
+      .every((path) => path.includes("watermark=1") && path.includes("accountRevision=8")),
+  ).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "刷新为最新账簿" }));
+  await waitFor(() => expect(window.location.hash).not.toContain("accountRevision="));
+  const regrouped = await screen.findByRole("table", { name: "报表类别" });
+  fireEvent.click(within(regrouped).getByRole("link", { name: "30.00" }));
+  await screen.findByRole("table", { name: "利润表科目" });
+  expect(window.location.hash).toContain("group=otherRevenue");
+  expect(window.location.hash).toContain("accountRevision=9");
+  fireEvent.change(screen.getByLabelText("报表"), { target: { value: "trial" } });
   const groups = await screen.findByRole("table", { name: "报表类别" });
   fireEvent.click(
     within(within(groups).getByRole("row", { name: "货币资金 130.00" })).getByRole("link", {
@@ -209,34 +270,47 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
   );
   await waitFor(() => expect(window.location.hash).toContain("group=cash"));
   expect(window.location.hash).toContain("watermark=1");
+  expect(window.location.hash).toContain("accountRevision=9");
   latestWatermark = 2;
   const table = await screen.findByRole("table", { name: "试算平衡" });
   fireEvent.click(within(table).getAllByRole("link", { name: "130.00" }).at(-1)!);
   await screen.findByRole("link", { name: "SYNTHETIC-1 / 1" });
   expect(requests.find((path) => path.startsWith("/api/v1/ledger?"))).toContain("stage=unadjusted");
   expect(requests.find((path) => path.startsWith("/api/v1/ledger?"))).toContain("watermark=1");
+  expect(requests.find((path) => path.startsWith("/api/v1/ledger?"))).toContain(
+    "accountRevision=9",
+  );
   expect(screen.getByText(/期末余额: 130.00/)).toBeTruthy();
   fireEvent.scroll(screen.getByRole("region", { name: "总账明细" }), {
     target: { scrollTop: 1000 },
   });
   await screen.findByRole("link", { name: "SYNTHETIC-1 / 2" });
   expect(requests.find((path) => path.includes("cursor=next"))).toBeDefined();
+  accountRevision = 10;
+  fireEvent.click(screen.getByRole("button", { name: "查询" }));
+  await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("科目配置已变更"));
+  expect(window.location.hash).toContain("watermark=1");
+  expect(window.location.hash).toContain("accountRevision=9");
+  expect(screen.queryByRole("link", { name: "SYNTHETIC-1 / 2" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "刷新为最新账簿" }));
+  await screen.findByText(/期末余额: 150.00/);
+  expect(window.location.hash).not.toContain("accountRevision=");
   await act(async () => {
     window.location.hash =
-      "/ledger-reports?company=DEFAULT&month=2026-01&stage=unadjusted&view=income&watermark=1";
+      "/ledger-reports?company=DEFAULT&month=2026-01&stage=unadjusted&view=income&watermark=1&accountRevision=10";
   });
   const incomeGroups = await screen.findByRole("table", { name: "报表类别" });
   fireEvent.click(
-    within(within(incomeGroups).getByRole("row", { name: "销售收入 30.00" })).getByRole("link", {
+    within(incomeGroups).getByRole("link", {
       name: "30.00",
     }),
   );
-  await waitFor(() => expect(window.location.hash).toContain("group=sales"));
+  await waitFor(() => expect(window.location.hash).toContain("group=otherRevenue"));
   const incomeAccounts = await screen.findByRole("table", { name: "利润表科目" });
   expect(
     within(incomeAccounts).getByRole("columnheader", { name: "本期金额（报表方向）" }),
   ).toBeTruthy();
-  const revenue = within(incomeAccounts).getByRole("row", { name: /4000 · Revenue/ });
+  const revenue = within(incomeAccounts).getByRole("row", { name: /4400 · Revenue/ });
   expect(within(revenue).getByRole("link", { name: "-100.00" })).toBeTruthy();
   expect(within(revenue).getByRole("link", { name: "-130.00" })).toBeTruthy();
   expect(screen.getByText("本期金额（报表方向）: 30.00")).toBeTruthy();
@@ -248,18 +322,18 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
     requests.some(
       (path) =>
         path.includes("/api/v1/ledger?") &&
-        path.includes("account=4000") &&
+        path.includes("account=4400") &&
         path.includes("watermark=1"),
     ),
   ).toBe(true);
   await act(async () => {
     window.location.hash =
-      "/ledger?company=DEFAULT&month=2026-01&stage=unadjusted&account=1000&watermark=2";
+      "/ledger?company=DEFAULT&month=2026-01&stage=unadjusted&account=1000&watermark=2&accountRevision=10";
   });
   await screen.findByText(/期末余额: 150.00/);
   await act(async () => {
     window.location.hash =
-      "/ledger?company=DEFAULT&month=2026-01&stage=unadjusted&account=1000&watermark=99";
+      "/ledger?company=DEFAULT&month=2026-01&stage=unadjusted&account=1000&watermark=99&accountRevision=10";
   });
   expect((await screen.findByRole("alert")).textContent).toContain("来源账簿水位不可用");
   expect(window.location.hash).toContain("watermark=99");

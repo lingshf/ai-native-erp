@@ -2,7 +2,7 @@ import {
   DomainError,
   buildReports,
   reportCheck,
-  reportWatermark,
+  checkedReportSnapshot,
   checkedCode,
   checkedAccountCode,
   checkedTeachingMonth,
@@ -11,11 +11,12 @@ import {
   type TrialStage,
   type LedgerQuery,
   type LedgerPage,
+  type ReportSnapshot,
 } from "@erp/core/domain";
 import type { MasterDataStore } from "./master-data.ts";
 
 export interface ReportRepository {
-  reportWatermark(company: string): Promise<number>;
+  reportSnapshot(company: string): Promise<ReportSnapshot>;
   reportBalances(
     company: string,
     month: string,
@@ -44,14 +45,14 @@ export class ReportService {
     company: string,
     month: string,
     stage: TrialStage = "adjusted",
-    requestedWatermark?: number,
+    requestedSnapshot?: ReportSnapshot,
   ) {
     checkedScope(company, month, stage);
     return this.store.read(async (repo) => {
       const owner = await repo.company(company);
       if (!owner || !(await repo.period(company, month))) throw new DomainError("NOT_FOUND");
-      const latest = await repo.reportWatermark(company),
-        watermark = reportWatermark(requestedWatermark, latest);
+      const latest = await repo.reportSnapshot(company),
+        snapshot = checkedReportSnapshot(requestedSnapshot, latest);
       return {
         ...buildReports(
           owner,
@@ -61,10 +62,10 @@ export class ReportService {
             company,
             month,
             stage,
-            watermark === latest ? undefined : watermark,
+            snapshot.watermark === latest.watermark ? undefined : snapshot.watermark,
           ),
         ),
-        watermark,
+        ...snapshot,
       };
     });
   }
@@ -72,15 +73,15 @@ export class ReportService {
     company: string,
     month: string,
     stage: TrialStage = "adjusted",
-    requestedWatermark?: number,
+    requestedSnapshot?: ReportSnapshot,
   ) {
     checkedScope(company, month, stage);
     return this.store.read(async (repo) => {
       const owner = await repo.company(company);
       if (!owner || !(await repo.period(company, month))) throw new DomainError("NOT_FOUND");
-      const latest = await repo.reportWatermark(company),
-        watermark = reportWatermark(requestedWatermark, latest),
-        historical = watermark === latest ? undefined : watermark;
+      const latest = await repo.reportSnapshot(company),
+        snapshot = checkedReportSnapshot(requestedSnapshot, latest),
+        historical = snapshot.watermark === latest.watermark ? undefined : snapshot.watermark;
       const unadjusted = buildReports(
         owner,
         month,
@@ -102,7 +103,7 @@ export class ReportService {
       ];
       return {
         ...selected,
-        watermark,
+        ...snapshot,
         reconciliation: { checks, allPass: checks.every((check) => check.pass) },
       };
     });

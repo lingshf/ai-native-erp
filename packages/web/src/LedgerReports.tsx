@@ -142,15 +142,21 @@ function CompanyReports({
           "dimension",
           "value",
           "watermark",
+          "accountRevision",
         ].includes(key) && params.getAll(key).length === 1,
     ) &&
     params.has("dimension") === params.has("value") &&
+    params.has("watermark") === params.has("accountRevision") &&
     (!params.has("watermark") ||
       reportWatermarkQuerySchema.safeParse(params.get("watermark")).success) &&
+    (!params.has("accountRevision") ||
+      reportWatermarkQuerySchema.safeParse(params.get("accountRevision")).success) &&
     (!params.get("group") ||
       accountSchema.shape.reportGroup.safeParse(params.get("group")).success);
   const search = new URLSearchParams({ company: company.code, month: month ?? "", stage });
   if (params.has("watermark")) search.set("watermark", params.get("watermark") ?? "");
+  if (params.has("accountRevision"))
+    search.set("accountRevision", params.get("accountRevision") ?? "");
   const change = (fields: Record<string, string>) =>
     setParams({
       ...Object.fromEntries(params),
@@ -213,6 +219,7 @@ function CompanyReports({
           void client.resetQueries({ queryKey: ["ledger-live", company.code] });
           const next = new URLSearchParams(params);
           next.delete("watermark");
+          next.delete("accountRevision");
           setParams(next);
         }}
       >
@@ -273,23 +280,39 @@ function FinancialReport({
   t: T;
 }) {
   const query = useQuery({
-    queryKey: ["ledger-live", company.code, month, stage, view, search.get("watermark")],
+    queryKey: [
+      "ledger-live",
+      company.code,
+      month,
+      stage,
+      view,
+      search.get("watermark"),
+      search.get("accountRevision"),
+      group,
+    ],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const report = await masterRequest(`/api/v1/reports/${view}?${search}`, reportSchema, {
         signal,
       });
-      if (search.has("watermark") && report.watermark !== Number(search.get("watermark")))
+      if (
+        search.has("watermark") &&
+        (report.watermark !== Number(search.get("watermark")) ||
+          report.accountRevision !== Number(search.get("accountRevision")))
+      )
         throw new MasterDataFailure("invalid");
       return report;
     },
   });
-  if (query.isPending) return <p role="status">{t("master.loading")}</p>;
+  if (query.isPending || query.isFetching) return <p role="status">{t("master.loading")}</p>;
   if (query.isError)
     return <ErrorBox error={query.error} retry={() => void query.refetch()} t={t} />;
   const report = query.data,
     fmt = (n: number) => formatMinor(n, preferences.language, company.scale);
   const pinnedSearch = new URLSearchParams(search);
   pinnedSearch.set("watermark", String(report.watermark));
+  pinnedSearch.set("accountRevision", String(report.accountRevision));
   const toLedger = (code: string) => `/ledger?${pinnedSearch}&account=${code}`;
   const selected = report.trial.rows.filter(
     (row) =>
@@ -308,6 +331,8 @@ function FinancialReport({
     <section aria-label={t(`ledger.${view}`)}>
       <p>
         {t("ledger.watermark")}: {report.watermark}
+        {" · "}
+        {t("ledger.accountRevision")}: {report.accountRevision}
       </p>
       {view === "reconciliation" && (
         <p className="report-boundary">{t("ledger.reconciliationScope")}</p>
@@ -379,6 +404,9 @@ function FinancialReport({
                     <th>{t(`master.report.${row.reportGroup}`)}</th>
                     <td>
                       <Link
+                        onClick={() => {
+                          if (group === row.reportGroup) void query.refetch();
+                        }}
                         to={`/ledger-reports?${pinnedSearch}&view=${view}&group=${row.reportGroup}`}
                       >
                         {fmt(groupValue(row))}
@@ -465,6 +493,8 @@ function LedgerGrid({
     filters.set("value", params.get("value") ?? "");
   }
   if (params.has("watermark")) filters.set("watermark", params.get("watermark") ?? "");
+  if (params.has("accountRevision"))
+    filters.set("accountRevision", params.get("accountRevision") ?? "");
   const query = useInfiniteQuery({
     queryKey: [
       "ledger-live",
@@ -475,7 +505,10 @@ function LedgerGrid({
       params.get("dimension"),
       params.get("value"),
       params.get("watermark"),
+      params.get("accountRevision"),
     ],
+    staleTime: 0,
+    refetchOnMount: "always",
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) => {
       const page = await masterRequest(
@@ -483,26 +516,42 @@ function LedgerGrid({
         ledgerSchema,
         { signal },
       );
-      if (params.has("watermark") && page.watermark !== Number(params.get("watermark")))
+      if (
+        params.has("watermark") &&
+        (page.watermark !== Number(params.get("watermark")) ||
+          page.accountRevision !== Number(params.get("accountRevision")))
+      )
         throw new MasterDataFailure("invalid");
       return page;
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
-  const rows = query.data?.pages.flatMap((page) => page.items) ?? [],
-    first = query.data?.pages[0],
+  const data = query.isError || query.isRefetching ? undefined : query.data;
+  const rows = data?.pages.flatMap((page) => page.items) ?? [],
+    first = data?.pages[0],
     fmt = (n: number) => formatMinor(n, preferences.language, company.scale);
   return (
     <>
       <form
         onSubmit={(event) => {
           event.preventDefault();
+          if (
+            code === account &&
+            dimension === (params.get("dimension") ?? "") &&
+            value === (params.get("value") ?? "")
+          )
+            void query.refetch();
           setParams({
             company: company.code,
             month,
             account: code,
             stage: params.get("stage") ?? "adjusted",
-            ...(params.has("watermark") ? { watermark: params.get("watermark") ?? "" } : {}),
+            ...(params.has("watermark")
+              ? {
+                  watermark: params.get("watermark") ?? "",
+                  accountRevision: params.get("accountRevision") ?? "",
+                }
+              : {}),
             ...(dimension ? { dimension, value } : value ? { value } : {}),
           });
         }}
@@ -520,7 +569,7 @@ function LedgerGrid({
         <button type="submit">{t("ledger.apply")}</button>
       </form>
       <p>{t("ledger.snapshot")}</p>
-      {query.isPending && <p role="status">{t("master.loading")}</p>}
+      {(query.isPending || query.isRefetching) && <p role="status">{t("master.loading")}</p>}
       {query.isError && (
         <ErrorBox
           error={query.error}
@@ -533,6 +582,11 @@ function LedgerGrid({
           {t("ledger.watermark")}: {first.watermark} · {t("ledger.opening")}: {fmt(first.opening)} /{" "}
           {t("ledger.debit")}: {fmt(first.debit)} / {t("ledger.credit")}: {fmt(first.credit)} /{" "}
           {t("ledger.closing")}: {fmt(first.closing)} · {t("ledger.total")}: {first.total}
+        </p>
+      )}
+      {first && (
+        <p>
+          {t("ledger.accountRevision")}: {first.accountRevision}
         </p>
       )}
       {first && !rows.length && <p>{t("ledger.empty")}</p>}
@@ -583,7 +637,7 @@ function LedgerGrid({
           )}
         />
       </div>
-      {query.hasNextPage && (
+      {query.hasNextPage && !query.isError && (
         <button
           type="button"
           disabled={query.isFetchingNextPage}

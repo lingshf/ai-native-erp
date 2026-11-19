@@ -1,7 +1,7 @@
 import { DomainError, StorageError, type ReportRepository } from "@erp/core/application";
 import {
   reportMinor,
-  reportWatermark,
+  checkedReportSnapshot,
   type LedgerCursor,
   type LedgerLine,
   type ReportRow,
@@ -52,18 +52,22 @@ function cursor(text: string | undefined): LedgerCursor | null {
   }
 }
 export function reportRepository(db: Connection): ReportRepository {
-  const latestWatermark = async (company: string) =>
-    amount(
-      (
-        await db.query(
-          "SELECT coalesce(max(sequence),0) AS n FROM journal_entries WHERE company_id=?",
-          [company],
-        )
-      )[0],
-      "n",
-    );
+  const latestSnapshot = async (company: string) => {
+    const row = (
+      await db.query(
+        `SELECT
+      (SELECT coalesce(max(sequence),0) FROM journal_entries WHERE company_id=?) AS watermark,
+      (SELECT coalesce(sum(revision),0) FROM accounts WHERE company_id=?) AS account_revision`,
+        [company, company],
+      )
+    )[0];
+    return {
+      watermark: amount(row, "watermark"),
+      accountRevision: amount(row, "account_revision"),
+    };
+  };
   return {
-    reportWatermark: latestWatermark,
+    reportSnapshot: latestSnapshot,
     async reportBalances(company, month, stage, watermark) {
       let sql =
         stage === "unadjusted"
@@ -123,13 +127,17 @@ export function reportRepository(db: Connection): ReportRepository {
           after.month !== month ||
           after.stage !== stage ||
           (query.watermark !== undefined && after.watermark !== query.watermark) ||
+          (query.accountRevision !== undefined &&
+            after.accountRevision !== query.accountRevision) ||
           after.dimension !== (query.dimension ?? null) ||
           after.value !== (query.value ?? null))
       )
         throw new DomainError("INVALID_INPUT");
-      const watermark = reportWatermark(
-        query.watermark ?? after?.watermark,
-        await latestWatermark(company),
+      const { watermark, accountRevision } = checkedReportSnapshot(
+        query.watermark !== undefined || query.accountRevision !== undefined
+          ? { watermark: query.watermark, accountRevision: query.accountRevision }
+          : (after ?? undefined),
+        await latestSnapshot(company),
       );
       const dimensionSql =
         query.dimension === undefined ? "" : " AND json_extract(l.dimensions,?) IS ?";
@@ -231,6 +239,7 @@ export function reportRepository(db: Connection): ReportRepository {
               dimension: query.dimension ?? null,
               value: query.value ?? null,
               watermark,
+              accountRevision,
               date: last.date,
               entryId: last.entryId,
               lineNo: last.lineNo,
@@ -244,6 +253,7 @@ export function reportRepository(db: Connection): ReportRepository {
         closing: reportMinor(opening + debit - credit),
         total: amount(totals, "total"),
         watermark,
+        accountRevision,
         items,
         nextCursor: next ? Buffer.from(JSON.stringify(next)).toString("base64url") : null,
       };

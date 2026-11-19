@@ -54,10 +54,14 @@ even the first page with 44px rows and five-row overscan per side. The focused D
 test scrolls a single full page and bounds mounted rows to viewport plus
 overscan (including one partially visible row). Actual 100,000-line scrolling and
 million-row capacity verification remain manual/Bench work, not PR tests.
-Reports carry their posting watermark through group/account links, page requests,
-filter submissions and query-cache keys. Historical GL remains readable at that
-watermark; unavailable snapshots are explicit errors, never latest-data fallbacks.
-Refresh explicitly removes the pin and starts a new read. Income account drilldowns
+Reports carry both the GL posting watermark and the same-company aggregate account
+revision through group/account links, page requests, filter submissions and
+query-cache keys. Navigation and repeated selections revalidate cached results;
+pending revalidation and failed reads never display stale cached tables.
+Historical GL remains readable only while the account configuration still matches.
+Reclassification without new postings returns 409 and requires an explicit refresh,
+not a historical-classification mode or an automatic latest-data fallback.
+Refresh explicitly removes both pins and starts a new read. Income account drilldowns
 show signed period amounts in the statement direction alongside raw trial columns;
 the selected group subtotal reconciles to those period amounts, not closing balances.
 All posted-journal selection paths share cancellation, so a late deep-link response

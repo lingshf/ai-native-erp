@@ -201,13 +201,21 @@ pages order by accounting date, journal ID and line number, pin the initial post
 sequence watermark, and bind cursors to company, account, period, stage and dimension
 filter. Totals and running prefixes are SQL aggregates; the client cannot supply
 trusted balances. Unassigned dimension filtering matches missing or null values.
-Reports return their posting watermark. Report and ledger requests can explicitly
-pin that same watermark, including the first drilldown page and group navigation.
+Reports and ledger pages return a compound snapshot: the GL posting `watermark`
+and `accountRevision`, the sum of all current account revisions in that company.
+Requests must supply both pins together or neither, including first-page
+drilldowns, filters and group navigation; cursors carry and validate both.
 Historical report reads filter immutable entries by sequence; current-watermark
 reads retain the covering-index fast path. Unavailable/future watermarks fail with
-409, and cursor/watermark mismatches fail with 400, never silently using latest.
-This pins GL history, not historical account configuration: the documented current
-classification basis remains unchanged. Refreshing explicitly starts a new watermark.
+409, as does any changed account configuration, even without new GL entries.
+The sum detects edits to lower-revision accounts that `MAX(revision)` would miss,
+is company-scoped, and detects changing a classification back to its original value.
+Account creation starts at revision 1, each edit increments it, and accounts cannot
+be deleted; unsafe integer aggregates fail explicitly. Snapshot validation and the
+report/ledger query share one read transaction. Partial pins and cursor/pin
+mismatches fail with 400. There is only the current-classification basis, not a
+historical-classification mode: a changed configuration requires an explicit
+refresh of both pins, never a silent latest-data fallback.
 Ordinary report requests do not create receipts.
 
 `npm run bench:generate-ledger -- <absolute-new-file>` refuses existing files and

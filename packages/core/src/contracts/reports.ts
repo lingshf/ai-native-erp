@@ -16,16 +16,24 @@ export const reportWatermarkQuerySchema = z
   .refine((value) => Number.isSafeInteger(Number(value)));
 const stage = z.enum(["unadjusted", "adjusted", "postClosing"]);
 const scope = { company: companyCodeSchema, month: periodSchema.shape.month };
-export const reportQuerySchema = z.strictObject({
-  ...scope,
-  stage: stage.default("adjusted"),
+const snapshotQuery = {
   watermark: reportWatermarkQuerySchema.optional(),
-});
+  accountRevision: reportWatermarkQuerySchema.optional(),
+};
+const completeSnapshot = (value: { watermark?: string; accountRevision?: string }) =>
+  (value.watermark === undefined) === (value.accountRevision === undefined);
+export const reportQuerySchema = z
+  .strictObject({
+    ...scope,
+    stage: stage.default("adjusted"),
+    ...snapshotQuery,
+  })
+  .refine(completeSnapshot);
 export const ledgerQuerySchema = z
   .strictObject({
     ...scope,
     stage: stage.default("adjusted"),
-    watermark: reportWatermarkQuerySchema.optional(),
+    ...snapshotQuery,
     account: accountCodeSchema,
     limit: companiesQuerySchema.shape.limit,
     cursor: z
@@ -36,7 +44,8 @@ export const ledgerQuerySchema = z
     dimension: dimensionCodeSchema.optional(),
     value: z.union([dimensionValueCodeSchema, z.literal("~")]).optional(),
   })
-  .refine((value) => (value.dimension === undefined) === (value.value === undefined));
+  .refine((value) => (value.dimension === undefined) === (value.value === undefined))
+  .refine(completeSnapshot);
 export const ledgerCursorSchema = z.strictObject({
   ...scope,
   stage,
@@ -44,6 +53,7 @@ export const ledgerCursorSchema = z.strictObject({
   dimension: dimensionCodeSchema.nullable(),
   value: dimensionValueCodeSchema.nullable(),
   watermark: nonnegative,
+  accountRevision: nonnegative,
   date: z.iso.date(),
   entryId: z.uuidv4(),
   lineNo: z.number().int().min(1).max(2000),
@@ -61,6 +71,7 @@ const income = z.strictObject({ revenue: minor, expense: minor, profit: minor })
 export const reportSchema = z.strictObject({
   ...scope,
   watermark: nonnegative,
+  accountRevision: nonnegative,
   currency: z.string().regex(/^[A-Z]{3}$/u),
   scale: z.number().int().min(0).max(4),
   stage,
@@ -132,6 +143,7 @@ export const ledgerSchema = z.strictObject({
   closing: minor,
   total: nonnegative,
   watermark: nonnegative,
+  accountRevision: nonnegative,
   items: z
     .array(
       z.strictObject({

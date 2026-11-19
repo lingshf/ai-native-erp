@@ -13,11 +13,27 @@ export function reportMinor(value: number): number {
   if (!Number.isSafeInteger(value)) throw new DomainError("INVALID_INPUT");
   return value === 0 ? 0 : value;
 }
-export function reportWatermark(value: number | undefined, latest: number): number {
-  if (value !== undefined && (!Number.isSafeInteger(value) || value < 0))
+export interface ReportSnapshot {
+  readonly watermark: number;
+  readonly accountRevision: number;
+}
+export function checkedReportSnapshot(
+  value: Partial<ReportSnapshot> | undefined,
+  latest: ReportSnapshot,
+): ReportSnapshot {
+  if (value?.watermark === undefined && value?.accountRevision === undefined) return latest;
+  if (
+    value.watermark === undefined ||
+    value.accountRevision === undefined ||
+    !Number.isSafeInteger(value.watermark) ||
+    value.watermark < 0 ||
+    !Number.isSafeInteger(value.accountRevision) ||
+    value.accountRevision < 0
+  )
     throw new DomainError("INVALID_INPUT");
-  if (value !== undefined && value > latest) throw new DomainError("CONFLICT");
-  return value ?? latest;
+  if (value.watermark > latest.watermark || value.accountRevision !== latest.accountRevision)
+    throw new DomainError("CONFLICT");
+  return { watermark: value.watermark, accountRevision: value.accountRevision };
 }
 const sum = (values: readonly number[]) =>
   reportMinor(Number(values.reduce((total, value) => total + BigInt(value), 0n)));
@@ -113,20 +129,20 @@ export function buildReports(
     reconciliation: { checks, allPass: checks.every((check) => check.pass) },
   };
 }
-export interface LedgerCursor {
+export interface LedgerCursor extends ReportSnapshot {
   readonly stage: TrialStage;
   readonly company: string;
   readonly account: string;
   readonly month: string;
   readonly dimension: string | null;
   readonly value: string | null;
-  readonly watermark: number;
   readonly date: string;
   readonly entryId: string;
   readonly lineNo: number;
 }
 export interface LedgerQuery {
   readonly watermark?: number;
+  readonly accountRevision?: number;
   readonly stage?: TrialStage;
   readonly limit: number;
   readonly cursor?: string;
@@ -144,14 +160,13 @@ export interface LedgerLine {
   readonly dimensions: Readonly<Record<string, string | null>>;
   readonly balance: number;
 }
-export interface LedgerPage {
+export interface LedgerPage extends ReportSnapshot {
   readonly stage: TrialStage;
   readonly opening: number;
   readonly debit: number;
   readonly credit: number;
   readonly closing: number;
   readonly total: number;
-  readonly watermark: number;
   readonly items: readonly LedgerLine[];
   readonly nextCursor: string | null;
 }
