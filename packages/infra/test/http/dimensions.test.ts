@@ -10,7 +10,7 @@ import { dimensionConfigSchema, errorSchema, type DimensionCommand } from "@erp/
 import { createSqliteStorage } from "../../src/storage/index.ts";
 import { sqliteBackend } from "../../src/storage/sqlite.ts";
 import { schemaFingerprint } from "../../src/storage/schema.ts";
-import { normalizeMigration } from "../../src/storage/migrations.ts";
+import { latestMigrationVersion, normalizeMigration } from "../../src/storage/migrations.ts";
 import { createMasterDataStore } from "../../src/storage/master-data.ts";
 import { createApi } from "../../src/http/index.ts";
 const base = { revision: 0, active: true, from: "2026-01-01", to: "2026-12-31" };
@@ -196,21 +196,9 @@ describe("dimension HTTP and typed persistence", () => {
       expect(raw.prepare("SELECT tenant_id FROM tenants WHERE tenant_id='KEEP'").get()).toEqual({
         tenant_id: "KEEP",
       });
-      expect(raw.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual([
-        { version: 1 },
-        { version: 2 },
-        { version: 3 },
-        { version: 4 },
-        { version: 5 },
-        { version: 6 },
-        { version: 7 },
-        { version: 8 },
-        { version: 9 },
-        { version: 10 },
-        { version: 11 },
-        { version: 12 },
-        { version: 13 },
-      ]);
+      expect(raw.prepare("SELECT version FROM schema_migrations ORDER BY version").all()).toEqual(
+        Array.from({ length: latestMigrationVersion }, (_, i) => ({ version: i + 1 })),
+      );
       expect(
         raw
           .prepare(

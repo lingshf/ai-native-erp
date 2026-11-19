@@ -14,6 +14,7 @@ import type { DatabaseConnection } from "kysely";
 import { StorageError } from "@erp/core/application";
 import { inspectSchema } from "./migrations.ts";
 import { acquireDatabaseLease } from "./maintenance.ts";
+import { advanceWriteSequence, assertReconciledImport } from "./write-sequence.ts";
 import type { Backend, Connection, Parameters, Row, SqliteStorageConfig } from "./types.ts";
 
 export const APPLICATION_ID = 0x45525032;
@@ -169,6 +170,7 @@ export function sqliteBackend(config: SqliteStorageConfig): Backend {
         },
         async commit() {
           if (transaction) {
+            if (!readOnly && !migrating) await advanceWriteSequence(connection);
             await transaction.commit().execute();
             transaction = undefined;
           }
@@ -187,6 +189,7 @@ export function sqliteBackend(config: SqliteStorageConfig): Backend {
           }
         },
       };
+      await assertReconciledImport(connection);
       if (!readOnly) {
         // Validate existing targets before any writable PRAGMA.
         await inspectSchema(connection, migrating);

@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { test } from "vitest";
 import { backupSqlite, createSqliteStorage } from "../src/storage/index.ts";
+import { legacyFixture, captureDirectory } from "./support/legacy-fixture.mjs";
 
 const root = resolve(import.meta.dirname, "..", "..", "..");
 const script = resolve(root, "scripts", "storage-admin.mjs");
@@ -23,6 +24,78 @@ function fixture(t) {
   t.onTestFinished(() => rmSync(directory, { recursive: true, force: true }));
   return directory;
 }
+test("legacy-import refuses a corrupt snapshot before creating a target", (t) => {
+  const f = legacyFixture(t),
+    target = resolve(f.directory, "refused.sqlite");
+  f.manifest.ledgers.teaching.sha256 = "0".repeat(64);
+  writeFileSync(resolve(f.target, "manifest.json"), JSON.stringify(f.manifest));
+  const before = captureDirectory(f.target, { mtime: true });
+  const result = run([
+    "legacy-import",
+    "--snapshot-dir",
+    f.target,
+    "--target",
+    target,
+    "--drafts",
+    "skip",
+    "--receipts",
+    "archive-only",
+    "--source-events",
+    "archive-only",
+    "--transfer-queue",
+    "archive-only",
+    "--seals",
+    "archive-only",
+    "--audit",
+    "archive-only",
+  ]);
+  assert.equal(result.status, 1);
+  assert.equal(JSON.parse(result.stderr).error.code, "INVALID_SNAPSHOT");
+  assert.equal(readdirSync(f.directory).includes("refused.sqlite"), false);
+  assert.deepEqual(captureDirectory(f.target, { mtime: true }), before);
+});
+test("legacy-import CLI requires six explicit decisions, imports only a new target and leaves source snapshots untouched", (t) => {
+  const f = legacyFixture(t),
+    target = resolve(f.directory, "target.sqlite");
+  const options = ["legacy-import", "--snapshot-dir", f.target, "--target", target];
+  const explicit = [
+    "--drafts",
+    "skip",
+    "--receipts",
+    "archive-only",
+    "--source-events",
+    "archive-only",
+    "--transfer-queue",
+    "archive-only",
+    "--seals",
+    "archive-only",
+    "--audit",
+    "archive-only",
+  ];
+  const before = captureDirectory(f.target, { mtime: true });
+  const missing = run(options);
+  assert.equal(missing.status, 1);
+  assert.equal(JSON.parse(missing.stderr).error.code, "INVALID_INPUT");
+  const imported = run([...options, ...explicit]);
+  assert.equal(imported.status, 0, imported.stderr);
+  assert.equal(JSON.parse(imported.stdout).status, "imported");
+  const check = new DatabaseSync(target, { readOnly: true });
+  try {
+    assert.equal(check.prepare("SELECT count(*) n FROM journal_drafts").get().n, 0);
+    assert.equal(
+      check.prepare("SELECT count(*) n FROM legacy_refs WHERE object_type='journals'").get().n,
+      3,
+    );
+  } finally {
+    check.close();
+  }
+  const bytes = readFileSync(target);
+  const repeated = run([...options, ...explicit]);
+  assert.equal(repeated.status, 1);
+  assert.equal(JSON.parse(repeated.stderr).error.code, "CONFLICT");
+  assert.deepEqual(readFileSync(target), bytes);
+  assert.deepEqual(captureDirectory(f.target, { mtime: true }), before);
+});
 
 test("storage CLI help and invalid configuration never choose an implicit target", (t) => {
   const directory = fixture(t);

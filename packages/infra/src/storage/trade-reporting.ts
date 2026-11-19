@@ -156,7 +156,7 @@ export function tradeReportingRepository(db: Connection): TradeReportingReposito
         SELECT l.account_code account,sum(l.debit_minor-l.credit_minor) balance,
           sum(CASE WHEN json_extract(r.result,'$.module')='TRADE' THEN l.debit_minor-l.credit_minor ELSE 0 END) trade
         FROM journal_lines l JOIN journal_entries j ON j.company_id=l.company_id AND j.id=l.entry_id
-        JOIN receipts r ON r.company_id=j.company_id AND r.idempotency_key=j.receipt_key
+        LEFT JOIN receipts r ON r.company_id=j.company_id AND r.idempotency_key=j.receipt_key
         WHERE l.company_id=? AND j.accounting_date<=?
         AND l.account_code IN(SELECT account FROM accounts_in_scope) GROUP BY l.account_code
       ) SELECT a.account,coalesce(s.balance,0) subledger,coalesce(g.balance,0) gl,

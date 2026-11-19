@@ -76,7 +76,63 @@ async function journalTurnover(db: Connection, company: string): Promise<number>
   return value;
 }
 export function journalRepository(db: Connection): JournalRepository {
+  async function insertEntry(
+    company: string,
+    entry: import("@erp/core/domain").JournalEntry,
+    key: string | null,
+    run: string | null,
+  ) {
+    await db.query(
+      "INSERT INTO journal_entries(company_id,id,receipt_key,source_ref,accounting_date,document_date,tax_date,period,memo,kind,operation,role,posted_at,fingerprint,import_run) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      [
+        company,
+        entry.id,
+        key,
+        entry.sourceRef,
+        entry.date,
+        entry.documentDate,
+        entry.taxDate,
+        entry.date.slice(0, 7),
+        entry.memo,
+        entry.kind === "closing" ? "normal" : entry.kind,
+        entry.operation,
+        entry.role,
+        entry.postedAt,
+        entry.fingerprint,
+        run,
+      ],
+    );
+    if (entry.kind === "closing")
+      await db.query("INSERT INTO period_closing_journals(company_id,journal_id) VALUES(?,?)", [
+        company,
+        entry.id,
+      ]);
+    for (const [index, line] of entry.lines.entries()) {
+      const { account, debit, credit, dimensions, ...evidence } = line;
+      await db.query(
+        "INSERT INTO journal_lines(company_id,entry_id,line_no,period,account_code,debit_minor,credit_minor,dimensions,evidence) VALUES(?,?,?,?,?,?,?,?,?)",
+        [
+          company,
+          entry.id,
+          index + 1,
+          entry.date.slice(0, 7),
+          account,
+          debit,
+          credit,
+          JSON.stringify(dimensions),
+          JSON.stringify(evidence),
+        ],
+      );
+    }
+    const previous = await journalTurnover(db, company);
+    await db.query("INSERT INTO journal_seals(company_id,entry_id,turnover_minor) VALUES(?,?,?)", [
+      company,
+      entry.id,
+      BigInt(previous) + BigInt(entry.debit),
+    ]);
+  }
   return {
+    insertHistoricalJournal: (company, entry, run) => insertEntry(company, entry, null, run),
     journalTurnover: (company) => journalTurnover(db, company),
     async journalDraft(company, id) {
       const rows = await db.query("SELECT data FROM journal_drafts WHERE company_id=? AND id=?", [
@@ -142,7 +198,7 @@ export function journalRepository(db: Connection): JournalRepository {
     },
     async journalEntry(company, id) {
       const rows = await db.query(
-        "SELECT e.*,json_extract(r.result,'$.module') AS adapter_module FROM journal_entries e JOIN receipts r ON r.company_id=e.company_id AND r.idempotency_key=e.receipt_key WHERE e.company_id=? AND e.id=?",
+        "SELECT e.*,CASE WHEN e.import_run IS NOT NULL THEN 'LEGACY' ELSE json_extract(r.result,'$.module') END AS adapter_module FROM journal_entries e LEFT JOIN receipts r ON r.company_id=e.company_id AND r.idempotency_key=e.receipt_key WHERE e.company_id=? AND e.id=?",
         [company, id],
       );
       if (!rows[0]) return null;
@@ -242,53 +298,7 @@ export function journalRepository(db: Connection): JournalRepository {
         ],
       );
     },
-    async insertJournalEntry(company, entry, key) {
-      await db.query(
-        "INSERT INTO journal_entries(company_id,id,receipt_key,source_ref,accounting_date,document_date,tax_date,period,memo,kind,operation,role,posted_at,fingerprint) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        [
-          company,
-          entry.id,
-          key,
-          entry.sourceRef,
-          entry.date,
-          entry.documentDate,
-          entry.taxDate,
-          entry.date.slice(0, 7),
-          entry.memo,
-          entry.kind === "closing" ? "normal" : entry.kind,
-          entry.operation,
-          entry.role,
-          entry.postedAt,
-          entry.fingerprint,
-        ],
-      );
-      if (entry.kind === "closing")
-        await db.query("INSERT INTO period_closing_journals(company_id,journal_id) VALUES(?,?)", [
-          company,
-          entry.id,
-        ]);
-      for (const [index, line] of entry.lines.entries()) {
-        const { account, debit, credit, dimensions, ...evidence } = line;
-        await db.query(
-          "INSERT INTO journal_lines(company_id,entry_id,line_no,period,account_code,debit_minor,credit_minor,dimensions,evidence) VALUES(?,?,?,?,?,?,?,?,?)",
-          [
-            company,
-            entry.id,
-            index + 1,
-            entry.date.slice(0, 7),
-            account,
-            debit,
-            credit,
-            JSON.stringify(dimensions),
-            JSON.stringify(evidence),
-          ],
-        );
-      }
-      await db.query(
-        "INSERT INTO journal_seals(company_id,entry_id,turnover_minor) VALUES(?,?,?)",
-        [company, entry.id, BigInt(await journalTurnover(db, company)) + BigInt(entry.debit)],
-      );
-    },
+    insertJournalEntry: (company, entry, key) => insertEntry(company, entry, key, null),
     async insertJournalCorrection(company, originalId, entry) {
       await db.query(
         "INSERT INTO journal_corrections(company_id,original_id,output_id,operation) VALUES(?,?,?,?)",

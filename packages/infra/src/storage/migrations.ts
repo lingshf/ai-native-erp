@@ -96,7 +96,9 @@ const filenames = [
   "011-trade-settlements.sql",
   "012-trade-adjustments.sql",
   "013-trade-reporting.sql",
+  "014-legacy-import.sql",
 ];
+export const latestMigrationVersion = filenames.length;
 
 export function normalizeMigration(text: string): string {
   const normalized = text.replaceAll("\r\n", "\n");
@@ -363,6 +365,16 @@ export async function inspectSchema(
               `trigger:${name}_no_update`,
               `trigger:${name}_no_delete`,
             ]),
+          ]
+        : []),
+      ...(latest >= filenames.indexOf("014-legacy-import.sql") + 1
+        ? [
+            "table:legacy_import_runs",
+            "table:legacy_refs",
+            "index:legacy_refs_target",
+            "index:journal_lines_entry_period",
+            "table:write_seq",
+            "trigger:journal_entries_import",
           ]
         : []),
     ])

@@ -9,6 +9,41 @@ class InvalidConfiguration extends Error {
 function parseArguments(args) {
   if (args.length === 1 && args[0] === "--help") return null;
   const [action, ...tokens] = args;
+  if (action === "legacy-import") {
+    const options = new Map();
+    const keys = [
+      "--snapshot-dir",
+      "--target",
+      "--drafts",
+      "--receipts",
+      "--source-events",
+      "--transfer-queue",
+      "--seals",
+      "--audit",
+    ];
+    for (let index = 0; index < tokens.length; index += 2) {
+      const key = tokens[index],
+        value = tokens[index + 1];
+      if (!keys.includes(key) || options.has(key) || !value || value.startsWith("--"))
+        throw new InvalidConfiguration();
+      options.set(key, value);
+    }
+    if (options.size !== keys.length) throw new InvalidConfiguration();
+    for (const key of keys.slice(2)) {
+      if (
+        !(key === "--drafts" ? ["import-as-draft", "skip"] : ["import", "archive-only"]).includes(
+          options.get(key),
+        )
+      )
+        throw new InvalidConfiguration();
+    }
+    return {
+      action,
+      snapshot: resolve(options.get("--snapshot-dir")),
+      target: resolve(options.get("--target")),
+      choices: Object.fromEntries(keys.slice(2).map((key) => [key.slice(2), options.get(key)])),
+    };
+  }
   if (action === "legacy-snapshot") {
     const options = new Map();
     for (let index = 0; index < tokens.length; index += 2) {
@@ -77,10 +112,37 @@ try {
         backup: "storage-admin.mjs backup <db> <out> | restore <db> <in> (stop service first)",
         legacy:
           "storage-admin.mjs legacy-snapshot --source-dir DIR --out-dir NEW_DIR (isolated stopped source, Windows only)",
+        legacyImport:
+          "storage-admin.mjs legacy-import --snapshot-dir DIR --target NEW_DB --drafts import-as-draft|skip --receipts import|archive-only --source-events import|archive-only --transfer-queue import|archive-only --seals import|archive-only --audit import|archive-only",
         safety:
           "Explicit new target only; no .env, DATA_DIR, original-ledger defaults, implicit migration or business seeding.",
       }),
     );
+  } else if (command.action === "legacy-import") {
+    const { StorageError } = await import("@erp/core/application");
+    StorageFailure = StorageError;
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { LegacyImportSnapshot } = await import("../packages/infra/src/legacy/import-plan.ts");
+    const { executeLegacyImport } = await import("../packages/infra/src/storage/legacy-import.ts");
+    let manifest;
+    try {
+      manifest = JSON.parse(readFileSync(join(command.snapshot, "manifest.json"), "utf8"));
+    } catch (error) {
+      if (error instanceof SyntaxError || error?.code === "ENOENT")
+        throw new StorageError("INVALID_SNAPSHOT");
+      throw error;
+    }
+    const snapshot = new LegacyImportSnapshot(command.snapshot, manifest);
+    try {
+      const result = await executeLegacyImport(snapshot, {
+        target: command.target,
+        choices: command.choices,
+      });
+      console.log(JSON.stringify({ ...result, action: command.action }));
+    } finally {
+      snapshot.close();
+    }
   } else if (command.action === "legacy-snapshot") {
     const { produceLegacySnapshot, LegacySnapshotError } = await import(
       "./legacy-snapshot-producer.mjs"

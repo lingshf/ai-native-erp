@@ -10,7 +10,7 @@ import { createMasterDataStore } from "../../src/storage/master-data.ts";
 import { schemaFingerprint } from "../../src/storage/schema.ts";
 import { sqliteBackend } from "../../src/storage/sqlite.ts";
 import { createApi } from "../../src/http/index.ts";
-import { normalizeMigration } from "../../src/storage/migrations.ts";
+import { latestMigrationVersion, normalizeMigration } from "../../src/storage/migrations.ts";
 
 const input = {
   company: "DEFAULT",
@@ -483,21 +483,11 @@ it("upgrades an authentic immutable 001 target only on explicit migration, prese
       expect(raw.prepare("SELECT tenant_id FROM tenants").all()).toEqual([{ tenant_id: "KEEP" }]);
       expect(
         raw.prepare("SELECT version,checksum FROM schema_migrations ORDER BY version").all(),
-      ).toMatchObject([
-        { version: 1, checksum },
-        { version: 2 },
-        { version: 3 },
-        { version: 4 },
-        { version: 5 },
-        { version: 6 },
-        { version: 7 },
-        { version: 8 },
-        { version: 9 },
-        { version: 10 },
-        { version: 11 },
-        { version: 12 },
-        { version: 13 },
-      ]);
+      ).toMatchObject(
+        Array.from({ length: latestMigrationVersion }, (_, i) =>
+          i === 0 ? { version: 1, checksum } : { version: i + 1 },
+        ),
+      );
     } finally {
       raw.close();
     }

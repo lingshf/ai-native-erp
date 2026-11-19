@@ -143,6 +143,7 @@ function hashFile(file: string, expected: { bytes: number; sha256: string }): vo
  * broken references must reach the planner as reportable data, not exceptions.
  */
 export class LegacyImportSnapshot {
+  readonly directory: string;
   readonly snapshotSha256: Readonly<Record<Source, string>>;
   readonly #db: Record<Source, DatabaseSync>;
   #closed = false;
@@ -156,7 +157,11 @@ export class LegacyImportSnapshot {
       ledgers: Record<Source, { file: string; bytes: number; sha256: string }>;
     },
   ) {
+    this.directory = directory;
     if (
+      !manifest ||
+      typeof manifest !== "object" ||
+      !manifest.ledgers ||
       manifest.version !== 1 ||
       manifest.status !== "verified" ||
       manifest.crossDatabaseAtomic !== false
