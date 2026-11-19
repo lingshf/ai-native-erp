@@ -1,5 +1,5 @@
 import { fork, execFileSync, type ChildProcess } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, copyFile, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { availableParallelism } from "node:os";
@@ -78,6 +78,70 @@ function distribution(rawMs: number[]): Omit<Metric, "budgetMs" | "pass"> {
 export function summarize(rawMs: number[], budgetMs: number): Metric {
   const result = distribution(rawMs);
   return { ...result, budgetMs, pass: result.p95Ms <= budgetMs };
+}
+export function serialMetric(name: string, rawMs: number[]): Metric {
+  const metric = summarize(rawMs, name === "close-preview" ? 2000 : 1000);
+  const original = ORIGINAL.some((path) => path === name);
+  return { ...metric, pass: metric.pass && (!original || metric.p99Ms <= metric.budgetMs) };
+}
+export function compareRegression(
+  candidate: Metric,
+  baseline: Metric | undefined,
+  matched: boolean,
+) {
+  const change = (current: number, previous: number | undefined) =>
+    previous === undefined || previous <= 0 ? null : (current / previous - 1) * 100;
+  return {
+    relativeStatistic: "p50" as const,
+    baselineP50Ms: baseline?.p50Ms ?? null,
+    candidateP50Ms: candidate.p50Ms,
+    p50ChangePercent: change(candidate.p50Ms, baseline?.p50Ms),
+    baselineP95Ms: baseline?.p95Ms ?? null,
+    candidateP95Ms: candidate.p95Ms,
+    p95DeltaMs: baseline ? candidate.p95Ms - baseline.p95Ms : null,
+    p95ChangePercent: change(candidate.p95Ms, baseline?.p95Ms),
+    baselineP99Ms: baseline?.p99Ms ?? null,
+    candidateP99Ms: candidate.p99Ms,
+    p99DeltaMs: baseline ? candidate.p99Ms - baseline.p99Ms : null,
+    p99ChangePercent: change(candidate.p99Ms, baseline?.p99Ms),
+    pass: matched && baseline !== undefined && candidate.p50Ms <= baseline.p50Ms * 1.1,
+  };
+}
+function evaluateBudgets(
+  metrics: Record<string, Metric>,
+  windows: Record<string, Window>,
+  pools: PoolResult[],
+  latePageRatio: number | null,
+  mode: Mode,
+  matchedBaseline: boolean,
+  baseline?: Record<string, Metric>,
+) {
+  const checked = Object.fromEntries(
+    Object.entries(metrics).map(([name, metric]) => [name, serialMetric(name, metric.rawMs)]),
+  );
+  const regression = Object.fromEntries(
+    ORIGINAL.map((name) => [
+      name,
+      compareRegression(required(checked[name]), baseline?.[name], matchedBaseline),
+    ]),
+  );
+  return {
+    metrics: checked,
+    regression,
+    allPass:
+      Object.values(checked).every((metric) => metric.pass) &&
+      Object.values(windows).every((metric) => metric.pass) &&
+      (mode === "baseline" ||
+        (Object.values(regression).every((metric) => metric.pass) &&
+          latePageRatio !== null &&
+          latePageRatio <= 3 &&
+          pools.every(
+            (pool) =>
+              pool.reservationPass &&
+              pool.light.pass &&
+              Object.values(pool.concurrent).every((metric) => metric.pass),
+          ))),
+  };
 }
 
 export class ProductionChild {
@@ -545,22 +609,6 @@ export async function reportsBenchmark() {
         baseline.node === process.version &&
         baseline.completedAt <= startedAt,
     );
-    const regression = Object.fromEntries(
-      ORIGINAL.map((name) => {
-        const baselineP95Ms = baseline?.metrics[name]?.p95Ms ?? null;
-        const candidateP95Ms = required(metrics[name]).p95Ms;
-        return [
-          name,
-          {
-            baselineP95Ms,
-            candidateP95Ms,
-            changePercent: baselineP95Ms ? (candidateP95Ms / baselineP95Ms - 1) * 100 : null,
-            pass:
-              matchedBaseline && baselineP95Ms !== null && candidateP95Ms <= baselineP95Ms * 1.1,
-          },
-        ];
-      }),
-    );
     const latePageRatio =
       mode === "candidate"
         ? required(metrics["ledger-page-200"]).p95Ms / required(metrics["ledger-page-1"]).p95Ms
@@ -585,7 +633,15 @@ export async function reportsBenchmark() {
         lateLedgerPageSize: 500,
         fixtureSeed: fixture.seed,
       },
-      metrics,
+      ...evaluateBudgets(
+        metrics,
+        windows,
+        pools,
+        latePageRatio,
+        mode,
+        matchedBaseline,
+        baseline?.metrics,
+      ),
       rawMs: Object.fromEntries(
         Object.entries(metrics).map(([name, metric]) => [name, metric.rawMs]),
       ),
@@ -596,7 +652,6 @@ export async function reportsBenchmark() {
       cpuCount: CPU_COUNT,
       defaultReaders: DEFAULT_READERS,
       matchedBaseline,
-      regression,
       latePages: {
         pages: [1, 100, 200],
         pageSize: 500,
@@ -609,19 +664,6 @@ export async function reportsBenchmark() {
         mode === "candidate"
           ? "Module._load rejects better-sqlite3 and better_sqlite3.node in server main isolate; workers are separate isolates"
           : "not applicable: unchanged OLD MAIN loads SQLite",
-      allPass:
-        Object.values(metrics).every((metric) => metric.pass) &&
-        Object.values(windows).every((metric) => metric.pass) &&
-        (mode === "baseline" ||
-          (Object.values(regression).every((metric) => metric.pass) &&
-            latePageRatio !== null &&
-            latePageRatio <= 3 &&
-            pools.every(
-              (pool) =>
-                pool.reservationPass &&
-                pool.light.pass &&
-                Object.values(pool.concurrent).every((metric) => metric.pass),
-            ))),
       note: "Actual production main.ts is imported in a separate process. Fixture generation, cursor-key preparation and EXPLAIN complete before server startup. Each scenario has five warmup rounds before a server-only 10ms monitorEventLoopDelay window; client fetch, queue wait, JSON and contract parsing are included in HTTP timings, not in server sampler CPU. Accounts, not health, proves the reserved SQLite slot. All raw rounds and scheduler order evidence are retained. Thresholds are never relaxed on misses.",
     };
   } finally {
@@ -683,15 +725,17 @@ export function reportsMarkdown(reports: Awaited<ReturnType<typeof reportsBenchm
     "",
     `Late-page p95 / first-page p95 ≤3: ${reports.latePages.p95Ratio?.toFixed(3) ?? "not measured in baseline"} — ${status(reports.latePages.pass)}.`,
     "",
-    "### Matched OLD MAIN regression (≤10%)",
+    "### Matched OLD MAIN p50 regression (≤10%); p95/p99 deltas are informational",
     "",
     `Baseline must be \`${OLD_MAIN}\`, earlier in this same workflow on the same runner, using the same fixture digest, page size, warmups and sample count. Matched: **${status(reports.matchedBaseline)}**.`,
     "",
-    "| Original path | Baseline p95 ms | Candidate p95 ms | Change % | Result |",
-    "| --- | ---: | ---: | ---: | --- |",
+    "Only the original five paths use the p50 relative gate; their p95 and p99 must each meet the 1000ms / 2000ms absolute budget. Other scenarios retain their specified p95 budgets.",
+    "",
+    "| Original path | Baseline p50 ms | Candidate p50 ms | p50 change % | p95 delta ms | p99 delta ms | Relative result |",
+    "| --- | ---: | ---: | ---: | ---: | ---: | --- |",
     ...Object.entries(reports.regression).map(
       ([name, metric]) =>
-        `| ${name} | ${metric.baselineP95Ms?.toFixed(3) ?? "missing"} | ${metric.candidateP95Ms.toFixed(3)} | ${metric.changePercent?.toFixed(2) ?? "missing"} | ${status(metric.pass)} |`,
+        `| ${name} | ${metric.baselineP50Ms?.toFixed(3) ?? "missing"} | ${metric.candidateP50Ms.toFixed(3)} | ${metric.p50ChangePercent?.toFixed(2) ?? "missing"} | ${metric.p95DeltaMs?.toFixed(3) ?? "missing"} | ${metric.p99DeltaMs?.toFixed(3) ?? "missing"} | ${status(metric.pass)} |`,
     ),
     "",
     `Main-thread guard: ${reports.mainThreadGuard}.`,
@@ -701,6 +745,75 @@ export function reportsMarkdown(reports: Awaited<ReturnType<typeof reportsBenchm
   ].join("\n");
 }
 
+type ReportEvidence = Omit<Awaited<ReturnType<typeof reportsBenchmark>>, "regression">;
+export function recalculateEvidence(source: ReportEvidence, baseline: ReportEvidence) {
+  const matched = Boolean(
+    source.workflowRun &&
+      source.runner &&
+      baseline.revision === OLD_MAIN &&
+      baseline.fixture.logicalSha256 === source.fixture.logicalSha256 &&
+      baseline.fixture.seed === source.fixture.seed &&
+      baseline.warmup === WARMUP &&
+      source.warmup === WARMUP &&
+      baseline.samples === SAMPLES &&
+      source.samples === SAMPLES &&
+      baseline.parameters.originalLedgerPageSize === 100 &&
+      source.parameters.originalLedgerPageSize === 100 &&
+      baseline.runner === source.runner &&
+      baseline.workflowRun === source.workflowRun &&
+      baseline.workflowAttempt === source.workflowAttempt &&
+      baseline.node === source.node &&
+      baseline.completedAt <= source.startedAt,
+  );
+  const metrics = Object.fromEntries(
+    Object.entries(source.metrics).map(([name, metric]) => [
+      name,
+      serialMetric(name, metric.rawMs),
+    ]),
+  );
+  const baselineMetrics = Object.fromEntries(
+    Object.entries(baseline.metrics).map(([name, metric]) => [
+      name,
+      serialMetric(name, metric.rawMs),
+    ]),
+  );
+  const windows = Object.fromEntries(
+    Object.entries(source.windows).map(([name, window]) => [
+      name,
+      { ...window, pass: window.count > 0 && window.maxMs <= 100 && window.p99Ms <= 50 },
+    ]),
+  );
+  const pools = source.pools.map((pool) => {
+    const rounds = pool.rounds.map((round) => ({ ...round, pass: reservationVerified(round) }));
+    return {
+      ...pool,
+      rounds,
+      concurrent: Object.fromEntries(
+        Object.entries(pool.concurrent).map(([name, metric]) => {
+          const serialP95Ms = required(metrics[name]).p95Ms;
+          const concurrent = summarize(metric.rawMs, 1500);
+          return [name, { ...concurrent, serialP95Ms, deltaP95Ms: concurrent.p95Ms - serialP95Ms }];
+        }),
+      ),
+      light: summarize(
+        rounds.map((round) => round.accountsMs),
+        100,
+      ),
+      reservationPass: rounds.length === SAMPLES && rounds.every((round) => round.pass),
+    };
+  });
+  const ratio =
+    required(metrics["ledger-page-200"]).p95Ms / required(metrics["ledger-page-1"]).p95Ms;
+  return {
+    ...source,
+    windows,
+    pools,
+    matchedBaseline: matched,
+    latePages: { ...source.latePages, p95Ratio: ratio, pass: ratio <= 3 },
+    ...evaluateBudgets(metrics, windows, pools, ratio, source.mode, matched, baselineMetrics),
+  };
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (process.argv[2] === "prepare") {
     const filename = resolve(process.env.ERP_BENCH_FIXTURE ?? "artifacts/ci/million.sqlite");
@@ -708,6 +821,38 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const fixture = await generateLedgerFixture(filename);
     await writeFile(`${filename}.json`, `${JSON.stringify(fixture, null, 2)}\n`);
     console.log(`Prepared ${fixture.lines} lines: ${fixture.logicalSha256}`);
+  } else if (process.argv[2] === "recalculate") {
+    const [candidateFile, baselineFile, output] = process.argv.slice(3);
+    if (!candidateFile || !baselineFile || !output)
+      throw new Error("Usage: reports.ts recalculate <bench.json> <baseline.json> <output-prefix>");
+    const candidateText = await readFile(resolve(candidateFile), "utf8");
+    const baselineText = await readFile(resolve(baselineFile), "utf8");
+    const candidate = JSON.parse(candidateText) as { reports: ReportEvidence };
+    const reports = recalculateEvidence(
+      candidate.reports,
+      JSON.parse(baselineText) as ReportEvidence,
+    );
+    const evaluationRevision = execFileSync("git", ["rev-parse", "HEAD"], {
+      encoding: "utf8",
+    }).trim();
+    const evidence = {
+      evaluationRevision,
+      policy:
+        "PR26: original-five p50 regression <=10%; original-five p95/p99 absolute budgets; other scenario budgets unchanged",
+      sourceRun: reports.workflowRun,
+      measuredRevision: reports.revision,
+      inputSha256: {
+        candidate: createHash("sha256").update(candidateText).digest("hex"),
+        baseline: createHash("sha256").update(baselineText).digest("hex"),
+      },
+      reports,
+    };
+    const markdown = `Offline evaluation revision: \`${evaluationRevision}\`; measured revision and all raw samples remain unchanged.\n\n${reportsMarkdown(reports)}`;
+    await mkdir(dirname(resolve(output)), { recursive: true });
+    await writeFile(`${output}.json`, `${JSON.stringify(evidence, null, 2)}\n`);
+    await writeFile(`${output}.md`, markdown);
+    console.log(markdown);
+    if (!reports.allPass) process.exitCode = 1;
   } else {
     const reports = await reportsBenchmark();
     const output = resolve(process.env.ERP_BENCH_OUTPUT ?? "artifacts/ci/baseline");

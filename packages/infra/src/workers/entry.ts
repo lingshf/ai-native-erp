@@ -48,7 +48,8 @@ try {
     testDatabase.function("erp_test_wait", () => {
       Atomics.store(gate, 0, 1);
       Atomics.notify(gate, 0);
-      Atomics.wait(gate, 1, 0, 300);
+      if (Atomics.wait(gate, 1, 0, 30_000) === "timed-out" || Atomics.load(gate, 1) !== 1)
+        throw new StorageError("STORAGE_FAILURE");
       Atomics.store(gate, 0, 2);
       return 1;
     });

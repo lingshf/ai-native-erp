@@ -56,29 +56,34 @@ it("reserves a read worker for real HTTP SQLite light reads while a signalled he
   const path = `${base}/api/v1/reports/trial?company=DEFAULT&month=2026-01`;
   const first = fetch(path);
   const second = fetch(path);
-  await vi.waitFor(
-    () => {
-      expect(Atomics.load(gate, 0)).toBe(1);
-      expect(events.some((event) => event.runningHeavy === 1 && event.queuedHeavy === 1)).toBe(
-        true,
-      );
-    },
-    { interval: 1 },
-  );
-  const health = await fetch(`${base}/api/v1/health`);
-  expect(health.status).toBe(200);
-  await health.arrayBuffer();
-  const accounts = await fetch(`${base}/api/v1/accounts?company=DEFAULT&limit=5`);
-  expect(accounts.status).toBe(200);
-  expect(accountsPageSchema.parse(await accounts.json()).items).toHaveLength(5);
-  expect(Atomics.load(gate, 0)).toBe(1);
-  const starts = events.filter((event) => event.event === "start" && event.lane === "heavy");
-  expect(starts).toHaveLength(1);
-  const lightFinished = events.find((event) => event.event === "finish" && event.lane === "light");
-  expect(lightFinished).toBeDefined();
-  expect(lightFinished?.workerId).not.toBe(starts[0]?.workerId);
-  Atomics.store(gate, 1, 1);
-  Atomics.notify(gate, 1);
+  try {
+    await vi.waitFor(
+      () => {
+        expect(Atomics.load(gate, 0)).toBe(1);
+        expect(events.some((event) => event.runningHeavy === 1 && event.queuedHeavy === 1)).toBe(
+          true,
+        );
+      },
+      { interval: 1 },
+    );
+    const health = await fetch(`${base}/api/v1/health`);
+    expect(health.status).toBe(200);
+    await health.arrayBuffer();
+    const accounts = await fetch(`${base}/api/v1/accounts?company=DEFAULT&limit=5`);
+    expect(accounts.status).toBe(200);
+    expect(accountsPageSchema.parse(await accounts.json()).items).toHaveLength(5);
+    expect(Atomics.load(gate, 0)).toBe(1);
+    const starts = events.filter((event) => event.event === "start" && event.lane === "heavy");
+    expect(starts).toHaveLength(1);
+    const lightFinished = events.find(
+      (event) => event.event === "finish" && event.lane === "light",
+    );
+    expect(lightFinished).toBeDefined();
+    expect(lightFinished?.workerId).not.toBe(starts[0]?.workerId);
+  } finally {
+    Atomics.store(gate, 1, 1);
+    Atomics.notify(gate, 1);
+  }
   for (const response of await Promise.all([first, second])) {
     expect(response.status).toBe(200);
     expect(reportSchema.parse(await response.json()).reconciliation.allPass).toBe(true);

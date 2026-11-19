@@ -3,7 +3,13 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { accountsPageSchema, healthSchema } from "@erp/core/contracts";
 import { createSqliteStorage } from "../src/storage/index.ts";
-import { ProductionChild, reservationVerified, summarize } from "./reports.ts";
+import {
+  ProductionChild,
+  reservationVerified,
+  summarize,
+  serialMetric,
+  compareRegression,
+} from "./reports.ts";
 import type { ServerWindow, TraceEvent } from "./report-child.ts";
 
 function event(
@@ -33,6 +39,23 @@ describe("production capacity evidence", () => {
     expect(raw[0]).toBe(50);
     expect(() => summarize([], 100)).toThrow();
     expect(() => summarize([Number.NaN], 100)).toThrow();
+    const baseline = serialMetric("trial", Array(50).fill(100));
+    const candidate = serialMetric("trial", [...Array(45).fill(100), ...Array(4).fill(150), 190]);
+    expect(compareRegression(candidate, baseline, true)).toMatchObject({
+      relativeStatistic: "p50",
+      p50ChangePercent: 0,
+      p95DeltaMs: 50,
+      p99DeltaMs: 90,
+      pass: true,
+    });
+    expect(compareRegression(serialMetric("trial", Array(50).fill(111)), baseline, true).pass).toBe(
+      false,
+    );
+    expect(compareRegression(candidate, baseline, false).pass).toBe(false);
+    const tailMiss = [...Array(49).fill(100), 1001];
+    expect(serialMetric("trial", tailMiss).pass).toBe(false);
+    expect(serialMetric("close-preview", [...Array(49).fill(100), 2001]).pass).toBe(false);
+    expect(serialMetric("unadjusted-trial", tailMiss).pass).toBe(true);
   });
   it("requires light completion on the reserved worker before an already queued heavy starts", () => {
     const trace = [
