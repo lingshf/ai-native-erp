@@ -81,7 +81,7 @@ function page<T>(
   const items = rows.slice(0, query.limit).map(parse);
   return { items, nextCursor: rows.length > query.limit ? key(items[items.length - 1]) : null };
 }
-function repository(db: Connection): MasterDataRepository {
+export function masterDataRepository(db: Connection): MasterDataRepository {
   return {
     ...tradeRepository(db),
     ...tradeDocumentRepository(db),
@@ -282,7 +282,7 @@ export function createMasterDataStore(
         await db.begin();
         begun = true;
         await inspectSchema(db, false);
-        const result = await work(repository(db));
+        const result = await work(masterDataRepository(db));
         await db.commit();
         begun = false;
         return result;

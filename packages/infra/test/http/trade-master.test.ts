@@ -19,7 +19,7 @@ import {
 import { createSqliteStorage } from "../../src/storage/index.ts";
 import { createMasterDataStore } from "../../src/storage/master-data.ts";
 import { createApi } from "../../src/http/index.ts";
-import { normalizeMigration } from "../../src/storage/migrations.ts";
+import { latestMigrationVersion, normalizeMigration } from "../../src/storage/migrations.ts";
 import { schemaFingerprint } from "../../src/storage/schema.ts";
 import { sqliteBackend } from "../../src/storage/sqlite.ts";
 import { SqliteExecutor } from "../../src/workers/executor.ts";
@@ -660,10 +660,12 @@ describe("trade master HTTP and SQLite", () => {
         "journal_lines",
         "journal_seals",
         "journal_corrections",
-      ])
-        await db.query(
-          `INSERT INTO ${table} SELECT ${table === "periods" ? "company_id,month,status,revision" : "*"} FROM existing.${table}`,
-        );
+      ]) {
+        const columns = (await db.query(`PRAGMA main.table_info(${table})`))
+          .map((row) => `"${row.name}"`)
+          .join(",");
+        await db.query(`INSERT INTO ${table} SELECT ${columns} FROM existing.${table}`);
+      }
       await db.script(`
         INSERT INTO tenants(tenant_id) VALUES('KEEP');
         INSERT INTO books(tenant_id,book_id) VALUES('KEEP','KEEP');
@@ -745,7 +747,9 @@ describe("trade master HTTP and SQLite", () => {
         );
         expect(
           upgraded.prepare("SELECT version FROM schema_migrations ORDER BY version").all(),
-        ).toEqual(Array.from({ length: 13 }, (_, index) => ({ version: index + 1 })));
+        ).toEqual(
+          Array.from({ length: latestMigrationVersion }, (_, index) => ({ version: index + 1 })),
+        );
         expect(
           upgraded
             .prepare("SELECT result FROM receipts WHERE idempotency_key=?")

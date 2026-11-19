@@ -25,7 +25,7 @@ import {
 import { createSqliteStorage } from "../../src/storage/index.ts";
 import { createMasterDataStore } from "../../src/storage/master-data.ts";
 import { journalTools } from "../../src/storage/journals.ts";
-import { normalizeMigration } from "../../src/storage/migrations.ts";
+import { latestMigrationVersion, normalizeMigration } from "../../src/storage/migrations.ts";
 import { schemaFingerprint } from "../../src/storage/schema.ts";
 import { sqliteBackend } from "../../src/storage/sqlite.ts";
 import { createApi } from "../../src/http/index.ts";
@@ -2440,10 +2440,14 @@ describe("trade invoices on real SQLite", () => {
             await db.query(
               "INSERT INTO main.trade_payments SELECT company_id,payment_id,receipt_key,command_hash,fingerprint,json_remove(receipt,'$.allocations[0].segments') FROM existing.trade_payments",
             );
-          else
+          else {
+            const columns = (await db.query(`PRAGMA main.table_info(${name})`))
+              .map((column) => `"${column.name}"`)
+              .join(",");
             await db.query(
-              `INSERT INTO main.${name} SELECT * FROM existing.${name}${name === "trade_config_history" && fault === "missing" ? " WHERE kind<>'tradeTerms'" : name === "trade_config_history" && fault === "revisionGap" ? " WHERE NOT(kind='tradeTerms' AND revision=1)" : ""}`,
+              `INSERT INTO main.${name} SELECT ${columns} FROM existing.${name}${name === "trade_config_history" && fault === "missing" ? " WHERE kind<>'tradeTerms'" : name === "trade_config_history" && fault === "revisionGap" ? " WHERE NOT(kind='tradeTerms' AND revision=1)" : ""}`,
             );
+          }
         }
         await db.commit();
       } finally {
@@ -2493,7 +2497,9 @@ describe("trade invoices on real SQLite", () => {
         try {
           expect(
             check.prepare("SELECT version FROM schema_migrations ORDER BY version").all(),
-          ).toEqual(Array.from({ length: 13 }, (_, index) => ({ version: index + 1 })));
+          ).toEqual(
+            Array.from({ length: latestMigrationVersion }, (_, index) => ({ version: index + 1 })),
+          );
           expect(
             check
               .prepare(

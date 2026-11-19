@@ -22,7 +22,7 @@ npm run start:local
 
 `verify`依次检查 Biome、严格类型、目录导入边界、完整 Vitest，最后构建 Web。测试与启动直接执行 TS 源码，不需要中间 JS 构建。API 默认监听 `http://127.0.0.1:4180` 并托管 Web 构建产物；未构建前端时明确返回 503，不回退旧页面。开发时在第二终端运行 `npm run dev --workspace @erp/web`，Vite 固定 5173/strictPort，代理到 4180。
 
-`start:local`不自动加载`.env`，示例环境项见`.env.example`；只向当前进程显式提供新目标库的绝对路径。启动仅校验最新 schema，不自动迁移；旧目标库须先显式 migrate 升级到 013，已发布迁移与 checksum 不变。未提供 `ERP_SQLITE_FILE` 时只启动未配置壳，health 标记`data:unconfigured`，财务请求明确 503，不创建账簿。
+`start:local`不自动加载`.env`，示例环境项见`.env.example`；只向当前进程显式提供新目标库的绝对路径。启动仅校验最新 schema，不自动迁移；旧目标库须先显式 migrate 升级到 014，已发布迁移与 checksum 不变。未提供 `ERP_SQLITE_FILE` 时只启动未配置壳，health 标记`data:unconfigured`，财务请求明确 503，不创建账簿。
 
 首次连接有效的新目标库时建立固定 LOCAL tenant/book 下的 DEFAULT 月度教学公司（CNY、精度 2、当前财年）、八个内置科目和 12 个开放期间；**不创建示例凭证**。重复启动不覆盖已有主数据。不要把原账或快照选为目标库；不会隐式导入旧账，也不会改动其他副本的凭证或草稿。
 
@@ -75,7 +75,7 @@ Full 在 push main 及每天 03:17 UTC 运行；Bench 每天 03:47 UTC 及手动
 
 M0-R1 的凭证头保留 `date` 为记账日期（accountingDate），新增可选 `documentDate`（单据日期）、`taxDate`（税日期），省略时各自等于记账日期。三者均须为真实日历日期；草稿仍允许未填完整，保存/读取补齐缺省值。只有记账日期决定期间、维度有效期、GL 和报表归属；单据/税日期可以跨期，不另增模块期间或税率计算规则。预览、详情和 API 返回实际日期。008 只新增两列、不加索引，原凭证回填记账日期；历史业务/队列不可变 JSON 读取时按相同规则补齐，原回执/指纹/GL 不重写。
 
-控制科目仍拒绝手工、AI、通用导入/队列的新分录，错误码不变。唯一受控入口为进程内 `JournalService.adapter(module)` 的预览/确认 facade；授权来自 `packages/core/src/application/posting-adapters.ts` 的静态登记表（模块 → 允许的 controlModule），生产 `TRADE` 允许 AP/AR/TAX，且受期间 trade/tax 准入约束。不提供运行时登记 API、配置开关或 HTTP/worker 通用调用入口。适配器使用同一草稿保存、预览、同事务重读/指纹、确认和幂等管道，只放行本模块获准的有效控制科目，不放宽其他科目/维度/金额规则。模块绑定指纹并持久记录在回执 `module`，普通入口不能接管其幂等键或纠错；原来源模块可按 D6 镜像纠错，详情展示来源模块而不提供手工纠错按钮。
+控制科目仍拒绝手工、AI、普通导入/队列的新分录，错误码不变。受控入口为进程内 `JournalService.adapter(module)`；授权来自 `packages/core/src/application/posting-adapters.ts` 的静态登记表（模块 → 允许的 controlModule）：`TRADE` 对应 AP/AR/TAX，且受期间 trade/tax 准入约束；`LEGACY` 仅用于新库的历史导入，登记全部已知控制模块，不冒用 TRADE 的期间门禁。不提供运行时登记 API、配置开关或 HTTP/worker 通用调用入口。普通适配器使用同一草稿保存、预览、同事务重读/指纹、确认和幂等管道，只放行本模块获准的有效控制科目。模块绑定指纹并持久记录在回执 `module`，普通入口不能接管其幂等键或纠错；原来源模块可按 D6 镜像纠错，详情展示来源模块而不提供手工纠错按钮。
 
 D6 历史反向逐行精确镜像同公司原已过账行，即使科目/维度后来失效，也不重跑默认/派生；仍校验来源、金额取反和不能重复冲回。替换原子生成反向和新凭证；重分类必须全额。纠错不能早于原凭证及完整后代链最晚日期。已过账数据及封印不可变，累计安全整数护栏由末值索引维护。
 
@@ -198,6 +198,27 @@ npm run storage:admin -- restore new-target.sqlite independent-backup.sqlite
 `provision`只建立技术作用域，不是建账或 GL 导入。目标库连接使用 WAL/NORMAL、外键和 5000ms 忙等待；只读旧快照不改变 journal 模式。D4：已发布 001 的历史 dialect 允许值/checksum 保持不变，运行时只支持 sqlite。详见[存储说明](packages/infra/README.md)。
 
 `backup <db> <out>` 必须显式指定两个路径，输出须不存在；通过 SQLite 在线备份 API 生成经过完整性和当前迁移校验的单文件，服务运行中也可执行。**恢复必须先停服务**：`restore <db> <in>` 从取得维护锁到 checkpoint、关闭句柄、换库、验证及必要回滚完成，全程独占；持锁时服务启动会失败。恢复前原库完整 checkpoint 为带时间戳的 `.bak`，成功输出其路径；新库验证失败则自动还原，并保留 `.bak`。若回滚本身失败，维护锁继续保留、服务仍拒绝启动；错误会给出已验证 `.bak` 的路径，须先人工恢复并验证，再处理维护锁，不能直接删锁强启。损坏或迁移不匹配的输入在任何目标 SQLite 读写打开前拒绝，不改动原库及 crash-WAL/SHM 字节；仍被使用的数据库也拒绝恢复。替换前若残留 `-wal`/`-shm`，拒绝且不手动删除。不要复制正在运行的库主文件作为备份，也不要删除 sidecar。异常终止遗留的 `.maintenance-lock` 须在确认没有维护进程后由操作员调查处理，不能带锁强启服务。
+
+## 历史导入（M2-03，待串行集成）
+
+只接受已生成并校验 SHA 的双账快照、显式的新目标路径和全部六项决定 C 选项；不会读取活动旧账、4173 或 `.bak`。以下选项仅为合成验收示例，不代表真实数据授权：
+
+```powershell
+npm run storage:admin -- legacy-import --snapshot-dir C:\synthetic\verified-snapshot --target C:\synthetic\new-import.sqlite --drafts import-as-draft --receipts archive-only --source-events archive-only --transfer-queue archive-only --seals archive-only --audit archive-only
+node packages\infra\test\support\legacy-import-bench.mjs --execute
+```
+
+完整消费 M2-02 计划并确认可执行后才创建目标库。无法映射的 `import` 选项明确失败，不伪造回执、来源事件、队列或封印。`archive-only` 的证据保留在原只读快照，run 记录双库 SHA 和规范化选项；`legacy_refs` 对每个实际导入对象保留源引用及映射证据，账号设置/属性折叠到科目，币种折叠到公司配置。
+
+历史凭证通过静态 `LEGACY` 适配器使用统一领域计划与存储封印，不生成运行时回执；当前已停用的历史科目/维度允许保留，但仍检查引用、金额、平衡、控制模块授权和开放期间，且拒绝计划额外增行或改变源行。所有源期间先开放，包含原结转在内的凭证按记账日期导入，再按月份导入关闭/冻结状态。关闭状态复用领域状态转换和前期检查，历史引用源期间及结转 `legacy_ref`；不调用普通关账，不重生成结转，不因保留草稿而阻塞历史状态。
+
+每批最多 5000 分录，业务行、引用、计数、游标和写入序号同事务提交。已存在目标仅允许恰好一条本工具的 `importing` run 续跑，必须匹配 SHA、全部选项、当前迁移版本、已记录表计数和 `write_seq`；陌生、完成、被业务写入过或混入额外数据的库均拒绝，不覆盖、不合并。恢复可重放同一命令；硬终止遗留维护锁须先由操作员确认进程已停止并调查，不自动删锁。
+
+独占批量导入使用 WAL/NORMAL 和 128 MiB 页缓存；事务仍逐批提交，checkpoint 延后到连接关闭，避免 Windows 每个小批次强制刷盘。须为目标库、临时映射库和导入期间增长的 WAL 预留磁盘空间；中断后不能删除 WAL/SHM。
+
+导入全程持独占维护锁，完成状态为 `imported`，不是 `reconciled`。运行时拒绝将任何未核对导入库作为活动库打开，M2-04 核对通过前不能设为活动库。`write_seq` 在 SQLite 业务写事务的统一提交路径递增，主数据、配置、草稿、单据、队列和状态变更均计数，回滚/只读/迁移控制不计数；改后改回仍增加两次。外部工具绕过程序直接修改文件不受支持。
+
+迁移文件预留 `014`；当前开发 manifest 临时接在 `010` 后，不可合并。按 D14，待 M1 的 `011–013` 合并后 rebase，保持已发布迁移前缀不变，再验证 `013→014` 和 `007→014` 并复审。本分支的升级用例自动覆盖 `007` 和 manifest 中紧邻 `014` 的前一版本。
 
 ## 性能证据
 

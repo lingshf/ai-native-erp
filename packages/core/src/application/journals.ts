@@ -37,6 +37,7 @@ export interface JournalRepository {
   journalTurnover(company: string): Promise<number>;
   insertJournalReceipt(receipt: JournalReceipt): Promise<void>;
   insertJournalEntry(company: string, entry: JournalEntry, key: string): Promise<void>;
+  insertHistoricalJournal(company: string, entry: JournalEntry, run: string): Promise<void>;
   insertJournalCorrection(company: string, originalId: string, entry: JournalEntry): Promise<void>;
   insertJournalAudit(receipt: JournalReceipt): Promise<void>;
 }
@@ -343,4 +344,44 @@ export class JournalService {
     await this.writeEntries(repo, current, key, entries);
     return entries.map((entry) => entry.id);
   }
+  async importHistorical(
+    repo: MasterDataRepository,
+    company: string,
+    draft: JournalDraft,
+    provenance: { run: string; closing: boolean },
+  ): Promise<JournalEntry> {
+    checkedCode(company);
+    checkedJournalId(provenance.run);
+    const current = await this.adapter("LEGACY").plan(repo, company, draft, []);
+    if (current.plan.journals.length !== 1) journalError("lines", "shape");
+    const planned = current.plan.journals[0];
+    if (
+      planned.lines.length !== draft.lines.length ||
+      planned.lines.some((line, index) => {
+        const source = draft.lines[index];
+        return (
+          line.account !== source.account ||
+          BigInt(line.debit) !== historicalMinor(source.debit, current.plan.scale) ||
+          BigInt(line.credit) !== historicalMinor(source.credit, current.plan.scale) ||
+          this.tools.hash([line.dimensions]) !== this.tools.hash([source.dimensions])
+        );
+      })
+    )
+      journalError("lines", "correction");
+    if (provenance.closing && (draft.operation !== "journal" || draft.kind !== "normal"))
+      journalError("operation", "shape");
+    const entry = this.entries(current, this.tools.now())[0];
+    const historical: JournalEntry = {
+      ...entry,
+      kind: provenance.closing ? "closing" : entry.kind,
+    };
+    await repo.insertHistoricalJournal(company, historical, provenance.run);
+    if (draft.originalId) await repo.insertJournalCorrection(company, draft.originalId, historical);
+    return historical;
+  }
+}
+
+function historicalMinor(value: string, scale: number): bigint {
+  const [whole, fraction = ""] = (value || "0").split(".");
+  return BigInt(`${whole}${fraction.padEnd(scale, "0")}`);
 }

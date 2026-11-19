@@ -154,7 +154,7 @@ export function checkedJournalId(id: string): void {
   )
     journalError("id", "shape");
 }
-export function checkedJournalDraft(draft: JournalDraft): void {
+export function checkedJournalDraft(draft: JournalDraft, maximumLines = 500): void {
   checkedJournalId(draft.id);
   checkedExpectedRevision(draft.revision);
   if (
@@ -171,7 +171,7 @@ export function checkedJournalDraft(draft: JournalDraft): void {
     (draft.taxDate !== undefined &&
       (typeof draft.taxDate !== "string" || draft.taxDate.length > 10)) ||
     !Array.isArray(draft.lines) ||
-    draft.lines.length > 500
+    draft.lines.length > maximumLines
   )
     journalError("form", "shape");
   if (draft.operation === "journal" ? draft.originalId !== null : draft.originalId === null)
@@ -226,7 +226,8 @@ export function buildJournalPlan(input: {
   };
 }): JournalPlan {
   const { draft, company, period, original, corrections } = input;
-  checkedJournalDraft(draft);
+  const historicalImport = input.adapter?.module === "LEGACY";
+  checkedJournalDraft(draft, historicalImport ? 2000 : 500);
   if (!draft.sourceRef.trim() || !draft.memo.trim()) journalError("sourceRef", "shape");
   checkedJournalDay(draft.date, "date");
   const dates = journalDates(draft);
@@ -237,7 +238,15 @@ export function buildJournalPlan(input: {
   if (input.adapter?.periodModules?.some((module) => !period.modules.includes(module)))
     journalError("date", "period");
   const accounts = new Map(input.accounts.map((account) => [account.code, account]));
-  const compiled = compileDimensionRules(input.catalog);
+  const compiled = compileDimensionRules(
+    historicalImport
+      ? input.catalog.map((config) =>
+          config.kind === "dimension" || config.kind === "value"
+            ? { ...config, active: true }
+            : config,
+        )
+      : input.catalog,
+  );
   const balance = input.catalog.find(
     (item): item is Extract<DimensionConfig, { kind: "balance" }> => item.kind === "balance",
   );
@@ -275,11 +284,12 @@ export function buildJournalPlan(input: {
     if (draft.lines.length < 2) journalError("lines", "shape");
     const lines: JournalLine[] = draft.lines.map((raw, index) => {
       const account = accounts.get(raw.account);
-      if (!account?.active) journalError(`lines.${index}.account`, "account");
+      if (!account || (!historicalImport && !account.active))
+        journalError(`lines.${index}.account`, "account");
       if (
         account.purpose === "control"
           ? !account.controlModule || !input.adapter?.controlModules.includes(account.controlModule)
-          : !account.manualAllowed
+          : !historicalImport && !account.manualAllowed
       )
         journalError(`lines.${index}.account`, "manual");
       if (account.purpose === "suspense") {

@@ -13,9 +13,15 @@ import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { performance } from "node:perf_hooks";
 import { LegacyImportSnapshot, legacyImportPlan } from "../../src/legacy/import-plan.ts";
+import { executeLegacyImport } from "../../src/storage/legacy-import.ts";
+import Database from "better-sqlite3";
+import { reportRepository } from "../../src/storage/reports.ts";
 
 // Standalone opt-in Bench, not a PR unit-test timing assertion. Fictional data only.
 const directory = mkdtempSync(resolve(".legacy-import-bench-"));
+const execute = process.argv.includes("--execute");
+const targetDirectory = execute ? mkdtempSync(resolve(".legacy-import-target-bench-")) : undefined;
+const sourceLines = execute ? 1_000_002 : 1_000_000;
 function metadata(file) {
   const hash = createHash("sha256");
   const fd = openSync(join(directory, file), "r");
@@ -45,15 +51,15 @@ try {
           DROP TRIGGER immutable_line_insert;
           PRAGMA cache_size=-8192;
           BEGIN;
-          WITH RECURSIVE n(i) AS (SELECT 10 UNION ALL SELECT i+1 FROM n WHERE i<500005)
+          WITH RECURSIVE n(i) AS (SELECT 10 UNION ALL SELECT i+1 FROM n WHERE i<${execute ? 500006 : 500005})
           INSERT INTO journals SELECT i,'2026-01-15','Fictional Bench','normal','posted',NULL FROM n;
-          WITH RECURSIVE n(i) AS (SELECT 10 UNION ALL SELECT i+1 FROM n WHERE i<500005)
+          WITH RECURSIVE n(i) AS (SELECT 10 UNION ALL SELECT i+1 FROM n WHERE i<${execute ? 500006 : 500005})
           INSERT INTO lines SELECT i*2,i,'1000',1,0 FROM n;
-          WITH RECURSIVE n(i) AS (SELECT 10 UNION ALL SELECT i+1 FROM n WHERE i<500005)
+          WITH RECURSIVE n(i) AS (SELECT 10 UNION ALL SELECT i+1 FROM n WHERE i<${execute ? 500006 : 500005})
           INSERT INTO lines SELECT i*2+1,i,'4000',0,1 FROM n;
           COMMIT;
         `);
-        assert.equal(db.prepare("SELECT count(*) AS n FROM lines").get().n, 1_000_000);
+        assert.equal(db.prepare("SELECT count(*) AS n FROM lines").get().n, sourceLines);
       }
     } finally {
       db.close();
@@ -67,28 +73,68 @@ try {
   };
   const start = performance.now();
   snapshot = new LegacyImportSnapshot(directory, manifest);
-  let summary;
+  const choices = {
+    drafts: "import-as-draft",
+    receipts: "archive-only",
+    "source-events": "archive-only",
+    "transfer-queue": "archive-only",
+    seals: "archive-only",
+    audit: "archive-only",
+  };
+  let summary, result, trialP95Ms;
   const digest = createHash("sha256");
-  for (const event of legacyImportPlan(snapshot, {
-    dryRun: true,
-    choices: {
-      drafts: "import-as-draft",
-      receipts: "archive-only",
-      "source-events": "archive-only",
-      "transfer-queue": "archive-only",
-      seals: "archive-only",
-      audit: "archive-only",
-    },
-    batchSize: 5000,
-  })) {
-    digest.update(`${JSON.stringify(event)}\n`);
-    if (event.type === "summary") summary = event;
+  if (execute) {
+    const target = join(targetDirectory, "target.sqlite");
+    result = await executeLegacyImport(
+      snapshot,
+      { target, choices },
+      {
+        beforeBatchCommit(batch) {
+          const seconds = (performance.now() - start) / 1000;
+          assert.ok(seconds <= 600, "Million-line import exceeded time budget.");
+          if (batch % 20 === 0)
+            console.error(
+              JSON.stringify({
+                batch,
+                seconds,
+                peakRssMiB: process.resourceUsage().maxRSS / 1024,
+              }),
+            );
+        },
+      },
+    );
+    const db = new Database(target, { readonly: true });
+    try {
+      assert.equal(db.prepare("SELECT count(*) n FROM journal_lines").get().n, 1_000_000);
+      assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+      assert.equal(db.prepare("SELECT count(*) n FROM receipts").get().n, 0);
+      const reports = reportRepository({
+        query: async (sql, values = []) => db.prepare(sql).all(...values),
+      });
+      for (let i = 0; i < 5; i++) await reports.reportBalances("TEACHING", "2026-01", "adjusted");
+      const samples = [];
+      for (let i = 0; i < 20; i++) {
+        const start = performance.now();
+        await reports.reportBalances("TEACHING", "2026-01", "adjusted");
+        samples.push(performance.now() - start);
+      }
+      samples.sort((a, b) => a - b);
+      trialP95Ms = samples[18];
+      assert.ok(trialP95Ms <= 1000, "Imported million-line hot trial exceeded p95 1s.");
+    } finally {
+      db.close();
+    }
+  } else {
+    for (const event of legacyImportPlan(snapshot, { dryRun: true, choices, batchSize: 5000 })) {
+      digest.update(`${JSON.stringify(event)}\n`);
+      if (event.type === "summary") summary = event;
+    }
+    assert.equal(summary.counts["teaching.lines"].source, sourceLines);
+    assert.equal(summary.counts["teaching.lines"].mapped, sourceLines);
+    assert.equal(summary.executable, true);
   }
   const seconds = (performance.now() - start) / 1000;
   const peakRssMiB = process.resourceUsage().maxRSS / 1024;
-  assert.equal(summary.counts["teaching.lines"].source, 1_000_000);
-  assert.equal(summary.counts["teaching.lines"].mapped, 1_000_000);
-  assert.equal(summary.executable, true);
   snapshot.close();
   snapshot = undefined;
   assert.deepEqual(
@@ -96,11 +142,19 @@ try {
     manifest.ledgers,
   );
   console.log(
-    JSON.stringify({ lines: 1_000_000, seconds, peakRssMiB, sha256: digest.digest("hex") }),
+    JSON.stringify({
+      mode: execute ? "execute" : "dry-run",
+      lines: 1_000_000,
+      seconds,
+      peakRssMiB,
+      ...(execute ? { trialP95Ms } : {}),
+      ...(execute ? result : { sha256: digest.digest("hex") }),
+    }),
   );
-  assert.ok(seconds <= 120, "Million-line dry-run exceeded 120 seconds.");
-  assert.ok(peakRssMiB <= 512, "Million-line dry-run exceeded 512 MiB peak RSS.");
+  assert.ok(seconds <= (execute ? 600 : 120), "Million-line import exceeded time budget.");
+  assert.ok(peakRssMiB <= 512, "Million-line import exceeded 512 MiB peak RSS.");
 } finally {
   snapshot?.close();
   rmSync(directory, { recursive: true, force: true });
+  if (targetDirectory) rmSync(targetDirectory, { recursive: true, force: true });
 }

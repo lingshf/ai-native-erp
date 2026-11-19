@@ -29,6 +29,7 @@ export class RuntimeInfoService {
 }
 export * from "./reports.ts";
 export * from "./period-close.ts";
+export * from "./legacy-period.ts";
 export * from "./ai-assistant.ts";
 export * from "./use-cases.ts";
 export { postingAdapters, type PostingAdapterRegistry } from "./posting-adapters.ts";
