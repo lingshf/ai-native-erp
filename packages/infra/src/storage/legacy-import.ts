@@ -557,7 +557,8 @@ export async function executeLegacyImport(
     db.pragma("synchronous=NORMAL");
     // Bound checkpoint work per commit and the final close without an unbounded WAL.
     db.pragma("wal_autocheckpoint=65536");
-    db.pragma("cache_size=-131072");
+    // Leave RSS headroom for source/staging connections and the posting pipeline.
+    db.pragma("cache_size=-16384");
     const repo = masterDataRepository(raw);
     // All metadata is complete and immutable during the journal phase.
     const historical = historicalRepository(repo);

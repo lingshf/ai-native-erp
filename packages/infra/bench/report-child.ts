@@ -87,6 +87,15 @@ if (process.env.ERP_BENCH_CHILD === "1") {
           count: lag.count,
         } satisfies ServerWindow,
       });
+    } else if (action === "memory") {
+      // RSS includes workers; the V8/external fields describe only this main-thread isolate.
+      send({
+        requestId,
+        result: {
+          ...process.memoryUsage(),
+          peakRssMiB: process.resourceUsage().maxRSS / 1024,
+        },
+      });
     } else if (action === "round") {
       trace = [];
       latest = undefined;

@@ -9,7 +9,7 @@ import {
   rmSync,
   statSync,
 } from "node:fs";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { availableParallelism, tmpdir } from "node:os";
 import { DatabaseSync } from "node:sqlite";
 import { performance } from "node:perf_hooks";
@@ -30,6 +30,12 @@ const sourceLines = execute ? 1_000_002 : 1_000_000;
 const target = targetDirectory ? join(targetDirectory, "target.sqlite") : undefined;
 const originalExec = Database.prototype.exec;
 const originalClose = Database.prototype.close;
+const originalSourceExec = DatabaseSync.prototype.exec;
+const limits = {
+  seconds: execute ? 480 : 120,
+  peakRssMiB: execute ? 409.6 : 512,
+  ...(execute ? { httpProcessPeakRssMiB: 409.6, trialP95Ms: 800 } : {}),
+};
 const profile = {
   commits: 0,
   commitMs: 0,
@@ -37,21 +43,65 @@ const profile = {
   maxCommitMs: 0,
   writerCloseMs: 0,
   walFilePeakBytes: 0,
+  shmFilePeakBytes: 0,
   transactions: [],
   closes: [],
+  memory: [],
+  sourceSqlite: [],
   queries: {},
 };
+function memory(label) {
+  const sample = {
+    label,
+    batch,
+    ...process.memoryUsage(),
+    peakRssMiB: process.resourceUsage().maxRSS / 1024,
+  };
+  profile.memory.push(sample);
+  return sample;
+}
+function sqliteSettings(db) {
+  return Object.fromEntries(
+    ["cache_size", "page_size", "mmap_size", "wal_autocheckpoint", "temp_store", "cache_spill"].map(
+      (key) => {
+        const value = Object.values(db.prepare(`PRAGMA ${key}`).get())[0];
+        return [key, typeof value === "bigint" ? Number(value) : value];
+      },
+    ),
+  );
+}
 let phase = "import";
 let batch = 0;
 let transactionStart;
 function observeWal() {
   const bytes = statSync(`${target}-wal`, { throwIfNoEntry: false })?.size ?? 0;
   profile.walFilePeakBytes = Math.max(profile.walFilePeakBytes, bytes);
+  profile.shmFilePeakBytes = Math.max(
+    profile.shmFilePeakBytes,
+    statSync(`${target}-shm`, { throwIfNoEntry: false })?.size ?? 0,
+  );
   return bytes;
 }
 if (execute) {
+  DatabaseSync.prototype.exec = function (sql) {
+    const result = originalSourceExec.call(this, sql);
+    if (sql.startsWith("PRAGMA query_only=ON")) {
+      profile.sourceSqlite.push({
+        file: basename(this.prepare("PRAGMA database_list").get().file),
+        ...sqliteSettings(this),
+      });
+    }
+    return result;
+  };
   Database.prototype.exec = function (sql) {
-    if (this.name !== target) return originalExec.call(this, sql);
+    if (this.name !== target) {
+      const result = originalExec.call(this, sql);
+      if (sql === "COMMIT" && basename(this.name) === "plan.sqlite") {
+        profile.stageSqlite = sqliteSettings(this);
+        memory("staged");
+      }
+      return result;
+    }
     if (sql === "BEGIN IMMEDIATE") transactionStart = performance.now();
     if (sql !== "COMMIT") return originalExec.call(this, sql);
     const walBeforeBytes = observeWal();
@@ -66,6 +116,7 @@ if (execute) {
       profile.commitMs += ms;
       profile.commitCpuMs += (used.user + used.system) / 1000;
       profile.maxCommitMs = Math.max(profile.maxCommitMs, ms);
+      if (batch === 1) profile.targetSqlite = sqliteSettings(this);
       profile.transactions.push({
         phase,
         batch,
@@ -96,6 +147,7 @@ if (execute) {
           walBeforeBytes,
           walAfterBytes: observeWal(),
         });
+        memory(`${phase}-writer-closed`);
       }
     }
   };
@@ -116,6 +168,7 @@ function metadata(file) {
   }
 }
 let snapshot, server;
+memory("loaded");
 try {
   for (const [file, fixture] of [
     ["teaching.sqlite", "base.sql"],
@@ -159,8 +212,10 @@ try {
     crossDatabaseAtomic: false,
     ledgers: { teaching: metadata("teaching.sqlite"), enterprise: metadata("erp.sqlite") },
   };
+  memory("fixture-ready");
   const start = performance.now();
   snapshot = new LegacyImportSnapshot(directory, manifest);
+  memory("snapshot-validated");
   const choices = {
     drafts: "import-as-draft",
     receipts: "archive-only",
@@ -180,6 +235,7 @@ try {
       {
         beforeBatchCommit(number) {
           batch = number;
+          const current = memory("before-commit");
           const seconds = (performance.now() - start) / 1000;
           if (batch % 20 === 0)
             console.error(
@@ -190,12 +246,17 @@ try {
                 commitMs: profile.commitMs,
                 commitCpuMs: profile.commitCpuMs,
                 walMiB: observeWal() / 1024 ** 2,
+                rssMiB: current.rss / 1024 ** 2,
+                heapUsedMiB: current.heapUsed / 1024 ** 2,
+                heapTotalMiB: current.heapTotal / 1024 ** 2,
+                externalMiB: current.external / 1024 ** 2,
               }),
             );
         },
       },
     );
     importSeconds = (performance.now() - start) / 1000;
+    memory("import-returned");
     const integrityStart = performance.now();
     const db = new Database(target, { readonly: true });
     try {
@@ -259,6 +320,8 @@ try {
     const startup = performance.now();
     server = await ProductionChild.start(target, resolve("."), "candidate", readers);
     const startupMs = performance.now() - startup;
+    const httpMemory = { startup: await server.control("memory") };
+    memory("http-started");
     async function readTrial() {
       const response = await server.read(
         "reports/trial?company=TEACHING&month=2026-01&stage=adjusted",
@@ -275,6 +338,7 @@ try {
     }
     const coldRequestMs = await readTrial();
     for (let i = 0; i < 5; i++) await readTrial();
+    httpMemory.warmed = await server.control("memory");
     const guard = await server.control("start");
     assert.equal(guard.guarded, true);
     assert.equal(guard.nativeLoads, 0);
@@ -289,6 +353,7 @@ try {
         samples: 50,
         guard,
         window: await server.control("stop"),
+        memory: { ...httpMemory, sampled: await server.control("memory") },
       };
     }
     const trace = await server.control("trace");
@@ -297,6 +362,7 @@ try {
     http.readerWorkerIds = trace.readerWorkerIds;
     const samples = [...trialSamplesMs].sort((a, b) => a - b);
     trialP95Ms = samples[Math.ceil(samples.length * 0.95) - 1];
+    memory("http-sampled");
     await server.close();
     server = undefined;
   } else {
@@ -323,6 +389,7 @@ try {
       lines: 1_000_000,
       seconds,
       peakRssMiB,
+      limits,
       environment: {
         node: process.version,
         platform: process.platform,
@@ -348,12 +415,19 @@ try {
       ...(execute ? result : { sha256: digest.digest("hex") }),
     }),
   );
-  assert.ok(seconds <= (execute ? 600 : 120), "Million-line import exceeded time budget.");
-  assert.ok(peakRssMiB <= 512, "Million-line import exceeded 512 MiB peak RSS.");
-  if (execute) assert.ok(trialP95Ms <= 1000, "Imported million-line hot trial exceeded p95 1s.");
+  assert.ok(seconds <= limits.seconds, "Million-line import exceeded time acceptance limit.");
+  assert.ok(peakRssMiB < limits.peakRssMiB, "Million-line import exceeded RSS acceptance limit.");
+  if (execute) {
+    assert.ok(trialP95Ms <= limits.trialP95Ms, "Hot HTTP trial exceeded p95 acceptance limit.");
+    assert.ok(
+      http.memory.sampled.peakRssMiB < limits.httpProcessPeakRssMiB,
+      "Production HTTP process exceeded RSS acceptance limit.",
+    );
+  }
 } finally {
   Database.prototype.exec = originalExec;
   Database.prototype.close = originalClose;
+  DatabaseSync.prototype.exec = originalSourceExec;
   await server?.close();
   snapshot?.close();
   rmSync(directory, { recursive: true, force: true });
