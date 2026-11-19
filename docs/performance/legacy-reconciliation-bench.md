@@ -25,9 +25,10 @@ does not bypass the gate or exercise future P-inclusive opening reconciliation.
 
 ## Three-round evidence
 
-Measured source head: `886ce2435547cf8caea7984656786aaa14aa32ca`; the subsequent
-evidence-only commit changes this document, not the measured code. This rerun
-includes the reviewed atomic final-batch/report/status transaction.
+Measured source head: `886ce2435547cf8caea7984656786aaa14aa32ca`. Subsequent
+evidence and base-integration commits do not change the measured production or
+benchmark code. This rerun includes the reviewed atomic final-batch/report/status
+transaction.
 
 Local run on Windows x64, Node v26.13.0, AMD EPYC 7763, 16 available logical
 processors. No build, test or other benchmark from this session ran concurrently.

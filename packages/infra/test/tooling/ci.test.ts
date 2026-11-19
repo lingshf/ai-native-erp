@@ -3,6 +3,7 @@ import {
   balanceShards,
   fileWeights,
   selectPrTests,
+  selectShardFiles,
   shouldRun,
   testSummary,
   vitestTimings,
@@ -105,5 +106,53 @@ describe("CI selection and reporting", () => {
       ),
     ).toEqual({ "a.test.ts": 15, "b.test.ts": 30 });
     expect(() => fileWeights([{ testResults: [{ name: "x" }] }])).toThrow("Invalid Vitest suite");
+  });
+
+  it("balances project worker time instead of adding a serial project tail", () => {
+    const weights = { heavy: 18, medium: 12, web: 8, small: 6, core: 4 };
+    const projects = {
+      heavy: "infra",
+      medium: "infra",
+      small: "infra",
+      web: "web",
+      core: "core",
+    };
+    const files = Object.keys(weights);
+    const options = { workers: 2, projects };
+    expect(balanceShards(files, weights, 2, options)).toEqual([
+      ["heavy", "small", "core"],
+      ["medium", "web"],
+    ]);
+    expect(balanceShards([...files].reverse(), weights, 2, options)).toEqual(
+      balanceShards(files, weights, 2, options),
+    );
+    expect(() => balanceShards(files, weights, 2, { workers: 0 })).toThrow("Invalid worker count");
+  });
+
+  it("partitions every file exactly once when jobs execute with different worker counts", () => {
+    const weights = { a: 9, b: 8, c: 7, d: 6, e: 5, f: 4, g: 3 };
+    const files = Object.keys(weights);
+    const projects = Object.fromEntries(files.map((file) => [file, "infra"]));
+    for (const workerCounts of [
+      [1, 1],
+      [2, 2],
+      [3, 3],
+      [2, 3],
+      [3, 2],
+      [1, 8],
+      [2, 3, 2, 2, 2, 2],
+      [1, 2, 3, 4, 5, 8],
+    ]) {
+      const shards = workerCounts.map((maxWorkers, index) => {
+        const config = { maxWorkers, shard: { index: index + 1, count: workerCounts.length } };
+        return selectShardFiles(files, weights, config, projects);
+      });
+      expect(shards.flat().sort(), `workers=${workerCounts}`).toEqual(files);
+      for (const [index, shard] of shards.entries()) {
+        for (const other of shards.slice(index + 1)) {
+          expect(shard.filter((file) => other.includes(file))).toEqual([]);
+        }
+      }
+    }
   });
 });

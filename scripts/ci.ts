@@ -98,24 +98,68 @@ export function fileWeights(reports: unknown[], root = process.cwd()) {
 }
 
 /**
- * Deterministic longest-first greedy split of test files into `count` shards.
+ * Deterministic longest-first greedy split, minimizing estimated project/worker wall time.
  * Files without a recorded weight use the median weight; every file lands in exactly one shard.
  */
-export function balanceShards(files: string[], weights: Record<string, number>, count: number) {
+export function balanceShards(
+  files: string[],
+  weights: Record<string, number>,
+  count: number,
+  options: { workers?: number; projects?: Record<string, string> } = {},
+) {
   if (!Number.isInteger(count) || count < 1) throw new Error("Invalid shard count");
+  const workers = options.workers ?? 1;
+  if (!Number.isInteger(workers) || workers < 1) throw new Error("Invalid worker count");
   const known = Object.values(weights).sort((a, b) => a - b);
   const fallback = known.length ? known[Math.floor(known.length / 2)] : 1;
   const weightOf = (file: string) => weights[file] ?? fallback;
-  const shards = Array.from({ length: count }, () => ({ files: [] as string[], total: 0 }));
+  const shards = Array.from({ length: count }, () => ({
+    files: [] as string[],
+    total: 0,
+    duration: 0,
+    projects: new Map<string, number[]>(),
+  }));
   const ordered = [...new Set(files)].sort(
     (a, b) => weightOf(b) - weightOf(a) || (a < b ? -1 : a > b ? 1 : 0),
   );
   for (const file of ordered) {
-    const target = shards.reduce((best, shard) => (shard.total < best.total ? shard : best));
+    const project = options.projects?.[file] ?? "";
+    let target = shards[0];
+    let targetDuration = Number.POSITIVE_INFINITY;
+    let targetLanes: number[] = [];
+    for (const shard of shards) {
+      const lanes = [...(shard.projects.get(project) ?? Array<number>(workers).fill(0))];
+      const previous = Math.max(...lanes);
+      const lane = lanes.indexOf(Math.min(...lanes));
+      lanes[lane] += weightOf(file);
+      const duration = shard.duration - previous + Math.max(...lanes);
+      if (
+        duration < targetDuration ||
+        (duration === targetDuration && shard.total < target.total)
+      ) {
+        target = shard;
+        targetDuration = duration;
+        targetLanes = lanes;
+      }
+    }
     target.files.push(file);
     target.total += weightOf(file);
+    target.duration = targetDuration;
+    target.projects.set(project, targetLanes);
   }
   return shards.map((shard) => shard.files);
+}
+
+export function selectShardFiles(
+  files: string[],
+  weights: Record<string, number>,
+  config: { shard?: { index: number; count: number } },
+  projects: Record<string, string>,
+) {
+  const { shard } = config;
+  if (!shard) return files;
+  // Every job must plan with the same model, regardless of its execution worker count.
+  return balanceShards(files, weights, shard.count, { workers: 2, projects })[shard.index - 1];
 }
 
 function cell(value: string) {
