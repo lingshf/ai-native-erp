@@ -43,9 +43,125 @@ export function snapshotRejection(check, before, after = before, code = "INVALID
   };
 }
 
+const advanceAccounts = {
+  1400: {
+    category: "ASSET",
+    contraOf: null,
+    controlModule: "AP",
+    manualAllowed: false,
+    name: "Vendor prepayments",
+    normalSide: "DEBIT",
+    purpose: "control",
+    reportGroup: "prepayments",
+  },
+  2300: {
+    category: "LIABILITY",
+    contraOf: null,
+    controlModule: "AR",
+    manualAllowed: false,
+    name: "Customer advances",
+    normalSide: "CREDIT",
+    purpose: "control",
+    reportGroup: "otherLiabilities",
+  },
+};
+const window = { from: "2026-01-01", to: "2099-12-31" };
+/**
+ * Fictional M2-03b opening-items file for company F. Every listed control account is declared;
+ * accounts with rows are `detail`, the rest `empty`. Master data needs `tradeAdvances`.
+ */
+export function openingItemsFile({
+  accounts = ["1300", "2100"],
+  items = {},
+  master = Object.keys(items).length > 0,
+  ...extra
+} = {}) {
+  const file = {
+    version: 1,
+    ...(master
+      ? {
+          terms: [
+            {
+              company: "F",
+              code: "NET30",
+              name: "Net 30",
+              ...window,
+              dueDays: 30,
+              discountDays: 0,
+              discountPercent: "0",
+              allowPartialDiscount: false,
+            },
+          ],
+          profiles: [
+            {
+              company: "F",
+              code: "ARP",
+              name: "AR profile",
+              ...window,
+              side: "AR",
+              controlAccount: "1300",
+              advanceAccount: "2300",
+              cashAccount: "1000",
+              discountAccount: "4000",
+            },
+            {
+              company: "F",
+              code: "APP",
+              name: "AP profile",
+              ...window,
+              side: "AP",
+              controlAccount: "2100",
+              advanceAccount: "1400",
+              cashAccount: "1000",
+              discountAccount: "4000",
+            },
+          ],
+          parties: [
+            ["C1", "Fictional customer", "customer"],
+            ["V1", "Fictional vendor", "vendor"],
+          ].map(([code, name, role]) => ({
+            company: "F",
+            code,
+            name,
+            ...window,
+            role,
+            apProfile: role === "customer" ? null : "APP",
+            arProfile: role === "vendor" ? null : "ARP",
+            terms: "NET30",
+          })),
+        }
+      : {}),
+    accounts: accounts.map((account) => ({
+      company: "F",
+      account,
+      declaration: items[account]?.length ? "detail" : "empty",
+      ...(items[account]?.length
+        ? {
+            items: items[account].map((row, index) => {
+              const side = ["1300", "2300"].includes(account) ? "AR" : "AP";
+              const party = side === "AR" ? "C1" : "V1";
+              return {
+                side,
+                party,
+                partyName: party === "C1" ? "Fictional customer" : "Fictional vendor",
+                externalNo: `OPEN-${account}-${index + 1}`,
+                documentDate: "2026-01-10",
+                dueDate: "2026-02-09",
+                currency: "EUR",
+                ...(typeof row === "number" ? { remainingMinor: row } : row),
+              };
+            }),
+          }
+        : {}),
+    })),
+    ...extra,
+  };
+  return { bytes: Buffer.from(JSON.stringify(file)) };
+}
+
 export function legacyFixture(
   t,
-  { wal = false, history = false, many = false, tradeControls = true } = {},
+  { wal = false, history = false, many = false, tradeControls = true, tradeAdvances = false } = {},
 ) {
   const directory = resolve(`.legacy-fixture-${randomUUID()}`);
   fs.mkdirSync(directory);
@@ -88,6 +204,13 @@ export function legacyFixture(
             ),
         )
         .join("\n");
+    if (name === "enterprise" && tradeAdvances)
+      for (const [code, data] of Object.entries(advanceAccounts)) {
+        const json = JSON.stringify(data);
+        sql += `\nINSERT INTO "accounts" ("company","code","category","purpose","data") VALUES ('F','${code}','${data.category}','control','${json}');`;
+        for (const table of ["configs", "config_versions"])
+          sql += `\nINSERT INTO "${table}" ("company","kind","code","revision","active","data") VALUES ('F','account','${code}',1,1,'${json}');`;
+      }
     db.exec(sql);
   }
   if (wal) {

@@ -1074,6 +1074,86 @@ describe("trade invoices on real SQLite", () => {
       service.previewAction({ ...advance(), actionId: inv.documentId }),
     ).rejects.toMatchObject({ issue: { rule: "duplicate" } });
   });
+  it("D30 role relaxation never applies to M1 items: a swapped same-side account role is still rejected", async () => {
+    const inv = invoice();
+    await post(inv);
+    const a = await act(advance());
+    const db = new Database(filename);
+    try {
+      // Each M1 item's account now only satisfies the *other* same-side trade role.
+      db.prepare(
+        "UPDATE accounts SET category=?,report_group=?,normal_side=? WHERE company_id='DEFAULT' AND code=?",
+      ).run("LIABILITY", "payables", "CREDIT", "1250");
+      db.prepare(
+        "UPDATE accounts SET category=?,report_group=?,normal_side=? WHERE company_id='DEFAULT' AND code=?",
+      ).run("ASSET", "prepayments", "DEBIT", "2100");
+    } finally {
+      db.close();
+    }
+    const before = counts();
+    await expect(
+      service.previewSettlement(payment({ ...inv, documentId: a.receipt.actionId }, 1)),
+    ).rejects.toMatchObject({ issue: { rule: "account" } });
+    await expect(service.previewSettlement(payment(inv, 1))).rejects.toMatchObject({
+      issue: { rule: "account" },
+    });
+    await expect(
+      service.previewAction({
+        ...actionHeader(),
+        kind: "apply",
+        sourceId: a.receipt.actionId,
+        sourceRevision: 1,
+        targetId: inv.documentId,
+        targetRevision: 1,
+        gross: 1,
+      }),
+    ).rejects.toMatchObject({ issue: { rule: "account" } });
+    expect(counts()).toEqual(before);
+  });
+  it("M1 apply, settlement and credit never query legacy opening markers on the hot path", async () => {
+    const inv = invoice();
+    await post(inv);
+    const a = await act(advance("AP", 100));
+    const lookups: string[] = [];
+    const counted = <T>(work: (repo: MasterDataRepository) => Promise<T>) =>
+      ((repo: MasterDataRepository) =>
+        work(
+          new Proxy(repo, {
+            get(target, key, receiver) {
+              if (key === "tradeOpeningItems" || key === "tradeItemSource") lookups.push(key);
+              return Reflect.get(target, key, receiver);
+            },
+          }),
+        )) as (repo: MasterDataRepository) => Promise<T>;
+    const original = service;
+    service = new TradeDocumentService(
+      { read: (work) => store.read(counted(work)), write: (work) => store.write(counted(work)) },
+      journals,
+      journalTools,
+    );
+    try {
+      await act({
+        ...actionHeader(),
+        kind: "apply",
+        sourceId: a.receipt.actionId,
+        sourceRevision: 1,
+        targetId: inv.documentId,
+        targetRevision: 1,
+        gross: 100,
+      });
+      await settle(payment(inv, 200, false, 2));
+      await act({
+        ...actionHeader(),
+        kind: "credit",
+        invoiceId: inv.documentId,
+        revision: 3,
+        lines: [{ sourceLineId: "L1", quantity: "1" }],
+      });
+    } finally {
+      service = original;
+    }
+    expect(lookups).toEqual([]);
+  });
   it.each(["AP", "AR"] as const)(
     "allocates %s credits from original prices/tax cumulatively, preserves the paid invoice and supports explicit credit refunds",
     async (side) => {

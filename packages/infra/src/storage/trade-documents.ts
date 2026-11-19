@@ -211,12 +211,25 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
     },
     async tradeItemSource(company, itemId) {
       const rows = await db.query(
-        "SELECT journal_id,original_id FROM trade_item_sources WHERE company_id=? AND item_id=?",
+        "SELECT journal_id,original_id,EXISTS(SELECT 1 FROM legacy_refs r WHERE r.object_type='opening_items' AND r.target_id=s.item_id) AS opening FROM trade_item_sources s WHERE company_id=? AND item_id=?",
         [company, itemId],
       );
       return rows[0]
-        ? { journalId: str(rows[0].journal_id), originalId: optional(rows[0].original_id) }
+        ? {
+            journalId: str(rows[0].journal_id),
+            originalId: optional(rows[0].original_id),
+            opening: Number(rows[0].opening) === 1,
+          }
         : null;
+    },
+    async tradeOpeningItems(company, itemIds) {
+      if (!itemIds.length) return new Set<string>();
+      const rows = await db.query(
+        `SELECT r.target_id FROM legacy_refs r JOIN open_items o ON o.item_id=r.target_id
+        WHERE r.object_type='opening_items' AND o.company_id=? AND r.target_id IN (${itemIds.map(() => "?").join(",")})`,
+        [company, ...itemIds],
+      );
+      return new Set(rows.map((row) => str(row.target_id)));
     },
     async tradeCreditLines(company, invoiceId) {
       const rows = await db.query(

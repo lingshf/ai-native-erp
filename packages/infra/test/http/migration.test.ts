@@ -5,7 +5,7 @@ import { createApi } from "../../src/http/index.ts";
 import { MigrationReader } from "../../src/workers/migration-reader.ts";
 import { LegacyImportSnapshot, type ImportChoices } from "../../src/legacy/import-plan.ts";
 import { executeLegacyImport } from "../../src/storage/legacy-import.ts";
-import { legacyFixture } from "../support/legacy-fixture.mjs";
+import { legacyFixture, openingItemsFile } from "../support/legacy-fixture.mjs";
 
 test("stored reports are readable before confirmation; HTTP exposes no write action", async (t) => {
   const f = legacyFixture(t);
@@ -20,7 +20,7 @@ test("stored reports are readable before confirmation; HTTP exposes no write act
     seals: "archive-only",
     audit: "archive-only",
   };
-  await executeLegacyImport(snapshot, { target, choices });
+  await executeLegacyImport(snapshot, { target, choices, openingItems: openingItemsFile() });
   const migration = new MigrationReader(target);
   const api = await createApi({
     environment: { ERP_PORT: "0" },
@@ -39,7 +39,7 @@ test("stored reports are readable before confirmation; HTTP exposes no write act
     assert.equal(get.statusCode, 200);
     assert.equal(get.headers["cache-control"], "no-store");
     assert.equal(get.json().run.status, "imported");
-    assert.equal(get.json().run.report.verdict, "blocked");
+    assert.equal(get.json().run.report.verdict, "pending");
     for (const method of ["POST", "PUT", "DELETE"] as const) {
       const response = await api.app.inject({
         method,
