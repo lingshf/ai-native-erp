@@ -1,7 +1,7 @@
 # UI-05 凭证与业务事件页
 
-- 里程碑：UI-1 界面逐步改进　依赖：UI-02　建议分支：`ui-journals-events`
-- 冲突域：web-ui:journals
+- 里程碑：UI-1 界面逐步改进　依赖：UI-02b　建议分支：`ui-journals-events`
+- 冲突域：web-ui:journals（`Journals.tsx`、`BusinessEvents.tsx`；`AiPanel.tsx` 归 [UI-07c](UI-07c-ai-panel.md)）
 - 设计依据：[design/ui/README.md](../ui/README.md) §4.3、§4.4
 
 ## 范围

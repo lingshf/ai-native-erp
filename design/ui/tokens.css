@@ -57,7 +57,7 @@
   --color-surface: #ffffff;
   --color-surface-alt: #f8f9fb;
   --color-border: #dde1e6;
-  --color-border-strong: #8a939e;
+  --color-border-strong: #7d8691; /* 控件边界：在 surface/surface-alt/bg/primary-soft 上均 ≥3:1 */
   --color-text: #1d232b;
   --color-text-muted: #545e6b;
   --color-text-disabled: #8a939e;
@@ -74,7 +74,7 @@
   --color-warning-border: #e2b443;
   --color-danger: #b0261c;
   --color-danger-bg: #fdecea;
-  --color-danger-border: #f0b3ad;
+  --color-danger-border: #f0b3ad; /* 仅提示框装饰描边；危险按钮边界用 --color-danger */
   --color-teach: #0d6670;
   --color-teach-bg: #e7f4f5;
   --color-teach-border: #9fd0d4;

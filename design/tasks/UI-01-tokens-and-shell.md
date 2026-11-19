@@ -17,12 +17,13 @@
   - 导航：分组样式、当前页指示（`aria-current`）、无下划线；窄屏（≤ 760px）横向滚动。
   - `shell.title` 改为“ERP 工作区 / ERP workspace”，`shell.documentTitle` 同步去掉“架构迁移 / architecture migration”（唯一的文案变更；现无测试断言这两项）。
 - 把 `design/ui/check-contrast.mjs` 的检查移植为 `packages/web/test/contrast.test.ts`：读取 `src/theme/tokens.css`，两主题全部配对达标。
-- 不改任何页面组件的结构和文案。
+- 不改任何页面组件的结构和文案；`Overview`（运行状态页内容）的改版归 [UI-07d](UI-07d-overview.md)，本任务只改其外壳。
+- 性能：`App.tsx` 中 12 个 `lazy()` 路由保持不变；外壳不新增运行时依赖。
 
 ## 验收标准
 
 1. 满足 [UI-1 通用验收标准](README.md#ui-1界面逐步改进)。
 2. 截图：运行状态页和任意两页（建议发票、未结项）改前 / 改后，中文 + 红、英文 + 绿，1440 与 390 宽；外壳与 [原型截图](../ui/screenshots/after/overview.png) 一致（像素级不要求）。
-3. `contrast.test.ts` 在故意把 `--color-text-muted` 改浅（如 `#9aa3ad`）时失败。
-4. 偏好控件在 1440 和 390 宽下都可见并可 Tab 到达；`trade-gui.slow.test.ts` 不改动即通过。
+3. `contrast.test.ts` 覆盖 `check-contrast.mjs` 的全部配对，包括控件边界及其交互态；把 `--color-text-muted` 改浅（如 `#9aa3ad`）或把 `--color-border-strong` 改回 `#8a939e` 时，测试都失败。
+4. 偏好控件在 1440 和 390 宽下都可见并可 Tab 到达；四个 `trade-gui-*.slow.test.ts` 与 `migration-gui.slow.test.ts` 不改动即在精确 head 上通过（通用验收第 5 条）。
 5. `.workspace[data-theme]`、`html[lang]`、`nav a[href]`、`main h2` 契约不变；`App.test.tsx` 不改断言即通过。

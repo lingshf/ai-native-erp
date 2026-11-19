@@ -17,4 +17,4 @@
 
 1. 满足 [UI-1 通用验收标准](README.md#ui-1界面逐步改进)。
 2. 截图：付款、收款、预付、贷项、反向各一态，改前 / 改后（中文 + 红、英文 + 绿，1440 与 390 宽）。
-3. `trade-settlements.test.tsx`、`trade-adjustments.test.tsx` 原有断言不删改；E2E 付款 / 收款 / 反向键盘路径不改即通过。
+3. `trade-settlements.test.tsx`、`trade-adjustments.test.tsx` 原有断言不删改；四个 `trade-gui-*.slow.test.ts` 的付款、收款、反向键盘路径不改即通过。

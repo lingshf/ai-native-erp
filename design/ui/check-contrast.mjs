@@ -54,8 +54,21 @@ const pairs = [
   ["color-danger", "color-danger-bg", 4.5, "错误提示"],
   ["color-danger", "color-surface", 4.5, "危险按钮文字"],
   ["color-teach", "color-teach-bg", 4.5, "教学提示"],
-  ["color-border-strong", "color-surface", 3, "输入框边框（非文字）"],
-  ["color-primary", "color-surface", 3, "选中指示条（非文字）"],
+  // 控件边界（WCAG 1.4.11，≥3:1）：凡用来标识控件范围的颜色，对它可能出现的每个底色及交互态都要列出。
+  // 不列入：装饰分隔线 color-border、提示框描边 *-border（非控件）；禁用态（1.4.11 豁免）；
+  // btn-subtle 无边框，靠文字识别（文字对比见上），悬停底 primary-soft 仅为反馈。
+  ["color-border-strong", "color-surface", 3, "输入框 / 次按钮 / 分段按钮边框（静止）"],
+  ["color-border-strong", "color-surface-alt", 3, "次按钮悬停底 / 只读输入 / 交替行内输入框"],
+  ["color-border-strong", "color-bg", 3, "页面底上的次按钮、筛选控件"],
+  ["color-border-strong", "color-primary-soft", 3, "选中行内的输入框"],
+  ["color-danger", "color-surface", 3, "危险按钮边框（静止）/ 校验失败输入框"],
+  ["color-danger", "color-danger-bg", 3, "危险按钮边框（悬停）"],
+  ["color-primary", "color-surface", 3, "主按钮底色作边界 / 选中指示条 / 分段选中"],
+  ["color-primary", "color-bg", 3, "页面底上的主按钮"],
+  ["color-primary-hover", "color-surface", 3, "主按钮悬停作边界"],
+  ["color-primary-active", "color-surface", 3, "主按钮按下作边界"],
+  ["color-focus", "color-surface-alt", 3, "焦点框 / 表头、交替行"],
+  ["color-focus", "color-primary-soft", 3, "焦点框 / 选中行"],
   ["color-focus", "color-surface", 3, "焦点框 / 卡片"],
   ["color-focus", "color-bg", 3, "焦点框 / 页面底"],
   ["color-surface", "color-appbar", 3, "焦点框 / 顶栏（白色外框）"],

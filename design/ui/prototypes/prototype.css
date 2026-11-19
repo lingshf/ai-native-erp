@@ -42,6 +42,7 @@ a {
 .workspace {
   min-height: 100dvh;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: var(--appbar-h) 1fr;
 }
 .skip-link {
@@ -75,6 +76,9 @@ a {
   line-height: var(--leading-lg);
   font-weight: var(--weight-semibold);
   white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .appbar .brand-mark {
   display: inline-grid;
@@ -199,6 +203,7 @@ main {
 .page {
   max-width: var(--content-max);
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
 }
 
@@ -290,7 +295,7 @@ main {
 }
 .btn-danger {
   background: var(--color-surface);
-  border-color: var(--color-danger-border);
+  border-color: var(--color-danger);
   color: var(--color-danger);
 }
 .btn-danger:hover {
@@ -318,7 +323,7 @@ kbd {
 /* ---------- 字段 ---------- */
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
   gap: var(--space-4) var(--space-5);
 }
 .form-grid .span-2 {
@@ -535,7 +540,7 @@ table.grid td input.num {
 }
 .tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
   gap: var(--space-3);
 }
 .tile {
@@ -560,7 +565,7 @@ table.grid td input.num {
 }
 .kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(168px, 100%), 1fr));
   gap: var(--space-3);
 }
 .kpi {
@@ -589,7 +594,7 @@ table.grid td input.num {
 }
 .facts {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
   gap: var(--space-3) var(--space-5);
   margin: 0;
 }
@@ -782,7 +787,7 @@ table.grid td input.num {
 }
 .split {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
   gap: var(--space-4);
   align-items: start;
 }

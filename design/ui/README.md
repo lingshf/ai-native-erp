@@ -8,7 +8,7 @@
   - [`check-contrast.mjs`](check-contrast.mjs)：WCAG AA 对比度检查，`node design/ui/check-contrast.mjs`，任一不达标即非零退出。
   - [`prototypes/`](prototypes/)：高保真静态 HTML 原型（`prototype.css` 是组件参考实现，`prototype.js` 生成外壳并切换主题/语言/教学）。直接用浏览器打开，可加参数 `?theme=green&lang=en&teaching=0`。
   - [`capture-prototypes.mjs`](capture-prototypes.mjs)：重新生成 `screenshots/after/`（`node design/ui/capture-prototypes.mjs`；没有 Playwright 自带 Chromium 时使用系统 Edge）。
-  - `screenshots/before/`：现状截图，取自 v0.2.0 Demo（[docs/demo/v0.2.0](../../docs/demo/v0.2.0/)，虚构数据，宽 1440）。
+  - `screenshots/before/`：现状截图，取自 v0.2.0 Demo（[docs/demo/v0.2.0](../../docs/demo/v0.2.0/)，虚构数据；运行状态与报表页宽 1440，发票页因横向溢出整页实为 2066px）。
   - `screenshots/after/`：原型截图。
 - 实施拆分：[UI-01..UI-08](../tasks/README.md#ui-1界面逐步改进)。
 
@@ -57,7 +57,7 @@
 | --- | --- | --- |
 | `--color-bg` | `#f4f5f7` | 页面底 |
 | `--color-surface` / `-surface-alt` | `#ffffff` / `#f8f9fb` | 卡片 / 表头、悬停行、只读字段 |
-| `--color-border` / `-border-strong` | `#dde1e6` / `#8a939e` | 分隔线 / 输入框边框 |
+| `--color-border` / `-border-strong` | `#dde1e6` / `#7d8691` | 装饰分隔线（非控件边界）/ 控件边界：输入框、次按钮、分段按钮 |
 | `--color-text` / `-text-muted` / `-text-disabled` | `#1d232b` / `#545e6b` / `#8a939e` | 正文 / 次要 / 禁用 |
 | `--color-info` / `-success` / `-warning` / `-danger` | `#1c5a9c` / `#1b6a3a` / `#6e4a00` / `#b0261c` | 文字色，均配 `-bg`、`-border` |
 | `--color-teach` / `-teach-bg` / `-teach-border` | `#0d6670` / `#e7f4f5` / `#9fd0d4` | 教学提示（青色，区别于主色和语义色） |
@@ -67,11 +67,21 @@
 
 ### 3.2 对比度（WCAG 2.1 AA，`check-contrast.mjs` 实测）
 
-每个主题检查 24 对（文字 ≥ 4.5:1，非文字 ≥ 3:1），**全部通过**。最低值：
+每个主题检查 34 对，**全部通过**：文字 ≥ 4.5:1；控件边界 ≥ 3:1（WCAG 1.4.11），对其可能出现的每个底色和悬停、按下、选中等交互态都列出。
+
+不列入检查的有：
+- 装饰分隔线 `border` 与提示框描边 `*-border`，它们不是控件边界；
+- 禁用态（1.4.11 豁免）；
+- `subtle` 按钮：它靠文字识别，文字对比已检查。
+
+为此 `border-strong` 由 `#8a939e` 调为 `#7d8691`：旧值在次按钮悬停底上只有 2.95:1。危险按钮边框由 `danger-border` 改为 `danger`：旧值对卡片 1.79:1，对悬停底约 1.56:1。最低值：
 
 | 对 | 红 | 绿 | 要求 |
 | --- | --- | --- | --- |
-| 输入框边框 on 卡片 | 3.11 | 3.11 | ≥ 3 |
+| 控件边框 on 选中行（`primary-soft`） | 3.29 | 3.31 | ≥ 3 |
+| 控件边框 on 页面底 / 次按钮悬停底 | 3.38 / 3.50 | 3.38 / 3.50 | ≥ 3 |
+| 控件边框 on 卡片 | 3.69 | 3.69 | ≥ 3 |
+| 危险按钮边框 on 悬停底 / 卡片 | 5.85 / 6.69 | 5.85 / 6.69 | ≥ 3 |
 | 错误文字 on 错误底 | 5.85 | 5.85 | ≥ 4.5 |
 | 成功 / 教学文字 on 各自底色 | 5.92 | 5.92 | ≥ 4.5 |
 | 次要文字 on 页面底 | 6.03 | 6.03 | ≥ 4.5 |
@@ -131,7 +141,7 @@
 
 | 组件 | 规则 | 对应现状 |
 | --- | --- | --- |
-| Button | `primary`（每屏 ≤ 1 个）、`secondary`（描边）、`subtle`（文字）、`danger`（描边红，仅不可逆操作的确认）、`sm` 28px 用于行内。禁用态灰底灰字，不只降透明度 | 现 138 个 `<button>` 全部实心 |
+| Button | `primary`（每屏 ≤ 1 个）、`secondary`（描边）、`subtle`（文字）、`danger`（描边红，边框用 `--color-danger`；仅不可逆操作的确认）、`sm` 28px 用于行内。禁用态灰底灰字，不只降透明度。变体只经类名启用，页面任务逐页套用，不改全局 `button` 元素默认样式 | 现 138 个 `<button>` 全部实心 |
 | Field | 标签在上（13px 次要色），输入框 36px、4px 圆角、`border-strong`；`hint` 12px；错误时边框变红 + 下方 `error-text` + 字段 `aria-invalid`/`aria-describedby`（已有的保持） | 行内 label |
 | FormGrid | `auto-fill, minmax(200px, 1fr)`：1440 宽约 5 列，平板 2–3 列，窄屏 1 列；长字段 `span-2` | 无 |
 | FastTab | 卡片 + 标题栏（`h3 > button[aria-expanded][aria-controls]`）+ 右侧摘要；默认展开；**含错误时自动展开且不能折叠隐藏错误**（PG-04） | 无 |
@@ -165,8 +175,9 @@
 
 | 契约 | 来源 |
 | --- | --- |
-| `.workspace[data-theme]`、`html[lang]` | `App.test.tsx`、`trade-gui.slow.test.ts` |
-| E2E 用 `nav a[href="#/<path>"]` 导航并等待 `main h2` | `trade-gui.slow.test.ts` |
+| `.workspace[data-theme]`、`html[lang]` | `App.test.tsx`、`trade-gui-{zh,en}-{red,green}.slow.test.ts`（共享 `test/support/trade-gui-scenario.ts`）、`migration-gui.slow.test.ts` |
+| E2E 用 `nav a[href="#/<path>"]` 导航并等待 `main h2` | 同上四个 `trade-gui-*.slow.test.ts` |
+| 迁移页没有 `<button>`；明细用 `details > summary` | `migration-gui.slow.test.ts` |
 | 所有元素 ID（`#trade-kind`、`#tinv-side`、`#workspace-language` …）与按钮可访问名称（`getByRole("button", { name })`） | 同上及 `packages/web/test/*.test.tsx` |
 | 报表视图切换仍是按钮且名称不变 | `trade-reports.test.tsx`、E2E |
 | 偏好控件可见、可 Tab 到达；E2E 键盘路径 220 次 Tab 上限内完成 | E2E |
@@ -175,19 +186,19 @@
 
 ## 9. 改进前后对比
 
-改后截图由原型生成（宽 1440，整页，中文 + 专业红，教学开启），数据与 v0.2.0 Demo 一致（PARTY、AP-DEMO、PO-DEMO，净额 100.00 / 税额 13.00 / 合计 113.00，未结 36.50）。
+改后截图由原型生成（宽 1440，DPR 1，整页，中文 + 专业红，教学开启；脚本对每张断言根页面不横向溢出），数据与 v0.2.0 Demo 一致（PARTY、AP-DEMO、PO-DEMO，净额 100.00 / 税额 13.00 / 合计 113.00，未结 36.50）。
 
 | 页面 | 改前 | 改后 | 主要变化 |
 | --- | --- | --- | --- |
-| 运行状态 | ![改前](screenshots/before/overview.png) | ![改后](screenshots/after/overview.png) | 顶栏 + 偏好上移（P2/P3）；状态卡片用徽标；工作区“常用入口”卡片（仅链接到既有导航目标，不新增功能，UI-07 可选） |
-| 采购与销售发票 | ![改前](screenshots/before/trade-invoices.png) | ![改后](screenshots/after/trade-invoices.png) | 操作栏主次（P1）；FastTab + 标签在上表单（P4/P6）；行表格结构化、不再横向溢出（P5）；KPI + 分录预览并排（P8） |
+| 运行状态 | ![改前](screenshots/before/overview.png) | ![改后](screenshots/after/overview.png) | 顶栏 + 偏好上移（P2/P3）；状态卡片用徽标；工作区“常用入口”卡片（仅链接到既有导航目标，不新增功能，UI-07d 可选） |
+| 采购与销售发票 | ![改前](screenshots/before/trade-invoices.png)<br>改前整页实为 **2066px** 宽（横向溢出），与 1440 改后图非同条件 | ![改后](screenshots/after/trade-invoices.png) | 操作栏主次（P1）；FastTab + 标签在上表单（P4/P6）；行表格结构化、不再横向溢出（P5）；KPI + 分录预览并排（P8） |
 | 往来未结项与账龄 | ![改前](screenshots/before/trade-reports.png) | ![改后](screenshots/after/trade-reports.png) | 筛选栏；视图切换 `aria-pressed`（P7）；账龄 KPI，信用 / 预付单列并注明“不抵消账龄”；金额右对齐（P8）；教学提示青色卡片（P9） |
 
-其他变体：[发票 · 英文 + 绿](screenshots/after/trade-invoices-en-green.png)、[报表 · 绿](screenshots/after/trade-reports-green.png)、[报表 · 教学关闭](screenshots/after/trade-reports-teaching-off.png)、[发票 · 390 窄屏](screenshots/after/trade-invoices-narrow.png)。
+其他变体：[发票 · 英文 + 绿](screenshots/after/trade-invoices-en-green.png)、[报表 · 绿](screenshots/after/trade-reports-green.png)、[报表 · 教学关闭](screenshots/after/trade-reports-teaching-off.png)、390 窄屏（PNG 宽 390，`scrollWidth` = 390，表格在自身容器内滚动）：[运行状态](screenshots/after/overview-narrow.png)、[发票](screenshots/after/trade-invoices-narrow.png)、[报表 · 英文 + 绿](screenshots/after/trade-reports-narrow-en-green.png)。
 
 ## 10. 实施方式
 
-- 样式文件拆分：`src/theme/tokens.css`（token）、`src/theme/base.css`（重置、排版、焦点）、`src/theme/components.css`（§5 组件，类名同原型）、`src/theme/shell.css`；页面专属样式放 `src/pages/<page>.css` 并由页面组件 import，使逐页任务互不冲突。`styles.css` 在 UI-01 中缩减为兼容层，到 UI-08 删除。
+- 样式文件拆分：`src/theme/tokens.css`（token）、`src/theme/base.css`（重置、排版、焦点）、`src/theme/components.css`（§5 组件，类名同原型）、`src/theme/shell.css`；页面专属样式放 `src/pages/<page>.css` 并由页面组件 import，使逐页任务互不冲突。`styles.css` 在 UI-01 中改为引用 token 的兼容层。各页面任务把本页规则迁出；UI-08 只删除已无引用的规则，不重做页面，边界见 [UI-08](../tasks/UI-08-polish-and-audit.md)。
 - 共享组件只做薄封装（如 `PageHeader`、`CommandBar`、`FastTab`、`TeachingTip`、`Badge`），不改变子元素和事件；能用类名解决的不新建组件。
-- 截图证据：每个任务在 PR 中附改前 / 改后（中文 + 红、英文 + 绿，1440 与 390 宽），存放在 PR 描述或 `design/ui/screenshots/<任务>/`；用虚构夹具，禁止真实账套。
+- 截图证据：每个任务在 PR 中附改前 / 改后（中文 + 红、英文 + 绿，1440 与 390 宽，DPR 1，PNG 宽 = 视口宽），存放在 PR 描述或 `design/ui/screenshots/<任务>/`；用虚构夹具，禁止真实账套。
 - 任务表与验收标准见 [design/tasks/README.md 的 UI-1 小节](../tasks/README.md#ui-1界面逐步改进)。

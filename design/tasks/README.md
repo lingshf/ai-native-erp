@@ -85,26 +85,96 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 | ID | 标题 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- |
 | [UI-01](UI-01-tokens-and-shell.md) | 设计 token + 布局外壳（顶栏偏好、分组导航、对比度测试） | — | web-ui:shell | todo | |
-| [UI-02](UI-02-components-and-trade-reports.md) | 共享组件 + 往来未结项与账龄页（样板页） | UI-01 | web-ui:components, web-ui:trade | todo | |
-| [UI-03](UI-03-trade-invoices.md) | 采购与销售发票页 | UI-02 | web-ui:trade | todo | |
-| [UI-04](UI-04-master-data.md) | 主数据页：科目表、财务维度、贸易主数据 | UI-02 | web-ui:master, web-ui:trade | todo | |
-| [UI-05](UI-05-journals-and-events.md) | 凭证与业务事件页 | UI-02 | web-ui:journals | todo | |
+| [UI-02a](UI-02a-report-components-and-trade-reports.md) | 报表组件 + 往来未结项与账龄页（样板页，影响限本页） | UI-01 | web-ui:components, web-ui:trade | todo | |
+| [UI-02b](UI-02b-form-components-and-accounts.md) | 表单组件（Field / FormGrid / FastTab）+ 科目表页 | UI-02a | web-ui:components, web-ui:master | todo | |
+| [UI-03](UI-03-trade-invoices.md) | 采购与销售发票页 | UI-02b | web-ui:trade | todo | |
+| [UI-04](UI-04-master-data.md) | 主数据页：财务维度、贸易主数据 | UI-02b | web-ui:master, web-ui:trade | todo | |
+| [UI-05](UI-05-journals-and-events.md) | 凭证与业务事件页 | UI-02b | web-ui:journals | todo | |
 | [UI-06](UI-06-trade-settlements-and-adjustments.md) | 付款与收款、预付 / 贷项 / 专用纠错页 | UI-03 | web-ui:trade | todo | |
-| [UI-07](UI-07-ledger-close-ai.md) | 总账报表、快照报表、期末结账、AI 面板、运行状态 | UI-02 | web-ui:ledger | todo | |
-| [UI-08](UI-08-polish-and-audit.md) | 窄屏收尾、删除兼容样式、设计一致性审查 | UI-01..UI-07 | web-ui:shell, web-ui:components | todo | |
+| [UI-07a](UI-07a-ledger-reports.md) | 总账报表、快照报表、报表索引 | UI-02a | web-ui:ledger | todo | |
+| [UI-07b](UI-07b-period-close.md) | 期末结账 + 贸易期间准入 | UI-02b | web-ui:period-close, web-ui:trade | todo | |
+| [UI-07c](UI-07c-ai-panel.md) | AI 面板 | UI-05 | web-ui:journals | todo | |
+| [UI-07d](UI-07d-overview.md) | 运行状态页（`App.tsx` 中的 `Overview`） | UI-02a | web-ui:shell | todo | |
+| [UI-07e](UI-07e-migration.md) | 迁移核对页（#59 带入的 `Migration.tsx`） | UI-02a | web-ui:migration | todo | |
+| [UI-08](UI-08-polish-and-audit.md) | 收尾：删除兼容样式、组件提升、一致性审查（不重做页面） | UI-01 … UI-07e | web-ui:shell, web-ui:components | todo | |
 
-**派发**：UI-01 → UI-02 → 之后 UI-05、UI-07 可与贸易线并行；贸易线（UI-03 → UI-04 → UI-06，或 UI-03 → UI-06 → UI-04）都改 `web-ui:trade`，串行，也不能与 M1-R1、M1-R2、M2-03b 同时开工。全部完成后 UI-08。UI 任务不改迁移、领域和 infra 代码，与 M2 的 `legacy-import`、`admin-cli` 等冲突域不相交；新增导航入口的任务（如 M2-04 的迁移页）改 `App.tsx`，与 UI-01 / UI-08 不能同时开工。
+**页面归属**（每个页面文件只有一个负责任务；UI-08 不接手任何页面）：
+
+| 页面 / 文件 | 负责任务 |
+| --- | --- |
+| 外壳：`App.tsx` 顶栏、导航、`main`；`main.tsx` | UI-01 |
+| 运行状态：`App.tsx` 中的 `Overview`、`useHealth` | UI-07d |
+| `TradeReports.tsx` | UI-02a |
+| `Accounts.tsx` | UI-02b |
+| `TradeInvoices.tsx` | UI-03 |
+| `Dimensions.tsx`、`TradeMaster.tsx` | UI-04 |
+| `Journals.tsx`、`BusinessEvents.tsx` | UI-05 |
+| `TradeSettlements.tsx`、`TradeAdjustments.tsx` | UI-06 |
+| `LedgerReports.tsx`、`Reports.tsx`（含 `ReportIndex`） | UI-07a |
+| `PeriodClose.tsx`、`TradePeriodAdmission.tsx` | UI-07b |
+| `AiPanel.tsx` | UI-07c |
+| `Migration.tsx` | UI-07e |
+| `styles.css` 兼容层清理 | UI-08（边界见任务文件） |
+
+今后新增页面时，在同一 PR 中把它加入本表。新页面直接使用 token 与组件类，不写入 `styles.css`。
+
+**派发与并行**：
+
+1. UI-01 → UI-02a → UI-02b，依次串行。
+2. UI-02a 合并后，可与 UI-02b 并行的有：
+   - UI-07a（ledger）；
+   - UI-07d（shell，与改 `App.tsx` 的其他任务串行）；
+   - UI-07e（migration，与 M2-04 跟进等仍改 `web-ui:migration` 的任务串行）。
+3. UI-02b 合并后分三条线并行：
+   - 凭证线：UI-05 → UI-07c；
+   - 贸易线：UI-03 → UI-06，UI-04、UI-07b 穿插。四个任务都改 `web-ui:trade`，同一时间只开一个，也不能与 M1-R1、M1-R2、M2-03b 同时开工；
+   - 其余已就绪的 UI-07a、UI-07d、UI-07e。
+4. 页面归属表全部完成后做 UI-08。
+
+UI 任务不改迁移、领域和 infra 代码，与 `legacy-import`、`admin-cli` 等冲突域不相交。新增导航入口的任务会改 `App.tsx`，与 UI-01、UI-07d、UI-08 不能同时开工。
 
 **UI-1 通用验收标准**（每个 UI 任务都必须满足，任务文件只列附加项）：
 
-1. **截图对比**：PR 中附改前 / 改后截图，至少中文 + 专业红、English + 专业绿两组，宽 1440 与 390；用虚构夹具，不使用真实账套、4173 或 `.bak`。
+1. **截图对比**：PR 中附改前 / 改后截图，至少两组：中文 + 专业红、English + 专业绿，宽 1440 与 390，DPR = 1。PNG 宽度必须等于视口宽，且 `document.documentElement.scrollWidth` 不超过视口宽，表格只在自身容器内滚动；截图脚本断言这一点，写法参照 [capture-prototypes.mjs](../ui/capture-prototypes.mjs)。改前图若本身溢出（如 v0.2.0 发票页 2066px），在对比表注明实际尺寸，不与 1440 图按同条件对比。只用虚构夹具，不使用真实账套、4173 或 `.bak`。
 2. **中英文**：所有新增或移动的文字走 labels，中英齐全；不出现硬编码文字；英文长文案不截断、不溢出。
 3. **红绿主题**：两主题下都检查；组件只引用 token，不写裸色值。
-4. **对比度达标**：`node design/ui/check-contrast.mjs`（UI-01 起为 `contrast.test.ts`）通过，文字 ≥ 4.5:1、非文字 ≥ 3:1；新增颜色配对加入检查。
-5. **现有测试不删除、不削弱**：`packages/web/test/*` 与 `packages/infra/test/http/trade-gui.slow.test.ts` 不删用例、不放宽断言、不改选择器；ID、按钮可访问名称、`nav a[href]`、`main h2`、`.workspace[data-theme]`、`html[lang]` 不变；Full CI 绿。只允许**新增**断言。
+4. **对比度达标**：`node design/ui/check-contrast.mjs`（UI-01 起为 `contrast.test.ts`）通过。文字 ≥ 4.5:1；控件边界及其悬停、按下、选中等交互态对实际底色 ≥ 3:1。新增颜色配对或交互态时，同时加入检查。
+5. **现有测试不删除、不削弱**：
+   - 涉及范围：
+     - `packages/web/test/*.test.{ts,tsx}`；
+     - 四个真实 Chrome 场景 `packages/infra/test/http/trade-gui-{zh-red,zh-green,en-red,en-green}.slow.test.ts`，及其共享场景 `packages/infra/test/support/trade-gui-scenario.ts`；
+     - `packages/infra/test/http/migration-gui.slow.test.ts`。
+   - 不删用例、不放宽断言、不改选择器，只允许**新增**断言。
+   - ID、按钮可访问名称、`nav a[href]`、`main h2`、`.workspace[data-theme]`、`html[lang]` 不变。
+   - **精确 head 的真实浏览器证据**：PR 快速 CI 不跑 `*.slow.test.ts`，Full 只在 main push 与定时任务上运行，所以每个实施 PR 都要在 PR 当前 head 上本地运行上述五个 slow 测试：
+     ```
+     ERP_E2E_BROWSER_CHANNEL=chrome npx vitest run trade-gui- migration-gui.slow
+     # PowerShell：$env:ERP_E2E_BROWSER_CHANNEL="chrome"; npx vitest run trade-gui- migration-gui.slow
+     ```
+     必须用真实 Chrome，不用 headless shell 或 Edge 替代。在 PR 中贴出 head SHA、命令、通过摘要和 `ERP_E2E_ARTIFACTS` 截图。head 每变一次（含 rebase），重新运行并更新证据；SHA 不符的证据无效。
+   - 不把 slow 测试加入 PR 快速 CI，不改 workflow。
+   - **合并后跟踪 main Full**：合并者记录合并提交，并跟踪该提交的 main Full 运行。在它变绿之前，不派发同冲突域的下一个 UI 任务。若变红且与本任务相关，由同一任务修复或回退，不靠修改断言过关。
 6. **键盘**：Tab 顺序与视觉一致；焦点框可见；E2E 键盘路径在 220 次 Tab 上限内不改即通过；快捷键不变。
 7. **教学模式**：开 / 关两态截图；关闭后不隐藏边界说明、风险、必填信息、错误与警告。
 8. **业务不变**：不改接口调用、字段、校验、按钮顺序语义与禁用逻辑；虚拟列表行高 44 / 48 不变。
+9. **性能边界（PG-05）**：
+   - **保留**：
+     - `App.tsx` 现有 12 个 `lazy()` 路由，不把页面组件改为静态导入；
+     - 各页请求次数、分页参数与 API 上限；
+     - `useVirtualizer`（科目、维度、凭证、发票、贸易主数据、付款与收款）的行高与 overscan；
+     - 不新增运行时依赖（`package.json` 的 `dependencies` 不变），不引入网络字体。
+   - **包体积对照**：PR 中贴出 base 与 head 的 `npm run build` 输出对照（gzip）。基线为 main `f35aa54`：入口 `index-*.js` 164.17 kB、`index-*.css` 2.02 kB，各路由 chunk 0.45–7.38 kB。各任务预算：
+
+     | 任务 | 入口 JS（gzip） | CSS 合计（gzip） | 本任务路由 chunk（gzip） |
+     | --- | --- | --- | --- |
+     | UI-01 外壳 | ≤ +2 kB | ≤ 6 kB | 不变 |
+     | UI-02a / UI-02b 组件 | ≤ +2 kB（各） | ≤ +2 kB（各） | ≤ +15% |
+     | 其余页面任务 | ≤ +0.5 kB | ≤ +1.5 kB | ≤ +15% |
+     | UI-08 收尾 | 不增 | 不增（应减少） | 不增 |
+
+     超出预算须在 PR 中说明原因，并经评审同意。
+   - **首载与路由加载**：由上表的入口 / 路由 chunk 对照代表；不另设计时基准。
+   - **不适用**：热读 p95、预览 / 确认 p95、100 万行 GL 基准均不适用，因为 UI 任务不改接口、查询和事务。PR 中注明“不适用（无接口变化）”。
 
 ## 派发顺序
 
@@ -128,8 +198,9 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
      - `docs/runbook`：迁移操作手册 `docs/migration-runbook.md`。
      - `trade-master`/`trade-docs`：贸易主数据/单据代码。
      - `web-ui:<页面>`：对应页面及其 labels 文件。
-     - `web-ui:shell`：`packages/web/src/App.tsx`、`main.tsx`、`src/theme/{tokens,base,shell}.css`、`styles.css`、`labels.ts` 中 `shell.*`。
+     - `web-ui:shell`：`packages/web/src/App.tsx`（外壳与 `Overview` 运行状态页）、`main.tsx`、`src/theme/{tokens,base,shell}.css`、`styles.css`、`labels.ts` 中 `shell.*`。
      - `web-ui:components`：`src/theme/components.css` 与 `src/ui/components/`（UI-1 共享组件）；页面任务需要新通用样式时先放页面 CSS，由 UI-08 统一提升。
+     - `web-ui:period-close`：`PeriodClose.tsx` 及其 labels；`web-ui:migration`：`Migration.tsx` 及其 labels（M2-04 与 UI-07e 共用）。
    - **迁移的串行集成**（带迁移的任务可以并行开发，但集成必须串行）：
      - 运行器按 `migrations.ts` 中 manifest 数组的**位置**写入版本号（`index + 1`），并校验每个版本的 checksum（`migrations.ts:83-91,163-168,177-188`），不看文件名。已进入 main 的迁移前缀、顺序和 checksum 都不能改。
      - 编号由设计角色在本表预留（main 已到 013；M2-03 预留 014，必须在 013 之后，不参与下面的互换规则）。带迁移的 PR 必须按预留编号顺序合并。
