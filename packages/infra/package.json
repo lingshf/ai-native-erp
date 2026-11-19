@@ -12,6 +12,7 @@
   "dependencies": {
     "@erp/core": "0.1.0",
     "@fastify/static": "10.1.10",
+    "@github/copilot-sdk": "1.0.31",
     "better-sqlite3": "13.0.3",
     "fastify": "5.12.8",
     "kysely": "0.29.8"

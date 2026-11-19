@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { JournalDraftDto, JournalPreviewDto, JournalEntryDto } from "@erp/core/contracts";
 import { App } from "../src/App.tsx";
@@ -100,6 +100,139 @@ afterAll(() => {
 });
 beforeEach(() => window.history.replaceState(null, "", "/#/journals"));
 afterEach(() => window.history.replaceState(null, "", "/"));
+it("keeps AI candidate generation, discard and adoption nonmutating, cancels stale responses and gates teaching", async () => {
+  let state: "valid" | "invalid" | "unavailable" | "busy" | "held" = "valid";
+  let release: (response: Response) => void = () => {},
+    signal: AbortSignal | null = null;
+  const mutations: string[] = [];
+  const candidate: JournalDraftDto = {
+    id: id(88),
+    revision: 0,
+    sourceRef: "AI-SYNTHETIC",
+    date: "2026-01-15",
+    memo: "AI candidate",
+    kind: "normal",
+    operation: "journal",
+    originalId: null,
+    headerDimensions: {},
+    lines: [
+      { account: "1000", debit: "100", credit: "0", dimensions: {}, suspense: null },
+      { account: "4000", debit: "0", credit: "100", dimensions: {}, suspense: null },
+    ],
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn<typeof fetch>().mockImplementation(async (path, options) => {
+      const url = new URL(String(path), "http://localhost");
+      if (url.pathname.startsWith("/api/v1/ai/")) {
+        if (state === "held")
+          return new Promise((resolve) => {
+            release = resolve;
+            signal = options?.signal ?? null;
+          });
+        if (state === "unavailable" || state === "busy")
+          return response(
+            {
+              code: state === "busy" ? "AI_BUSY" : "AI_UNAVAILABLE",
+              messageKey: `api.error.ai.${state}`,
+              params: {},
+              fieldErrors: [],
+              requestId: id(99),
+              retryable: true,
+            },
+            state === "busy" ? 409 : 503,
+          );
+        if (url.pathname.endsWith("/explain"))
+          return response({ text: "Synthetic snapshot explanation" });
+        return response(
+          state === "invalid"
+            ? {
+                status: "invalid",
+                draft: candidate,
+                rationale: "AI rationale",
+                issues: [{ path: "lines", messageKey: "api.error.journals.balance" }],
+              }
+            : { status: "candidate", draft: candidate, rationale: "AI rationale" },
+        );
+      }
+      if (options?.method) mutations.push(url.pathname);
+      if (url.pathname === "/api/v1/companies")
+        return response({ items: [company], nextCursor: null });
+      if (url.pathname === "/api/v1/accounts")
+        return response({ items: [account], nextCursor: null });
+      if (url.pathname === "/api/v1/dimensions" || url.pathname === "/api/v1/journals")
+        return response({ items: [], nextCursor: null });
+      return response({
+        service: "ai-native-erp",
+        contractVersion: "1",
+        profile: "local",
+        data: "configured",
+      });
+    }),
+  );
+  render(<App />);
+  fireEvent.click(await screen.findByRole("button", { name: "新建凭证" }));
+  fireEvent.change(screen.getByLabelText("记账日期"), { target: { value: "2026-01-15" } });
+  fireEvent.change(screen.getByLabelText("摘要"), { target: { value: "Manual input" } });
+  fireEvent.change(screen.getByLabelText("业务描述"), { target: { value: "Synthetic revenue" } });
+  const send = () => fireEvent.click(screen.getByRole("button", { name: "发送给 Copilot" }));
+  send();
+  await screen.findByRole("button", { name: "采纳为新草稿（仅填入）" });
+  expect(screen.getByLabelText("摘要")).toHaveProperty("value", "Manual input");
+  expect(mutations).toEqual([]);
+  fireEvent.click(screen.getByRole("button", { name: "放弃建议" }));
+  expect(screen.queryByRole("button", { name: "采纳为新草稿（仅填入）" })).toBeNull();
+  expect(screen.getByLabelText("业务描述")).toHaveProperty("value", "Synthetic revenue");
+  send();
+  fireEvent.click(await screen.findByRole("button", { name: "采纳为新草稿（仅填入）" }));
+  expect(screen.getByLabelText("摘要")).toHaveProperty("value", "AI candidate");
+  expect(screen.getByLabelText("行 2 科目")).toHaveProperty("value", "4000");
+  expect(mutations).toEqual([]);
+  fireEvent.change(screen.getByLabelText("业务描述"), { target: { value: "Keep this input" } });
+  state = "held";
+  send();
+  await screen.findByRole("button", { name: "取消 AI 请求" });
+  await waitFor(() => expect(signal).not.toBeNull());
+  fireEvent.click(screen.getByRole("button", { name: "取消 AI 请求" }));
+  expect(signal).toHaveProperty("aborted", true);
+  await act(async () =>
+    release(
+      response({
+        status: "candidate",
+        draft: { ...candidate, memo: "LATE-CANDIDATE" },
+        rationale: "Late",
+      }),
+    ),
+  );
+  expect(screen.queryByRole("button", { name: "采纳为新草稿（仅填入）" })).toBeNull();
+  expect(screen.queryByText(/LATE-CANDIDATE/u)).toBeNull();
+  expect(screen.getByLabelText("摘要")).toHaveProperty("value", "AI candidate");
+  state = "invalid";
+  send();
+  await screen.findByText("此候选未通过校验，不能采纳。");
+  expect(screen.getByText(/业务行的借贷合计必须一致/u)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "采纳为新草稿（仅填入）" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "放弃建议" }));
+  state = "valid";
+  const teaching = screen.getByRole<HTMLInputElement>("checkbox", { name: "显示教学说明" });
+  if (!teaching.checked) fireEvent.click(teaching);
+  fireEvent.change(screen.getByLabelText("AI 任务"), { target: { value: "explain" } });
+  send();
+  await screen.findByText("Synthetic snapshot explanation");
+  fireEvent.click(screen.getByRole("checkbox", { name: "显示教学说明" }));
+  await waitFor(() => expect(screen.queryByText("Synthetic snapshot explanation")).toBeNull());
+  expect(screen.queryByRole("option", { name: "教学讲解" })).toBeNull();
+  expect(screen.getByLabelText("AI 任务")).toHaveProperty("value", "draft");
+  state = "unavailable";
+  send();
+  await screen.findByText(/AI 不可用/u);
+  expect(screen.getByLabelText("业务描述")).toHaveProperty("value", "Keep this input");
+  state = "busy";
+  send();
+  await screen.findByText(/另一个 AI 请求仍在处理或清理/u);
+  expect(screen.getByRole("button", { name: "保存草稿" })).toHaveProperty("disabled", false);
+  expect(mutations).toEqual([]);
+});
 describe("journal editor", () => {
   it("adds rows with Enter/Tab, retains preference state, previews explicitly and retries uncertain confirmation with the same identity", async () => {
     let saved: JournalDraftDto | undefined,

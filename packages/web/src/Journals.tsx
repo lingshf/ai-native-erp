@@ -31,6 +31,7 @@ import {
 import { label, type LabelKey, type Language, type Preferences } from "./ui/index.ts";
 import { MasterDataFailure, masterRequest } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
+import { AiPanel } from "./AiPanel.tsx";
 type T = (key: Exclude<LabelKey, "shell.httpError">) => string;
 const emptyLine = () => ({ account: "", debit: "", credit: "", dimensions: {}, suspense: null });
 const fresh = (): JournalDraftDto => ({
@@ -103,6 +104,7 @@ export function Journals({ preferences }: { preferences: Preferences }) {
           company={company}
           initialEntryId={params.get("id")}
           language={preferences.language}
+          teaching={preferences.teaching}
           lock={setLocked}
         />
       )}
@@ -114,11 +116,13 @@ function CompanyJournals({
   company,
   initialEntryId,
   language,
+  teaching,
   lock,
 }: {
   company: CompanyDto;
   initialEntryId: string | null;
   language: Language;
+  teaching: boolean;
   lock: (value: boolean) => void;
 }) {
   const t: T = (key) => label(language, key),
@@ -779,6 +783,22 @@ function CompanyJournals({
             </div>
           </fieldset>
         </form>
+      )}
+      {draft?.operation === "journal" && !plan && !deleting && (
+        <AiPanel
+          key={`${draft.id}:${draft.date.slice(0, 7)}`}
+          company={company.code}
+          month={draft.date.slice(0, 7)}
+          language={language}
+          teaching={teaching}
+          disabled={busy}
+          adopt={(value) => {
+            edit(value);
+            setDetail(null);
+            setReceipt(null);
+            setQueued(null);
+          }}
+        />
       )}
       {deleting && draft && (
         <Modal title={t("journal.deleteTitle")} busy={busy} close={() => setDeleting(false)}>

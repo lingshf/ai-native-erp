@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { errorSchema } from "@erp/core/contracts";
 import type { ErrorResponse } from "@erp/core/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { DomainError, StorageError } from "@erp/core/application";
+import { AiFailure, DomainError, StorageError } from "@erp/core/application";
 
 export interface SafeErrorEvent {
   readonly requestId: string;
@@ -27,6 +27,8 @@ const errors: Record<number, { code: ErrorResponse["code"]; messageKey: string }
   409: { code: "CONFLICT", messageKey: "api.error.conflict" },
   415: { code: "UNSUPPORTED_MEDIA_TYPE", messageKey: "api.error.unsupportedMediaType" },
   503: { code: "UNAVAILABLE", messageKey: "api.error.unavailable" },
+  502: { code: "AI_RESPONSE", messageKey: "api.error.ai.response" },
+  504: { code: "AI_TIMEOUT", messageKey: "api.error.ai.timeout" },
   500: { code: "INTERNAL_ERROR", messageKey: "api.error.internal" },
 };
 
@@ -38,7 +40,18 @@ export function sendHttpError(
 ): void {
   if (reply.sent) return;
   let status = 500;
-  if (error instanceof StorageError) {
+  if (error instanceof AiFailure) {
+    status =
+      error.reason === "timeout"
+        ? 504
+        : error.reason === "cancelled"
+          ? 400
+          : error.reason === "busy"
+            ? 409
+            : error.reason === "response"
+              ? 502
+              : 503;
+  } else if (error instanceof StorageError) {
     if (error.code === "INVALID_INPUT" || error.code === "INVALID_CURSOR") status = 400;
     else if (error.code === "NOT_FOUND") status = 404;
     else if (error.code === "CONFLICT") status = 409;
@@ -88,6 +101,12 @@ export function sendHttpError(
   });
   const body: ErrorResponse = errorSchema.parse({
     ...definition,
+    ...(error instanceof AiFailure
+      ? {
+          code: `AI_${error.reason.toUpperCase()}`,
+          messageKey: `api.error.ai.${error.reason}`,
+        }
+      : {}),
     params: {},
     fieldErrors:
       error instanceof DomainError && error.issue
@@ -99,7 +118,8 @@ export function sendHttpError(
           ]
         : [],
     requestId,
-    retryable: status === 503,
+    retryable:
+      status === 503 || status === 504 || (error instanceof AiFailure && error.reason === "busy"),
   });
   if (status === 405 && !reply.hasHeader("Allow")) reply.header("Allow", "GET");
   reply.code(status).send(body);

@@ -5,8 +5,10 @@ import { journalEn, journalZh } from "./journal-labels.ts";
 import { businessEn, businessZh } from "./business-labels.ts";
 import { ledgerEn, ledgerZh } from "./ledger-labels.ts";
 import { closeEn, closeZh } from "./close-labels.ts";
+import { aiEn, aiZh } from "./ai-labels.ts";
 
 export const zh = {
+  ...aiZh,
   ...closeZh,
   ...ledgerZh,
   ...businessZh,
@@ -28,7 +30,7 @@ export const zh = {
   "shell.themeGreen": "专业绿",
   "shell.showTeachingExplanations": "显示教学说明",
   "shell.intro":
-    "此工作区提供公司科目与维度维护、凭证预览确认、当前账套总账报表，以及独立的已验证快照报表；尚不提供 AI 服务。",
+    "此工作区提供公司科目与维度维护、凭证预览确认、当前账套总账报表与结账、独立的已验证快照报表，以及仅生成候选的 AI 助手。",
   "shell.healthHeading": "本地 API 状态",
   "shell.healthLoading": "正在读取本地 API 状态…",
   "shell.connected": "本地 API 已连接",
@@ -57,6 +59,7 @@ export type Language = "zh" | "en";
 export type LabelResources = Readonly<Record<LabelKey, string>>;
 
 export const en = {
+  ...aiEn,
   ...closeEn,
   ...ledgerEn,
   ...journalEn,
@@ -78,7 +81,7 @@ export const en = {
   "shell.themeGreen": "Professional green",
   "shell.showTeachingExplanations": "Show teaching explanations",
   "shell.intro":
-    "This workspace provides company accounts and dimensions, journal preview/confirmation, live ledger reports, and separate verified-snapshot reports. AI services are not available.",
+    "This workspace provides company accounts and dimensions, journal preview/confirmation, live ledger reports and period close, separate verified-snapshot reports, and a candidate-only AI assistant.",
   "shell.healthHeading": "Local API status",
   "shell.healthLoading": "Reading local API status…",
   "shell.connected": "Local API connected",

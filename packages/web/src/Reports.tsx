@@ -41,7 +41,7 @@ function failureLabel(error: unknown): SimpleLabel {
   if (!(error instanceof ReportFailure) || error.kind === "invalid")
     return "reports.invalidResponse";
   if (error.kind === "network") return "reports.networkError";
-  const known = error.detail && errorLabels[error.detail.code];
+  const known = Object.entries(errorLabels).find(([code]) => code === error.detail?.code)?.[1];
   return known && known[0] === error.detail?.messageKey ? known[1] : "reports.httpError";
 }
 function Failure({
