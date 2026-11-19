@@ -18,10 +18,12 @@ afterEach(() => {
   window.sessionStorage.clear();
   window.history.replaceState(null, "", "/");
 });
-function mockApi() {
-  const puts: string[] = [];
+function mockApi(loseFirstResponse = false) {
+  const puts: string[] = [],
+    writes: string[] = [];
   let modules: ("trade" | "tax")[] = [],
     revision = 1;
+  let accepted: { command: string; result: unknown } | null = null;
   vi.stubGlobal(
     "fetch",
     vi.fn<typeof fetch>().mockImplementation(async (path, init) => {
@@ -45,10 +47,20 @@ function mockApi() {
         const serialized = String(init.body);
         expect(sessionStorage.getItem(key)).toBe(serialized);
         const body = periodCommandSchema.parse(JSON.parse(serialized));
+        puts.push(serialized);
+        if (body.revision !== revision) {
+          expect(accepted?.command).toBe(serialized);
+          return reply(accepted?.result);
+        }
         modules = body.modules;
         revision++;
-        puts.push(serialized);
-        return reply({ month: "2026-01", status: "open", revision, modules });
+        writes.push(serialized);
+        accepted = {
+          command: serialized,
+          result: { month: "2026-01", status: "open", revision, modules },
+        };
+        if (loseFirstResponse) throw new TypeError("Connection lost after commit");
+        return reply(accepted.result);
       }
       if (url.pathname === "/api/v1/periods")
         return reply({
@@ -58,7 +70,7 @@ function mockApi() {
       throw new Error(`Unexpected ${url}`);
     }),
   );
-  return puts;
+  return { puts, writes };
 }
 async function enter() {
   fireEvent.click(await screen.findByLabelText(t("trpt.trade")));
@@ -68,7 +80,7 @@ async function enter() {
   });
 }
 it("defaults both new modules off and persists/readbacks the exact explicit confirmation before saving", async () => {
-  const puts = mockApi();
+  const { puts } = mockApi();
   render(<App />);
   expect(((await screen.findByLabelText(t("trpt.trade"))) as HTMLInputElement).checked).toBe(false);
   expect((screen.getByLabelText(t("trpt.taxModule")) as HTMLInputElement).checked).toBe(false);
@@ -80,11 +92,31 @@ it("defaults both new modules off and persists/readbacks the exact explicit conf
   expect(JSON.parse(puts[0]).modules).toEqual(["trade", "tax"]);
 });
 it("refuses a silently lost confirmation write before issuing any mutation", async () => {
-  const puts = mockApi();
+  const { puts } = mockApi();
   render(<App />);
   await enter();
   vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {});
   fireEvent.click(screen.getByRole("button", { name: t("trpt.save") }));
   await screen.findByText(t("trpt.storage"));
   expect(puts).toEqual([]);
+});
+it("restores and retries the original confirmation after commit/response loss, then reports its accepted result without a second write", async () => {
+  const { puts, writes } = mockApi(true);
+  const first = render(<App />);
+  await enter();
+  fireEvent.click(screen.getByRole("button", { name: t("trpt.save") }));
+  await screen.findByText(t("trpt.unknown"));
+  const envelope = sessionStorage.getItem(key);
+  expect(envelope).toBe(puts[0]);
+  expect(writes).toHaveLength(1);
+  first.unmount();
+  render(<App />);
+  fireEvent.click(await screen.findByRole("button", { name: t("master.retry") }));
+  await screen.findByText(t("trpt.saved"));
+  expect(puts).toEqual([envelope, envelope]);
+  expect(writes).toHaveLength(1);
+  expect(sessionStorage.getItem(key)).toBeNull();
+  expect(screen.queryByText(t("master.error"))).toBeNull();
+  expect((screen.getByLabelText(t("ledger.period")) as HTMLSelectElement).disabled).toBe(false);
+  expect((screen.getByLabelText(t("trpt.trade")) as HTMLInputElement).checked).toBe(true);
 });

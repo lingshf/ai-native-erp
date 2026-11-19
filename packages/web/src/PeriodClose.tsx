@@ -21,6 +21,9 @@ export function PeriodClose({ preferences }: { preferences: Preferences }) {
   const [params, setParams] = useSearchParams();
   const [locked, setLocked] = useState(false);
   const [admissionLocked, setAdmissionLocked] = useState(false);
+  const [admissionSaved, setAdmissionSaved] = useState<{ company: string; month: string } | null>(
+    null,
+  );
   const [held, setHeld] = useState<{ company: CompanyDto; period: PeriodDto } | null>(null);
   const t = (key: Exclude<LabelKey, "shell.httpError">) => label(preferences.language, key);
   const companies = useInfiniteQuery({
@@ -139,8 +142,14 @@ export function PeriodClose({ preferences }: { preferences: Preferences }) {
           preferences={preferences}
           lock={setAdmissionLocked}
           disabled={locked}
+          onSaved={() =>
+            setAdmissionSaved({ company: selectedCompany.code, month: selectedPeriod.month })
+          }
         />
       )}
+      {!admissionLocked &&
+        admissionSaved?.company === selectedCompany?.code &&
+        admissionSaved?.month === selectedPeriod?.month && <p role="status">{t("trpt.saved")}</p>}
       {selectedCompany && selectedPeriod && (
         <fieldset disabled={admissionLocked}>
           <legend>{t("close.title")}</legend>

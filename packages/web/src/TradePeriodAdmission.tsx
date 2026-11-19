@@ -12,12 +12,14 @@ export function TradePeriodAdmission({
   preferences,
   lock,
   disabled,
+  onSaved,
 }: {
   company: string;
   period: PeriodDto;
   preferences: Preferences;
   lock: (value: boolean) => void;
   disabled: boolean;
+  onSaved: () => void;
 }) {
   const key = `erp.tradePeriod.v1.${company}.${period.month}`;
   const t = (key: Exclude<Parameters<typeof label>[1], "shell.httpError">) =>
@@ -93,6 +95,7 @@ export function TradePeriodAdmission({
       const result = await masterRequest("/api/v1/periods", periodSchema, { method: "PUT", body });
       if (
         result.month !== body.month ||
+        result.status !== body.status ||
         result.revision !== body.revision + 1 ||
         [...result.modules].sort().join() !== [...body.modules].sort().join()
       )
@@ -102,6 +105,7 @@ export function TradePeriodAdmission({
       setReason("");
       setModules(result.modules);
       await client.invalidateQueries({ queryKey: ["close-periods", company] });
+      onSaved();
     } catch (failure) {
       if (
         failure instanceof MasterDataFailure &&

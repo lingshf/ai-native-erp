@@ -53,6 +53,7 @@ export const tradeReportZh = {
   "trpt.admissionNote":
     "已有期间和新开期间默认不准入 trade/tax；所有贸易写入要求两项均勾选并保存（会计日期间）。保存改变期间版本，旧预览失效。",
   "trpt.save": "保存期间准入",
+  "trpt.saved": "期间准入确认已保存；请以当前期间状态为准。",
   "trpt.reason": "准入变更原因",
   "trpt.storage": "无法逐字读回确认封套，未发送。请恢复会话存储后重试。",
   "trpt.unknown": "结果未确认；仅用原封套重试，禁止重建不同输入。",
@@ -113,6 +114,7 @@ export const tradeReportEn: Record<keyof typeof tradeReportZh, string> = {
   "trpt.admissionNote":
     "Existing and newly opened periods do not admit trade/tax by default. All trade writes require both saved admissions in the accounting-date period. Saving changes the period revision and invalidates previews.",
   "trpt.save": "Save period admission",
+  "trpt.saved": "Period admission confirmation saved; refer to the current period state.",
   "trpt.reason": "Admission change reason",
   "trpt.storage":
     "Confirmation envelope could not be read back byte-for-byte; nothing sent. Restore session storage and retry.",

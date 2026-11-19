@@ -7,6 +7,7 @@ import {
   checkedCode,
   checkedCompany,
   checkedExpectedRevision,
+  checkedName,
   checkedPage,
   checkedTeachingMonth,
   defaultAccounts,
@@ -28,6 +29,16 @@ import type { TradeDocumentRepository } from "./trade-documents.ts";
 import type { TradeReportingRepository } from "./trade-reporting.ts";
 import { businessError } from "@erp/core/domain";
 
+export interface PeriodChangeCommand {
+  readonly company: string;
+  readonly month: string;
+  readonly revision: number;
+  readonly status: Period["status"];
+  readonly reason: string;
+  readonly confirmed: boolean;
+  readonly modules: Period["modules"];
+}
+
 export interface MasterDataRepository
   extends DimensionRepository,
     JournalRepository,
@@ -48,6 +59,11 @@ export interface MasterDataRepository
   saveAccount(company: string, account: Account, expected: number): Promise<void>;
   periods(company: string, query: PageQuery): Promise<Page<Period>>;
   period(company: string, month: string): Promise<Period | null>;
+  periodChange(
+    company: string,
+    month: string,
+    revision: number,
+  ): Promise<{ readonly command: PeriodChangeCommand; readonly result: Period } | null>;
   savePeriod(company: string, period: Period, expected: number): Promise<void>;
   history(
     company: string,
@@ -197,16 +213,40 @@ export class MasterDataService {
   ): Promise<Period> {
     checkedCode(company);
     checkedTeachingMonth(month);
+    checkedExpectedRevision(expected);
     if (status === "closed") throw new DomainError("INVALID_INPUT");
     return this.store.write(async (repo) => {
       const old = required(await repo.period(company, month));
-      cas(old.revision, expected);
       if (
         modules !== undefined &&
         (!Array.isArray(modules) ||
           modules.length > 2 ||
           new Set(modules).size !== modules.length ||
           modules.some((module) => module !== "trade" && module !== "tax"))
+      )
+        throw new DomainError("INVALID_INPUT");
+      const command: PeriodChangeCommand | undefined =
+        modules !== undefined && confirmed === true
+          ? {
+              company,
+              month,
+              revision: expected,
+              status,
+              reason: checkedName(reason, 160),
+              confirmed,
+              modules: [...modules],
+            }
+          : undefined;
+      if (command && old.revision !== expected) {
+        const accepted = await repo.periodChange(company, month, expected + 1);
+        if (accepted && JSON.stringify(accepted.command) === JSON.stringify(command))
+          return accepted.result;
+      }
+      cas(old.revision, expected);
+      if (
+        modules !== undefined &&
+        [...modules].sort().join() !== [...old.modules].sort().join() &&
+        confirmed !== true
       )
         throw new DomainError("INVALID_INPUT");
       const next = {
@@ -216,7 +256,16 @@ export class MasterDataService {
       if (next.status !== "open" && (await repo.pendingTransfers(company, month)))
         businessError("status", "pending", true);
       await repo.savePeriod(company, next, expected);
-      await repo.history(company, "period", month, next.revision, next, this.now(), reason.trim());
+      const snapshot = command ? { ...next, command } : next;
+      await repo.history(
+        company,
+        "period",
+        month,
+        next.revision,
+        snapshot,
+        this.now(),
+        reason.trim(),
+      );
       return next;
     });
   }

@@ -8,6 +8,7 @@ import type { Account, Company, Page, PageQuery, Period } from "@erp/core/domain
 import {
   accountSchema,
   companySchema,
+  periodCommandSchema,
   periodSchema,
   type ContractSchema,
 } from "@erp/core/contracts";
@@ -218,6 +219,18 @@ function repository(db: Connection): MasterDataRepository {
         month,
       ]);
       return rows[0] ? periodRow(rows[0]) : null;
+    },
+    async periodChange(company, month, revision) {
+      const rows = await db.query(
+        "SELECT snapshot FROM config_history WHERE company_id=? AND kind='period' AND config_key=? AND revision=?",
+        [company, month, revision],
+      );
+      if (!rows[0]) return null;
+      const { command, ...result } = decode(
+        periodSchema.extend({ command: periodCommandSchema.optional() }),
+        JSON.parse(String(rows[0].snapshot)),
+      );
+      return command ? { command, result } : null;
     },
     async savePeriod(company, period, expected) {
       if (expected === 0)
