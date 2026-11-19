@@ -169,7 +169,10 @@ export function validateOpeningItems(
     const target = parse(row.target);
     const value = row.object === "dimension_values";
     let configs = dimensionConfigs.get(row.company);
-    if (!configs) dimensionConfigs.set(row.company, (configs = []));
+    if (!configs) {
+      configs = [];
+      dimensionConfigs.set(row.company, configs);
+    }
     configs.push({
       ...(value
         ? {
