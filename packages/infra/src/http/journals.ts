@@ -1,4 +1,4 @@
-import { DomainError, type JournalService } from "@erp/core/application";
+import { DomainError, type ApplicationServices } from "@erp/core/application";
 import {
   journalSaveSchema,
   journalDraftSchema,
@@ -33,7 +33,7 @@ function noQuery(request: FastifyRequest) {
 }
 export function registerJournalRoutes(
   server: FastifyInstance,
-  service: JournalService | undefined,
+  service: ApplicationServices["journals"] | undefined,
   boundary: LocalFinanceBoundary,
 ): void {
   const ready = (request: FastifyRequest) => {

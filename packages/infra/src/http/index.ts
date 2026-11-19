@@ -7,15 +7,7 @@ import Fastify from "fastify";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { LegacyTeachingQueryService, RuntimeInfoService } from "@erp/core/application";
 import type { LegacyTeachingReader, RuntimeInfoPort } from "@erp/core/application";
-import type {
-  MasterDataService,
-  DimensionService,
-  JournalService,
-  BusinessEventService,
-  ReportService,
-  PeriodCloseService,
-  AiAssistantService,
-} from "@erp/core/application";
+import type { ApplicationServices, AiAssistantService } from "@erp/core/application";
 import { registerDimensionRoutes } from "./dimensions.ts";
 import { registerJournalRoutes } from "./journals.ts";
 import { registerBusinessRoutes } from "./business-events.ts";
@@ -50,12 +42,12 @@ export interface CreateApiOptions {
   /** Borrowed explicit snapshot: the composition root retains ownership. */
   readonly legacyReader?: LegacyTeachingReader;
   readonly devOrigin?: string;
-  readonly masterData?: MasterDataService;
-  readonly dimensions?: DimensionService;
-  readonly journals?: JournalService;
-  readonly events?: BusinessEventService;
-  readonly reports?: ReportService;
-  readonly closing?: PeriodCloseService;
+  readonly masterData?: ApplicationServices["masterData"];
+  readonly dimensions?: ApplicationServices["dimensions"];
+  readonly journals?: ApplicationServices["journals"];
+  readonly events?: ApplicationServices["events"];
+  readonly reports?: ApplicationServices["reports"];
+  readonly closing?: ApplicationServices["closing"];
   readonly assistant?: AiAssistantService;
   /** Factory-only test seam. The CLI never registers extra routes. */
   readonly registerTestRoutes?: (server: FastifyInstance) => void | Promise<void>;

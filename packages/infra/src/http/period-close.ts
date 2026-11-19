@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import type { PeriodCloseService } from "@erp/core/application";
+import type { ApplicationServices } from "@erp/core/application";
 import {
   closePreviewRequestSchema,
   closeConfirmSchema,
@@ -12,7 +12,7 @@ import type { LocalFinanceBoundary } from "./legacy.ts";
 import { httpError } from "./errors.ts";
 export function registerPeriodCloseRoutes(
   server: FastifyInstance,
-  service: PeriodCloseService | undefined,
+  service: ApplicationServices["closing"] | undefined,
   boundary: LocalFinanceBoundary,
 ) {
   for (const action of ["close-preview", "close", "open-next"] as const) {

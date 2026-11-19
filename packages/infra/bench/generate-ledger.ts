@@ -168,7 +168,15 @@ export async function generateLedgerFixture(filename: string) {
       (SELECT count(*) FROM journal_lines) AS lines,
       (SELECT count(*) FROM journal_lines WHERE account_code='1000' AND period='2026-12') AS scrollRows,
       (SELECT sum(debit_minor)-sum(credit_minor) FROM journal_lines) AS imbalance`)
-      .get() as Record<string, number>;
+      .get() as {
+      companies: number;
+      accounts: number;
+      periods: number;
+      dimensions: number;
+      lines: number;
+      scrollRows: number;
+      imbalance: number;
+    };
     if (
       counts.companies !== 1 ||
       counts.accounts !== 200 ||

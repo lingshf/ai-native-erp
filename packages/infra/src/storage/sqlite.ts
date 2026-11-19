@@ -124,6 +124,7 @@ export function sqliteBackend(config: SqliteStorageConfig): Backend {
   return {
     async acquire(readOnly, migrating) {
       if (closed) throw new StorageError("CLOSED");
+      if (config.readonly && !readOnly) throw new StorageError("STORAGE_FAILURE");
       await knownFile(filename, migrating);
       let resource = readOnly ? reader : writer;
       if (!resource) {

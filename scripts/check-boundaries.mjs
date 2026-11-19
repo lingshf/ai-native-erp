@@ -74,6 +74,13 @@ export function checkImportBoundaries(file, text) {
       return;
     }
     const name = specifier.value;
+    if (
+      owner === "infra" &&
+      (name === "better-sqlite3" || name.startsWith("better-sqlite3/")) &&
+      !normalized.startsWith("packages/infra/src/storage/") &&
+      normalized !== "packages/infra/src/workers/entry.ts"
+    )
+      report(node, "Native SQLite imports are restricted to storage and the worker entry.");
     const destination = name.startsWith(".")
       ? projectOf(posix.normalize(posix.join(posix.dirname(normalized), name)))
       : (/^@erp\/core\/(domain|application|contracts)$/.exec(name)?.[1] ??

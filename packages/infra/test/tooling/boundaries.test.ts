@@ -59,6 +59,19 @@ test("application and web reject concrete or relative backdoors but allow their 
     "import Database from 'better-sqlite3';",
   ])
     assert.ok(checkImportBoundaries("packages/web/src/app.tsx", source).length);
+  for (const file of ["main.ts", "http/query.ts", "workers/executor.ts"]) {
+    for (const source of [
+      "import Database from 'better-sqlite3';",
+      "const db = require('better-sqlite3');",
+      "const db = await import('better-sqlite3');",
+    ])
+      assert.ok(checkImportBoundaries(`packages/infra/src/${file}`, source).length);
+  }
+  for (const file of ["storage/sqlite.ts", "workers/entry.ts"])
+    assert.deepEqual(
+      checkImportBoundaries(`packages/infra/src/${file}`, "import Database from 'better-sqlite3';"),
+      [],
+    );
   assert.deepEqual(
     checkImportBoundaries(
       "packages/web/src/app.tsx",
