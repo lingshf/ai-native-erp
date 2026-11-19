@@ -5,7 +5,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { availableParallelism } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { balanceShards } from "./scripts/ci.ts";
+import { selectShardFiles } from "./scripts/ci.ts";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const layerExclude = process.env.CI_TEST_LAYER === "pr" ? ["**/*.slow.test.{ts,tsx}"] : [];
@@ -33,18 +33,13 @@ class WeightedShardSequencer extends BaseSequencer {
   }
 
   override async shard(files: TestSpecification[]) {
-    const { shard } = this.ctx.config;
-    if (!shard) return files;
     const selected = new Set(
-      balanceShards(
+      selectShardFiles(
         files.map((spec) => this.key(spec)),
         this.weights,
-        shard.count,
-        {
-          workers: this.ctx.config.maxWorkers,
-          projects: Object.fromEntries(files.map((spec) => [this.key(spec), spec.project.name])),
-        },
-      )[shard.index - 1],
+        this.ctx.config,
+        Object.fromEntries(files.map((spec) => [this.key(spec), spec.project.name])),
+      ),
     );
     return files.filter((spec) => selected.has(this.key(spec)));
   }

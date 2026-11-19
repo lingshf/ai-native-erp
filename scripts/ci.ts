@@ -150,6 +150,18 @@ export function balanceShards(
   return shards.map((shard) => shard.files);
 }
 
+export function selectShardFiles(
+  files: string[],
+  weights: Record<string, number>,
+  config: { shard?: { index: number; count: number } },
+  projects: Record<string, string>,
+) {
+  const { shard } = config;
+  if (!shard) return files;
+  // Every job must plan with the same model, regardless of its execution worker count.
+  return balanceShards(files, weights, shard.count, { workers: 2, projects })[shard.index - 1];
+}
+
 function cell(value: string) {
   return value.replaceAll("|", "\\|").replace(/[\r\n]/g, " ");
 }
