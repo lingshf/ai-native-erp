@@ -9,7 +9,8 @@ import {
   rmSync,
   statSync,
 } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { DatabaseSync } from "node:sqlite";
 import { performance } from "node:perf_hooks";
 import { LegacyImportSnapshot, legacyImportPlan } from "../../src/legacy/import-plan.ts";
@@ -18,9 +19,11 @@ import Database from "better-sqlite3";
 import { reportRepository } from "../../src/storage/reports.ts";
 
 // Standalone opt-in Bench, not a PR unit-test timing assertion. Fictional data only.
-const directory = mkdtempSync(resolve(".legacy-import-bench-"));
+const directory = mkdtempSync(join(tmpdir(), "erp-legacy-import-bench-"));
 const execute = process.argv.includes("--execute");
-const targetDirectory = execute ? mkdtempSync(resolve(".legacy-import-target-bench-")) : undefined;
+const targetDirectory = execute
+  ? mkdtempSync(join(tmpdir(), "erp-legacy-import-target-bench-"))
+  : undefined;
 const sourceLines = execute ? 1_000_002 : 1_000_000;
 function metadata(file) {
   const hash = createHash("sha256");
