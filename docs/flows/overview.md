@@ -11,10 +11,13 @@ flowchart LR
   TM --> INV["采购与销售发票"]
   INV --> SET["付款与收款"]
   INV --> ADJ["预付/贷项/专用纠错"]
+  INV --> TR["未结项与账龄 /trade-reports"]
+  SET --> TR
   JR --> LR["总账报表 /ledger-reports"]
   SET --> LR
   LR --> LD["总账明细 /ledger"]
-  LR --> PC["期末结账 /period-close"]
+  LR --> PC["期末结账与期间准入 /period-close"]
+  PC -.准入后可过账.-> INV
 ```
 
 细节：[凭证](journal-flow.md)、[贸易](trade-flow.md)、[结账](period-close-flow.md)。侧栏另有“只读报表 → 试算平衡表 /reports/trial”（读取旧快照）和“显示偏好”（[教学开关](teaching-toggle.md)）。
