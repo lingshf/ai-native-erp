@@ -91,6 +91,7 @@ const filenames = [
   "008-journal-dates.sql",
   "009-trade-master.sql",
   "010-trade-documents.sql",
+  "011-trade-settlements.sql",
 ];
 
 export function normalizeMigration(text: string): string {
@@ -209,6 +210,18 @@ export async function inspectSchema(
               "trade_document_lines",
               "settlements",
             ].flatMap((name) => [`trigger:${name}_no_update`, `trigger:${name}_no_delete`]),
+          ]
+        : []),
+      ...(latest >= 11
+        ? [
+            "table:trade_payments",
+            "table:trade_invoice_terms",
+            "trigger:trade_invoice_terms_no_update",
+            "trigger:trade_invoice_terms_no_delete",
+            "trigger:trade_payments_no_update",
+            "trigger:trade_payments_no_delete",
+            "trigger:settlements_payment_source",
+            "index:open_items_due_page",
           ]
         : []),
     ])
