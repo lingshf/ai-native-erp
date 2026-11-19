@@ -43,6 +43,16 @@
 .btn-subtle:active:not(:disabled) {
   background: var(--color-primary-soft);
 }
+/* 仅用于不可逆操作的确认；边框用 --color-danger（对卡片与悬停底均 ≥ 3:1） */
+.btn-danger {
+  background: var(--color-surface);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+.btn-danger:hover:not(:disabled),
+.btn-danger:active:not(:disabled) {
+  background: var(--color-danger-bg);
+}
 /* 不压低高度：沿用 --control-h（桌面 36px，窄屏或粗指针 44px，design/ui §7）。 */
 .btn-sm {
   padding: 0 var(--space-2);
@@ -86,6 +96,84 @@
   gap: var(--space-3);
   min-width: 0;
   max-width: 100%;
+}
+
+/* ---------- 表单：Field / FormGrid（标签在上，design/ui §5） ---------- */
+/* 全部用 ui- 前缀：发票页已有 fieldset.form-grid、贸易报表已有 .field，共享 CSS 不得改到它们。 */
+.ui-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
+  gap: var(--space-4) var(--space-5);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.ui-form-grid .ui-span-2 {
+  grid-column: span 2;
+}
+@media (max-width: 599px) {
+  .ui-form-grid .ui-span-2 {
+    grid-column: auto;
+  }
+}
+.ui-field {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.ui-field > label,
+.ui-field > .label {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--color-text-muted);
+}
+.ui-field .ui-hint,
+.ui-field .ui-error-text {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--color-text-muted);
+}
+.ui-field .ui-error-text {
+  color: var(--color-danger);
+}
+.ui-field input:not([type="checkbox"]),
+.ui-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: var(--control-h);
+  padding: 0 var(--space-3);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+.ui-field input:disabled,
+.ui-field select:disabled {
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+}
+.ui-field [aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+.ui-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-h);
+  color: var(--color-text);
+}
+.ui-check input {
+  margin: 0;
+}
+.ui-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 /* ---------- 筛选栏与页头字段（标签在上） ---------- */
@@ -138,6 +226,72 @@
   color: var(--color-text);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
+}
+
+/* ---------- FastTab：标题栏 h3 > button[aria-expanded][aria-controls]，含 role="alert" 时保持展开 ---------- */
+.fasttab {
+  min-width: 0;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+.fasttab > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-1) var(--space-5) var(--space-1) var(--space-3);
+}
+.fasttab > header h3 {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  font-weight: var(--weight-semibold);
+}
+.fasttab-toggle,
+.fasttab-toggle:hover:not(:disabled),
+.fasttab-toggle:active:not(:disabled) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-h);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font-weight: inherit;
+  cursor: pointer;
+}
+.fasttab-toggle:hover:not(:disabled) {
+  background: var(--color-surface-alt);
+}
+.fasttab-toggle::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--color-text-muted);
+  border-bottom: 2px solid var(--color-text-muted);
+  transform: rotate(45deg) translate(-2px, -2px);
+}
+.fasttab-toggle[aria-expanded="false"]::before {
+  transform: rotate(-45deg) translate(-1px, -1px);
+}
+.fasttab > header .summary {
+  margin-left: auto;
+  min-width: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+.fasttab > .body {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+.fasttab > .body[hidden] {
+  display: none;
 }
 
 /* ---------- 视图切换（仍是 button，aria-pressed 表示当前视图） ---------- */

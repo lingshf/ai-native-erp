@@ -1,0 +1,58 @@
+/*
+ * UI-02b 科目表页：只作用于 .accounts 之内。
+ * 通用外观在 components.css（.card / .grid / .field / .form-grid / .fasttab）；这里只定本页的滚动区、行高与列宽。
+ */
+.accounts .acct-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+/* 虚拟化滚动区：高度有界，表头粘顶（.grid th），行高保持 44（estimateSize 44）。 */
+.accounts .acct-scroll {
+  max-height: 480px;
+}
+.accounts .acct-scroll table {
+  min-width: 560px;
+}
+.accounts .acct-scroll td {
+  border-bottom: 0;
+  box-shadow: inset 0 -1px var(--color-border);
+}
+.accounts .acct-scroll th:first-child {
+  width: 120px;
+}
+.accounts .acct-scroll th:nth-child(n + 3) {
+  width: 120px;
+}
+.accounts .acct-scroll th:nth-child(4),
+.accounts .acct-scroll td:nth-child(4) {
+  width: 72px;
+  text-align: center;
+}
+.accounts .acct-scroll td:first-child {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-semibold);
+}
+.accounts .acct-builtin {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+.accounts .acct-scroll .btn-sm {
+  margin-left: calc(-1 * var(--space-2));
+}
+.accounts .acct-more {
+  justify-self: center;
+}
+.accounts .acct-form {
+  display: grid;
+  gap: var(--space-4);
+}
+.accounts .acct-checks {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+}
+.accounts .message-bar p {
+  margin: 0;
+}
