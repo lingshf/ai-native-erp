@@ -356,7 +356,11 @@ async function apply(
       0,
     );
   } else if (row.object === "periods") {
-    await repo.savePeriod(company, { month: text(data.month), status: "open", revision: 1 }, 0);
+    await repo.savePeriod(
+      company,
+      { month: text(data.month), status: "open", revision: 1, modules: [] },
+      0,
+    );
   } else if (row.object === "period-state") {
     const closingRefs = db
       .prepare(`SELECT f.legacy_id AS legacyRef,f.target_id AS journalId FROM legacy_refs f

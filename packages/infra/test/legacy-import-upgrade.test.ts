@@ -9,7 +9,7 @@ import { latestMigrationVersion, migrateConnection } from "../src/storage/migrat
 import { legacyFixture } from "./support/legacy-fixture.mjs";
 import type { Row } from "../src/storage/types.ts";
 
-test.for(["007", "previous"])(
+test.for(["007", "013"])(
   "014 upgrades populated %s without rewriting historical migration prefix, GL or receipts",
   async (version, t) => {
     const f = legacyFixture(t),
@@ -36,6 +36,7 @@ test.for(["007", "previous"])(
         (error) => error === stop,
       );
       before = await db.query("SELECT * FROM schema_migrations ORDER BY version");
+      assert.equal(before.length, Number(version));
       const fingerprint = createHash("sha256").update("Synthetic pre-import journal").digest("hex");
       const id = "00000000-0000-4000-8000-000000000001",
         key = "00000000-0000-4000-8000-000000000002";
@@ -45,7 +46,7 @@ test.for(["007", "previous"])(
       INSERT INTO ledger_companies(company_id,name,currency,scale,year,close_mode,revision) VALUES('F','Fictional','CNY',2,2026,'annual',1);
       INSERT INTO accounts VALUES('F','1000','Cash','ASSET','cash','DEBIT','general',NULL,NULL,1,1,0,1);
       INSERT INTO accounts VALUES('F','3000','Capital','EQUITY','capital','CREDIT','general',NULL,NULL,1,1,0,1);
-      INSERT INTO periods VALUES('F','2026-01','open',1);`);
+      INSERT INTO periods(company_id,month,status,revision) VALUES('F','2026-01','open',1);`);
       await db.query(
         "INSERT INTO receipts(tenant_id,book_id,company_id,operation,receipt_key,principal,fingerprint,result,version,idempotency_key,source_ref) VALUES('LOCAL','LOCAL','F','journal.confirm',?,'LOCAL',?,'{}',1,?,'FICT')",
         [key, fingerprint, key],

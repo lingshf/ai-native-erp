@@ -120,6 +120,38 @@ test.for([100, 99])(
         )[0].n,
         1,
       );
+      const control = new Database(target);
+      try {
+        assert.equal(
+          control
+            .prepare("SELECT modules FROM periods WHERE company_id='F' AND month='2026-01'")
+            .get().modules,
+          "[]",
+        );
+        control.exec("UPDATE legacy_import_runs SET status='reconciled'");
+      } finally {
+        control.close();
+      }
+      const store = createMasterDataStore({ filename: target });
+      try {
+        const reconciliation = await store.read((repo) =>
+          repo.tradeReconciliation("F", "2026-01-31"),
+        );
+        assert.deepEqual(
+          reconciliation.find((row) => row.account === "1300"),
+          {
+            account: "1300",
+            subledgerMinor: 0,
+            glMinor: 100,
+            tradeGlMinor: 0,
+            otherSourceMinor: 100,
+            tradeDifferenceMinor: 0,
+            differenceMinor: 100,
+          },
+        );
+      } finally {
+        await store.close();
+      }
     } else {
       await assert.rejects(work, { code: "INVALID_INPUT" });
       assert.equal(rows(target, "SELECT count(*) n FROM journal_entries")[0].n, 0);
