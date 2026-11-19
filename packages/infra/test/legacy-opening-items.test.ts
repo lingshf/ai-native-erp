@@ -187,11 +187,15 @@ test("an opening-phase interruption keeps opening open and resumes identically t
     { code: "CONFLICT" },
   );
   assert.deepEqual(readFileSync(resumed), before);
-  // Identity (raw-bytes SHA) is proven before content: a corrupted or missing file is CONFLICT.
-  for (const openingItems of [{ bytes: opening().bytes.subarray(0, -1) }, undefined])
+  // Identity (raw-bytes SHA) is proven before content: a corrupted file is CONFLICT, while a
+  // missing file remains the required-input error.
+  for (const [openingItems, code] of [
+    [{ bytes: opening().bytes.subarray(0, -1) }, "CONFLICT"],
+    [undefined, "INVALID_INPUT"],
+  ] as const)
     await assert.rejects(
       executeLegacyImport(f.snapshot, { target: resumed, choices, openingItems }),
-      { code: "CONFLICT" },
+      { code },
     );
   assert.deepEqual(readFileSync(resumed), before);
   interrupt = false;

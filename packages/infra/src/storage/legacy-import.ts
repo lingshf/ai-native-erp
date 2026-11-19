@@ -602,8 +602,10 @@ export async function executeLegacyImport(
     const existed = existsSync(target);
     // A new target is never created for invalid input; a resume first proves run identity
     // (including the raw-bytes SHA) read-only, so a changed file is CONFLICT even if unparsable.
+    // A missing file is a required-input error, not a changed identity.
+    const early = !existed || bytes === undefined;
     let opening!: OpeningPlan;
-    if (!existed) opening = validate();
+    if (early) opening = validate();
     if (existed) {
       const stat = lstatSync(target);
       if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1)
@@ -642,7 +644,7 @@ export async function executeLegacyImport(
           (db.prepare("SELECT value FROM write_seq WHERE id=1").get() as { value: bigint }).value
       )
         throw new StorageError("CONFLICT");
-      opening = validate();
+      if (!early) opening = validate();
       runId = text(run.id);
       cursor = Number(run.cursor);
       at = text(run.created_at);
