@@ -1,9 +1,8 @@
 import fs from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, parse, resolve, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
-import { EnterpriseBook } from "../src/enterprise.mjs";
+import { legacyEnterpriseIntegrity } from "./legacy-enterprise-integrity.mjs";
 
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const jsonHash = (value) => hash(JSON.stringify(value));
@@ -134,18 +133,15 @@ export function inspectLedger(file, kind) {
       schemaVersion: version,
       tables: tableDigests,
     };
-    description = { logical, ...(kind === "teaching" ? canonicalTeaching(db) : {}) };
+    description = {
+      logical,
+      ...(kind === "teaching"
+        ? canonicalTeaching(db)
+        : { integrity: legacyEnterpriseIntegrity(db) }),
+    };
     db.exec("ROLLBACK");
   } finally {
     db.close();
-  }
-  if (kind === "enterprise") {
-    const book = new EnterpriseBook(path, { readOnly: true });
-    try {
-      description.integrity = book.integrity();
-    } finally {
-      book.close();
-    }
   }
   return description;
 }
@@ -191,75 +187,4 @@ export function verifyLedgerSnapshot(target) {
       fail("Snapshot logical digest or integrity differs.");
   }
   return manifest;
-}
-
-export function snapshotLedgers({ teaching, enterprise, target }) {
-  const sources = { teaching: regularPath(teaching), enterprise: regularPath(enterprise) };
-  const a = fs.statSync(sources.teaching, { bigint: true }),
-    b = fs.statSync(sources.enterprise, { bigint: true });
-  if (sources.teaching === sources.enterprise || (a.dev === b.dev && a.ino === b.ino))
-    fail("Ledger sources must be distinct.");
-  if (typeof target !== "string" || !target.trim())
-    fail("An explicit new target directory is required.");
-  const directory = resolve(target);
-  regularPath(dirname(directory), true);
-  fs.mkdirSync(directory, { mode: 0o700 });
-  const ledgers = {};
-  for (const kind of Object.keys(filenames)) {
-    const output = join(directory, filenames[kind]);
-    const db = new DatabaseSync(sources[kind], { readOnly: true });
-    try {
-      db.prepare("VACUUM main INTO ?").run(output);
-    } finally {
-      db.close();
-    }
-    fs.chmodSync(output, 0o600);
-    ledgers[kind] = describe(output, kind);
-  }
-  const manifest = { version: 1, status: "verified", crossDatabaseAtomic: false, ledgers };
-  const pending = join(directory, "manifest.pending"),
-    final = join(directory, "manifest.json");
-  const fd = fs.openSync(pending, "wx", 0o600);
-  try {
-    fs.writeFileSync(fd, JSON.stringify(manifest, null, 2));
-    fs.fsyncSync(fd);
-  } finally {
-    fs.closeSync(fd);
-  }
-  fs.linkSync(pending, final);
-  try {
-    fs.unlinkSync(pending);
-    return verifyLedgerSnapshot(directory);
-  } catch (error) {
-    fs.unlinkSync(final);
-    throw error;
-  }
-}
-
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try {
-    const args = process.argv.slice(2),
-      options = {};
-    if (args.length !== 6) fail("Expected --teaching, --enterprise and --target.");
-    for (let index = 0; index < args.length; index += 2) {
-      const name = args[index].slice(2),
-        value = args[index + 1];
-      if (
-        !["--teaching", "--enterprise", "--target"].includes(args[index]) ||
-        Object.hasOwn(options, name) ||
-        !value ||
-        value.startsWith("--")
-      )
-        fail("Invalid or repeated snapshot argument.");
-      options[name] = value;
-    }
-    const manifest = snapshotLedgers(options);
-    console.log(JSON.stringify({ status: "verified", sha256: jsonHash(manifest) }));
-  } catch (error) {
-    console.error(
-      "Ledger snapshot failed:",
-      error.code === "SNAPSHOT_INVALID" ? error.message : error.code || error.name,
-    );
-    process.exitCode = 1;
-  }
 }

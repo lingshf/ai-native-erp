@@ -1,0 +1,1709 @@
+{
+  "accounts": [
+    {
+      "code": "1000",
+      "name": "现金 / Cash",
+      "category": "ASSET",
+      "active": true,
+      "manualAllowed": true,
+      "revision": 0,
+      "normalSide": "DEBIT",
+      "purpose": "general",
+      "relatedAccount": null,
+      "propertyRevision": 0,
+      "builtin": true
+    },
+    {
+      "code": "1100",
+      "name": "Historical disabled account",
+      "category": "ASSET",
+      "active": false,
+      "manualAllowed": false,
+      "revision": 2,
+      "normalSide": "DEBIT",
+      "purpose": "general",
+      "relatedAccount": null,
+      "propertyRevision": 0,
+      "builtin": false
+    },
+    {
+      "code": "1200",
+      "name": "预付费用 / Prepayments",
+      "category": "ASSET",
+      "active": true,
+      "manualAllowed": true,
+      "revision": 0,
+      "normalSide": "DEBIT",
+      "purpose": "general",
+      "relatedAccount": null,
+      "propertyRevision": 0,
+      "builtin": true
+    },
+    {
+      "code": "2000",
+      "name": "应计负债 / Accrued liabilities",
+      "category": "LIABILITY",
+      "active": true,
+      "manualAllowed": true,
+      "revision": 0,
+      "normalSide": "CREDIT",
+      "purpose": "general",
+      "relatedAccount": null,
+      "propertyRevision": 0,
+      "builtin": true
+    },
+    {
+      "code": "3000",
+      "name": "投入资本 / Contributed capital",
+      "category": "EQUITY",
+      "active": true,
+      "manualAllowed": true,
+      "revision": 0,
+      "normalSide": "CREDIT",
+      "purpose": "general",
+      "relatedAccount": null,
+      "propertyRevision": 0,
+      "builtin": true
+    },
+    {
+      "code": "3100",
+      "name": "留存收益 / Retained earnings",
+      "category": "EQUITY",
+      "active": true,
+      "manualAllowed": true,
+      "revision": 0,
+      "normalSide": "CREDIT",
+      "purpose": "general",
+      "relatedAccount": null,
+      "propertyRevision": 0,
+      "builtin": true
+    },
+    {
+      "code": "4000",
+      "name": "服务收入 / Service revenue",
+      "category": "REVENUE",
+      "active": true,
+      "manualAllowed": true,
+      "revision": 0,
+      "normalSide": "CREDIT",
+      "purpose": "general",
+      "relatedAccount": null,
+      "propertyRevision": 0,
+      "builtin": true
+    },
+    {
+      "code": "5000",
+      "name": "租金费用 / Rent expense",
+      "category": "EXPENSE",
+      "active": true,
+      "manualAllowed": true,
+      "revision": 0,
+      "normalSide": "DEBIT",
+      "purpose": "general",
+      "relatedAccount": null,
+      "propertyRevision": 0,
+      "builtin": true
+    },
+    {
+      "code": "5100",
+      "name": "工资费用 / Wages expense",
+      "category": "EXPENSE",
+      "active": true,
+      "manualAllowed": true,
+      "revision": 0,
+      "normalSide": "DEBIT",
+      "purpose": "general",
+      "relatedAccount": null,
+      "propertyRevision": 0,
+      "builtin": true
+    }
+  ],
+  "reports": {
+    "2026-01": {
+      "month": "2026-01",
+      "revenue": 200325,
+      "expense": 0,
+      "profit": 200325,
+      "assets": 1400325,
+      "liabilities": 0,
+      "equity": 1400325,
+      "unclosedProfit": 0,
+      "equitySummary": { "opening": 0, "movements": 1200000, "profit": 200325, "closing": 1400325 },
+      "accounts": [
+        {
+          "code": "1000",
+          "name": "现金 / Cash",
+          "category": "ASSET",
+          "balance": 1400325,
+          "activity": 1400325
+        },
+        {
+          "code": "1100",
+          "name": "Historical disabled account",
+          "category": "ASSET",
+          "balance": 0,
+          "activity": 0
+        },
+        {
+          "code": "1200",
+          "name": "预付费用 / Prepayments",
+          "category": "ASSET",
+          "balance": 0,
+          "activity": 0
+        },
+        {
+          "code": "2000",
+          "name": "应计负债 / Accrued liabilities",
+          "category": "LIABILITY",
+          "balance": 0,
+          "activity": 0
+        },
+        {
+          "code": "3000",
+          "name": "投入资本 / Contributed capital",
+          "category": "EQUITY",
+          "balance": -1200000,
+          "activity": -1200000
+        },
+        {
+          "code": "3100",
+          "name": "留存收益 / Retained earnings",
+          "category": "EQUITY",
+          "balance": -200325,
+          "activity": 0
+        },
+        {
+          "code": "4000",
+          "name": "服务收入 / Service revenue",
+          "category": "REVENUE",
+          "balance": 0,
+          "activity": -200325
+        },
+        {
+          "code": "5000",
+          "name": "租金费用 / Rent expense",
+          "category": "EXPENSE",
+          "balance": 0,
+          "activity": 0
+        },
+        {
+          "code": "5100",
+          "name": "工资费用 / Wages expense",
+          "category": "EXPENSE",
+          "balance": 0,
+          "activity": 0
+        }
+      ],
+      "accountAnalysis": {
+        "basis": "current_account_configuration",
+        "rows": [
+          {
+            "code": "1000",
+            "normalSide": "DEBIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 1400325,
+            "normalAmount": 1400325,
+            "oppositeBalance": false
+          },
+          {
+            "code": "1100",
+            "normalSide": "DEBIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 0,
+            "normalAmount": 0,
+            "oppositeBalance": false
+          },
+          {
+            "code": "1200",
+            "normalSide": "DEBIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 0,
+            "normalAmount": 0,
+            "oppositeBalance": false
+          },
+          {
+            "code": "2000",
+            "normalSide": "CREDIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 0,
+            "normalAmount": 0,
+            "oppositeBalance": false
+          },
+          {
+            "code": "3000",
+            "normalSide": "CREDIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": -1200000,
+            "normalAmount": 1200000,
+            "oppositeBalance": false
+          },
+          {
+            "code": "3100",
+            "normalSide": "CREDIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": -200325,
+            "normalAmount": 200325,
+            "oppositeBalance": false
+          },
+          {
+            "code": "4000",
+            "normalSide": "CREDIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 0,
+            "normalAmount": 0,
+            "oppositeBalance": false
+          },
+          {
+            "code": "5000",
+            "normalSide": "DEBIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 0,
+            "normalAmount": 0,
+            "oppositeBalance": false
+          },
+          {
+            "code": "5100",
+            "normalSide": "DEBIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 0,
+            "normalAmount": 0,
+            "oppositeBalance": false
+          }
+        ],
+        "contraGroups": []
+      },
+      "trialBalances": {
+        "unadjusted": {
+          "rows": [
+            {
+              "code": "1000",
+              "name": "现金 / Cash",
+              "category": "ASSET",
+              "debit": 1400000,
+              "credit": 0
+            },
+            {
+              "code": "1100",
+              "name": "Historical disabled account",
+              "category": "ASSET",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "1200",
+              "name": "预付费用 / Prepayments",
+              "category": "ASSET",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "2000",
+              "name": "应计负债 / Accrued liabilities",
+              "category": "LIABILITY",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "3000",
+              "name": "投入资本 / Contributed capital",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 1200000
+            },
+            {
+              "code": "3100",
+              "name": "留存收益 / Retained earnings",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "4000",
+              "name": "服务收入 / Service revenue",
+              "category": "REVENUE",
+              "debit": 0,
+              "credit": 200000
+            },
+            {
+              "code": "5000",
+              "name": "租金费用 / Rent expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "5100",
+              "name": "工资费用 / Wages expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            }
+          ],
+          "debit": 1400000,
+          "credit": 1400000
+        },
+        "adjusted": {
+          "rows": [
+            {
+              "code": "1000",
+              "name": "现金 / Cash",
+              "category": "ASSET",
+              "debit": 1400325,
+              "credit": 0
+            },
+            {
+              "code": "1100",
+              "name": "Historical disabled account",
+              "category": "ASSET",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "1200",
+              "name": "预付费用 / Prepayments",
+              "category": "ASSET",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "2000",
+              "name": "应计负债 / Accrued liabilities",
+              "category": "LIABILITY",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "3000",
+              "name": "投入资本 / Contributed capital",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 1200000
+            },
+            {
+              "code": "3100",
+              "name": "留存收益 / Retained earnings",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "4000",
+              "name": "服务收入 / Service revenue",
+              "category": "REVENUE",
+              "debit": 0,
+              "credit": 200325
+            },
+            {
+              "code": "5000",
+              "name": "租金费用 / Rent expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "5100",
+              "name": "工资费用 / Wages expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            }
+          ],
+          "debit": 1400325,
+          "credit": 1400325
+        },
+        "postClosing": {
+          "rows": [
+            {
+              "code": "1000",
+              "name": "现金 / Cash",
+              "category": "ASSET",
+              "debit": 1400325,
+              "credit": 0
+            },
+            {
+              "code": "1100",
+              "name": "Historical disabled account",
+              "category": "ASSET",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "1200",
+              "name": "预付费用 / Prepayments",
+              "category": "ASSET",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "2000",
+              "name": "应计负债 / Accrued liabilities",
+              "category": "LIABILITY",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "3000",
+              "name": "投入资本 / Contributed capital",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 1200000
+            },
+            {
+              "code": "3100",
+              "name": "留存收益 / Retained earnings",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 200325
+            },
+            {
+              "code": "4000",
+              "name": "服务收入 / Service revenue",
+              "category": "REVENUE",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "5000",
+              "name": "租金费用 / Rent expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "5100",
+              "name": "工资费用 / Wages expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            }
+          ],
+          "debit": 1400325,
+          "credit": 1400325
+        }
+      }
+    },
+    "2026-02": {
+      "month": "2026-02",
+      "revenue": 1223,
+      "expense": 0,
+      "profit": 1223,
+      "assets": 1401548,
+      "liabilities": 0,
+      "equity": 1401548,
+      "unclosedProfit": 0,
+      "equitySummary": { "opening": 1400325, "movements": 0, "profit": 1223, "closing": 1401548 },
+      "accounts": [
+        {
+          "code": "1000",
+          "name": "现金 / Cash",
+          "category": "ASSET",
+          "balance": 1400823,
+          "activity": 498
+        },
+        {
+          "code": "1100",
+          "name": "Historical disabled account",
+          "category": "ASSET",
+          "balance": 725,
+          "activity": 725
+        },
+        {
+          "code": "1200",
+          "name": "预付费用 / Prepayments",
+          "category": "ASSET",
+          "balance": 0,
+          "activity": 0
+        },
+        {
+          "code": "2000",
+          "name": "应计负债 / Accrued liabilities",
+          "category": "LIABILITY",
+          "balance": 0,
+          "activity": 0
+        },
+        {
+          "code": "3000",
+          "name": "投入资本 / Contributed capital",
+          "category": "EQUITY",
+          "balance": -1200000,
+          "activity": 0
+        },
+        {
+          "code": "3100",
+          "name": "留存收益 / Retained earnings",
+          "category": "EQUITY",
+          "balance": -201548,
+          "activity": 0
+        },
+        {
+          "code": "4000",
+          "name": "服务收入 / Service revenue",
+          "category": "REVENUE",
+          "balance": 0,
+          "activity": -1223
+        },
+        {
+          "code": "5000",
+          "name": "租金费用 / Rent expense",
+          "category": "EXPENSE",
+          "balance": 0,
+          "activity": 0
+        },
+        {
+          "code": "5100",
+          "name": "工资费用 / Wages expense",
+          "category": "EXPENSE",
+          "balance": 0,
+          "activity": 0
+        }
+      ],
+      "accountAnalysis": {
+        "basis": "current_account_configuration",
+        "rows": [
+          {
+            "code": "1000",
+            "normalSide": "DEBIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 1400823,
+            "normalAmount": 1400823,
+            "oppositeBalance": false
+          },
+          {
+            "code": "1100",
+            "normalSide": "DEBIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 725,
+            "normalAmount": 725,
+            "oppositeBalance": false
+          },
+          {
+            "code": "1200",
+            "normalSide": "DEBIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 0,
+            "normalAmount": 0,
+            "oppositeBalance": false
+          },
+          {
+            "code": "2000",
+            "normalSide": "CREDIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 0,
+            "normalAmount": 0,
+            "oppositeBalance": false
+          },
+          {
+            "code": "3000",
+            "normalSide": "CREDIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": -1200000,
+            "normalAmount": 1200000,
+            "oppositeBalance": false
+          },
+          {
+            "code": "3100",
+            "normalSide": "CREDIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": -201548,
+            "normalAmount": 201548,
+            "oppositeBalance": false
+          },
+          {
+            "code": "4000",
+            "normalSide": "CREDIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 0,
+            "normalAmount": 0,
+            "oppositeBalance": false
+          },
+          {
+            "code": "5000",
+            "normalSide": "DEBIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 0,
+            "normalAmount": 0,
+            "oppositeBalance": false
+          },
+          {
+            "code": "5100",
+            "normalSide": "DEBIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 0,
+            "normalAmount": 0,
+            "oppositeBalance": false
+          }
+        ],
+        "contraGroups": []
+      },
+      "trialBalances": {
+        "unadjusted": {
+          "rows": [
+            {
+              "code": "1000",
+              "name": "现金 / Cash",
+              "category": "ASSET",
+              "debit": 1400918,
+              "credit": 0
+            },
+            {
+              "code": "1100",
+              "name": "Historical disabled account",
+              "category": "ASSET",
+              "debit": 725,
+              "credit": 0
+            },
+            {
+              "code": "1200",
+              "name": "预付费用 / Prepayments",
+              "category": "ASSET",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "2000",
+              "name": "应计负债 / Accrued liabilities",
+              "category": "LIABILITY",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "3000",
+              "name": "投入资本 / Contributed capital",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 1200000
+            },
+            {
+              "code": "3100",
+              "name": "留存收益 / Retained earnings",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 200325
+            },
+            {
+              "code": "4000",
+              "name": "服务收入 / Service revenue",
+              "category": "REVENUE",
+              "debit": 0,
+              "credit": 1318
+            },
+            {
+              "code": "5000",
+              "name": "租金费用 / Rent expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "5100",
+              "name": "工资费用 / Wages expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            }
+          ],
+          "debit": 1401643,
+          "credit": 1401643
+        },
+        "adjusted": {
+          "rows": [
+            {
+              "code": "1000",
+              "name": "现金 / Cash",
+              "category": "ASSET",
+              "debit": 1400823,
+              "credit": 0
+            },
+            {
+              "code": "1100",
+              "name": "Historical disabled account",
+              "category": "ASSET",
+              "debit": 725,
+              "credit": 0
+            },
+            {
+              "code": "1200",
+              "name": "预付费用 / Prepayments",
+              "category": "ASSET",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "2000",
+              "name": "应计负债 / Accrued liabilities",
+              "category": "LIABILITY",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "3000",
+              "name": "投入资本 / Contributed capital",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 1200000
+            },
+            {
+              "code": "3100",
+              "name": "留存收益 / Retained earnings",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 200325
+            },
+            {
+              "code": "4000",
+              "name": "服务收入 / Service revenue",
+              "category": "REVENUE",
+              "debit": 0,
+              "credit": 1223
+            },
+            {
+              "code": "5000",
+              "name": "租金费用 / Rent expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "5100",
+              "name": "工资费用 / Wages expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            }
+          ],
+          "debit": 1401548,
+          "credit": 1401548
+        },
+        "postClosing": {
+          "rows": [
+            {
+              "code": "1000",
+              "name": "现金 / Cash",
+              "category": "ASSET",
+              "debit": 1400823,
+              "credit": 0
+            },
+            {
+              "code": "1100",
+              "name": "Historical disabled account",
+              "category": "ASSET",
+              "debit": 725,
+              "credit": 0
+            },
+            {
+              "code": "1200",
+              "name": "预付费用 / Prepayments",
+              "category": "ASSET",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "2000",
+              "name": "应计负债 / Accrued liabilities",
+              "category": "LIABILITY",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "3000",
+              "name": "投入资本 / Contributed capital",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 1200000
+            },
+            {
+              "code": "3100",
+              "name": "留存收益 / Retained earnings",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 201548
+            },
+            {
+              "code": "4000",
+              "name": "服务收入 / Service revenue",
+              "category": "REVENUE",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "5000",
+              "name": "租金费用 / Rent expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "5100",
+              "name": "工资费用 / Wages expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            }
+          ],
+          "debit": 1401548,
+          "credit": 1401548
+        }
+      }
+    },
+    "2026-03": {
+      "month": "2026-03",
+      "revenue": 123,
+      "expense": 0,
+      "profit": 123,
+      "assets": 1401671,
+      "liabilities": 0,
+      "equity": 1401671,
+      "unclosedProfit": 123,
+      "equitySummary": { "opening": 1401548, "movements": 0, "profit": 123, "closing": 1401671 },
+      "accounts": [
+        {
+          "code": "1000",
+          "name": "现金 / Cash",
+          "category": "ASSET",
+          "balance": 1400946,
+          "activity": 123
+        },
+        {
+          "code": "1100",
+          "name": "Historical disabled account",
+          "category": "ASSET",
+          "balance": 725,
+          "activity": 0
+        },
+        {
+          "code": "1200",
+          "name": "预付费用 / Prepayments",
+          "category": "ASSET",
+          "balance": 0,
+          "activity": 0
+        },
+        {
+          "code": "2000",
+          "name": "应计负债 / Accrued liabilities",
+          "category": "LIABILITY",
+          "balance": 0,
+          "activity": 0
+        },
+        {
+          "code": "3000",
+          "name": "投入资本 / Contributed capital",
+          "category": "EQUITY",
+          "balance": -1200000,
+          "activity": 0
+        },
+        {
+          "code": "3100",
+          "name": "留存收益 / Retained earnings",
+          "category": "EQUITY",
+          "balance": -201548,
+          "activity": 0
+        },
+        {
+          "code": "4000",
+          "name": "服务收入 / Service revenue",
+          "category": "REVENUE",
+          "balance": -123,
+          "activity": -123
+        },
+        {
+          "code": "5000",
+          "name": "租金费用 / Rent expense",
+          "category": "EXPENSE",
+          "balance": 0,
+          "activity": 0
+        },
+        {
+          "code": "5100",
+          "name": "工资费用 / Wages expense",
+          "category": "EXPENSE",
+          "balance": 0,
+          "activity": 0
+        }
+      ],
+      "accountAnalysis": {
+        "basis": "current_account_configuration",
+        "rows": [
+          {
+            "code": "1000",
+            "normalSide": "DEBIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 1400946,
+            "normalAmount": 1400946,
+            "oppositeBalance": false
+          },
+          {
+            "code": "1100",
+            "normalSide": "DEBIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 725,
+            "normalAmount": 725,
+            "oppositeBalance": false
+          },
+          {
+            "code": "1200",
+            "normalSide": "DEBIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 0,
+            "normalAmount": 0,
+            "oppositeBalance": false
+          },
+          {
+            "code": "2000",
+            "normalSide": "CREDIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 0,
+            "normalAmount": 0,
+            "oppositeBalance": false
+          },
+          {
+            "code": "3000",
+            "normalSide": "CREDIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": -1200000,
+            "normalAmount": 1200000,
+            "oppositeBalance": false
+          },
+          {
+            "code": "3100",
+            "normalSide": "CREDIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": -201548,
+            "normalAmount": 201548,
+            "oppositeBalance": false
+          },
+          {
+            "code": "4000",
+            "normalSide": "CREDIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": -123,
+            "normalAmount": 123,
+            "oppositeBalance": false
+          },
+          {
+            "code": "5000",
+            "normalSide": "DEBIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 0,
+            "normalAmount": 0,
+            "oppositeBalance": false
+          },
+          {
+            "code": "5100",
+            "normalSide": "DEBIT",
+            "purpose": "general",
+            "relatedAccount": null,
+            "propertyRevision": 0,
+            "balance": 0,
+            "normalAmount": 0,
+            "oppositeBalance": false
+          }
+        ],
+        "contraGroups": []
+      },
+      "trialBalances": {
+        "unadjusted": {
+          "rows": [
+            {
+              "code": "1000",
+              "name": "现金 / Cash",
+              "category": "ASSET",
+              "debit": 1400946,
+              "credit": 0
+            },
+            {
+              "code": "1100",
+              "name": "Historical disabled account",
+              "category": "ASSET",
+              "debit": 725,
+              "credit": 0
+            },
+            {
+              "code": "1200",
+              "name": "预付费用 / Prepayments",
+              "category": "ASSET",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "2000",
+              "name": "应计负债 / Accrued liabilities",
+              "category": "LIABILITY",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "3000",
+              "name": "投入资本 / Contributed capital",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 1200000
+            },
+            {
+              "code": "3100",
+              "name": "留存收益 / Retained earnings",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 201548
+            },
+            {
+              "code": "4000",
+              "name": "服务收入 / Service revenue",
+              "category": "REVENUE",
+              "debit": 0,
+              "credit": 123
+            },
+            {
+              "code": "5000",
+              "name": "租金费用 / Rent expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "5100",
+              "name": "工资费用 / Wages expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            }
+          ],
+          "debit": 1401671,
+          "credit": 1401671
+        },
+        "adjusted": {
+          "rows": [
+            {
+              "code": "1000",
+              "name": "现金 / Cash",
+              "category": "ASSET",
+              "debit": 1400946,
+              "credit": 0
+            },
+            {
+              "code": "1100",
+              "name": "Historical disabled account",
+              "category": "ASSET",
+              "debit": 725,
+              "credit": 0
+            },
+            {
+              "code": "1200",
+              "name": "预付费用 / Prepayments",
+              "category": "ASSET",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "2000",
+              "name": "应计负债 / Accrued liabilities",
+              "category": "LIABILITY",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "3000",
+              "name": "投入资本 / Contributed capital",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 1200000
+            },
+            {
+              "code": "3100",
+              "name": "留存收益 / Retained earnings",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 201548
+            },
+            {
+              "code": "4000",
+              "name": "服务收入 / Service revenue",
+              "category": "REVENUE",
+              "debit": 0,
+              "credit": 123
+            },
+            {
+              "code": "5000",
+              "name": "租金费用 / Rent expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "5100",
+              "name": "工资费用 / Wages expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            }
+          ],
+          "debit": 1401671,
+          "credit": 1401671
+        },
+        "postClosing": {
+          "rows": [
+            {
+              "code": "1000",
+              "name": "现金 / Cash",
+              "category": "ASSET",
+              "debit": 1400946,
+              "credit": 0
+            },
+            {
+              "code": "1100",
+              "name": "Historical disabled account",
+              "category": "ASSET",
+              "debit": 725,
+              "credit": 0
+            },
+            {
+              "code": "1200",
+              "name": "预付费用 / Prepayments",
+              "category": "ASSET",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "2000",
+              "name": "应计负债 / Accrued liabilities",
+              "category": "LIABILITY",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "3000",
+              "name": "投入资本 / Contributed capital",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 1200000
+            },
+            {
+              "code": "3100",
+              "name": "留存收益 / Retained earnings",
+              "category": "EQUITY",
+              "debit": 0,
+              "credit": 201548
+            },
+            {
+              "code": "4000",
+              "name": "服务收入 / Service revenue",
+              "category": "REVENUE",
+              "debit": 0,
+              "credit": 123
+            },
+            {
+              "code": "5000",
+              "name": "租金费用 / Rent expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            },
+            {
+              "code": "5100",
+              "name": "工资费用 / Wages expense",
+              "category": "EXPENSE",
+              "debit": 0,
+              "credit": 0
+            }
+          ],
+          "debit": 1401671,
+          "credit": 1401671
+        }
+      }
+    }
+  },
+  "ledgers": {
+    "2026-01": {
+      "1000": {
+        "account": "1000",
+        "month": "2026-01",
+        "opening": 0,
+        "entries": [
+          {
+            "id": 1,
+            "date": "2026-01-01",
+            "memo": "教学示例：投入资本 12,000",
+            "kind": "normal",
+            "reversal_of": null,
+            "account": "1000",
+            "debit": 1200000,
+            "credit": 0,
+            "source_kind": null,
+            "balance": 1200000
+          },
+          {
+            "id": 2,
+            "date": "2026-01-01",
+            "memo": "教学示例：现金服务收入 2,000",
+            "kind": "normal",
+            "reversal_of": null,
+            "account": "1000",
+            "debit": 200000,
+            "credit": 0,
+            "source_kind": null,
+            "balance": 1400000
+          },
+          {
+            "id": 3,
+            "date": "2026-01-20",
+            "memo": "Fictional 2026-01-20",
+            "kind": "adjusting",
+            "reversal_of": null,
+            "account": "1000",
+            "debit": 325,
+            "credit": 0,
+            "source_kind": null,
+            "dimensions": { "TEAM": "A" },
+            "balance": 1400325
+          }
+        ],
+        "closing": 1400325
+      },
+      "1100": { "account": "1100", "month": "2026-01", "opening": 0, "entries": [], "closing": 0 },
+      "1200": { "account": "1200", "month": "2026-01", "opening": 0, "entries": [], "closing": 0 },
+      "2000": { "account": "2000", "month": "2026-01", "opening": 0, "entries": [], "closing": 0 },
+      "3000": {
+        "account": "3000",
+        "month": "2026-01",
+        "opening": 0,
+        "entries": [
+          {
+            "id": 1,
+            "date": "2026-01-01",
+            "memo": "教学示例：投入资本 12,000",
+            "kind": "normal",
+            "reversal_of": null,
+            "account": "3000",
+            "debit": 0,
+            "credit": 1200000,
+            "source_kind": null,
+            "balance": -1200000
+          }
+        ],
+        "closing": -1200000
+      },
+      "3100": {
+        "account": "3100",
+        "month": "2026-01",
+        "opening": 0,
+        "entries": [
+          {
+            "id": 4,
+            "date": "2026-01-31",
+            "memo": "2026-01 收入费用结转",
+            "kind": "closing",
+            "reversal_of": null,
+            "account": "3100",
+            "debit": 0,
+            "credit": 200325,
+            "source_kind": null,
+            "balance": -200325
+          }
+        ],
+        "closing": -200325
+      },
+      "4000": {
+        "account": "4000",
+        "month": "2026-01",
+        "opening": 0,
+        "entries": [
+          {
+            "id": 2,
+            "date": "2026-01-01",
+            "memo": "教学示例：现金服务收入 2,000",
+            "kind": "normal",
+            "reversal_of": null,
+            "account": "4000",
+            "debit": 0,
+            "credit": 200000,
+            "source_kind": null,
+            "balance": -200000
+          },
+          {
+            "id": 3,
+            "date": "2026-01-20",
+            "memo": "Fictional 2026-01-20",
+            "kind": "adjusting",
+            "reversal_of": null,
+            "account": "4000",
+            "debit": 0,
+            "credit": 325,
+            "source_kind": null,
+            "dimensions": { "TEAM": "A" },
+            "balance": -200325
+          },
+          {
+            "id": 4,
+            "date": "2026-01-31",
+            "memo": "2026-01 收入费用结转",
+            "kind": "closing",
+            "reversal_of": null,
+            "account": "4000",
+            "debit": 200325,
+            "credit": 0,
+            "source_kind": null,
+            "balance": 0
+          }
+        ],
+        "closing": 0
+      },
+      "5000": { "account": "5000", "month": "2026-01", "opening": 0, "entries": [], "closing": 0 },
+      "5100": { "account": "5100", "month": "2026-01", "opening": 0, "entries": [], "closing": 0 }
+    },
+    "2026-02": {
+      "1000": {
+        "account": "1000",
+        "month": "2026-02",
+        "opening": 1400325,
+        "entries": [
+          {
+            "id": 5,
+            "date": "2026-02-01",
+            "memo": "冲销 #3",
+            "kind": "reversal",
+            "reversal_of": 3,
+            "account": "1000",
+            "debit": 0,
+            "credit": 325,
+            "source_kind": "adjusting",
+            "dimensions": { "TEAM": "A" },
+            "balance": 1400000
+          },
+          {
+            "id": 9,
+            "date": "2026-02-02",
+            "memo": "Fictional 2026-02-02",
+            "kind": "normal",
+            "reversal_of": null,
+            "account": "1000",
+            "debit": 440,
+            "credit": 0,
+            "source_kind": null,
+            "dimensions": { "TEAM": "A" },
+            "balance": 1400440
+          },
+          {
+            "id": 8,
+            "date": "2026-02-10",
+            "memo": "Fictional 2026-02-10",
+            "kind": "normal",
+            "reversal_of": null,
+            "account": "1000",
+            "debit": 150,
+            "credit": 0,
+            "source_kind": null,
+            "dimensions": { "TEAM": "A" },
+            "balance": 1400590
+          },
+          {
+            "id": 10,
+            "date": "2026-02-10",
+            "memo": "Same-date, same-journal line order",
+            "kind": "normal",
+            "reversal_of": null,
+            "account": "1000",
+            "debit": 1,
+            "credit": 0,
+            "source_kind": null,
+            "balance": 1400591
+          },
+          {
+            "id": 10,
+            "date": "2026-02-10",
+            "memo": "Same-date, same-journal line order",
+            "kind": "normal",
+            "reversal_of": null,
+            "account": "1000",
+            "debit": 2,
+            "credit": 0,
+            "source_kind": null,
+            "balance": 1400593
+          },
+          {
+            "id": 6,
+            "date": "2026-02-20",
+            "memo": "Fictional 2026-02-20",
+            "kind": "adjusting",
+            "reversal_of": null,
+            "account": "1000",
+            "debit": 230,
+            "credit": 0,
+            "source_kind": null,
+            "dimensions": { "TEAM": "A" },
+            "balance": 1400823
+          }
+        ],
+        "closing": 1400823
+      },
+      "1100": {
+        "account": "1100",
+        "month": "2026-02",
+        "opening": 0,
+        "entries": [
+          {
+            "id": 7,
+            "date": "2026-02-10",
+            "memo": "Fictional 2026-02-10",
+            "kind": "normal",
+            "reversal_of": null,
+            "account": "1100",
+            "debit": 725,
+            "credit": 0,
+            "source_kind": null,
+            "dimensions": { "TEAM": "A" },
+            "balance": 725
+          }
+        ],
+        "closing": 725
+      },
+      "1200": { "account": "1200", "month": "2026-02", "opening": 0, "entries": [], "closing": 0 },
+      "2000": { "account": "2000", "month": "2026-02", "opening": 0, "entries": [], "closing": 0 },
+      "3000": {
+        "account": "3000",
+        "month": "2026-02",
+        "opening": -1200000,
+        "entries": [],
+        "closing": -1200000
+      },
+      "3100": {
+        "account": "3100",
+        "month": "2026-02",
+        "opening": -200325,
+        "entries": [
+          {
+            "id": 11,
+            "date": "2026-02-28",
+            "memo": "2026-02 收入费用结转",
+            "kind": "closing",
+            "reversal_of": null,
+            "account": "3100",
+            "debit": 0,
+            "credit": 1223,
+            "source_kind": null,
+            "balance": -201548
+          }
+        ],
+        "closing": -201548
+      },
+      "4000": {
+        "account": "4000",
+        "month": "2026-02",
+        "opening": 0,
+        "entries": [
+          {
+            "id": 5,
+            "date": "2026-02-01",
+            "memo": "冲销 #3",
+            "kind": "reversal",
+            "reversal_of": 3,
+            "account": "4000",
+            "debit": 325,
+            "credit": 0,
+            "source_kind": "adjusting",
+            "dimensions": { "TEAM": "A" },
+            "balance": 325
+          },
+          {
+            "id": 9,
+            "date": "2026-02-02",
+            "memo": "Fictional 2026-02-02",
+            "kind": "normal",
+            "reversal_of": null,
+            "account": "4000",
+            "debit": 0,
+            "credit": 440,
+            "source_kind": null,
+            "dimensions": { "TEAM": "A" },
+            "balance": -115
+          },
+          {
+            "id": 7,
+            "date": "2026-02-10",
+            "memo": "Fictional 2026-02-10",
+            "kind": "normal",
+            "reversal_of": null,
+            "account": "4000",
+            "debit": 0,
+            "credit": 725,
+            "source_kind": null,
+            "dimensions": { "TEAM": "A" },
+            "balance": -840
+          },
+          {
+            "id": 8,
+            "date": "2026-02-10",
+            "memo": "Fictional 2026-02-10",
+            "kind": "normal",
+            "reversal_of": null,
+            "account": "4000",
+            "debit": 0,
+            "credit": 150,
+            "source_kind": null,
+            "dimensions": { "TEAM": "A" },
+            "balance": -990
+          },
+          {
+            "id": 10,
+            "date": "2026-02-10",
+            "memo": "Same-date, same-journal line order",
+            "kind": "normal",
+            "reversal_of": null,
+            "account": "4000",
+            "debit": 0,
+            "credit": 3,
+            "source_kind": null,
+            "balance": -993
+          },
+          {
+            "id": 6,
+            "date": "2026-02-20",
+            "memo": "Fictional 2026-02-20",
+            "kind": "adjusting",
+            "reversal_of": null,
+            "account": "4000",
+            "debit": 0,
+            "credit": 230,
+            "source_kind": null,
+            "dimensions": { "TEAM": "A" },
+            "balance": -1223
+          },
+          {
+            "id": 11,
+            "date": "2026-02-28",
+            "memo": "2026-02 收入费用结转",
+            "kind": "closing",
+            "reversal_of": null,
+            "account": "4000",
+            "debit": 1223,
+            "credit": 0,
+            "source_kind": null,
+            "balance": 0
+          }
+        ],
+        "closing": 0
+      },
+      "5000": { "account": "5000", "month": "2026-02", "opening": 0, "entries": [], "closing": 0 },
+      "5100": { "account": "5100", "month": "2026-02", "opening": 0, "entries": [], "closing": 0 }
+    },
+    "2026-03": {
+      "1000": {
+        "account": "1000",
+        "month": "2026-03",
+        "opening": 1400823,
+        "entries": [
+          {
+            "id": 12,
+            "date": "2026-03-25",
+            "memo": "Fictional 2026-03-25",
+            "kind": "normal",
+            "reversal_of": null,
+            "account": "1000",
+            "debit": 123,
+            "credit": 0,
+            "source_kind": null,
+            "dimensions": { "TEAM": "A" },
+            "balance": 1400946
+          }
+        ],
+        "closing": 1400946
+      },
+      "1100": {
+        "account": "1100",
+        "month": "2026-03",
+        "opening": 725,
+        "entries": [],
+        "closing": 725
+      },
+      "1200": { "account": "1200", "month": "2026-03", "opening": 0, "entries": [], "closing": 0 },
+      "2000": { "account": "2000", "month": "2026-03", "opening": 0, "entries": [], "closing": 0 },
+      "3000": {
+        "account": "3000",
+        "month": "2026-03",
+        "opening": -1200000,
+        "entries": [],
+        "closing": -1200000
+      },
+      "3100": {
+        "account": "3100",
+        "month": "2026-03",
+        "opening": -201548,
+        "entries": [],
+        "closing": -201548
+      },
+      "4000": {
+        "account": "4000",
+        "month": "2026-03",
+        "opening": 0,
+        "entries": [
+          {
+            "id": 12,
+            "date": "2026-03-25",
+            "memo": "Fictional 2026-03-25",
+            "kind": "normal",
+            "reversal_of": null,
+            "account": "4000",
+            "debit": 0,
+            "credit": 123,
+            "source_kind": null,
+            "dimensions": { "TEAM": "A" },
+            "balance": -123
+          }
+        ],
+        "closing": -123
+      },
+      "5000": { "account": "5000", "month": "2026-03", "opening": 0, "entries": [], "closing": 0 },
+      "5100": { "account": "5100", "month": "2026-03", "opening": 0, "entries": [], "closing": 0 }
+    }
+  }
+}

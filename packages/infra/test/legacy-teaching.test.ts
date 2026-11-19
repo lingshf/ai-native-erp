@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
-import { verifyLedgerSnapshot } from "../../../scripts/ledger-snapshot.mjs";
+import { verifyLedgerSnapshot } from "../../../scripts/legacy-snapshot-verifier.mjs";
 import { openLegacyTeachingSnapshot } from "../src/legacy/teaching.ts";
 import * as legacyBridge from "../src/legacy/teaching.ts";
 import {
