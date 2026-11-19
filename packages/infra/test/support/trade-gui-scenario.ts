@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, expect, test } from "vitest";
+import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { chromium, type Browser, type BrowserContext, type Locator, type Page } from "playwright";
 import { build } from "vite";
 import { MasterDataService } from "@erp/core/application";
@@ -106,10 +106,26 @@ async function checked(page: Page, target: Locator) {
   if (!(await target.isChecked())) await page.keyboard.press("Space");
 }
 
-export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green") {
+export function tradeGuiScenario(
+  language: "zh" | "en",
+  theme: "red" | "green",
+  includeKeyboardRegression = false,
+) {
   let directory: string;
   let webRoot: string;
+  let browser: Browser;
+  function phase(name: string, started: number) {
+    console.info(
+      JSON.stringify({
+        event: "trade-gui-phase",
+        scenario: `${language}/${theme}`,
+        phase: name,
+        ms: Math.round(performance.now() - started),
+      }),
+    );
+  }
   beforeAll(async () => {
+    let started = performance.now();
     directory = await mkdtemp(join(tmpdir(), "erp-trade-gui-"));
     webRoot = join(directory, "web");
     await mkdir(artifacts, { recursive: true });
@@ -119,14 +135,28 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green") 
       logLevel: "error",
       build: { outDir: webRoot },
     });
+    phase("build", started);
+    started = performance.now();
+    browser = await chromium.launch({
+      headless: true,
+      channel: process.env.ERP_E2E_BROWSER_CHANNEL,
+    });
+    phase("browser", started);
   }, 60_000);
   afterAll(async () => {
-    if (directory) await rm(directory, { recursive: true, force: true });
+    const started = performance.now();
+    try {
+      await browser?.close();
+      phase("browser-close", started);
+    } finally {
+      if (directory) await rm(directory, { recursive: true, force: true });
+    }
   });
 
   test(`real trade GUI: ${language}/${theme}, keyboard main path and safe confirmation branches`, async ({
     onTestFinished,
   }) => {
+    let started = performance.now();
     const name = `${language}-${theme}`;
     const filename = join(directory, `${name}.sqlite`);
     const storage = createSqliteStorage({ filename });
@@ -168,26 +198,25 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green") 
     } finally {
       await store.close();
     }
+    phase("database", started);
     let executor: SqliteExecutor | undefined;
     let api: LocalApi | undefined;
-    let browser: Browser | undefined;
     let context: BrowserContext | undefined;
     onTestFinished(async () => {
+      const started = performance.now();
       try {
         // Explicit context close also disposes the Node request pool used by route.fetch().
         await context?.close();
       } finally {
         try {
-          await browser?.close();
+          await api?.close();
         } finally {
-          try {
-            await api?.close();
-          } finally {
-            await executor?.close();
-          }
+          await executor?.close();
         }
       }
+      phase("resources", started);
     });
+    started = performance.now();
     executor = await SqliteExecutor.create({ filename });
     api = await createApi({
       ...executor.services(),
@@ -195,14 +224,18 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green") 
       allowPortZero: true,
       environment: { ERP_PROFILE: "local", ERP_HOST: "127.0.0.1", ERP_PORT: "0" },
     });
-    browser = await chromium.launch({
-      headless: true,
-      channel: process.env.ERP_E2E_BROWSER_CHANNEL,
-    });
+    phase("api", started);
+    started = performance.now();
     context = await browser.newContext({ viewport: { width: 1440, height: 1100 } });
+    phase("context", started);
+    started = performance.now();
     // Keep explicit PNGs and key/network/source evidence without a continuous screencast.
     await context.tracing.start({ screenshots: false, snapshots: false, sources: true });
+    phase("tracing", started);
+    started = performance.now();
     const page = await context.newPage();
+    phase("page", started);
+    const interactionStarted = performance.now();
     const t = (key: Exclude<Parameters<typeof label>[1], "shell.httpError">) =>
       label(language, key);
     const button = (key: Parameters<typeof t>[0]) =>
@@ -586,6 +619,32 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green") 
     } finally {
       await page.screenshot({ path: join(artifacts, `${name}-last.png`), fullPage: true });
       await context.tracing.stop({ path: join(artifacts, `${name}-trace.zip`) });
+      phase("interaction", interactionStarted);
     }
   }, 180_000);
+
+  if (includeKeyboardRegression) {
+    test("chooses the short keyboard path after probing an unknown focus position", async ({
+      onTestFinished,
+    }) => {
+      const page = await browser.newPage();
+      onTestFinished(() => page.close());
+      await page.setContent(
+        Array.from(
+          { length: 100 },
+          (_, index) => `<button id="stop-${index}">Stop ${index}</button>`,
+        ).join(""),
+      );
+      expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+      const press = vi.spyOn(page.keyboard, "press");
+      const target = page.locator("#stop-98");
+      await tabTo(page, target);
+      expect(
+        await target.evaluate(
+          (element) => element === document.activeElement && document.hasFocus(),
+        ),
+      ).toBe(true);
+      expect(press.mock.calls.length).toBeLessThanOrEqual(8);
+    });
+  }
 }

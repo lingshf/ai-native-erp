@@ -14,6 +14,9 @@ export function selectPrTests(files: string[]) {
     all: files.some((file) => {
       const name = basename(file);
       return (
+        ["scripts/ci.ts", "scripts/test-shard-weights.json", ".github/workflows/full.yml"].includes(
+          file,
+        ) ||
         ["package.json", "package-lock.json", "vitest.config.ts"].includes(name) ||
         name.startsWith("tsconfig")
       );
