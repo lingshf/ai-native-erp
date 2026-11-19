@@ -73,7 +73,7 @@ export function reportRepository(db: Connection): ReportRepository {
         stage === "unadjusted"
           ? REPORT_BALANCES_SQL.replace(
               "GROUP BY l.account_code",
-              "AND (l.period<? OR NOT EXISTS(SELECT 1 FROM journal_entries e WHERE e.company_id=l.company_id AND e.id=l.entry_id AND e.kind='adjusting')) GROUP BY l.account_code",
+              "AND (l.period<? OR l.entry_id NOT IN (SELECT id FROM journal_entries WHERE company_id=? AND kind='adjusting')) GROUP BY l.account_code",
             )
           : REPORT_BALANCES_SQL;
       if (watermark !== undefined)
@@ -88,7 +88,7 @@ export function reportRepository(db: Connection): ReportRepository {
         `${month.slice(0, 4)}-01`,
         company,
         month,
-        ...(stage === "unadjusted" ? [month] : []),
+        ...(stage === "unadjusted" ? [month, company] : []),
         ...(watermark === undefined ? [] : [company, watermark]),
         company,
       ]);

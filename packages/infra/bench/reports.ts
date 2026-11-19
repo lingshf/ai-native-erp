@@ -2,6 +2,7 @@ import { fork, execFileSync, type ChildProcess } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, copyFile, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
+import { availableParallelism } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -23,6 +24,8 @@ const WARMUP = 5;
 const SAMPLES = 50;
 const SCOPE = "company=DEFAULT&month=2026-12";
 const ORIGINAL = ["trial", "income", "balance-sheet", "ledger", "close-preview"] as const;
+const CPU_COUNT = availableParallelism();
+const DEFAULT_READERS = Math.max(2, Math.min(3, CPU_COUNT - 1));
 type Fixture = Awaited<ReturnType<typeof generateLedgerFixture>>;
 type Mode = "baseline" | "candidate";
 interface Metric {
@@ -402,7 +405,7 @@ export async function reportsBenchmark() {
         };
       }
     }
-    server = await ProductionChild.start(filename, root, mode, 3);
+    server = await ProductionChild.start(filename, root, mode, DEFAULT_READERS);
     for (const name of mode === "baseline"
       ? ORIGINAL
       : [
@@ -590,7 +593,8 @@ export async function reportsBenchmark() {
       eventLoopMaxMs: Math.max(...Object.values(windows).map((value) => value.maxMs)),
       eventLoopP99Ms: Math.max(...Object.values(windows).map((value) => value.p99Ms)),
       pools,
-      defaultReaders: "max(2,min(3,CPU-1)); serial comparison uses explicit R=3",
+      cpuCount: CPU_COUNT,
+      defaultReaders: DEFAULT_READERS,
       matchedBaseline,
       regression,
       latePages: {
@@ -632,6 +636,7 @@ export function reportsMarkdown(reports: Awaited<ReturnType<typeof reportsBenchm
     "## Million-GL production capacity",
     "",
     `${reports.mode}: \`${reports.revision}\`; runner \`${reports.runner}\`; workflow run \`${reports.workflowRun}\`.`,
+    `CPU parallelism ${reports.cpuCount}; production default R=${reports.defaultReaders} (max(2,min(3,CPU-1))). Serial samples use that default; the comparison below also measures R=2/3/4 explicitly.`,
     `Fixture ${reports.fixture.seed}: ${reports.fixture.lines} GL rows; 100000 cash rows in 2026-12; digest \`${reports.fixture.logicalSha256}\`. Five warmups + 50 samples/rounds per scenario. All HTTP timings include queue wait, response JSON and shared client contract parsing. Original ledger limit=100; late pages 1/100/200 limit=500.`,
     "",
     "| Serial path | p50 ms | p95 ms | p99 ms | Budget ms | Result |",
