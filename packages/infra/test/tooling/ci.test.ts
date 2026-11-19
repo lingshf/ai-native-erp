@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  balanceShards,
+  fileWeights,
   selectPrTests,
   shouldRun,
   testSummary,
@@ -70,5 +72,38 @@ describe("CI selection and reporting", () => {
       }),
     ).toEqual([{ name: "failure", file: "test.ts", durationMs: 12 }]);
     expect(() => vitestTimings({})).toThrow("Invalid Vitest JSON report");
+  });
+
+  it("splits shards by recorded weight, assigning every file exactly once", () => {
+    const weights = {
+      "a.test.ts": 9,
+      "b.test.ts": 5,
+      "c.test.ts": 4,
+      "d.test.ts": 3,
+      "e.test.ts": 3,
+    };
+    const files = ["e.test.ts", "d.test.ts", "c.test.ts", "b.test.ts", "a.test.ts", "new.test.ts"];
+    const shards = balanceShards(files, weights, 2);
+    expect(shards).toEqual([
+      ["a.test.ts", "new.test.ts"],
+      ["b.test.ts", "c.test.ts", "d.test.ts", "e.test.ts"],
+    ]);
+    expect(shards.flat().sort()).toEqual([...files].sort());
+    expect(balanceShards([...files].reverse(), weights, 2)).toEqual(shards);
+    expect(() => balanceShards(files, weights, 0)).toThrow("Invalid shard count");
+  });
+
+  it("averages per-file run time across shard reports", () => {
+    const suite = (name: string, ms: number) => ({ name, startTime: 100, endTime: 100 + ms });
+    expect(
+      fileWeights(
+        [
+          { testResults: [suite("/repo/b.test.ts", 30), suite("/repo/a.test.ts", 10)] },
+          { testResults: [suite("/repo/a.test.ts", 20)] },
+        ],
+        "/repo",
+      ),
+    ).toEqual({ "a.test.ts": 15, "b.test.ts": 30 });
+    expect(() => fileWeights([{ testResults: [{ name: "x" }] }])).toThrow("Invalid Vitest suite");
   });
 });

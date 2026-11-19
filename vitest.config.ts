@@ -1,9 +1,11 @@
 import { configDefaults, defineConfig } from "vitest/config";
+import { BaseSequencer, type TestSpecification } from "vitest/node";
 import react from "@vitejs/plugin-react";
 import { readdirSync, readFileSync } from "node:fs";
 import { availableParallelism } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { balanceShards } from "./scripts/ci.ts";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const layerExclude = process.env.CI_TEST_LAYER === "pr" ? ["**/*.slow.test.{ts,tsx}"] : [];
@@ -19,12 +21,28 @@ const moduleMockFiles = readdirSync(join(root, "packages/infra"), { recursive: t
   )
   .map((file) => relative(root, join(root, "packages/infra", file)).replaceAll("\\", "/"));
 
+// `--shard` splits files by recorded run time (scripts/test-shard-weights.json,
+// regenerate with `node scripts/ci.ts weights REPORT.json...`) instead of by path hash.
+class WeightedShardSequencer extends BaseSequencer {
+  override async shard(files: TestSpecification[]) {
+    const { shard } = this.ctx.config;
+    if (!shard) return files;
+    const weights = JSON.parse(
+      readFileSync(join(root, "scripts/test-shard-weights.json"), "utf8"),
+    ) as Record<string, number>;
+    const key = (spec: TestSpecification) => relative(root, spec.moduleId).replaceAll("\\", "/");
+    const selected = new Set(balanceShards(files.map(key), weights, shard.count)[shard.index - 1]);
+    return files.filter((spec) => selected.has(key(spec)));
+  }
+}
+
 export default defineConfig({
   root,
   test: {
     pool: "forks",
     maxWorkers: availableParallelism(),
     isolate: false,
+    sequence: { sequencer: WeightedShardSequencer },
     testTimeout: 15_000,
     hookTimeout: 15_000,
     clearMocks: true,
