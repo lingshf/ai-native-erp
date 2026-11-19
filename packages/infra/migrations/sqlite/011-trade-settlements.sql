@@ -6,46 +6,8 @@ CREATE TABLE trade_invoice_terms (
   PRIMARY KEY(company_id,item_id),
   FOREIGN KEY(company_id,item_id) REFERENCES open_items(company_id,item_id)
 ) WITHOUT ROWID;
--- Version 010 did not snapshot discount terms. Refuse ambiguous same-millisecond
--- revisions rather than guessing whether configuration changed before or after posting.
-CREATE TRIGGER trade_invoice_terms_legacy_guard BEFORE INSERT ON trade_invoice_terms WHEN EXISTS (
-  SELECT 1 FROM trade_documents d
-  JOIN trade_config_history h ON h.company_id=d.company_id
-  WHERE d.company_id=NEW.company_id AND d.document_id=NEW.item_id
-    AND h.recorded_at=d.posted_at AND h.revision>1 AND (
-      (h.kind='tradeParty' AND h.config_key=d.party_id) OR
-      (h.kind='tradeTerms' AND h.config_key=json_extract((
-        SELECT p.snapshot FROM trade_config_history p
-        WHERE p.company_id=d.company_id AND p.kind='tradeParty' AND p.config_key=d.party_id AND p.recorded_at<=d.posted_at
-        ORDER BY p.recorded_at DESC,p.revision DESC LIMIT 1
-      ),'$.data.terms'))
-    )
-)
-BEGIN SELECT RAISE(ABORT,'ambiguous historical invoice discount terms'); END;
-INSERT INTO trade_invoice_terms
-SELECT d.company_id,d.document_id,
-  json_extract((
-    SELECT t.snapshot FROM trade_config_history t
-    WHERE t.company_id=d.company_id AND t.kind='tradeTerms'
-      AND t.config_key=json_extract((
-        SELECT p.snapshot FROM trade_config_history p
-        WHERE p.company_id=d.company_id AND p.kind='tradeParty' AND p.config_key=d.party_id AND p.recorded_at<=d.posted_at
-        ORDER BY p.recorded_at DESC,p.revision DESC LIMIT 1
-      ),'$.data.terms') AND t.recorded_at<=d.posted_at
-    ORDER BY t.recorded_at DESC,t.revision DESC LIMIT 1
-  ),'$.data.discountPercent'),
-  json_extract((
-    SELECT t.snapshot FROM trade_config_history t
-    WHERE t.company_id=d.company_id AND t.kind='tradeTerms'
-      AND t.config_key=json_extract((
-        SELECT p.snapshot FROM trade_config_history p
-        WHERE p.company_id=d.company_id AND p.kind='tradeParty' AND p.config_key=d.party_id AND p.recorded_at<=d.posted_at
-        ORDER BY p.recorded_at DESC,p.revision DESC LIMIT 1
-      ),'$.data.terms') AND t.recorded_at<=d.posted_at
-    ORDER BY t.recorded_at DESC,t.revision DESC LIMIT 1
-  ),'$.data.allowPartialDiscount')
-FROM trade_documents d;
-DROP TRIGGER trade_invoice_terms_legacy_guard;
+-- The runner restores 010 terms from complete revision chains only when all
+-- candidate discount semantics agree. Wall-clock timestamps are not ordering evidence.
 CREATE TRIGGER trade_invoice_terms_no_update BEFORE UPDATE ON trade_invoice_terms BEGIN SELECT RAISE(ABORT,'immutable invoice terms'); END;
 CREATE TRIGGER trade_invoice_terms_no_delete BEFORE DELETE ON trade_invoice_terms BEGIN SELECT RAISE(ABORT,'immutable invoice terms'); END;
 CREATE TABLE trade_payments (

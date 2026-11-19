@@ -1206,14 +1206,33 @@ describe("trade invoices on real SQLite", () => {
     { version: 10, fault: "none" },
     { version: 10, fault: "missing" },
     { version: 10, fault: "ambiguous" },
+    { version: 10, fault: "clockRollback" },
+    { version: 10, fault: "sameMillisecondSameSemantics" },
+    { version: 10, fault: "partialPolicy" },
+    { version: 10, fault: "revisionGap" },
   ])(
     "upgrades authentic version $version with $fault term history safely",
     async ({ version, fault }) => {
       const oldInvoice = invoice();
       if (version === 10) {
         const old = await post(oldInvoice);
-        if (fault === "ambiguous") {
-          const trade = new TradeMasterService(store, () => old.receipt.postedAt);
+        if (
+          [
+            "ambiguous",
+            "clockRollback",
+            "sameMillisecondSameSemantics",
+            "partialPolicy",
+            "revisionGap",
+          ].includes(fault)
+        ) {
+          expect(
+            (await service.detail("DEFAULT", oldInvoice.documentId)).openItem.discountPercent,
+          ).toBe("1.5");
+          const at =
+            fault === "clockRollback"
+              ? new Date(Date.parse(old.receipt.postedAt) - 1).toISOString()
+              : old.receipt.postedAt;
+          const trade = new TradeMasterService(store, () => at);
           const terms = await trade.get("DEFAULT", "tradeTerms", "N30");
           if (terms.kind !== "tradeTerms") throw new Error("Missing terms");
           await trade.save({
@@ -1221,8 +1240,25 @@ describe("trade invoices on real SQLite", () => {
             kind: terms.kind,
             code: terms.code,
             expectedRevision: terms.revision,
-            data: { ...terms.data, discountPercent: "50" },
+            data: {
+              ...terms.data,
+              name: "Revised description only unless discount semantics explicitly change",
+              discountPercent:
+                fault === "clockRollback" ? "9" : fault === "ambiguous" ? "50" : "1.500000",
+              allowPartialDiscount: fault !== "partialPolicy",
+            },
           });
+          if (fault === "sameMillisecondSameSemantics") {
+            const party = await trade.get("DEFAULT", "tradeParty", "V1");
+            if (party.kind !== "tradeParty") throw new Error("Missing party");
+            await trade.save({
+              ...base,
+              kind: party.kind,
+              code: party.code,
+              expectedRevision: party.revision,
+              data: { ...party.data, name: "Partner description changed" },
+            });
+          }
         }
       }
       const historical = await journals.save("DEFAULT", {
@@ -1294,7 +1330,7 @@ describe("trade invoices on real SQLite", () => {
             );
           } else
             await db.query(
-              `INSERT INTO main.${name} SELECT * FROM existing.${name}${name === "trade_config_history" && fault === "missing" ? " WHERE kind<>'tradeTerms'" : ""}`,
+              `INSERT INTO main.${name} SELECT * FROM existing.${name}${name === "trade_config_history" && fault === "missing" ? " WHERE kind<>'tradeTerms'" : name === "trade_config_history" && fault === "revisionGap" ? " WHERE NOT(kind='tradeTerms' AND revision=1)" : ""}`,
             );
         }
         await db.commit();
@@ -1317,8 +1353,11 @@ describe("trade invoices on real SQLite", () => {
       beforeUpgrade.close();
       try {
         await expect(storage.verifySchema()).rejects.toMatchObject({ code: "SCHEMA_MISMATCH" });
-        if (fault !== "none") {
-          await expect(storage.migrate()).rejects.toMatchObject({ code: "CONFLICT" });
+        if (fault !== "none" && fault !== "sameMillisecondSameSemantics") {
+          await expect(storage.migrate()).rejects.toMatchObject({
+            code: "CONFLICT",
+            message: expect.stringContaining(oldInvoice.documentId),
+          });
           const raw = new Database(upgradeFile, { readonly: true });
           try {
             expect(
