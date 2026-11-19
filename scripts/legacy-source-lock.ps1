@@ -4,22 +4,37 @@ $ErrorActionPreference = 'Stop'
 $streams = @{}
 $names = @('teaching.sqlite', 'erp.sqlite')
 
+function SourceAttributes($path) {
+  try {
+    $attributes = [IO.File]::GetAttributes($path)
+  } catch {
+    $cause = $_.Exception.GetBaseException()
+    if ($cause -is [IO.FileNotFoundException] -or $cause -is [IO.DirectoryNotFoundException]) {
+      return $null
+    }
+    throw
+  }
+  if (($attributes -band ([IO.FileAttributes]::Directory -bor [IO.FileAttributes]::ReparsePoint -bor [IO.FileAttributes]::Device)) -ne 0) {
+    throw 'INVALID_INPUT'
+  }
+  return $attributes
+}
+
 function Inventory {
   $result = @()
   foreach ($name in $names) {
-    if ([IO.File]::Exists((Join-Path $source "$name-journal"))) {
+    if ($null -ne (SourceAttributes (Join-Path $source "$name-journal"))) {
       throw 'ROLLBACK_JOURNAL'
     }
     foreach ($suffix in @('', '-wal', '-shm')) {
       $key = "$name$suffix"
       $path = Join-Path $source $key
-      $exists = [IO.File]::Exists($path)
+      $exists = $null -ne (SourceAttributes $path)
       if ($exists -ne $streams.ContainsKey($key)) { throw 'SOURCE_CHANGED' }
       if (-not $exists) {
         $result += @{ file = $key; exists = $false }
         continue
       }
-      if (([IO.File]::GetAttributes($path) -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'SOURCE_CHANGED' }
       $stream = $streams[$key]
       $stream.Position = 0
       $sha = [Security.Cryptography.SHA256]::Create()
@@ -39,12 +54,12 @@ try {
   $config = [Console]::ReadLine() | ConvertFrom-Json
   $source = $config.source
   foreach ($name in $names) {
-    if ([IO.File]::Exists((Join-Path $source "$name-journal"))) { throw 'ROLLBACK_JOURNAL' }
+    if ($null -ne (SourceAttributes (Join-Path $source "$name-journal"))) { throw 'ROLLBACK_JOURNAL' }
     foreach ($suffix in @('', '-wal', '-shm')) {
       $key = "$name$suffix"
       $path = Join-Path $source $key
-      if ($suffix -eq '' -or [IO.File]::Exists($path)) {
-        if (([IO.File]::GetAttributes($path) -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'INVALID_INPUT' }
+      $attributes = SourceAttributes $path
+      if ($suffix -eq '' -or $null -ne $attributes) {
         $streams[$key] = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)
       }
     }

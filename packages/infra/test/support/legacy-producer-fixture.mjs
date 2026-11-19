@@ -3,19 +3,20 @@ import { createHash, randomUUID } from "node:crypto";
 import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { inspectLedger } from "../../../../scripts/legacy-snapshot-verifier.mjs";
+import { optionalSourceFile } from "../../../../scripts/legacy-snapshot-producer.mjs";
 
 export const sourceFiles = ["teaching.sqlite", "erp.sqlite"];
 
-export function sourceInventory(source) {
+export function sourceInventory(source, lstat = fs.lstatSync) {
   for (const file of sourceFiles)
-    if (fs.existsSync(join(source, `${file}-journal`)))
+    if (optionalSourceFile(join(source, `${file}-journal`), lstat))
       throw Object.assign(new Error("Unrecovered journal"), { code: "ROLLBACK_JOURNAL" });
   return sourceFiles.flatMap((file) =>
     ["", "-wal", "-shm"].map((suffix) => {
       const name = file + suffix,
         path = join(source, name);
-      if (!fs.existsSync(path)) return { file: name, exists: false };
-      const stat = fs.statSync(path, { bigint: true });
+      const stat = optionalSourceFile(path, lstat);
+      if (!stat) return { file: name, exists: false };
       return {
         file: name,
         exists: true,

@@ -24,6 +24,18 @@ export class LegacySnapshotError extends Error {
 }
 const failure = (code) => new LegacySnapshotError(code);
 
+export function optionalSourceFile(file, lstat = fs.lstatSync) {
+  let stat;
+  try {
+    stat = lstat(file, { bigint: true });
+  } catch (error) {
+    if (error.code === "ENOENT") return undefined;
+    throw failure("SOURCE_BUSY");
+  }
+  if (!stat.isFile() || stat.isSymbolicLink()) throw failure("INVALID_INPUT");
+  return stat;
+}
+
 function regularPath(path, directory) {
   for (let cursor = path; ; cursor = dirname(cursor)) {
     const stat = fs.lstatSync(cursor);
@@ -113,9 +125,9 @@ export async function produceLegacySnapshot(
     if (fs.existsSync(output)) throw failure("INVALID_INPUT");
     for (const file of Object.values(files)) {
       regularPath(join(source, file), false);
-      if (fs.existsSync(join(source, `${file}-journal`))) throw failure("ROLLBACK_JOURNAL");
+      if (optionalSourceFile(join(source, `${file}-journal`))) throw failure("ROLLBACK_JOURNAL");
       for (const suffix of ["-wal", "-shm"])
-        if (fs.existsSync(join(source, file + suffix)))
+        if (optionalSourceFile(join(source, file + suffix)))
           regularPath(join(source, file + suffix), false);
     }
     const lease = await acquireExclusive(source);

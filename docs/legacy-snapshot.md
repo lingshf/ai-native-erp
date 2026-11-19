@@ -19,6 +19,9 @@ The Windows broker holds real read-only `FileShare.None` handles for both main
 files and all existing WAL/SHM files through byte copying and before/after
 existence, size, mtime and SHA-256 comparison. Any conflicting process handle
 causes `SOURCE_BUSY`; hashes do not substitute for stopping and isolating writes.
+Only explicit not-found metadata errors count as absent; directories, reparse
+points, permission failures and other I/O errors always refuse the operation,
+including during both inventories while exclusive handles remain held.
 SQLite never opens source paths. Only private copies are recovered/checkpointed.
 The output contains the existing verified two-ledger snapshot format and
 `backup/`, whose unchanged main/WAL bytes and private manifest preserve committed

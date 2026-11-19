@@ -5,10 +5,18 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { once } from "node:events";
 import { onTestFinished, test } from "vitest";
-import { produceLegacySnapshot } from "../../../scripts/legacy-snapshot-producer.mjs";
+import {
+  acquireWindowsSource,
+  produceLegacySnapshot,
+} from "../../../scripts/legacy-snapshot-producer.mjs";
 import { inspectLedger, verifyLedgerSnapshot } from "../../../scripts/legacy-snapshot-verifier.mjs";
 import { captureDirectory } from "./support/legacy-fixture.mjs";
-import { fakeExclusive, producerFixture, sourceFiles } from "./support/legacy-producer-fixture.mjs";
+import {
+  fakeExclusive,
+  producerFixture,
+  sourceFiles,
+  sourceInventory,
+} from "./support/legacy-producer-fixture.mjs";
 import { openLegacyTeachingSnapshot } from "../src/legacy/teaching.ts";
 
 const cli = fileURLToPath(new URL("../../../scripts/storage-admin.mjs", import.meta.url));
@@ -156,6 +164,86 @@ test.each(["bytes", "mtime", "remove", "add", "journal"])(
   },
 );
 
+test.each([
+  { error: "EACCES", suffix: "-wal", capture: 1 },
+  { error: "EIO", suffix: "-wal", capture: 2 },
+  { error: "EPERM", suffix: "-shm", capture: 1 },
+  { error: "ENOTDIR", suffix: "-shm", capture: 2 },
+  { error: "EACCES", suffix: "-journal", capture: 1 },
+  { error: "EIO", suffix: "-journal", capture: 2 },
+])("metadata $error for $suffix during capture $capture is not absence", async (scenario) => {
+  const f = producerFixture({ onTestFinished });
+  const before = captureDirectory(f.source, { mtime: true });
+  let captures = 0,
+    closed = false,
+    copies = 0;
+  await assert.rejects(
+    produceLegacySnapshot(f.source, f.output, {
+      acquireExclusive(source) {
+        const lease = fakeExclusive(source);
+        return {
+          capture() {
+            captures++;
+            return sourceInventory(source, (path, options) => {
+              if (
+                captures === scenario.capture &&
+                path === join(source, `teaching.sqlite${scenario.suffix}`)
+              )
+                throw Object.assign(new Error("injected metadata failure"), {
+                  code: scenario.error,
+                });
+              return fs.lstatSync(path, options);
+            });
+          },
+          copy(destination) {
+            copies++;
+            lease.copy(destination);
+          },
+          close() {
+            closed = true;
+          },
+        };
+      },
+    }),
+    code("SOURCE_BUSY"),
+  );
+  assert.equal(captures, scenario.capture);
+  assert.equal(copies, scenario.capture - 1);
+  assert.ok(closed);
+  assert.ok(!fs.existsSync(f.output));
+  assert.deepEqual(captureDirectory(f.source, { mtime: true }), before);
+});
+
+test.each(["-wal", "-shm", "-journal"])(
+  "injected lease rejects a %s directory appearing during copy",
+  async (suffix) => {
+    const f = producerFixture({ onTestFinished }, { wal: false });
+    const before = captureDirectory(f.source, { mtime: true });
+    const anomaly = `teaching.sqlite${suffix}`;
+    await assert.rejects(
+      produceLegacySnapshot(f.source, f.output, {
+        acquireExclusive(source) {
+          const lease = fakeExclusive(source);
+          return {
+            ...lease,
+            copy(destination) {
+              lease.copy(destination);
+              fs.mkdirSync(join(source, anomaly));
+            },
+          };
+        },
+      }),
+      code("INVALID_INPUT"),
+    );
+    assert.ok(!fs.existsSync(f.output));
+    assert.ok(fs.statSync(join(f.source, anomaly)).isDirectory());
+    assert.deepEqual(
+      captureDirectory(f.source, { mtime: true }).filter(([file]) => file !== anomaly),
+      before,
+    );
+  },
+);
+
 test.each(["journal", "missing", "existing", "nested", "corrupt", "copy-failure"])(
   "%s refusal preserves all source bytes and mtimes",
   async (scenario) => {
@@ -219,6 +307,47 @@ test.skipIf(process.platform === "win32")("real non-Windows CLI fails closed", (
 });
 
 const windows = process.platform === "win32" && process.env.ERP_WINDOWS_SNAPSHOT_HANDLES === "1";
+test
+  .skipIf(!windows)
+  .each(
+    ["-wal", "-shm", "-journal"].flatMap((suffix) =>
+      ["after-preflight", "after-copy"].map((phase) => ({ suffix, phase })),
+    ),
+  )(
+  "Windows rejects a $suffix directory appearing $phase",
+  async ({ suffix, phase }) => {
+    const f = producerFixture({ onTestFinished }, { wal: false });
+    const before = captureDirectory(f.source, { mtime: true });
+    const anomaly = `teaching.sqlite${suffix}`;
+    await assert.rejects(
+      produceLegacySnapshot(f.source, f.output, {
+        async acquireExclusive(source) {
+          if (phase === "after-preflight") fs.mkdirSync(join(source, anomaly));
+          const lease = await acquireWindowsSource(source);
+          return {
+            ...lease,
+            async copy(destination) {
+              await lease.copy(destination);
+              if (phase === "after-copy") fs.mkdirSync(join(source, anomaly));
+            },
+          };
+        },
+      }),
+      code("INVALID_INPUT"),
+    );
+    assert.ok(!fs.existsSync(f.output));
+    assert.deepEqual(
+      captureDirectory(f.source, { mtime: true }).filter(([file]) => file !== anomaly),
+      before,
+    );
+    fs.rmdirSync(join(f.source, anomaly));
+    await produceLegacySnapshot(f.source, f.output);
+    verifyLedgerSnapshot(f.output);
+    assert.deepEqual(captureDirectory(f.source, { mtime: true }), before);
+  },
+  60000,
+);
+
 test.skipIf(!windows)("Windows broker preserves Unicode paths without source SHM", async (t) => {
   const f = producerFixture(t);
   const source = join(f.directory, "\u865a\u6784-source");
