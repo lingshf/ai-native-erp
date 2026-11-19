@@ -8,11 +8,11 @@
 
 尚无已合并的后续改动。进行中的 PR（未包含在 v0.1.0）：M1-06 未结项/账龄/GL 核对（#49）、M2-03 旧账导入执行（#47）。
 
-## [0.1.0] - YYYY-MM-DD
+## [0.1.0] - 2026-11-19
 
 > 发布日期占位：打 tag 时必须替换为实际日期。预览标记见下文与 Release 说明。
 
-对应 `main` 提交 `d8fa0bb`（含 M0 核心账务、M1-01..05 贸易功能、M2-01/02 旧账预演工具）。**贸易（AP/AR）功能尚不完整**（缺 M1-06 未结项/账龄/GL 核对、M1-07 端到端验收），因此本版本标为“预览”。非生产演示版，不承诺符合某国会计准则。
+产品代码基线为 `main` 提交 `d8fa0bb`；此后 main 仅有文档提交（#50、#52），产品代码与 d8fa0bb 相同。按 D21，tag `v0.1.0` 打在本发布 PR（#51）合并后的 squash 提交上（含 M0 核心账务、M1-01..05 贸易功能、M2-01/02 旧账预演工具）。**贸易（AP/AR）功能尚不完整**（缺 M1-06 未结项/账龄/GL 核对、M1-07 端到端验收），因此本版本标为“预览”。非生产演示版，不承诺符合某国会计准则。
 
 ### Added（用户可见）
 
@@ -71,4 +71,4 @@
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
 [Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/lingshf/ai-native-erp/commits/d8fa0bb
+[0.1.0]: https://github.com/lingshf/ai-native-erp/releases/tag/v0.1.0
