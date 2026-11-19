@@ -25,7 +25,7 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 | [M0-13](M0-13-ledger-period-close.md) | 迁移 6：结账与期间推进 | M0-12 | done | [#22](https://github.com/lingshf/ai-native-erp/pull/22) |
 | [M0-13a](M0-13a-sqlite-event-loop-blocking.md) | 同步 SQLite 阻塞事件循环：度量与处理 | M0-13 | todo | |
 | [M0-14](M0-14-ai-assistant.md) | 迁移 7：AI 助手（候选） | M0-10 | todo | |
-| [M0-15](M0-15-remove-legacy-code.md) | 删除旧代码 | M0-08..M0-14 | todo | |
+| [M0-15](M0-15-remove-legacy-code.md) | 删除旧代码 | M0-08..M0-14, M0-13a | todo | |
 | [M0-R](M0-R-milestone-review.md) | M0 里程碑评审 + 测试审计（设计角色） | M0-15, M0-06, M0-06a, M0-07, M0-13a | todo | |
 
 ## M1：贸易 AP/AR（非库存）
