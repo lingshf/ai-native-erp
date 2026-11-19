@@ -5,6 +5,7 @@ import {
   checkedExpectedRevision,
   checkedName,
   checkedPage,
+  checkTradeDefaultDimensions,
   tradeError,
   tradeKinds,
   validateTradeConfig,
@@ -103,29 +104,11 @@ export class TradeMasterService {
       if (config.kind === "tradeParty" || config.kind === "tradeProduct") {
         for (const code of config.data.allowedTaxCodes)
           await reference("taxCode", code, "allowedTaxCodes");
-        const catalog = await repo.dimensionCatalog(company);
-        const dimensions = config.data.defaultDimensions;
-        if (
-          !dimensions ||
-          typeof dimensions !== "object" ||
-          Array.isArray(dimensions) ||
-          Object.keys(dimensions).length > 32
-        )
-          tradeError("data.defaultDimensions", "shape");
-        for (const [key, value] of Object.entries(dimensions)) {
-          for (const kind of ["dimension", "value"] as const) {
-            if (kind === "value" && value === null) continue;
-            const found = catalog.find(
-              (item) =>
-                item.kind === kind &&
-                (kind === "dimension"
-                  ? item.code === key
-                  : item.kind === "value" && item.dimension === key && item.code === value),
-            );
-            if (!found?.active || found.from > config.data.from || found.to < config.data.to)
-              tradeError(`data.defaultDimensions.${key}`, "reference");
-          }
-        }
+        checkTradeDefaultDimensions(
+          config.data,
+          config.data.defaultDimensions,
+          await repo.dimensionCatalog(company),
+        );
       }
       if (config.kind === "tradeParty") {
         const d = config.data;

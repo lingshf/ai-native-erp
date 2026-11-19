@@ -7,6 +7,7 @@ import {
   type Account,
   type DimensionMap,
 } from "./index.ts";
+import type { DimensionConfig } from "./dimensions.ts";
 
 export const tradeKinds = [
   "tradeParty",
@@ -108,6 +109,37 @@ export function checkedTradeWindow(range: { from: string; to: string }, path = "
   checkedJournalDay(range.from, `${path}.from`);
   checkedJournalDay(range.to, `${path}.to`);
   if (range.from > range.to) tradeError(path, "window");
+}
+/**
+ * M1-01 default-dimension check for parties and products: a plain map of at most 32 keys whose
+ * dimensions and values are active and valid over the whole configuration window.
+ */
+export function checkTradeDefaultDimensions(
+  range: { readonly from: string; readonly to: string },
+  dimensions: unknown,
+  catalog: readonly DimensionConfig[],
+): void {
+  if (
+    !dimensions ||
+    typeof dimensions !== "object" ||
+    Array.isArray(dimensions) ||
+    Object.keys(dimensions).length > 32
+  )
+    tradeError("data.defaultDimensions", "shape");
+  for (const [key, value] of Object.entries(dimensions)) {
+    for (const kind of ["dimension", "value"] as const) {
+      if (kind === "value" && value === null) continue;
+      const found = catalog.find(
+        (item) =>
+          item.kind === kind &&
+          (kind === "dimension"
+            ? item.code === key
+            : item.kind === "value" && item.dimension === key && item.code === value),
+      );
+      if (!found?.active || found.from > range.from || found.to < range.to)
+        tradeError(`data.defaultDimensions.${key}`, "reference");
+    }
+  }
 }
 export function tradeEffective(config: TradeConfig, day: string): boolean {
   return config.active && config.data.from <= day && day <= config.data.to;

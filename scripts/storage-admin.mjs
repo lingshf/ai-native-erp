@@ -51,11 +51,17 @@ function parseArguments(args) {
     for (let index = 0; index < tokens.length; index += 2) {
       const key = tokens[index],
         value = tokens[index + 1];
-      if (!keys.includes(key) || options.has(key) || !value || value.startsWith("--"))
+      if (
+        (!keys.includes(key) && key !== "--opening-items") ||
+        options.has(key) ||
+        !value ||
+        value.startsWith("--")
+      )
         throw new InvalidConfiguration();
       options.set(key, value);
     }
-    if (options.size !== keys.length) throw new InvalidConfiguration();
+    if (options.size !== keys.length + Number(options.has("--opening-items")))
+      throw new InvalidConfiguration();
     for (const key of keys.slice(2)) {
       if (
         !(key === "--drafts" ? ["import-as-draft", "skip"] : ["import", "archive-only"]).includes(
@@ -69,6 +75,9 @@ function parseArguments(args) {
       snapshot: resolve(options.get("--snapshot-dir")),
       target: resolve(options.get("--target")),
       choices: Object.fromEntries(keys.slice(2).map((key) => [key.slice(2), options.get(key)])),
+      openingItems: options.has("--opening-items")
+        ? resolve(options.get("--opening-items"))
+        : undefined,
     };
   }
   if (action === "legacy-snapshot") {
@@ -127,6 +136,16 @@ function parseArguments(args) {
   return { action, scope, configuration: { filename: resolve(options.get("--file")) } };
 }
 
+function readOpeningItems(readFileSync, file) {
+  try {
+    return readFileSync(file);
+  } catch (error) {
+    if (["ENOENT", "EISDIR", "EACCES", "EPERM"].includes(error?.code))
+      throw new InvalidConfiguration();
+    throw error;
+  }
+}
+
 let StorageFailure;
 let LegacyFailure;
 try {
@@ -140,7 +159,7 @@ try {
         legacy:
           "storage-admin.mjs legacy-snapshot --source-dir DIR --out-dir NEW_DIR (isolated stopped source, Windows only)",
         legacyImport:
-          "storage-admin.mjs legacy-import --snapshot-dir DIR --target NEW_DB --drafts import-as-draft|skip --receipts import|archive-only --source-events import|archive-only --transfer-queue import|archive-only --seals import|archive-only --audit import|archive-only",
+          "storage-admin.mjs legacy-import --snapshot-dir DIR --target NEW_DB --drafts import-as-draft|skip --receipts import|archive-only --source-events import|archive-only --transfer-queue import|archive-only --seals import|archive-only --audit import|archive-only [--opening-items FILE.json] (required when AP/AR control accounts are in scope)",
         legacyReconcile:
           "storage-admin.mjs legacy-reconcile --snapshot-dir DIR --target DB --check | --confirm FILE",
         safety:
@@ -169,6 +188,9 @@ try {
         result = await executeLegacyImport(snapshot, {
           target: command.target,
           choices: command.choices,
+          ...(command.openingItems
+            ? { openingItems: { bytes: readOpeningItems(readFileSync, command.openingItems) } }
+            : {}),
         });
       } else {
         const { checkLegacyReconciliation, confirmLegacyReconciliation } = await import(

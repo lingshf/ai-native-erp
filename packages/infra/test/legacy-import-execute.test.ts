@@ -10,7 +10,7 @@ import {
   BusinessEventService,
   DimensionService,
 } from "@erp/core/application";
-import { executeLegacyImport } from "../src/storage/legacy-import.ts";
+import { executeLegacyImport as execute } from "../src/storage/legacy-import.ts";
 import {
   checkLegacyReconciliation,
   confirmLegacyReconciliation,
@@ -20,7 +20,12 @@ import { createMasterDataStore } from "../src/storage/master-data.ts";
 import { createSqliteStorage } from "../src/storage/index.ts";
 import { journalTools } from "../src/storage/journals.ts";
 import { LegacyImportSnapshot, type ImportChoices } from "../src/legacy/import-plan.ts";
-import { captureDirectory, legacyFixture } from "./support/legacy-fixture.mjs";
+import { captureDirectory, legacyFixture, openingItemsFile } from "./support/legacy-fixture.mjs";
+
+/** M2-03b: the fixture's empty AP/AR controls are declared `empty` unless a test overrides it. */
+function executeLegacyImport(...[snapshot, request, hooks]: Parameters<typeof execute>) {
+  return execute(snapshot, { openingItems: openingItemsFile(), ...request }, hooks);
+}
 
 const choices: ImportChoices = {
   drafts: "import-as-draft",
@@ -66,7 +71,7 @@ function refresh(f, source: "teaching" | "enterprise") {
 test.for([100, 99])(
   "historical control posting uses the registered adapter and rejects imbalance (credit=%s)",
   async (credit, t) => {
-    const f = legacyFixture(t),
+    const f = legacyFixture(t, { tradeAdvances: true }),
       target = join(f.directory, "control.sqlite");
     const source = new Database(join(f.target, "erp.sqlite"));
     try {
@@ -107,9 +112,24 @@ test.for([100, 99])(
       source.close();
     }
     refresh(f, "enterprise");
-    const work = executeLegacyImport(open(f), { target, choices });
+    const work = executeLegacyImport(open(f), {
+      target,
+      choices,
+      openingItems: openingItemsFile({
+        accounts: ["1300", "1400", "2100", "2300"],
+        items: { "1300": [100] },
+      }),
+    });
     if (credit === 100) {
       await work;
+      assert.deepEqual((await checkLegacyReconciliation(open(f), target)).blockers, []);
+      const opening = new Database(target);
+      try {
+        // D26 is unchanged: without opening=done the control account blocks regardless of items.
+        opening.exec("UPDATE legacy_import_runs SET opening=NULL");
+      } finally {
+        opening.close();
+      }
       const report = await checkLegacyReconciliation(open(f), target);
       assert.equal(report.verdict, "blocked");
       assert.ok(
@@ -128,17 +148,10 @@ test.for([100, 99])(
         (await confirmLegacyReconciliation(open(f), target, confirmation)).verdict,
         "blocked",
       );
-      const explained = new Database(target);
-      explained.defaultSafeIntegers(true);
-      explained.exec("PRAGMA foreign_keys=OFF; BEGIN");
+      const imported = new Database(target);
+      imported.defaultSafeIntegers(true);
       try {
-        explained.exec(`INSERT INTO trade_item_sources
-          SELECT 'F','00000000-0000-4000-8000-000000000025','invoice','FICT-OPENING',id,NULL
-          FROM journal_entries WHERE company_id='F' LIMIT 1;
-          INSERT INTO open_items VALUES(
-            'F','00000000-0000-4000-8000-000000000025','AR','FICT-PARTY','1300','{}','EUR',
-            '2026-01-15','2026-01-15','2026-01-15','2026-01-15',100,100,0,100,100,0,'open',1);`);
-        const explainedReport = await reconcileLegacy(open(f), explained);
+        const explainedReport = await reconcileLegacy(open(f), imported);
         assert.equal(explainedReport.verdict, "blocked");
         const check = explainedReport.checks.find(
           (check) => check.section === "trade-reconciliation",
@@ -148,8 +161,7 @@ test.for([100, 99])(
         assert.equal(control?.tradeDifferenceMinor, "-100");
         assert.equal(control?.otherSourceMinor, "100");
       } finally {
-        explained.exec("ROLLBACK");
-        explained.close();
+        imported.close();
       }
       assert.equal(
         rows(
@@ -187,12 +199,12 @@ test.for([100, 99])(
           reconciliation.find((row) => row.account === "1300"),
           {
             account: "1300",
-            subledgerMinor: 0,
+            subledgerMinor: 100,
             glMinor: 100,
             tradeGlMinor: 0,
             otherSourceMinor: 100,
-            tradeDifferenceMinor: 0,
-            differenceMinor: 100,
+            tradeDifferenceMinor: -100,
+            differenceMinor: 0,
           },
         );
       } finally {
@@ -409,6 +421,15 @@ test.for(["batch", "reconciliation", "final-commit"] as const)(
       );
       assert.deepEqual(readFileSync(resumed), before);
     }
+    const original = openingItemsFile().bytes,
+      tampered = Buffer.concat([original, Buffer.from(" ")]);
+    for (const openingItems of [{ bytes: tampered }, undefined]) {
+      await assert.rejects(
+        execute(snapshot, { target: resumed, choices, batchLines: 4, openingItems }),
+        { code: openingItems ? "CONFLICT" : "INVALID_INPUT" },
+      );
+      assert.deepEqual(readFileSync(resumed), before);
+    }
     const result = await executeLegacyImport(snapshot, { target: resumed, choices, batchLines: 4 });
     assert.equal(result.status, "imported");
     assert.equal(rows(resumed, "SELECT count(*) n FROM legacy_reconciliations")[0].n, 1);
@@ -417,7 +438,10 @@ test.for(["batch", "reconciliation", "final-commit"] as const)(
       rows(first, "SELECT value FROM write_seq"),
     );
     const saved = rows(resumed, "SELECT report FROM legacy_reconciliations")[0];
-    assert.equal(JSON.parse(saved.report).verdict, "blocked");
+    assert.equal(JSON.parse(saved.report).verdict, "pending");
+    assert.deepEqual(rows(resumed, "SELECT opening FROM legacy_import_runs"), [
+      { opening: "done" },
+    ]);
     const normalize = (value: Record<string, unknown[]>) =>
       JSON.stringify(value, (key, item) =>
         ["run_id", "import_run", "posted_at"].includes(key)

@@ -11,7 +11,7 @@ import { checkLegacyReconciliation } from "../src/legacy/reconcile.ts";
 import { executeLegacyImport } from "../src/storage/legacy-import.ts";
 import { MigrationReader } from "../src/workers/migration-reader.ts";
 import { createApi } from "../src/http/index.ts";
-import { legacyFixture } from "../test/support/legacy-fixture.mjs";
+import { legacyFixture, openingItemsFile } from "../test/support/legacy-fixture.mjs";
 
 const cleanup: (() => void)[] = [];
 const f = legacyFixture({ onTestFinished: (work: () => void) => cleanup.push(work) });
@@ -47,7 +47,7 @@ try {
     audit: "archive-only",
   };
   const start = performance.now();
-  await executeLegacyImport(snapshot, { target, choices });
+  await executeLegacyImport(snapshot, { target, choices, openingItems: openingItemsFile() });
   const importMs = performance.now() - start;
   const db = new Database(target, { readonly: true });
   try {
@@ -68,7 +68,7 @@ try {
     const checkStart = performance.now();
     const report = await checkLegacyReconciliation(snapshot, target);
     const checkMs = performance.now() - checkStart;
-    assert.equal(report.verdict, "blocked");
+    assert.equal(report.verdict, "pending");
     const migration = new MigrationReader(target);
     const api = await createApi({ migration, allowPortZero: true, environment: { ERP_PORT: "0" } });
     try {
@@ -80,7 +80,7 @@ try {
         const bytes = await response.text();
         const status = migrationStatusSchema.parse(JSON.parse(bytes));
         assert.equal(status.run?.status, "imported");
-        assert.equal(status.run?.report?.verdict, "blocked");
+        assert.equal(status.run?.report?.verdict, "pending");
         return { ms: performance.now() - start, bytes: Buffer.byteLength(bytes) };
       };
       for (let warmup = 0; warmup < 5; warmup++) await sample();

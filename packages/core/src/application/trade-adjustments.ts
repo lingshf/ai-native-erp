@@ -118,12 +118,30 @@ export async function prepareTradeAction(
     });
     master.push(defaults);
   };
-  const account = async (code: string, role: TradeAccountRole, side: "AP" | "AR") => {
-    const key = JSON.stringify([code, role, side]);
+  const account = async (
+    code: string,
+    role: TradeAccountRole,
+    side: "AP" | "AR",
+    alternate?: { role: TradeAccountRole; openingItem: string },
+  ) => {
+    const key = JSON.stringify([code, role, side, alternate ?? null]);
     if (checkedAccounts.has(key)) return;
     const value = await repo.account(companyCode, code);
     try {
-      assertTradeAccount(value, role, side);
+      try {
+        assertTradeAccount(value, role, side);
+      } catch (error) {
+        // D30: looked up only after a role mismatch, so M1 items cost no extra query.
+        if (
+          !(error instanceof DomainError) ||
+          !alternate ||
+          !(await repo.tradeOpeningItems(companyCode, [alternate.openingItem])).has(
+            alternate.openingItem,
+          )
+        )
+          throw error;
+        assertTradeAccount(value, alternate.role, side);
+      }
     } catch (error) {
       if (error instanceof DomainError) tradeDocumentError(code, "account");
       throw error;
@@ -213,12 +231,20 @@ export async function prepareTradeAction(
     if (source.party !== target.party || source.side !== target.side)
       tradeDocumentError("targetId", "party");
     if (source.currency !== target.currency) tradeDocumentError("targetId", "currency");
+    // D30: legacy opening items may sit on either same-side trade account role.
     await account(
       source.controlAccount,
       source.kind === "advance" ? "advanceAccount" : "controlAccount",
       source.side,
+      {
+        role: source.kind === "advance" ? "controlAccount" : "advanceAccount",
+        openingItem: source.itemId,
+      },
     );
-    await account(target.controlAccount, "controlAccount", target.side);
+    await account(target.controlAccount, "controlAccount", target.side, {
+      role: "advanceAccount",
+      openingItem: target.itemId,
+    });
     gross = command.gross;
     changes.push(
       { before: source, after: consume(source, gross) },
@@ -229,7 +255,14 @@ export async function prepareTradeAction(
     for (const segment of allocateTradeSegments(target, gross))
       push(target.controlAccount, target.side === "AP", segment.gross, segment.dimensions);
   } else if (command.kind === "credit") {
-    const invoice = required(await repo.tradeDocument(companyCode, command.invoiceId));
+    // D30: opening items carry no trade document lines to credit.
+    const document = await repo.tradeDocument(companyCode, command.invoiceId);
+    if (
+      !document &&
+      (await repo.tradeOpeningItems(companyCode, [command.invoiceId])).has(command.invoiceId)
+    )
+      tradeDocumentError("invoiceId", "reference");
+    const invoice = required(document);
     const original = await item(command.invoiceId, command.revision);
     const entry = required(await repo.journalEntry(companyCode, invoice.journalId));
     const prior = await repo.tradeCreditLines(companyCode, command.invoiceId);
@@ -371,6 +404,9 @@ export async function prepareTradeAction(
       },
     );
   } else if (command.kind === "cancel") {
+    // D30: opening items are legacy balances, not cancellable trade evidence.
+    const source = required(await repo.tradeItemSource(companyCode, command.itemId));
+    if (source.opening) tradeDocumentError("itemId", "reference");
     const original = await item(command.itemId, command.revision);
     if (
       original.remainingGross !== original.gross ||
@@ -382,7 +418,6 @@ export async function prepareTradeAction(
       (await repo.tradeCreditLines(companyCode, original.itemId)).length
     )
       tradeDocumentError("itemId", "reference");
-    const source = required(await repo.tradeItemSource(companyCode, original.itemId));
     if (source.originalId !== null) {
       if (command.relatedRevision === null) tradeDocumentError("relatedRevision", "shape");
       const invoice = await item(source.originalId, command.relatedRevision);
