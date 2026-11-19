@@ -201,7 +201,14 @@ pages order by accounting date, journal ID and line number, pin the initial post
 sequence watermark, and bind cursors to company, account, period, stage and dimension
 filter. Totals and running prefixes are SQL aggregates; the client cannot supply
 trusted balances. Unassigned dimension filtering matches missing or null values.
-Refreshing starts a new watermark. Ordinary report requests do not create receipts.
+Reports return their posting watermark. Report and ledger requests can explicitly
+pin that same watermark, including the first drilldown page and group navigation.
+Historical report reads filter immutable entries by sequence; current-watermark
+reads retain the covering-index fast path. Unavailable/future watermarks fail with
+409, and cursor/watermark mismatches fail with 400, never silently using latest.
+This pins GL history, not historical account configuration: the documented current
+classification basis remains unchanged. Refreshing explicitly starts a new watermark.
+Ordinary report requests do not create receipts.
 
 `npm run bench:generate-ledger -- <absolute-new-file>` refuses existing files and
 builds the production schema with a deterministic 1-company, 200-account, 24-period,

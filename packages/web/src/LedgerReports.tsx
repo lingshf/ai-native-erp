@@ -7,6 +7,7 @@ import {
   accountSchema,
   reportSchema,
   ledgerSchema,
+  reportWatermarkQuerySchema,
   type CompanyDto,
   type ReportDto,
 } from "@erp/core/contracts";
@@ -79,6 +80,9 @@ function ErrorBox({ error, retry, t }: { error: unknown; retry: () => void; t: T
     <p role="alert">
       {t("ledger.error")}{" "}
       {error instanceof MasterDataFailure &&
+        error.detail?.code === "CONFLICT" &&
+        t("ledger.snapshotUnavailable")}{" "}
+      {error instanceof MasterDataFailure &&
         (error.kind === "network" ? (
           t("reports.networkError")
         ) : error.kind === "invalid" ? (
@@ -128,14 +132,25 @@ function CompanyReports({
     /^[1-9]\d{3}$/u.test(account) &&
     [...params.keys()].every(
       (key) =>
-        ["company", "month", "view", "stage", "account", "group", "dimension", "value"].includes(
-          key,
-        ) && params.getAll(key).length === 1,
+        [
+          "company",
+          "month",
+          "view",
+          "stage",
+          "account",
+          "group",
+          "dimension",
+          "value",
+          "watermark",
+        ].includes(key) && params.getAll(key).length === 1,
     ) &&
     params.has("dimension") === params.has("value") &&
+    (!params.has("watermark") ||
+      reportWatermarkQuerySchema.safeParse(params.get("watermark")).success) &&
     (!params.get("group") ||
       accountSchema.shape.reportGroup.safeParse(params.get("group")).success);
   const search = new URLSearchParams({ company: company.code, month: month ?? "", stage });
+  if (params.has("watermark")) search.set("watermark", params.get("watermark") ?? "");
   const change = (fields: Record<string, string>) =>
     setParams({
       ...Object.fromEntries(params),
@@ -196,6 +211,9 @@ function CompanyReports({
         type="button"
         onClick={() => {
           void client.resetQueries({ queryKey: ["ledger-live", company.code] });
+          const next = new URLSearchParams(params);
+          next.delete("watermark");
+          setParams(next);
         }}
       >
         {t("ledger.refresh")}
@@ -255,17 +273,24 @@ function FinancialReport({
   t: T;
 }) {
   const query = useQuery({
-    queryKey: ["ledger-live", company.code, month, stage, view],
-    queryFn: ({ signal }) =>
-      masterRequest(`/api/v1/reports/${view}?${search}`, reportSchema, { signal }),
+    queryKey: ["ledger-live", company.code, month, stage, view, search.get("watermark")],
+    queryFn: async ({ signal }) => {
+      const report = await masterRequest(`/api/v1/reports/${view}?${search}`, reportSchema, {
+        signal,
+      });
+      if (search.has("watermark") && report.watermark !== Number(search.get("watermark")))
+        throw new MasterDataFailure("invalid");
+      return report;
+    },
   });
   if (query.isPending) return <p role="status">{t("master.loading")}</p>;
   if (query.isError)
     return <ErrorBox error={query.error} retry={() => void query.refetch()} t={t} />;
   const report = query.data,
     fmt = (n: number) => formatMinor(n, preferences.language, company.scale);
-  const toLedger = (code: string) =>
-    `/ledger?${new URLSearchParams({ company: company.code, month, account: code, stage })}`;
+  const pinnedSearch = new URLSearchParams(search);
+  pinnedSearch.set("watermark", String(report.watermark));
+  const toLedger = (code: string) => `/ledger?${pinnedSearch}&account=${code}`;
   const selected = report.trial.rows.filter(
     (row) =>
       (!group || row.reportGroup === group) &&
@@ -277,8 +302,13 @@ function FinancialReport({
   );
   const groupValue = (row: ReportDto["groups"][number]) =>
     view === "income" ? row.activity : row.closing;
+  const incomeGroup =
+    view === "income" ? report.groups.find((row) => row.reportGroup === group) : undefined;
   return (
     <section aria-label={t(`ledger.${view}`)}>
+      <p>
+        {t("ledger.watermark")}: {report.watermark}
+      </p>
       {view === "reconciliation" && (
         <p className="report-boundary">{t("ledger.reconciliationScope")}</p>
       )}
@@ -348,7 +378,9 @@ function FinancialReport({
                   <tr key={row.reportGroup}>
                     <th>{t(`master.report.${row.reportGroup}`)}</th>
                     <td>
-                      <Link to={`/ledger-reports?${search}&view=${view}&group=${row.reportGroup}`}>
+                      <Link
+                        to={`/ledger-reports?${pinnedSearch}&view=${view}&group=${row.reportGroup}`}
+                      >
                         {fmt(groupValue(row))}
                       </Link>
                     </td>
@@ -356,11 +388,17 @@ function FinancialReport({
                 ))}
             </tbody>
           </table>
+          {incomeGroup && (
+            <p>
+              {t("ledger.reportActivity")}: {fmt(incomeGroup.activity)}
+            </p>
+          )}
           <VirtualRows
             items={selected}
-            title={t("ledger.trial")}
+            title={t(view === "income" ? "ledger.incomeAccounts" : "ledger.trial")}
             header={[
               t("ledger.account"),
+              ...(view === "income" ? [t("ledger.reportActivity")] : []),
               t("ledger.opening"),
               t("ledger.debit"),
               t("ledger.credit"),
@@ -372,6 +410,17 @@ function FinancialReport({
                   {row.code} · {row.name}
                   {row.abnormal && ` · ${t("ledger.abnormal")}`}
                 </th>
+                {view === "income" && (
+                  <td className="amount">
+                    <Link to={toLedger(row.code)}>
+                      {fmt(
+                        row.category === "REVENUE"
+                          ? row.credit - row.debit
+                          : row.debit - row.credit,
+                      )}
+                    </Link>
+                  </td>
+                )}
                 {[row.opening, row.debit, row.credit, row.closing].map((n, index) => (
                   <td key={["opening", "debit", "credit", "closing"][index]} className="amount">
                     <Link to={toLedger(row.code)}>{fmt(n)}</Link>
@@ -415,6 +464,7 @@ function LedgerGrid({
     filters.set("dimension", params.get("dimension") ?? "");
     filters.set("value", params.get("value") ?? "");
   }
+  if (params.has("watermark")) filters.set("watermark", params.get("watermark") ?? "");
   const query = useInfiniteQuery({
     queryKey: [
       "ledger-live",
@@ -424,14 +474,19 @@ function LedgerGrid({
       params.get("stage") ?? "adjusted",
       params.get("dimension"),
       params.get("value"),
+      params.get("watermark"),
     ],
     initialPageParam: "",
-    queryFn: ({ pageParam, signal }) =>
-      masterRequest(
+    queryFn: async ({ pageParam, signal }) => {
+      const page = await masterRequest(
         `/api/v1/ledger?${filters}${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`,
         ledgerSchema,
         { signal },
-      ),
+      );
+      if (params.has("watermark") && page.watermark !== Number(params.get("watermark")))
+        throw new MasterDataFailure("invalid");
+      return page;
+    },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
   const rows = query.data?.pages.flatMap((page) => page.items) ?? [],
@@ -447,6 +502,7 @@ function LedgerGrid({
             month,
             account: code,
             stage: params.get("stage") ?? "adjusted",
+            ...(params.has("watermark") ? { watermark: params.get("watermark") ?? "" } : {}),
             ...(dimension ? { dimension, value } : value ? { value } : {}),
           });
         }}
@@ -474,9 +530,9 @@ function LedgerGrid({
       )}
       {first && (
         <p>
-          {t("ledger.opening")}: {fmt(first.opening)} / {t("ledger.debit")}: {fmt(first.debit)} /{" "}
-          {t("ledger.credit")}: {fmt(first.credit)} / {t("ledger.closing")}: {fmt(first.closing)} ·{" "}
-          {t("ledger.total")}: {first.total}
+          {t("ledger.watermark")}: {first.watermark} · {t("ledger.opening")}: {fmt(first.opening)} /{" "}
+          {t("ledger.debit")}: {fmt(first.debit)} / {t("ledger.credit")}: {fmt(first.credit)} /{" "}
+          {t("ledger.closing")}: {fmt(first.closing)} · {t("ledger.total")}: {first.total}
         </p>
       )}
       {first && !rows.length && <p>{t("ledger.empty")}</p>}

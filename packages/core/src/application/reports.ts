@@ -2,6 +2,7 @@ import {
   DomainError,
   buildReports,
   reportCheck,
+  reportWatermark,
   checkedCode,
   checkedAccountCode,
   checkedTeachingMonth,
@@ -14,7 +15,13 @@ import {
 import type { MasterDataStore } from "./master-data.ts";
 
 export interface ReportRepository {
-  reportBalances(company: string, month: string, stage: TrialStage): Promise<readonly ReportRow[]>;
+  reportWatermark(company: string): Promise<number>;
+  reportBalances(
+    company: string,
+    month: string,
+    stage: TrialStage,
+    watermark?: number,
+  ): Promise<readonly ReportRow[]>;
   ledgerPage(
     company: string,
     account: string,
@@ -33,30 +40,58 @@ export class ReportService {
   constructor(store: MasterDataStore) {
     this.store = store;
   }
-  report(company: string, month: string, stage: TrialStage = "adjusted") {
+  report(
+    company: string,
+    month: string,
+    stage: TrialStage = "adjusted",
+    requestedWatermark?: number,
+  ) {
     checkedScope(company, month, stage);
     return this.store.read(async (repo) => {
       const owner = await repo.company(company);
       if (!owner || !(await repo.period(company, month))) throw new DomainError("NOT_FOUND");
-      return buildReports(owner, month, stage, await repo.reportBalances(company, month, stage));
+      const latest = await repo.reportWatermark(company),
+        watermark = reportWatermark(requestedWatermark, latest);
+      return {
+        ...buildReports(
+          owner,
+          month,
+          stage,
+          await repo.reportBalances(
+            company,
+            month,
+            stage,
+            watermark === latest ? undefined : watermark,
+          ),
+        ),
+        watermark,
+      };
     });
   }
-  reconciliation(company: string, month: string, stage: TrialStage = "adjusted") {
+  reconciliation(
+    company: string,
+    month: string,
+    stage: TrialStage = "adjusted",
+    requestedWatermark?: number,
+  ) {
     checkedScope(company, month, stage);
     return this.store.read(async (repo) => {
       const owner = await repo.company(company);
       if (!owner || !(await repo.period(company, month))) throw new DomainError("NOT_FOUND");
+      const latest = await repo.reportWatermark(company),
+        watermark = reportWatermark(requestedWatermark, latest),
+        historical = watermark === latest ? undefined : watermark;
       const unadjusted = buildReports(
         owner,
         month,
         "unadjusted",
-        await repo.reportBalances(company, month, "unadjusted"),
+        await repo.reportBalances(company, month, "unadjusted", historical),
       );
       const adjusted = buildReports(
         owner,
         month,
         "adjusted",
-        await repo.reportBalances(company, month, "adjusted"),
+        await repo.reportBalances(company, month, "adjusted", historical),
       );
       const selected = stage === "unadjusted" ? unadjusted : { ...adjusted, stage };
       const checks = [
@@ -67,6 +102,7 @@ export class ReportService {
       ];
       return {
         ...selected,
+        watermark,
         reconciliation: { checks, allPass: checks.every((check) => check.pass) },
       };
     });

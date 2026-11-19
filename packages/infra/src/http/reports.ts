@@ -19,11 +19,21 @@ export function registerReportRoutes(
       if (!service) throw httpError(503);
       const parsed = reportQuerySchema.safeParse(request.query);
       if (!parsed.success) throw httpError(400);
-      const { company, month, stage } = parsed.data;
+      const { company, month, stage, watermark } = parsed.data;
       return reportSchema.parse(
         await (kind === "reconciliation"
-          ? service.reconciliation(company, month, stage)
-          : service.report(company, month, stage)),
+          ? service.reconciliation(
+              company,
+              month,
+              stage,
+              watermark === undefined ? undefined : Number(watermark),
+            )
+          : service.report(
+              company,
+              month,
+              stage,
+              watermark === undefined ? undefined : Number(watermark),
+            )),
       );
     });
   }
@@ -32,11 +42,13 @@ export function registerReportRoutes(
     if (!service) throw httpError(503);
     const parsed = ledgerQuerySchema.safeParse(request.query);
     if (!parsed.success) throw httpError(400);
-    const { company, account, month, limit, cursor, dimension, value, stage } = parsed.data;
+    const { company, account, month, limit, cursor, dimension, value, stage, watermark } =
+      parsed.data;
     return ledgerSchema.parse(
       await service.ledger(company, account, month, {
         limit: Number(limit),
         stage,
+        ...(watermark === undefined ? {} : { watermark: Number(watermark) }),
         ...(cursor ? { cursor } : {}),
         ...(dimension && value !== undefined
           ? { dimension, value: value === "~" ? null : value }

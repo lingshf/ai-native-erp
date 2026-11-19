@@ -1,5 +1,11 @@
 import { DomainError, StorageError, type ReportRepository } from "@erp/core/application";
-import { reportMinor, type LedgerCursor, type LedgerLine, type ReportRow } from "@erp/core/domain";
+import {
+  reportMinor,
+  reportWatermark,
+  type LedgerCursor,
+  type LedgerLine,
+  type ReportRow,
+} from "@erp/core/domain";
 import { accountSchema, ledgerCursorSchema, dimensionMapSchema } from "@erp/core/contracts";
 import type { Connection, Row, Parameters } from "./types.ts";
 
@@ -46,15 +52,31 @@ function cursor(text: string | undefined): LedgerCursor | null {
   }
 }
 export function reportRepository(db: Connection): ReportRepository {
+  const latestWatermark = async (company: string) =>
+    amount(
+      (
+        await db.query(
+          "SELECT coalesce(max(sequence),0) AS n FROM journal_entries WHERE company_id=?",
+          [company],
+        )
+      )[0],
+      "n",
+    );
   return {
-    async reportBalances(company, month, stage) {
-      const sql =
+    reportWatermark: latestWatermark,
+    async reportBalances(company, month, stage, watermark) {
+      let sql =
         stage === "unadjusted"
           ? REPORT_BALANCES_SQL.replace(
               "GROUP BY l.account_code",
               "AND (l.period<? OR NOT EXISTS(SELECT 1 FROM journal_entries e WHERE e.company_id=l.company_id AND e.id=l.entry_id AND e.kind='adjusting')) GROUP BY l.account_code",
             )
           : REPORT_BALANCES_SQL;
+      if (watermark !== undefined)
+        sql = sql.replace(
+          "GROUP BY l.account_code",
+          "AND l.entry_id IN (SELECT id FROM journal_entries WHERE company_id=? AND sequence<=?) GROUP BY l.account_code",
+        );
       const rows = await db.query(sql, [
         month,
         month,
@@ -63,6 +85,7 @@ export function reportRepository(db: Connection): ReportRepository {
         company,
         month,
         ...(stage === "unadjusted" ? [month] : []),
+        ...(watermark === undefined ? [] : [company, watermark]),
         company,
       ]);
       return rows.map(
@@ -99,21 +122,15 @@ export function reportRepository(db: Connection): ReportRepository {
           after.account !== account ||
           after.month !== month ||
           after.stage !== stage ||
+          (query.watermark !== undefined && after.watermark !== query.watermark) ||
           after.dimension !== (query.dimension ?? null) ||
           after.value !== (query.value ?? null))
       )
         throw new DomainError("INVALID_INPUT");
-      const watermark =
-        after?.watermark ??
-        amount(
-          (
-            await db.query(
-              "SELECT coalesce(max(sequence),0) AS n FROM journal_entries WHERE company_id=?",
-              [company],
-            )
-          )[0],
-          "n",
-        );
+      const watermark = reportWatermark(
+        query.watermark ?? after?.watermark,
+        await latestWatermark(company),
+      );
       const dimensionSql =
         query.dimension === undefined ? "" : " AND json_extract(l.dimensions,?) IS ?";
       const dimensionValues: Parameters =

@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Link, useSearchParams } from "react-router-dom";
@@ -137,23 +144,33 @@ function CompanyJournals({
     returnFocus = useRef<HTMLElement | null>(null),
     focusLine = useRef<number | null>(null);
   const lineCount = draft?.lines.length ?? 0;
+  const detailRequest = useRef<AbortController | null>(null);
+  const loadDetail = useCallback(
+    async (id: string, clearReceipt = false) => {
+      detailRequest.current?.abort();
+      const controller = new AbortController();
+      detailRequest.current = controller;
+      setError(undefined);
+      try {
+        const value = await masterRequest(
+          `/api/v1/journals/${encodeURIComponent(id)}?${url(company.code)}`,
+          journalDetailSchema,
+          { signal: controller.signal },
+        );
+        if (alive.current && !controller.signal.aborted) {
+          setDetail(value);
+          if (clearReceipt) setReceipt(null);
+        }
+      } catch (error) {
+        if (alive.current && !controller.signal.aborted) setError(error);
+      }
+    },
+    [company.code],
+  );
   useEffect(() => {
-    if (!initialEntryId) return;
-    const controller = new AbortController();
-    void masterRequest(
-      `/api/v1/journals/${encodeURIComponent(initialEntryId)}?${url(company.code)}`,
-      journalDetailSchema,
-      { signal: controller.signal },
-    ).then(
-      (value) => {
-        if (!controller.signal.aborted) setDetail(value);
-      },
-      (error) => {
-        if (!controller.signal.aborted) setError(error);
-      },
-    );
-    return () => controller.abort();
-  }, [company.code, initialEntryId]);
+    if (initialEntryId) void loadDetail(initialEntryId);
+    return () => detailRequest.current?.abort();
+  }, [initialEntryId, loadDetail]);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -221,6 +238,7 @@ function CompanyJournals({
   ];
   const rows = listing.data?.pages.flatMap((page) => page.items) ?? [];
   function edit(value: JournalDraftDto | null) {
+    detailRequest.current?.abort();
     lineKeys.current = value?.lines.map(() => crypto.randomUUID()) ?? [];
     setDraft(value);
     setDirty(value !== null && value.revision === 0);
@@ -437,6 +455,7 @@ function CompanyJournals({
                 disabled={busy || Boolean(draft)}
                 onClick={() =>
                   void run(async () => {
+                    detailRequest.current?.abort();
                     if (row.revision !== null) {
                       const value = await masterRequest(
                         `/api/v1/journals/drafts/${row.id}?${url(company.code)}`,
@@ -447,14 +466,7 @@ function CompanyJournals({
                         setDetail(null);
                       }
                     } else {
-                      const value = await masterRequest(
-                        `/api/v1/journals/${row.id}?${url(company.code)}`,
-                        journalDetailSchema,
-                      );
-                      if (alive.current) {
-                        setDetail(value);
-                        setReceipt(null);
-                      }
+                      await loadDetail(row.id, true);
                     }
                   })
                 }
@@ -868,15 +880,7 @@ function CompanyJournals({
               type="button"
               key={id}
               disabled={busy || Boolean(draft)}
-              onClick={() =>
-                void run(async () => {
-                  const result = await masterRequest(
-                    `/api/v1/journals/${id}?${url(company.code)}`,
-                    journalDetailSchema,
-                  );
-                  if (alive.current) setDetail(result);
-                })
-              }
+              onClick={() => void run(() => loadDetail(id))}
             >
               {t("journal.view")} {id}
             </button>
@@ -918,15 +922,7 @@ function CompanyJournals({
               <button
                 type="button"
                 disabled={busy || Boolean(draft)}
-                onClick={() =>
-                  void run(async () => {
-                    const value = await masterRequest(
-                      `/api/v1/journals/${edge.outputId}?${url(company.code)}`,
-                      journalDetailSchema,
-                    );
-                    if (alive.current) setDetail(value);
-                  })
-                }
+                onClick={() => void run(() => loadDetail(edge.outputId))}
               >
                 {edge.outputId}
               </button>

@@ -13,6 +13,12 @@ export function reportMinor(value: number): number {
   if (!Number.isSafeInteger(value)) throw new DomainError("INVALID_INPUT");
   return value === 0 ? 0 : value;
 }
+export function reportWatermark(value: number | undefined, latest: number): number {
+  if (value !== undefined && (!Number.isSafeInteger(value) || value < 0))
+    throw new DomainError("INVALID_INPUT");
+  if (value !== undefined && value > latest) throw new DomainError("CONFLICT");
+  return value ?? latest;
+}
 const sum = (values: readonly number[]) =>
   reportMinor(Number(values.reduce((total, value) => total + BigInt(value), 0n)));
 export function reportCheck(id: string, left: number, right: number) {
@@ -120,6 +126,7 @@ export interface LedgerCursor {
   readonly lineNo: number;
 }
 export interface LedgerQuery {
+  readonly watermark?: number;
   readonly stage?: TrialStage;
   readonly limit: number;
   readonly cursor?: string;

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { buildReports, type Account } from "@erp/core/domain";
 import { App } from "../src/App.tsx";
@@ -27,6 +27,7 @@ const account: Account = {
   revision: 1,
 };
 const id = "00000000-0000-4000-8000-000000000001";
+const secondId = "00000000-0000-4000-8000-000000000002";
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 afterEach(() => {
   window.history.replaceState(null, "", "/");
@@ -45,7 +46,7 @@ function geometry() {
     },
   );
 }
-it("drills live report group → account → paged GL → original journal, preserves stage and surfaces failures", async () => {
+it("preserves report snapshots, statement-period drilldowns and latest journal selection across failures", async () => {
   geometry();
   window.history.replaceState(
     null,
@@ -53,7 +54,7 @@ it("drills live report group → account → paged GL → original journal, pres
     "/#/ledger-reports?company=DEFAULT&month=2026-01&stage=unadjusted",
   );
   const report = buildReports(company, "2026-01", "unadjusted", [
-    { ...account, opening: 0, debit: 123, credit: 0, closing: 123, yearNet: 123 },
+    { ...account, opening: 10000, debit: 3000, credit: 0, closing: 13000, yearNet: 3000 },
     {
       ...account,
       code: "4000",
@@ -61,19 +62,21 @@ it("drills live report group → account → paged GL → original journal, pres
       category: "REVENUE",
       reportGroup: "sales",
       normalSide: "CREDIT",
-      opening: 0,
+      opening: -10000,
       debit: 0,
-      credit: 123,
-      closing: -123,
-      yearNet: -123,
+      credit: 3000,
+      closing: -13000,
+      yearNet: -3000,
     },
   ]);
-  let ledgerCalls = 0,
+  let latestWatermark = 1,
     broken = false;
+  let resolveOriginal: (() => void) | undefined;
+  let originalSignal: AbortSignal | null | undefined;
   const requests: string[] = [];
   vi.stubGlobal(
     "fetch",
-    vi.fn<typeof fetch>().mockImplementation(async (path) => {
+    vi.fn<typeof fetch>().mockImplementation(async (path, options) => {
       const url = new URL(String(path), "http://localhost");
       requests.push(url.pathname + url.search);
       if (url.pathname === "/api/v1/companies")
@@ -83,100 +86,200 @@ it("drills live report group → account → paged GL → original journal, pres
           items: [{ month: "2026-01", status: "open", revision: 1 }],
           nextCursor: null,
         });
-      if (url.pathname.startsWith("/api/v1/reports/")) return reply(report);
+      if (url.pathname.startsWith("/api/v1/reports/"))
+        return reply({
+          ...report,
+          watermark: Number(url.searchParams.get("watermark") ?? latestWatermark),
+        });
       if (url.pathname === "/api/v1/ledger") {
-        ledgerCalls++;
+        const watermark = Number(url.searchParams.get("watermark") ?? latestWatermark);
+        if (watermark > latestWatermark)
+          return reply(
+            {
+              code: "CONFLICT",
+              messageKey: "api.error.conflict",
+              params: {},
+              fieldErrors: [],
+              requestId: id,
+              retryable: false,
+            },
+            409,
+          );
         if (broken) return reply({ invalid: true });
+        const firstPage = !url.searchParams.has("cursor"),
+          revenue = url.searchParams.get("account") === "4000",
+          direction = revenue ? -1 : 1,
+          monthly = watermark === 1 ? 3000 : 5000;
         return reply({
           company: "DEFAULT",
           month: "2026-01",
-          account: "1000",
+          account: url.searchParams.get("account"),
           currency: "CNY",
           scale: 2,
           stage: "unadjusted",
-          opening: 0,
-          debit: 123,
-          credit: 0,
-          closing: 123,
+          opening: direction * 10000,
+          debit: revenue ? 0 : monthly,
+          credit: revenue ? monthly : 0,
+          closing: direction * (10000 + monthly),
           total: 2,
-          watermark: 1,
+          watermark,
           items: [
             {
               entryId: id,
-              lineNo: ledgerCalls === 1 ? 1 : 2,
+              lineNo: firstPage ? 1 : 2,
               date: "2026-01-03",
               sourceRef: "SYNTHETIC-1",
               memo: "Synthetic",
-              debit: ledgerCalls === 1 ? 100 : 23,
-              credit: 0,
+              debit: revenue ? 0 : firstPage ? 1000 : monthly - 1000,
+              credit: revenue ? (firstPage ? 1000 : monthly - 1000) : 0,
               dimensions: {},
-              balance: ledgerCalls === 1 ? 100 : 123,
+              balance: direction * (firstPage ? 11000 : 10000 + monthly),
             },
           ],
-          nextCursor: ledgerCalls === 1 ? "next" : null,
+          nextCursor: firstPage ? "next" : null,
         });
       }
-      if (url.pathname === "/api/v1/journals") return reply({ items: [], nextCursor: null });
+      if (url.pathname === "/api/v1/journals")
+        return reply({
+          items: [
+            {
+              id: secondId,
+              date: "2026-01-03",
+              sourceRef: "SYNTHETIC-2",
+              memo: "Selected journal B",
+              operation: "journal",
+              revision: null,
+            },
+          ],
+          nextCursor: null,
+        });
       if (url.pathname === "/api/v1/accounts") return reply({ items: [account], nextCursor: null });
       if (url.pathname === "/api/v1/dimensions") return reply({ items: [], nextCursor: null });
-      if (url.pathname === `/api/v1/journals/${id}`)
-        return reply({
-          entry: {
-            id,
-            sourceRef: "SYNTHETIC-1",
-            date: "2026-01-03",
-            memo: "Original exact journal",
-            kind: "normal",
-            operation: "journal",
-            role: "normal",
-            postedAt: "2026-01-03T00:00:00.000Z",
-            fingerprint: "a".repeat(64),
-            debit: 123,
-            credit: 123,
-            lines: ["1000", "4000"].map((code, index) => ({
-              account: code,
-              debit: index ? 0 : 123,
-              credit: index ? 123 : 0,
-              dimensions: {},
-              dimensionOrigins: {},
-              role: "business",
-              suspense: null,
-              balancing: null,
-              historical: null,
-              group: null,
-            })),
-          },
-          chain: [],
-          businessEventId: null,
-        });
+      if (
+        url.pathname === `/api/v1/journals/${id}` ||
+        url.pathname === `/api/v1/journals/${secondId}`
+      ) {
+        const first = url.pathname.endsWith(id),
+          detail = {
+            entry: {
+              id: first ? id : secondId,
+              sourceRef: first ? "SYNTHETIC-1" : "SYNTHETIC-2",
+              date: "2026-01-03",
+              memo: first ? "Original exact journal" : "Selected journal B",
+              kind: "normal",
+              operation: "journal",
+              role: "normal",
+              postedAt: "2026-01-03T00:00:00.000Z",
+              fingerprint: "a".repeat(64),
+              debit: 3000,
+              credit: 3000,
+              lines: ["1000", "4000"].map((code, index) => ({
+                account: code,
+                debit: index ? 0 : 3000,
+                credit: index ? 3000 : 0,
+                dimensions: {},
+                dimensionOrigins: {},
+                role: "business",
+                suspense: null,
+                balancing: null,
+                historical: null,
+                group: null,
+              })),
+            },
+            chain: [],
+            businessEventId: null,
+          };
+        if (first) {
+          originalSignal = options?.signal;
+          return new Promise<Response>((resolve) => {
+            resolveOriginal = () => resolve(reply(detail));
+          });
+        }
+        return reply(detail);
+      }
       throw new Error(`Unexpected ${url}`);
     }),
   );
   render(<App />);
   const groups = await screen.findByRole("table", { name: "报表类别" });
   fireEvent.click(
-    within(within(groups).getByRole("row", { name: "货币资金 1.23" })).getByRole("link", {
-      name: "1.23",
+    within(within(groups).getByRole("row", { name: "货币资金 130.00" })).getByRole("link", {
+      name: "130.00",
     }),
   );
   await waitFor(() => expect(window.location.hash).toContain("group=cash"));
-  const table = screen.getByRole("table", { name: "试算平衡" });
-  fireEvent.click(within(table).getAllByRole("link", { name: "1.23" }).at(-1)!);
+  expect(window.location.hash).toContain("watermark=1");
+  latestWatermark = 2;
+  const table = await screen.findByRole("table", { name: "试算平衡" });
+  fireEvent.click(within(table).getAllByRole("link", { name: "130.00" }).at(-1)!);
   await screen.findByRole("link", { name: "SYNTHETIC-1 / 1" });
   expect(requests.find((path) => path.startsWith("/api/v1/ledger?"))).toContain("stage=unadjusted");
+  expect(requests.find((path) => path.startsWith("/api/v1/ledger?"))).toContain("watermark=1");
+  expect(screen.getByText(/期末余额: 130.00/)).toBeTruthy();
   fireEvent.scroll(screen.getByRole("region", { name: "总账明细" }), {
     target: { scrollTop: 1000 },
   });
   await screen.findByRole("link", { name: "SYNTHETIC-1 / 2" });
   expect(requests.find((path) => path.includes("cursor=next"))).toBeDefined();
+  await act(async () => {
+    window.location.hash =
+      "/ledger-reports?company=DEFAULT&month=2026-01&stage=unadjusted&view=income&watermark=1";
+  });
+  const incomeGroups = await screen.findByRole("table", { name: "报表类别" });
+  fireEvent.click(
+    within(within(incomeGroups).getByRole("row", { name: "销售收入 30.00" })).getByRole("link", {
+      name: "30.00",
+    }),
+  );
+  await waitFor(() => expect(window.location.hash).toContain("group=sales"));
+  const incomeAccounts = await screen.findByRole("table", { name: "利润表科目" });
+  expect(
+    within(incomeAccounts).getByRole("columnheader", { name: "本期金额（报表方向）" }),
+  ).toBeTruthy();
+  const revenue = within(incomeAccounts).getByRole("row", { name: /4000 · Revenue/ });
+  expect(within(revenue).getByRole("link", { name: "-100.00" })).toBeTruthy();
+  expect(within(revenue).getByRole("link", { name: "-130.00" })).toBeTruthy();
+  expect(screen.getByText("本期金额（报表方向）: 30.00")).toBeTruthy();
+  fireEvent.click(
+    within(within(revenue).getAllByRole("cell")[0]).getByRole("link", { name: "30.00" }),
+  );
+  await screen.findByRole("link", { name: "SYNTHETIC-1 / 1" });
+  expect(
+    requests.some(
+      (path) =>
+        path.includes("/api/v1/ledger?") &&
+        path.includes("account=4000") &&
+        path.includes("watermark=1"),
+    ),
+  ).toBe(true);
+  await act(async () => {
+    window.location.hash =
+      "/ledger?company=DEFAULT&month=2026-01&stage=unadjusted&account=1000&watermark=2";
+  });
+  await screen.findByText(/期末余额: 150.00/);
+  await act(async () => {
+    window.location.hash =
+      "/ledger?company=DEFAULT&month=2026-01&stage=unadjusted&account=1000&watermark=99";
+  });
+  expect((await screen.findByRole("alert")).textContent).toContain("来源账簿水位不可用");
+  expect(window.location.hash).toContain("watermark=99");
   broken = true;
   fireEvent.click(screen.getByRole("button", { name: "刷新为最新账簿" }));
-  expect((await screen.findByRole("alert")).textContent).toContain("未显示为零");
+  await waitFor(() => expect(window.location.hash).not.toContain("watermark="));
+  await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("未显示为零"));
   broken = false;
   fireEvent.click(screen.getByRole("button", { name: "重试" }));
-  fireEvent.click(await screen.findByRole("link", { name: "SYNTHETIC-1 / 2" }));
-  expect(await screen.findByRole("heading", { name: "SYNTHETIC-1 · 2026-01-03" })).toBeTruthy();
-  expect(screen.getByText("Original exact journal")).toBeTruthy();
+  fireEvent.click(await screen.findByRole("link", { name: "SYNTHETIC-1 / 1" }));
+  fireEvent.click(await screen.findByRole("button", { name: "查看 SYNTHETIC-2" }));
+  expect(await screen.findByRole("heading", { name: "SYNTHETIC-2 · 2026-01-03" })).toBeTruthy();
+  expect(originalSignal?.aborted).toBe(true);
+  expect(resolveOriginal).toBeDefined();
+  await act(async () => {
+    resolveOriginal?.();
+  });
+  expect(screen.getByRole("heading", { name: "SYNTHETIC-2 · 2026-01-03" })).toBeTruthy();
+  expect(screen.queryByText("Original exact journal")).toBeNull();
+  expect(screen.queryByRole("alert")).toBeNull();
 });
 it("bounds the paged virtual table DOM while scrolling within a full page", async () => {
   geometry();

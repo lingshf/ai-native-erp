@@ -9,13 +9,23 @@ import {
 import { dimensionMapSchema, dimensionCodeSchema, dimensionValueCodeSchema } from "./dimensions.ts";
 const minor = z.number().int().min(-Number.MAX_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER);
 const nonnegative = minor.min(0);
+export const reportWatermarkQuerySchema = z
+  .string()
+  .regex(/^(?:0|[1-9]\d*)$/u)
+  .max(16)
+  .refine((value) => Number.isSafeInteger(Number(value)));
 const stage = z.enum(["unadjusted", "adjusted", "postClosing"]);
 const scope = { company: companyCodeSchema, month: periodSchema.shape.month };
-export const reportQuerySchema = z.strictObject({ ...scope, stage: stage.default("adjusted") });
+export const reportQuerySchema = z.strictObject({
+  ...scope,
+  stage: stage.default("adjusted"),
+  watermark: reportWatermarkQuerySchema.optional(),
+});
 export const ledgerQuerySchema = z
   .strictObject({
     ...scope,
     stage: stage.default("adjusted"),
+    watermark: reportWatermarkQuerySchema.optional(),
     account: accountCodeSchema,
     limit: companiesQuerySchema.shape.limit,
     cursor: z
@@ -50,6 +60,7 @@ const row = accountSchema.extend({
 const income = z.strictObject({ revenue: minor, expense: minor, profit: minor });
 export const reportSchema = z.strictObject({
   ...scope,
+  watermark: nonnegative,
   currency: z.string().regex(/^[A-Z]{3}$/u),
   scale: z.number().int().min(0).max(4),
   stage,
@@ -165,7 +176,7 @@ export const reportsOpenApi = {
               schema,
             })),
             responses: Object.fromEntries(
-              [200, 400, 403, 404, 405, 500, 503].map((status) => [
+              [200, 400, 403, 404, 405, 409, 500, 503].map((status) => [
                 String(status),
                 {
                   description:

@@ -215,13 +215,22 @@ it("pages chronological same-entry lines with exact running balances and a stabl
   await post("2026-01-01", "10", "1000", "3000");
   await post("2026-02-03", "2", "1000", "4000", "normal", { DEPT: "A" });
   await post("2026-02-01", "1");
-  await post("2026-02-03", "3");
+  await post("2026-02-03", "3", "1000", "4000", "adjusting");
   await post("2026-02-02", "2", "1000", "1000");
-  let page = ledgerSchema.parse(await reports.ledger("A", "1000", "2026-02", { limit: 1 }));
+  const source = await reports.report("A", "2026-02");
+  await post("2026-02-01", "7");
+  let page = ledgerSchema.parse(
+    await reports.ledger("A", "1000", "2026-02", { limit: 1, watermark: source.watermark }),
+  );
   expect(page).toMatchObject({ opening: 1000, debit: 800, credit: 200, closing: 1600, total: 5 });
   const balances = [page.items[0].balance],
     ids = [`${page.items[0].entryId}:${page.items[0].lineNo}`];
-  await post("2026-02-01", "7");
+  expect(page.watermark).toBe(source.watermark);
+  expect(await reports.report("A", "2026-02", "adjusted", source.watermark)).toEqual(source);
+  const historical = await reports.reconciliation("A", "2026-02", "unadjusted", source.watermark);
+  expect(historical.watermark).toBe(source.watermark);
+  expect(historical.trial.rows.find((row) => row.code === "1000")?.closing).toBe(1300);
+  expect(historical.reconciliation.allPass).toBe(true);
   while (page.nextCursor) {
     page = ledgerSchema.parse(
       await reports.ledger("A", "1000", "2026-02", { limit: 1, cursor: page.nextCursor }),
@@ -235,6 +244,17 @@ it("pages chronological same-entry lines with exact running balances and a stabl
   expect(balances[0]).toBe(1100);
   expect(balances.at(-1)).toBe(1600);
   expect((await reports.ledger("A", "1000", "2026-02", { limit: 100 })).total).toBe(6);
+  expect(await reports.ledger("A", "1000", "2026-02", { limit: 1, watermark: 0 })).toMatchObject({
+    total: 0,
+    closing: 0,
+    watermark: 0,
+  });
+  await expect(reports.report("A", "2026-02", "adjusted", 999)).rejects.toMatchObject({
+    code: "CONFLICT",
+  });
+  await expect(
+    reports.ledger("A", "1000", "2026-02", { limit: 1, watermark: 999 }),
+  ).rejects.toMatchObject({ code: "CONFLICT" });
   expect(
     await reports.ledger("A", "1000", "2026-02", { limit: 100, dimension: "DEPT", value: "A" }),
   ).toMatchObject({ opening: 0, debit: 200, closing: 200, total: 1 });
@@ -243,6 +263,13 @@ it("pages chronological same-entry lines with exact running balances and a stabl
       .total,
   ).toBe(5);
   const first = await reports.ledger("A", "1000", "2026-02", { limit: 1 });
+  await expect(
+    reports.ledger("A", "1000", "2026-02", {
+      limit: 1,
+      cursor: first.nextCursor!,
+      watermark: source.watermark,
+    }),
+  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
   await expect(
     reports.ledger("A", "4000", "2026-02", { limit: 1, cursor: first.nextCursor! }),
   ).rejects.toMatchObject({ code: "INVALID_INPUT" });
@@ -311,10 +338,43 @@ it("enforces read-only HTTP contracts, company isolation and exact request scope
       expect(reply.headers["cache-control"]).toContain("no-store");
     }
     const get = await api.app.inject({
-      url: "/api/v1/ledger?company=A&month=2026-01&account=1000&limit=1",
+      url: "/api/v1/ledger?company=A&month=2026-01&account=1000&limit=1&watermark=1",
       headers,
     });
     expect(ledgerSchema.parse(get.json()).closing).toBe(123);
+    await post("2026-01-02", "0.20");
+    for (const kind of ["trial", "income", "balance-sheet", "reconciliation"]) {
+      const pinned = await api.app.inject({
+        url: `/api/v1/reports/${kind}?company=A&month=2026-01&watermark=1`,
+        headers,
+      });
+      expect(pinned.statusCode).toBe(200);
+      expect(
+        reportSchema.parse(pinned.json()).trial.rows.find((row) => row.code === "1000")?.closing,
+      ).toBe(123);
+    }
+    const pinnedLedger = await api.app.inject({
+      url: "/api/v1/ledger?company=A&month=2026-01&account=1000&watermark=1",
+      headers,
+    });
+    expect(ledgerSchema.parse(pinnedLedger.json())).toMatchObject({
+      watermark: 1,
+      closing: 123,
+      total: 1,
+    });
+    for (const path of ["reports/trial", "ledger"]) {
+      const query = `company=A&month=2026-01${path === "ledger" ? "&account=1000" : ""}`;
+      expect(
+        (await api.app.inject({ url: `/api/v1/${path}?${query}&watermark=999`, headers }))
+          .statusCode,
+      ).toBe(409);
+      for (const value of ["-1", "9007199254740992", "01", "1&watermark=2"]) {
+        expect(
+          (await api.app.inject({ url: `/api/v1/${path}?${query}&watermark=${value}`, headers }))
+            .statusCode,
+        ).toBe(400);
+      }
+    }
     for (const url of [
       "/api/v1/ledger?company=A&month=2026-01&account=1000&value=A",
       "/api/v1/reports/trial?company=A&month=2026-13",
