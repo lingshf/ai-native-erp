@@ -9,6 +9,7 @@ import { selectShardFiles } from "./scripts/ci.ts";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const layerExclude = process.env.CI_TEST_LAYER === "pr" ? ["**/*.slow.test.{ts,tsx}"] : [];
+const browserFiles = ["packages/infra/test/http/*gui*.slow.test.ts"];
 
 // Files share a module graph per worker (isolate: false) because the suite is
 // CPU-bound on CI. Module-level vi.mock() needs a fresh graph, so those files
@@ -127,7 +128,20 @@ export default defineConfig({
           name: "infra",
           environment: "node",
           include: ["packages/infra/**/*.test.ts"],
-          exclude: [...configDefaults.exclude, ...layerExclude, ...moduleMockFiles],
+          exclude: [
+            ...configDefaults.exclude,
+            ...layerExclude,
+            ...moduleMockFiles,
+            ...browserFiles,
+          ],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "infra-browser",
+          environment: "node",
+          include: browserFiles,
         },
       },
       {
