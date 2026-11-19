@@ -30,6 +30,7 @@ import {
   assertAccountRelationships,
   checkedCompany,
   validateDimensionConfig,
+  type Account,
   type JournalDraft,
 } from "@erp/core/domain";
 import {
@@ -227,6 +228,50 @@ function reference(
     db,
     "INSERT INTO legacy_refs(source,object_type,legacy_id,target_id,run_id,evidence) VALUES(?,?,?,?,?,?)",
   ).run(row.source, row.object, row.legacy, target, run, row.target);
+}
+function cached<T>(
+  values: Map<string, Promise<T>>,
+  key: string,
+  read: () => Promise<T>,
+): Promise<T> {
+  let value = values.get(key);
+  if (!value) {
+    value = read();
+    values.set(key, value);
+  }
+  return value;
+}
+function historicalRepository(repo: MasterDataRepository): MasterDataRepository {
+  const companies = new Map<string, ReturnType<MasterDataRepository["company"]>>();
+  const catalogs = new Map<string, ReturnType<MasterDataRepository["dimensionCatalog"]>>();
+  const periods = new Map<string, ReturnType<MasterDataRepository["period"]>>();
+  const stamps = new Map<string, Promise<string>>();
+  const accounts = new Map<string, Map<string, Account>>();
+  return {
+    ...repo,
+    company: (code) => cached(companies, code, () => repo.company(code)),
+    dimensionCatalog: (company) => cached(catalogs, company, () => repo.dimensionCatalog(company)),
+    period: (company, month) =>
+      cached(periods, JSON.stringify([company, month]), () => repo.period(company, month)),
+    journalConfigurationStamp: (company) =>
+      cached(stamps, company, () => repo.journalConfigurationStamp(company)),
+    async accountsByCodes(company, codes) {
+      let saved = accounts.get(company);
+      if (!saved) {
+        saved = new Map();
+        accounts.set(company, saved);
+      }
+      const ordered = [...new Set(codes)].sort();
+      const missing = ordered.filter((code) => !saved.has(code));
+      if (missing.length)
+        for (const account of await repo.accountsByCodes(company, missing))
+          saved.set(account.code, account);
+      return ordered.flatMap((code) => {
+        const account = saved.get(code);
+        return account ? [account] : [];
+      });
+    },
+  };
 }
 async function apply(
   row: Planned,
@@ -508,6 +553,8 @@ export async function executeLegacyImport(
     db.pragma("wal_autocheckpoint=0");
     db.pragma("cache_size=-131072");
     const repo = masterDataRepository(raw);
+    // All metadata is complete and immutable during the journal phase.
+    const historical = historicalRepository(repo);
     const store: MasterDataStore = {
       read: async (work) => work(repo),
       write: async (work) => work(repo),
@@ -521,7 +568,16 @@ export async function executeLegacyImport(
       if (!db) throw new StorageError("CLOSED");
       await raw.begin();
       try {
-        for (const job of pending) await apply(job, plan, db, repo, journals, runId, at);
+        for (const job of pending)
+          await apply(
+            job,
+            plan,
+            db,
+            job.object === "journals" ? historical : repo,
+            journals,
+            runId,
+            at,
+          );
         if (pending.length) await advanceWriteSequence(raw);
         db.prepare(
           "UPDATE legacy_import_runs SET cursor=?,counts=?,write_sequence=(SELECT value FROM write_seq WHERE id=1),status=? WHERE id=?",
