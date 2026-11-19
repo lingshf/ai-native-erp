@@ -97,6 +97,7 @@ const filenames = [
   "012-trade-adjustments.sql",
   "013-trade-reporting.sql",
   "014-legacy-import.sql",
+  "015-legacy-reconciliation.sql",
 ];
 export const latestMigrationVersion = filenames.length;
 
@@ -375,6 +376,14 @@ export async function inspectSchema(
             "index:journal_lines_entry_period",
             "table:write_seq",
             "trigger:journal_entries_import",
+          ]
+        : []),
+      ...(latest >= 15
+        ? [
+            "table:legacy_reconciliations",
+            "trigger:legacy_reconciliation_baseline",
+            "trigger:legacy_reconciliation_no_replace",
+            "trigger:legacy_reconciliation_no_delete",
           ]
         : []),
     ])

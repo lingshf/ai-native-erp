@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import { test } from "vitest";
@@ -11,6 +11,11 @@ import {
   DimensionService,
 } from "@erp/core/application";
 import { executeLegacyImport } from "../src/storage/legacy-import.ts";
+import {
+  checkLegacyReconciliation,
+  confirmLegacyReconciliation,
+  reconcileLegacy,
+} from "../src/legacy/reconcile.ts";
 import { createMasterDataStore } from "../src/storage/master-data.ts";
 import { createSqliteStorage } from "../src/storage/index.ts";
 import { journalTools } from "../src/storage/journals.ts";
@@ -105,6 +110,47 @@ test.for([100, 99])(
     const work = executeLegacyImport(open(f), { target, choices });
     if (credit === 100) {
       await work;
+      const report = await checkLegacyReconciliation(open(f), target);
+      assert.equal(report.verdict, "blocked");
+      assert.ok(
+        report.blockers.some((blocker) => blocker.company === "F" && blocker.account === "1300"),
+      );
+      assert.equal(
+        report.knownDifferences.some((group) => group.object === "open_items"),
+        false,
+      );
+      const confirmation = join(f.directory, "control-confirmation.json");
+      writeFileSync(
+        confirmation,
+        JSON.stringify({ knownDifferencesSha256: report.knownDifferencesSha256 }),
+      );
+      assert.equal(
+        (await confirmLegacyReconciliation(open(f), target, confirmation)).verdict,
+        "blocked",
+      );
+      const explained = new Database(target);
+      explained.defaultSafeIntegers(true);
+      explained.exec("PRAGMA foreign_keys=OFF; BEGIN");
+      try {
+        explained.exec(`INSERT INTO trade_item_sources
+          SELECT 'F','00000000-0000-4000-8000-000000000025','invoice','FICT-OPENING',id,NULL
+          FROM journal_entries WHERE company_id='F' LIMIT 1;
+          INSERT INTO open_items VALUES(
+            'F','00000000-0000-4000-8000-000000000025','AR','FICT-PARTY','1300','{}','EUR',
+            '2026-01-15','2026-01-15','2026-01-15','2026-01-15',100,100,0,100,100,0,'open',1);`);
+        const explainedReport = await reconcileLegacy(open(f), explained);
+        assert.equal(explainedReport.verdict, "blocked");
+        const check = explainedReport.checks.find(
+          (check) => check.section === "trade-reconciliation",
+        );
+        const control = check?.actual.find((row) => row.account === "1300");
+        assert.equal(control?.subledgerMinor, "100");
+        assert.equal(control?.tradeDifferenceMinor, "-100");
+        assert.equal(control?.otherSourceMinor, "100");
+      } finally {
+        explained.exec("ROLLBACK");
+        explained.close();
+      }
       assert.equal(
         rows(
           target,
@@ -318,45 +364,71 @@ test.for([false, true])(
   },
 );
 
-test("committed atomic batches survive interruption; rollback and resume match uninterrupted import", async (t) => {
-  const f = legacyFixture(t, { history: true }),
-    snapshot = open(f);
-  const first = join(f.directory, "first.sqlite"),
-    resumed = join(f.directory, "resumed.sqlite");
-  await executeLegacyImport(snapshot, { target: first, choices, batchLines: 4 });
-  await assert.rejects(
-    executeLegacyImport(
-      snapshot,
-      { target: resumed, choices, batchLines: 4 },
-      {
-        beforeBatchCommit(batch) {
-          if (batch === 3) throw new Error("synthetic interruption");
-        },
-      },
-    ),
-    /synthetic interruption/,
-  );
-  assert.equal(rows(resumed, "SELECT status FROM legacy_import_runs")[0].status, "importing");
-  const before = readFileSync(resumed);
-  for (const changed of [{ ...choices, drafts: "skip" }]) {
+test.for(["batch", "reconciliation", "final-commit"] as const)(
+  "committed atomic batches survive %s interruption; rollback and resume match uninterrupted import",
+  async (interruption, t) => {
+    const f = legacyFixture(t, { history: true }),
+      snapshot = open(f);
+    const first = join(f.directory, "first.sqlite"),
+      resumed = join(f.directory, "resumed.sqlite");
+    let finalBatch = false;
+    await executeLegacyImport(snapshot, { target: first, choices, batchLines: 4 });
     await assert.rejects(
-      executeLegacyImport(snapshot, { target: resumed, choices: changed as ImportChoices }),
-      { code: "CONFLICT" },
+      executeLegacyImport(
+        snapshot,
+        { target: resumed, choices, batchLines: 4 },
+        {
+          beforeBatchCommit(batch) {
+            if (
+              (interruption === "batch" && batch === 3) ||
+              (interruption === "final-commit" && finalBatch)
+            )
+              throw new Error("synthetic interruption");
+          },
+          beforeReconcile() {
+            finalBatch = true;
+            if (interruption !== "reconciliation") return;
+            assert.equal(
+              rows(resumed, "SELECT status FROM legacy_import_runs")[0].status,
+              "importing",
+            );
+            assert.equal(rows(resumed, "SELECT count(*) n FROM legacy_reconciliations")[0].n, 0);
+            throw new Error("synthetic interruption");
+          },
+        },
+      ),
+      /synthetic interruption/,
     );
-    assert.deepEqual(readFileSync(resumed), before);
-  }
-  const result = await executeLegacyImport(snapshot, { target: resumed, choices, batchLines: 4 });
-  assert.equal(result.status, "imported");
-  const normalize = (value: Record<string, unknown[]>) =>
-    JSON.stringify(value, (key, item) =>
-      ["run_id", "import_run", "posted_at"].includes(key)
-        ? null
-        : key === "evidence" && typeof item === "string"
-          ? JSON.stringify(JSON.parse(item))
-          : item,
+    assert.equal(rows(resumed, "SELECT status FROM legacy_import_runs")[0].status, "importing");
+    assert.equal(rows(resumed, "SELECT count(*) n FROM legacy_reconciliations")[0].n, 0);
+    const before = readFileSync(resumed);
+    for (const changed of [{ ...choices, drafts: "skip" }]) {
+      await assert.rejects(
+        executeLegacyImport(snapshot, { target: resumed, choices: changed as ImportChoices }),
+        { code: "CONFLICT" },
+      );
+      assert.deepEqual(readFileSync(resumed), before);
+    }
+    const result = await executeLegacyImport(snapshot, { target: resumed, choices, batchLines: 4 });
+    assert.equal(result.status, "imported");
+    assert.equal(rows(resumed, "SELECT count(*) n FROM legacy_reconciliations")[0].n, 1);
+    assert.deepEqual(
+      rows(resumed, "SELECT value FROM write_seq"),
+      rows(first, "SELECT value FROM write_seq"),
     );
-  assert.equal(normalize(contents(resumed)), normalize(contents(first)));
-});
+    const saved = rows(resumed, "SELECT report FROM legacy_reconciliations")[0];
+    assert.equal(JSON.parse(saved.report).verdict, "blocked");
+    const normalize = (value: Record<string, unknown[]>) =>
+      JSON.stringify(value, (key, item) =>
+        ["run_id", "import_run", "posted_at"].includes(key)
+          ? null
+          : key === "evidence" && typeof item === "string"
+            ? JSON.stringify(JSON.parse(item))
+            : item,
+      );
+    assert.equal(normalize(contents(resumed)), normalize(contents(first)));
+  },
+);
 
 test("new targets only; invalid snapshots/options, completed, foreign and contaminated targets remain unchanged", async (t) => {
   const f = legacyFixture(t),

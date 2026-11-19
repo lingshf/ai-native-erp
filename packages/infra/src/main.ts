@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { parseRuntimeConfiguration, RuntimeConfigurationError } from "./index.ts";
 import type { SqliteExecutor } from "./workers/executor.ts";
+import type { MigrationReader } from "./workers/migration-reader.ts";
 
 let executor: SqliteExecutor | undefined;
+let migration: MigrationReader | undefined;
 try {
   const environment = {
     ...(process.env.ERP_PROFILE !== undefined ? { ERP_PROFILE: process.env.ERP_PROFILE } : {}),
@@ -19,14 +21,19 @@ try {
       import("./workers/executor.ts"),
     ]);
   if (process.env.ERP_SQLITE_FILE !== undefined) {
+    const { MigrationReader } = await import("./workers/migration-reader.ts");
+    migration = new MigrationReader(process.env.ERP_SQLITE_FILE);
+    const { run } = await migration.latest();
     const readers = process.env.ERP_SQLITE_READERS;
     if (readers !== undefined && !/^(?:[2-9]|[12][0-9]|3[0-2])$/u.test(readers))
       throw new RuntimeConfigurationError();
-    executor = await SqliteExecutor.create({
-      filename: process.env.ERP_SQLITE_FILE,
-      ...(readers !== undefined ? { readers: Number(readers) } : {}),
-    });
-    await executor.execute("masterData", "initialize", [new Date().getFullYear()]);
+    if (!run || run.status === "reconciled") {
+      executor = await SqliteExecutor.create({
+        filename: process.env.ERP_SQLITE_FILE,
+        ...(readers !== undefined ? { readers: Number(readers) } : {}),
+      });
+      await executor.execute("masterData", "initialize", [new Date().getFullYear()]);
+    }
   }
   const services = executor?.services();
   const aiModel = process.env.AI_MODEL?.trim();
@@ -41,6 +48,7 @@ try {
   );
   const api = await createApi({
     environment,
+    ...(migration ? { migration } : {}),
     ...(services
       ? {
           ...services,
@@ -69,7 +77,10 @@ try {
   const close = () => {
     api
       .close()
-      .finally(() => executor?.close())
+      .finally(async () => {
+        await executor?.close();
+        await migration?.close();
+      })
       .catch(() => {
         defaultErrorLogger({ requestId: randomUUID(), errorType: "InternalError" });
         process.exitCode = 1;
@@ -78,6 +89,7 @@ try {
   process.once("SIGINT", close);
   process.once("SIGTERM", close);
 } catch (error) {
+  await migration?.close();
   await executor?.close().catch(() => {
     console.error(JSON.stringify({ requestId: randomUUID(), errorType: "InternalError" }));
   });

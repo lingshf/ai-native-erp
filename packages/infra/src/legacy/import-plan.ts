@@ -56,6 +56,32 @@ export type ImportRecord = {
 };
 type Counts = Record<ImportRecord["disposition"] | "source", number>;
 type Amounts = { debit: string; credit: string };
+export function teachingImportCompany(firstMonth: string) {
+  return {
+    company_id: "TEACHING",
+    name: "Teaching ledger",
+    currency: "CNY",
+    scale: 2,
+    year: Number(firstMonth.slice(0, 4)),
+  };
+}
+export function legacyTargetId(
+  source: string,
+  company: string,
+  object: string,
+  legacy: string,
+): string {
+  const bytes = createHash("sha256")
+    .update(JSON.stringify([source, company, object, legacy]))
+    .digest()
+    .subarray(0, 16);
+  // Keep legacy-ID locality in posting indexes; the hash suffix separates ledgers and high bits.
+  bytes.writeUIntBE(Number(BigInt(legacy) & 0xffffffffffffn), 0, 6);
+  bytes[6] = (bytes[6] & 15) | 64;
+  bytes[8] = (bytes[8] & 63) | 128;
+  const hex = bytes.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 export type ImportEvent =
   | {
       type: "decisions";
@@ -389,6 +415,38 @@ export class LegacyImportSnapshot {
     }
     if (total) yield finish();
   }
+
+  *reconciliationTotals(source: Source): Generator<Row> {
+    const teaching = source === "teaching";
+    const company = teaching ? "'TEACHING'" : "l.company";
+    const date = teaching ? "j.date" : "j.accounting_date";
+    const normal = teaching
+      ? "j.kind NOT IN('closing','adjusting') AND coalesce(r.kind,'')<>'adjusting'"
+      : "j.kind NOT IN('closing','adjusting')";
+    yield* this.#query(
+      source,
+      `SELECT ${company} company,substr(${date},1,7) month,l.account,
+        sum(CASE WHEN ${normal} THEN l.debit ELSE 0 END) unadjustedDebit,
+        sum(CASE WHEN ${normal} THEN l.credit ELSE 0 END) unadjustedCredit,
+        sum(CASE WHEN j.kind<>'closing' THEN l.debit ELSE 0 END) adjustedDebit,
+        sum(CASE WHEN j.kind<>'closing' THEN l.credit ELSE 0 END) adjustedCredit,
+        sum(l.debit) postClosingDebit,sum(l.credit) postClosingCredit
+       FROM lines l JOIN journals j ON j.id=l.journal_id${teaching ? "" : " AND j.company=l.company"}
+       ${teaching ? "LEFT JOIN journals r ON r.id=j.reversal_of WHERE j.status='posted'" : ""}
+       GROUP BY ${company},substr(${date},1,7),l.account ORDER BY 1,2,3`,
+    );
+  }
+
+  *reconciliationDimensions(): Generator<Row> {
+    yield* this.#query(
+      "teaching",
+      `SELECT 'TEACHING' company,substr(j.date,1,7) month,d.dimension,d.value,
+        sum(l.debit) debit,sum(l.credit) credit
+       FROM line_dimensions d JOIN lines l ON l.id=d.line_id JOIN journals j ON j.id=l.journal_id
+       WHERE j.status='posted'
+       GROUP BY month,d.dimension,d.value ORDER BY month,d.dimension,d.value`,
+    );
+  }
 }
 
 function mapRow(
@@ -652,7 +710,12 @@ function mapRow(
  */
 export function* legacyImportPlan(
   snapshot: LegacyImportSnapshot,
-  request: { dryRun?: boolean; choices?: ImportChoices; batchSize?: number },
+  request: {
+    dryRun?: boolean;
+    choices?: ImportChoices;
+    batchSize?: number;
+    includeTotals?: boolean;
+  },
 ): Generator<ImportEvent> {
   const { dryRun = false, batchSize = 1000 } = request;
   const choices = request.choices === undefined ? undefined : { ...request.choices };
@@ -745,7 +808,7 @@ export function* legacyImportPlan(
         };
       }
     }
-    yield* snapshot.totals(source);
+    if (request.includeTotals !== false) yield* snapshot.totals(source);
   }
   yield { type: "summary", executable, counts, drafts };
 }

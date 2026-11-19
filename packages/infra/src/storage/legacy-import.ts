@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import {
   existsSync,
   lstatSync,
@@ -35,6 +35,8 @@ import {
 } from "@erp/core/domain";
 import {
   legacyImportPlan,
+  teachingImportCompany,
+  legacyTargetId as id,
   type ImportChoices,
   type LegacyImportSnapshot,
 } from "../legacy/import-plan.ts";
@@ -44,6 +46,7 @@ import { masterDataRepository } from "./master-data.ts";
 import { journalTools } from "./journals.ts";
 import { APPLICATION_ID } from "./sqlite.ts";
 import { advanceWriteSequence } from "./write-sequence.ts";
+import { reconcileLegacy, saveReconciliation } from "../legacy/reconcile.ts";
 import type { Connection, Row } from "./types.ts";
 
 type Planned = {
@@ -79,18 +82,6 @@ function fields(value: string): Fields {
 function text(value: unknown): string {
   if (typeof value !== "string") throw new StorageError("INVALID_INPUT");
   return value;
-}
-function id(source: string, company: string, object: string, legacy: string): string {
-  const bytes = createHash("sha256")
-    .update(JSON.stringify([source, company, object, legacy]))
-    .digest()
-    .subarray(0, 16);
-  // Keep legacy-ID locality in posting indexes; the hash suffix separates ledgers and high bits.
-  bytes.writeUIntBE(Number(BigInt(legacy) & 0xffffffffffffn), 0, 6);
-  bytes[6] = (bytes[6] & 15) | 64;
-  bytes[8] = (bytes[8] & 63) | 128;
-  const hex = bytes.toString("hex");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 function connection(db: Database.Database): Connection {
   return {
@@ -191,13 +182,7 @@ function* jobs(plan: Database.Database): Generator<Planned> {
       object: "companies",
       legacy: "TEACHING",
       company: "TEACHING",
-      target: JSON.stringify({
-        company_id: "TEACHING",
-        name: "Teaching ledger",
-        currency: "CNY",
-        scale: 2,
-        year: Number(first.month.slice(0, 4)),
-      }),
+      target: JSON.stringify(teachingImportCompany(first.month)),
       lines: 0,
     };
   for (const row of plan
@@ -464,7 +449,10 @@ async function apply(
 export async function executeLegacyImport(
   snapshot: LegacyImportSnapshot,
   request: { target: string; choices: ImportChoices; batchLines?: number },
-  hooks: { beforeBatchCommit?: (batch: number) => void } = {},
+  hooks: {
+    beforeBatchCommit?: (batch: number) => void;
+    beforeReconcile?: (db: Database.Database) => void;
+  } = {},
 ): Promise<{ runId: string; status: "imported"; batches: number }> {
   const batchLines = request.batchLines ?? 5000;
   if (
@@ -538,6 +526,7 @@ export async function executeLegacyImport(
       raw = connection(db);
     }
     db.pragma("foreign_keys=ON");
+    db.pragma("temp_store=FILE");
     if (!existed) {
       await raw.begin();
       try {
@@ -570,7 +559,8 @@ export async function executeLegacyImport(
     let index = 0,
       batch = 0,
       pending: Planned[] = [],
-      lines = 0;
+      lines = 0,
+      failedReconciliation = false;
     async function flush(final = false) {
       if (!db) throw new StorageError("CLOSED");
       await raw.begin();
@@ -586,9 +576,21 @@ export async function executeLegacyImport(
             at,
           );
         if (pending.length) await advanceWriteSequence(raw);
+        if (final) {
+          db.prepare("UPDATE legacy_import_runs SET status='imported' WHERE id=?").run(runId);
+          hooks.beforeReconcile?.(db);
+          const report = await reconcileLegacy(snapshot, db);
+          saveReconciliation(db, report);
+          failedReconciliation = report.verdict === "difference";
+        }
         db.prepare(
           "UPDATE legacy_import_runs SET cursor=?,counts=?,write_sequence=(SELECT value FROM write_seq WHERE id=1),status=? WHERE id=?",
-        ).run(index, tableCounts(db), final ? "imported" : "importing", runId);
+        ).run(
+          index,
+          tableCounts(db),
+          final ? (failedReconciliation ? "failed" : "imported") : "importing",
+          runId,
+        );
         hooks.beforeBatchCommit?.(++batch);
         await raw.commit();
       } catch (error) {
@@ -610,6 +612,12 @@ export async function executeLegacyImport(
       index++;
     }
     await flush(true);
+    if (failedReconciliation) {
+      const error = new StorageError("CONFLICT");
+      error.message =
+        "Imported target failed reconciliation; retained for inspection and blocked from runtime.";
+      throw error;
+    }
     return { runId, status: "imported", batches: batch };
   } catch (error) {
     if (error instanceof DomainError) throw new StorageError(error.code);

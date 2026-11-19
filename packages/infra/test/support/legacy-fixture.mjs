@@ -43,7 +43,10 @@ export function snapshotRejection(check, before, after = before, code = "INVALID
   };
 }
 
-export function legacyFixture(t, { wal = false, history = false, many = false } = {}) {
+export function legacyFixture(
+  t,
+  { wal = false, history = false, many = false, tradeControls = true } = {},
+) {
   const directory = resolve(`.legacy-fixture-${randomUUID()}`);
   fs.mkdirSync(directory);
   const teaching = join(directory, "source-teaching.sqlite");
@@ -73,7 +76,19 @@ export function legacyFixture(t, { wal = false, history = false, many = false } 
     if (wal && file === teaching) {
       db.exec("PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=0");
     }
-    db.exec(fs.readFileSync(new URL(`./legacy-data/${name}.sql`, import.meta.url), "utf8"));
+    let sql = fs.readFileSync(new URL(`./legacy-data/${name}.sql`, import.meta.url), "utf8");
+    if (name === "enterprise" && !tradeControls)
+      sql = sql
+        .split("\n")
+        .filter(
+          (line) =>
+            !(
+              /^INSERT INTO "(?:accounts|configs|config_versions)"/.test(line) &&
+              /VALUES \('F',(?:'account',)?'(?:1300|2100)'/.test(line)
+            ),
+        )
+        .join("\n");
+    db.exec(sql);
   }
   if (wal) {
     connections[0].exec("BEGIN");

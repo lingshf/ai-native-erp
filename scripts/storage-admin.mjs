@@ -9,6 +9,33 @@ class InvalidConfiguration extends Error {
 function parseArguments(args) {
   if (args.length === 1 && args[0] === "--help") return null;
   const [action, ...tokens] = args;
+  if (action === "legacy-reconcile") {
+    const options = new Map();
+    for (let index = 0; index < tokens.length; index++) {
+      const key = tokens[index];
+      if (!["--snapshot-dir", "--target", "--check", "--confirm"].includes(key) || options.has(key))
+        throw new InvalidConfiguration();
+      if (key === "--check") options.set(key, true);
+      else {
+        const value = tokens[++index];
+        if (!value || value.startsWith("--")) throw new InvalidConfiguration();
+        options.set(key, resolve(value));
+      }
+    }
+    if (
+      options.size !== 3 ||
+      !options.has("--snapshot-dir") ||
+      !options.has("--target") ||
+      options.has("--check") === options.has("--confirm")
+    )
+      throw new InvalidConfiguration();
+    return {
+      action,
+      snapshot: options.get("--snapshot-dir"),
+      target: options.get("--target"),
+      confirmation: options.get("--confirm"),
+    };
+  }
   if (action === "legacy-import") {
     const options = new Map();
     const keys = [
@@ -114,11 +141,13 @@ try {
           "storage-admin.mjs legacy-snapshot --source-dir DIR --out-dir NEW_DIR (isolated stopped source, Windows only)",
         legacyImport:
           "storage-admin.mjs legacy-import --snapshot-dir DIR --target NEW_DB --drafts import-as-draft|skip --receipts import|archive-only --source-events import|archive-only --transfer-queue import|archive-only --seals import|archive-only --audit import|archive-only",
+        legacyReconcile:
+          "storage-admin.mjs legacy-reconcile --snapshot-dir DIR --target DB --check | --confirm FILE",
         safety:
           "Explicit new target only; no .env, DATA_DIR, original-ledger defaults, implicit migration or business seeding.",
       }),
     );
-  } else if (command.action === "legacy-import") {
+  } else if (command.action === "legacy-import" || command.action === "legacy-reconcile") {
     const { StorageError } = await import("@erp/core/application");
     StorageFailure = StorageError;
     const { readFileSync } = await import("node:fs");
@@ -135,10 +164,21 @@ try {
     }
     const snapshot = new LegacyImportSnapshot(command.snapshot, manifest);
     try {
-      const result = await executeLegacyImport(snapshot, {
-        target: command.target,
-        choices: command.choices,
-      });
+      let result;
+      if (command.action === "legacy-import") {
+        result = await executeLegacyImport(snapshot, {
+          target: command.target,
+          choices: command.choices,
+        });
+      } else {
+        const { checkLegacyReconciliation, confirmLegacyReconciliation } = await import(
+          "../packages/infra/src/legacy/reconcile.ts"
+        );
+        result = command.confirmation
+          ? await confirmLegacyReconciliation(snapshot, command.target, command.confirmation)
+          : await checkLegacyReconciliation(snapshot, command.target);
+        if (result.verdict !== "pass") process.exitCode = 1;
+      }
       console.log(JSON.stringify({ ...result, action: command.action }));
     } finally {
       snapshot.close();
