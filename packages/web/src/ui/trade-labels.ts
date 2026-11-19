@@ -1,4 +1,8 @@
 export const tradeEn = {
+  "trade.discard": "Discard unsaved trade configuration changes?",
+  "trade.uncertain":
+    "Save outcome is unknown. The draft is locked; retry the same revision and verify the stored result before leaving.",
+  "trade.reconcile": "Retry safely and verify save",
   "trade.title": "Trade master data",
   "trade.kind": "Configuration type",
   "trade.tradeParty": "Trading partners",
@@ -62,6 +66,10 @@ export const tradeEn = {
   "trade.issue.ambiguousTax": "Choose exactly one effective allowed tax code.",
 } as const;
 export const tradeZh: Record<keyof typeof tradeEn, string> = {
+  "trade.discard": "放弃尚未保存的贸易配置修改？",
+  "trade.uncertain":
+    "保存结果尚未确定。草稿已锁定；请以相同版本安全重试并核对保存结果，再离开页面。",
+  "trade.reconcile": "安全重试并核对保存",
   "trade.title": "贸易主数据",
   "trade.kind": "配置类型",
   "trade.tradeParty": "贸易伙伴",

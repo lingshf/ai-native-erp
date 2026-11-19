@@ -45,3 +45,19 @@ recorded-at history (including disabled configurations) are available through
 Percentages and tax rates are exact decimal strings with at most six fractional
 digits. Tax rates have explicit inclusive, non-overlapping date intervals;
 missing tax is never interpreted as zero-rated or exempt.
+
+An existing record can be disabled with unchanged data even when its references
+have since expired or been disabled. Reactivation or changed data revalidates
+references. While an editor is open, company/type/row switches are locked.
+Discarding a dirty draft requires confirmation; writes in flight or with unknown
+outcomes block navigation. An explicit safe retry reuses the same CAS command,
+and on conflict verifies the stored revision and data instead of creating a
+second revision or silently assuming success.
+
+The independent synthetic trade benchmark is deliberately outside fast CI:
+`node packages/infra/bench/trade-master.ts OUTPUT.json`. It seeds exactly 10,000
+partners and 10,000 products in a temporary ledger, then measures each kind's
+list and name-prefix search separately: 10 warmups and 100 samples through real
+loopback HTTP, production worker dispatch, full JSON body and shared DTO parse.
+Each of the four p95 values must be at most 1,000 ms. It closes the server and
+workers and deletes only its temporary ledger on completion.

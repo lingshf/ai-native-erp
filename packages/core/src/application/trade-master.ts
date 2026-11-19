@@ -16,6 +16,7 @@ import {
   type TradeAccountRole,
 } from "@erp/core/domain";
 import type { MasterDataStore } from "./master-data.ts";
+import { canonicalJson } from "./storage.ts";
 
 export interface TradeQuery extends PageQuery {
   readonly search?: string;
@@ -86,6 +87,10 @@ export class TradeMasterService {
       if (!(await repo.company(company))) throw new DomainError("NOT_FOUND");
       const old = await repo.tradeConfig(company, config.kind, config.code);
       if ((old?.revision ?? 0) !== command.expectedRevision) throw new DomainError("CONFLICT");
+      if (old && !config.active && canonicalJson(old.data) === canonicalJson(config.data)) {
+        await repo.saveTradeConfig(company, config, command.expectedRevision, this.now());
+        return config;
+      }
       const reference = async (kind: TradeKind, code: string, path: string) => {
         const found = await repo.tradeConfig(company, kind, code);
         if (!found?.active || found.data.from > config.data.from || found.data.to < config.data.to)

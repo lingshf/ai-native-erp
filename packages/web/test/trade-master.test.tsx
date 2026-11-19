@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import { App } from "../src/App.tsx";
 import { label } from "../src/ui/index.ts";
@@ -32,6 +32,156 @@ const response = (body: unknown, status = 200) => new Response(JSON.stringify(bo
 beforeEach(() => window.history.replaceState(null, "", "/#/trade"));
 afterEach(() => window.history.replaceState(null, "", "/"));
 describe("trade master maintenance", () => {
+  it("preserves dirty drafts by locking object switches and confirming explicit cancellation or navigation", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockImplementation(async (path) =>
+          String(path).startsWith("/api/v1/companies")
+            ? response({ items: [company, { ...company, code: "OTHER" }], nextCursor: null })
+            : response({ items: [terms, { ...terms, code: "NET60" }], nextCursor: null }),
+        ),
+    );
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(label("zh", "trade.kind")), {
+      target: { value: "tradeTerms" },
+    });
+    fireEvent.click(
+      await screen.findByRole("button", { name: `${label("zh", "trade.edit")} NET30` }),
+    );
+    fireEvent.change(screen.getByLabelText(label("zh", "trade.name")), {
+      target: { value: "Unfinished" },
+    });
+    expect(screen.getByLabelText<HTMLSelectElement>(label("zh", "trade.kind")).disabled).toBe(true);
+    expect(screen.getByLabelText<HTMLSelectElement>(label("zh", "master.company")).disabled).toBe(
+      true,
+    );
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", { name: label("zh", "trade.new") }).disabled,
+    ).toBe(true);
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", { name: `${label("zh", "trade.edit")} NET60` })
+        .disabled,
+    ).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: label("zh", "master.cancel") }));
+    expect(confirm).toHaveBeenCalledWith(label("zh", "trade.discard"));
+    fireEvent.click(screen.getByRole("link", { name: label("zh", "master.title") }));
+    expect(window.location.hash).toBe("#/trade");
+    expect(screen.getByLabelText<HTMLInputElement>(label("zh", "trade.name")).value).toBe(
+      "Unfinished",
+    );
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: label("zh", "master.cancel") }));
+    expect(screen.queryByLabelText(label("zh", "trade.name"))).toBeNull();
+    expect(screen.getByLabelText<HTMLSelectElement>(label("zh", "trade.kind")).disabled).toBe(
+      false,
+    );
+  });
+  it("blocks context, sidebar and browser navigation until a write response settles without aborting it", async () => {
+    let finish: ((value: Response) => void) | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockImplementation(async (path, options) => {
+        if (String(path).startsWith("/api/v1/companies"))
+          return response({ items: [company], nextCursor: null });
+        if (options?.method) {
+          expect(options.signal).toBeUndefined();
+          return new Promise<Response>((resolve) => {
+            finish = resolve;
+          });
+        }
+        return response({ items: [terms], nextCursor: null });
+      }),
+    );
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(label("zh", "trade.kind")), {
+      target: { value: "tradeTerms" },
+    });
+    fireEvent.click(
+      await screen.findByRole("button", { name: `${label("zh", "trade.edit")} NET30` }),
+    );
+    fireEvent.change(screen.getByLabelText(label("zh", "trade.name")), {
+      target: { value: "Saving" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: label("zh", "dim.save") }));
+    await screen.findByText(label("zh", "master.saving"));
+    fireEvent.click(screen.getByRole("link", { name: label("zh", "master.title") }));
+    expect(window.location.hash).toBe("#/trade");
+    expect(confirm).not.toHaveBeenCalled();
+    expect(screen.getByLabelText<HTMLSelectElement>(label("zh", "trade.kind")).disabled).toBe(true);
+    expect(
+      screen
+        .getByRole<HTMLButtonElement>("button", { name: label("zh", "master.cancel") })
+        .closest("fieldset")?.disabled,
+    ).toBe(true);
+    act(() => {
+      window.history.pushState(null, "", "/#/accounts");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(window.location.hash).toBe("#/trade");
+    await act(async () => {
+      finish?.(response({ ...terms, revision: 2, data: { ...terms.data, name: "Saving" } }));
+    });
+    await waitFor(() => expect(screen.queryByLabelText(label("zh", "trade.name"))).toBeNull());
+    expect(screen.getByLabelText<HTMLSelectElement>(label("zh", "trade.kind")).disabled).toBe(
+      false,
+    );
+  });
+  it("locks unknown outcomes and reconciles a committed save by retrying the identical CAS command", async () => {
+    const writes: unknown[] = [];
+    let saved: TradeDto = terms;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockImplementation(async (path, options) => {
+        if (String(path).startsWith("/api/v1/companies"))
+          return response({ items: [company], nextCursor: null });
+        if (options?.method) {
+          const command = JSON.parse(String(options.body));
+          writes.push(command);
+          if (writes.length === 1) {
+            saved = { ...terms, revision: 2, data: command.data };
+            throw new TypeError("Lost response after commit");
+          }
+          return response(
+            {
+              code: "CONFLICT",
+              messageKey: "api.error.conflict",
+              params: {},
+              fieldErrors: [],
+              requestId: "4bf203b5-e54f-434c-9100-969da1cd7e73",
+              retryable: false,
+            },
+            409,
+          );
+        }
+        if (String(path).includes("/NET30?")) return response(saved);
+        return response({ items: [terms], nextCursor: null });
+      }),
+    );
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(label("zh", "trade.kind")), {
+      target: { value: "tradeTerms" },
+    });
+    fireEvent.click(
+      await screen.findByRole("button", { name: `${label("zh", "trade.edit")} NET30` }),
+    );
+    fireEvent.change(screen.getByLabelText(label("zh", "trade.name")), {
+      target: { value: "Accepted" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: label("zh", "dim.save") }));
+    await screen.findByText(label("zh", "trade.uncertain"));
+    expect(writes).toHaveLength(1);
+    fireEvent.click(screen.getByRole("link", { name: label("zh", "master.title") }));
+    expect(window.location.hash).toBe("#/trade");
+    expect(screen.getByLabelText<HTMLSelectElement>(label("zh", "trade.kind")).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: label("zh", "trade.reconcile") }));
+    await waitFor(() => expect(screen.queryByLabelText(label("zh", "trade.name"))).toBeNull());
+    expect(writes).toHaveLength(2);
+    expect(writes[1]).toEqual(writes[0]);
+  });
   it("creates and edits all five kinds with exact decimal input, CAS and immutable code; language changes preserve drafts", async () => {
     let rows: TradeDto[] = [];
     const writes: unknown[] = [];

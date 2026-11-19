@@ -8,6 +8,7 @@ import {
   tradeConfigSchema,
   tradeKindSchema,
   type TradeDto,
+  type TradeCommand,
   type CompanyDto,
 } from "@erp/core/contracts";
 import { label, type LabelKey, type Preferences } from "./ui/index.ts";
@@ -17,6 +18,49 @@ type T = (key: Exclude<LabelKey, "shell.httpError">) => string;
 type TradeKind = TradeDto["kind"];
 const tradeKinds = tradeKindSchema.options;
 type Failure = { path: string; key: Exclude<LabelKey, "shell.httpError">; conflict: boolean };
+type EditorGuard = { open: boolean; dirty: boolean; pending: boolean };
+const idleGuard: EditorGuard = { open: false, dirty: false, pending: false };
+function useTradeLeaveGuard(guard: EditorGuard, discard: string) {
+  useEffect(() => {
+    if (!guard.dirty && !guard.pending) return;
+    const current = window.location.href;
+    let leaving = false;
+    const mayLeave = () => {
+      if (leaving) return true;
+      if (guard.pending || !window.confirm(discard)) return false;
+      leaving = true;
+      return true;
+    };
+    const click = (event: MouseEvent) => {
+      const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
+      if (!(link instanceof HTMLAnchorElement) || link.href === current || link.target === "_blank")
+        return;
+      if (!mayLeave()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
+    const navigation = (event: Event) => {
+      if (window.location.href === current || mayLeave()) return;
+      event.stopImmediatePropagation();
+      window.history.replaceState(window.history.state, "", current);
+    };
+    const unload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    document.addEventListener("click", click, true);
+    window.addEventListener("popstate", navigation, true);
+    window.addEventListener("hashchange", navigation, true);
+    window.addEventListener("beforeunload", unload);
+    return () => {
+      document.removeEventListener("click", click, true);
+      window.removeEventListener("popstate", navigation, true);
+      window.removeEventListener("hashchange", navigation, true);
+      window.removeEventListener("beforeunload", unload);
+    };
+  }, [guard.dirty, guard.pending, discard]);
+}
 function failure(error: unknown): Failure {
   if (error instanceof MasterDataFailure) {
     if (error.status === 409) return { path: "form", key: "master.conflict", conflict: true };
@@ -50,6 +94,8 @@ export function TradeMaster({ preferences }: { preferences: Preferences }) {
   const t: T = (key) => label(preferences.language, key);
   const [selected, setSelected] = useState("");
   const [kind, setKind] = useState<TradeKind>("tradeParty");
+  const [guard, setGuard] = useState(idleGuard);
+  useTradeLeaveGuard(guard, t("trade.discard"));
   const companies = useInfiniteQuery({
     queryKey: ["companies"],
     initialPageParam: "",
@@ -74,6 +120,7 @@ export function TradeMaster({ preferences }: { preferences: Preferences }) {
       <label htmlFor="trade-company">{t("master.company")}</label>
       <select
         id="trade-company"
+        disabled={guard.open}
         value={company?.code ?? ""}
         onChange={(event) => setSelected(event.target.value)}
       >
@@ -95,6 +142,7 @@ export function TradeMaster({ preferences }: { preferences: Preferences }) {
       <label htmlFor="trade-kind">{t("trade.kind")}</label>
       <select
         id="trade-kind"
+        disabled={guard.open}
         value={kind}
         onChange={(event) => {
           const next = tradeKinds.find((value) => value === event.target.value);
@@ -107,11 +155,29 @@ export function TradeMaster({ preferences }: { preferences: Preferences }) {
           </option>
         ))}
       </select>
-      {company && <TradePane key={`${company.code}:${kind}`} company={company} kind={kind} t={t} />}
+      {company && (
+        <TradePane
+          key={`${company.code}:${kind}`}
+          company={company}
+          kind={kind}
+          t={t}
+          lock={setGuard}
+        />
+      )}
     </section>
   );
 }
-function TradePane({ company, kind, t }: { company: CompanyDto; kind: TradeKind; t: T }) {
+function TradePane({
+  company,
+  kind,
+  t,
+  lock,
+}: {
+  company: CompanyDto;
+  kind: TradeKind;
+  t: T;
+  lock: (guard: EditorGuard) => void;
+}) {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<TradeDto | null | undefined>();
   const page = useInfiniteQuery({
@@ -150,7 +216,7 @@ function TradePane({ company, kind, t }: { company: CompanyDto; kind: TradeKind;
         value={search}
         onChange={(event) => setSearch(event.target.value)}
       />
-      <button type="button" onClick={() => setEditing(null)}>
+      <button type="button" disabled={editing !== undefined} onClick={() => setEditing(null)}>
         {t("trade.new")}
       </button>
       {page.isPending && <p role="status">{t("master.loading")}</p>}
@@ -194,6 +260,7 @@ function TradePane({ company, kind, t }: { company: CompanyDto; kind: TradeKind;
                   <button
                     type="button"
                     aria-label={`${t("trade.edit")} ${row.code}`}
+                    disabled={editing !== undefined}
                     onClick={() => setEditing(row)}
                   >
                     {t("trade.edit")}
@@ -225,6 +292,7 @@ function TradePane({ company, kind, t }: { company: CompanyDto; kind: TradeKind;
           kind={kind}
           initial={editing}
           t={t}
+          lock={lock}
           close={() => setEditing(undefined)}
         />
       )}
@@ -264,12 +332,14 @@ function TradeEditor({
   initial,
   t,
   close,
+  lock,
 }: {
   company: CompanyDto;
   kind: TradeKind;
   initial: TradeDto | null;
   t: T;
   close: () => void;
+  lock: (guard: EditorGuard) => void;
 }) {
   const client = useQueryClient();
   const fields = ["name", "from", "to", ...specific[kind]] as const;
@@ -308,18 +378,24 @@ function TradeEditor({
   });
   const [error, setError] = useState<Failure | null>(null);
   const [busy, setBusy] = useState(false);
-  const generation = useRef(0),
-    controller = useRef<AbortController | null>(null);
+  const [uncertain, setUncertain] = useState(false);
+  const starting = useRef(JSON.stringify({ code, active, draft }));
+  const dirty = JSON.stringify({ code, active, draft }) !== starting.current;
+  const pendingCommand = useRef<TradeCommand | null>(null);
+  const generation = useRef(0);
+  useEffect(() => {
+    lock({ open: true, dirty, pending: busy || uncertain });
+  }, [lock, dirty, busy, uncertain]);
+  useEffect(() => () => lock(idleGuard), [lock]);
   useEffect(
     () => () => {
       generation.current++;
-      controller.current?.abort();
     },
     [],
   );
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || uncertain) return;
     const data: Record<string, unknown> = {};
     for (const field of fields) {
       const value = draft[field];
@@ -363,21 +439,47 @@ function TradeEditor({
       });
       return;
     }
+    pendingCommand.current = parsed.data;
+    await persist(parsed.data);
+  }
+  async function persist(command: TradeCommand, reconcile = false) {
     const id = ++generation.current;
-    controller.current = new AbortController();
     setBusy(true);
     setError(null);
     let accepted = false;
     try {
-      await masterRequest(`/api/v1/trade/${kind}`, tradeConfigSchema, {
-        method: initial ? "PUT" : "POST",
-        body: parsed.data,
-        signal: controller.current.signal,
-      });
+      try {
+        await masterRequest(`/api/v1/trade/${kind}`, tradeConfigSchema, {
+          method: command.expectedRevision ? "PUT" : "POST",
+          body: command,
+        });
+      } catch (issue) {
+        if (!reconcile || !(issue instanceof MasterDataFailure) || issue.status !== 409)
+          throw issue;
+        const saved = await masterRequest(
+          `/api/v1/trade/${kind}/${encodeURIComponent(command.code)}?company=${encodeURIComponent(company.code)}`,
+          tradeConfigSchema,
+        );
+        if (
+          saved.kind !== command.kind ||
+          saved.code !== command.code ||
+          saved.revision !== command.expectedRevision + 1 ||
+          saved.active !== command.active ||
+          JSON.stringify(saved.data) !== JSON.stringify(command.data)
+        )
+          throw issue;
+      }
       accepted = true;
       if (generation.current === id) close();
     } catch (issue) {
-      if (generation.current === id) setError(failure(issue));
+      if (generation.current === id) {
+        setError(failure(issue));
+        setUncertain(
+          !(issue instanceof MasterDataFailure) ||
+            issue.kind !== "http" ||
+            (issue.status ?? 500) >= 500,
+        );
+      }
     } finally {
       if (generation.current === id) setBusy(false);
       if (accepted || generation.current !== id)
@@ -390,7 +492,21 @@ function TradeEditor({
       <p>{t("trade.nullHint")}</p>
       {kind === "tradeProfile" && <p>{t("trade.discountHint")}</p>}
       {kind === "taxCode" && <p>{t("trade.rateHint")}</p>}
-      <fieldset disabled={busy}>
+      {(busy || uncertain) && (
+        <p role="status">{t(uncertain ? "trade.uncertain" : "master.saving")}</p>
+      )}
+      {uncertain && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            if (pendingCommand.current) void persist(pendingCommand.current, true);
+          }}
+        >
+          {t("trade.reconcile")}
+        </button>
+      )}
+      <fieldset disabled={busy || uncertain}>
         <label htmlFor="trade-code">{t("trade.code")}</label>
         <input
           id="trade-code"
@@ -468,7 +584,12 @@ function TradeEditor({
           </button>
         )}
         <button type="submit">{t("dim.save")}</button>
-        <button type="button" onClick={close}>
+        <button
+          type="button"
+          onClick={() => {
+            if (!dirty || window.confirm(t("trade.discard"))) close();
+          }}
+        >
           {t("master.cancel")}
         </button>
       </fieldset>

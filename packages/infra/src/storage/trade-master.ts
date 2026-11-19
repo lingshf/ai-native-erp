@@ -135,6 +135,18 @@ function fields(config: TradeConfig): Record<string, Parameters[number]> {
       };
   }
 }
+function prefixEnd(prefix: string): string | null {
+  const points = Array.from(prefix);
+  for (let index = points.length - 1; index >= 0; index--) {
+    const point = points[index].codePointAt(0);
+    if (point !== undefined && point < 0x10ffff)
+      return (
+        points.slice(0, index).join("") +
+        String.fromCodePoint(point === 0xd7ff ? 0xe000 : point + 1)
+      );
+  }
+  return null;
+}
 export function tradeRepository(db: Connection): TradeRepository {
   return {
     async tradeConfig(company, kind, code, at) {
@@ -153,15 +165,16 @@ export function tradeRepository(db: Connection): TradeRepository {
     },
     async tradePage(company, kind, query) {
       const prefix = query.search;
-      // Binary ranges retain literal prefix semantics (including '%' and '_') and use the name index.
-      const search = prefix === undefined ? "" : " AND name>=? AND name<?";
+      const end = prefix === undefined ? null : prefixEnd(prefix);
+      // The lexicographic successor includes suffixes beginning with the largest Unicode scalar.
+      const search = prefix === undefined ? "" : ` AND name>=?${end === null ? "" : " AND name<?"}`;
       const index = prefix === undefined ? "" : ` INDEXED BY ${tables[kind]}_name`;
       const rows = await db.query(
         `SELECT * FROM ${tables[kind]}${index} WHERE company_id=? AND code>?${search} ORDER BY code LIMIT ?`,
         [
           company,
           query.cursor ?? "",
-          ...(prefix === undefined ? [] : [prefix, `${prefix}\u{10ffff}`]),
+          ...(prefix === undefined ? [] : [prefix, ...(end === null ? [] : [end])]),
           query.limit + 1,
         ],
       );

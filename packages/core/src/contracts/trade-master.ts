@@ -177,6 +177,12 @@ export const tradeMasterOpenApi = {
                   "Current or recorded-at historical configuration, including disabled records.",
                 ...ref("TradeConfig"),
               },
+              ...Object.fromEntries(
+                [400, 403, 404, 405, 500, 503].map((status) => [
+                  status,
+                  { description: "Explicit safe error.", ...ref("ErrorResponse") },
+                ]),
+              ),
             },
           },
         },
