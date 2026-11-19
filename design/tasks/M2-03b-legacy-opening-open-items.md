@@ -3,6 +3,7 @@
 - 里程碑：M2　依赖：M2-03、M1-06　建议分支：`legacy-opening-open-items`
 - 冲突域：legacy-import, domain-posting, storage, admin-cli, web-ui:trade
 - **决定**：D25（协调者代定，2026-11-19）：旧账 AP/AR 控制科目余额导入为期初未结项，使贸易子账与 GL 一致。见[路线图 §6](../roadmap.md#6-决定记录)、[M1 评审 §7](../reviews/M1.md)。
+- **交付顺序（D26）**：本任务不是 M2-04 首批的硬前置。M2-04 首批对没有 `opening=done` 标记的 run 判 `阻断`（待 M2-03b 消除）。本任务合并后，由 M2-04b 改用 §三 的 P 公式、验收期初负例。M2-05 要等本任务和 M2-04b 都合并。
 - **开工门禁 / 数据**：同 M2-04。开发、CI 和 Bench 只用虚构夹具。真实明细文件的制作和真实导入仍需决定 A/C。
 
 ## 背景
@@ -71,7 +72,7 @@ M2-03 的 GL 导入按原子批次提交，可以续跑，没有一个覆盖整�
    - 新建的伙伴；
    - 全部期初未结项：`origin='legacy-opening'`，记账日为切换日，冻结控制科目与维度，带导入 run ID 和明细行摘要作为来源证据；
    - 它们的 `legacy_refs`；
-   - run 阶段标记 `opening=done`；
+   - run 阶段标记 `opening=done`，绑定明细文件 SHA；它也是 M2-04 期初门禁唯一认可的期初完成证据；
    - run 状态 `importing → imported`。
 
    提交前，在同一事务内对**目标库**复核阻断口径 2：每个控制科目的期初项合计 = 目标库切换日 LEGACY GL 余额。不等时整个阶段回滚，run 记为 `failed`，目标保留供排查。
@@ -122,7 +123,7 @@ M2-03 的 GL 导入按原子批次提交，可以续跑，没有一个覆盖整�
 - LEGACY 分录**不**算进 `T`，不把 LEGACY 伪装成 TRADE。`P` 取期初项本身的原始金额，不取 GL；它在 GL 上的依据由导入时的阻断口径 2 保证。
 - 只对未解释差额和贸易差异判定为 0。`otherSourceMinor` 保留显示无对应期初项的其他来源，不抹平。
 - `cutoff` 早于切换日时，期初项还不存在（`P=0`），旧账历史 GL 按现状显示为 `otherSourceMinor`。这是如实反映，不是差异。
-- 实现位置是 `trade-reporting.ts` 的 `tradeReconciliation`，同一函数供 M1 报表和 M2-04 使用。报表页新增“期初”列，中英标签同步。
+- 实现位置是 `trade-reporting.ts` 的 `tradeReconciliation`，同一函数供 M1 报表和 M2-04 使用（首批只显示现行字段，M2-04b 起按本公式判定）。报表页新增“期初”列，中英标签同步。
 
 ## 验收标准
 
