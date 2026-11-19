@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import { QueryClient, focusManager, onlineManager } from "@tanstack/react-query";
 import { buildReports, type Account } from "@erp/core/domain";
 import { App } from "../src/App.tsx";
 import { VirtualRows } from "../src/Journals.tsx";
@@ -29,8 +30,11 @@ const account: Account = {
 const id = "00000000-0000-4000-8000-000000000001";
 const secondId = "00000000-0000-4000-8000-000000000002";
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+const initialOnline = onlineManager.isOnline();
 afterEach(() => {
   window.history.replaceState(null, "", "/");
+  focusManager.setFocused(undefined);
+  onlineManager.setOnline(initialOnline);
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -81,10 +85,12 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
     vi.fn<typeof fetch>().mockImplementation(async (path, options) => {
       const url = new URL(String(path), "http://localhost");
       requests.push(url.pathname + url.search);
+      const after = /^next-(\d+)-(\d+)$/u.exec(url.searchParams.get("cursor") ?? "");
+      const requestedRevision = url.searchParams.get("accountRevision") ?? after?.[2];
       if (
         (url.pathname.startsWith("/api/v1/reports/") || url.pathname === "/api/v1/ledger") &&
-        url.searchParams.has("accountRevision") &&
-        Number(url.searchParams.get("accountRevision")) !== accountRevision
+        requestedRevision !== undefined &&
+        Number(requestedRevision) !== accountRevision
       )
         return reply(
           {
@@ -120,7 +126,9 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
           accountRevision,
         });
       if (url.pathname === "/api/v1/ledger") {
-        const watermark = Number(url.searchParams.get("watermark") ?? latestWatermark);
+        const watermark = Number(
+          url.searchParams.get("watermark") ?? after?.[1] ?? latestWatermark,
+        );
         if (watermark > latestWatermark)
           return reply(
             {
@@ -165,7 +173,7 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
               balance: direction * (firstPage ? 11000 : 10000 + monthly),
             },
           ],
-          nextCursor: firstPage ? "next" : null,
+          nextCursor: firstPage ? `next-${watermark}-${accountRevision}` : null,
         });
       }
       if (url.pathname === "/api/v1/journals")
@@ -229,8 +237,11 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
       throw new Error(`Unexpected ${url}`);
     }),
   );
+  const mount = vi.spyOn(QueryClient.prototype, "mount");
   render(<App />);
   await screen.findByRole("table", { name: "报表类别" });
+  const client = mount.mock.contexts.find((context) => context instanceof QueryClient);
+  if (!(client instanceof QueryClient)) throw new Error("Missing mounted QueryClient");
   fireEvent.change(screen.getByLabelText("报表"), { target: { value: "income" } });
   const originalSales = await screen.findByRole("row", { name: "销售收入 30.00" });
   fireEvent.click(within(originalSales).getByRole("link", { name: "30.00" }));
@@ -294,7 +305,8 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
   expect(screen.queryByRole("link", { name: "SYNTHETIC-1 / 2" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "刷新为最新账簿" }));
   await screen.findByText(/期末余额: 150.00/);
-  expect(window.location.hash).not.toContain("accountRevision=");
+  expect(window.location.hash).toContain("watermark=2");
+  expect(window.location.hash).toContain("accountRevision=10");
   await act(async () => {
     window.location.hash =
       "/ledger-reports?company=DEFAULT&month=2026-01&stage=unadjusted&view=income&watermark=1&accountRevision=10";
@@ -326,14 +338,84 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
         path.includes("watermark=1"),
     ),
   ).toBe(true);
+  const standaloneStart = requests.length;
   await act(async () => {
-    window.location.hash =
-      "/ledger?company=DEFAULT&month=2026-01&stage=unadjusted&account=1000&watermark=2&accountRevision=10";
+    window.location.hash = "/ledger?company=DEFAULT&month=2026-01&stage=unadjusted&account=1000";
   });
   await screen.findByText(/期末余额: 150.00/);
+  expect(window.location.hash).toContain("watermark=2");
+  expect(window.location.hash).toContain("accountRevision=10");
+  fireEvent.change(screen.getByLabelText("科目"), { target: { value: "4400" } });
+  fireEvent.click(screen.getByRole("button", { name: "查询" }));
+  await screen.findByText(/期末余额: -150.00/);
+  fireEvent.change(screen.getByLabelText("科目"), { target: { value: "1000" } });
+  fireEvent.click(screen.getByRole("button", { name: "查询" }));
+  await screen.findByText(/期末余额: 150.00/);
+  const standaloneRequests = requests
+    .slice(standaloneStart)
+    .filter((path) => path.startsWith("/api/v1/ledger?"));
+  expect(standaloneRequests.filter((path) => !path.includes("watermark="))).toHaveLength(1);
+  expect(
+    standaloneRequests
+      .slice(1)
+      .every((path) => path.includes("watermark=2") && path.includes("accountRevision=10")),
+  ).toBe(true);
+  accountRevision = 11;
+  fireEvent.scroll(screen.getByRole("region", { name: "总账明细" }), {
+    target: { scrollTop: 1000 },
+  });
+  await waitFor(() => {
+    expect(screen.getByRole("alert").textContent).toContain("科目配置已变更");
+    expect(screen.getByRole("button", { name: "查询" })).toHaveProperty("disabled", true);
+  });
+  expect(requests.at(-1)).toContain("cursor=next-2-10");
+  const conflictStart = requests.length;
+  const apply = screen.getByRole("button", { name: "查询" });
+  fireEvent.click(apply);
+  const form = apply.closest("form");
+  if (!form) throw new Error("Missing ledger filter form");
+  fireEvent.submit(form);
+  await act(async () => {
+    focusManager.setFocused(false);
+    onlineManager.setOnline(false);
+  });
+  await act(async () => {
+    focusManager.setFocused(true);
+    onlineManager.setOnline(true);
+    await client.invalidateQueries({ queryKey: ["ledger-live", "DEFAULT"] });
+    await client.refetchQueries({ queryKey: ["ledger-live", "DEFAULT"], type: "active" });
+    await client.resetQueries({ queryKey: ["ledger-live", "DEFAULT"] });
+  });
+  expect(screen.getByRole("alert").textContent).toContain("科目配置已变更");
+  expect(window.location.hash).toContain("accountRevision=10");
+  expect(
+    requests.slice(conflictStart).filter((path) => path.startsWith("/api/v1/ledger?")),
+  ).toEqual([]);
+  expect(screen.queryByRole("link", { name: "SYNTHETIC-1 / 1" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "刷新为最新账簿" }));
+  await screen.findByRole("link", { name: "SYNTHETIC-1 / 1" });
+  expect(window.location.hash).toContain("watermark=2");
+  expect(window.location.hash).toContain("accountRevision=11");
+  expect(
+    requests
+      .slice(conflictStart)
+      .filter((path) => path.startsWith("/api/v1/ledger?") && !path.includes("watermark=")),
+  ).toHaveLength(1);
+  const refetchStart = requests.length;
+  await act(async () => {
+    await client.invalidateQueries({ queryKey: ["ledger-live", "DEFAULT"] });
+  });
+  await screen.findByRole("link", { name: "SYNTHETIC-1 / 1" });
+  const refetched = requests
+    .slice(refetchStart)
+    .filter((path) => path.startsWith("/api/v1/ledger?"));
+  expect(refetched.length).toBeGreaterThan(0);
+  expect(
+    refetched.every((path) => path.includes("watermark=2") && path.includes("accountRevision=11")),
+  ).toBe(true);
   await act(async () => {
     window.location.hash =
-      "/ledger?company=DEFAULT&month=2026-01&stage=unadjusted&account=1000&watermark=99&accountRevision=10";
+      "/ledger?company=DEFAULT&month=2026-01&stage=unadjusted&account=1000&watermark=99&accountRevision=11";
   });
   expect((await screen.findByRole("alert")).textContent).toContain("来源账簿水位不可用");
   expect(window.location.hash).toContain("watermark=99");

@@ -61,7 +61,18 @@ pending revalidation and failed reads never display stale cached tables.
 Historical GL remains readable only while the account configuration still matches.
 Reclassification without new postings returns 409 and requires an explicit refresh,
 not a historical-classification mode or an automatic latest-data fallback.
-Refresh explicitly removes both pins and starts a new read. Income account drilldowns
+Standalone ledger entry has a separate initial-read phase: its first response writes
+both pins into the URL and seeds the corresponding pinned query state before filters
+or pagination become available. Every subsequent ledger request, including first-page
+refetches and changed filters, must carry both pins and validate the response against
+them. The temporary initial-read query is discarded on unmount and never refetches
+on focus, reconnect or mount; normal pinned reads inherit the app's disabled focus
+and reconnect refetch policy. Cache invalidation can only refetch the pinned scope.
+A ledger 409 latches a needs-refresh state outside the query cache: filters, paging,
+retries and automatic refetches stop, cached rows are hidden, and even resetting the
+query cache cannot unlock it. Only explicit refresh clears this state, obtains the
+latest two-part snapshot, and pins it back into the URL and query state.
+Income account drilldowns
 show signed period amounts in the statement direction alongside raw trial columns;
 the selected group subtotal reconciles to those period amounts, not closing balances.
 All posted-journal selection paths share cancellation, so a late deep-link response

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import {
@@ -21,6 +21,10 @@ type View = (typeof views)[number];
 export function LedgerReports({ preferences }: { preferences: Preferences }) {
   const [params, setParams] = useSearchParams(),
     location = useLocation();
+  const [failedSnapshot, setFailedSnapshot] = useState<{
+    scope: string;
+    error: MasterDataFailure;
+  } | null>(null);
   const t: T = (key) => label(preferences.language, key);
   const companies = useInfiniteQuery({
     queryKey: ["companies"],
@@ -36,6 +40,12 @@ export function LedgerReports({ preferences }: { preferences: Preferences }) {
   const items = companies.data?.pages.flatMap((page) => page.items) ?? [];
   const code = params.get("company") ?? items[0]?.code;
   const company = items.find((item) => item.code === code);
+  const scope = `${code}:${location.pathname}:${params.get("watermark")}:${params.get("accountRevision")}`;
+  const conflict = failedSnapshot?.scope === scope ? failedSnapshot.error : null;
+  const setConflict = useCallback(
+    (error: MasterDataFailure | null) => setFailedSnapshot(error ? { scope, error } : null),
+    [scope],
+  );
   return (
     <section>
       <h2>{t(location.pathname === "/ledger" ? "ledger.detail" : "ledger.title")}</h2>
@@ -43,6 +53,7 @@ export function LedgerReports({ preferences }: { preferences: Preferences }) {
       <label htmlFor="ledger-company">{t("master.company")}</label>
       <select
         id="ledger-company"
+        disabled={conflict !== null}
         value={company?.code ?? ""}
         onChange={(event) => setParams({ company: event.target.value })}
       >
@@ -69,6 +80,8 @@ export function LedgerReports({ preferences }: { preferences: Preferences }) {
           key={`${company.code}:${location.pathname}`}
           company={company}
           preferences={preferences}
+          conflict={conflict}
+          setConflict={setConflict}
         />
       )}
       {preferences.teaching && <p className="teaching">{t("ledger.teaching")}</p>}
@@ -101,9 +114,13 @@ function ErrorBox({ error, retry, t }: { error: unknown; retry: () => void; t: T
 function CompanyReports({
   company,
   preferences,
+  conflict,
+  setConflict,
 }: {
   company: CompanyDto;
   preferences: Preferences;
+  conflict: MasterDataFailure | null;
+  setConflict: (error: MasterDataFailure | null) => void;
 }) {
   const [params, setParams] = useSearchParams(),
     location = useLocation(),
@@ -170,6 +187,7 @@ function CompanyReports({
       <label htmlFor="ledger-month">{t("ledger.period")}</label>
       <select
         id="ledger-month"
+        disabled={ledger && conflict !== null}
         value={month ?? ""}
         onChange={(event) => change({ month: event.target.value })}
       >
@@ -216,6 +234,7 @@ function CompanyReports({
       <button
         type="button"
         onClick={() => {
+          setConflict(null);
           void client.resetQueries({ queryKey: ["ledger-live", company.code] });
           const next = new URLSearchParams(params);
           next.delete("watermark");
@@ -236,15 +255,26 @@ function CompanyReports({
       {valid &&
         month &&
         (ledger ? (
-          <LedgerGrid
-            key={`${search}:${account}:${params.get("dimension")}:${params.get("value")}`}
-            company={company}
-            month={month}
-            account={account}
-            params={params}
-            preferences={preferences}
-            t={t}
-          />
+          params.has("watermark") ? (
+            <LedgerGrid
+              key={`${search}:${account}:${params.get("dimension")}:${params.get("value")}`}
+              company={company}
+              month={month}
+              account={account}
+              params={params}
+              preferences={preferences}
+              conflict={conflict}
+              setConflict={setConflict}
+              t={t}
+            />
+          ) : (
+            <LedgerSnapshot
+              scope={ledgerFilters(company.code, month, account, params)}
+              conflict={conflict}
+              setConflict={setConflict}
+              t={t}
+            />
+          )
         ) : (
           <FinancialReport
             company={company}
@@ -462,12 +492,88 @@ function FinancialReport({
     </section>
   );
 }
+function ledgerFilters(company: string, month: string, account: string, params: URLSearchParams) {
+  const filters = new URLSearchParams({
+    company,
+    month,
+    account,
+    limit: "500",
+    stage: params.get("stage") ?? "adjusted",
+  });
+  for (const key of ["dimension", "value", "watermark", "accountRevision"]) {
+    if (params.has(key)) filters.set(key, params.get(key) ?? "");
+  }
+  return filters;
+}
+function ledgerKey(filters: URLSearchParams) {
+  return [
+    "ledger-live",
+    ...[
+      "company",
+      "month",
+      "account",
+      "stage",
+      "dimension",
+      "value",
+      "watermark",
+      "accountRevision",
+    ].map((key) => filters.get(key)),
+  ];
+}
+function useLedgerConflict(error: unknown, setConflict: (error: MasterDataFailure | null) => void) {
+  useEffect(() => {
+    if (error instanceof MasterDataFailure && error.status === 409) setConflict(error);
+  }, [error, setConflict]);
+}
+function LedgerSnapshot({
+  scope,
+  conflict,
+  setConflict,
+  t,
+}: {
+  scope: URLSearchParams;
+  conflict: MasterDataFailure | null;
+  setConflict: (error: MasterDataFailure | null) => void;
+  t: T;
+}) {
+  const [, setParams] = useSearchParams(),
+    client = useQueryClient();
+  const query = useQuery({
+    queryKey: ["ledger-live", scope.get("company"), "snapshot", scope.toString()],
+    enabled: conflict === null,
+    gcTime: 0,
+    staleTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    queryFn: ({ signal }) => {
+      if (conflict) throw conflict;
+      return masterRequest(`/api/v1/ledger?${scope}`, ledgerSchema, { signal });
+    },
+  });
+  useLedgerConflict(query.error, setConflict);
+  useEffect(() => {
+    if (!query.data || query.isError || query.isFetching || conflict) return;
+    const next = new URLSearchParams(scope);
+    next.delete("limit");
+    next.set("watermark", String(query.data.watermark));
+    next.set("accountRevision", String(query.data.accountRevision));
+    client.setQueryData(ledgerKey(next), { pages: [query.data], pageParams: [""] });
+    setParams(next, { replace: true });
+  }, [query.data, query.isError, query.isFetching, conflict, scope, client, setParams]);
+  if (conflict) return <p role="alert">{t("ledger.snapshotUnavailable")}</p>;
+  if (query.isError)
+    return <ErrorBox error={query.error} retry={() => void query.refetch()} t={t} />;
+  return <p role="status">{t("master.loading")}</p>;
+}
 function LedgerGrid({
   company,
   month,
   account,
   params,
   preferences,
+  conflict,
+  setConflict,
   t,
 }: {
   company: CompanyDto;
@@ -475,58 +581,41 @@ function LedgerGrid({
   account: string;
   params: URLSearchParams;
   preferences: Preferences;
+  conflict: MasterDataFailure | null;
+  setConflict: (error: MasterDataFailure | null) => void;
   t: T;
 }) {
   const [, setParams] = useSearchParams();
   const [code, setCode] = useState(account),
     [dimension, setDimension] = useState(params.get("dimension") ?? ""),
     [value, setValue] = useState(params.get("value") ?? "");
-  const filters = new URLSearchParams({
-    company: company.code,
-    month,
-    account,
-    limit: "500",
-    stage: params.get("stage") ?? "adjusted",
-  });
-  if (params.has("dimension")) {
-    filters.set("dimension", params.get("dimension") ?? "");
-    filters.set("value", params.get("value") ?? "");
-  }
-  if (params.has("watermark")) filters.set("watermark", params.get("watermark") ?? "");
-  if (params.has("accountRevision"))
-    filters.set("accountRevision", params.get("accountRevision") ?? "");
+  const filters = ledgerFilters(company.code, month, account, params);
   const query = useInfiniteQuery({
-    queryKey: [
-      "ledger-live",
-      company.code,
-      month,
-      account,
-      params.get("stage") ?? "adjusted",
-      params.get("dimension"),
-      params.get("value"),
-      params.get("watermark"),
-      params.get("accountRevision"),
-    ],
+    queryKey: ledgerKey(filters),
+    enabled: conflict === null,
     staleTime: 0,
     refetchOnMount: "always",
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) => {
+      if (conflict) throw conflict;
+      if (!filters.has("watermark") || !filters.has("accountRevision"))
+        throw new MasterDataFailure("invalid");
       const page = await masterRequest(
         `/api/v1/ledger?${filters}${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`,
         ledgerSchema,
         { signal },
       );
       if (
-        params.has("watermark") &&
-        (page.watermark !== Number(params.get("watermark")) ||
-          page.accountRevision !== Number(params.get("accountRevision")))
+        page.watermark !== Number(filters.get("watermark")) ||
+        page.accountRevision !== Number(filters.get("accountRevision"))
       )
         throw new MasterDataFailure("invalid");
       return page;
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
-  const data = query.isError || query.isRefetching ? undefined : query.data;
+  useLedgerConflict(query.error, setConflict);
+  const data = conflict || query.isError || query.isRefetching ? undefined : query.data;
   const rows = data?.pages.flatMap((page) => page.items) ?? [],
     first = data?.pages[0],
     fmt = (n: number) => formatMinor(n, preferences.language, company.scale);
@@ -535,6 +624,7 @@ function LedgerGrid({
       <form
         onSubmit={(event) => {
           event.preventDefault();
+          if (conflict) return;
           if (
             code === account &&
             dimension === (params.get("dimension") ?? "") &&
@@ -546,31 +636,43 @@ function LedgerGrid({
             month,
             account: code,
             stage: params.get("stage") ?? "adjusted",
-            ...(params.has("watermark")
-              ? {
-                  watermark: params.get("watermark") ?? "",
-                  accountRevision: params.get("accountRevision") ?? "",
-                }
-              : {}),
+            watermark: params.get("watermark") ?? "",
+            accountRevision: params.get("accountRevision") ?? "",
             ...(dimension ? { dimension, value } : value ? { value } : {}),
           });
         }}
       >
         <label htmlFor="ledger-account">{t("ledger.account")}</label>
-        <input id="ledger-account" value={code} onChange={(event) => setCode(event.target.value)} />
+        <input
+          id="ledger-account"
+          disabled={conflict !== null}
+          value={code}
+          onChange={(event) => setCode(event.target.value)}
+        />
         <label htmlFor="ledger-dimension">{t("ledger.dimension")}</label>
         <input
           id="ledger-dimension"
+          disabled={conflict !== null}
           value={dimension}
           onChange={(event) => setDimension(event.target.value)}
         />
         <label htmlFor="ledger-value">{t("ledger.value")}</label>
-        <input id="ledger-value" value={value} onChange={(event) => setValue(event.target.value)} />
-        <button type="submit">{t("ledger.apply")}</button>
+        <input
+          id="ledger-value"
+          disabled={conflict !== null}
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+        />
+        <button type="submit" disabled={conflict !== null}>
+          {t("ledger.apply")}
+        </button>
       </form>
       <p>{t("ledger.snapshot")}</p>
-      {(query.isPending || query.isRefetching) && <p role="status">{t("master.loading")}</p>}
-      {query.isError && (
+      {!conflict && (query.isPending || query.isRefetching) && (
+        <p role="status">{t("master.loading")}</p>
+      )}
+      {conflict && <p role="alert">{t("ledger.snapshotUnavailable")}</p>}
+      {!conflict && query.isError && (
         <ErrorBox
           error={query.error}
           retry={() => void (query.isFetchNextPageError ? query.fetchNextPage() : query.refetch())}
@@ -598,7 +700,8 @@ function LedgerGrid({
             target.scrollHeight - target.scrollTop - target.clientHeight < 600 &&
             query.hasNextPage &&
             !query.isFetching &&
-            !query.isError
+            !query.isError &&
+            !conflict
           )
             void query.fetchNextPage({ cancelRefetch: false });
         }}
@@ -637,7 +740,7 @@ function LedgerGrid({
           )}
         />
       </div>
-      {query.hasNextPage && !query.isError && (
+      {query.hasNextPage && !query.isError && !conflict && (
         <button
           type="button"
           disabled={query.isFetchingNextPage}
