@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>UI-1 原型 · 运行状态</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="prototype.css" />
+  </head>
+  <body data-page="overview">
+    <div class="workspace">
+      <div class="shell">
+        <main id="workspace-main" tabindex="-1">
+          <div class="page">
+            <div class="page-header">
+              <div class="titles">
+                <h2 data-en="Runtime status">运行状态</h2>
+                <p
+                  data-en="This workspace provides company accounts and dimensions, journal preview/confirmation, live ledger reports and period close, separate verified-snapshot reports, and a candidate-only AI assistant."
+                >
+                  此工作区提供公司科目与维度维护、凭证预览确认、当前账套总账报表与结账、独立的已验证快照报表，以及仅生成候选的 AI 助手。
+                </p>
+              </div>
+            </div>
+
+            <aside class="teaching-tip" aria-label="教学说明" data-en-label="Teaching note">
+              <span class="mark" aria-hidden="true">教</span>
+              <strong data-en="Teaching note">教学说明</strong>
+              <p
+                data-en="Status comes live from the same-origin read-only health endpoint. A successful connection does not mean the target business ledger is configured."
+              >
+                状态由同源的只读 health 接口实时返回。连接成功并不代表目标业务账套已配置。
+              </p>
+            </aside>
+
+            <section class="card" aria-labelledby="health-title">
+              <header>
+                <h3 id="health-title" data-en="Local API status">本地 API 状态</h3>
+                <span class="badge success"><span aria-hidden="true">✓</span><span data-en="Local API connected">本地 API 已连接</span></span>
+              </header>
+              <div class="body">
+                <dl class="facts">
+                  <div><dt data-en="Service">服务</dt><dd>ai-native-erp</dd></div>
+                  <div><dt data-en="Contract version">契约版本</dt><dd>1</dd></div>
+                  <div><dt data-en="Runtime profile">运行档案</dt><dd data-en="Local">本地</dd></div>
+                  <div>
+                    <dt data-en="Data status">数据状态</dt>
+                    <dd><span class="badge success"><span aria-hidden="true">✓</span><span data-en="Target business ledger connected">目标业务账套已连接</span></span></dd>
+                  </div>
+                </dl>
+              </div>
+            </section>
+
+            <section class="card" aria-labelledby="shortcut-title">
+              <header>
+                <h3 id="shortcut-title" data-en="Common entry points">常用入口</h3>
+                <span class="summary" data-en="Same targets as the navigation; no new functions">与左侧导航目标相同，不新增功能</span>
+              </header>
+              <div class="body">
+                <div class="tiles">
+                  <a class="tile" href="trade-invoices.html">
+                    <strong data-en="Purchase and sales invoices">采购与销售发票</strong>
+                    <span data-en="Preview and post AP/AR invoices">预览并过账 AP/AR 发票</span>
+                  </a>
+                  <a class="tile" href="trade-settlements.html">
+                    <strong data-en="Payments and receipts">付款与收款</strong>
+                    <span data-en="Settle open items">核销未结项</span>
+                  </a>
+                  <a class="tile" href="trade-reports.html">
+                    <strong data-en="Trade open items and ageing">往来未结项与账龄</strong>
+                    <span data-en="Open items, ageing, GL reconciliation">未结项、账龄、GL 核对</span>
+                  </a>
+                  <a class="tile" href="journals.html">
+                    <strong data-en="Journals">凭证</strong>
+                    <span data-en="Draft, preview and confirm">草稿、预览与确认</span>
+                  </a>
+                  <a class="tile" href="period-close.html">
+                    <strong data-en="Period close">期末结账</strong>
+                    <span data-en="Close and reopen periods">关闭与重开期间</span>
+                  </a>
+                  <a class="tile" href="reports.html">
+                    <strong data-en="Trial balance">试算平衡表</strong>
+                    <span data-en="Verified snapshot reports">已验证快照报表</span>
+                  </a>
+                </div>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+    </div>
+    <script src="prototype.js"></script>
+  </body>
+</html>
