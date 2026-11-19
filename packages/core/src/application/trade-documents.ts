@@ -8,9 +8,12 @@ import {
   checkedPage,
   checkedTradeInvoice,
   checkedTradeOrder,
+  checkedTradeSettlement,
+  roundTradeRatio,
   formatMinor,
   matchTradeOrderLine,
   normalizeExternalInvoice,
+  quantityMicros,
   selectTradeTax,
   tradeDocumentError,
   tradeEffective,
@@ -36,6 +39,10 @@ import {
   type TradeOrder,
   type TradeOrderCommand,
   type TradeSide,
+  type TradeSettlementCommand,
+  type TradeSettlementAllocation,
+  type TradeSettlementReceipt,
+  type TradePaymentRecord,
 } from "@erp/core/domain";
 import type { JournalPreview, JournalService, JournalTools } from "./journals.ts";
 import type { MasterDataRepository, MasterDataStore } from "./master-data.ts";
@@ -69,6 +76,23 @@ export interface TradeDocumentRepository {
   tradeDocumentPage(company: string, query: PageQuery): Promise<Page<TradeDocumentSummary>>;
   openItem(company: string, itemId: string): Promise<OpenItem | null>;
   openItemPage(company: string, query: OpenItemQuery): Promise<Page<OpenItem>>;
+  tradePayment(
+    company: string,
+    paymentId: string,
+    byReceipt?: boolean,
+  ): Promise<TradePaymentRecord | null>;
+  insertTradePayment(company: string, record: TradePaymentRecord): Promise<void>;
+  settleOpenItem(
+    company: string,
+    paymentId: string,
+    receiptKey: string,
+    journalId: string,
+    day: string,
+    at: string,
+    allocation: TradeSettlementAllocation,
+  ): Promise<void>;
+  itemSettlements(company: string, itemId: string): Promise<readonly TradeSettlementReceipt[]>;
+  latestSettlementDate(company: string, itemId: string): Promise<string>;
 }
 export interface TradeInvoicePreview {
   readonly fingerprint: string;
@@ -88,6 +112,15 @@ export interface TradeInvoiceDetail {
   readonly matches: readonly TradeLineMatch[];
   readonly receipt: TradeInvoiceReceipt;
   readonly openItem: OpenItem;
+  readonly settlements: readonly TradeSettlementReceipt[];
+}
+export interface TradeSettlementPreview {
+  readonly fingerprint: string;
+  readonly gross: number;
+  readonly cash: number;
+  readonly discount: number;
+  readonly allocations: readonly TradeSettlementAllocation[];
+  readonly journal: JournalPreview["plan"];
 }
 interface Prepared {
   readonly preview: TradeInvoicePreview;
@@ -95,6 +128,10 @@ interface Prepared {
   readonly commandHash: string;
   readonly lines: readonly TradeDocumentLine[];
   readonly controlIndex: number;
+  readonly settlementTerms: {
+    readonly discountPercent: string;
+    readonly allowPartialDiscount: boolean;
+  };
 }
 function required<T>(value: T | null): T {
   if (value === null) throw new DomainError("NOT_FOUND");
@@ -114,6 +151,239 @@ export class TradeDocumentService {
     this.store = store;
     this.journals = journals;
     this.tools = tools;
+  }
+  private async prepareSettlement(repo: Repo, command: TradeSettlementCommand) {
+    if (await repo.tradePayment(command.company, command.paymentId))
+      tradeDocumentError("paymentId", "duplicate", true);
+    const company = await this.company(repo, command.company, command.currency);
+    const party = await this.config(
+      repo,
+      command.company,
+      "tradeParty",
+      command.party,
+      command.accountingDate,
+      "party",
+    );
+    const profileCode = command.side === "AP" ? party.data.apProfile : party.data.arProfile;
+    if (profileCode === null) tradeDocumentError("party", "party");
+    const profile = await this.config(
+      repo,
+      command.company,
+      "tradeProfile",
+      profileCode,
+      command.accountingDate,
+      "party",
+    );
+    if (profile.data.side !== command.side) tradeDocumentError("party", "party");
+    if (await repo.journalSourceExists(command.company, `TRADE-PAY:${command.paymentId}`))
+      tradeDocumentError("paymentId", "duplicate", true);
+    const allocations: TradeSettlementAllocation[] = [];
+    const controls: OpenItem[] = [];
+    const lines: JournalInputLine[] = [];
+    const ap = command.side === "AP";
+    const push = (account: string, debit: boolean, amount: number, dimensions: DimensionMap) => {
+      if (amount === 0) return;
+      lines.push({
+        account,
+        debit: debit ? formatMinor(amount, company.scale) : "",
+        credit: debit ? "" : formatMinor(amount, company.scale),
+        dimensions,
+        suspense: null,
+      });
+    };
+    for (const [index, selection] of command.items.entries()) {
+      const path = `items.${index}`;
+      const item = await repo.openItem(command.company, selection.itemId);
+      if (!item) tradeDocumentError(path, "reference");
+      if (item.party !== command.party || item.side !== command.side)
+        tradeDocumentError(path, "party");
+      if (item.currency !== command.currency) tradeDocumentError(path, "currency");
+      if (item.revision !== selection.revision) tradeDocumentError(path, "stale", true);
+      if (selection.gross > item.remainingGross || item.status !== "open")
+        tradeDocumentError(path, "quantity");
+      if (command.accountingDate < item.accountingDate)
+        tradeDocumentError("accountingDate", "reference");
+      // Accounting dates, not wall-clock acceptance times, define the dependency chain.
+      if ((await repo.latestSettlementDate(command.company, item.itemId)) > command.accountingDate)
+        tradeDocumentError("accountingDate", "reference");
+      const gross = selection.gross;
+      const net =
+        gross === item.remainingGross
+          ? item.remainingNet
+          : roundTradeRatio(BigInt(item.remainingNet) * BigInt(gross), BigInt(item.remainingGross));
+      const tax = gross - net;
+      const discountAvailable =
+        command.accountingDate >= item.documentDate &&
+        command.accountingDate <= item.discountDate &&
+        quantityMicros(item.discountPercent) > 0n &&
+        (item.allowPartialDiscount || (item.revision === 1 && gross === item.gross));
+      if (selection.takeDiscount && !discountAvailable)
+        tradeDocumentError(`${path}.takeDiscount`, "reference");
+      const discount = selection.takeDiscount
+        ? roundTradeRatio(BigInt(net) * quantityMicros(item.discountPercent), 100_000_000n)
+        : 0;
+      allocations.push({
+        itemId: item.itemId,
+        revision: item.revision,
+        gross,
+        net,
+        tax,
+        discount,
+        cash: gross - discount,
+        discountAvailable,
+        discountDate: item.discountDate,
+        settledGross: item.gross - item.remainingGross + gross,
+        remainingGross: item.remainingGross - gross,
+        remainingNet: item.remainingNet - net,
+        remainingTax: item.remainingTax - tax,
+      });
+      controls.push(item);
+      push(item.controlAccount, ap, gross, item.dimensions);
+    }
+    const sum = (key: "gross" | "cash" | "discount") => {
+      const value = allocations.reduce((n, a) => n + BigInt(a[key]), 0n);
+      if (value > BigInt(Number.MAX_SAFE_INTEGER)) tradeDocumentError("items", "shape");
+      return Number(value);
+    };
+    const gross = sum("gross"),
+      cash = sum("cash"),
+      discount = sum("discount");
+    const accounts = await this.accountRoles(repo, command.company, [
+      ...controls.map((item) => ({
+        code: item.controlAccount,
+        role: "controlAccount" as const,
+        side: command.side,
+        path: "items",
+      })),
+      ...(cash
+        ? [{ code: profile.data.cashAccount, role: "cashAccount" as const, path: "party" }]
+        : []),
+      ...(discount
+        ? [{ code: profile.data.discountAccount, role: "discountAccount" as const, path: "party" }]
+        : []),
+    ]);
+    push(profile.data.cashAccount, !ap, cash, {});
+    push(profile.data.discountAccount, !ap, discount, {});
+    const draft: JournalDraft = {
+      id: command.paymentId,
+      revision: 0,
+      sourceRef: `TRADE-PAY:${command.paymentId}`,
+      date: command.accountingDate,
+      documentDate: command.documentDate,
+      taxDate: command.taxDate,
+      memo: `${command.side} book settlement ${command.party}`,
+      kind: "normal",
+      operation: "journal",
+      originalId: null,
+      headerDimensions: {},
+      lines,
+    };
+    const journal = await this.journals.adapter("TRADE").plan(
+      repo,
+      command.company,
+      draft,
+      lines.map(() => ({})),
+    );
+    for (const [index, item] of controls.entries()) {
+      if (
+        this.tools.hash([journal.plan.journals[0].lines[index].dimensions]) !==
+        this.tools.hash([item.dimensions])
+      )
+        tradeDocumentError(`items.${index}.dimensions`, "account");
+    }
+    const commandHash = this.tools.hash(["trade-settlement-v1", command]);
+    const fingerprint = this.tools.hash([
+      "trade-settlement-preview-v1",
+      commandHash,
+      journal.fingerprint,
+      controls,
+      party,
+      profile,
+      accounts,
+    ]);
+    const preview: TradeSettlementPreview = {
+      fingerprint,
+      gross,
+      cash,
+      discount,
+      allocations,
+      journal: journal.plan,
+    };
+    return { journal, commandHash, preview };
+  }
+  async previewSettlement(command: TradeSettlementCommand): Promise<TradeSettlementPreview> {
+    checkedTradeSettlement(command);
+    return this.store.read(async (repo) => (await this.prepareSettlement(repo, command)).preview);
+  }
+  async confirmSettlement(input: {
+    readonly command: TradeSettlementCommand;
+    readonly fingerprint: string;
+    readonly idempotencyKey: string;
+    readonly confirmation: "POST";
+  }): Promise<TradeSettlementReceipt> {
+    if (
+      input?.confirmation !== "POST" ||
+      typeof input.fingerprint !== "string" ||
+      !/^[0-9a-f]{64}$/u.test(input.fingerprint)
+    )
+      tradeDocumentError("fingerprint", "shape");
+    checkedJournalId(input.idempotencyKey);
+    checkedTradeSettlement(input.command);
+    const command = input.command;
+    return this.store.write(async (repo) => {
+      const previous = await repo.tradePayment(command.company, input.idempotencyKey, true);
+      if (previous) {
+        if (
+          previous.commandHash !== this.tools.hash(["trade-settlement-v1", command]) ||
+          previous.receipt.fingerprint !== input.fingerprint
+        )
+          tradeDocumentError("idempotencyKey", "idempotency", true);
+        return previous.receipt;
+      }
+      if (await repo.journalReceipt(command.company, input.idempotencyKey))
+        tradeDocumentError("idempotencyKey", "idempotency", true);
+      const prepared = await this.prepareSettlement(repo, command);
+      if (prepared.preview.fingerprint !== input.fingerprint)
+        tradeDocumentError("fingerprint", "stale", true);
+      const posted = await this.journals.commit(repo, prepared.journal, input.idempotencyKey);
+      const { journal: _, ...preview } = prepared.preview;
+      const receipt: TradeSettlementReceipt = {
+        ...preview,
+        company: command.company,
+        paymentId: command.paymentId,
+        idempotencyKey: input.idempotencyKey,
+        sourceRef: posted.sourceRef,
+        journalIds: posted.journalIds,
+        postedAt: posted.postedAt,
+      };
+      await repo.insertTradePayment(command.company, {
+        commandHash: prepared.commandHash,
+        receipt,
+      });
+      for (const a of preview.allocations)
+        await repo.settleOpenItem(
+          command.company,
+          command.paymentId,
+          input.idempotencyKey,
+          posted.journalIds[0],
+          command.accountingDate,
+          posted.postedAt,
+          a,
+        );
+      await repo.businessAudit(
+        command.company,
+        posted.sourceRef,
+        "trade.settlement.confirm",
+        {
+          paymentId: command.paymentId,
+          gross: preview.gross,
+          cash: preview.cash,
+          discount: preview.discount,
+        },
+        posted.postedAt,
+      );
+      return receipt;
+    });
   }
   private async config<K extends TradeConfig["kind"]>(
     repo: Repo,
@@ -518,6 +788,10 @@ export class TradeDocumentService {
       journal,
       lines,
       controlIndex,
+      settlementTerms: {
+        discountPercent: terms.data.discountPercent,
+        allowPartialDiscount: terms.data.allowPartialDiscount,
+      },
       preview: {
         fingerprint,
         side: command.side,
@@ -640,6 +914,7 @@ export class TradeDocumentService {
           calculation: preview.calculation,
           matches: preview.matches,
           receipt,
+          settlementTerms: prepared.settlementTerms,
         },
       };
       await repo.insertTradeDocument(command.company, record);
@@ -682,6 +957,7 @@ export class TradeDocumentService {
         matches: snapshot.matches,
         receipt: snapshot.receipt,
         openItem: required(await repo.openItem(company, documentId)),
+        settlements: await repo.itemSettlements(company, documentId),
       };
     });
   }

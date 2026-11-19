@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { StorageError } from "@erp/core/application";
+import { tradeConfigSchema } from "@erp/core/contracts";
+import { addTradeDays, checkedTradePercent, type TradeConfig } from "@erp/core/domain";
 import type { Connection } from "./types.ts";
 import { schemaFingerprint } from "./schema.ts";
 
@@ -91,6 +93,7 @@ const filenames = [
   "008-journal-dates.sql",
   "009-trade-master.sql",
   "010-trade-documents.sql",
+  "011-trade-settlements.sql",
 ];
 
 export function normalizeMigration(text: string): string {
@@ -111,6 +114,120 @@ async function migration(filename: string): Promise<{ sql: string; checksum: str
     throw new StorageError("SCHEMA_MISMATCH");
   }
   return { sql, checksum: createHash("sha256").update(sql, "utf8").digest("hex") };
+}
+
+async function recoverLegacyTradeTerms(connection: Connection) {
+  // 010 has no invoice-to-config revision pointer. Per-object revisions prove
+  // chain completeness, not invoice order. Persisted dates exclude impossible
+  // terms; the remaining candidates must agree on discount semantics.
+  const documents = await connection.query(
+    "SELECT d.company_id,d.document_id,d.party_id,d.document_date,i.due_date,i.discount_date FROM trade_documents d LEFT JOIN open_items i ON i.company_id=d.company_id AND i.item_id=d.document_id ORDER BY d.company_id,d.document_id",
+  );
+  if (documents.length === 0) return [];
+  const histories = await connection.query(
+    "SELECT company_id,kind,config_key,revision,snapshot FROM trade_config_history WHERE kind IN ('tradeParty','tradeTerms') ORDER BY company_id,kind,config_key,revision",
+  );
+  const current = await connection.query(
+    "SELECT company_id,'tradeParty' AS kind,code,revision FROM trade_parties UNION ALL SELECT company_id,'tradeTerms' AS kind,code,revision FROM trade_terms",
+  );
+  const key = (company: unknown, kind: unknown, code: unknown) =>
+    JSON.stringify([company, kind, code]);
+  const revisions = new Map(
+    current.map((row) => [key(row.company_id, row.kind, row.code), Number(row.revision)]),
+  );
+  const chains = new Map<string, TradeConfig[] | null>();
+  for (const row of histories) {
+    const id = key(row.company_id, row.kind, row.config_key);
+    if (chains.get(id) === null) continue;
+    const chain = chains.get(id) ?? [];
+    let value: unknown;
+    try {
+      value = JSON.parse(String(row.snapshot));
+    } catch {
+      chains.set(id, null);
+      continue;
+    }
+    const parsed = tradeConfigSchema.safeParse(value);
+    if (
+      !parsed.success ||
+      parsed.data.kind !== row.kind ||
+      parsed.data.code !== row.config_key ||
+      parsed.data.revision !== Number(row.revision) ||
+      parsed.data.revision !== chain.length + 1
+    ) {
+      chains.set(id, null);
+      continue;
+    }
+    chain.push(parsed.data);
+    chains.set(id, chain);
+  }
+  const complete = (company: unknown, kind: string, code: string) => {
+    const id = key(company, kind, code);
+    const chain = chains.get(id);
+    return chain && chain.length === revisions.get(id) ? chain : null;
+  };
+  const restored: {
+    company: string;
+    itemId: string;
+    discountPercent: string;
+    allowPartialDiscount: boolean;
+  }[] = [];
+  const affectedInvoices: { company: string; documentId: string; reason: string }[] = [];
+  for (const document of documents) {
+    if (
+      typeof document.company_id !== "string" ||
+      typeof document.document_id !== "string" ||
+      typeof document.party_id !== "string"
+    )
+      throw new StorageError("SCHEMA_MISMATCH");
+    const party = complete(document.company_id, "tradeParty", document.party_id);
+    const semantics = new Map<string, { discountPercent: string; allowPartialDiscount: boolean }>();
+    let missing = !party;
+    const termCodes = new Set<string>();
+    for (const revision of party ?? []) {
+      if (revision.kind !== "tradeParty") throw new StorageError("SCHEMA_MISMATCH");
+      termCodes.add(revision.data.terms);
+    }
+    for (const code of termCodes) {
+      const terms = complete(document.company_id, "tradeTerms", code);
+      if (!terms) missing = true;
+      for (const term of terms ?? []) {
+        if (term.kind !== "tradeTerms") throw new StorageError("SCHEMA_MISMATCH");
+        if (
+          typeof document.document_date !== "string" ||
+          addTradeDays(document.document_date, term.data.dueDays) !== document.due_date ||
+          addTradeDays(document.document_date, term.data.discountDays) !== document.discount_date
+        )
+          continue;
+        const { discountPercent, allowPartialDiscount } = term.data;
+        semantics.set(
+          `${checkedTradePercent(discountPercent, "discountPercent")}|${allowPartialDiscount}`,
+          { discountPercent, allowPartialDiscount },
+        );
+      }
+    }
+    if (missing || semantics.size !== 1) {
+      affectedInvoices.push({
+        company: document.company_id,
+        documentId: document.document_id,
+        reason: missing
+          ? "missingHistory"
+          : semantics.size === 0
+            ? "noMatchingTerms"
+            : "ambiguousTerms",
+      });
+      continue;
+    }
+    const terms = semantics.values().next().value;
+    if (!terms) throw new StorageError("SCHEMA_MISMATCH");
+    restored.push({ company: document.company_id, itemId: document.document_id, ...terms });
+  }
+  if (affectedInvoices.length) {
+    const error = new StorageError("CONFLICT");
+    error.message = `Cannot prove original invoice discount terms from revision history: ${JSON.stringify(affectedInvoices)}`;
+    throw error;
+  }
+  return restored;
 }
 
 function same(actual: readonly string[], expected: readonly string[]): boolean {
@@ -211,6 +328,18 @@ export async function inspectSchema(
             ].flatMap((name) => [`trigger:${name}_no_update`, `trigger:${name}_no_delete`]),
           ]
         : []),
+      ...(latest >= 11
+        ? [
+            "table:trade_payments",
+            "table:trade_invoice_terms",
+            "trigger:trade_invoice_terms_no_update",
+            "trigger:trade_invoice_terms_no_delete",
+            "trigger:trade_payments_no_update",
+            "trigger:trade_payments_no_delete",
+            "trigger:settlements_payment_source",
+            "index:open_items_due_page",
+          ]
+        : []),
     ])
   )
     throw new StorageError("SCHEMA_MISMATCH");
@@ -232,7 +361,16 @@ export async function migrateConnection(connection: Connection): Promise<void> {
   const applied = await inspectSchema(connection, true);
   for (let index = applied; index < filenames.length; index++) {
     const current = await migration(filenames[index]);
+    const legacyTerms =
+      filenames[index] === "011-trade-settlements.sql"
+        ? await recoverLegacyTradeTerms(connection)
+        : [];
     await connection.script(current.sql);
+    for (const terms of legacyTerms)
+      await connection.query(
+        "INSERT INTO trade_invoice_terms(company_id,item_id,discount_percent,allow_partial_discount) VALUES(?,?,?,?)",
+        [terms.company, terms.itemId, terms.discountPercent, terms.allowPartialDiscount ? 1 : 0],
+      );
     const fingerprint = await schemaFingerprint(connection);
     await connection.query(
       "INSERT INTO schema_migrations(version,dialect,checksum,schema_fingerprint) VALUES(?,?,?,?)",

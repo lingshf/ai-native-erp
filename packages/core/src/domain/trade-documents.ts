@@ -143,6 +143,8 @@ export interface TradeDocumentLine {
   readonly matchStatus: PoMatch;
 }
 export interface OpenItem {
+  readonly discountPercent: string;
+  readonly allowPartialDiscount: boolean;
   readonly itemId: string;
   readonly side: TradeSide;
   readonly party: string;
@@ -222,6 +224,101 @@ export interface TradeDocumentSnapshot {
   readonly calculation: TradeCalculation;
   readonly matches: readonly TradeLineMatch[];
   readonly receipt: TradeInvoiceReceipt;
+  readonly settlementTerms?: {
+    readonly discountPercent: string;
+    readonly allowPartialDiscount: boolean;
+  };
+}
+
+export interface TradeSettlementCommand {
+  readonly company: string;
+  readonly paymentId: string;
+  readonly side: TradeSide;
+  readonly party: string;
+  readonly currency: string;
+  readonly accountingDate: string;
+  readonly documentDate: string;
+  readonly taxDate: string;
+  readonly items: readonly {
+    readonly itemId: string;
+    readonly revision: number;
+    readonly gross: number;
+    readonly takeDiscount: boolean;
+  }[];
+}
+export interface TradeSettlementAllocation {
+  readonly itemId: string;
+  readonly revision: number;
+  readonly gross: number;
+  readonly net: number;
+  readonly tax: number;
+  readonly discount: number;
+  readonly cash: number;
+  readonly discountAvailable: boolean;
+  readonly discountDate: string;
+  readonly settledGross: number;
+  readonly remainingGross: number;
+  readonly remainingNet: number;
+  readonly remainingTax: number;
+}
+export interface TradeSettlementReceipt {
+  readonly company: string;
+  readonly paymentId: string;
+  readonly idempotencyKey: string;
+  readonly fingerprint: string;
+  readonly sourceRef: string;
+  readonly journalIds: readonly string[];
+  readonly postedAt: string;
+  readonly gross: number;
+  readonly cash: number;
+  readonly discount: number;
+  readonly allocations: readonly TradeSettlementAllocation[];
+}
+export interface TradePaymentRecord {
+  readonly commandHash: string;
+  readonly receipt: TradeSettlementReceipt;
+}
+export function checkedTradeSettlement(command: TradeSettlementCommand): void {
+  plain(
+    command,
+    [
+      "company",
+      "paymentId",
+      "side",
+      "party",
+      "currency",
+      "accountingDate",
+      "documentDate",
+      "taxDate",
+      "items",
+    ],
+    "command",
+  );
+  text(command.company, orderCode, "company");
+  checkedJournalId(command.paymentId);
+  text(command.party, orderCode, "party");
+  text(command.currency, /^[A-Z]{3}$/u, "currency");
+  if (command.side !== "AP" && command.side !== "AR") tradeDocumentError("side", "shape");
+  for (const key of ["accountingDate", "documentDate", "taxDate"] as const)
+    checkedJournalDay(command[key], key);
+  if (!Array.isArray(command.items) || command.items.length < 1 || command.items.length > 100)
+    tradeDocumentError("items", "shape");
+  const seen = new Set<string>();
+  for (const [index, item] of command.items.entries()) {
+    const path = `items.${index}`;
+    plain(item, ["itemId", "revision", "gross", "takeDiscount"], path);
+    checkedJournalId(item.itemId);
+    if (seen.has(item.itemId)) tradeDocumentError(path, "duplicate");
+    seen.add(item.itemId);
+    if (
+      !Number.isSafeInteger(item.revision) ||
+      item.revision < 1 ||
+      !Number.isSafeInteger(item.gross) ||
+      item.gross <= 0 ||
+      typeof item.takeDiscount !== "boolean"
+    )
+      tradeDocumentError(path, "shape");
+  }
 }
 
 const identifier = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,59}$/u;

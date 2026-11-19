@@ -14,6 +14,10 @@ import {
   tradeInvoiceReceiptSchema,
   tradeOrderCommandSchema,
   tradeOrderSchema,
+  tradeSettlementCommandSchema,
+  tradeSettlementConfirmSchema,
+  tradeSettlementPreviewSchema,
+  tradeSettlementReceiptSchema,
   type ContractSchema,
 } from "@erp/core/contracts";
 import { DomainError } from "@erp/core/domain";
@@ -50,6 +54,19 @@ export function registerTradeDocumentRoutes(
     const app = ready(request);
     const order = await app.createOrder(parse(tradeOrderCommandSchema, request.body));
     return reply.code(201).send(tradeOrderSchema.parse(order));
+  });
+  server.all("/api/v1/trade/settlements/preview", async (request, reply) => {
+    boundary.assert(request, reply, ["POST"]);
+    return tradeSettlementPreviewSchema.parse(
+      await ready(request).previewSettlement(parse(tradeSettlementCommandSchema, request.body)),
+    );
+  });
+  server.all("/api/v1/trade/settlements", async (request, reply) => {
+    boundary.assert(request, reply, ["POST"]);
+    const receipt = await ready(request).confirmSettlement(
+      parse(tradeSettlementConfirmSchema, request.body),
+    );
+    return reply.code(201).send(tradeSettlementReceiptSchema.parse(receipt));
   });
   server.all<{ Params: { orderId: string } }>(
     "/api/v1/trade/orders/:orderId",
