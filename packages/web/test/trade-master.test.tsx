@@ -72,6 +72,30 @@ describe("trade master maintenance", () => {
     expect(screen.getByLabelText<HTMLInputElement>(label("zh", "trade.name")).value).toBe(
       "Unfinished",
     );
+    const sidebar = screen.getByRole("link", { name: label("zh", "master.title") });
+    const cancelNavigation = (event: Event) => event.preventDefault();
+    confirm.mockClear().mockReturnValue(true);
+    for (const modifier of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }]) {
+      sidebar.addEventListener("click", cancelNavigation, { once: true });
+      fireEvent.click(sidebar, modifier);
+      expect(window.location.hash).toBe("#/trade");
+      expect(confirm).not.toHaveBeenCalled();
+    }
+    confirm.mockReturnValue(false);
+    fireEvent.click(sidebar);
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText<HTMLInputElement>(label("zh", "trade.name")).value).toBe(
+      "Unfinished",
+    );
+    confirm.mockReturnValue(true);
+    sidebar.addEventListener("click", cancelNavigation, { once: true });
+    fireEvent.click(sidebar);
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(window.location.hash).toBe("#/trade");
+    confirm.mockReturnValue(false);
+    fireEvent.click(sidebar);
+    expect(confirm).toHaveBeenCalledTimes(3);
+    expect(window.location.hash).toBe("#/trade");
     confirm.mockReturnValue(true);
     fireEvent.click(screen.getByRole("button", { name: label("zh", "master.cancel") }));
     expect(screen.queryByLabelText(label("zh", "trade.name"))).toBeNull();
@@ -145,6 +169,18 @@ describe("trade master maintenance", () => {
             saved = { ...terms, revision: 2, data: command.data };
             throw new TypeError("Lost response after commit");
           }
+          if (writes.length === 2)
+            return response(
+              {
+                code: "INVALID_REQUEST",
+                messageKey: "api.error.invalidRequest",
+                params: {},
+                fieldErrors: [],
+                requestId: "4bf203b5-e54f-434c-9100-969da1cd7e73",
+                retryable: false,
+              },
+              400,
+            );
           return response(
             {
               code: "CONFLICT",
@@ -178,9 +214,20 @@ describe("trade master maintenance", () => {
     expect(window.location.hash).toBe("#/trade");
     expect(screen.getByLabelText<HTMLSelectElement>(label("zh", "trade.kind")).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: label("zh", "trade.reconcile") }));
+    await waitFor(() => {
+      expect(writes).toHaveLength(2);
+      expect(
+        screen.getByRole<HTMLButtonElement>("button", { name: label("zh", "trade.reconcile") })
+          .disabled,
+      ).toBe(false);
+    });
+    expect(screen.getByText(label("zh", "trade.uncertain"))).toBeTruthy();
+    expect(screen.getByLabelText<HTMLSelectElement>(label("zh", "trade.kind")).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: label("zh", "trade.reconcile") }));
     await waitFor(() => expect(screen.queryByLabelText(label("zh", "trade.name"))).toBeNull());
-    expect(writes).toHaveLength(2);
+    expect(writes).toHaveLength(3);
     expect(writes[1]).toEqual(writes[0]);
+    expect(writes[2]).toEqual(writes[0]);
   });
   it("creates and edits all five kinds with exact decimal input, CAS and immutable code; language changes preserve drafts", async () => {
     let rows: TradeDto[] = [];

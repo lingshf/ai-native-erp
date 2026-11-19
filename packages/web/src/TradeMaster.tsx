@@ -24,16 +24,19 @@ function useTradeLeaveGuard(guard: EditorGuard, discard: string) {
   useEffect(() => {
     if (!guard.dirty && !guard.pending) return;
     const current = window.location.href;
-    let leaving = false;
-    const mayLeave = () => {
-      if (leaving) return true;
-      if (guard.pending || !window.confirm(discard)) return false;
-      leaving = true;
-      return true;
-    };
+    const mayLeave = () => !guard.pending && window.confirm(discard);
     const click = (event: MouseEvent) => {
       const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
-      if (!(link instanceof HTMLAnchorElement) || link.href === current || link.target === "_blank")
+      if (
+        !(link instanceof HTMLAnchorElement) ||
+        link.href === current ||
+        link.target === "_blank" ||
+        event.button !== 0 ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        event.altKey
+      )
         return;
       if (!mayLeave()) {
         event.preventDefault();
@@ -477,7 +480,8 @@ function TradeEditor({
         setUncertain(
           !(issue instanceof MasterDataFailure) ||
             issue.kind !== "http" ||
-            (issue.status ?? 500) >= 500,
+            (issue.status ?? 500) >= 500 ||
+            (reconcile && issue.status !== 409),
         );
       }
     } finally {
