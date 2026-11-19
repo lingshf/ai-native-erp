@@ -32,6 +32,9 @@ test("storage CLI help and invalid configuration never choose an implicit target
     ["migrate"],
     ["migrate", "--provider", "sqlite"],
     ["migrate", "--provider", "unsupported"],
+    ["backup"],
+    ["restore", resolve(directory, "missing.sqlite")],
+    ["backup", resolve(directory, "missing.sqlite"), "--out"],
     [
       "migrate",
       "--provider",
@@ -56,6 +59,29 @@ test("storage CLI help and invalid configuration never choose an implicit target
     assert.equal(JSON.parse(result.stderr).error.code, "INVALID_INPUT");
   }
   assert.deepEqual(readdirSync(directory), []);
+});
+
+test("storage CLI backup and restore require explicit paths and report the rollback copy", (t) => {
+  const directory = fixture(t);
+  const filename = resolve(directory, "target.sqlite");
+  const snapshot = resolve(directory, "snapshot.sqlite");
+  assert.equal(run(["migrate", "--provider", "sqlite", "--file", filename]).status, 0);
+  const backup = run(["backup", filename, snapshot]);
+  assert.equal(backup.status, 0, backup.stderr);
+  const database = new DatabaseSync(filename);
+  database.exec("INSERT INTO tenants VALUES('SYNTHETIC',0)");
+  database.close();
+  const restored = run(["restore", filename, snapshot]);
+  assert.equal(restored.status, 0, restored.stderr);
+  const result = JSON.parse(restored.stdout);
+  assert.equal(result.action, "restore");
+  assert.ok(statSync(result.backup).size > 0);
+  const check = new DatabaseSync(filename);
+  try {
+    assert.equal(check.prepare("SELECT count(*) AS n FROM tenants").get().n, 0);
+  } finally {
+    check.close();
+  }
 });
 
 test("storage CLI explicitly migrates, verifies and provisions an independent target", async (t) => {

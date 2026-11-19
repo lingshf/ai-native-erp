@@ -13,6 +13,7 @@ import {
 import type { DatabaseConnection } from "kysely";
 import { StorageError } from "@erp/core/application";
 import { inspectSchema } from "./migrations.ts";
+import { acquireDatabaseLease } from "./maintenance.ts";
 import type { Backend, Connection, Parameters, Row, SqliteStorageConfig } from "./types.ts";
 
 export const APPLICATION_ID = 0x45525032;
@@ -120,12 +121,21 @@ export function sqliteBackend(config: SqliteStorageConfig): Backend {
   let writer: { database: Database.Database; db: Kysely<Record<string, never>> } | undefined;
   let reader: { database: Database.Database; db: Kysely<Record<string, never>> } | undefined;
   let closed = false;
+  let lease: Promise<() => void> | undefined;
 
   return {
     async acquire(readOnly, migrating) {
       if (closed) throw new StorageError("CLOSED");
       if (config.readonly && !readOnly) throw new StorageError("STORAGE_FAILURE");
-      await knownFile(filename, migrating);
+      if (!lease)
+        lease = acquireDatabaseLease(filename, () => knownFile(filename, migrating)).catch(
+          (error) => {
+            lease = undefined;
+            throw error;
+          },
+        );
+      else await knownFile(filename, migrating);
+      await lease;
       let resource = readOnly ? reader : writer;
       if (!resource) {
         const database = new Database(filename, {
@@ -189,10 +199,12 @@ export function sqliteBackend(config: SqliteStorageConfig): Backend {
       return connection;
     },
     async close() {
+      if (closed) return;
       closed = true;
       const results = await Promise.allSettled(resources.map((resource) => resource.destroy()));
       if (results.some((result) => result.status === "rejected"))
         throw new StorageError("STORAGE_FAILURE");
+      if (lease) (await lease)();
     },
   };
 }

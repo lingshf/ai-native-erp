@@ -21,7 +21,7 @@ function ordered(rows: readonly Row[]): readonly string[] {
   return rows.map((row) => JSON.stringify(stable(row))).sort();
 }
 
-export async function schemaFingerprint(connection: Connection): Promise<string> {
+export async function schemaFingerprint(connection: Pick<Connection, "query">): Promise<string> {
   const groups = {
     definitions: ordered(
       await connection.query(
