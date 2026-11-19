@@ -19,9 +19,6 @@ jobs:
       matrix:
         lane: [unit, browser]
         shard: [1, 2, 3, 4, 5]
-        exclude:
-          - lane: unit
-            shard: 5
     concurrency:
       group: full-${{ github.ref }}-${{ matrix.lane }}-${{ matrix.shard }}
       cancel-in-progress: true
@@ -65,7 +62,7 @@ jobs:
           if [ "${{ matrix.lane }}" = "browser" ]; then
             npm run test:ci -- --project=infra-browser --maxWorkers=1 --shard=${{ matrix.shard }}/5
           else
-            npm run test:ci -- '--project=!infra-browser' --shard=${{ matrix.shard }}/4
+            npm run test:ci -- '--project=!infra-browser' --shard=${{ matrix.shard }}/5
           fi
       - name: Web build
         if: steps.gate.outputs.run == 'true' && matrix.lane == 'unit' && matrix.shard == 2

@@ -25,6 +25,9 @@ describe("CI selection and reporting", () => {
       "vitest.config.ts",
       "tsconfig.base.json",
       "packages/web/tsconfig.json",
+      "scripts/ci.ts",
+      "scripts/test-shard-weights.json",
+      ".github/workflows/full.yml",
     ]) {
       expect(selectPrTests([file]), file).toEqual({ all: true });
     }
