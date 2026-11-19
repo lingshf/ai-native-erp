@@ -23,6 +23,11 @@ export interface ReportRepository {
     stage: TrialStage,
     watermark?: number,
   ): Promise<readonly ReportRow[]>;
+  reportStages(
+    company: string,
+    month: string,
+    watermark?: number,
+  ): Promise<Readonly<Record<TrialStage, readonly ReportRow[]>>>;
   ledgerPage(
     company: string,
     account: string,
@@ -78,23 +83,14 @@ export class ReportService {
       const latest = await repo.reportSnapshot(company),
         snapshot = checkedReportSnapshot(requestedSnapshot, latest),
         historical = snapshot.watermark === latest.watermark ? undefined : snapshot.watermark;
-      const unadjusted = buildReports(
-        owner,
-        month,
-        "unadjusted",
-        await repo.reportBalances(company, month, "unadjusted", historical),
-      );
-      const adjusted = buildReports(
-        owner,
-        month,
-        "adjusted",
-        await repo.reportBalances(company, month, "adjusted", historical),
-      );
+      const stages = await repo.reportStages(company, month, historical);
+      const unadjusted = buildReports(owner, month, "unadjusted", stages.unadjusted);
+      const adjusted = buildReports(owner, month, "adjusted", stages.adjusted);
       const postClosing = buildReports(
         owner,
         month,
         "postClosing",
-        await repo.reportBalances(company, month, "postClosing", historical),
+        stages.postClosing,
         adjusted.trial.rows,
       );
       const selected =
