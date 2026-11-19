@@ -51,12 +51,22 @@ try {
           DROP TRIGGER immutable_line_insert;
           PRAGMA cache_size=-8192;
           BEGIN;
-          WITH RECURSIVE n(i) AS (SELECT 10 UNION ALL SELECT i+1 FROM n WHERE i<${execute ? 500006 : 500005})
+          WITH RECURSIVE n(i) AS (SELECT 10 UNION ALL SELECT i+1 FROM n WHERE i<${execute ? 50009 : 500005})
           INSERT INTO journals SELECT i,'2026-01-15','Fictional Bench','normal','posted',NULL FROM n;
-          WITH RECURSIVE n(i) AS (SELECT 10 UNION ALL SELECT i+1 FROM n WHERE i<${execute ? 500006 : 500005})
+          ${
+            execute
+              ? `WITH RECURSIVE n(i) AS (SELECT 10 UNION ALL SELECT i+1 FROM n WHERE i<50009),
+                l(line) AS (SELECT 0 UNION ALL SELECT line+1 FROM l WHERE line<19)
+                INSERT INTO lines SELECT (i-10)*20+10+line,i,
+                  CASE WHEN line<CASE WHEN i=50009 THEN 7 ELSE 10 END THEN '1000' ELSE '4000' END,
+                  CASE WHEN line<CASE WHEN i=50009 THEN 7 ELSE 10 END THEN 1 ELSE 0 END,
+                  CASE WHEN line<CASE WHEN i=50009 THEN 7 ELSE 10 END THEN 0 ELSE 1 END
+                FROM n CROSS JOIN l WHERE i<50009 OR line<14;`
+              : `WITH RECURSIVE n(i) AS (SELECT 10 UNION ALL SELECT i+1 FROM n WHERE i<500005)
           INSERT INTO lines SELECT i*2,i,'1000',1,0 FROM n;
-          WITH RECURSIVE n(i) AS (SELECT 10 UNION ALL SELECT i+1 FROM n WHERE i<${execute ? 500006 : 500005})
-          INSERT INTO lines SELECT i*2+1,i,'4000',0,1 FROM n;
+          WITH RECURSIVE n(i) AS (SELECT 10 UNION ALL SELECT i+1 FROM n WHERE i<500005)
+          INSERT INTO lines SELECT i*2+1,i,'4000',0,1 FROM n;`
+          }
           COMMIT;
         `);
         assert.equal(db.prepare("SELECT count(*) AS n FROM lines").get().n, sourceLines);
@@ -81,7 +91,7 @@ try {
     seals: "archive-only",
     audit: "archive-only",
   };
-  let summary, result, trialP95Ms;
+  let summary, result, trialP95Ms, journals;
   const digest = createHash("sha256");
   if (execute) {
     const target = join(targetDirectory, "target.sqlite");
@@ -106,6 +116,8 @@ try {
     const db = new Database(target, { readonly: true });
     try {
       assert.equal(db.prepare("SELECT count(*) n FROM journal_lines").get().n, 1_000_000);
+      journals = db.prepare("SELECT count(*) n FROM journal_entries").get().n;
+      assert.equal(journals, 50_003);
       assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
       assert.equal(db.prepare("SELECT count(*) n FROM receipts").get().n, 0);
       const reports = reportRepository({
@@ -147,7 +159,7 @@ try {
       lines: 1_000_000,
       seconds,
       peakRssMiB,
-      ...(execute ? { trialP95Ms } : {}),
+      ...(execute ? { journals, trialP95Ms } : {}),
       ...(execute ? result : { sha256: digest.digest("hex") }),
     }),
   );
