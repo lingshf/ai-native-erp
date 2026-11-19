@@ -549,8 +549,8 @@ export async function executeLegacyImport(
     }
     db.pragma("journal_mode=WAL");
     db.pragma("synchronous=NORMAL");
-    // The exclusive importer checkpoints on close, not after each small business batch.
-    db.pragma("wal_autocheckpoint=0");
+    // Amortize Windows flushes without unbounded WAL-index lookup growth.
+    db.pragma("wal_autocheckpoint=262144");
     db.pragma("cache_size=-131072");
     const repo = masterDataRepository(raw);
     // All metadata is complete and immutable during the journal phase.
