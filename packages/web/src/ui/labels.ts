@@ -4,8 +4,10 @@ import { dimensionEn, dimensionZh } from "./dimension-labels.ts";
 import { journalEn, journalZh } from "./journal-labels.ts";
 import { businessEn, businessZh } from "./business-labels.ts";
 import { ledgerEn, ledgerZh } from "./ledger-labels.ts";
+import { closeEn, closeZh } from "./close-labels.ts";
 
 export const zh = {
+  ...closeZh,
   ...ledgerZh,
   ...businessZh,
   ...journalZh,
@@ -55,6 +57,7 @@ export type Language = "zh" | "en";
 export type LabelResources = Readonly<Record<LabelKey, string>>;
 
 export const en = {
+  ...closeEn,
   ...ledgerEn,
   ...journalEn,
   ...businessEn,

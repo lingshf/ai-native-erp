@@ -53,18 +53,14 @@ export class ReportService {
       if (!owner || !(await repo.period(company, month))) throw new DomainError("NOT_FOUND");
       const latest = await repo.reportSnapshot(company),
         snapshot = checkedReportSnapshot(requestedSnapshot, latest);
+      const historical = snapshot.watermark === latest.watermark ? undefined : snapshot.watermark;
+      const rows = await repo.reportBalances(company, month, stage, historical);
+      const incomeRows =
+        stage === "postClosing"
+          ? await repo.reportBalances(company, month, "adjusted", historical)
+          : rows;
       return {
-        ...buildReports(
-          owner,
-          month,
-          stage,
-          await repo.reportBalances(
-            company,
-            month,
-            stage,
-            snapshot.watermark === latest.watermark ? undefined : snapshot.watermark,
-          ),
-        ),
+        ...buildReports(owner, month, stage, rows, incomeRows),
         ...snapshot,
       };
     });
@@ -94,11 +90,19 @@ export class ReportService {
         "adjusted",
         await repo.reportBalances(company, month, "adjusted", historical),
       );
-      const selected = stage === "unadjusted" ? unadjusted : { ...adjusted, stage };
+      const postClosing = buildReports(
+        owner,
+        month,
+        "postClosing",
+        await repo.reportBalances(company, month, "postClosing", historical),
+        adjusted.trial.rows,
+      );
+      const selected =
+        stage === "unadjusted" ? unadjusted : stage === "postClosing" ? postClosing : adjusted;
       const checks = [
         reportCheck("tb.unadjusted", unadjusted.trial.debit, unadjusted.trial.credit),
         reportCheck("tb.adjusted", adjusted.trial.debit, adjusted.trial.credit),
-        reportCheck("tb.postClosing", adjusted.trial.debit, adjusted.trial.credit),
+        reportCheck("tb.postClosing", postClosing.trial.debit, postClosing.trial.credit),
         ...selected.reconciliation.checks.filter((check) => check.id !== "trial"),
       ];
       return {

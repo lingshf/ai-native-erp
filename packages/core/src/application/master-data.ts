@@ -22,13 +22,15 @@ import type { DimensionRepository } from "./dimensions.ts";
 import type { JournalRepository } from "./journals.ts";
 import type { BusinessRepository } from "./business-events.ts";
 import type { ReportRepository } from "./reports.ts";
+import type { PeriodCloseRepository } from "./period-close.ts";
 import { businessError } from "@erp/core/domain";
 
 export interface MasterDataRepository
   extends DimensionRepository,
     JournalRepository,
     BusinessRepository,
-    ReportRepository {
+    ReportRepository,
+    PeriodCloseRepository {
   company(code: string): Promise<Company | null>;
   companies(query: PageQuery): Promise<Page<Company>>;
   currencyScale(currency: string): Promise<number | null>;
@@ -187,6 +189,7 @@ export class MasterDataService {
   ): Promise<Period> {
     checkedCode(company);
     checkedTeachingMonth(month);
+    if (status === "closed") throw new DomainError("INVALID_INPUT");
     return this.store.write(async (repo) => {
       const old = required(await repo.period(company, month));
       cas(old.revision, expected);

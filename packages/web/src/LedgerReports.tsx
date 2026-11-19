@@ -471,11 +471,7 @@ function FinancialReport({
                 {view === "income" && (
                   <td className="amount">
                     <Link to={toLedger(row.code)}>
-                      {fmt(
-                        row.category === "REVENUE"
-                          ? row.credit - row.debit
-                          : row.debit - row.credit,
-                      )}
+                      {fmt(row.category === "REVENUE" ? -row.incomeNet : row.incomeNet)}
                     </Link>
                   </td>
                 )}

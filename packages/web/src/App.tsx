@@ -26,6 +26,9 @@ const Journals = lazy(() =>
 const BusinessEvents = lazy(() =>
   import("./BusinessEvents.tsx").then((module) => ({ default: module.BusinessEvents })),
 );
+const PeriodClose = lazy(() =>
+  import("./PeriodClose.tsx").then((module) => ({ default: module.PeriodClose })),
+);
 const LedgerReports = lazy(() =>
   import("./LedgerReports.tsx").then((module) => ({ default: module.LedgerReports })),
 );
@@ -120,6 +123,7 @@ function Workspace() {
               <NavLink to="/events">{t("business.title")}</NavLink>
               <NavLink to="/ledger-reports">{t("ledger.title")}</NavLink>
               <NavLink to="/ledger">{t("ledger.detail")}</NavLink>
+              <NavLink to="/period-close">{t("close.title")}</NavLink>
             </div>
             <div className="navigation-group">
               <span>{t("reports.group")}</span>
@@ -184,6 +188,14 @@ function Workspace() {
         </aside>
         <main id="workspace-main" tabIndex={-1}>
           <Routes>
+            <Route
+              path="/period-close"
+              element={
+                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                  <PeriodClose preferences={preferences} />
+                </Suspense>
+              }
+            />
             {["/ledger-reports", "/ledger"].map((path) => (
               <Route
                 key={path}

@@ -2,6 +2,7 @@ export * from "./master-data.ts";
 export * from "./dimensions.ts";
 export * from "./journals.ts";
 export * from "./business-events.ts";
+export * from "./period-close.ts";
 import type { DimensionFieldIssue } from "./dimensions.ts";
 import type { JournalFieldIssue } from "./journals.ts";
 import type { BusinessIssue } from "./business-events.ts";

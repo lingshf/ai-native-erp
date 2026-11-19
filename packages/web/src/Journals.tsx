@@ -381,6 +381,7 @@ function CompanyJournals({
   function correction(operation: "reverse" | "replace" | "reclassify") {
     if (!detail) return;
     const original = detail.entry;
+    if (original.kind === "closing") return;
     const decimal = (n: number) => {
       const digits = String(n).padStart(company.scale + 1, "0");
       return company.scale
@@ -894,6 +895,13 @@ function CompanyJournals({
           </h3>
           <p>{detail.entry.memo}</p>
           <LinePlan lines={detail.entry.lines} company={company} language={language} t={t} />
+          {detail.entry.kind === "closing" && (
+            <Link
+              to={`/period-close?${new URLSearchParams({ company: company.code, month: detail.entry.date.slice(0, 7) })}`}
+            >
+              {t("close.title")}
+            </Link>
+          )}
           {detail.businessEventId && (
             <Link
               to={`/events?company=${encodeURIComponent(company.code)}&id=${detail.businessEventId}`}
@@ -902,6 +910,7 @@ function CompanyJournals({
             </Link>
           )}
           {!detail.businessEventId &&
+            detail.entry.kind !== "closing" &&
             detail.entry.role !== "reversal" &&
             (["reverse", "replace", "reclassify"] as const)
               .filter((action) => detail.entry.role !== "reclassification" || action === "reverse")

@@ -64,6 +64,7 @@ const row = accountSchema.extend({
   credit: nonnegative,
   closing: minor,
   yearNet: minor,
+  incomeNet: minor,
   normalBalance: minor,
   abnormal: z.boolean(),
 });

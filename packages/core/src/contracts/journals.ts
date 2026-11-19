@@ -90,7 +90,7 @@ export const journalLineSchema = z.strictObject({
   group: z.enum(["originalReverse", "newAllocation"]).nullable(),
 });
 const planned = {
-  kind,
+  kind: z.enum(["normal", "adjusting", "closing"]),
   role: z.enum(["normal", "reversal", "reclassification"]),
   lines: z.array(journalLineSchema).min(2).max(2000),
   debit: minor,
@@ -149,8 +149,9 @@ export const journalReceiptSchema = z.strictObject({
     "cash_service.cancel",
     "statistics",
     "clearing.match",
+    "period.close",
   ]),
-  journalIds: z.array(id).max(2),
+  journalIds: z.array(id).max(10),
   postedAt: z.iso.datetime(),
 });
 export const journalPageSchema = z.strictObject({
