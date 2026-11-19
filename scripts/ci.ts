@@ -196,9 +196,16 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     const timings = existsSync(path) ? vitestTimings(JSON.parse(readFileSync(path, "utf8"))) : [];
     summary(testSummary(timings));
   } else if (command === "weights") {
-    const reports = process.argv.slice(3);
-    if (!reports.length) throw new Error("Usage: node scripts/ci.ts weights REPORT.json...");
-    const weights = fileWeights(reports.map((path) => JSON.parse(readFileSync(path, "utf8"))));
+    const args = process.argv.slice(3);
+    const rootArg = args.find((arg) => arg.startsWith("--root="));
+    const reports = args.filter((arg) => arg !== rootArg);
+    if (!reports.length) {
+      throw new Error("Usage: node scripts/ci.ts weights [--root=REPORT_ROOT] REPORT.json...");
+    }
+    const weights = fileWeights(
+      reports.map((path) => JSON.parse(readFileSync(path, "utf8"))),
+      rootArg?.slice("--root=".length),
+    );
     writeFileSync("scripts/test-shard-weights.json", `${JSON.stringify(weights, null, 2)}\n`);
   } else {
     throw new Error(`Unknown CI command: ${command}`);
