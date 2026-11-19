@@ -45,7 +45,7 @@ The generator yields, in order:
    invented for journals.
 3. `totals`: monthly debit/credit movements per source, company, account and
    posted/draft status, with unadjusted, adjusted and post-closing stages.
-4. `summary`: source, mapped, unmappable, archive-only, skipped and
+4. `summary`: source, mapped, unmappable, source-only, archive-only, skipped and
    decision-required counts for **every** source table, plus separate draft
    journal/line/dimension counts and an `executable` flag.
 
@@ -56,12 +56,24 @@ historical-posting pipeline. It must consume the entire stream and reject a
 missing or non-executable final summary before writing anything. An executable
 plan is not real-operation authorization and does not replace domain validation.
 
-Only the selected fields with a supported target meaning are mapped; other
-tables/objects are reported with `TARGET_SCHEMA_UNSUPPORTED`, not discarded or
-treated as successful imports. This includes old version/template metadata and
-old posting-rule shapes without a lossless adapter. This intentionally blocks
-execution until those rows are handled in a later extension or the source data
-is resolved; it never silently imports an incomplete ledger.
+Only fields with a supported target meaning are mapped. Recognized source-side
+metadata has disposition `source-only`: it is explicitly counted, retains its
+source identity and an informational reason, has `target: null`, and does not
+block execution. It is not a successful target import or a decision-C default.
+The verified source snapshot must remain available as its provenance archive.
+
+| Enterprise source metadata | Informational reason | Why no separate target write is needed |
+| --- | --- | --- |
+| `configs`, only `kind=account` | `CONFIG_FOLDED_INTO_ACCOUNT` | Current activity is already joined into the account mapping. The referenced account must exist and its data must match the config; disagreement is blocking `ACCOUNT_CONFIG_MISMATCH`. |
+| `config_versions`, only `kind=account` | `SOURCE_CONFIG_HISTORY` | Original configuration history remains in the source snapshot; target revisions/history belong to the new domain-validated import, not a replay of the old revision sequence. The account must exist. |
+| `chart_templates` | `SOURCE_TEMPLATE` | Preset catalogs are not live company accounts; actual account definitions are mapped from `accounts`. |
+| `meta` | `SOURCE_REVISION` | The old runtime's revision counter is source bookkeeping, not a target business revision. |
+
+This is a narrow classification, **not** a blanket exemption for configuration
+tables. Other config kinds, old posting-rule shapes without a lossless adapter,
+and incompatible business objects remain `TARGET_SCHEMA_UNSUPPORTED` and block
+execution. Missing config/account references and malformed account JSON remain
+explicit blockers. No incompatible business data is relabeled as metadata.
 
 ## Decision C: no defaults
 
@@ -98,14 +110,15 @@ There is one target policy; no Book/Enterprise rule switch is introduced.
 | Concern | Legacy Book / Enterprise | Unified mapping / behavior change |
 | --- | --- | --- |
 | Company scope | Teaching has no company; Enterprise has company codes | Teaching is the `TEACHING` namespace; Enterprise retains its company code. A real Enterprise `TEACHING` company is a blocking collision. Teaching currency/name/year must be bound explicitly by the executor, never inferred from another company. |
-| Accounts | Book settings/properties are separate; Enterprise stores account JSON and current config activity | Code retained, including disabled accounts and their history. Properties become normal-side/contra/manual fields. Missing Book settings use the old implicit active/manual-allowed semantics. Missing reporting groups map by category to the target's `other*` group; Enterprise's explicit group is retained. Suspense accounts are unmappable, not cleared or reclassified. |
+| Accounts | Book settings/properties are separate; Enterprise stores account JSON and current config activity | Code retained, including disabled accounts and their history. Properties become normal-side/contra/manual fields. Missing Book settings use the old implicit active/manual-allowed semantics. Missing reporting groups map by category to the target's `other*` group; Enterprise's explicit group is retained. An unused suspense account definition is representable; actual suspense postings remain unmappable, not cleared or reclassified. |
 | Dimensions/values | Book code/value tables, with active flags | Code-to-code mapping, active flags retained; each line-dimension link remains an explicit legacy reference. No missing value is created. |
 | Periods | Book `open`/`closed`; Enterprise `open`/`hold`/`permanent` | `open`/`closed`, and `hold` -> `frozen`, `permanent` -> `closed`. M2-03 must import historical close state without running ordinary closing or regenerating closing journals. |
 | Dates | Book has one date; Enterprise has document/accounting/tax dates | Preserve document and accounting dates; tax date always equals document date, as required by M2-02. Enterprise's differing old tax date is intentionally not replayed. |
 | Posted journals | Book normal/adjusting/reversal/closing; Enterprise kind and operation | Import as `historical`, preserve original `legacy_ref` and `legacy_kind`; normalized target kind is normal/adjusting. Reversals carry their original reference. Closing remains explicit legacy classification, not a new journal. The executor must preserve adjusting-reversal classification and register original closing journals for stage reporting. |
 | Draft journals | Book drafts including ID3 | Only explicit import-as-draft/skip. No posting, auto-fix, or implicit skip. |
 | Currency | Enterprise currency registry plus accounting/report currencies | Unknown currency/precision -> `UNKNOWN_CURRENCY`; reporting conversion -> `FOREIGN_CURRENCY`. No rate lookup or FX calculation. |
-| Evidence and unsupported metadata | Legacy source proof differs from current receipt/seal contracts | Unsupported objects are listed with reason codes; no new proof is fabricated. Only an explicit archive-only choice excludes a decision-C object from live import. |
+| Source metadata | Enterprise account config repeats mapped fields; old versions, template catalogs and runtime revision are source provenance | Recognized metadata is `source-only` with explicit counts/reasons, not a blocker. Unhandled business config kinds and conflicting current account config still block. |
+| Evidence and unsupported business data | Legacy source proof differs from current receipt/seal contracts | Unsupported objects are listed with reason codes; no new proof is fabricated. Only an explicit archive-only choice excludes a decision-C object from live import. |
 
 Enterprise normalized domestic-currency lines retain their complete old JSON as
 `evidence`; account, line number and minor amounts are mapped explicitly.

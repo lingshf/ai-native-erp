@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { closeSync, fstatSync, openSync, readSync } from "node:fs";
 import { join } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { DatabaseSync } from "node:sqlite";
 import type { SQLOutputValue } from "node:sqlite";
 import { StorageError } from "@erp/core/application";
@@ -32,13 +33,24 @@ export type ImportReason =
   | "MISSING_PERIOD"
   | "COMPANY_ID_CONFLICT"
   | "SUSPENSE_ACCOUNT"
+  | "ACCOUNT_CONFIG_MISMATCH"
+  | "CONFIG_FOLDED_INTO_ACCOUNT"
+  | "SOURCE_CONFIG_HISTORY"
+  | "SOURCE_TEMPLATE"
+  | "SOURCE_REVISION"
   | "TARGET_SCHEMA_UNSUPPORTED";
 export type ImportRecord = {
   type: "record";
   source: Source;
   object: string;
   legacy_ref: string;
-  disposition: "mapped" | "unmappable" | "archive-only" | "skipped" | "decision-required";
+  disposition:
+    | "mapped"
+    | "unmappable"
+    | "archive-only"
+    | "skipped"
+    | "decision-required"
+    | "source-only";
   reasons: ImportReason[];
   target: Data | null;
 };
@@ -282,6 +294,11 @@ export class LegacyImportSnapshot {
         select: ",c.active",
         sql: "LEFT JOIN configs c ON c.company=t.company AND c.kind='account' AND c.code=t.code",
       };
+    if (source === "enterprise" && ["configs", "config_versions"].includes(table))
+      return {
+        select: ",a.code AS account_exists,a.data AS account_data",
+        sql: "LEFT JOIN accounts a ON a.company=t.company AND a.code=t.code",
+      };
     if (table === "journals") {
       const month = source === "teaching" ? "substr(t.date,1,7)" : "substr(t.accounting_date,1,7)";
       return {
@@ -376,11 +393,28 @@ function mapRow(
 ): {
   target: Data | null;
   reasons: ImportReason[];
+  sourceOnly?: boolean;
 } {
   const reasons: ImportReason[] = [];
   const fail = (reason: ImportReason) => reasons.push(reason);
   const company_id = source === "teaching" ? "TEACHING" : string(row.company);
   let target: Data | null = null;
+  if (source === "enterprise") {
+    if (table === "meta") return { target: null, reasons: ["SOURCE_REVISION"], sourceOnly: true };
+    if (table === "chart_templates")
+      return { target: null, reasons: ["SOURCE_TEMPLATE"], sourceOnly: true };
+    if (["configs", "config_versions"].includes(table) && row.kind === "account") {
+      if (row.account_exists === null) return { target: null, reasons: ["MISSING_ACCOUNT"] };
+      const data = json(row.data);
+      if (table === "configs" && !isDeepStrictEqual(data, json(row.account_data)))
+        return { target: null, reasons: ["ACCOUNT_CONFIG_MISMATCH"] };
+      return {
+        target: null,
+        reasons: [table === "configs" ? "CONFIG_FOLDED_INTO_ACCOUNT" : "SOURCE_CONFIG_HISTORY"],
+        sourceOnly: true,
+      };
+    }
+  }
   if (source === "enterprise" && ["companies", "journals", "lines"].includes(table)) {
     if (row.currency_exists === null || row.scale !== row.currency_scale) fail("UNKNOWN_CURRENCY");
     if (row.currency !== row.report_currency || row.scale !== row.report_scale)
@@ -391,7 +425,6 @@ function mapRow(
   if (table === "accounts") {
     const data = source === "teaching" ? {} : json(row.data);
     if (!/^[1-9]\d{3}$/.test(string(row.code))) fail("INVALID_ACCOUNT");
-    if (row.purpose === "suspense") fail("SUSPENSE_ACCOUNT");
     const category = string(row.category);
     const debit = category === "ASSET" || category === "EXPENSE";
     const groups: Record<string, string> = {
@@ -655,6 +688,7 @@ export function* legacyImportPlan(
         "archive-only": 0,
         skipped: 0,
         "decision-required": 0,
+        "source-only": 0,
       };
       counts[`${source}.${table}`] = count;
       for (const row of snapshot.rows(source, table, batchSize)) {
@@ -682,9 +716,11 @@ export function* legacyImportPlan(
               ? "archive-only"
               : selected === "skip"
                 ? "skipped"
-                : mapped.reasons.length
-                  ? "unmappable"
-                  : "mapped";
+                : mapped.sourceOnly
+                  ? "source-only"
+                  : mapped.reasons.length
+                    ? "unmappable"
+                    : "mapped";
         if (disposition === "unmappable" || disposition === "decision-required") executable = false;
         count.source++;
         count[disposition]++;
@@ -695,7 +731,9 @@ export function* legacyImportPlan(
           legacy_ref: string(row._legacy_ref),
           disposition,
           reasons:
-            disposition === "unmappable" || disposition === "decision-required"
+            disposition === "unmappable" ||
+            disposition === "decision-required" ||
+            disposition === "source-only"
               ? mapped.reasons
               : [],
           target: disposition === "mapped" ? mapped.target : null,

@@ -52,6 +52,35 @@ function open(f): LegacyImportSnapshot {
   return reader;
 }
 
+function enterpriseHistory(f, suspense = false) {
+  const debitAccount = suspense ? "2900" : "1000";
+  mutate(
+    f,
+    "enterprise",
+    `
+    INSERT INTO source_events VALUES('F','FICT-POSTED','journal','2026-02-01','{}');
+    INSERT INTO receipts VALUES('F','FICT-POSTED','{}');
+    INSERT INTO journals(id,company,reference,accounting_date,document_date,tax_date,kind,operation,memo,details)
+      VALUES(1,'F','FICT-POSTED','2026-02-01','2026-01-31','2026-02-04','normal','journal','Fictional history','{}');
+    INSERT INTO lines(company,journal_id,line_no,account,debit,credit,data)
+      SELECT 'F',1,1,'${debitAccount}',350,0,json_object(
+        'account','${debitAccount}','debit',350,'credit',0,'transactionDebit',350,'transactionCredit',0,
+        'accountingCurrency','EUR','currency','EUR','reportingCurrency','EUR',
+        'reportingDebit',350,'reportingCredit',0,'rateRefs',json('{"accounting":null,"reporting":null}'),
+        'dimensions',json('{}'),'dimensionOrigins',json('{}'),'metadata',json('{}'));
+    INSERT INTO lines(company,journal_id,line_no,account,debit,credit,data)
+      SELECT 'F',1,2,'4000',0,350,json_object(
+        'account','4000','debit',0,'credit',350,'transactionDebit',0,'transactionCredit',350,
+        'accountingCurrency','EUR','currency','EUR','reportingCurrency','EUR',
+        'reportingDebit',0,'reportingCredit',350,'rateRefs',json('{"accounting":null,"reporting":null}'),
+        'dimensions',json('{}'),'dimensionOrigins',json('{}'),'metadata',json('{}'));
+    INSERT INTO journal_seals VALUES('F',1);
+    INSERT INTO audit(company,action,reference,data,at)
+      VALUES('F','journal.import','FICT-POSTED','{}','2026-02-01T10:00:00.000Z');
+  `,
+  );
+}
+
 test.for([{ history: true }, { many: true }, {}])(
   "mapping is byte-identical across pagination and preserves snapshot SHA: %j",
   (variant, t) => {
@@ -259,30 +288,7 @@ test("unrepresentable evidence is explicit; archive-only never manufactures rece
 
 test("Enterprise history preserves dates and normalized minor amounts without replaying business events", (t) => {
   const f = legacyFixture(t);
-  mutate(
-    f,
-    "enterprise",
-    `
-    INSERT INTO source_events VALUES('F','FICT-POSTED','journal','2026-02-01','{}');
-    INSERT INTO journals(id,company,reference,accounting_date,document_date,tax_date,kind,operation,memo,details)
-      VALUES(1,'F','FICT-POSTED','2026-02-01','2026-01-31','2026-02-04','normal','journal','Fictional history','{}');
-    INSERT INTO lines(company,journal_id,line_no,account,debit,credit,data)
-      SELECT 'F',1,1,'1000',350,0,json_object(
-        'account','1000','debit',350,'credit',0,'transactionDebit',350,'transactionCredit',0,
-        'accountingCurrency','EUR','currency','EUR','reportingCurrency','EUR',
-        'reportingDebit',350,'reportingCredit',0,'rateRefs',json('{"accounting":null,"reporting":null}'),
-        'dimensions',json('{}'),'dimensionOrigins',json('{}'),'metadata',json('{}'));
-    INSERT INTO lines(company,journal_id,line_no,account,debit,credit,data)
-      SELECT 'F',1,2,'4000',0,350,json_object(
-        'account','4000','debit',0,'credit',350,'transactionDebit',0,'transactionCredit',350,
-        'accountingCurrency','EUR','currency','EUR','reportingCurrency','EUR',
-        'reportingDebit',0,'reportingCredit',350,'rateRefs',json('{"accounting":null,"reporting":null}'),
-        'dimensions',json('{}'),'dimensionOrigins',json('{}'),'metadata',json('{}'));
-    INSERT INTO journal_seals VALUES('F',1);
-    INSERT INTO audit(company,action,reference,data,at)
-      VALUES('F','journal.import','FICT-POSTED','{}','2026-02-01T10:00:00.000Z');
-  `,
-  );
+  enterpriseHistory(f);
   const events = [...legacyImportPlan(open(f), { choices: { ...choices, audit: "import" } })];
   const mapped = records(events);
   const journal = mapped.find((row) => row.source === "enterprise" && row.object === "journals");
@@ -356,25 +362,103 @@ test("bad digest, unsafe paths, closed readers and oversized batches fail explic
   assert.throws(() => [...legacyImportPlan(snapshot, { choices })], { code: "CLOSED" });
 });
 
-test("a fully representable fictional snapshot produces a complete explicit plan", (t) => {
+test("populated Enterprise history is executable with identified source metadata retained", (t) => {
   const f = legacyFixture(t);
-  const db = new DatabaseSync(join(f.target, "erp.sqlite"));
-  try {
-    db.exec("PRAGMA foreign_keys=OFF");
-    for (const { name } of db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger'").all())
-      db.exec(`DROP TRIGGER "${String(name).replaceAll('"', '""')}"`);
-    for (const { name } of db
-      .prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'")
-      .all())
-      db.exec(`DELETE FROM "${String(name).replaceAll('"', '""')}"`);
-  } finally {
-    db.close();
-  }
-  refresh(f, "enterprise");
-  const events = [...legacyImportPlan(open(f), { choices })];
+  enterpriseHistory(f);
+  const before = captureDirectory(f.target, { mtime: true });
+  const snapshot = open(f);
+  const events = [...legacyImportPlan(snapshot, { choices, batchSize: 1 })];
+  assert.equal(
+    JSON.stringify(events),
+    JSON.stringify([...legacyImportPlan(snapshot, { choices, batchSize: 5000 })]),
+  );
   assert.equal(summary(events).executable, true);
   assert.equal(summary(events).counts["teaching.journals"].mapped, 4);
   assert.equal(summary(events).counts["teaching.lines"].mapped, 8);
+  assert.equal(summary(events).counts["enterprise.companies"].mapped, 1);
+  assert.equal(summary(events).counts["enterprise.accounts"].mapped, 15);
+  assert.equal(summary(events).counts["enterprise.journals"].mapped, 1);
+  assert.equal(summary(events).counts["enterprise.lines"].mapped, 2);
+  for (const [table, reason, source] of [
+    ["configs", "CONFIG_FOLDED_INTO_ACCOUNT", 15],
+    ["config_versions", "SOURCE_CONFIG_HISTORY", 15],
+    ["chart_templates", "SOURCE_TEMPLATE", 1],
+    ["meta", "SOURCE_REVISION", 1],
+  ] as const) {
+    const count = summary(events).counts[`enterprise.${table}`];
+    assert.equal(count.source, source);
+    assert.equal(count["source-only"], source);
+    assert.equal(count.unmappable, 0);
+    for (const row of records(events).filter(
+      (row) => row.source === "enterprise" && row.object === table,
+    )) {
+      assert.equal(row.disposition, "source-only");
+      assert.deepEqual(row.reasons, [reason]);
+      assert.equal(row.target, null);
+    }
+  }
+  assert.ok(records(events).every((row) => row.disposition !== "unmappable"));
   assert.equal(events[0].snapshotSha256.teaching, f.manifest.ledgers.teaching.sha256);
-  assert.ok(records(events).every((row) => row.disposition === "mapped"));
+  snapshot.close();
+  assert.deepEqual(captureDirectory(f.target, { mtime: true }), before);
+});
+
+test("a real suspense posting blocks the populated Enterprise plan, not its unused chart definition", (t) => {
+  const f = legacyFixture(t);
+  enterpriseHistory(f, true);
+  const events = [...legacyImportPlan(open(f), { choices })];
+  assert.equal(summary(events).executable, false);
+  const suspense = records(events).find(
+    (row) => row.source === "enterprise" && row.object === "lines" && row.legacy_ref === "1",
+  );
+  assert.equal(suspense?.disposition, "unmappable");
+  assert.deepEqual(suspense?.reasons, ["SUSPENSE_ACCOUNT"]);
+  const definition = records(events).find(
+    (row) =>
+      row.source === "enterprise" && row.object === "accounts" && row.target?.code === "2900",
+  );
+  assert.equal(definition?.disposition, "mapped");
+  assert.equal(summary(events).counts["enterprise.configs"]["source-only"], 15);
+});
+
+test("unhandled business configuration is not waived as source metadata", (t) => {
+  const f = legacyFixture(t);
+  enterpriseHistory(f);
+  mutate(
+    f,
+    "enterprise",
+    `
+    INSERT INTO configs VALUES('F','unmapped-business-rule','FICT-RULE',1,1,'{}');
+    INSERT INTO config_versions VALUES('F','unmapped-business-rule','FICT-RULE',1,1,'{}');
+  `,
+  );
+  const events = [...legacyImportPlan(open(f), { choices })];
+  assert.equal(summary(events).executable, false);
+  for (const table of ["configs", "config_versions"]) {
+    assert.equal(summary(events).counts[`enterprise.${table}`]["source-only"], 15);
+    assert.equal(summary(events).counts[`enterprise.${table}`].unmappable, 1);
+    const row = records(events).find(
+      (row) =>
+        row.source === "enterprise" && row.object === table && row.legacy_ref.includes("FICT-RULE"),
+    );
+    assert.deepEqual(row?.reasons, ["TARGET_SCHEMA_UNSUPPORTED"]);
+  }
+});
+
+test("a conflicting current account config cannot claim its values were folded into the mapping", (t) => {
+  const f = legacyFixture(t);
+  enterpriseHistory(f);
+  mutate(
+    f,
+    "enterprise",
+    "UPDATE configs SET data=json_set(data,'$.name','Conflicting fictional name') WHERE code='1000'",
+  );
+  const events = [...legacyImportPlan(open(f), { choices })];
+  assert.equal(summary(events).executable, false);
+  const config = records(events).find(
+    (row) =>
+      row.source === "enterprise" && row.object === "configs" && row.legacy_ref.includes("1000"),
+  );
+  assert.equal(config?.disposition, "unmappable");
+  assert.deepEqual(config?.reasons, ["ACCOUNT_CONFIG_MISMATCH"]);
 });

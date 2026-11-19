@@ -88,6 +88,7 @@ try {
   const peakRssMiB = process.resourceUsage().maxRSS / 1024;
   assert.equal(summary.counts["teaching.lines"].source, 1_000_000);
   assert.equal(summary.counts["teaching.lines"].mapped, 1_000_000);
+  assert.equal(summary.executable, true);
   snapshot.close();
   snapshot = undefined;
   assert.deepEqual(
