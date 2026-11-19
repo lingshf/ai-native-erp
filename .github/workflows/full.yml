@@ -23,6 +23,7 @@ jobs:
       cancel-in-progress: true
     env:
       CI_TEST_LAYER: full
+      ERP_E2E_BROWSER_CHANNEL: chrome
     steps:
       - uses: actions/checkout@v7
         with:
@@ -43,9 +44,9 @@ jobs:
       - name: Biome
         if: steps.gate.outputs.run == 'true' && matrix.shard == 1
         run: npm run check
-      - name: Install Chromium for real-browser slow tests
+      - name: Verify runner Chrome for real-browser slow tests
         if: steps.gate.outputs.run == 'true'
-        run: npx playwright install --with-deps --only-shell chromium
+        run: google-chrome --version
       - name: Typecheck
         if: steps.gate.outputs.run == 'true' && matrix.shard == 1
         run: npm run typecheck
