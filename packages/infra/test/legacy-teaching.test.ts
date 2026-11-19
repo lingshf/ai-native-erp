@@ -228,12 +228,12 @@ test("strict cursors bind digest/account/month and a real stable position; reque
     () => open(other).ledger({ month: "2026-01", account: "1000", cursor: first.nextCursor }),
     code("INVALID_CURSOR"),
   );
-  for (const month of ["2026-00", "2026-13", "1899-12", "2026-01\n", null]) {
+  for (const month of ["2026-00", "2026-13", "1899-12", "9999-01", "2026-01\n", null]) {
     assert.throws(() => reader.trialBalances(month), code("INVALID_INPUT"));
   }
   assert.throws(() => reader.trialBalances("2027-01"), code("NOT_FOUND"));
   assert.throws(() => reader.ledger({ month: f.month, account: "9999" }), code("NOT_FOUND"));
-  for (const limit of [0, 101, 1.1, "1"]) {
+  for (const limit of [-1, 0, 101, 1.1, "1"]) {
     assert.throws(
       () => reader.ledger({ month: f.month, account: "1000", limit }),
       code("INVALID_INPUT"),

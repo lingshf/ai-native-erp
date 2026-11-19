@@ -92,8 +92,8 @@ export function barrier() {
   return { promise, release };
 }
 
-async function initialized(create) {
-  const storage = await create();
+async function initialized(create, transactionTimeoutMs) {
+  const storage = await create(transactionTimeoutMs);
   await storage.migrate();
   await storage.provision(scope);
   return storage;
@@ -464,7 +464,7 @@ export function extendedContract(create) {
   });
 
   test("hung writer rolls back inserted data, next writer healthy, late writer session dead", async () => {
-    const storage = await initialized(create);
+    const storage = await initialized(create, 200);
     const entered = barrier();
     const late = barrier();
     let stale;
@@ -496,7 +496,7 @@ export function extendedContract(create) {
   });
 
   test("hung callback expires without blocking close on unrelated external promise", async () => {
-    const storage = await initialized(create);
+    const storage = await initialized(create, 200);
     const entered = barrier();
     const late = barrier();
     let stale;

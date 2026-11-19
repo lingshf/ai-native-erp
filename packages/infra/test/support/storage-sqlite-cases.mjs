@@ -106,8 +106,20 @@ export function sqliteCases(directory) {
 
   test("concurrent explicit initialization has one owner or bounded BUSY, repeated migration is inert", async () => {
     const c = config();
-    const first = createSqliteStorage(c);
-    const second = createSqliteStorage(c);
+    function contender() {
+      const backend = sqliteBackend(c);
+      return targetStorage({
+        ...backend,
+        async acquire(...args) {
+          const connection = await backend.acquire(...args);
+          // Keep the real lock conflict without waiting five seconds in the same event loop.
+          await connection.query("PRAGMA busy_timeout=1");
+          return connection;
+        },
+      });
+    }
+    const first = contender();
+    const second = contender();
     try {
       const results = await Promise.allSettled([first.migrate(), second.migrate()]);
       assert.ok(results.some((result) => result.status === "fulfilled"));

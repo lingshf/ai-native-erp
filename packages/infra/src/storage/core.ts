@@ -14,7 +14,13 @@ import { Queue } from "./queue.ts";
 import { Session, lockScopes, scopeTable, scopeValues, scopeWhere } from "./session.ts";
 import type { Backend, Connection, TargetStorage } from "./types.ts";
 
-export function targetStorage(backend: Backend): TargetStorage {
+export function targetStorage(backend: Backend, transactionTimeoutMs = 10000): TargetStorage {
+  if (
+    !Number.isInteger(transactionTimeoutMs) ||
+    transactionTimeoutMs < 1 ||
+    transactionTimeoutMs > 2147483647
+  )
+    throw new StorageError("INVALID_INPUT");
   const context = new AsyncLocalStorage<boolean>();
   const writer = new Queue();
   const reader = new Queue();
@@ -91,7 +97,7 @@ export function targetStorage(backend: Backend): TargetStorage {
         timer = setTimeout(() => {
           session.invalidate();
           reject(new StorageError("TRANSACTION_TIMEOUT"));
-        }, 10000);
+        }, transactionTimeoutMs);
       });
       const result = await Promise.race([Promise.resolve().then(() => work(session)), timeout]);
       await session.finish();

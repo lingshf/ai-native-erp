@@ -8,6 +8,7 @@ import { mkdir, readFile, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import Database from "better-sqlite3";
 import { sqliteBackend } from "../src/storage/sqlite.ts";
+import { targetStorage } from "../src/storage/core.ts";
 import { rawContract } from "./support/storage-raw-contract.mjs";
 import { sqliteCases } from "./support/storage-sqlite-cases.mjs";
 
@@ -16,10 +17,20 @@ describe("SQLite real target contract", () => {
   beforeAll(() => mkdir(directory, { recursive: true }));
   afterAll(() => rm(directory, { recursive: true, force: true }));
   let serial = 0;
-  const create = async () =>
-    createSqliteStorage({
-      filename: resolve(directory, `target-${serial++}.sqlite`),
-    });
+  const create = async (transactionTimeoutMs?: number) =>
+    targetStorage(
+      sqliteBackend({ filename: resolve(directory, `target-${serial++}.sqlite`) }),
+      transactionTimeoutMs,
+    );
+  test("invalid transaction timeouts are rejected before acquiring storage", () => {
+    for (const timeout of [0, -1, 0.5, NaN, Infinity, 2147483648]) {
+      assert.throws(
+        () =>
+          targetStorage(sqliteBackend({ filename: resolve(directory, "unused.sqlite") }), timeout),
+        { code: "INVALID_INPUT" },
+      );
+    }
+  });
   storageContract(create);
   extendedContract(create);
   rawContract(async () => {

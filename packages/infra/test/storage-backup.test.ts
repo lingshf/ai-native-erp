@@ -199,7 +199,7 @@ test("invalid inputs leave crash-WAL target and sidecar bytes unchanged", async 
 });
 
 for (const fault of ["copy", "rename", "verify"]) {
-  test(`failed rollback ${fault} retains maintenance lock, verified .bak and service startup refusal`, async (t) => {
+  test(`failed rollback ${fault} retains maintenance lock, verified .bak and storage admission refusal`, async (t) => {
     const { directory, filename, input } = await fixture(t);
     crashWithCommittedWal(filename);
     const actualFs = await vi.importActual("node:fs/promises");
@@ -240,13 +240,16 @@ for (const fault of ["copy", "rename", "verify"]) {
       vi.mocked(rename).mockImplementation(actualFs.rename);
     }
     assert.ok(existsSync(`${filename}.maintenance-lock`));
+    const beforeAdmission = readFileSync(filename);
     const storage = createSqliteStorage({ filename });
     try {
       await assert.rejects(storage.verifySchema(), { code: "BUSY" });
     } finally {
       await storage.close();
     }
-    assertServiceRefused(filename);
+    assert.deepEqual(readFileSync(filename), beforeAdmission);
+    assert.ok(!existsSync(`${filename}-wal`));
+    assert.ok(!existsSync(`${filename}-shm`));
     assert.equal(revision(filename), fault === "verify" ? 7 : 1);
     assert.ok(existsSync(`${filename}.maintenance-lock`));
   });
