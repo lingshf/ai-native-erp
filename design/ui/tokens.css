@@ -1,0 +1,107 @@
+/*
+ * UI-1 设计 token（规范见 design/ui/README.md）。
+ * UI-01 原样复制到 packages/web/src/theme/tokens.css；之后两处同步修改。
+ * 主题挂在 .workspace[data-theme] 上，默认（无属性或 red）为专业红。
+ */
+:root {
+  /* 字体 */
+  --font-sans: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC",
+    "Noto Sans CJK SC", system-ui, sans-serif;
+  --font-mono: "Cascadia Mono", Consolas, "SFMono-Regular", monospace;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --leading-xs: 16px;
+  --leading-sm: 18px;
+  --leading-md: 20px;
+  --leading-lg: 24px;
+  --leading-xl: 28px;
+  --leading-2xl: 32px;
+  --weight-regular: 400;
+  --weight-semibold: 600;
+
+  /* 间距（4px 基数） */
+  --space-0: 2px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* 圆角 */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-pill: 999px;
+
+  /* 阴影 */
+  --shadow-1: 0 1px 2px rgb(20 26 36 / 0.06), 0 0 0 1px rgb(20 26 36 / 0.04);
+  --shadow-2: 0 4px 12px rgb(20 26 36 / 0.1);
+  --shadow-3: 0 16px 40px rgb(20 26 36 / 0.2);
+
+  /* 尺寸 */
+  --appbar-h: 48px;
+  --nav-w: 248px;
+  --control-h: 36px;
+  --row-h: 44px; /* 虚拟列表的 estimateSize 依赖它，不能改 */
+  --content-max: 1440px;
+
+  /* 中性色（两主题共用） */
+  --color-bg: #f4f5f7;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f8f9fb;
+  --color-border: #dde1e6;
+  --color-border-strong: #8a939e;
+  --color-text: #1d232b;
+  --color-text-muted: #545e6b;
+  --color-text-disabled: #8a939e;
+
+  /* 语义色（两主题共用，不随主题变化） */
+  --color-info: #1c5a9c;
+  --color-info-bg: #eaf2fb;
+  --color-info-border: #a9c7ea;
+  --color-success: #1b6a3a;
+  --color-success-bg: #e9f5ed;
+  --color-success-border: #a6d3b5;
+  --color-warning: #6e4a00;
+  --color-warning-bg: #fff5d6;
+  --color-warning-border: #e2b443;
+  --color-danger: #b0261c;
+  --color-danger-bg: #fdecea;
+  --color-danger-border: #f0b3ad;
+  --color-teach: #0d6670;
+  --color-teach-bg: #e7f4f5;
+  --color-teach-border: #9fd0d4;
+  --color-focus: #185ca8;
+}
+
+.workspace,
+.workspace[data-theme="red"] {
+  --color-primary: #a51d35;
+  --color-primary-hover: #8c1729;
+  --color-primary-active: #73121f;
+  --color-primary-soft: #fbeff1;
+  --color-primary-soft-border: #efc6ce;
+  --color-on-primary: #ffffff;
+  --color-appbar: #6e1323;
+  --color-on-appbar: #ffffff;
+  --color-appbar-muted: #f3d5db;
+}
+
+.workspace[data-theme="green"] {
+  --color-primary: #216346;
+  --color-primary-hover: #1a5239;
+  --color-primary-active: #14402c;
+  --color-primary-soft: #ebf5ef;
+  --color-primary-soft-border: #b9dbc7;
+  --color-on-primary: #ffffff;
+  --color-appbar: #153f2d;
+  --color-on-appbar: #ffffff;
+  --color-appbar-muted: #cfe6d9;
+}

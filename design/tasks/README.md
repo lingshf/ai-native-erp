@@ -78,6 +78,34 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 
 见 [M1 评审 §7](../reviews/M1.md) 与[路线图 §6](../roadmap.md#6-决定记录)。
 
+## UI-1：界面逐步改进
+
+**目标**：在现有 `packages/web` 上分步调整，好看、简洁；业务功能与流程不变，不推倒重来。规范、原型和改前 / 改后截图见 [design/ui/README.md](../ui/README.md)。实施由协调者按下表派给开发（Opus 模型），设计角色负责评审截图与 UI-08 审查。
+
+| ID | 标题 | 依赖 | 冲突域 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- |
+| [UI-01](UI-01-tokens-and-shell.md) | 设计 token + 布局外壳（顶栏偏好、分组导航、对比度测试） | — | web-ui:shell | todo | |
+| [UI-02](UI-02-components-and-trade-reports.md) | 共享组件 + 往来未结项与账龄页（样板页） | UI-01 | web-ui:components, web-ui:trade | todo | |
+| [UI-03](UI-03-trade-invoices.md) | 采购与销售发票页 | UI-02 | web-ui:trade | todo | |
+| [UI-04](UI-04-master-data.md) | 主数据页：科目表、财务维度、贸易主数据 | UI-02 | web-ui:master, web-ui:trade | todo | |
+| [UI-05](UI-05-journals-and-events.md) | 凭证与业务事件页 | UI-02 | web-ui:journals | todo | |
+| [UI-06](UI-06-trade-settlements-and-adjustments.md) | 付款与收款、预付 / 贷项 / 专用纠错页 | UI-03 | web-ui:trade | todo | |
+| [UI-07](UI-07-ledger-close-ai.md) | 总账报表、快照报表、期末结账、AI 面板、运行状态 | UI-02 | web-ui:ledger | todo | |
+| [UI-08](UI-08-polish-and-audit.md) | 窄屏收尾、删除兼容样式、设计一致性审查 | UI-01..UI-07 | web-ui:shell, web-ui:components | todo | |
+
+**派发**：UI-01 → UI-02 → 之后 UI-05、UI-07 可与贸易线并行；贸易线（UI-03 → UI-04 → UI-06，或 UI-03 → UI-06 → UI-04）都改 `web-ui:trade`，串行，也不能与 M1-R1、M1-R2、M2-03b 同时开工。全部完成后 UI-08。UI 任务不改迁移、领域和 infra 代码，与 M2 的 `legacy-import`、`admin-cli` 等冲突域不相交；新增导航入口的任务（如 M2-04 的迁移页）改 `App.tsx`，与 UI-01 / UI-08 不能同时开工。
+
+**UI-1 通用验收标准**（每个 UI 任务都必须满足，任务文件只列附加项）：
+
+1. **截图对比**：PR 中附改前 / 改后截图，至少中文 + 专业红、English + 专业绿两组，宽 1440 与 390；用虚构夹具，不使用真实账套、4173 或 `.bak`。
+2. **中英文**：所有新增或移动的文字走 labels，中英齐全；不出现硬编码文字；英文长文案不截断、不溢出。
+3. **红绿主题**：两主题下都检查；组件只引用 token，不写裸色值。
+4. **对比度达标**：`node design/ui/check-contrast.mjs`（UI-01 起为 `contrast.test.ts`）通过，文字 ≥ 4.5:1、非文字 ≥ 3:1；新增颜色配对加入检查。
+5. **现有测试不删除、不削弱**：`packages/web/test/*` 与 `packages/infra/test/http/trade-gui.slow.test.ts` 不删用例、不放宽断言、不改选择器；ID、按钮可访问名称、`nav a[href]`、`main h2`、`.workspace[data-theme]`、`html[lang]` 不变；Full CI 绿。只允许**新增**断言。
+6. **键盘**：Tab 顺序与视觉一致；焦点框可见；E2E 键盘路径在 220 次 Tab 上限内不改即通过；快捷键不变。
+7. **教学模式**：开 / 关两态截图；关闭后不隐藏边界说明、风险、必填信息、错误与警告。
+8. **业务不变**：不改接口调用、字段、校验、按钮顺序语义与禁用逻辑；虚拟列表行高 44 / 48 不变。
+
 ## 派发顺序
 
 1. 第一批（按顺序，同时只开一个以避免 `package.json`/lock 冲突）：M0-01 → M0-02 → M0-03 → M0-04 → M0-05 → M0-06→ M0-07。M0-02 与 M0-03 可并行，后合并者重新生成 lock。
@@ -100,6 +128,8 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
      - `docs/runbook`：迁移操作手册 `docs/migration-runbook.md`。
      - `trade-master`/`trade-docs`：贸易主数据/单据代码。
      - `web-ui:<页面>`：对应页面及其 labels 文件。
+     - `web-ui:shell`：`packages/web/src/App.tsx`、`main.tsx`、`src/theme/{tokens,base,shell}.css`、`styles.css`、`labels.ts` 中 `shell.*`。
+     - `web-ui:components`：`src/theme/components.css` 与 `src/ui/components/`（UI-1 共享组件）；页面任务需要新通用样式时先放页面 CSS，由 UI-08 统一提升。
    - **迁移的串行集成**（带迁移的任务可以并行开发，但集成必须串行）：
      - 运行器按 `migrations.ts` 中 manifest 数组的**位置**写入版本号（`index + 1`），并校验每个版本的 checksum（`migrations.ts:83-91,163-168,177-188`），不看文件名。已进入 main 的迁移前缀、顺序和 checksum 都不能改。
      - 编号由设计角色在本表预留（main 已到 013；M2-03 预留 014，必须在 013 之后，不参与下面的互换规则）。带迁移的 PR 必须按预留编号顺序合并。

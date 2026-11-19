@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>UI-1 原型 · 采购与销售发票</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="prototype.css" />
+  </head>
+  <body data-page="trade-invoices">
+    <div class="workspace">
+      <div class="shell">
+        <main id="workspace-main" tabindex="-1">
+          <div class="page">
+            <div class="page-header">
+              <div class="titles">
+                <h2 data-en="Purchase and sales invoices">采购与销售发票</h2>
+                <p data-en="Invoice entry · preview the breakdown, then post">发票录入 · 先预览计算明细，再确认过账</p>
+              </div>
+              <div class="context">
+                <div class="field">
+                  <label for="trade-company" data-en="Company">公司</label>
+                  <select id="trade-company"><option>DEFAULT · 默认公司 / Default company</option></select>
+                </div>
+              </div>
+            </div>
+
+            <div class="command-bar" role="toolbar" aria-label="发票操作" data-en-label="Invoice actions">
+              <button type="button" class="btn btn-primary" data-en="Post invoice">确认过账</button>
+              <button type="button" class="btn btn-secondary" data-en="Preview">预览</button>
+              <span class="divider" aria-hidden="true"></span>
+              <button type="button" class="btn btn-subtle" data-en="Discard draft">放弃草稿</button>
+              <span class="status"><span class="badge success"><span aria-hidden="true">✓</span><span data-en="Preview is current">预览为最新</span></span></span>
+            </div>
+
+            <aside class="teaching-tip" aria-label="教学说明" data-en-label="Teaching note">
+              <span class="mark" aria-hidden="true">教</span>
+              <strong data-en="Teaching note">教学说明</strong>
+              <p
+                data-en="AP invoices credit the payables control account and debit expense plus deductible input tax; AR invoices debit receivables and credit revenue plus output tax. Each posted invoice opens an item due by payment terms."
+              >
+                AP 发票贷记应付控制科目，借记费用及可抵扣进项税；AR 发票借记应收，贷记收入及销项税。每张已过账发票按付款条件生成未结项。
+              </p>
+            </aside>
+
+            <section class="fasttab" aria-labelledby="ft-general">
+              <header>
+                <h3 id="ft-general"><button type="button" class="toggle" aria-expanded="true" aria-controls="ft-general-body" data-en="Invoice entry">发票录入</button></h3>
+                <span class="summary">AP · PARTY · AP-DEMO · 2026-11-19</span>
+              </header>
+              <div class="body" id="ft-general-body">
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="tinv-side" data-en="Subledger">子账</label>
+                    <select id="tinv-side"><option data-en="Payables">应付</option></select>
+                  </div>
+                  <div class="field">
+                    <label for="tinv-party" data-en="Partner code">伙伴代码</label>
+                    <input id="tinv-party" value="PARTY" />
+                  </div>
+                  <div class="field">
+                    <label for="tinv-external" data-en="External invoice number">外部发票号</label>
+                    <input id="tinv-external" value="AP-DEMO" />
+                  </div>
+                  <div class="field">
+                    <label for="tinv-order" data-en="Order number (optional)">订单号（可选）</label>
+                    <input id="tinv-order" value="PO-DEMO" />
+                  </div>
+                  <div class="field">
+                    <label for="tinv-accounting" data-en="Accounting date (GL period)">记账日期（总账期间）</label>
+                    <input id="tinv-accounting" type="date" value="2026-11-19" />
+                  </div>
+                  <div class="field">
+                    <label for="tinv-document" data-en="Document date (payment terms)">单据日期（付款条件起算）</label>
+                    <input id="tinv-document" type="date" value="2026-11-19" />
+                  </div>
+                  <div class="field">
+                    <label for="tinv-tax-date" data-en="Tax date (tax rate)">税务日期（选取税率）</label>
+                    <input id="tinv-tax-date" type="date" value="2026-11-19" />
+                  </div>
+                  <div class="field">
+                    <label for="tinv-rounding" data-en="Tax rounding">税额舍入</label>
+                    <select id="tinv-rounding"><option data-en="Per line">按行</option></select>
+                  </div>
+                  <label class="check"><input type="checkbox" id="tinv-price-includes-tax" /><span data-en="Prices include tax">单价含税</span></label>
+                </div>
+              </div>
+            </section>
+
+            <section class="fasttab" aria-labelledby="ft-lines">
+              <header>
+                <h3 id="ft-lines"><button type="button" class="toggle" aria-expanded="true" aria-controls="ft-lines-body" data-en="Invoice lines">发票行</button></h3>
+                <span class="summary" data-en="1 line">1 行</span>
+              </header>
+              <div class="body" id="ft-lines-body">
+                <div class="grid-wrap">
+                  <table class="grid">
+                    <thead>
+                      <tr>
+                        <th scope="col">#</th>
+                        <th scope="col" data-en="Product">商品</th>
+                        <th scope="col" data-en="Tax code">税码</th>
+                        <th scope="col" class="num" data-en="Quantity">数量</th>
+                        <th scope="col" class="num" data-en="Unit price">单价</th>
+                        <th scope="col" class="num" data-en="Line discount %">行折扣 %</th>
+                        <th scope="col" class="num" data-en="Taxable charge">应税附加费</th>
+                        <th scope="col" data-en="Order line">订单行</th>
+                        <th scope="col"><span class="visually-hidden" data-en="Actions">操作</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>L1</td>
+                        <td><input aria-label="商品" value="EXPENSE" /></td>
+                        <td><input aria-label="税码" value="VAT" placeholder="留空 = 唯一允许税码" data-en-ph="Blank = only allowed code" /></td>
+                        <td><input aria-label="数量" class="num" value="10" /></td>
+                        <td><input aria-label="单价" class="num" value="10.00" /></td>
+                        <td><input aria-label="行折扣 %" class="num" value="0" /></td>
+                        <td><input aria-label="应税附加费" class="num" value="0.00" /></td>
+                        <td><input aria-label="订单行" value="OL1" /></td>
+                        <td><button type="button" class="btn btn-subtle btn-sm" data-en="Remove line">删除行</button></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="row-actions">
+                  <button type="button" class="btn btn-secondary" data-en="Add line &lt;kbd&gt;Alt+Shift+N&lt;/kbd&gt;">新增行 <kbd>Alt+Shift+N</kbd></button>
+                  <label class="check"><input type="checkbox" /><span data-en="Approve price variance beyond 1% as a matching exception">确认超出 1% 的价差作为匹配例外</span></label>
+                </div>
+              </div>
+            </section>
+
+            <section class="fasttab" aria-labelledby="ft-preview">
+              <header>
+                <h3 id="ft-preview"><button type="button" class="toggle" aria-expanded="true" aria-controls="ft-preview-body" data-en="Calculation breakdown">计算明细</button></h3>
+                <span class="summary" data-en="Not posted yet · preview only">尚未过账 · 仅预览</span>
+              </header>
+              <div class="body" id="ft-preview-body">
+                <div class="kpis">
+                  <div class="kpi"><div class="label" data-en="Net">净额</div><div class="value">100.00</div></div>
+                  <div class="kpi"><div class="label" data-en="Tax">税额</div><div class="value">13.00</div></div>
+                  <div class="kpi emphasis"><div class="label" data-en="Gross">价税合计</div><div class="value">113.00</div><div class="sub">CNY</div></div>
+                  <div class="kpi"><div class="label" data-en="Deductible tax">可抵扣税额</div><div class="value">13.00</div></div>
+                </div>
+                <dl class="facts">
+                  <div><dt data-en="Due date">到期日</dt><dd>2026-12-19</dd></div>
+                  <div><dt data-en="Discount date">折扣截止日</dt><dd>2026-11-26</dd></div>
+                  <div><dt data-en="Control account">控制科目</dt><dd>2100</dd></div>
+                  <div>
+                    <dt data-en="Order match">订单匹配</dt>
+                    <dd><span class="badge success"><span aria-hidden="true">✓</span><span data-en="Matched">已匹配</span></span></dd>
+                  </div>
+                </dl>
+                <div class="split">
+                  <div class="grid-wrap">
+                    <table class="grid">
+                      <caption data-en="Posting preview">过账预览</caption>
+                      <thead>
+                        <tr><th scope="col" data-en="Account">科目</th><th scope="col" class="num" data-en="Debit">借方</th><th scope="col" class="num" data-en="Credit">贷方</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr><td>5000</td><td class="num">100.00</td><td class="num"></td></tr>
+                        <tr><td>1400</td><td class="num">13.00</td><td class="num"></td></tr>
+                        <tr><td>2100</td><td class="num"></td><td class="num">113.00</td></tr>
+                      </tbody>
+                      <tfoot>
+                        <tr><td>Σ</td><td class="num">113.00</td><td class="num">113.00</td></tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                  <div class="grid-wrap">
+                    <table class="grid">
+                      <caption data-en="Order match">订单匹配</caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">#</th>
+                          <th scope="col" data-en="Order line">订单行</th>
+                          <th scope="col" class="num" data-en="Quantity">数量</th>
+                          <th scope="col" class="num" data-en="Expected net">预期净额</th>
+                          <th scope="col" class="num" data-en="Net">净额</th>
+                          <th scope="col" class="num" data-en="Variance">差异</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr><td>L1</td><td>OL1</td><td class="num">10</td><td class="num">100.00</td><td class="num">100.00</td><td class="num">0.00</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="card" aria-labelledby="posted-title">
+              <header>
+                <h3 id="posted-title" data-en="Posted invoices">已过账发票</h3>
+                <span class="summary" data-en="0 invoices">0 张</span>
+              </header>
+              <div class="grid-wrap">
+                <table class="grid">
+                  <thead>
+                    <tr>
+                      <th scope="col" data-en="Subledger">子账</th>
+                      <th scope="col" data-en="Partner code">伙伴代码</th>
+                      <th scope="col" data-en="External invoice number">外部发票号</th>
+                      <th scope="col" data-en="Accounting date">记账日期</th>
+                      <th scope="col" data-en="Due date">到期日</th>
+                      <th scope="col" data-en="Order match">订单匹配</th>
+                      <th scope="col" class="num" data-en="Gross">价税合计</th>
+                    </tr>
+                  </thead>
+                </table>
+                <p class="empty-state" data-en="No posted invoices yet. Posted invoices appear here after confirmation.">尚无已过账发票。确认过账后显示在这里。</p>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+    </div>
+    <script src="prototype.js"></script>
+  </body>
+</html>

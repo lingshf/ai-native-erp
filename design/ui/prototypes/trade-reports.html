@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>UI-1 原型 · 往来未结项与账龄</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="prototype.css" />
+  </head>
+  <body data-page="trade-reports">
+    <div class="workspace">
+      <div class="shell">
+        <main id="workspace-main" tabindex="-1">
+          <div class="page">
+            <div class="page-header">
+              <div class="titles">
+                <h2 data-en="Trade open items and ageing">往来未结项与账龄</h2>
+                <p data-en="Read-only trade facts; credits and advances remain separate from invoice ageing. No automatic AI sharing.">
+                  只读贸易事实；信用及预付款单列，不抵消发票账龄。不会自动发送 AI。
+                </p>
+              </div>
+              <div class="context">
+                <div class="field">
+                  <label for="trpt-company" data-en="Company">公司</label>
+                  <select id="trpt-company"><option>DEFAULT · 默认公司 / Default company</option></select>
+                </div>
+              </div>
+            </div>
+
+            <form class="filter-bar" aria-label="筛选" data-en-label="Filters" onsubmit="return false">
+              <div class="field">
+                <label for="trpt-month" data-en="Historical month end (blank for current)">历史月末（留空为当前）</label>
+                <input id="trpt-month" type="month" />
+              </div>
+              <div class="field">
+                <label for="trpt-party" data-en="Party filter">伙伴筛选</label>
+                <input id="trpt-party" />
+              </div>
+              <div class="field">
+                <label for="trpt-side" data-en="Subledger">子账</label>
+                <select id="trpt-side"><option data-en="All">全部</option></select>
+              </div>
+              <div class="actions">
+                <button type="submit" class="btn btn-primary" data-en="Apply filters">应用筛选</button>
+                <button type="button" class="btn btn-subtle" data-en="Discard filter input">撤销筛选输入</button>
+              </div>
+            </form>
+
+            <div class="toolbar-row">
+              <div class="segmented" role="group" aria-label="报表视图" data-en-label="Report view">
+                <button type="button" aria-pressed="true" data-en="Open items">未结项</button>
+                <button type="button" aria-pressed="false" data-en="Ageing">账龄</button>
+                <button type="button" aria-pressed="false" data-en="GL reconciliation">GL 核对</button>
+              </div>
+              <span class="scope" data-en="Current full balance · CNY">当前全量余额 · CNY</span>
+              <button type="button" class="btn btn-secondary" data-en="Refresh current query">刷新当前查询</button>
+            </div>
+
+            <aside class="teaching-tip" aria-label="教学说明" data-en-label="Teaching note">
+              <span class="mark" aria-hidden="true">教</span>
+              <strong data-en="Teaching note">教学说明</strong>
+              <p
+                data-en="History uses accounting-date cutoffs; future settlements do not rewrite earlier months. New actions require current, not historical, versions."
+              >
+                历史余额按会计日截止，未来核销不改写早月。当前版本用于新操作，不能把历史版本用于提交。
+              </p>
+            </aside>
+
+            <div class="kpis">
+              <div class="kpi emphasis"><div class="label" data-en="Open invoice gross">发票未结总额</div><div class="value">36.50</div></div>
+              <div class="kpi"><div class="label" data-en="Not due (including due date)">未到期（含到期日）</div><div class="value">36.50</div></div>
+              <div class="kpi"><div class="label" data-en="Overdue 1–30 days">逾期 1–30 天</div><div class="value">0.00</div></div>
+              <div class="kpi"><div class="label" data-en="Overdue 31–60 days">逾期 31–60 天</div><div class="value">0.00</div></div>
+              <div class="kpi"><div class="label" data-en="Overdue 61–90 days">逾期 61–90 天</div><div class="value">0.00</div></div>
+              <div class="kpi"><div class="label" data-en="Overdue over 90 days">逾期 91 天以上</div><div class="value">0.00</div></div>
+              <div class="kpi"><div class="label" data-en="Open credit gross">信用未结总额</div><div class="value">0.00</div><div class="sub" data-en="Not netted against ageing">不抵消账龄</div></div>
+              <div class="kpi"><div class="label" data-en="Open advance gross">预付/预收未结总额</div><div class="value">0.00</div><div class="sub" data-en="Not netted against ageing">不抵消账龄</div></div>
+            </div>
+
+            <section class="card" aria-labelledby="items-title">
+              <header>
+                <h3 id="items-title" data-en="Open items">未结项</h3>
+                <span class="summary" data-en="1 item">1 项</span>
+              </header>
+              <div class="grid-wrap">
+                <table class="grid">
+                  <thead>
+                    <tr>
+                      <th scope="col" data-en="Document">单据</th>
+                      <th scope="col" data-en="Kind">类型</th>
+                      <th scope="col" data-en="Party">伙伴</th>
+                      <th scope="col" class="num" data-en="Remaining net">未结净额</th>
+                      <th scope="col" class="num" data-en="Remaining tax">未结税额</th>
+                      <th scope="col" class="num" data-en="Remaining gross">未结总额</th>
+                      <th scope="col" data-en="Due date">到期日</th>
+                      <th scope="col" class="num" data-en="Overdue days">逾期天数</th>
+                      <th scope="col" data-en="Ageing">账龄</th>
+                      <th scope="col" data-en="As-of / current version">截止日版本 / 当前版本</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><button type="button" class="cell-link">AP-DEMO</button></td>
+                      <td data-en="AP · Invoice">AP · 发票</td>
+                      <td>PARTY</td>
+                      <td class="num">32.30</td>
+                      <td class="num">4.20</td>
+                      <td class="num"><strong>36.50</strong></td>
+                      <td>2026-12-19</td>
+                      <td class="num">0</td>
+                      <td><span class="badge success" data-en="Not due">未到期</span></td>
+                      <td>3 / 3</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+    </div>
+    <script src="prototype.js"></script>
+  </body>
+</html>
