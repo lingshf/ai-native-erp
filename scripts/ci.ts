@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { basename, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -61,6 +61,61 @@ export function vitestTimings(report: unknown): TestTiming[] {
     }
   }
   return timings;
+}
+
+function repoPath(file: string, root: string) {
+  return relative(root, file).replaceAll("\\", "/");
+}
+
+/** Mean per-file run time (ms) across Vitest JSON reports, keyed by repo-relative path. */
+export function fileWeights(reports: unknown[], root = process.cwd()) {
+  const samples = new Map<string, number[]>();
+  for (const report of reports) {
+    if (!isRecord(report) || !Array.isArray(report.testResults)) {
+      throw new Error("Invalid Vitest JSON report");
+    }
+    for (const suite of report.testResults) {
+      if (
+        !isRecord(suite) ||
+        typeof suite.name !== "string" ||
+        typeof suite.startTime !== "number" ||
+        typeof suite.endTime !== "number"
+      ) {
+        throw new Error("Invalid Vitest suite");
+      }
+      const path = repoPath(suite.name, root);
+      samples.set(path, [...(samples.get(path) ?? []), suite.endTime - suite.startTime]);
+    }
+  }
+  return Object.fromEntries(
+    [...samples]
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([path, values]) => [
+        path,
+        Math.max(1, Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)),
+      ]),
+  );
+}
+
+/**
+ * Deterministic longest-first greedy split of test files into `count` shards.
+ * Files without a recorded weight use the median weight; every file lands in exactly one shard.
+ */
+export function balanceShards(files: string[], weights: Record<string, number>, count: number) {
+  if (!Number.isInteger(count) || count < 1) throw new Error("Invalid shard count");
+  const known = Object.values(weights).sort((a, b) => a - b);
+  const fallback = known.length ? known[Math.floor(known.length / 2)] : 1;
+  const weightOf = (file: string) => weights[file] ?? fallback;
+  const shards = Array.from({ length: count }, () => ({ files: [] as string[], total: 0 }));
+  const ordered = [...new Set(files)].sort(
+    (a, b) => weightOf(b) - weightOf(a) || (a < b ? -1 : a > b ? 1 : 0),
+  );
+  for (const file of ordered) {
+    const target = shards.reduce((best, shard) => (shard.total < best.total ? shard : best));
+    target.files.push(file);
+    target.total += weightOf(file);
+  }
+  return shards.map((shard) => shard.files);
 }
 
 function cell(value: string) {
@@ -140,6 +195,18 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     }
     const timings = existsSync(path) ? vitestTimings(JSON.parse(readFileSync(path, "utf8"))) : [];
     summary(testSummary(timings));
+  } else if (command === "weights") {
+    const args = process.argv.slice(3);
+    const rootArg = args.find((arg) => arg.startsWith("--root="));
+    const reports = args.filter((arg) => arg !== rootArg);
+    if (!reports.length) {
+      throw new Error("Usage: node scripts/ci.ts weights [--root=REPORT_ROOT] REPORT.json...");
+    }
+    const weights = fileWeights(
+      reports.map((path) => JSON.parse(readFileSync(path, "utf8"))),
+      rootArg?.slice("--root=".length),
+    );
+    writeFileSync("scripts/test-shard-weights.json", `${JSON.stringify(weights, null, 2)}\n`);
   } else {
     throw new Error(`Unknown CI command: ${command}`);
   }

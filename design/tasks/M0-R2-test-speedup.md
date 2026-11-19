@@ -18,6 +18,7 @@ M0 测试审计（[design/reviews/M0.md](../reviews/M0.md) §5）：Linux 上 Vi
 ## 验收标准
 
 - Linux main Full 中 Vitest 报告的总时长（Duration，墙钟）≤ 25s（基线 43.22s，main Full 44459418837）。这是整体墙钟目标，以合并后的 main Full 实测为准，不按单个用例耗时相减估算；PR CI 中不再出现超过 5s 的单个用例。
+- M0-R2b（D12/D13）：2 vCPU runner 上单 job 下限约 35–40s，经 D13 Full 拆成分片、D15 定为 3 个分片（`--shard=i/3`），验收口径改为合并后 Linux main Full 每个分片的 Vitest Duration ≤ 25s；PR CI 单例仍 ≤ 5s、总耗时 ≤ 10 分钟。PR 描述记录每分片 Duration 及 Full 总 runner 分钟数（拆分前后）。分片按 `scripts/test-shard-weights.json` 记录的每文件耗时做最长优先贪心分配（自定义 sequencer，未知文件取中位权重，每个文件恰好进入一个分片）；Full 每个分片上传 `vitest.json`，可用 `node scripts/ci.ts weights --root=/home/runner/work/ai-native-erp/ai-native-erp REPORT.json...` 重新生成权重。权重过期只影响均衡，不影响覆盖。测试增多时，若 Full 较大分片 Duration 的中位数超过 22s，就增加分片或重新生成权重，不降低 25s 目标。
 - 不删除任何行为的唯一覆盖：每处删除或合并在 PR 描述里写出“由哪个测试覆盖”。
 - 生产代码只为可注入超时做最小改动，默认值和行为不变。
 - CI 绿。
@@ -33,4 +34,5 @@ M0 测试审计（[design/reviews/M0.md](../reviews/M0.md) §5）：Linux 上 Vi
 - 输入拒绝去重保留 CLI/HTTP 自身的参数语法、序列化和状态映射覆盖；旧账月份/数值范围、游标规则由 `legacy-teaching` 覆盖，不把传输层独有校验当作重复覆盖删除。
 - launcher 参数表直接测试 `parsePreviewArguments`；启动顺序、资源生命周期和信号处理仍在 PR 层测试。真实 CLI 的导入惰性、参数/运行配置拒绝、服务启动/退出及错误场景放入 `legacy-launcher.slow.test.ts`，仅 Full 执行。
 - 并发初始化契约沿用外部写锁契约的测试内 `PRAGMA busy_timeout=1`，保留真实锁竞争；独立连接配置测试仍断言生产忙超时为 5,000ms。恢复失败矩阵逐项保留锁、备份和存储拒绝访问断言，真实服务启动拒绝只在独立维护锁用例启动一次子进程。
+- Vitest 配置：`maxWorkers` 跟随 `availableParallelism()`；全局 `isolate: false`，配合 `unstubGlobals`/`unstubEnvs` 及 web setup 的 restore/cleanup；`packages/infra` 中含顶层 `vi.mock(` 的测试文件在加载配置时自动归入 `infra-isolated` 项目（`isolate: true`），新增 mock 文件无需手工登记。自定义 sequencer 会让 `--sequence.shuffle.files` 失效，所以用环境变量 `TEST_FILE_ORDER=reverse|shuffle:<seed>` 做顺序诊断：它在每个项目内反转或按种子打乱文件顺序，项目分组不变；不设置时仍按权重排序。验证 isolate:false 下没有顺序依赖时，用 `--maxWorkers=1` 分别跑默认顺序、`reverse` 和至少一个 `shuffle:<seed>`。CLI 子进程测试每个用例只启动一次 CLI，前置状态在进程内用同一套 storage API 准备，以免多次冷启动叠加后超过单例 5s。
 - 合并前记录 PR CI 与 Full 基线和候选分支完整运行结果；合并后的 main Full 总墙钟由协调者核实，不能用单用例耗时相减替代。

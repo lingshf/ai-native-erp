@@ -11,10 +11,15 @@ permissions:
 
 jobs:
   full:
+    name: full (shard ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
     timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     concurrency:
-      group: full-${{ github.ref }}
+      group: full-${{ github.ref }}-${{ matrix.shard }}
       cancel-in-progress: true
     env:
       CI_TEST_LAYER: full
@@ -36,23 +41,30 @@ jobs:
         if: steps.gate.outputs.run == 'true'
         run: npm ci --no-audit --no-fund
       - name: Biome
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate.outputs.run == 'true' && matrix.shard == 1
         run: npm run check
       - name: Typecheck
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate.outputs.run == 'true' && matrix.shard == 1
         run: npm run typecheck
       - name: Import boundaries
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate.outputs.run == 'true' && matrix.shard == 2
         run: npm run check:boundaries
       - name: All tests including slow tests
         id: tests
         if: steps.gate.outputs.run == 'true'
-        run: npm run test:ci
+        run: npm run test:ci -- --shard=${{ matrix.shard }}/3
       - name: Web build
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate.outputs.run == 'true' && matrix.shard == 2
         run: npm run build
       - name: Test timing summary
         if: always() && steps.gate.outputs.run == 'true'
         env:
           TEST_OUTCOME: ${{ steps.tests.outcome }}
         run: node scripts/ci.ts summary
+      - uses: actions/upload-artifact@v7
+        if: always() && steps.gate.outputs.run == 'true'
+        with:
+          name: vitest-shard-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ci/vitest.json
+          if-no-files-found: ignore
+          retention-days: 14
