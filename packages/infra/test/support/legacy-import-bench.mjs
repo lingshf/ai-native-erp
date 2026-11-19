@@ -242,7 +242,7 @@ try {
       assert.equal(
         preparation
           .prepare(
-            "UPDATE legacy_import_runs SET status='reconciled' WHERE id=? AND tool='legacy.import.v1' AND status='imported'",
+            "UPDATE legacy_import_runs SET status='reconciled' WHERE id=? AND tool='legacy.import.v2' AND status='imported'",
           )
           .run(result.runId).changes,
         1,

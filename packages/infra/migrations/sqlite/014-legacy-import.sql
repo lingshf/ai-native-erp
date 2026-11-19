@@ -1,6 +1,6 @@
 CREATE TABLE legacy_import_runs (
   id TEXT PRIMARY KEY,
-  tool TEXT NOT NULL CHECK(tool='legacy.import.v1'),
+  tool TEXT NOT NULL CHECK(tool='legacy.import.v2'),
   snapshot_sha TEXT NOT NULL CHECK(json_valid(snapshot_sha)),
   choices TEXT NOT NULL CHECK(json_valid(choices)),
   migration_version INTEGER NOT NULL,

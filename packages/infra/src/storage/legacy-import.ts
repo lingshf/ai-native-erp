@@ -85,6 +85,8 @@ function id(source: string, company: string, object: string, legacy: string): st
     .update(JSON.stringify([source, company, object, legacy]))
     .digest()
     .subarray(0, 16);
+  // Keep legacy-ID locality in posting indexes; the hash suffix separates ledgers and high bits.
+  bytes.writeUIntBE(Number(BigInt(legacy) & 0xffffffffffffn), 0, 6);
   bytes[6] = (bytes[6] & 15) | 64;
   bytes[8] = (bytes[8] & 63) | 128;
   const hex = bytes.toString("hex");
@@ -513,7 +515,7 @@ export async function executeLegacyImport(
       const run = runs[0];
       if (
         runs.length !== 1 ||
-        run.tool !== "legacy.import.v1" ||
+        run.tool !== "legacy.import.v2" ||
         run.status !== "importing" ||
         run.snapshot_sha !== snapshotSha ||
         run.choices !== choices ||
@@ -538,7 +540,7 @@ export async function executeLegacyImport(
         await migrateConnection(raw);
         const version = await inspectSchema(raw, false);
         db.prepare(
-          "INSERT INTO legacy_import_runs(id,tool,snapshot_sha,choices,migration_version,status,created_at) VALUES(?,'legacy.import.v1',?,?,?,'importing',?)",
+          "INSERT INTO legacy_import_runs(id,tool,snapshot_sha,choices,migration_version,status,created_at) VALUES(?,'legacy.import.v2',?,?,?,'importing',?)",
         ).run(runId, snapshotSha, choices, version, at);
         db.prepare("UPDATE legacy_import_runs SET counts=? WHERE id=?").run(tableCounts(db), runId);
         await raw.commit();
