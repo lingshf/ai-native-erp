@@ -130,23 +130,24 @@ export async function restoreSqlite(filename: string, input: string): Promise<{ 
   let stage: string | undefined;
   let backup: string | undefined;
   let replaced = false;
+  let safeToRelease = true;
   try {
     filename = await explicitFile(filename);
     input = await explicitFile(input);
     independentPath(filename, input);
     await regularFile(filename);
     release = acquireMaintenance(filename);
+    await regularFile(input);
+    await noSidecars(input);
+    stage = temporary(filename);
+    await copyFile(input, stage, constants.COPYFILE_EXCL);
+    await verifyFile(stage, true);
     const database = new Database(filename, { fileMustExist: true, timeout: 0 });
     try {
       // Attach crash-WAL shared memory in NORMAL mode so SQLite owns its cleanup.
       database.pragma("schema_version");
       database.pragma("locking_mode = EXCLUSIVE");
       database.exec("BEGIN EXCLUSIVE; ROLLBACK");
-      await regularFile(input);
-      await noSidecars(input);
-      stage = temporary(filename);
-      await copyFile(input, stage, constants.COPYFILE_EXCL);
-      await verifyFile(stage, true);
       await verify(database);
       const checkpoint = database.pragma("wal_checkpoint(TRUNCATE)") as { busy: number }[];
       if (checkpoint[0]?.busy !== 0) throw new StorageError("BUSY");
@@ -161,21 +162,33 @@ export async function restoreSqlite(filename: string, input: string): Promise<{ 
     await rename(stage, filename);
     stage = undefined;
     replaced = true;
+    safeToRelease = false;
     await verifyFile(filename);
+    safeToRelease = true;
     return { backup };
   } catch (error) {
     if (replaced && backup) {
       // Keep the checkpointed .bak even if rollback itself encounters an I/O failure.
-      await noSidecars(filename);
-      const rollback = temporary(filename);
       try {
-        await copyFile(backup, rollback, constants.COPYFILE_EXCL);
-        await rename(rollback, filename);
-        await verifyFile(filename);
-      } finally {
-        await unlink(rollback).catch((failure: NodeJS.ErrnoException) => {
-          if (failure.code !== "ENOENT") throw failure;
-        });
+        await noSidecars(filename);
+        const rollback = temporary(filename);
+        try {
+          await copyFile(backup, rollback, constants.COPYFILE_EXCL);
+          await rename(rollback, filename);
+          await verifyFile(filename);
+        } finally {
+          await unlink(rollback).catch((failure: NodeJS.ErrnoException) => {
+            if (failure.code !== "ENOENT") throw failure;
+          });
+        }
+        safeToRelease = true;
+      } catch (rollbackError) {
+        const failure = new StorageError("STORAGE_FAILURE");
+        failure.message =
+          `Restore and automatic rollback failed. Maintenance lock retained; do not start the service. ` +
+          `Manual recovery is required using the verified backup: ${backup}`;
+        failure.cause = new AggregateError([error, rollbackError], "Restore and rollback failed");
+        throw failure;
       }
     }
     throw storageError(error);
@@ -186,7 +199,7 @@ export async function restoreSqlite(filename: string, input: string): Promise<{ 
           if (error.code !== "ENOENT") throw error;
         });
     } finally {
-      release?.();
+      if (safeToRelease) release?.();
     }
   }
 }

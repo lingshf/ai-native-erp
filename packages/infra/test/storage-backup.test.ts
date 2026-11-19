@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
+import { copyFile, rename } from "node:fs/promises";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -10,6 +11,11 @@ import { backupSqlite, createSqliteStorage, restoreSqlite } from "../src/storage
 import { acquireMaintenance } from "../src/storage/maintenance.ts";
 
 const root = resolve(import.meta.dirname, "..", "..", "..");
+
+vi.mock("node:fs/promises", async (original) => {
+  const actual = await original();
+  return { ...actual, copyFile: vi.fn(actual.copyFile), rename: vi.fn(actual.rename) };
+});
 
 async function fixture(t) {
   const directory = mkdtempSync(join(tmpdir(), "erp-backup-"));
@@ -65,6 +71,28 @@ function crashWithCommittedWal(filename) {
   const isolated = `${filename}.isolated`;
   writeFileSync(isolated, readFileSync(filename));
   assert.equal(revision(isolated), 1);
+}
+
+function assertServiceRefused(filename) {
+  const before = readFileSync(filename);
+  const result = spawnSync(process.execPath, [join(root, "packages", "infra", "src", "main.ts")], {
+    cwd: root,
+    encoding: "utf8",
+    timeout: 10_000,
+    env: {
+      ...process.env,
+      ERP_PROFILE: "local",
+      ERP_HOST: "127.0.0.1",
+      ERP_PORT: "4199",
+      ERP_SQLITE_FILE: filename,
+    },
+  });
+  assert.ifError(result.error);
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /StartupError/u);
+  assert.deepEqual(readFileSync(filename), before);
+  assert.ok(!existsSync(`${filename}-wal`));
+  assert.ok(!existsSync(`${filename}-shm`));
 }
 
 test("online backup is a standalone consistent snapshot during concurrent committed writes", async (t) => {
@@ -141,15 +169,21 @@ test("restore refuses a running storage user and an external SQLite exclusive lo
   assert.equal(revision(filename), 1);
 });
 
-test("restore refuses corrupt and mismatched migration snapshots without replacing the target", async (t) => {
+test("invalid inputs leave crash-WAL target and sidecar bytes unchanged", async (t) => {
   const { filename, input } = await fixture(t);
   const validSnapshot = readFileSync(input);
   const db = new Database(input);
   db.exec("UPDATE schema_migrations SET checksum=printf('%064d',0) WHERE version=1");
   db.close();
-  const before = readFileSync(filename);
+  crashWithCommittedWal(filename);
+  const files = [filename, `${filename}-wal`, `${filename}-shm`];
+  const before = files.map((file) => readFileSync(file));
+  const unchanged = () =>
+    files.forEach((file, index) => {
+      assert.deepEqual(readFileSync(file), before[index], `Rejected input changed ${file}`);
+    });
   await assert.rejects(restoreSqlite(filename, input), { code: "SCHEMA_MISMATCH" });
-  assert.deepEqual(readFileSync(filename), before);
+  unchanged();
   writeFileSync(input, validSnapshot);
   const outdated = new Database(input);
   outdated.exec(
@@ -157,12 +191,66 @@ test("restore refuses corrupt and mismatched migration snapshots without replaci
   );
   outdated.close();
   await assert.rejects(restoreSqlite(filename, input), { code: "SCHEMA_MISMATCH" });
-  assert.deepEqual(readFileSync(filename), before);
+  unchanged();
   writeFileSync(input, "not a SQLite database");
   await assert.rejects(restoreSqlite(filename, input));
-  assert.deepEqual(readFileSync(filename), before);
+  unchanged();
   assert.ok(!existsSync(`${filename}.maintenance-lock`));
 });
+
+for (const fault of ["copy", "rename", "verify"]) {
+  test(`failed rollback ${fault} retains maintenance lock, verified .bak and service startup refusal`, async (t) => {
+    const { directory, filename, input } = await fixture(t);
+    crashWithCommittedWal(filename);
+    const actualFs = await vi.importActual("node:fs/promises");
+    const original = Database.prototype.pragma;
+    let checks = 0;
+    const spy = vi.spyOn(Database.prototype, "pragma").mockImplementation(function (sql, options) {
+      if (this.name === filename && sql === "integrity_check") {
+        assert.ok(existsSync(`${filename}.maintenance-lock`));
+        checks++;
+        if (checks === 2 || (fault === "verify" && checks === 3))
+          throw new Error("Injected restore/rollback validation failure");
+      }
+      return original.call(this, sql, options);
+    });
+    vi.mocked(copyFile).mockImplementation(async (...args) => {
+      if (fault === "copy" && String(args[0]).endsWith(".bak"))
+        throw new Error("Injected rollback copy failure");
+      return actualFs.copyFile(...args);
+    });
+    vi.mocked(rename).mockImplementation(async (...args) => {
+      if (fault === "rename" && checks === 2) throw new Error("Injected rollback rename failure");
+      return actualFs.rename(...args);
+    });
+    try {
+      await assert.rejects(restoreSqlite(filename, input), (error) => {
+        assert.equal(error.code, "STORAGE_FAILURE");
+        assert.match(error.message, /Maintenance lock retained/u);
+        assert.match(error.message, /Manual recovery is required/u);
+        const backup = readdirSync(directory).find((name) => name.endsWith(".bak"));
+        assert.ok(backup);
+        assert.ok(error.message.includes(join(directory, backup)));
+        assert.equal(revision(join(directory, backup)), 7);
+        return true;
+      });
+    } finally {
+      spy.mockRestore();
+      vi.mocked(copyFile).mockImplementation(actualFs.copyFile);
+      vi.mocked(rename).mockImplementation(actualFs.rename);
+    }
+    assert.ok(existsSync(`${filename}.maintenance-lock`));
+    const storage = createSqliteStorage({ filename });
+    try {
+      await assert.rejects(storage.verifySchema(), { code: "BUSY" });
+    } finally {
+      await storage.close();
+    }
+    assertServiceRefused(filename);
+    assert.equal(revision(filename), fault === "verify" ? 7 : 1);
+    assert.ok(existsSync(`${filename}.maintenance-lock`));
+  });
+}
 
 test("backup refuses target aliases and reserved SQLite or maintenance paths", async (t) => {
   const { filename } = await fixture(t);
@@ -270,30 +358,8 @@ test("replacement validation failure rolls back committed WAL data under the sam
 test("service startup is refused while maintenance is held, before SQLite is opened", async (t) => {
   const { filename } = await fixture(t);
   const release = acquireMaintenance(filename);
-  const before = readFileSync(filename);
   try {
-    const result = spawnSync(
-      process.execPath,
-      [join(root, "packages", "infra", "src", "main.ts")],
-      {
-        cwd: root,
-        encoding: "utf8",
-        timeout: 10_000,
-        env: {
-          ...process.env,
-          ERP_PROFILE: "local",
-          ERP_HOST: "127.0.0.1",
-          ERP_PORT: "4199",
-          ERP_SQLITE_FILE: filename,
-        },
-      },
-    );
-    assert.ifError(result.error);
-    assert.equal(result.status, 1, result.stderr);
-    assert.match(result.stderr, /StartupError/u);
-    assert.deepEqual(readFileSync(filename), before);
-    assert.ok(!existsSync(`${filename}-wal`));
-    assert.ok(!existsSync(`${filename}-shm`));
+    assertServiceRefused(filename);
   } finally {
     release();
   }
