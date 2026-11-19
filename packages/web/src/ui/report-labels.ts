@@ -14,6 +14,7 @@ export const reportZh = {
   "reports.source": "快照 SHA-256",
   "reports.fullMonth": "完整月总账：包括本月调整、冲销与结转，不受试算阶段筛选影响。",
   "reports.sign": "金额为两位小数、无推定币种。余额正负沿用原账簿方向；借方与贷方分列。",
+  "reports.teachingTitle": "如何阅读只读快照",
   "reports.teaching": "教学说明：试算阶段只切换本地展示；下钻始终读取同一期间完整月总账。",
   "reports.loading": "正在读取只读快照…",
   "reports.noPeriods": "此快照没有可用会计期间。",
@@ -85,6 +86,7 @@ export const reportEn = {
     "Full-month ledger: includes adjustments, reversals and closing entries, regardless of the trial stage.",
   "reports.sign":
     "Amounts have two decimal places; no currency is assumed. Signed balances retain the original ledger direction; debit and credit are separate.",
+  "reports.teachingTitle": "Reading snapshot reports",
   "reports.teaching":
     "Teaching note: trial stage changes local display only. Drill-down always reads the same period's full-month ledger.",
   "reports.loading": "Reading the read-only snapshot…",
