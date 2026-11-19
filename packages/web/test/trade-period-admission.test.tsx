@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { periodCommandSchema } from "@erp/core/contracts";
+import { periodCommandSchema, type PeriodDto } from "@erp/core/contracts";
 import { App } from "../src/App.tsx";
 import { label, type LabelKey } from "../src/ui/index.ts";
 const t = (key: Exclude<LabelKey, "shell.httpError">) => label("zh", key);
@@ -23,6 +23,7 @@ function mockApi(loseFirstResponse = false) {
     writes: string[] = [];
   let modules: ("trade" | "tax")[] = [],
     revision = 1;
+  let status: PeriodDto["status"] = "open";
   let accepted: { command: string; result: unknown } | null = null;
   vi.stubGlobal(
     "fetch",
@@ -64,13 +65,24 @@ function mockApi(loseFirstResponse = false) {
       }
       if (url.pathname === "/api/v1/periods")
         return reply({
-          items: [{ month: "2026-01", status: "open", revision, modules }],
+          items: [{ month: "2026-01", status, revision, modules }],
           nextCursor: null,
         });
       throw new Error(`Unexpected ${url}`);
     }),
   );
-  return { puts, writes };
+  return {
+    puts,
+    writes,
+    revoke() {
+      modules = [];
+      revision++;
+    },
+    close() {
+      status = "closed";
+      revision++;
+    },
+  };
 }
 async function enter() {
   fireEvent.click(await screen.findByLabelText(t("trpt.trade")));
@@ -120,3 +132,31 @@ it("restores and retries the original confirmation after commit/response loss, t
   expect((screen.getByLabelText(t("ledger.period")) as HTMLSelectElement).disabled).toBe(false);
   expect((screen.getByLabelText(t("trpt.trade")) as HTMLInputElement).checked).toBe(true);
 });
+it.for(["open", "closed"] as const)(
+  "keeps the refreshed %s period revoked after recovering an older accepted admission",
+  async (status) => {
+    const api = mockApi(true);
+    const first = render(<App />);
+    await enter();
+    fireEvent.click(screen.getByRole("button", { name: t("trpt.save") }));
+    await screen.findByText(t("trpt.unknown"));
+    const envelope = sessionStorage.getItem(key);
+    first.unmount();
+    api.revoke();
+    if (status === "closed") api.close();
+    render(<App />);
+    const retry = await screen.findByRole("button", { name: t("master.retry") });
+    expect(retry.matches(":disabled")).toBe(false);
+    fireEvent.click(retry);
+    await screen.findByText(t("trpt.saved"));
+    expect(api.puts).toEqual([envelope, envelope]);
+    expect(api.writes).toHaveLength(1);
+    expect(sessionStorage.getItem(key)).toBeNull();
+    expect((screen.getByLabelText(t("trpt.trade")) as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByLabelText(t("trpt.taxModule")) as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByLabelText(t("trpt.reason")) as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText(t("ledger.period")) as HTMLSelectElement).disabled).toBe(false);
+    expect(screen.getByLabelText(t("trpt.trade")).matches(":disabled")).toBe(status === "closed");
+    expect(screen.getByRole("button", { name: t("trpt.save") }).matches(":disabled")).toBe(true);
+  },
+);

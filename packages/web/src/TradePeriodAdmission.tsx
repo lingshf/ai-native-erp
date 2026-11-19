@@ -103,7 +103,8 @@ export function TradePeriodAdmission({
       if (!clearPending()) return;
       setPending(null);
       setReason("");
-      setModules(result.modules);
+      // The receipt may predate a revocation; current query state owns the form.
+      setModules(period.modules);
       await client.invalidateQueries({ queryKey: ["close-periods", company] });
       onSaved();
     } catch (failure) {
@@ -123,7 +124,9 @@ export function TradePeriodAdmission({
     }
   }
   return (
-    <fieldset disabled={disabled || busy || loaded.failed || period.status === "closed"}>
+    <fieldset
+      disabled={disabled || busy || loaded.failed || (period.status === "closed" && !pending)}
+    >
       <legend>{t("trpt.admission")}</legend>
       <p>{t("trpt.admissionNote")}</p>
       {(["trade", "tax"] as const).map((module) => (
