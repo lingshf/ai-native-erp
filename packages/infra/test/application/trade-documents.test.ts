@@ -1110,6 +1110,50 @@ describe("trade invoices on real SQLite", () => {
     ).rejects.toMatchObject({ issue: { rule: "account" } });
     expect(counts()).toEqual(before);
   });
+  it("M1 apply, settlement and credit never query legacy opening markers on the hot path", async () => {
+    const inv = invoice();
+    await post(inv);
+    const a = await act(advance("AP", 100));
+    const lookups: string[] = [];
+    const counted = <T>(work: (repo: MasterDataRepository) => Promise<T>) =>
+      ((repo: MasterDataRepository) =>
+        work(
+          new Proxy(repo, {
+            get(target, key, receiver) {
+              if (key === "tradeOpeningItems" || key === "tradeItemSource") lookups.push(key);
+              return Reflect.get(target, key, receiver);
+            },
+          }),
+        )) as (repo: MasterDataRepository) => Promise<T>;
+    const original = service;
+    service = new TradeDocumentService(
+      { read: (work) => store.read(counted(work)), write: (work) => store.write(counted(work)) },
+      journals,
+      journalTools,
+    );
+    try {
+      await act({
+        ...actionHeader(),
+        kind: "apply",
+        sourceId: a.receipt.actionId,
+        sourceRevision: 1,
+        targetId: inv.documentId,
+        targetRevision: 1,
+        gross: 100,
+      });
+      await settle(payment(inv, 200, false, 2));
+      await act({
+        ...actionHeader(),
+        kind: "credit",
+        invoiceId: inv.documentId,
+        revision: 3,
+        lines: [{ sourceLineId: "L1", quantity: "1" }],
+      });
+    } finally {
+      service = original;
+    }
+    expect(lookups).toEqual([]);
+  });
   it.each(["AP", "AR"] as const)(
     "allocates %s credits from original prices/tax cumulatively, preserves the paid invoice and supports explicit credit refunds",
     async (side) => {

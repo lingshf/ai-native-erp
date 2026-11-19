@@ -4,11 +4,13 @@ import { StorageError } from "@erp/core/application";
 import {
   DomainError,
   assertTradeAccount,
+  checkTradeDefaultDimensions,
   checkedJournalDay,
   normalizeExternalInvoice,
   tradeSegments,
   validateTradeConfig,
   type Account,
+  type DimensionConfig,
   type DimensionMap,
   type OpenItem,
   type TradeAccountRole,
@@ -53,6 +55,9 @@ type Fields = Record<string, unknown>;
 const record = (value: unknown): value is Fields =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
 const control = /\p{Cc}/u;
+
+/** Every legacy dimension and value is imported with this fixed validity window. */
+export const LEGACY_DIMENSION_WINDOW = { from: "1900-01-01", to: "9998-12-31" } as const;
 
 export function openingItemsSha256(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
@@ -154,12 +159,31 @@ export function validateOpeningItems(
       source: row.source,
     });
   const catalog = new Map<string, Set<string>>();
+  // The same catalog the import writes (fixed LEGACY window), for the shared M1-01 check.
+  const dimensionConfigs = new Map<string, DimensionConfig[]>();
   for (const row of plan
     .prepare(
       "SELECT company,object,target FROM planned WHERE object IN('dimensions','dimension_values')",
     )
     .all() as { company: string; object: string; target: string }[]) {
     const target = parse(row.target);
+    const value = row.object === "dimension_values";
+    dimensionConfigs.set(row.company, [
+      ...(dimensionConfigs.get(row.company) ?? []),
+      {
+        ...(value
+          ? {
+              kind: "value",
+              code: String(target.value_code),
+              dimension: String(target.dimension_code),
+            }
+          : { kind: "dimension", code: String(target.code) }),
+        name: String(target.name ?? ""),
+        active: target.active === true,
+        ...LEGACY_DIMENSION_WINDOW,
+        revision: 1,
+      } as DimensionConfig,
+    ]);
     if (target.active !== true) continue;
     catalog
       .set(row.company, catalog.get(row.company) ?? new Set())
@@ -400,12 +424,13 @@ export function validateOpeningItems(
       }
       for (const code of d.allowedTaxCodes)
         issue("3", `${path}.allowedTaxCodes`, `tax code ${code} does not exist in target`, scope);
-      for (const [key, value] of Object.entries(d.defaultDimensions))
-        if (
-          !catalog.get(company)?.has(`D:${key}`) ||
-          (value !== null && !catalog.get(company)?.has(`V:${key}:${value}`))
-        )
-          issue("3", `${path}.defaultDimensions.${key}`, "unknown dimension", scope);
+      try {
+        checkTradeDefaultDimensions(d, d.defaultDimensions, dimensionConfigs.get(company) ?? []);
+      } catch (error) {
+        if (!(error instanceof DomainError)) throw error;
+        const field = String(error.issue?.path ?? "data.defaultDimensions").replace(/^data\./u, "");
+        issue("3", `${path}.${field}`, `invalid default dimensions (${error.issue?.rule})`, scope);
+      }
     }
   }
   const declarations = new Map<string, { declaration: "detail" | "empty"; rows: Fields[] }>();
@@ -542,7 +567,8 @@ export function validateOpeningItems(
         issue("4", `${path}.externalNo`, "missing or invalid external document number", scope);
         valid = false;
       } else if (partyCode) {
-        const duplicate = `${company}:${side}:${partyCode}:${normalized}`;
+        // M1 uniqueness is company + party + normalized number, regardless of AP/AR side.
+        const duplicate = `${company}:${partyCode}:${normalized}`;
         if (seen.has(duplicate)) {
           issue(
             "4",

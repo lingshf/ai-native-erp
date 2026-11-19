@@ -222,6 +222,15 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
           }
         : null;
     },
+    async tradeOpeningItems(company, itemIds) {
+      if (!itemIds.length) return new Set<string>();
+      const rows = await db.query(
+        `SELECT r.target_id FROM legacy_refs r JOIN open_items o ON o.item_id=r.target_id
+        WHERE r.object_type='opening_items' AND o.company_id=? AND r.target_id IN (${itemIds.map(() => "?").join(",")})`,
+        [company, ...itemIds],
+      );
+      return new Set(rows.map((row) => str(row.target_id)));
+    },
     async tradeCreditLines(company, invoiceId) {
       const rows = await db.query(
         "SELECT c.* FROM trade_credit_lines c JOIN open_items o ON o.company_id=c.company_id AND o.item_id=c.credit_id WHERE c.company_id=? AND c.invoice_id=? AND o.status<>'cancelled' ORDER BY c.credit_id,c.source_line_id",

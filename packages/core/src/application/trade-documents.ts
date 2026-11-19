@@ -77,6 +77,8 @@ export interface TradeDocumentRepository {
     /** M2-03b legacy opening item: no trade document; only settlement and apply may use it. */
     readonly opening: boolean;
   } | null>;
+  /** Subset of itemIds that are M2-03b legacy opening items, in one query. */
+  tradeOpeningItems(company: string, itemIds: readonly string[]): Promise<ReadonlySet<string>>;
   tradeCreditLines(company: string, invoiceId: string): Promise<readonly TradeCreditLine[]>;
   insertTradeItem(
     company: string,
@@ -346,7 +348,6 @@ export class TradeDocumentService {
       tradeDocumentError("paymentId", "duplicate", true);
     const allocations: TradeSettlementAllocation[] = [];
     const controls: OpenItem[] = [];
-    const openingItems = new Set<string>();
     const controlLines: { index: number; dimensions: DimensionMap }[] = [];
     const lines: JournalInputLine[] = [];
     const ap = command.side === "AP";
@@ -378,8 +379,6 @@ export class TradeDocumentService {
       const gross = selection.gross;
       if (controls.length && (controls[0].kind === "invoice") !== (item.kind === "invoice"))
         tradeDocumentError(path, "reference");
-      if ((await repo.tradeItemSource(command.company, item.itemId))?.opening)
-        openingItems.add(item.itemId);
       const net =
         gross === item.remainingGross
           ? item.remainingNet
@@ -437,11 +436,9 @@ export class TradeDocumentService {
         code: item.controlAccount,
         role: item.kind === "advance" ? ("advanceAccount" as const) : ("controlAccount" as const),
         // D30: a legacy opening item may sit on either same-side trade account role.
-        alternate: openingItems.has(item.itemId)
-          ? item.kind === "advance"
-            ? ("controlAccount" as const)
-            : ("advanceAccount" as const)
-          : undefined,
+        alternate:
+          item.kind === "advance" ? ("controlAccount" as const) : ("advanceAccount" as const),
+        openingItem: item.itemId,
         side: command.side,
         path: "items",
       })),
@@ -653,19 +650,28 @@ export class TradeDocumentService {
     uses: readonly {
       code: string;
       role: TradeAccountRole;
+      /** The alternate role applies only when this item is a legacy opening item. */
       alternate?: TradeAccountRole;
+      openingItem?: string;
       side?: TradeSide;
       path: string;
     }[],
   ): Promise<readonly Account[]> {
     const accounts = await repo.accountsByCodes(company, [...new Set(uses.map((use) => use.code))]);
     const byCode = new Map(accounts.map((account) => [account.code, account]));
+    // Looked up once and only after a primary role mismatch, so M1 items cost no extra query.
+    let opening: ReadonlySet<string> | undefined;
     for (const use of uses) {
       try {
         try {
           assertTradeAccount(byCode.get(use.code) ?? null, use.role, use.side);
         } catch (error) {
-          if (!(error instanceof DomainError) || !use.alternate) throw error;
+          if (!(error instanceof DomainError) || !use.alternate || !use.openingItem) throw error;
+          opening ??= await repo.tradeOpeningItems(
+            company,
+            uses.flatMap((item) => (item.openingItem ? [item.openingItem] : [])),
+          );
+          if (!opening.has(use.openingItem)) throw error;
           assertTradeAccount(byCode.get(use.code) ?? null, use.alternate, use.side);
         }
       } catch (error) {

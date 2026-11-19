@@ -122,7 +122,7 @@ export async function prepareTradeAction(
     code: string,
     role: TradeAccountRole,
     side: "AP" | "AR",
-    alternate?: TradeAccountRole,
+    alternate?: { role: TradeAccountRole; openingItem: string },
   ) => {
     const key = JSON.stringify([code, role, side, alternate ?? null]);
     if (checkedAccounts.has(key)) return;
@@ -131,8 +131,16 @@ export async function prepareTradeAction(
       try {
         assertTradeAccount(value, role, side);
       } catch (error) {
-        if (!(error instanceof DomainError) || !alternate) throw error;
-        assertTradeAccount(value, alternate, side);
+        // D30: looked up only after a role mismatch, so M1 items cost no extra query.
+        if (
+          !(error instanceof DomainError) ||
+          !alternate ||
+          !(await repo.tradeOpeningItems(companyCode, [alternate.openingItem])).has(
+            alternate.openingItem,
+          )
+        )
+          throw error;
+        assertTradeAccount(value, alternate.role, side);
       }
     } catch (error) {
       if (error instanceof DomainError) tradeDocumentError(code, "account");
@@ -224,24 +232,19 @@ export async function prepareTradeAction(
       tradeDocumentError("targetId", "party");
     if (source.currency !== target.currency) tradeDocumentError("targetId", "currency");
     // D30: legacy opening items may sit on either same-side trade account role.
-    const opening = async (id: string) =>
-      (await repo.tradeItemSource(companyCode, id))?.opening === true;
     await account(
       source.controlAccount,
       source.kind === "advance" ? "advanceAccount" : "controlAccount",
       source.side,
-      (await opening(source.itemId))
-        ? source.kind === "advance"
-          ? "controlAccount"
-          : "advanceAccount"
-        : undefined,
+      {
+        role: source.kind === "advance" ? "controlAccount" : "advanceAccount",
+        openingItem: source.itemId,
+      },
     );
-    await account(
-      target.controlAccount,
-      "controlAccount",
-      target.side,
-      (await opening(target.itemId)) ? "advanceAccount" : undefined,
-    );
+    await account(target.controlAccount, "controlAccount", target.side, {
+      role: "advanceAccount",
+      openingItem: target.itemId,
+    });
     gross = command.gross;
     changes.push(
       { before: source, after: consume(source, gross) },
@@ -253,9 +256,13 @@ export async function prepareTradeAction(
       push(target.controlAccount, target.side === "AP", segment.gross, segment.dimensions);
   } else if (command.kind === "credit") {
     // D30: opening items carry no trade document lines to credit.
-    if ((await repo.tradeItemSource(companyCode, command.invoiceId))?.opening)
+    const document = await repo.tradeDocument(companyCode, command.invoiceId);
+    if (
+      !document &&
+      (await repo.tradeOpeningItems(companyCode, [command.invoiceId])).has(command.invoiceId)
+    )
       tradeDocumentError("invoiceId", "reference");
-    const invoice = required(await repo.tradeDocument(companyCode, command.invoiceId));
+    const invoice = required(document);
     const original = await item(command.invoiceId, command.revision);
     const entry = required(await repo.journalEntry(companyCode, invoice.journalId));
     const prior = await repo.tradeCreditLines(companyCode, command.invoiceId);
@@ -398,8 +405,8 @@ export async function prepareTradeAction(
     );
   } else if (command.kind === "cancel") {
     // D30: opening items are legacy balances, not cancellable trade evidence.
-    if ((await repo.tradeItemSource(companyCode, command.itemId))?.opening)
-      tradeDocumentError("itemId", "reference");
+    const source = required(await repo.tradeItemSource(companyCode, command.itemId));
+    if (source.opening) tradeDocumentError("itemId", "reference");
     const original = await item(command.itemId, command.revision);
     if (
       original.remainingGross !== original.gross ||
@@ -411,7 +418,6 @@ export async function prepareTradeAction(
       (await repo.tradeCreditLines(companyCode, original.itemId)).length
     )
       tradeDocumentError("itemId", "reference");
-    const source = required(await repo.tradeItemSource(companyCode, original.itemId));
     if (source.originalId !== null) {
       if (command.relatedRevision === null) tradeDocumentError("relatedRevision", "shape");
       const invoice = await item(source.originalId, command.relatedRevision);

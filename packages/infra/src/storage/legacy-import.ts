@@ -49,6 +49,8 @@ import { advanceWriteSequence } from "./write-sequence.ts";
 import { reconcileLegacy, saveReconciliation } from "../legacy/reconcile.ts";
 import {
   openingItemsError,
+  LEGACY_DIMENSION_WINDOW,
+  openingItemsSha256,
   validateOpeningItems,
   type OpeningIssue,
   type OpeningPlan,
@@ -423,8 +425,7 @@ async function apply(
       ...(value ? { dimension: data.dimension_code } : {}),
       name: data.name,
       active: data.active,
-      from: "1900-01-01",
-      to: "9998-12-31",
+      ...LEGACY_DIMENSION_WINDOW,
       revision: 1,
     });
     validateDimensionConfig(config, await repo.dimensionCatalog(company));
@@ -590,11 +591,19 @@ export async function executeLegacyImport(
   const plan = new Database(join(temporary, "plan.sqlite"));
   try {
     stage(snapshot, request.choices, plan);
-    const checked = validateOpeningItems(plan, request.openingItems?.bytes);
-    if (checked.issues.length) throw openingItemsError(checked.issues);
-    const opening = checked.plan;
+    const bytes = request.openingItems?.bytes;
+    const openingSha = bytes === undefined ? null : openingItemsSha256(bytes);
+    const validate = () => {
+      const checked = validateOpeningItems(plan, bytes);
+      if (checked.issues.length) throw openingItemsError(checked.issues);
+      return checked.plan;
+    };
     release = acquireMaintenance(target);
     const existed = existsSync(target);
+    // A new target is never created for invalid input; a resume first proves run identity
+    // (including the raw-bytes SHA) read-only, so a changed file is CONFLICT even if unparsable.
+    let opening!: OpeningPlan;
+    if (!existed) opening = validate();
     if (existed) {
       const stat = lstatSync(target);
       if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1)
@@ -626,13 +635,14 @@ export async function executeLegacyImport(
         run.status !== "importing" ||
         run.snapshot_sha !== snapshotSha ||
         run.choices !== choices ||
-        (run.opening_details_sha ?? null) !== opening.sha ||
+        (run.opening_details_sha ?? null) !== openingSha ||
         Number(run.migration_version) !== version ||
         run.counts !== tableCounts(db) ||
         run.write_sequence !==
           (db.prepare("SELECT value FROM write_seq WHERE id=1").get() as { value: bigint }).value
       )
         throw new StorageError("CONFLICT");
+      opening = validate();
       runId = text(run.id);
       cursor = Number(run.cursor);
       at = text(run.created_at);

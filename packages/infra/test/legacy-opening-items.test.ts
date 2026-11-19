@@ -187,6 +187,13 @@ test("an opening-phase interruption keeps opening open and resumes identically t
     { code: "CONFLICT" },
   );
   assert.deepEqual(readFileSync(resumed), before);
+  // Identity (raw-bytes SHA) is proven before content: a corrupted or missing file is CONFLICT.
+  for (const openingItems of [{ bytes: opening().bytes.subarray(0, -1) }, undefined])
+    await assert.rejects(
+      executeLegacyImport(f.snapshot, { target: resumed, choices, openingItems }),
+      { code: "CONFLICT" },
+    );
+  assert.deepEqual(readFileSync(resumed), before);
   interrupt = false;
   await executeLegacyImport(f.snapshot, { target: resumed, choices, openingItems: opening() });
   assert.deepEqual(JSON.parse(snapshotOf(resumed)), JSON.parse(snapshotOf(first)));
@@ -308,6 +315,24 @@ const cases = {
       items: { ...items, "1300": [100, { remainingMinor: 30, externalNo: "open-1300-1" }] },
     }),
   ),
+  "rule 4 duplicate number across AP and AR of one party": rule(
+    /rule 4 F\/2100 2100\.items\.0\.externalNo: duplicate external number OPEN-1300-1 for C1/u,
+    () => {
+      const file = JSON.parse(String(opening().bytes));
+      const c1 = file.parties.find((party: { code: string }) => party.code === "C1");
+      Object.assign(c1, { role: "both", apProfile: "APP" });
+      const ap = file.accounts.find((account: { account: string }) => account.account === "2100");
+      Object.assign(ap.items[0], {
+        party: "C1",
+        partyName: "Fictional customer",
+        externalNo: "open-1300-1",
+      });
+      return { bytes: Buffer.from(JSON.stringify(file)) };
+    },
+  ),
+  "shape corrupted file": rule(/rule shape openingItems: file is not a UTF-8 JSON object/u, () => ({
+    bytes: opening().bytes.subarray(0, -1),
+  })),
   "rule 4 zero amount": rule(
     /rule 4 F\/1300 1300\.items\.1\.remainingMinor: amount must not be 0/u,
     () => opening({ items: { ...items, "1300": [130, 0] } }),
@@ -407,6 +432,103 @@ test("rule 5 compares per-party totals with an explicit legacy partner dimension
       result.issues.some((issue) => issue.rule === "2"),
       false,
     );
+  } finally {
+    plan.close();
+  }
+});
+
+test("party default dimensions pass the same M1-01 check the opening phase save applies", () => {
+  const plan = new Database(":memory:");
+  try {
+    plan.exec(
+      "CREATE TABLE planned(source TEXT,object TEXT,legacy TEXT,company TEXT,parent TEXT,date TEXT,target TEXT,phase INTEGER)",
+    );
+    const insert = plan.prepare("INSERT INTO planned VALUES('enterprise',?,?,'F',NULL,NULL,?,0)");
+    insert.run("companies", "F", JSON.stringify({ currency: "EUR", year: 2026 }));
+    for (const [code, control_module, category, normal_side] of [
+      ["1300", "AR", "ASSET", "DEBIT"],
+      ["2300", "AR", "LIABILITY", "CREDIT"],
+    ])
+      insert.run(
+        "accounts",
+        code,
+        JSON.stringify({
+          code,
+          name: `Fictional ${code}`,
+          category,
+          report_group: code === "1300" ? "receivables" : "otherLiabilities",
+          normal_side,
+          purpose: "control",
+          control_module,
+          contra_of: null,
+          manual_allowed: false,
+          active: true,
+        }),
+      );
+    for (const code of ["1000", "4000"])
+      insert.run(
+        "accounts",
+        code,
+        JSON.stringify({
+          code,
+          name: `Fictional ${code}`,
+          category: code === "1000" ? "ASSET" : "REVENUE",
+          report_group: code === "1000" ? "cash" : "revenue",
+          normal_side: code === "1000" ? "DEBIT" : "CREDIT",
+          purpose: "general",
+          control_module: null,
+          contra_of: null,
+          manual_allowed: true,
+          active: true,
+        }),
+      );
+    insert.run("dimensions", "REGION", JSON.stringify({ code: "REGION", active: true }));
+    insert.run(
+      "dimension_values",
+      "REGION:N",
+      JSON.stringify({ dimension_code: "REGION", value_code: "N", active: true }),
+    );
+    insert.run(
+      "dimension_values",
+      "REGION:OLD",
+      JSON.stringify({ dimension_code: "REGION", value_code: "OLD", active: false }),
+    );
+    const issues = (to: string, defaultDimensions: unknown) => {
+      const file = JSON.parse(String(opening({ accounts: ["1300", "2300"], items: {} }).bytes));
+      const master = JSON.parse(String(opening().bytes));
+      Object.assign(file, {
+        terms: master.terms,
+        profiles: master.profiles.filter((profile: { side: string }) => profile.side === "AR"),
+        parties: master.parties
+          .filter((party: { code: string }) => party.code === "C1")
+          .map((party: object) => ({ ...party, to, defaultDimensions })),
+      });
+      file.terms[0].to = to;
+      file.profiles[0].to = to;
+      return validateOpeningItems(plan, Buffer.from(JSON.stringify(file))).issues.map(
+        ({ rule, path }) => `${rule} ${path}`,
+      );
+    };
+    // The widest M1-01 window is covered by the fixed LEGACY dimension window.
+    assert.deepEqual(issues("9998-12-31", { REGION: "N" }), []);
+    assert.deepEqual(issues("9998-12-31", { REGION: null }), []);
+    // A window ending 9999-12-31 is itself invalid in M1-01 and blocks before any write.
+    assert.deepEqual(issues("9999-12-31", { REGION: "N" }), [
+      "mapping $.terms.0",
+      "mapping $.profiles.0",
+      "3 $.parties.0",
+    ]);
+    for (const [defaultDimensions, path] of [
+      [{ REGION: "OLD" }, "defaultDimensions.REGION"],
+      [{ REGION: "S" }, "defaultDimensions.REGION"],
+      [{ AREA: null }, "defaultDimensions.AREA"],
+      [["REGION"], "defaultDimensions"],
+      [
+        Object.fromEntries(Array.from({ length: 33 }, (_, i) => [`D${i}`, null])),
+        "defaultDimensions",
+      ],
+    ] as const)
+      assert.deepEqual(issues("2099-12-31", defaultDimensions), [`3 tradeParty:C1.${path}`]);
   } finally {
     plan.close();
   }
