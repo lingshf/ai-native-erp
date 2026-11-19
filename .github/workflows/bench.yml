@@ -9,6 +9,16 @@ on:
         description: Candidate branch, tag or SHA (blank uses selected workflow ref)
         required: false
         type: string
+      baseline:
+        description: Optional baseline full commit SHA (blank disables relative comparison)
+        required: false
+        default: ""
+        type: string
+      sweep:
+        description: Scan R=2/3/4 instead of only the production default
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -18,7 +28,10 @@ jobs:
     runs-on: ubuntu-latest
     # Full serial, concurrent and saturated-queue capacity evidence is manual/nightly only.
     # The PR workflow and its <=10 minute limit are intentionally unchanged.
-    timeout-minutes: 45
+    timeout-minutes: ${{ (inputs.baseline != '' || inputs.sweep == true) && 45 || 10 }}
+    env:
+      ERP_BENCH_BASELINE_SHA: ${{ inputs.baseline }}
+      ERP_BENCH_SWEEP: ${{ inputs.sweep || false }}
     concurrency:
       group: bench-${{ inputs.ref || github.ref }}
       cancel-in-progress: true
@@ -40,15 +53,15 @@ jobs:
       - name: Install dependencies
         if: steps.gate.outputs.run == 'true'
         run: npm ci --no-audit --no-fund
-      - name: Check out OLD MAIN baseline (not current main)
-        if: steps.gate.outputs.run == 'true'
+      - name: Check out requested baseline
+        if: steps.gate.outputs.run == 'true' && inputs.baseline != ''
         uses: actions/checkout@v7
         with:
-          ref: 5b23d8c3ffbfbd61ce57dabc747920ac454432aa
+          ref: ${{ inputs.baseline }}
           path: .bench-baseline
           fetch-depth: 1
-      - name: Install OLD MAIN dependencies
-        if: steps.gate.outputs.run == 'true'
+      - name: Install baseline dependencies
+        if: steps.gate.outputs.run == 'true' && inputs.baseline != ''
         working-directory: .bench-baseline
         run: npm ci --no-audit --no-fund
       - name: Generate the shared deterministic million-line fixture
@@ -56,21 +69,21 @@ jobs:
         run: node packages/infra/bench/reports.ts prepare
         env:
           ERP_BENCH_FIXTURE: artifacts/ci/million.sqlite
-      - name: OLD MAIN production child baseline (must run first)
-        if: steps.gate.outputs.run == 'true'
+      - name: Requested production child baseline (must run first)
+        if: steps.gate.outputs.run == 'true' && inputs.baseline != ''
         run: node packages/infra/bench/reports.ts
         env:
           ERP_BENCH_MODE: baseline
           ERP_BENCH_SOURCE_ROOT: .bench-baseline
           ERP_BENCH_FIXTURE: artifacts/ci/million.sqlite
           ERP_BENCH_OUTPUT: artifacts/ci/baseline
-      - name: Candidate SQLite benchmarks (same runner and fixture, R=2/3/4)
+      - name: Candidate SQLite benchmarks (production default R unless sweep requested)
         if: steps.gate.outputs.run == 'true'
         run: npm run bench
         env:
           ERP_BENCH_MODE: candidate
           ERP_BENCH_FIXTURE: artifacts/ci/million.sqlite
-          ERP_BENCH_BASELINE_JSON: artifacts/ci/baseline.json
+          ERP_BENCH_BASELINE_JSON: ${{ inputs.baseline != '' && 'artifacts/ci/baseline.json' || '' }}
       - uses: actions/upload-artifact@v7
         if: always() && steps.gate.outputs.run == 'true'
         with:
