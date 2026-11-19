@@ -1,5 +1,6 @@
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { accountsPageSchema, healthSchema } from "@erp/core/contracts";
 import { createSqliteStorage } from "../src/storage/index.ts";
@@ -12,6 +13,7 @@ import {
   evaluateBudgets,
   matchBaseline,
   requestedBaseline,
+  prepareFixture,
 } from "./reports.ts";
 import type { ServerWindow, TraceEvent } from "./report-child.ts";
 
@@ -147,6 +149,67 @@ describe("production capacity evidence", () => {
     expect(
       evaluateBudgets(metrics, windows, pools, 1, "candidate", matched, baselineMetrics).allPass,
     ).toBe(false);
+  });
+  it("generates each physical schema from its own source and pairs logical data even when the candidate schema is newer", async () => {
+    await mkdir("artifacts/ci", { recursive: true });
+    const directory = await mkdtemp(resolve("artifacts/ci/schema-fixtures-"));
+    try {
+      const fixtures = [];
+      for (const version of [7, 8]) {
+        const root = join(directory, `revision-${version}`);
+        const bench = join(root, "packages", "infra", "bench");
+        await mkdir(bench, { recursive: true });
+        await writeFile(
+          join(bench, "generate-ledger.ts"),
+          `import Database from ${JSON.stringify(import.meta.resolve("better-sqlite3"))};
+import { createHash } from "node:crypto";
+export async function generateLedgerFixture(filename) {
+  const db = new Database(filename);
+  try {
+    db.exec("PRAGMA user_version=${version}; CREATE TABLE gl(amount INTEGER); INSERT INTO gl VALUES (100),(-100);");
+    ${version === 8 ? 'db.exec("CREATE TABLE added_in_008(id INTEGER)");' : ""}
+    return {
+      seed: "schema-isolation-test",
+      logicalSha256: createHash("sha256").update(JSON.stringify(db.prepare("SELECT * FROM gl").all())).digest("hex"),
+    };
+  } finally { db.close(); }
+}
+`,
+        );
+        const filename = join(directory, `fixture-${version}.sqlite`);
+        const fixture = await prepareFixture(filename, root);
+        const db = new Database(filename, { readonly: true });
+        try {
+          expect(db.pragma("user_version", { simple: true })).toBe(version);
+          expect(
+            db.prepare("SELECT name FROM sqlite_master WHERE name='added_in_008'").all(),
+          ).toHaveLength(version === 8 ? 1 : 0);
+        } finally {
+          db.close();
+        }
+        expect(JSON.parse(await readFile(`${filename}.json`, "utf8"))).toEqual(fixture);
+        fixtures.push(fixture);
+      }
+      const [oldFixture, newFixture] = fixtures;
+      if (!oldFixture || !newFixture) throw new Error("Missing schema-specific test fixtures");
+      const source = { ...identity, fixture: newFixture };
+      const baseline = { ...baselineIdentity, fixture: oldFixture };
+      const { metrics, windows, pools } = candidateEvidence();
+      const matched = matchBaseline(source, baseline, revision);
+      expect(matched).toBe(true);
+      expect(
+        evaluateBudgets(metrics, windows, pools, 1, "candidate", matched, metrics).allPass,
+      ).toBe(true);
+      const absent = matchBaseline(source, undefined, null);
+      expect(absent).toBeNull();
+      const candidateOnly = evaluateBudgets(metrics, windows, pools, 1, "candidate", absent);
+      expect(candidateOnly.allPass).toBe(true);
+      expect(Object.values(candidateOnly.regression).every((metric) => metric.pass === null)).toBe(
+        true,
+      );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
   it("keeps raw order and uses nearest-rank p95/p99 without relaxing the threshold", () => {
     const raw = Array.from({ length: 50 }, (_, index) => 50 - index);

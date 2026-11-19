@@ -149,6 +149,6 @@ npm run bench
 
 原五路径的相对回退按 #26 的 p50≤10% 判定，p95/p99 各自核对原有 1s/2s 绝对预算；与基线差值继续输出供参考。其他场景原 p95 门槛不变。原始样本、fixture 摘要/大小、事件循环、查询计划及 PASS/MISS 写入 Bench 的`sqlite-ledger-*` artifact，保留 14 天；不缩库或删除异常样本掩盖 MISS。
 
-每晚及手动默认只跑候选、生产默认读池 R，限时 10 分钟；相对回退显示 N/A，不影响全部候选绝对预算、三并发、饱和轻读/专用槽位、未调整报表/六项对账、靠后页及事件循环门禁。手动 Bench 的 `baseline` 可输入完整 40 位 commit SHA，在同一 runner、同一 fixture 上先跑基线再跑候选；输入与实际 SHA 或配对信息不一致即失败。`sweep=true` 才扫描 R=2/3/4；显式基线或扫描保留 45 分钟上限。本地对应环境变量为 `ERP_BENCH_BASELINE_SHA`、`ERP_BENCH_BASELINE_JSON` 和 `ERP_BENCH_SWEEP=true`，无基线时前两项留空。报表门禁 MISS 会令 Bench 失败，证据仍先写出。
+每晚及手动默认只跑候选、生产默认读池 R，限时 10 分钟；相对回退显示 N/A，不影响全部候选绝对预算、三并发、饱和轻读/专用槽位、未调整报表/六项对账、靠后页及事件循环门禁。手动 Bench 的 `baseline` 可输入完整 40 位 commit SHA，在同一 runner 上先跑基线再跑候选；双方各用自己的代码生成独立物理库，配对只要求 fixture 的 seed/逻辑摘要一致，不要求 schema 或文件字节一致，因此新增候选迁移不会把新库交给旧基线。输入与实际 SHA 或配对信息不一致即失败。`sweep=true` 才扫描 R=2/3/4；显式基线或扫描保留 45 分钟上限。本地对应环境变量为 `ERP_BENCH_BASELINE_SHA`、`ERP_BENCH_BASELINE_JSON` 和 `ERP_BENCH_SWEEP=true`；`reports.ts prepare` 用 `ERP_BENCH_SOURCE_ROOT` 选择生成器版本，`ERP_BENCH_FIXTURE` 的路径和元数据必须来自该版本。无基线时前两项留空。报表门禁 MISS 会令 Bench 失败，证据仍先写出。
 
 下载同一 run 的`bench.json`和`baseline.json`后，可用`node packages\infra\bench\reports.ts recalculate <bench.json> <baseline.json> artifacts\ci\recalculated`离线重算。复用正式判定、从 raw 重算分位数并复核调度，输出 JSON/Markdown，分别记录实测提交、判定提交和输入 SHA-256，不启动服务或重新造数。PR 慢查询测试显式释放闸门，看门狗到期只能失败，不能自动放行成成功结果。

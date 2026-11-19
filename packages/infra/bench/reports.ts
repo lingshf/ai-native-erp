@@ -16,7 +16,7 @@ import {
   healthSchema,
   type ContractSchema,
 } from "@erp/core/contracts";
-import { generateLedgerFixture } from "./generate-ledger.ts";
+import type { generateLedgerFixture } from "./generate-ledger.ts";
 import type { SchedulerEvent, ServerWindow, TraceEvent } from "./report-child.ts";
 
 const WARMUP = 5;
@@ -421,6 +421,16 @@ export function reservationVerified(round: QueueRound) {
   );
 }
 
+export async function prepareFixture(filename: string, root = resolve(".")): Promise<Fixture> {
+  const { generateLedgerFixture: generate } = await import(
+    pathToFileURL(join(root, "packages", "infra", "bench", "generate-ledger.ts")).href
+  );
+  await mkdir(dirname(filename), { recursive: true });
+  const fixture: Fixture = await generate(filename);
+  await writeFile(`${filename}.json`, `${JSON.stringify(fixture, null, 2)}\n`);
+  return fixture;
+}
+
 export async function reportsBenchmark() {
   const startedAt = new Date().toISOString();
   const mode: Mode = process.env.ERP_BENCH_MODE === "baseline" ? "baseline" : "candidate";
@@ -443,7 +453,7 @@ export async function reportsBenchmark() {
       fixture = JSON.parse(await readFile(`${source}.json`, "utf8")) as Fixture;
       await copyFile(source, filename);
     } else {
-      fixture = await generateLedgerFixture(filename);
+      fixture = await prepareFixture(filename, root);
     }
     const { pages, queryPlans } = await prepareQueries(filename, root);
     const metrics: Record<string, Metric> = {};
@@ -711,7 +721,7 @@ export async function reportsBenchmark() {
         mode === "candidate"
           ? "Module._load rejects better-sqlite3 and better_sqlite3.node in server main isolate; workers are separate isolates"
           : "not applicable: baseline may load SQLite",
-      note: "Actual production main.ts is imported in a separate process. Fixture generation, cursor-key preparation and EXPLAIN complete before server startup. Each scenario has five warmup rounds before a server-only 10ms monitorEventLoopDelay window; client fetch, queue wait, JSON and contract parsing are included in HTTP timings, not in server sampler CPU. Accounts, not health, proves the reserved SQLite slot. All raw rounds and scheduler order evidence are retained. Thresholds are never relaxed on misses.",
+      note: "Actual production main.ts is imported in a separate process. Baseline and candidate each generate their own physical fixture using their own source revision; pairing requires identical logical seed/digest, not identical schema or database bytes. Fixture generation, cursor-key preparation and EXPLAIN complete before server startup. Each scenario has five warmup rounds before a server-only 10ms monitorEventLoopDelay window; client fetch, queue wait, JSON and contract parsing are included in HTTP timings, not in server sampler CPU. Accounts, not health, proves the reserved SQLite slot. All raw rounds and scheduler order evidence are retained. Thresholds are never relaxed on misses.",
     };
   } finally {
     await server?.close();
@@ -727,6 +737,7 @@ export function reportsMarkdown(reports: Awaited<ReturnType<typeof reportsBenchm
     `${reports.mode}: \`${reports.revision}\`; runner \`${reports.runner}\`; workflow run \`${reports.workflowRun}\`.`,
     `CPU parallelism ${reports.cpuCount}; production default R=${reports.defaultReaders} (max(2,min(3,CPU-1))). Serial samples use that default; measured candidate pools: ${reports.pools.map((pool) => `R=${pool.readers}`).join(", ") || "not applicable"}.`,
     `Fixture ${reports.fixture.seed}: ${reports.fixture.lines} GL rows; 100000 cash rows in 2026-12; digest \`${reports.fixture.logicalSha256}\`. Five warmups + 50 samples/rounds per scenario. All HTTP timings include queue wait, response JSON and shared client contract parsing. Original ledger limit=100; late pages 1/100/200 limit=500.`,
+    "Baseline and candidate use separately generated physical databases from their own code/schema. Only the logical fixture seed/digest must match; a newer candidate schema is never handed to the baseline.",
     "",
     "| Serial path | p50 ms | p95 ms | p99 ms | Budget ms | Result |",
     "| --- | ---: | ---: | ---: | ---: | --- |",
@@ -853,8 +864,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   if (process.argv[2] === "prepare") {
     const filename = resolve(process.env.ERP_BENCH_FIXTURE ?? "artifacts/ci/million.sqlite");
     await mkdir(dirname(filename), { recursive: true });
-    const fixture = await generateLedgerFixture(filename);
-    await writeFile(`${filename}.json`, `${JSON.stringify(fixture, null, 2)}\n`);
+    const fixture = await prepareFixture(
+      filename,
+      resolve(process.env.ERP_BENCH_SOURCE_ROOT ?? "."),
+    );
     console.log(`Prepared ${fixture.lines} lines: ${fixture.logicalSha256}`);
   } else if (process.argv[2] === "recalculate") {
     const [candidateFile, baselineFile, output] = process.argv.slice(3);

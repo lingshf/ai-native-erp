@@ -64,18 +64,24 @@ jobs:
         if: steps.gate.outputs.run == 'true' && inputs.baseline != ''
         working-directory: .bench-baseline
         run: npm ci --no-audit --no-fund
-      - name: Generate the shared deterministic million-line fixture
+      - name: Generate candidate fixture with candidate schema
         if: steps.gate.outputs.run == 'true'
         run: node packages/infra/bench/reports.ts prepare
         env:
           ERP_BENCH_FIXTURE: artifacts/ci/million.sqlite
+      - name: Generate baseline fixture with baseline schema
+        if: steps.gate.outputs.run == 'true' && inputs.baseline != ''
+        run: node packages/infra/bench/reports.ts prepare
+        env:
+          ERP_BENCH_SOURCE_ROOT: .bench-baseline
+          ERP_BENCH_FIXTURE: artifacts/ci/baseline-million.sqlite
       - name: Requested production child baseline (must run first)
         if: steps.gate.outputs.run == 'true' && inputs.baseline != ''
         run: node packages/infra/bench/reports.ts
         env:
           ERP_BENCH_MODE: baseline
           ERP_BENCH_SOURCE_ROOT: .bench-baseline
-          ERP_BENCH_FIXTURE: artifacts/ci/million.sqlite
+          ERP_BENCH_FIXTURE: artifacts/ci/baseline-million.sqlite
           ERP_BENCH_OUTPUT: artifacts/ci/baseline
       - name: Candidate SQLite benchmarks (production default R unless sweep requested)
         if: steps.gate.outputs.run == 'true'
@@ -92,5 +98,6 @@ jobs:
             artifacts/ci/bench.*
             artifacts/ci/baseline.*
             artifacts/ci/million.sqlite.json
+            artifacts/ci/baseline-million.sqlite.json
           retention-days: 14
           if-no-files-found: error
