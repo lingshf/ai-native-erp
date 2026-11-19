@@ -11,19 +11,24 @@ permissions:
 
 jobs:
   full:
-    name: full (shard ${{ matrix.shard }}/6)
+    name: full (${{ matrix.lane }} shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
     timeout-minutes: 8
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        lane: [unit, browser]
+        shard: [1, 2, 3, 4, 5]
+        exclude:
+          - lane: unit
+            shard: 5
     concurrency:
-      group: full-${{ github.ref }}-${{ matrix.shard }}
+      group: full-${{ github.ref }}-${{ matrix.lane }}-${{ matrix.shard }}
       cancel-in-progress: true
     env:
       CI_TEST_LAYER: full
       ERP_E2E_BROWSER_CHANNEL: chrome
+      ERP_E2E_ARTIFACTS: artifacts/ci/trade-e2e
     steps:
       - uses: actions/checkout@v7
         with:
@@ -42,23 +47,28 @@ jobs:
         if: steps.gate.outputs.run == 'true'
         run: npm ci --no-audit --no-fund
       - name: Biome
-        if: steps.gate.outputs.run == 'true' && matrix.shard == 1
+        if: steps.gate.outputs.run == 'true' && matrix.lane == 'unit' && matrix.shard == 1
         run: npm run check
       - name: Verify runner Chrome for real-browser slow tests
         if: steps.gate.outputs.run == 'true'
         run: google-chrome --version
       - name: Typecheck
-        if: steps.gate.outputs.run == 'true' && matrix.shard == 1
+        if: steps.gate.outputs.run == 'true' && matrix.lane == 'unit' && matrix.shard == 1
         run: npm run typecheck
       - name: Import boundaries
-        if: steps.gate.outputs.run == 'true' && matrix.shard == 2
+        if: steps.gate.outputs.run == 'true' && matrix.lane == 'unit' && matrix.shard == 2
         run: npm run check:boundaries
       - name: All tests including slow tests
         id: tests
         if: steps.gate.outputs.run == 'true'
-        run: npm run test:ci -- --shard=${{ matrix.shard }}/6
+        run: |
+          if [ "${{ matrix.lane }}" = "browser" ]; then
+            npm run test:ci -- --project=infra-browser --maxWorkers=1 --shard=${{ matrix.shard }}/5
+          else
+            npm run test:ci -- '--project=!infra-browser' --shard=${{ matrix.shard }}/4
+          fi
       - name: Web build
-        if: steps.gate.outputs.run == 'true' && matrix.shard == 2
+        if: steps.gate.outputs.run == 'true' && matrix.lane == 'unit' && matrix.shard == 2
         run: npm run build
       - name: Test timing summary
         if: always() && steps.gate.outputs.run == 'true'
@@ -68,14 +78,14 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always() && steps.gate.outputs.run == 'true'
         with:
-          name: vitest-shard-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: vitest-shard-${{ matrix.lane }}-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/ci/vitest.json
           if-no-files-found: ignore
           retention-days: 14
       - uses: actions/upload-artifact@v7
         if: always() && steps.gate.outputs.run == 'true'
         with:
-          name: trade-gui-shard-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: trade-gui-shard-${{ matrix.lane }}-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/ci/trade-e2e/
           if-no-files-found: ignore
           retention-days: 14

@@ -17,7 +17,7 @@ const artifacts = resolve(process.env.ERP_E2E_ARTIFACTS ?? join(root, "artifacts
 
 // All user interaction uses real Tab/Shift+Tab and keyboard events, never focus(), fill(),
 // selectOption() or click(). Inspecting the DOM only identifies the next keyboard stop.
-async function tabTo(page: Page, target: Locator) {
+export async function tabTo(page: Page, target: Locator) {
   await target.waitFor({ state: "visible" });
   let handle = await target.elementHandle();
   // Keep the direction across document wrap, where activeElement briefly leaves the tab stops.
@@ -43,7 +43,8 @@ async function tabTo(page: Page, target: Locator) {
         );
         const current = stops.indexOf(document.activeElement as HTMLElement);
         const destination = stops.indexOf(element as HTMLElement);
-        if (current < 0 || destination < 0) return "Tab";
+        if (current < 0 || !document.hasFocus()) return "probe";
+        if (destination < 0) return "Tab";
         const forward = (destination - current + stops.length) % stops.length;
         const backward = (current - destination + stops.length) % stops.length;
         return backward < forward ? "Shift+Tab" : "Tab";
@@ -52,6 +53,9 @@ async function tabTo(page: Page, target: Locator) {
       if (key === "detached") {
         await handle.dispose();
         handle = await target.elementHandle();
+      } else if (key === "probe") {
+        // Establish a real tab stop before committing to a traversal direction.
+        await page.keyboard.press("Tab");
       } else {
         direction ??= key;
         await page.keyboard.press(direction);
@@ -196,8 +200,8 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green") 
       channel: process.env.ERP_E2E_BROWSER_CHANNEL,
     });
     context = await browser.newContext({ viewport: { width: 1440, height: 1100 } });
-    // Hundreds of Tab presses need key/network evidence, not duplicate DOM snapshots.
-    await context.tracing.start({ screenshots: true, snapshots: false, sources: true });
+    // Keep explicit PNGs and key/network/source evidence without a continuous screencast.
+    await context.tracing.start({ screenshots: false, snapshots: false, sources: true });
     const page = await context.newPage();
     const t = (key: Exclude<Parameters<typeof label>[1], "shell.httpError">) =>
       label(language, key);
