@@ -88,6 +88,7 @@ const filenames = [
   "005-business-events.sql",
   "006-reports.sql",
   "007-period-close.sql",
+  "008-journal-dates.sql",
 ];
 
 export function normalizeMigration(text: string): string {
@@ -157,6 +158,7 @@ export async function inspectSchema(
             "trigger:period_close_seal",
           ]
         : []),
+      ...(latest >= 8 ? ["trigger:journal_entries_dates"] : []),
     ])
   )
     throw new StorageError("SCHEMA_MISMATCH");

@@ -386,6 +386,7 @@ it("upgrades an authentic immutable 001 target only on explicit migration, prese
         { version: 5 },
         { version: 6 },
         { version: 7 },
+        { version: 8 },
       ]);
     } finally {
       raw.close();

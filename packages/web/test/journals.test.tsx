@@ -39,6 +39,9 @@ const preview = (draft: JournalDraftDto): JournalPreviewDto => ({
     draftRevision: draft.revision,
     sourceRef: draft.sourceRef,
     date: draft.date,
+    documentDate: draft.documentDate ?? draft.date,
+    taxDate: draft.taxDate ?? draft.date,
+    module: null,
     memo: draft.memo,
     operation: draft.operation,
     originalId: draft.originalId,
@@ -329,11 +332,15 @@ describe("journal editor", () => {
           saved = { ...body.draft, revision: body.draft.revision + 1 };
           return response(saved);
         }
+        if (!saved) throw new Error("Missing saved mock journal");
         const entry: JournalEntryDto = {
           ...preview(saved!).plan.journals[0],
           id: saved!.id,
           sourceRef: saved!.sourceRef,
           date: saved!.date,
+          documentDate: saved.documentDate ?? saved.date,
+          taxDate: saved.taxDate ?? saved.date,
+          module: null,
           memo: saved!.memo,
           operation: "journal",
           postedAt: "2026-01-15T10:00:00.000Z",
@@ -348,6 +355,8 @@ describe("journal editor", () => {
       fireEvent.change(screen.getByLabelText(label("zh", `journal.${key}`)), { target: { value } });
     input("sourceRef", "UI-1");
     input("date", "2026-01-15");
+    fireEvent.change(screen.getByLabelText("单据日期"), { target: { value: "2025-12-29" } });
+    fireEvent.change(screen.getByLabelText("税日期"), { target: { value: "2026-03-01" } });
     input("memo", "Keep my input");
     const line = (n: number, field: "account" | "debit" | "credit", language: "zh" | "en" = "zh") =>
       screen.getByLabelText<HTMLInputElement>(
@@ -378,6 +387,7 @@ describe("journal editor", () => {
     expect(saved).toBeUndefined();
     expect(writes).toBe(0);
     expect(previews[0]).toMatchObject({ revision: 0, memo: "Keep my input" });
+    expect(previews[0]).toMatchObject({ documentDate: "2025-12-29", taxDate: "2026-03-01" });
     expect(within(dialog).getByText(label("en", "journal.unsaved"))).toBeDefined();
     expect(
       within(dialog).getByRole<HTMLButtonElement>("button", {
@@ -409,6 +419,7 @@ describe("journal editor", () => {
     fireEvent.click(
       screen.getAllByRole("button", { name: `${label("en", "journal.view")} ${saved!.id}` })[0],
     );
+    await screen.findByText("Document date: 2025-12-29 · Tax date: 2026-03-01");
     fireEvent.click(await screen.findByRole("button", { name: label("en", "journal.reverse") }));
     expect(screen.getByLabelText<HTMLInputElement>(label("en", "journal.sourceRef")).value).toBe(
       "",

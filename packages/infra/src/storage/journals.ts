@@ -11,6 +11,7 @@ import {
   journalLineSchema,
   journalReceiptSchema,
 } from "@erp/core/contracts";
+import { journalDates } from "@erp/core/domain";
 import type { Connection, Row } from "./types.ts";
 
 export const journalTools: JournalTools = {
@@ -52,6 +53,19 @@ function json(value: unknown): unknown {
   if (typeof value !== "string") throw new StorageError("STORAGE_FAILURE");
   return JSON.parse(value);
 }
+export function storedJournalPlan(value: unknown): unknown {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return value;
+  // Pre-008 immutable business/queue evidence has the same accounting-date defaults.
+  return {
+    ...value,
+    documentDate: Object.hasOwn(value, "documentDate")
+      ? Reflect.get(value, "documentDate")
+      : Reflect.get(value, "date"),
+    taxDate: Object.hasOwn(value, "taxDate")
+      ? Reflect.get(value, "taxDate")
+      : Reflect.get(value, "date"),
+  };
+}
 async function journalTurnover(db: Connection, company: string): Promise<number> {
   const rows = await db.query(
     "SELECT s.turnover_minor FROM journal_entries e JOIN journal_seals s ON s.company_id=e.company_id AND s.entry_id=e.id WHERE e.company_id=? ORDER BY e.sequence DESC LIMIT 1",
@@ -69,7 +83,9 @@ export function journalRepository(db: Connection): JournalRepository {
         company,
         id,
       ]);
-      return rows[0] ? journalDraftSchema.parse(json(rows[0].data)) : null;
+      if (!rows[0]) return null;
+      const draft = journalDraftSchema.parse(json(rows[0].data));
+      return { ...draft, ...journalDates(draft) };
     },
     async saveJournalDraft(company, draft, expected) {
       const values = [
@@ -125,10 +141,10 @@ export function journalRepository(db: Connection): JournalRepository {
       return { items, nextCursor: rows.length > query.limit ? items[items.length - 1].id : null };
     },
     async journalEntry(company, id) {
-      const rows = await db.query("SELECT * FROM journal_entries WHERE company_id=? AND id=?", [
-        company,
-        id,
-      ]);
+      const rows = await db.query(
+        "SELECT e.*,json_extract(r.result,'$.module') AS adapter_module FROM journal_entries e JOIN receipts r ON r.company_id=e.company_id AND r.idempotency_key=e.receipt_key WHERE e.company_id=? AND e.id=?",
+        [company, id],
+      );
       if (!rows[0]) return null;
       const row = rows[0];
       const lines = (
@@ -152,6 +168,9 @@ export function journalRepository(db: Connection): JournalRepository {
         id,
         sourceRef: row.source_ref,
         date: row.accounting_date,
+        documentDate: row.document_date,
+        taxDate: row.tax_date,
+        module: row.adapter_module,
         memo: row.memo,
         kind: (
           await db.query(
@@ -225,13 +244,15 @@ export function journalRepository(db: Connection): JournalRepository {
     },
     async insertJournalEntry(company, entry, key) {
       await db.query(
-        "INSERT INTO journal_entries(company_id,id,receipt_key,source_ref,accounting_date,period,memo,kind,operation,role,posted_at,fingerprint) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO journal_entries(company_id,id,receipt_key,source_ref,accounting_date,document_date,tax_date,period,memo,kind,operation,role,posted_at,fingerprint) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [
           company,
           entry.id,
           key,
           entry.sourceRef,
           entry.date,
+          entry.documentDate,
+          entry.taxDate,
           entry.date.slice(0, 7),
           entry.memo,
           entry.kind === "closing" ? "normal" : entry.kind,

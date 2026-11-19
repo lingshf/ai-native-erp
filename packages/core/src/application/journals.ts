@@ -7,6 +7,7 @@ import {
   checkedJournalId,
   checkedPage,
   journalError,
+  journalDates,
   type JournalDraft,
   type JournalEntry,
   type JournalCorrection,
@@ -17,6 +18,7 @@ import {
   type PageQuery,
   type DimensionMap,
 } from "@erp/core/domain";
+import { postingAdapters, type PostingAdapterRegistry } from "./posting-adapters.ts";
 import type { MasterDataRepository, MasterDataStore } from "./master-data.ts";
 export interface JournalRepository {
   journalDraft(company: string, id: string): Promise<JournalDraft | null>;
@@ -62,9 +64,30 @@ function required<T>(value: T | null): T {
 export class JournalService {
   private readonly store: MasterDataStore;
   private readonly tools: JournalTools;
-  constructor(store: MasterDataStore, tools: JournalTools) {
+  private readonly adapters: PostingAdapterRegistry;
+  constructor(
+    store: MasterDataStore,
+    tools: JournalTools,
+    adapters: PostingAdapterRegistry = postingAdapters,
+  ) {
     this.store = store;
     this.tools = tools;
+    this.adapters = Object.freeze(
+      Object.fromEntries(
+        Object.entries(adapters).map(([module, grants]) => [
+          checkedCode(module),
+          Object.freeze([...grants]),
+        ]),
+      ),
+    );
+  }
+  adapter(module: string) {
+    if (!Object.hasOwn(this.adapters, module)) journalError("adapter", "manual");
+    const adapter = { module, controlModules: this.adapters[module] };
+    return Object.freeze({
+      preview: (company: string, draft: JournalDraft) => this.previewFor(company, draft, adapter),
+      confirm: (input: JournalConfirm) => this.confirmFor(input, adapter),
+    });
   }
   list(company: string, status: "draft" | "posted", query: PageQuery) {
     checkedCode(company);
@@ -103,7 +126,7 @@ export class JournalService {
       const old = await repo.journalDraft(company, draft.id);
       if ((old?.revision ?? 0) !== draft.revision || (await repo.journalEntry(company, draft.id)))
         journalError("revision", "stale", true);
-      const saved = { ...draft, revision: draft.revision + 1 };
+      const saved = { ...draft, ...journalDates(draft), revision: draft.revision + 1 };
       checkedExpectedRevision(saved.revision);
       await repo.saveJournalDraft(company, saved, draft.revision);
       return saved;
@@ -126,6 +149,15 @@ export class JournalService {
     company: string,
     draft: JournalDraft,
     master: readonly DimensionMap[] = [],
+  ): Promise<JournalPreview> {
+    return this.planFor(repo, company, draft, master);
+  }
+  private async planFor(
+    repo: MasterDataRepository,
+    company: string,
+    draft: JournalDraft,
+    master: readonly DimensionMap[],
+    adapter?: Parameters<typeof buildJournalPlan>[0]["adapter"],
   ): Promise<JournalPreview> {
     const configuration = required(await repo.company(company));
     const catalog = await repo.dimensionCatalog(company);
@@ -156,14 +188,16 @@ export class JournalService {
       corrections,
       turnover,
       master,
+      ...(adapter ? { adapter } : {}),
     });
     const { lines, ...draftHeader } = draft;
     const fingerprint = this.tools.hash([
       "journal-plan-v1",
+      adapter ?? null,
       configuration,
       period,
       stamp,
-      draftHeader,
+      { ...draftHeader, ...journalDates(draft) },
       ...lines,
       ...accounts,
       ...catalog,
@@ -176,6 +210,13 @@ export class JournalService {
     return { fingerprint, plan };
   }
   preview(company: string, draft: JournalDraft) {
+    return this.previewFor(company, draft);
+  }
+  private previewFor(
+    company: string,
+    draft: JournalDraft,
+    adapter?: Parameters<typeof buildJournalPlan>[0]["adapter"],
+  ) {
     checkedCode(company);
     checkedJournalDraft(draft);
     return this.store.read(async (repo) => {
@@ -183,10 +224,16 @@ export class JournalService {
       if ((saved?.revision ?? 0) !== draft.revision || (await repo.journalEntry(company, draft.id)))
         journalError("revision", "stale", true);
       await this.manualSource(repo, company, draft);
-      return this.plan(repo, company, draft);
+      return this.planFor(repo, company, draft, [], adapter);
     });
   }
   confirm(input: JournalConfirm): Promise<JournalReceipt> {
+    return this.confirmFor(input);
+  }
+  private confirmFor(
+    input: JournalConfirm,
+    adapter?: Parameters<typeof buildJournalPlan>[0]["adapter"],
+  ): Promise<JournalReceipt> {
     checkedCode(input.company);
     checkedJournalId(input.draftId);
     checkedJournalId(input.idempotencyKey);
@@ -200,6 +247,7 @@ export class JournalService {
           previous.draftId !== input.draftId ||
           previous.draftRevision !== input.revision ||
           previous.fingerprint !== input.fingerprint ||
+          previous.module !== (adapter?.module ?? null) ||
           previous.operation === "period.close" ||
           (await repo.businessByReceipt(input.company, input.idempotencyKey))
         )
@@ -209,7 +257,7 @@ export class JournalService {
       const draft = required(await repo.journalDraft(input.company, input.draftId));
       if (draft.revision !== input.revision) journalError("revision", "stale", true);
       await this.manualSource(repo, input.company, draft);
-      const current = await this.plan(repo, input.company, draft);
+      const current = await this.planFor(repo, input.company, draft, [], adapter);
       if (current.fingerprint !== input.fingerprint) journalError("fingerprint", "stale", true);
       const receipt = await this.commit(repo, current, input.idempotencyKey);
       await repo.deleteJournalDraft(input.company, input.draftId, input.revision);
@@ -231,6 +279,9 @@ export class JournalService {
       sourceRef: current.plan.sourceRef,
       operation: current.plan.operation,
       date: current.plan.date,
+      documentDate: current.plan.documentDate,
+      taxDate: current.plan.taxDate,
+      module: current.plan.module,
       memo: current.plan.memo,
       fingerprint: current.fingerprint,
       postedAt,
@@ -264,6 +315,7 @@ export class JournalService {
       draftRevision: current.plan.draftRevision,
       fingerprint: current.fingerprint,
       operation,
+      module: current.plan.module,
       journalIds: entries.map((entry) => entry.id),
       postedAt,
     };

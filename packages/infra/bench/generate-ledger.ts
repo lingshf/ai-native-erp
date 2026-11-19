@@ -91,7 +91,7 @@ export async function generateLedgerFixture(filename: string) {
       "INSERT INTO receipts(tenant_id,book_id,company_id,operation,receipt_key,principal,fingerprint,result,version,idempotency_key,source_ref) VALUES('LOCAL','LOCAL','DEFAULT','journal.confirm',?,'LOCAL',?,?,1,?,?)",
     );
     const entry = db.prepare(
-      "INSERT INTO journal_entries(company_id,id,receipt_key,source_ref,accounting_date,period,memo,kind,operation,role,posted_at,fingerprint) VALUES('DEFAULT',?,?,?,?,?,'Deterministic capacity fixture',?,'journal','normal',?,?)",
+      "INSERT INTO journal_entries(company_id,id,receipt_key,source_ref,accounting_date,document_date,tax_date,period,memo,kind,operation,role,posted_at,fingerprint) VALUES('DEFAULT',?,?,?,?,?,?,?,'Deterministic capacity fixture',?,'journal','normal',?,?)",
     );
     const line = db.prepare("INSERT INTO journal_lines VALUES('DEFAULT',?,?,?,?,?,?,?,?)");
     const seal = db.prepare("INSERT INTO journal_seals VALUES('DEFAULT',?,?)");
@@ -134,6 +134,8 @@ export async function generateLedgerFixture(filename: string) {
           id,
           key,
           sourceRef,
+          date,
+          date,
           date,
           month,
           index % 7 === 0 ? "adjusting" : "normal",

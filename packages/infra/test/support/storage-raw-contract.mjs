@@ -3,8 +3,213 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { normalizeMigration, migrateConnection } from "../../src/storage/migrations.ts";
 import { plan, receipt, receiptBinding, scope } from "./storage-contract.mjs";
+import { defaultAccounts } from "@erp/core/domain";
+import { journalRepository } from "../../src/storage/journals.ts";
+import { businessRepository } from "../../src/storage/business-events.ts";
 
 export function rawContract(fixture) {
+  test("008 backfills posted dates from 007 without changing receipts, GL or immutable business and queue evidence", async () => {
+    const f = await fixture();
+    let connection;
+    try {
+      connection = await f.backend.acquire(false, true);
+      await connection.begin();
+      const stop = new Error("Stop before unpublished 008");
+      await assert.rejects(
+        migrateConnection({
+          ...connection,
+          async script(sql) {
+            if (sql.includes("ADD COLUMN document_date")) throw stop;
+            await connection.script(sql);
+          },
+        }),
+        (error) => error === stop,
+      );
+      await connection.commit();
+      await connection.release();
+      connection = undefined;
+      const id = "00000001-0000-4000-8000-000000000001";
+      const key = "00000002-0000-4000-8000-000000000002";
+      const date = "2026-01-15",
+        fingerprint = "a".repeat(64),
+        postedAt = "2026-01-15T10:00:00.000Z";
+      const lines = ["1000", "3000"].map((account, index) => ({
+        account,
+        debit: index ? 0 : 100,
+        credit: index ? 100 : 0,
+        dimensions: {},
+        dimensionOrigins: {},
+        role: "business",
+        suspense: null,
+        balancing: null,
+        historical: null,
+        group: null,
+      }));
+      const oldDraft = {
+        id,
+        revision: 1,
+        sourceRef: "PRE008",
+        date,
+        memo: "Old evidence",
+        kind: "normal",
+        operation: "journal",
+        originalId: null,
+        headerDimensions: {},
+        lines: lines.map((line) => ({
+          account: line.account,
+          debit: line.debit ? "1" : "",
+          credit: line.credit ? "1" : "",
+          dimensions: {},
+          suspense: null,
+        })),
+      };
+      const oldPlan = {
+        version: 1,
+        company: "LOCAL",
+        currency: "CNY",
+        scale: 2,
+        draftId: id,
+        draftRevision: 1,
+        sourceRef: "PRE008",
+        date,
+        memo: oldDraft.memo,
+        operation: "journal",
+        originalId: null,
+        journals: [{ kind: "normal", role: "normal", lines, debit: 100, credit: 100 }],
+      };
+      const oldReceipt = {
+        company: "LOCAL",
+        sourceRef: "PRE008",
+        idempotencyKey: key,
+        draftId: id,
+        draftRevision: 1,
+        fingerprint,
+        operation: "journal",
+        journalIds: [id],
+        postedAt,
+      };
+      const oldPreview = {
+        fingerprint,
+        plan: oldPlan,
+        statistics: null,
+        matches: [],
+        clearing: [],
+      };
+      await f.raw("BEGIN");
+      for (const sql of [
+        "INSERT INTO tenants(tenant_id) VALUES('LOCAL')",
+        "INSERT INTO books(tenant_id,book_id) VALUES('LOCAL','LOCAL')",
+        "INSERT INTO companies(tenant_id,book_id,company_id) VALUES('LOCAL','LOCAL','LOCAL')",
+        "INSERT INTO ledger_companies(company_id,name,currency,scale,year,close_mode,revision) VALUES('LOCAL','Old','CNY',2,2026,'annual',1)",
+        "INSERT INTO periods VALUES('LOCAL','2026-01','open',1)",
+      ])
+        await f.raw(sql);
+      for (const account of defaultAccounts().filter((row) => ["1000", "3000"].includes(row.code)))
+        await f.raw("INSERT INTO accounts VALUES('LOCAL',?,?,?,?,?,?,?,?,?,?,?,?)", [
+          account.code,
+          account.name,
+          account.category,
+          account.reportGroup,
+          account.normalSide,
+          account.purpose,
+          account.controlModule,
+          account.contraOf,
+          +account.manualAllowed,
+          +account.active,
+          +account.builtin,
+          account.revision,
+        ]);
+      await f.raw(
+        "INSERT INTO receipts(tenant_id,book_id,company_id,operation,receipt_key,principal,fingerprint,result,version,idempotency_key,source_ref) VALUES('LOCAL','LOCAL','LOCAL','journal.confirm',?,'LOCAL',?,?,1,?,'PRE008')",
+        [key, fingerprint, JSON.stringify(oldReceipt), key],
+      );
+      await f.raw(
+        "INSERT INTO journal_entries(company_id,id,receipt_key,source_ref,accounting_date,period,memo,kind,operation,role,posted_at,fingerprint) VALUES('LOCAL',?,?,'PRE008',?,'2026-01',?,'normal','journal','normal',?,?)",
+        [id, key, date, oldDraft.memo, postedAt, fingerprint],
+      );
+      for (const [index, { account, debit, credit, dimensions, ...evidence }] of lines.entries())
+        await f.raw("INSERT INTO journal_lines VALUES('LOCAL',?,?,'2026-01',?,?,?,?,?)", [
+          id,
+          index + 1,
+          account,
+          debit,
+          credit,
+          JSON.stringify(dimensions),
+          JSON.stringify(evidence),
+        ]);
+      await f.raw("INSERT INTO journal_seals VALUES('LOCAL',?,100)", [id]);
+      await f.raw(
+        "INSERT INTO business_events(company_id,id,source_ref,accounting_date,memo,operation,input,preview,receipt_key,created_at) VALUES('LOCAL',?,'PRE008',?,?,'journal',?,?,?,?)",
+        [
+          id,
+          date,
+          oldDraft.memo,
+          JSON.stringify(oldDraft),
+          JSON.stringify(oldPreview),
+          key,
+          postedAt,
+        ],
+      );
+      await f.raw(
+        "INSERT INTO transfer_queue(company_id,id,created_at,status,revision,journal_ids,transfer_fingerprint,transfer_plan) VALUES('LOCAL',?,?,'transferred',2,?,?,?)",
+        [id, postedAt, JSON.stringify([id]), fingerprint, JSON.stringify(oldPlan)],
+      );
+      await f.raw("COMMIT");
+      const evidence = async () =>
+        Promise.all([
+          f.raw("SELECT * FROM receipts"),
+          f.raw("SELECT * FROM journal_lines"),
+          f.raw("SELECT * FROM journal_seals"),
+          f.raw("SELECT * FROM business_events"),
+          f.raw("SELECT * FROM transfer_queue"),
+        ]);
+      const before = await evidence();
+      await assert.rejects(f.storage.verifySchema(), { code: "SCHEMA_MISMATCH" });
+      connection = await f.backend.acquire(false, true);
+      await connection.begin();
+      await assert.rejects(
+        migrateConnection({
+          ...connection,
+          async script(sql) {
+            await connection.script(sql);
+            if (sql.includes("ADD COLUMN document_date"))
+              await connection.query("SELECT * FROM deliberately_missing_after_date_backfill");
+          },
+        }),
+      );
+      await connection.rollback();
+      await connection.release();
+      connection = undefined;
+      assert.equal(
+        (await f.raw("PRAGMA table_info(journal_entries)")).some(
+          (column) => column.name === "document_date",
+        ),
+        false,
+      );
+      assert.deepEqual(await evidence(), before);
+      await f.storage.migrate();
+      await f.storage.verifySchema();
+      assert.deepEqual(await evidence(), before);
+      assert.deepEqual(
+        await f.raw("SELECT accounting_date,document_date,tax_date FROM journal_entries"),
+        [{ accounting_date: date, document_date: date, tax_date: date }],
+      );
+      await assert.rejects(f.raw("UPDATE journal_entries SET tax_date='2026-02-01'"));
+      await assert.rejects(f.raw("DELETE FROM journal_entries"));
+      connection = await f.backend.acquire(false, false);
+      const entries = journalRepository(connection),
+        events = businessRepository(connection);
+      assert.equal((await entries.journalEntry("LOCAL", id)).documentDate, date);
+      assert.equal((await entries.journalReceipt("LOCAL", key)).module, null);
+      assert.equal((await events.businessEvent("LOCAL", id)).preview.plan.taxDate, date);
+      assert.equal((await events.queueItem("LOCAL", id)).plan.documentDate, date);
+      assert.deepEqual(await evidence(), before);
+    } finally {
+      await connection?.release();
+      await f.close();
+    }
+  });
+
   test("same-name structural drift is rejected, not mistaken for verified migration history", async () => {
     const changes = [
       [
@@ -204,7 +409,7 @@ export function rawContract(fixture) {
     for (const statement of [
       "CREATE TABLE unrelated_user_data(id INTEGER)",
       "DROP TRIGGER audit_no_delete",
-      "UPDATE schema_migrations SET version=8 WHERE version=7",
+      "UPDATE schema_migrations SET version=9 WHERE version=8",
       "DELETE FROM schema_migrations WHERE version=2",
       "UPDATE schema_migrations SET checksum='0000000000000000000000000000000000000000000000000000000000000000'",
       // The immutable 001 CHECK allows this historical value; runtime verification must reject it.

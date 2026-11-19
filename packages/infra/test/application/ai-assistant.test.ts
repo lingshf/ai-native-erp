@@ -178,6 +178,35 @@ it("returns validated candidates without writes, rechecks late configuration and
     0,
   );
   const before = counts();
+  const { builtin: _, revision: __, ...cash } = await master.account("AI", "1000");
+  await master.saveAccount(
+    "AI",
+    {
+      ...cash,
+      code: "1300",
+      name: "AR control",
+      purpose: "control",
+      controlModule: "AR",
+      reportGroup: "receivables",
+      manualAllowed: false,
+    },
+    0,
+  );
+  respond = async () =>
+    JSON.stringify({
+      ...proposal(),
+      lines: proposal().lines.map((line, index) => ({
+        ...line,
+        account: index ? line.account : "1300",
+      })),
+    });
+  const rejectedControl = aiDraftResultSchema.parse(await (await send()).json());
+  expect(rejectedControl).toMatchObject({
+    status: "invalid",
+    issues: [{ path: "lines.0.account", messageKey: "api.error.journals.manual" }],
+  });
+  expect(counts()).toEqual(before);
+  respond = async () => JSON.stringify(proposal());
   const result = aiDraftResultSchema.parse(await (await send()).json());
   expect(result.status).toBe("candidate");
   if (result.status !== "candidate") throw new Error("Missing candidate");

@@ -90,6 +90,7 @@ it("drills preview amounts at the same compound pin and retries unknown close/ne
             draftRevision: 1,
             fingerprint: body.fingerprint,
             operation: "period.close",
+            module: null,
             journalIds: ["10000000-0000-4000-8000-000000000001"],
             postedAt: "2026-12-31T12:00:00.000Z",
           },

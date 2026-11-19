@@ -57,6 +57,8 @@ export interface JournalDraft {
   readonly revision: number;
   readonly sourceRef: string;
   readonly date: string;
+  readonly documentDate?: string;
+  readonly taxDate?: string;
   readonly memo: string;
   readonly kind: "normal" | "adjusting";
   readonly operation: JournalOperation;
@@ -93,6 +95,9 @@ export interface JournalEntry extends PlannedJournal {
   readonly id: string;
   readonly sourceRef: string;
   readonly date: string;
+  readonly documentDate: string;
+  readonly taxDate: string;
+  readonly module: string | null;
   readonly memo: string;
   readonly operation: JournalOperation;
   readonly postedAt: string;
@@ -114,6 +119,9 @@ export interface JournalPlan {
   readonly draftRevision: number;
   readonly sourceRef: string;
   readonly date: string;
+  readonly documentDate: string;
+  readonly taxDate: string;
+  readonly module: string | null;
   readonly memo: string;
   readonly operation: JournalOperation;
   readonly originalId: string | null;
@@ -127,6 +135,7 @@ export interface JournalReceipt {
   readonly draftRevision: number;
   readonly fingerprint: string;
   readonly operation: JournalOperation | BusinessOperation | "period.close";
+  readonly module: string | null;
   readonly journalIds: readonly string[];
   readonly postedAt: string;
 }
@@ -157,6 +166,10 @@ export function checkedJournalDraft(draft: JournalDraft): void {
     draft.memo.length > 200 ||
     typeof draft.date !== "string" ||
     draft.date.length > 10 ||
+    (draft.documentDate !== undefined &&
+      (typeof draft.documentDate !== "string" || draft.documentDate.length > 10)) ||
+    (draft.taxDate !== undefined &&
+      (typeof draft.taxDate !== "string" || draft.taxDate.length > 10)) ||
     !Array.isArray(draft.lines) ||
     draft.lines.length > 500
   )
@@ -164,6 +177,12 @@ export function checkedJournalDraft(draft: JournalDraft): void {
   if (draft.operation === "journal" ? draft.originalId !== null : draft.originalId === null)
     journalError("originalId", "source");
   if (draft.originalId !== null) checkedJournalId(draft.originalId);
+}
+export function journalDates(draft: Pick<JournalDraft, "date" | "documentDate" | "taxDate">) {
+  return {
+    documentDate: draft.documentDate ?? draft.date,
+    taxDate: draft.taxDate ?? draft.date,
+  };
 }
 function amount(text: string, scale: number, path: string): number {
   const match = /^(0|[1-9]\d*)(?:\.(\d+))?$/u.exec(text || "0");
@@ -200,11 +219,18 @@ export function buildJournalPlan(input: {
   readonly corrections: readonly JournalCorrection[];
   readonly turnover: number;
   readonly master?: readonly DimensionMap[];
+  readonly adapter?: {
+    readonly module: string;
+    readonly controlModules: readonly NonNullable<Account["controlModule"]>[];
+  };
 }): JournalPlan {
   const { draft, company, period, original, corrections } = input;
   checkedJournalDraft(draft);
   if (!draft.sourceRef.trim() || !draft.memo.trim()) journalError("sourceRef", "shape");
   checkedJournalDay(draft.date, "date");
+  const dates = journalDates(draft);
+  checkedJournalDay(dates.documentDate, "documentDate");
+  checkedJournalDay(dates.taxDate, "taxDate");
   if (!period || period.month !== draft.date.slice(0, 7) || period.status !== "open")
     journalError("date", "period");
   const accounts = new Map(input.accounts.map((account) => [account.code, account]));
@@ -247,7 +273,11 @@ export function buildJournalPlan(input: {
     const lines: JournalLine[] = draft.lines.map((raw, index) => {
       const account = accounts.get(raw.account);
       if (!account?.active) journalError(`lines.${index}.account`, "account");
-      if (account.purpose === "control" || !account.manualAllowed)
+      if (
+        account.purpose === "control"
+          ? !account.controlModule || !input.adapter?.controlModules.includes(account.controlModule)
+          : !account.manualAllowed
+      )
         journalError(`lines.${index}.account`, "manual");
       if (account.purpose === "suspense") {
         if (!raw.suspense?.owner.trim() || !raw.suspense.reason.trim())
@@ -333,6 +363,7 @@ export function buildJournalPlan(input: {
       !original ||
       original.kind === "closing" ||
       original.id !== draft.originalId ||
+      original.module !== (input.adapter?.module ?? null) ||
       original.role === "reversal" ||
       (original.role === "reclassification" && draft.operation !== "reverse")
     )
@@ -411,6 +442,8 @@ export function buildJournalPlan(input: {
     draftRevision: draft.revision,
     sourceRef: draft.sourceRef,
     date: draft.date,
+    ...dates,
+    module: input.adapter?.module ?? null,
     memo: draft.memo,
     operation: draft.operation,
     originalId: draft.originalId,

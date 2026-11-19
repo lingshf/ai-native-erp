@@ -264,6 +264,8 @@ export class BusinessEventService {
       revision: 0,
       sourceRef: event.sourceRef,
       date: event.date,
+      documentDate: event.date,
+      taxDate: event.date,
       memo: event.memo,
       operation: "journal",
       originalId: null,
@@ -356,6 +358,9 @@ export class BusinessEventService {
         draftRevision: 0,
         sourceRef: event.sourceRef,
         date: event.date,
+        documentDate: event.date,
+        taxDate: event.date,
+        module: null,
         memo: event.memo,
         operation: "journal",
         originalId: null,
@@ -543,6 +548,7 @@ export class BusinessEventService {
         fingerprint: preview.fingerprint,
         operation: "journal",
         journalIds: [],
+        module: null,
         postedAt: this.tools.now(),
       };
       await repo.insertJournalReceipt(receipt);
