@@ -46,6 +46,26 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 | [M1-07](M1-07-trade-e2e-bench.md) | GUI 端到端验收与性能基准 | M1-06 | bench/CI, web-ui:trade | todo | |
 | [M1-R](M1-R-milestone-review.md) | M1 里程碑评审 + 测试审计（设计角色） | M1-07 | — | todo | |
 
+## M2：账套迁移/切换（草案，需用户授权）
+
+**前置门禁**：M0-R4、M0-R5 合并之前，M2 任务一律不开工。开发和 CI 只用虚构夹具；读取或切换真实旧账（4173 原账套、ID3 草稿、旧 checkout）必须有用户授权（D3）。
+
+| ID | 标题 | 依赖 | 冲突域 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- |
+| [M2-01](M2-01-legacy-snapshot-producer.md) | 旧账一致快照生成（只读） | M0-R4 | legacy-snapshot, admin-cli | todo | |
+| [M2-02](M2-02-legacy-import-mapping.md) | 旧账→目标库映射与 dry-run | M0-R4 | legacy-import | todo | |
+| [M2-03](M2-03-legacy-import-execute.md) | 导入执行（写入新的目标库） | M2-02, M0-R5, M0-R1 | migrations(014)+migrations.ts, domain-posting, storage, admin-cli | todo | |
+| [M2-04](M2-04-legacy-reconciliation.md) | 迁移核对报告 | M2-03 | legacy-import, admin-cli, web-ui:migration | todo | |
+| [M2-05](M2-05-migration-rehearsal.md) | 隔离试迁移演练与操作手册 | M2-01, M2-04 | bench/CI, docs/runbook | todo | |
+| [M2-06](M2-06-controlled-cutover.md) | 受控切换与回退（真实切换需用户授权） | M2-05 | admin-cli, docs/runbook | todo | |
+| [M2-R](M2-R-milestone-review.md) | M2 里程碑评审 + 测试审计（设计角色） | M2-05 | — | todo | |
+
+**待用户决定**（已报告协调者；文档按“默认”编写，决定后由设计角色更新）：
+
+- A：是否授权对真实旧账取只读私有快照，做隔离试迁移演练（M2-05）。默认：未授权，记为“待授权”。
+- B：是否授权真实停写与切换（M2-06），以及切换后新运行时用哪个端口（当前新运行时拒绝 4173）。默认：未授权；端口沿用 4180。
+- C：导入范围：草稿（含 ID3）是否作为草稿导入；Enterprise 的封印、审计、转账队列等无法在目标 schema 表达的数据是否只保留为只读归档。默认：草稿作为草稿导入；其余只读归档，核对报告单列数量。
+
 ## 派发顺序
 
 1. 第一批（按顺序，同时只开一个以避免 `package.json`/lock 冲突）：M0-01 → M0-02 → M0-03 → M0-04 → M0-05 → M0-06→ M0-07。M0-02 与 M0-03 可并行，后合并者重新生成 lock。
@@ -63,11 +83,14 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
      - `legacy-reader`：只读旧账读取器。
      - `legacy-teaching 测试`：`packages/infra/test/**/legacy-teaching*` 用例及其夹具（M0-R2 要精简，M0-R4 要复现和修夹具）。
      - `pure-calc`：纯函数计算（M1-02）。
+     - `legacy-snapshot`：只读旧账快照生成（M2-01）。
+     - `legacy-import`：旧账映射、导入计划与核对（`packages/infra/src/legacy/` 下的新模块，不含已有读取器）。
+     - `docs/runbook`：迁移操作手册 `docs/migration-runbook.md`。
      - `trade-master`/`trade-docs`：贸易主数据/单据代码。
      - `web-ui:<页面>`：对应页面及其 labels 文件。
    - **迁移的串行集成**（带迁移的任务可以并行开发，但集成必须串行）：
      - 运行器按 `migrations.ts` 中 manifest 数组的**位置**写入版本号（`index + 1`），并校验每个版本的 checksum（`migrations.ts:83-91,163-168,177-188`），不看文件名。已进入 main 的迁移前缀、顺序和 checksum 都不能改。
-     - 编号由设计角色在本表预留（下一个是 008）。带迁移的 PR 必须按预留编号顺序合并。
+     - 编号由设计角色在本表预留（下一个是 008；M2-03 预留 014）。带迁移的 PR 必须按预留编号顺序合并。
      - 如果编号大的任务先就绪（例如 M1-01 的 009 先于 M0-R1 的 008）：由协调者重新分配编号，两个任务**同时改号**（例如 008/009 互换），不能只改其中一条；设计角色同步更新本表。
      - 集成由准备合并的那个任务的开发者串行完成：rebase 到最新 main，同步改迁移文件名、manifest 顺序和 schema/对象检查，跑包含从旧版本升级的 CI，评审角色按新 head 重新评审后才能合并。同一时间只做一个迁移集成。
      - 改同一张表的两个任务不能并行开发。
@@ -76,6 +99,7 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
      - M0-R1、M1-01：并行开发，按上面的规则串行集成迁移（先 008 后 009）。
      - M1-02、M0-R3：与其他任务不冲突。
      - M0-R4：与 M0-R2 都改 `legacy-teaching 测试`，不能同时进行。M0-R2 与 M0-R5 都改 `storage`，也不能同时进行。建议顺序 M0-R4 → M0-R2 → M0-R5（R4 是 M2 门禁，先确定夹具，再精简测试）。
+5. M2（草案）：M0-R4 合并后，M2-01 与 M2-02 可并行（冲突域不重叠）；M2-03 需 M2-02、M0-R5、M0-R1，迁移编号 014 排在 M1 的 010–013 之后串行集成，并且与 M1-03/M1-06 同属 `domain-posting`，不能与它们同时开发；M2-01、M2-03、M2-04 都改 `admin-cli`，不能同时进行。之后 M2-04 → M2-05 → M2-06。真实数据相关步骤以“待用户决定”A/B 为准。
 
 ## 决定记录
 
