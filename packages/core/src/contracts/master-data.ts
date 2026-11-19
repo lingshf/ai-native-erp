@@ -111,6 +111,7 @@ export const periodsPageSchema = z.strictObject({
   nextCursor: monthSchema.nullable(),
 });
 export type CompanyDto = z.infer<typeof companySchema>;
+export type PeriodDto = z.infer<typeof periodSchema>;
 export type AccountDto = z.infer<typeof accountSchema>;
 export type AccountCommand = z.infer<typeof accountCommandSchema>;
 export type CompaniesPage = z.infer<typeof companiesPageSchema>;

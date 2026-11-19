@@ -45,18 +45,29 @@ export function buildReports(
   month: string,
   stage: TrialStage,
   rows: readonly ReportRow[],
+  incomeRows: readonly ReportRow[] = rows,
 ) {
   const signed = (row: ReportRow, value: number) =>
     reportMinor(value * (row.category === "ASSET" || row.category === "EXPENSE" ? 1 : -1));
-  const category = (name: Account["category"], measure: (row: ReportRow) => number) =>
-    sum(rows.filter((row) => row.category === name).map((row) => signed(row, measure(row))));
-  const income = (measure: (row: ReportRow) => number) => {
-    const revenue = category("REVENUE", measure),
-      expense = category("EXPENSE", measure);
+  const category = (
+    name: Account["category"],
+    measure: (row: ReportRow) => number,
+    source = rows,
+  ) => sum(source.filter((row) => row.category === name).map((row) => signed(row, measure(row))));
+  const income = (measure: (row: ReportRow) => number, source = rows) => {
+    const revenue = category("REVENUE", measure, source),
+      expense = category("EXPENSE", measure, source);
     return { revenue, expense, profit: reportMinor(revenue - expense) };
   };
-  const monthly = income((row) => row.debit - row.credit);
-  const ytd = income((row) => row.yearNet);
+  const monthly = income((row) => row.debit - row.credit, incomeRows);
+  const rawProfit = income((row) => row.debit - row.credit).profit;
+  const ytd = income((row) => row.yearNet, incomeRows);
+  const incomeByCode = new Map(incomeRows.map((row) => [row.code, row]));
+  const activity = (row: ReportRow) => {
+    const current = incomeByCode.get(row.code);
+    if (!current) throw new DomainError("INVALID_INPUT");
+    return reportMinor(current.debit - current.credit);
+  };
   const cumulative = income((row) => row.closing);
   const assets = category("ASSET", (row) => row.closing);
   const liabilities = category("LIABILITY", (row) => row.closing);
@@ -69,7 +80,7 @@ export function buildReports(
   const trial = {
     rows: rows.map((row) => {
       const normalBalance = reportMinor(row.closing * (row.normalSide === "DEBIT" ? 1 : -1));
-      return { ...row, normalBalance, abnormal: normalBalance < 0 };
+      return { ...row, incomeNet: activity(row), normalBalance, abnormal: normalBalance < 0 };
     }),
     debit: sum(rows.map((row) => Math.max(row.closing, 0))),
     credit: sum(rows.map((row) => Math.max(-row.closing, 0))),
@@ -80,7 +91,14 @@ export function buildReports(
       reportGroup,
       category: selected[0].category,
       opening: sum(selected.map((row) => signed(row, row.opening))),
-      activity: sum(selected.map((row) => signed(row, row.debit - row.credit))),
+      activity: sum(
+        selected.map((row) =>
+          signed(
+            row,
+            ["REVENUE", "EXPENSE"].includes(row.category) ? activity(row) : row.debit - row.credit,
+          ),
+        ),
+      ),
       closing: sum(selected.map((row) => signed(row, row.closing))),
       accounts: selected.map((row) => row.code),
     };
@@ -90,7 +108,7 @@ export function buildReports(
     .map((row) => {
       const children = rows.filter((child) => child.contraOf === row.code);
       const measure = (item: ReportRow) =>
-        ["REVENUE", "EXPENSE"].includes(item.category) ? item.debit - item.credit : item.closing;
+        ["REVENUE", "EXPENSE"].includes(item.category) ? activity(item) : item.closing;
       const gross = signed(row, measure(row)),
         contra = sum(children.map((child) => -signed(child, measure(child))));
       return {
@@ -104,7 +122,7 @@ export function buildReports(
   const checks = [
     { id: "trial", left: trial.debit, right: trial.credit },
     { id: "balanceSheet", left: assets, right: reportMinor(liabilities + equity) },
-    { id: "equitySummary", left: reportMinor(opening + movements + monthly.profit), right: equity },
+    { id: "equitySummary", left: reportMinor(opening + movements + rawProfit), right: equity },
     { id: "profit", left: reportMinor(monthly.revenue - monthly.expense), right: monthly.profit },
   ].map((check) => reportCheck(check.id, check.left, check.right));
   return {
@@ -124,7 +142,7 @@ export function buildReports(
       currentEarnings: cumulative.profit,
       equity,
     },
-    equitySummary: { opening, movements, profit: monthly.profit, closing: equity },
+    equitySummary: { opening, movements, profit: rawProfit, closing: equity },
     contraGroups,
     reconciliation: { checks, allPass: checks.every((check) => check.pass) },
   };

@@ -249,7 +249,7 @@ describe("master data HTTP and real SQLite use cases", () => {
       ).statusCode,
     ).toBe(400);
   });
-  it("lists periods and applies revisioned freeze, reopen and irreversible explicit close", async () => {
+  it("lists periods, applies revisioned freeze/reopen and reserves closure for the close pipeline", async () => {
     const page = await api.app.inject({
       url: "/api/v1/periods?company=DEFAULT&limit=2",
       headers: headers(),
@@ -281,11 +281,11 @@ describe("master data HTTP and real SQLite use cases", () => {
           payload: { ...command, revision: 2, status: "closed", confirmed: true },
         })
       ).statusCode,
-    ).toBe(200);
+    ).toBe(400);
     expect(
-      (await api.app.inject({ ...request, payload: { ...command, revision: 3, status: "open" } }))
+      (await api.app.inject({ ...request, payload: { ...command, revision: 2, status: "open" } }))
         .statusCode,
-    ).toBe(409);
+    ).toBe(200);
   });
   it("uses the company/account primary-key index and keeps bounded lists below 1s p95 at 50 companies and 2000 accounts", async () => {
     const raw = new Database(join(directory, "target.sqlite"));
@@ -385,6 +385,7 @@ it("upgrades an authentic immutable 001 target only on explicit migration, prese
         { version: 4 },
         { version: 5 },
         { version: 6 },
+        { version: 7 },
       ]);
     } finally {
       raw.close();

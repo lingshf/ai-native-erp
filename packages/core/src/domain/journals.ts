@@ -83,7 +83,7 @@ export interface JournalLine {
   readonly group: "originalReverse" | "newAllocation" | null;
 }
 export interface PlannedJournal {
-  readonly kind: "normal" | "adjusting";
+  readonly kind: "normal" | "adjusting" | "closing";
   readonly role: "normal" | "reversal" | "reclassification";
   readonly lines: readonly JournalLine[];
   readonly debit: number;
@@ -126,7 +126,7 @@ export interface JournalReceipt {
   readonly draftId: string;
   readonly draftRevision: number;
   readonly fingerprint: string;
-  readonly operation: JournalOperation | BusinessOperation;
+  readonly operation: JournalOperation | BusinessOperation | "period.close";
   readonly journalIds: readonly string[];
   readonly postedAt: string;
 }
@@ -331,6 +331,7 @@ export function buildJournalPlan(input: {
   else {
     if (
       !original ||
+      original.kind === "closing" ||
       original.id !== draft.originalId ||
       original.role === "reversal" ||
       (original.role === "reclassification" && draft.operation !== "reverse")

@@ -13,11 +13,13 @@ import type {
   JournalService,
   BusinessEventService,
   ReportService,
+  PeriodCloseService,
 } from "@erp/core/application";
 import { registerDimensionRoutes } from "./dimensions.ts";
 import { registerJournalRoutes } from "./journals.ts";
 import { registerBusinessRoutes } from "./business-events.ts";
 import { registerReportRoutes } from "./reports.ts";
+import { registerPeriodCloseRoutes } from "./period-close.ts";
 import { isMasterDataPath, registerMasterDataRoutes } from "./master-data.ts";
 import { healthSchema } from "@erp/core/contracts";
 import { LocalRuntimeInfo, parseRuntimeConfiguration } from "@erp/infra";
@@ -51,6 +53,7 @@ export interface CreateApiOptions {
   readonly journals?: JournalService;
   readonly events?: BusinessEventService;
   readonly reports?: ReportService;
+  readonly closing?: PeriodCloseService;
   /** Factory-only test seam. The CLI never registers extra routes. */
   readonly registerTestRoutes?: (server: FastifyInstance) => void | Promise<void>;
 }
@@ -127,6 +130,7 @@ export async function createApi(options: CreateApiOptions = {}): Promise<LocalAp
     registerJournalRoutes(server, options.journals, boundary);
     registerBusinessRoutes(server, options.events, boundary);
     registerReportRoutes(server, options.reports, boundary);
+    registerPeriodCloseRoutes(server, options.closing, boundary);
     const root = options.webRoot ?? defaultWebRoot();
     if (!isAbsolute(root)) throw new TypeError("Web root must be absolute");
     let built = false;

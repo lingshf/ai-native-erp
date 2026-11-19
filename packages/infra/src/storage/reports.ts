@@ -92,8 +92,31 @@ export function reportRepository(db: Connection): ReportRepository {
         ...(watermark === undefined ? [] : [company, watermark]),
         company,
       ]);
-      return rows.map(
-        (row): ReportRow => ({
+      const closing = await db.query(
+        `SELECT l.account_code,
+        sum(CASE WHEN l.period=? THEN l.debit_minor ELSE 0 END) AS debit,
+        sum(CASE WHEN l.period=? THEN l.credit_minor ELSE 0 END) AS credit,
+        sum(CASE WHEN l.period>=? THEN l.debit_minor-l.credit_minor ELSE 0 END) AS year_net
+        FROM period_closing_journals c
+        CROSS JOIN journal_entries e ON e.company_id=c.company_id AND e.id=c.journal_id
+        CROSS JOIN journal_lines l ON l.company_id=e.company_id AND l.entry_id=e.id
+        WHERE c.company_id=? AND e.period<=? ${watermark === undefined ? "" : "AND e.sequence<=?"}
+        GROUP BY l.account_code`,
+        [
+          month,
+          month,
+          `${month.slice(0, 4)}-01`,
+          company,
+          month,
+          ...(watermark === undefined ? [] : [watermark]),
+        ],
+      );
+      const effects = new Map(closing.map((row) => [String(row.account_code), row]));
+      return rows.map((row): ReportRow => {
+        const effect = effects.get(String(row.code));
+        const debit = effect && stage !== "postClosing" ? amount(effect, "debit") : 0;
+        const credit = effect && stage !== "postClosing" ? amount(effect, "credit") : 0;
+        return {
           ...accountSchema.parse({
             code: row.code,
             name: row.name,
@@ -109,16 +132,20 @@ export function reportRepository(db: Connection): ReportRepository {
             revision: Number(row.revision),
           }),
           opening: amount(row, "opening"),
-          debit: amount(row, "debit"),
-          credit: amount(row, "credit"),
-          closing: amount(row, "closing"),
-          yearNet: amount(row, "year_net"),
-        }),
-      );
+          debit: reportMinor(amount(row, "debit") - debit),
+          credit: reportMinor(amount(row, "credit") - credit),
+          closing: reportMinor(amount(row, "closing") - debit + credit),
+          yearNet: reportMinor(amount(row, "year_net") - (effect ? amount(effect, "year_net") : 0)),
+        };
+      });
     },
     async ledgerPage(company, account, month, query) {
       const stage = query.stage ?? "adjusted";
-      const stageSql = stage === "unadjusted" ? " AND e.kind<>'adjusting'" : "";
+      const closingSql =
+        "NOT EXISTS(SELECT 1 FROM period_closing_journals c WHERE c.company_id=e.company_id AND c.journal_id=e.id)";
+      const stageSql =
+        (stage === "unadjusted" ? " AND e.kind<>'adjusting'" : "") +
+        (stage === "postClosing" ? "" : ` AND ${closingSql}`);
       const after = cursor(query.cursor);
       if (
         after &&
@@ -152,7 +179,8 @@ export function reportRepository(db: Connection): ReportRepository {
         coalesce(sum(CASE WHEN l.period=? THEN 1 ELSE 0 END),0) AS total
         FROM journal_lines l INDEXED BY journal_lines_ledger_account
         JOIN journal_entries e ON e.company_id=l.company_id AND e.id=l.entry_id
-        WHERE l.company_id=? AND l.account_code=? AND l.period<=? AND e.sequence<=? AND (?<>'unadjusted' OR l.period<? OR e.kind<>'adjusting')${dimensionSql}`,
+        WHERE l.company_id=? AND l.account_code=? AND l.period<=? AND e.sequence<=? AND (?<>'unadjusted' OR l.period<? OR e.kind<>'adjusting')
+        AND (l.period<? OR ?='postClosing' OR ${closingSql})${dimensionSql}`,
           [
             month,
             month,
@@ -164,6 +192,8 @@ export function reportRepository(db: Connection): ReportRepository {
             watermark,
             stage,
             month,
+            month,
+            stage,
             ...dimensionValues,
           ],
         )

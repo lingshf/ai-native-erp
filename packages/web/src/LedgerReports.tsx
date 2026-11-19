@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import {
@@ -128,6 +128,8 @@ function CompanyReports({
   const t: T = (key) => label(preferences.language, key);
   const periods = useInfiniteQuery({
     queryKey: ["ledger-periods", company.code],
+    staleTime: 0,
+    refetchOnMount: "always",
     initialPageParam: "",
     queryFn: ({ pageParam, signal }) =>
       masterRequest(
@@ -139,6 +141,14 @@ function CompanyReports({
   });
   const months = periods.data?.pages.flatMap((page) => page.items) ?? [];
   const month = params.get("month") ?? months.at(-1)?.month;
+  const requestedMonth = params.get("month");
+  const previousMonth = useRef(requestedMonth);
+  useEffect(() => {
+    const changed = previousMonth.current !== requestedMonth;
+    previousMonth.current = requestedMonth;
+    if (changed && requestedMonth && !months.some((item) => item.month === requestedMonth))
+      void periods.refetch();
+  }, [requestedMonth, months, periods.refetch]);
   const view = params.get("view") ?? "trial",
     stage = params.get("stage") ?? "adjusted",
     account = params.get("account") ?? "1000";
@@ -236,6 +246,7 @@ function CompanyReports({
         onClick={() => {
           setConflict(null);
           void client.resetQueries({ queryKey: ["ledger-live", company.code] });
+          void client.invalidateQueries({ queryKey: ["ledger-periods", company.code] });
           const next = new URLSearchParams(params);
           next.delete("watermark");
           next.delete("accountRevision");
@@ -244,7 +255,7 @@ function CompanyReports({
       >
         {t("ledger.refresh")}
       </button>
-      {!periods.isPending && !valid && (
+      {!periods.isPending && !periods.isFetching && !valid && (
         <p role="alert">
           {t("ledger.invalid")}{" "}
           <button type="button" onClick={() => setParams({ company: company.code })}>
@@ -343,7 +354,12 @@ function FinancialReport({
   const pinnedSearch = new URLSearchParams(search);
   pinnedSearch.set("watermark", String(report.watermark));
   pinnedSearch.set("accountRevision", String(report.accountRevision));
-  const toLedger = (code: string) => `/ledger?${pinnedSearch}&account=${code}`;
+  const toLedger = (code: string, operating = false) => {
+    const target = new URLSearchParams(pinnedSearch);
+    if (operating && report.stage === "postClosing") target.set("stage", "adjusted");
+    target.set("account", code);
+    return `/ledger?${target}`;
+  };
   const selected = report.trial.rows.filter(
     (row) =>
       (!group || row.reportGroup === group) &&
@@ -470,12 +486,8 @@ function FinancialReport({
                 </th>
                 {view === "income" && (
                   <td className="amount">
-                    <Link to={toLedger(row.code)}>
-                      {fmt(
-                        row.category === "REVENUE"
-                          ? row.credit - row.debit
-                          : row.debit - row.credit,
-                      )}
+                    <Link to={toLedger(row.code, true)}>
+                      {fmt(row.category === "REVENUE" ? -row.incomeNet : row.incomeNet)}
                     </Link>
                   </td>
                 )}

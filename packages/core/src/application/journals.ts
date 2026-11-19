@@ -200,6 +200,7 @@ export class JournalService {
           previous.draftId !== input.draftId ||
           previous.draftRevision !== input.revision ||
           previous.fingerprint !== input.fingerprint ||
+          previous.operation === "period.close" ||
           (await repo.businessByReceipt(input.company, input.idempotencyKey))
         )
           journalError("idempotencyKey", "source", true);
@@ -220,6 +221,8 @@ export class JournalService {
       journalError("sourceRef", "source", true);
     if (draft.originalId && (await repo.journalBusinessEvent(company, draft.originalId)))
       journalError("originalId", "businessSource");
+    if (draft.originalId && (await repo.isClosingJournal(company, draft.originalId)))
+      journalError("originalId", "source", true);
   }
   private entries(current: JournalPreview, postedAt: string): JournalEntry[] {
     return current.plan.journals.map((journal, index) => ({

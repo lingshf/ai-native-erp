@@ -87,6 +87,7 @@ const filenames = [
   "004-journals.sql",
   "005-business-events.sql",
   "006-reports.sql",
+  "007-period-close.sql",
 ];
 
 export function normalizeMigration(text: string): string {
@@ -142,6 +143,18 @@ export async function inspectSchema(
             "index:journal_lines_ledger_account",
             "index:journal_entries_ledger_date",
             "index:journal_lines_report_totals",
+          ]
+        : []),
+      ...(latest >= 7
+        ? [
+            "table:period_closes",
+            "table:period_closing_journals",
+            "trigger:period_closes_no_update",
+            "trigger:period_closes_no_delete",
+            "trigger:period_closing_journals_no_update",
+            "trigger:period_closing_journals_no_delete",
+            "trigger:period_closing_journals_source",
+            "trigger:period_close_seal",
           ]
         : []),
     ])

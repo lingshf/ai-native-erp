@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { QueryClient, focusManager, onlineManager } from "@tanstack/react-query";
-import { buildReports, type Account } from "@erp/core/domain";
+import { buildReports, type Account, type ReportRow } from "@erp/core/domain";
 import { App } from "../src/App.tsx";
 import { VirtualRows } from "../src/Journals.tsx";
 const company = {
@@ -74,6 +74,51 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
       yearNet: -3000,
     },
   ]);
+  const operatingRows: ReportRow[] = [
+    {
+      ...report.trial.rows[0],
+      opening: 0,
+      debit: 10000,
+      credit: 0,
+      closing: 10000,
+      yearNet: 10000,
+    },
+    {
+      ...report.trial.rows[1],
+      code: "4000",
+      opening: 0,
+      debit: 0,
+      credit: 10000,
+      closing: -10000,
+      yearNet: -10000,
+    },
+    {
+      ...account,
+      code: "3100",
+      name: "Retained",
+      category: "EQUITY",
+      reportGroup: "retainedEarnings",
+      normalSide: "CREDIT",
+      opening: 0,
+      debit: 0,
+      credit: 0,
+      closing: 0,
+      yearNet: 0,
+    },
+  ];
+  const closedReport = buildReports(
+    company,
+    "2026-01",
+    "postClosing",
+    operatingRows.map((row) =>
+      row.code === "4000"
+        ? { ...row, debit: 10000, closing: 0 }
+        : row.code === "3100"
+          ? { ...row, credit: 10000, closing: -10000 }
+          : row,
+    ),
+    operatingRows,
+  );
   let latestWatermark = 1,
     accountRevision = 8,
     broken = false;
@@ -110,6 +155,15 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
           items: [{ month: "2026-01", status: "open", revision: 1 }],
           nextCursor: null,
         });
+      if (
+        url.pathname.startsWith("/api/v1/reports/") &&
+        url.searchParams.get("stage") === "postClosing"
+      )
+        return reply({
+          ...closedReport,
+          watermark: Number(url.searchParams.get("watermark") ?? latestWatermark),
+          accountRevision,
+        });
       if (url.pathname.startsWith("/api/v1/reports/"))
         return reply({
           ...(accountRevision === 8
@@ -142,6 +196,53 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
             409,
           );
         if (broken) return reply({ invalid: true });
+        if (url.searchParams.get("account") === "4000") {
+          const postClosing = url.searchParams.get("stage") === "postClosing";
+          return reply({
+            company: "DEFAULT",
+            month: "2026-01",
+            account: "4000",
+            currency: "CNY",
+            scale: 2,
+            stage: postClosing ? "postClosing" : "adjusted",
+            opening: 0,
+            debit: postClosing ? 10000 : 0,
+            credit: 10000,
+            closing: postClosing ? 0 : -10000,
+            total: postClosing ? 2 : 1,
+            watermark,
+            accountRevision,
+            items: [
+              {
+                entryId: id,
+                lineNo: 1,
+                date: "2026-01-03",
+                sourceRef: "SALES-100",
+                memo: "Income",
+                debit: 0,
+                credit: 10000,
+                dimensions: {},
+                balance: -10000,
+              },
+              ...(postClosing
+                ? [
+                    {
+                      entryId: secondId,
+                      lineNo: 1,
+                      date: "2026-01-31",
+                      sourceRef: "CLOSE",
+                      memo: "Closing",
+                      debit: 10000,
+                      credit: 0,
+                      dimensions: {},
+                      balance: 0,
+                    },
+                  ]
+                : []),
+            ],
+            nextCursor: null,
+          });
+        }
         const firstPage = !url.searchParams.has("cursor"),
           revenue = url.searchParams.get("account") === "4400",
           direction = revenue ? -1 : 1,
@@ -436,6 +537,30 @@ it("preserves report snapshots, statement-period drilldowns and latest journal s
   expect(screen.getByRole("heading", { name: "SYNTHETIC-2 · 2026-01-03" })).toBeTruthy();
   expect(screen.queryByText("Original exact journal")).toBeNull();
   expect(screen.queryByRole("alert")).toBeNull();
+  await act(async () => {
+    window.location.hash =
+      "/ledger-reports?company=DEFAULT&month=2026-01&view=income&stage=postClosing";
+  });
+  const closedIncome = await screen.findByRole("table", { name: "利润表科目" });
+  const incomeRow = within(closedIncome).getByRole("row", { name: /4000 · Revenue/u });
+  const cells = within(incomeRow).getAllByRole("cell");
+  for (const cell of cells.slice(1)) {
+    const href = within(cell).getByRole("link").getAttribute("href") ?? "";
+    expect(href).toContain("stage=postClosing");
+    expect(href).toContain("watermark=2");
+    expect(href).toContain("accountRevision=11");
+  }
+  const incomeLink = within(cells[0]).getByRole("link", { name: "100.00" });
+  const href = incomeLink.getAttribute("href") ?? "";
+  expect(href).toContain("stage=adjusted");
+  expect(href).toContain("watermark=2");
+  expect(href).toContain("accountRevision=11");
+  fireEvent.click(incomeLink);
+  await screen.findByRole("link", { name: "SALES-100 / 1" });
+  expect(screen.getByText(/本期借方: 0.00/u)).toBeTruthy();
+  expect(screen.getByText(/本期贷方: 100.00/u)).toBeTruthy();
+  expect(screen.getByText(/期末余额: -100.00/u)).toBeTruthy();
+  expect(screen.queryByRole("link", { name: "CLOSE / 1" })).toBeNull();
 });
 it("bounds the paged virtual table DOM while scrolling within a full page", async () => {
   geometry();

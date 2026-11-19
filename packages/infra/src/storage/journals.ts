@@ -153,7 +153,14 @@ export function journalRepository(db: Connection): JournalRepository {
         sourceRef: row.source_ref,
         date: row.accounting_date,
         memo: row.memo,
-        kind: row.kind,
+        kind: (
+          await db.query(
+            "SELECT 1 FROM period_closing_journals WHERE company_id=? AND journal_id=?",
+            [company, id],
+          )
+        ).length
+          ? "closing"
+          : row.kind,
         operation: row.operation,
         role: row.role,
         postedAt: row.posted_at,
@@ -227,13 +234,18 @@ export function journalRepository(db: Connection): JournalRepository {
           entry.date,
           entry.date.slice(0, 7),
           entry.memo,
-          entry.kind,
+          entry.kind === "closing" ? "normal" : entry.kind,
           entry.operation,
           entry.role,
           entry.postedAt,
           entry.fingerprint,
         ],
       );
+      if (entry.kind === "closing")
+        await db.query("INSERT INTO period_closing_journals(company_id,journal_id) VALUES(?,?)", [
+          company,
+          entry.id,
+        ]);
       for (const [index, line] of entry.lines.entries()) {
         const { account, debit, credit, dimensions, ...evidence } = line;
         await db.query(

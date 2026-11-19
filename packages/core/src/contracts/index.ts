@@ -4,6 +4,8 @@ import { dimensionsOpenApi } from "./dimensions.ts";
 import { journalsOpenApi } from "./journals.ts";
 import { businessEventsOpenApi } from "./business-events.ts";
 import { reportsOpenApi } from "./reports.ts";
+import { periodCloseOpenApi } from "./period-close.ts";
+export * from "./period-close.ts";
 export * from "./reports.ts";
 export * from "./dimensions.ts";
 import {
@@ -87,6 +89,7 @@ export const openApiDocument = {
   info: { title: "AI Native ERP Local runtime contract", version: "1" },
   paths: {
     ...reportsOpenApi.paths,
+    ...periodCloseOpenApi.paths,
     ...dimensionsOpenApi.paths,
     ...journalsOpenApi.paths,
     ...businessEventsOpenApi.paths,
@@ -120,6 +123,7 @@ export const openApiDocument = {
   components: {
     schemas: {
       ...reportsOpenApi.schemas,
+      ...periodCloseOpenApi.schemas,
       ...dimensionsOpenApi.schemas,
       ...journalsOpenApi.schemas,
       ...businessEventsOpenApi.schemas,
