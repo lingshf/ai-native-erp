@@ -45,15 +45,27 @@ class WeightedShardSequencer extends BaseSequencer {
     return files.filter((spec) => selected.has(this.key(spec)));
   }
 
-  // Longest recorded files start first across all projects so that no long file
-  // (for example an isolated one) is left running alone at the end; unknown files first.
+  // Files stay grouped by project: with isolate: false a worker reuses its module graph only
+  // within a project. Projects whose longest file is longest go first (so the isolated
+  // storage backup file starts at t=0 instead of running alone at the end), and inside each
+  // project the longest recorded files start first; unknown files count as longest.
   override async sort(files: TestSpecification[]) {
     const weight = (spec: TestSpecification) =>
       this.weights[this.key(spec)] ?? Number.POSITIVE_INFINITY;
+    const projectWeight = new Map<string, number>();
+    for (const spec of files) {
+      projectWeight.set(
+        spec.project.name,
+        Math.max(projectWeight.get(spec.project.name) ?? 0, weight(spec)),
+      );
+    }
+    const byName = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
     return [...files].sort(
       (a, b) =>
+        (projectWeight.get(b.project.name) ?? 0) - (projectWeight.get(a.project.name) ?? 0) ||
+        byName(a.project.name, b.project.name) ||
         weight(b) - weight(a) ||
-        (this.key(a) < this.key(b) ? -1 : this.key(a) > this.key(b) ? 1 : 0),
+        byName(this.key(a), this.key(b)),
     );
   }
 }
