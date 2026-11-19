@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { migrationStatusSchema } from "./migration.ts";
+export * from "./migration.ts";
 import { aiOpenApi } from "./ai-assistant.ts";
 import { tradeMasterOpenApi } from "./trade-master.ts";
 import { tradeDocumentsOpenApi } from "./trade-documents.ts";
@@ -102,6 +104,7 @@ export const openApiDocument = {
   openapi: "3.1.0",
   info: { title: "AI Native ERP Local runtime contract", version: "1" },
   paths: {
+    "/api/v1/migration": legacyOperation("getMigrationStatus", "MigrationStatusResponse"),
     ...tradeMasterOpenApi.paths,
     ...tradeDocumentsOpenApi.paths,
     ...tradeReportingOpenApi.paths,
@@ -140,6 +143,7 @@ export const openApiDocument = {
   },
   components: {
     schemas: {
+      MigrationStatusResponse: z.toJSONSchema(migrationStatusSchema, { target: "draft-2020-12" }),
       ...tradeMasterOpenApi.schemas,
       ...tradeDocumentsOpenApi.schemas,
       ...tradeReportingOpenApi.schemas,

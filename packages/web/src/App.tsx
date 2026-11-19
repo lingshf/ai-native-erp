@@ -14,6 +14,9 @@ import { ReportIndex, Reports } from "./Reports.tsx";
 import "./styles.css";
 
 const storage = () => window.localStorage;
+const Migration = lazy(() =>
+  import("./Migration.tsx").then((module) => ({ default: module.Migration })),
+);
 const TradeReports = lazy(() =>
   import("./TradeReports.tsx").then((module) => ({ default: module.TradeReports })),
 );
@@ -127,6 +130,7 @@ function Workspace() {
             <NavLink to="/" end>
               {t("shell.overview")}
             </NavLink>
+            <NavLink to="/migration">{t("migration.title")}</NavLink>
             <div className="navigation-group">
               <span>{t("master.group")}</span>
               <NavLink to="/accounts">{t("master.title")}</NavLink>
@@ -208,6 +212,14 @@ function Workspace() {
         </aside>
         <main id="workspace-main" tabIndex={-1}>
           <Routes>
+            <Route
+              path="/migration"
+              element={
+                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                  <Migration preferences={preferences} />
+                </Suspense>
+              }
+            />
             <Route
               path="/trade-adjustments"
               element={

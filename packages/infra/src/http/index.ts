@@ -17,7 +17,7 @@ import { registerAiRoutes } from "./ai-assistant.ts";
 import { registerTradeRoutes } from "./trade-master.ts";
 import { registerTradeDocumentRoutes } from "./trade-documents.ts";
 import { isMasterDataPath, registerMasterDataRoutes } from "./master-data.ts";
-import { healthSchema } from "@erp/core/contracts";
+import { healthSchema, migrationStatusSchema, type MigrationStatus } from "@erp/core/contracts";
 import { LocalRuntimeInfo, parseRuntimeConfiguration } from "@erp/infra";
 import type { RuntimeConfiguration, RuntimeEnvironment } from "@erp/infra";
 import { defaultErrorLogger, httpError, sendHttpError } from "./errors.ts";
@@ -36,6 +36,7 @@ export { validateDevOrigin } from "./legacy.ts";
 const HEALTH_PATH = "/api/v1/health";
 
 export interface CreateApiOptions {
+  readonly migration?: { latest(): Promise<MigrationStatus> };
   readonly trade?: ApplicationServices["trade"];
   readonly tradeDocs?: ApplicationServices["tradeDocs"];
   readonly environment?: RuntimeEnvironment;
@@ -124,6 +125,12 @@ export async function createApi(options: CreateApiOptions = {}): Promise<LocalAp
       options.legacyReader ? new LegacyTeachingQueryService(options.legacyReader) : undefined,
       boundary,
     );
+    server.all("/api/v1/migration", async (request, reply) => {
+      boundary.assert(request, reply, ["GET"]);
+      if (Object.keys(request.query as Record<string, unknown>).length) throw httpError(400);
+      if (!options.migration) throw httpError(503);
+      return migrationStatusSchema.parse(await options.migration.latest());
+    });
     registerMasterDataRoutes(server, options.masterData, boundary);
     registerDimensionRoutes(server, options.dimensions, boundary);
     registerJournalRoutes(server, options.journals, boundary);

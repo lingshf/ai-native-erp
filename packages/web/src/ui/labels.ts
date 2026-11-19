@@ -1,4 +1,5 @@
 import { reportEn, reportZh } from "./report-labels.ts";
+import { migrationEn, migrationZh } from "./migration-labels.ts";
 import { masterEn, masterZh } from "./master-labels.ts";
 import { dimensionEn, dimensionZh } from "./dimension-labels.ts";
 import { journalEn, journalZh } from "./journal-labels.ts";
@@ -10,6 +11,7 @@ import { tradeEn, tradeZh } from "./trade-labels.ts";
 import { tradeReportEn, tradeReportZh } from "./trade-report-labels.ts";
 
 export const zh = {
+  ...migrationZh,
   ...tradeReportZh,
   ...tradeZh,
   ...aiZh,
@@ -63,6 +65,7 @@ export type Language = "zh" | "en";
 export type LabelResources = Readonly<Record<LabelKey, string>>;
 
 export const en = {
+  ...migrationEn,
   ...tradeReportEn,
   ...tradeEn,
   ...aiEn,

@@ -84,7 +84,7 @@ function projection(company: string, scope: TradeReportScope, cutoff: string, ag
     ],
   };
 }
-export function tradeReportingRepository(db: Connection): TradeReportingRepository {
+export function tradeReportingRepository(db: Pick<Connection, "query">): TradeReportingRepository {
   return {
     async tradeReportStamp(company) {
       const row = (

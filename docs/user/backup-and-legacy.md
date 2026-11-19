@@ -1,6 +1,6 @@
 # 备份与旧账工具
 
-这些都是**命令行**能力，v0.1.0 没有对应界面。
+备份、快照、导入和确认使用**命令行**；当前工作区提供只读“迁移核对”页。
 
 ## 备份与恢复（M0-R5）
 
@@ -21,7 +21,39 @@ npm run storage:admin -- legacy-snapshot --source-dir <已停写的隔离源目�
 
 ## 导入映射与 dry-run（M2-02）
 
-仅有库代码与测试，**没有命令行或界面入口**；不打开或写入任何目标库。决定 C（草稿、回执、来源事件、队列、封印、审计的处理）无默认值。因此用户在 v0.1.0 中无法执行旧账导入；导入执行（M2-03）尚未合并。
+映射器不写目标库。决定 C（草稿、回执、来源事件、队列、封印、审计的处理）无默认值。
+
+## 隔离导入与核对（M2-03 / M2-04）
+
+```powershell
+npm run storage:admin -- legacy-import --snapshot-dir <已验证快照目录> --target <全新目标.sqlite> --drafts import-as-draft --receipts archive-only --source-events archive-only --transfer-queue archive-only --seals archive-only --audit archive-only
+npm run storage:admin -- legacy-reconcile --snapshot-dir <同一快照目录> --target <目标.sqlite> --check
+npm run storage:admin -- legacy-reconcile --snapshot-dir <同一快照目录> --target <目标.sqlite> --confirm <用户确认.json>
+```
+
+此示例显式保留草稿，其他五类只归档；它不是对真实旧账操作的授权。不可映射对象仍须先解决才能执行导入。只使用虚构夹具开发、测试和性能验收。
+
+导入结束时在原维护锁内自动只读核对。发现实际差异时保存报告并标记 `failed`，保留目标供排查，业务运行时拒绝打开；其他情况保持 `imported`。判定优先级为 `difference`（差异）> `blocked`（阻断）> `pending`（待确认）> `pass`（通过），非通过均非零退出。每月每阶段金额、科目余额、维度、期间、草稿、凭证与分录引用和数量共同决定结论，不能只看行数。
+
+`--check` 只以 readonly 连接读取快照和目标，不运行初始化、迁移或种子，不保存报告；计算用的临时表与目标业务库分离，目标文件字节不变。报告列出已知差异的分类、数量、完整旧引用清单及 `knownDifferencesSha256`。用户逐项核实后，自行提供以下 JSON（散列必须复制自本次完整清单，不能用示例占位值）：
+
+```json
+{"knownDifferencesSha256":"<本次报告中的 SHA-256>"}
+```
+
+确认持有独占维护锁，在同一读事务取 W 并核对，再用写事务复查 `write_seq`，原子保存通过报告、报告 SHA、确认文件原始字节 SHA、首次基线 W 与 `reconciled` 状态；不修改业务数据，不递增 `write_seq`。清单不匹配不会确认。已确认后的重复确认只检查当前序号是否仍为 W：相同则不写任何东西，不同则拒绝，不能重建 W；必须作废整个目标，从快照重新导入。
+
+新增迁移 **015** 专门存放上述报告和确认元数据，数据库约束禁止改写已确认基线，并在 run 上预留 nullable `opening` 阶段标记。新导入目标自动使用最新结构；旧版 014 的隔离导入目标可只读检查，需确认时请从同一快照导入一个新的 015 目标，而不是由核对命令隐式升级。
+
+配置 `ERP_SQLITE_FILE` 为隔离目标后，在工作区导航“迁移核对”（`/#/migration`）查看已存报告；`/api/v1/migration` 仅接受同源 GET，不执行核对或财务写入。未确认或失败的目标只开放报告，不初始化业务账套。页面支持中/英、红/绿和原生键盘展开明细。报告是保存时的结论，不是实时业务健康证明。
+
+**核对通过不等于允许切换。** 演练（M2-05）和切换（M2-06）仍需另行取得用户授权，本功能没有演练、切换或写操作按钮。
+
+D25 / D26 的统一规则是 **AP/AR 期初未结项解释控制科目期初 GL，不能留下未解释差额**。本功能直接调用现有 `tradeReconciliation`，在目标最后过账日逐科目展示 `subledgerMinor`、`glMinor`、`tradeGlMinor`、`otherSourceMinor`、`tradeDifferenceMinor`、`differenceMinor`，首批只用于显示，不另写公式。
+
+期初门禁只认 run 上 M2-03b 阶段的 `opening=done` 标记（由 M2-03b 绑定明细文件 SHA 及逐科目 `detail`/`empty` 声明）。`accounts_in_scope` 中存在 AP/AR 控制科目而 run 无此标记时，报告独立 `blockers` 明确标注“待 M2-03b 消除”，判 `blocked`；控制科目净额为 0、三个差额全为 0，或完全没有分录时也一样阻断。它不进入已知差异清单，确认文件不能豁免；run 保持 `imported`。没有 AP/AR 控制科目时不适用此门禁。
+
+按 D26，本 PR 先交付首批核对与门禁验收。M2-03b 把 P 纳入同一 `tradeReconciliation` 后，M2-04b 小跟进再启用 P 差额判定，并补“有效期初项通过、篡改期初项金额或删除明细判差异”的验收；本任务不实现未结明细导入，也不声称完成 M2-04b。M2-05 仍需等待 M2-03b、M2-04b 及用户授权。
 
 ## 只读旧账报表
 
