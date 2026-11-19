@@ -342,4 +342,65 @@ describe("trade invoices", () => {
     expect(window.sessionStorage.getItem("erp.tradeInvoices.v1.DEFAULT")).toBeNull();
     expect(window.sessionStorage.getItem("erp.tradeInvoices.v1.C2")).not.toBeNull();
   });
+
+  it("does not send a post when the original envelope cannot be stored first", async () => {
+    const posts: unknown[] = [];
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (path, init) => {
+      const url = String(path);
+      if (url.startsWith("/api/v1/companies"))
+        return response({ items: [company], nextCursor: null });
+      if (url === "/api/v1/trade/invoices/preview") {
+        const command = tradeInvoiceCommandSchema.parse(JSON.parse(String(init?.body)));
+        return response(preview(command.documentId));
+      }
+      if (url === "/api/v1/trade/invoices" && init?.method === "POST") {
+        const body = tradeInvoiceConfirmSchema.parse(JSON.parse(String(init.body)));
+        posts.push(body);
+        expect(
+          JSON.parse(window.sessionStorage.getItem("erp.tradeInvoices.v1.DEFAULT") ?? "null"),
+        ).toMatchObject({
+          pending: {
+            command: body.command,
+            fingerprint: body.fingerprint,
+            key: body.idempotencyKey,
+          },
+        });
+        return response({}, 503);
+      }
+      if (url.startsWith("/api/v1/trade/invoices?"))
+        return response({ items: [], nextCursor: null });
+      return response({}, 404);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(t("tinv.party")), { target: { value: "V1" } });
+    fireEvent.change(screen.getByLabelText(t("tinv.externalInvoice")), {
+      target: { value: "inv-1" },
+    });
+    for (const [field, value] of [
+      ["product", "RENT"],
+      ["quantity", "10"],
+      ["unitPrice", "10"],
+    ] as const)
+      fireEvent.change(screen.getByLabelText(`${t(`tinv.${field}`)} L1`), { target: { value } });
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.preview") }));
+    await screen.findByRole("region", { name: t("tinv.previewTitle") });
+    const quota = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("Fictional quota", "QuotaExceededError");
+    });
+    try {
+      fireEvent.click(screen.getByRole("button", { name: t("tinv.confirm") }));
+      expect(await screen.findByText(t("tinv.storageFailed"))).toBeTruthy();
+      expect(posts).toHaveLength(0);
+      expect(screen.queryByRole("button", { name: t("tinv.retryConfirm") })).toBeNull();
+      expect(
+        screen.getByRole<HTMLButtonElement>("button", { name: t("tinv.confirm") }).disabled,
+      ).toBe(false);
+    } finally {
+      quota.mockRestore();
+    }
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.confirm") }));
+    expect(await screen.findByText(t("tinv.uncertain"))).toBeTruthy();
+    expect(posts).toHaveLength(1);
+  });
 });

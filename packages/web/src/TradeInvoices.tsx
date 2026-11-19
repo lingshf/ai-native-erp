@@ -125,13 +125,19 @@ function loadSaved(company: string): Saved | null {
     return null;
   }
 }
-function storeSaved(company: string, saved: Saved) {
+// Returns whether sessionStorage now holds exactly this state (read back after writing).
+function storeSaved(company: string, saved: Saved): boolean {
   try {
-    if (saved.dirty || saved.pending)
-      window.sessionStorage.setItem(sessionKey(company), JSON.stringify(saved));
-    else window.sessionStorage.removeItem(sessionKey(company));
+    const key = sessionKey(company);
+    if (!saved.dirty && !saved.pending) {
+      window.sessionStorage.removeItem(key);
+      return window.sessionStorage.getItem(key) === null;
+    }
+    const value = JSON.stringify(saved);
+    window.sessionStorage.setItem(key, value);
+    return window.sessionStorage.getItem(key) === value;
   } catch {
-    // Storage may be unavailable; the in-page guard still protects in-flight posts.
+    return false;
   }
 }
 function useInvoiceLeaveGuard(guard: Guard) {
@@ -309,6 +315,7 @@ function InvoiceEntry({
   );
   const [retry, setRetry] = useState(saved?.pending != null);
   useEffect(() => {
+    // Best-effort draft autosave; the post envelope itself is persisted synchronously in confirm().
     storeSaved(company.code, { draft, documentId, dirty, pending });
   }, [company.code, draft, documentId, dirty, pending]);
   useEffect(() => {
@@ -419,6 +426,11 @@ function InvoiceEntry({
       fingerprint: preview.value.fingerprint,
       key: crypto.randomUUID(),
     };
+    // D7: the original envelope must be durable before the request can reach the server.
+    if (!storeSaved(company.code, { draft, documentId, dirty, pending: request })) {
+      setError({ key: "tinv.storageFailed", path: null });
+      return;
+    }
     setPending(request);
     void post(request);
   };

@@ -115,6 +115,8 @@ export const tradeEn = {
     "Posting outcome is unknown. Retry with the same request; it will not post twice.",
   "tinv.retryConfirm": "Retry posting safely",
   "tinv.discard": "Discard draft",
+  "tinv.storageFailed":
+    "Could not save the posting request in this browser tab, so nothing was sent. Free up browser storage or allow site storage, then confirm again.",
   "tinv.discardConfirm": "Discard this invoice draft?",
   "tinv.list": "Posted invoices",
   "tinv.teaching":
@@ -253,6 +255,8 @@ export const tradeZh: Record<keyof typeof tradeEn, string> = {
   "tinv.uncertain": "过账结果未知。请以相同请求重试，不会重复过账。",
   "tinv.retryConfirm": "安全重试过账",
   "tinv.discard": "放弃草稿",
+  "tinv.storageFailed":
+    "无法在本浏览器标签页保存过账请求，因此未发送。请释放浏览器存储空间或允许站点存储后，再次确认。",
   "tinv.discardConfirm": "确定放弃此发票草稿？",
   "tinv.list": "已过账发票",
   "tinv.teaching":
