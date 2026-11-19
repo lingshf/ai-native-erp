@@ -114,6 +114,8 @@ export const tradeEn = {
   "tinv.uncertain":
     "Posting outcome is unknown. Retry with the same request; it will not post twice.",
   "tinv.retryConfirm": "Retry posting safely",
+  "tinv.discard": "Discard draft",
+  "tinv.discardConfirm": "Discard this invoice draft?",
   "tinv.list": "Posted invoices",
   "tinv.teaching":
     "AP invoices credit the payables control account and debit expense plus deductible input tax; AR invoices debit receivables and credit revenue plus output tax. Each posted invoice opens an item due by payment terms.",
@@ -250,6 +252,8 @@ export const tradeZh: Record<keyof typeof tradeEn, string> = {
   "tinv.posted": "发票已过账。凭证：",
   "tinv.uncertain": "过账结果未知。请以相同请求重试，不会重复过账。",
   "tinv.retryConfirm": "安全重试过账",
+  "tinv.discard": "放弃草稿",
+  "tinv.discardConfirm": "确定放弃此发票草稿？",
   "tinv.list": "已过账发票",
   "tinv.teaching":
     "AP 发票贷记应付控制科目，借记费用及可抵扣进项税；AR 发票借记应收，贷记收入及销项税。每张已过账发票按付款条件生成未结项。",

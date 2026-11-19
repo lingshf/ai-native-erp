@@ -3,6 +3,7 @@ import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   companiesPageSchema,
+  tradeInvoiceCommandSchema,
   tradeInvoicePageSchema,
   tradeInvoicePreviewSchema,
   tradeInvoiceReceiptSchema,
@@ -44,6 +45,9 @@ type Draft = {
   lines: LineDraft[];
 };
 type Pending = { command: TradeInvoiceCommandDto; fingerprint: string; key: string };
+type Saved = { draft: Draft; documentId: string; dirty: boolean; pending: Pending | null };
+type Guard = { busy: boolean; unsaved: boolean };
+const idleGuard: Guard = { busy: false, unsaved: false };
 
 const today = () => new Date().toISOString().slice(0, 10);
 const blankLine = (n: number): LineDraft => ({
@@ -82,6 +86,91 @@ const lineFields = [
   "taxableCharge",
   "orderLineId",
 ] as const;
+
+// Drafts and an unresolved post envelope survive company switches, route changes and reloads in this tab.
+const sessionKey = (company: string) => `erp.tradeInvoices.v1.${company}`;
+function loadSaved(company: string): Saved | null {
+  try {
+    const raw = window.sessionStorage.getItem(sessionKey(company));
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Partial<Saved> | null;
+    if (
+      !value ||
+      typeof value.documentId !== "string" ||
+      typeof value.draft !== "object" ||
+      value.draft === null ||
+      !Array.isArray(value.draft.lines) ||
+      value.draft.lines.length === 0
+    )
+      return null;
+    let pending: Pending | null = null;
+    if (value.pending) {
+      const command = tradeInvoiceCommandSchema.safeParse(value.pending.command);
+      if (
+        !command.success ||
+        command.data.company !== company ||
+        typeof value.pending.fingerprint !== "string" ||
+        typeof value.pending.key !== "string"
+      )
+        return null;
+      pending = { ...value.pending, command: command.data };
+    }
+    return {
+      draft: { ...blankDraft(), ...value.draft },
+      documentId: value.documentId,
+      dirty: value.dirty === true,
+      pending,
+    };
+  } catch {
+    return null;
+  }
+}
+function storeSaved(company: string, saved: Saved) {
+  try {
+    if (saved.dirty || saved.pending)
+      window.sessionStorage.setItem(sessionKey(company), JSON.stringify(saved));
+    else window.sessionStorage.removeItem(sessionKey(company));
+  } catch {
+    // Storage may be unavailable; the in-page guard still protects in-flight posts.
+  }
+}
+function useInvoiceLeaveGuard(guard: Guard) {
+  // Listeners read the latest guard so a just-finished post never keeps blocking navigation.
+  const latest = useRef(guard);
+  latest.current = guard;
+  useEffect(() => {
+    if (!guard.busy && !guard.unsaved) return;
+    const current = window.location.href;
+    const click = (event: MouseEvent) => {
+      if (!latest.current.busy) return;
+      const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
+      if (!(link instanceof HTMLAnchorElement) || link.href === current || link.target === "_blank")
+        return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+    const navigation = (event: Event) => {
+      if (!latest.current.busy || window.location.href === current) return;
+      event.stopImmediatePropagation();
+      window.history.replaceState(window.history.state, "", current);
+    };
+    const unload = (event: BeforeUnloadEvent) => {
+      if (!latest.current.busy && !latest.current.unsaved) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    document.addEventListener("click", click, true);
+    window.addEventListener("popstate", navigation, true);
+    window.addEventListener("hashchange", navigation, true);
+    window.addEventListener("beforeunload", unload);
+    return () => {
+      document.removeEventListener("click", click, true);
+      window.removeEventListener("popstate", navigation, true);
+      window.removeEventListener("hashchange", navigation, true);
+      window.removeEventListener("beforeunload", unload);
+    };
+  }, [guard.busy, guard.unsaved]);
+}
 
 function isIssueKey(key: string): key is Key {
   return key in tradeEn;
@@ -136,6 +225,8 @@ function toCommand(company: CompanyDto, documentId: string, draft: Draft): Trade
 export function TradeInvoices({ preferences }: { preferences: Preferences }) {
   const t: T = (key) => label(preferences.language, key);
   const [selected, setSelected] = useState("");
+  const [guard, setGuard] = useState(idleGuard);
+  useInvoiceLeaveGuard(guard);
   const companies = useInfiniteQuery({
     queryKey: ["companies"],
     initialPageParam: "",
@@ -167,6 +258,7 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
       <select
         id="tinv-company"
         value={company?.code ?? ""}
+        disabled={guard.busy}
         onChange={(event) => setSelected(event.target.value)}
       >
         {rows.map((row) => (
@@ -177,7 +269,13 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
       </select>
       {company && (
         <>
-          <InvoiceEntry key={company.code} company={company} preferences={preferences} t={t} />
+          <InvoiceEntry
+            key={company.code}
+            company={company}
+            preferences={preferences}
+            t={t}
+            onGuard={setGuard}
+          />
           <InvoiceList company={company} preferences={preferences} t={t} />
         </>
       )}
@@ -189,21 +287,34 @@ function InvoiceEntry({
   company,
   preferences,
   t,
+  onGuard,
 }: {
   company: CompanyDto;
   preferences: Preferences;
   t: T;
+  onGuard: (guard: Guard) => void;
 }) {
   const client = useQueryClient();
-  const [draft, setDraft] = useState(blankDraft);
-  const [documentId, setDocumentId] = useState(() => crypto.randomUUID());
+  const [saved] = useState(() => loadSaved(company.code));
+  const [draft, setDraft] = useState(() => saved?.draft ?? blankDraft());
+  const [documentId, setDocumentId] = useState(() => saved?.documentId ?? crypto.randomUUID());
+  const [dirty, setDirty] = useState(saved?.dirty ?? false);
   const [preview, setPreview] = useState<{ value: TradeInvoicePreviewDto; command: string } | null>(
     null,
   );
-  const [pending, setPending] = useState<Pending | null>(null);
+  const [pending, setPending] = useState<Pending | null>(saved?.pending ?? null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<Failure | null>(null);
-  const [retry, setRetry] = useState(false);
+  const [error, setError] = useState<Failure | null>(
+    saved?.pending ? { key: "tinv.uncertain", path: null } : null,
+  );
+  const [retry, setRetry] = useState(saved?.pending != null);
+  useEffect(() => {
+    storeSaved(company.code, { draft, documentId, dirty, pending });
+  }, [company.code, draft, documentId, dirty, pending]);
+  useEffect(() => {
+    onGuard({ busy, unsaved: dirty || pending !== null });
+  }, [onGuard, busy, dirty, pending]);
+  useEffect(() => () => onGuard(idleGuard), [onGuard]);
   const [receipt, setReceipt] = useState<TradeInvoiceReceiptDto | null>(null);
   const firstField = useRef<HTMLSelectElement>(null);
   const command = toCommand(company, documentId, draft);
@@ -214,7 +325,16 @@ function InvoiceEntry({
 
   const edit = (change: Partial<Draft>) => {
     setDraft((current) => ({ ...current, ...change }));
+    setDirty(true);
     setReceipt(null);
+  };
+  const discard = () => {
+    if (locked || !window.confirm(t("tinv.discardConfirm"))) return;
+    setDraft(blankDraft());
+    setDocumentId(crypto.randomUUID());
+    setDirty(false);
+    setPreview(null);
+    setError(null);
   };
   const editLine = (index: number, field: (typeof lineFields)[number], value: string) =>
     edit({
@@ -277,6 +397,7 @@ function InvoiceEntry({
       setPreview(null);
       setDraft(blankDraft());
       setDocumentId(crypto.randomUUID());
+      setDirty(false);
       void client.invalidateQueries({ queryKey: ["trade-invoices", company.code] });
       firstField.current?.focus();
     } catch (issue) {
@@ -431,6 +552,9 @@ function InvoiceEntry({
       </button>
       <button type="button" disabled={!preview || stale || locked} onClick={confirm}>
         {t("tinv.confirm")}
+      </button>
+      <button type="button" disabled={!dirty || locked} onClick={discard}>
+        {t("tinv.discard")}
       </button>
       {busy && <p role="status">{t("master.loading")}</p>}
       {error && (

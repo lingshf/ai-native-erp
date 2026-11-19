@@ -1,6 +1,7 @@
 import {
   DomainError,
   addTradeDays,
+  assertTradeAccount,
   calculateTrade,
   checkedCode,
   checkedJournalId,
@@ -10,10 +11,10 @@ import {
   formatMinor,
   matchTradeOrderLine,
   normalizeExternalInvoice,
-  quantityMicros,
   selectTradeTax,
   tradeDocumentError,
   tradeEffective,
+  type Account,
   type Company,
   type DimensionMap,
   type JournalDraft,
@@ -22,6 +23,7 @@ import {
   type Page,
   type PageQuery,
   type PoMatch,
+  type TradeAccountRole,
   type TradeCalculation,
   type TradeConfig,
   type TradeDocumentLine,
@@ -45,10 +47,17 @@ export interface OpenItemQuery extends PageQuery {
 export interface TradeDocumentRepository {
   tradeOrder(company: string, orderId: string): Promise<TradeOrder | null>;
   insertTradeOrder(company: string, order: TradeOrder): Promise<void>;
+  /** Exact invoiced quantity in micros per requested order line, aggregated in storage. */
   tradeOrderInvoiced(
     company: string,
     orderId: string,
-  ): Promise<readonly { readonly orderLineId: string; readonly quantity: string }[]>;
+    orderLineIds: readonly string[],
+  ): Promise<readonly { readonly orderLineId: string; readonly micros: bigint }[]>;
+  tradeConfigsByCodes<K extends TradeConfig["kind"]>(
+    company: string,
+    kind: K,
+    codes: readonly string[],
+  ): Promise<readonly TradeConfig<K>[]>;
   tradeDocument(company: string, documentId: string): Promise<TradeDocumentRecord | null>;
   tradeDocumentByReceipt(company: string, key: string): Promise<TradeDocumentRecord | null>;
   tradeDocumentByExternal(
@@ -127,35 +136,73 @@ export class TradeDocumentService {
     const terms = await this.config(repo, company, "tradeTerms", party.data.terms, day, "party");
     return { party, profile, terms };
   }
-  private async product(
+  /** Resolves every line with one batched read per config kind, keyed by distinct codes. */
+  private async resolveLines(
     repo: Repo,
     company: string,
     side: TradeSide,
-    code: string,
+    party: TradeConfig<"tradeParty">,
+    lines: readonly { readonly product: string; readonly taxCode: string | null }[],
     day: string,
-    path: string,
+    taxDay: string,
   ) {
-    const product = await this.config(repo, company, "tradeProduct", code, day, path);
-    const account = side === "AP" ? product.data.expenseAccount : product.data.revenueAccount;
-    if (product.data.type !== (side === "AP" ? "expense" : "service") || account === null)
-      tradeDocumentError(path, "product");
-    return { product, account };
+    const products = new Map(
+      (
+        await repo.tradeConfigsByCodes(company, "tradeProduct", [
+          ...new Set(lines.map((line) => line.product)),
+        ])
+      ).map((product) => [product.code, product]),
+    );
+    const checked = new Map<string, { product: TradeConfig<"tradeProduct">; account: string }>();
+    for (const [index, line] of lines.entries()) {
+      if (checked.has(line.product)) continue;
+      const path = `lines.${index}.product`;
+      const product = products.get(line.product);
+      if (!product || !tradeEffective(product, day)) tradeDocumentError(path, "reference");
+      const account = side === "AP" ? product.data.expenseAccount : product.data.revenueAccount;
+      if (product.data.type !== (side === "AP" ? "expense" : "service") || account === null)
+        tradeDocumentError(path, "product");
+      checked.set(line.product, { product, account });
+    }
+    const taxCodes = new Set(
+      [...checked.values()].flatMap(({ product }) =>
+        party.data.allowedTaxCodes.filter((code) => product.data.allowedTaxCodes.includes(code)),
+      ),
+    );
+    const taxes = await repo.tradeConfigsByCodes(company, "taxCode", [...taxCodes].sort());
+    const resolved = lines.map((line, index) => {
+      const { product, account } = checked.get(line.product) as {
+        product: TradeConfig<"tradeProduct">;
+        account: string;
+      };
+      return {
+        product,
+        account,
+        tax: this.select(party, product, taxes, taxDay, line.taxCode, `lines.${index}`),
+      };
+    });
+    return {
+      resolved,
+      configs: [...[...checked.values()].map((item) => item.product), ...taxes],
+    };
   }
-  private async taxes(
+  /** Re-checks account roles at use time: accounts may be edited after configuration is saved. */
+  private async accountRoles(
     repo: Repo,
     company: string,
-    party: TradeConfig<"tradeParty">,
-    product: TradeConfig<"tradeProduct">,
-  ) {
-    const codes = party.data.allowedTaxCodes.filter((code) =>
-      product.data.allowedTaxCodes.includes(code),
-    );
-    const found: TradeConfig<"taxCode">[] = [];
-    for (const code of codes) {
-      const tax = await repo.tradeConfig(company, "taxCode", code);
-      if (tax?.kind === "taxCode") found.push(tax);
+    uses: readonly { code: string; role: TradeAccountRole; side?: TradeSide; path: string }[],
+  ): Promise<readonly Account[]> {
+    const accounts = await repo.accountsByCodes(company, [...new Set(uses.map((use) => use.code))]);
+    const byCode = new Map(accounts.map((account) => [account.code, account]));
+    for (const use of uses) {
+      try {
+        assertTradeAccount(byCode.get(use.code) ?? null, use.role, use.side);
+      } catch (error) {
+        if (error instanceof DomainError) tradeDocumentError(use.path, "account");
+        throw error;
+      }
     }
-    return found;
+    return accounts;
   }
   private select(
     party: TradeConfig<"tradeParty">,
@@ -196,19 +243,9 @@ export class TradeDocumentService {
       }
       const day = command.orderDate;
       const { party } = await this.party(repo, command.company, command.side, command.party, day);
-      const taxes: ReturnType<typeof selectTradeTax>[] = [];
-      for (const [index, line] of command.lines.entries()) {
-        const { product } = await this.product(
-          repo,
-          command.company,
-          command.side,
-          line.product,
-          day,
-          `lines.${index}.product`,
-        );
-        const all = await this.taxes(repo, command.company, party, product);
-        taxes.push(this.select(party, product, all, day, line.taxCode, `lines.${index}`));
-      }
+      const taxes = (
+        await this.resolveLines(repo, command.company, command.side, party, command.lines, day, day)
+      ).resolved.map((item) => item.tax);
       const calculation = calculateTrade({
         side: command.side === "AP" ? "ap" : "ar",
         currency: command.currency,
@@ -267,27 +304,16 @@ export class TradeDocumentService {
       command.party,
       day,
     );
-    const resolved: {
-      product: TradeConfig<"tradeProduct">;
-      account: string;
-      tax: ReturnType<typeof selectTradeTax>;
-      taxes: readonly TradeConfig<"taxCode">[];
-    }[] = [];
-    for (const [index, line] of command.lines.entries()) {
-      const path = `lines.${index}`;
-      const { product, account } = await this.product(
-        repo,
-        command.company,
-        command.side,
-        line.product,
-        day,
-        `${path}.product`,
-      );
-      const all = await this.taxes(repo, command.company, party, product);
-      // Tax rates follow taxDate; accounts and other configuration follow accountingDate.
-      const tax = this.select(party, product, all, command.taxDate, line.taxCode, path);
-      resolved.push({ product, account, tax, taxes: all });
-    }
+    // Tax rates follow taxDate; accounts and other configuration follow accountingDate.
+    const { resolved, configs } = await this.resolveLines(
+      repo,
+      command.company,
+      command.side,
+      party,
+      command.lines,
+      day,
+      command.taxDate,
+    );
     const calculation = calculateTrade({
       side: command.side === "AP" ? "ap" : "ar",
       currency: command.currency,
@@ -324,12 +350,15 @@ export class TradeDocumentService {
         order.currency !== command.currency
       )
         tradeDocumentError("orderId", "order");
-      const invoiced = new Map<string, bigint>();
-      for (const row of await repo.tradeOrderInvoiced(command.company, order.orderId))
-        invoiced.set(
+      const referenced = [
+        ...new Set(command.lines.flatMap((line) => (line.orderLineId ? [line.orderLineId] : []))),
+      ];
+      const invoiced = new Map(
+        (await repo.tradeOrderInvoiced(command.company, order.orderId, referenced)).map((row) => [
           row.orderLineId,
-          (invoiced.get(row.orderLineId) ?? 0n) + quantityMicros(row.quantity),
-        );
+          row.micros,
+        ]),
+      );
       for (const [index, line] of command.lines.entries()) {
         const orderLine = order.lines.find((item) => item.lineId === line.orderLineId);
         if (!orderLine || orderLine.product !== line.product)
@@ -423,6 +452,38 @@ export class TradeDocumentService {
       };
     });
     const external = normalizeExternalInvoice(command.externalInvoice);
+    const accounts = await this.accountRoles(repo, command.company, [
+      {
+        code: profile.data.controlAccount,
+        role: "controlAccount",
+        side: command.side,
+        path: "party",
+      },
+      ...resolved.flatMap(({ account, tax }, index) => {
+        const calc = calculation.lines[index];
+        const taxAccount =
+          command.side === "AP" ? tax.tax.data.inputAccount : tax.tax.data.outputAccount;
+        const taxMinor = command.side === "AP" ? calc.deductibleTax : calc.tax;
+        return [
+          {
+            code: account,
+            role: (command.side === "AP" ? "expenseAccount" : "revenueAccount") as TradeAccountRole,
+            path: `lines.${index}.product`,
+          },
+          ...(taxMinor > 0 && taxAccount !== null
+            ? [
+                {
+                  code: taxAccount,
+                  role: (command.side === "AP"
+                    ? "inputAccount"
+                    : "outputAccount") as TradeAccountRole,
+                  path: `lines.${index}.taxCode`,
+                },
+              ]
+            : []),
+        ];
+      }),
+    ]);
     const draft: JournalDraft = {
       id: command.documentId,
       revision: 0,
@@ -447,7 +508,8 @@ export class TradeDocumentService {
       party,
       profile,
       terms,
-      ...resolved.flatMap((item) => [item.product, ...item.taxes]),
+      configs,
+      accounts,
       order,
       matches,
     ]);

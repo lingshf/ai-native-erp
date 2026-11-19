@@ -79,6 +79,7 @@ CREATE TABLE trade_document_lines (
   tax_rate_id TEXT NOT NULL,
   rate_percent TEXT NOT NULL,
   quantity TEXT NOT NULL,
+  quantity_micros INTEGER NOT NULL CHECK(typeof(quantity_micros)='integer' AND quantity_micros>0),
   unit_price TEXT NOT NULL,
   discount_percent TEXT NOT NULL,
   taxable_charge TEXT NOT NULL,

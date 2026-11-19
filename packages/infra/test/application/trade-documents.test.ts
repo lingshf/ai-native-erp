@@ -669,6 +669,87 @@ describe("trade invoices on real SQLite", () => {
     expect(wage.receipt.poMatch).toBe("matched");
   });
 
+  it("re-validates account roles at confirm when an account is reclassified after preview", async () => {
+    const command = invoice();
+    const preview = await service.preview(command);
+    const before = counts();
+    const payable = await master.account("DEFAULT", "2100");
+    await master.saveAccount(
+      "DEFAULT",
+      {
+        code: "2100",
+        name: "Reclassified 2100",
+        category: "LIABILITY",
+        reportGroup: "otherLiabilities",
+        controlModule: null,
+        purpose: "general",
+        normalSide: "CREDIT",
+        contraOf: null,
+        active: true,
+        manualAllowed: true,
+      },
+      payable.revision,
+    );
+    const confirm = service.confirm({
+      command,
+      fingerprint: preview.fingerprint,
+      idempotencyKey: randomUUID(),
+      confirmation: "POST",
+    });
+    await expect(confirm).rejects.toMatchObject({ issue: { path: "party", rule: "account" } });
+    expect(counts()).toEqual(before);
+    await rejects(command, { path: "party", rule: "account" });
+  });
+
+  it("resolves repeated products and tax codes once and matches against partial order history", async () => {
+    const mixed = await post(
+      invoice({
+        lines: [
+          line({ lineId: "A" }),
+          line({ lineId: "B", quantity: "2" }),
+          line({ lineId: "C", product: "WAGE" }),
+          line({ lineId: "D", taxCode: "EXEMPT" }),
+        ],
+      }),
+    );
+    const { entry } = await journals.entry("DEFAULT", mixed.receipt.journalIds[0]);
+    expect(entry.lines.map((item) => [item.account, item.debit, item.credit])).toEqual([
+      ["2100", 0, 34860],
+      ["5000", 10000, 0],
+      ["1400", 1300, 0],
+      ["5000", 2000, 0],
+      ["1400", 260, 0],
+      ["5100", 10000, 0],
+      ["1400", 1300, 0],
+      ["5000", 10000, 0],
+    ]);
+    await service.createOrder(order());
+    const partial = (quantity: string, wage: string | null) =>
+      invoice({
+        orderId: "PO-1",
+        lines: [
+          line({ lineId: "L1", orderLineId: "OL1", quantity }),
+          ...(wage
+            ? [
+                line({
+                  lineId: "L2",
+                  product: "WAGE",
+                  orderLineId: "OL2",
+                  quantity: wage,
+                  unitPrice: "25.00",
+                }),
+              ]
+            : []),
+        ],
+      });
+    expect((await post(partial("3", "1"))).receipt.poMatch).toBe("matched");
+    expect((await post(partial("2.5", null))).receipt.poMatch).toBe("matched");
+    // Remaining is exactly OL1 10-3-2.5=4.5 and OL2 4-1=3, summed from prior invoices.
+    await rejects(partial("4.6", "3"), { path: "lines.0.quantity", rule: "quantity" });
+    await rejects(partial("4.5", "3.5"), { path: "lines.1.quantity", rule: "quantity" });
+    expect((await post(partial("4.5", "3"))).receipt.poMatch).toBe("matched");
+  });
+
   it("is all-or-nothing when a later write fails and rejects stale fingerprints without writing", async () => {
     const command = invoice();
     const preview = await service.preview(command);

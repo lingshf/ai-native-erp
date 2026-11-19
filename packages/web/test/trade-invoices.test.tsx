@@ -115,7 +115,11 @@ const response = (body: unknown, status = 200) => new Response(JSON.stringify(bo
 const t = (key: Exclude<LabelKey, "shell.httpError">) => label("zh", key);
 
 beforeEach(() => window.history.replaceState(null, "", "/#/trade-invoices"));
-afterEach(() => window.history.replaceState(null, "", "/"));
+afterEach(() => {
+  window.history.replaceState(null, "", "/");
+  window.sessionStorage.clear();
+  vi.unstubAllGlobals();
+});
 describe("trade invoices", () => {
   it("previews the calculation breakdown, blocks stale posting and retries an uncertain post with the same key", async () => {
     const posts: unknown[] = [];
@@ -235,5 +239,107 @@ describe("trade invoices", () => {
       fetchMock.mock.calls.filter(([path]) => String(path).startsWith("/api/v1/trade/invoices?"))
         .length,
     ).toBeGreaterThanOrEqual(2);
+  });
+
+  it("keeps drafts per company and the uncertain post envelope across company switches and leaving the page", async () => {
+    const other = { ...company, code: "C2", name: "Other" };
+    const posts: unknown[] = [];
+    const gate: { release?: (value: Response) => void } = {};
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (path, init) => {
+      const url = String(path);
+      if (url.startsWith("/api/v1/companies"))
+        return response({ items: [company, other], nextCursor: null });
+      if (url === "/api/v1/trade/invoices/preview") {
+        const command = tradeInvoiceCommandSchema.parse(JSON.parse(String(init?.body)));
+        return response(preview(command.documentId));
+      }
+      if (url === "/api/v1/trade/invoices" && init?.method === "POST") {
+        const body = tradeInvoiceConfirmSchema.parse(JSON.parse(String(init.body)));
+        posts.push(body);
+        if (posts.length === 1)
+          return new Promise<Response>((resolve) => {
+            gate.release = resolve;
+          });
+        return response(
+          {
+            company: "DEFAULT",
+            documentId: body.command.documentId,
+            idempotencyKey: body.idempotencyKey,
+            fingerprint: body.fingerprint,
+            sourceRef: `TRADE:${body.command.documentId}`,
+            journalIds: [body.command.documentId],
+            poMatch: "matched",
+            gross: 11300,
+            postedAt: "2026-03-31T00:00:00.000Z",
+          },
+          201,
+        );
+      }
+      if (url.startsWith("/api/v1/trade/invoices?"))
+        return response({ items: [], nextCursor: null });
+      return response({}, 404);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+    const select = await screen.findByLabelText<HTMLSelectElement>(t("master.company"));
+    await waitFor(() => expect(select.options).toHaveLength(2));
+    fireEvent.change(screen.getByLabelText(t("tinv.party")), { target: { value: "V1" } });
+    fireEvent.change(select, { target: { value: "C2" } });
+    await waitFor(() =>
+      expect(screen.getByLabelText<HTMLInputElement>(t("tinv.party")).value).toBe(""),
+    );
+    fireEvent.change(screen.getByLabelText(t("tinv.party")), { target: { value: "C-OTHER" } });
+    fireEvent.change(select, { target: { value: "DEFAULT" } });
+    await waitFor(() =>
+      expect(screen.getByLabelText<HTMLInputElement>(t("tinv.party")).value).toBe("V1"),
+    );
+    fireEvent.click(screen.getByRole("link", { name: t("trade.title") }));
+    expect(window.location.hash).toBe("#/trade");
+    fireEvent.click(screen.getByRole("link", { name: t("tinv.title") }));
+    expect((await screen.findByLabelText<HTMLInputElement>(t("tinv.party"))).value).toBe("V1");
+
+    fireEvent.change(screen.getByLabelText(t("tinv.externalInvoice")), {
+      target: { value: "inv-1" },
+    });
+    for (const [field, value] of [
+      ["product", "RENT"],
+      ["quantity", "10"],
+      ["unitPrice", "10"],
+    ] as const)
+      fireEvent.change(screen.getByLabelText(`${t(`tinv.${field}`)} L1`), { target: { value } });
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.preview") }));
+    await screen.findByRole("region", { name: t("tinv.previewTitle") });
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.confirm") }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    // While the post is in flight the company and route cannot change.
+    expect(screen.getByLabelText<HTMLSelectElement>(t("master.company")).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("link", { name: t("trade.title") }));
+    expect(window.location.hash).toBe("#/trade-invoices");
+    gate.release?.(response({}, 503));
+    expect(await screen.findByText(t("tinv.uncertain"))).toBeTruthy();
+    // Leaving is allowed again once the page reports the post is no longer in flight.
+    await waitFor(() =>
+      expect(screen.getByLabelText<HTMLSelectElement>(t("master.company")).disabled).toBe(false),
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: t("trade.title") }));
+    expect(window.location.hash).toBe("#/trade");
+    fireEvent.click(screen.getByRole("link", { name: t("tinv.title") }));
+    expect(await screen.findByText(t("tinv.uncertain"))).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(t("master.company")), { target: { value: "C2" } });
+    await waitFor(() =>
+      expect(screen.getByLabelText<HTMLInputElement>(t("tinv.party")).value).toBe("C-OTHER"),
+    );
+    fireEvent.change(screen.getByLabelText(t("master.company")), {
+      target: { value: "DEFAULT" },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: t("tinv.retryConfirm") }));
+    expect(await screen.findByText(new RegExp(t("tinv.posted")))).toBeTruthy();
+    const [first, second] = posts.map((post) => tradeInvoiceConfirmSchema.parse(post));
+    expect(second?.idempotencyKey).toBe(first?.idempotencyKey);
+    expect(second?.fingerprint).toBe(first?.fingerprint);
+    expect(second?.command).toEqual(first?.command);
+    expect(window.sessionStorage.getItem("erp.tradeInvoices.v1.DEFAULT")).toBeNull();
+    expect(window.sessionStorage.getItem("erp.tradeInvoices.v1.C2")).not.toBeNull();
   });
 });

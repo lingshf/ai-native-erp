@@ -6,8 +6,11 @@ import type {
   TradeDocumentRecord,
   TradeDocumentSnapshot,
   TradeDocumentSummary,
+  TradeConfig,
   TradeOrder,
 } from "@erp/core/domain";
+import { quantityMicros } from "@erp/core/domain";
+import { tradeConfigRow, tradeTables } from "./trade-master.ts";
 import type { Connection, Row } from "./types.ts";
 
 function int(value: unknown): number {
@@ -192,15 +195,25 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
           ],
         );
     },
-    async tradeOrderInvoiced(company, orderId) {
+    async tradeOrderInvoiced(company, orderId, orderLineIds) {
+      if (!orderLineIds.length) return [];
+      // Summed exactly in SQLite over only the referenced lines; TEXT keeps 64-bit precision.
       const rows = await db.query(
-        "SELECT order_line_id,quantity FROM trade_document_lines WHERE company_id=? AND order_id=? AND order_line_id IS NOT NULL",
-        [company, orderId],
+        `SELECT order_line_id,CAST(SUM(quantity_micros) AS TEXT) AS micros FROM trade_document_lines WHERE company_id=? AND order_id=? AND order_id IS NOT NULL AND order_line_id IN(${orderLineIds.map(() => "?").join(",")}) GROUP BY order_line_id`,
+        [company, orderId, ...orderLineIds],
       );
       return rows.map((row) => ({
         orderLineId: str(row.order_line_id),
-        quantity: str(row.quantity),
+        micros: BigInt(str(row.micros)),
       }));
+    },
+    async tradeConfigsByCodes(company, kind, codes) {
+      if (!codes.length) return [];
+      const rows = await db.query(
+        `SELECT * FROM ${tradeTables[kind]} WHERE company_id=? AND code IN(${codes.map(() => "?").join(",")}) ORDER BY code`,
+        [company, ...codes],
+      );
+      return rows.map((row) => tradeConfigRow(kind, row) as TradeConfig<typeof kind>);
     },
     tradeDocument(company, documentId) {
       return document("d.company_id=? AND d.document_id=?", [company, documentId]);
@@ -246,7 +259,7 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
       );
       for (const line of record.lines)
         await db.query(
-          "INSERT INTO trade_document_lines(company_id,document_id,line_id,line_no,product_id,account,tax_code,tax_rate_id,rate_percent,quantity,unit_price,discount_percent,taxable_charge,net_minor,tax_minor,gross_minor,deductible_tax_minor,order_id,order_line_id,expected_net_minor,match_status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+          "INSERT INTO trade_document_lines(company_id,document_id,line_id,line_no,product_id,account,tax_code,tax_rate_id,rate_percent,quantity,quantity_micros,unit_price,discount_percent,taxable_charge,net_minor,tax_minor,gross_minor,deductible_tax_minor,order_id,order_line_id,expected_net_minor,match_status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
           [
             company,
             record.documentId,
@@ -258,6 +271,7 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
             line.taxRateId,
             line.ratePercent,
             line.quantity,
+            quantityMicros(line.quantity),
             line.unitPrice,
             line.discountPercent,
             line.taxableCharge,
