@@ -14,17 +14,19 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 | [M0-04](M0-04-merge-packages.md) | 6 包合并为 core/infra/web，直接运行 TS 源码 | M0-02, M0-03 | done | [#6](https://github.com/lingshf/ai-native-erp/pull/6) |
 | [M0-05](M0-05-vitest-biome.md) | 统一 Vitest；引入 Biome | M0-04 | done | [#7](https://github.com/lingshf/ai-native-erp/pull/7) |
 | [M0-06](M0-06-pin-deps-dependabot.md) | 锁定依赖版本；配置 Dependabot | M0-04 | done | [#8](https://github.com/lingshf/ai-native-erp/pull/8) |
-| [M0-06a](M0-06a-lockfile-public-registry.md) | lockfile 地址改回公共 registry + 防回归检查 | M0-06 | in-progress | |
-| [M0-07](M0-07-ci-layering.md) | CI 分层与预算 | M0-05 | todo | |
-| [M0-08](M0-08-ledger-companies-accounts.md) | 迁移 1：公司、科目、期间 + 应用外壳 | M0-05 | todo | |
-| [M0-09](M0-09-ledger-dimensions.md) | 迁移 2：财务维度 | M0-08 | todo | |
-| [M0-10](M0-10-ledger-journals.md) | 迁移 3：凭证草稿/预览/确认与纠错 | M0-09 | todo | |
-| [M0-11](M0-11-ledger-business-events.md) | 迁移 4：业务事件、过账规则、待转队列 | M0-10 | todo | |
-| [M0-12](M0-12-ledger-reports-benchmark.md) | 迁移 5：查询与报表 + 100 万 GL 行基准 | M0-10 | todo | |
-| [M0-13](M0-13-ledger-period-close.md) | 迁移 6：结账与期间推进 | M0-12 | todo | |
+| [M0-06a](M0-06a-lockfile-public-registry.md) | lockfile 地址改回公共 registry + 防回归检查 | M0-06 | done | [#13](https://github.com/lingshf/ai-native-erp/pull/13) |
+| [M0-07](M0-07-ci-layering.md) | CI 分层与预算 | M0-05 | done | [#14](https://github.com/lingshf/ai-native-erp/pull/14) |
+| [M0-08](M0-08-ledger-companies-accounts.md) | 迁移 1：公司、科目、期间 + 应用外壳 | M0-05 | done | [#15](https://github.com/lingshf/ai-native-erp/pull/15) |
+| [M0-09](M0-09-ledger-dimensions.md) | 迁移 2：财务维度 | M0-08 | done | [#17](https://github.com/lingshf/ai-native-erp/pull/17) |
+| M0-09a | 启动先校验运行配置、重依赖延迟加载（M0-09 合并后修复 main Full，无单独任务文档） | M0-09 | done | [#18](https://github.com/lingshf/ai-native-erp/pull/18) |
+| [M0-10](M0-10-ledger-journals.md) | 迁移 3：凭证草稿/预览/确认与纠错 | M0-09 | done | [#19](https://github.com/lingshf/ai-native-erp/pull/19) |
+| [M0-11](M0-11-ledger-business-events.md) | 迁移 4：业务事件、过账规则、待转队列 | M0-10 | done | [#20](https://github.com/lingshf/ai-native-erp/pull/20) |
+| [M0-12](M0-12-ledger-reports-benchmark.md) | 迁移 5：查询与报表 + 100 万 GL 行基准 | M0-10 | done | [#21](https://github.com/lingshf/ai-native-erp/pull/21) |
+| [M0-13](M0-13-ledger-period-close.md) | 迁移 6：结账与期间推进 | M0-12 | done | [#22](https://github.com/lingshf/ai-native-erp/pull/22) |
+| [M0-13a](M0-13a-sqlite-event-loop-blocking.md) | 同步 SQLite 阻塞事件循环：度量与处理 | M0-13 | todo | |
 | [M0-14](M0-14-ai-assistant.md) | 迁移 7：AI 助手（候选） | M0-10 | todo | |
-| [M0-15](M0-15-remove-legacy-code.md) | 删除旧代码 | M0-08..M0-14 | todo | |
-| [M0-R](M0-R-milestone-review.md) | M0 里程碑评审 + 测试审计（设计角色） | M0-15, M0-06, M0-06a, M0-07 | todo | |
+| [M0-15](M0-15-remove-legacy-code.md) | 删除旧代码 | M0-08..M0-14, M0-13a | todo | |
+| [M0-R](M0-R-milestone-review.md) | M0 里程碑评审 + 测试审计（设计角色） | M0-15, M0-06, M0-06a, M0-07, M0-13a | todo | |
 
 ## M1：贸易 AP/AR（非库存）
 
@@ -42,7 +44,7 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 ## 派发顺序
 
 1. 第一批（按顺序，同时只开一个以避免 `package.json`/lock 冲突）：M0-01 → M0-02 → M0-03 → M0-04 → M0-05 → M0-06→ M0-07。M0-02 与 M0-03 可并行，后合并者重新生成 lock。
-2. 第二批：M0-08 → M0-09 → M0-10 → 之后 M0-11、M0-12、M0-14 可并行 → M0-13 → M0-15→ M0-R。
+2. 第二批：M0-08 → M0-09 → M0-10 → 之后 M0-11、M0-12、M0-14 可并行 → M0-13 → M0-13a → M0-15→ M0-R。
 3. M1 在 M0-R 完成后开始；M1-01 与 M1-02 可并行。
 
 ## 决定记录
