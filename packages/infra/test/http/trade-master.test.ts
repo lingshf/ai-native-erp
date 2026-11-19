@@ -590,13 +590,15 @@ describe("trade master HTTP and SQLite", () => {
     });
     expect(new Set([...first.items, ...second.items].map((row) => row.code)).size).toBe(200);
   });
-  it("upgrades the existing seven-migration ledger without changing its checksums or data", async () => {
+  it("upgrades authentic 008 to 009 without changing published migration history or populated ledger evidence", async () => {
     const journals = new JournalService(store, journalTools);
     const input: JournalDraft = {
       id: randomUUID(),
       revision: 0,
       sourceRef: "PRE-UPGRADE-JOURNAL",
       date: "2026-01-15",
+      documentDate: "2026-01-12",
+      taxDate: "2026-01-14",
       memo: "Historical capital",
       operation: "journal",
       kind: "normal",
@@ -630,6 +632,7 @@ describe("trade master HTTP and SQLite", () => {
         "005-business-events.sql",
         "006-reports.sql",
         "007-period-close.sql",
+        "008-journal-dates.sql",
       ];
       for (const [index, filename] of filenames.entries()) {
         const sql = normalizeMigration(
@@ -674,6 +677,19 @@ describe("trade master HTTP and SQLite", () => {
     const storage = createSqliteStorage({ filename: upgradeFile });
     try {
       await expect(storage.verifySchema()).rejects.toMatchObject({ code: "SCHEMA_MISMATCH" });
+      const before = new Database(upgradeFile, { readonly: true });
+      try {
+        expect(
+          before.prepare("SELECT MAX(version) AS version FROM schema_migrations").get(),
+        ).toEqual({
+          version: 8,
+        });
+        expect(
+          before.prepare("SELECT name FROM sqlite_schema WHERE name GLOB 'trade_*'").all(),
+        ).toEqual([]);
+      } finally {
+        before.close();
+      }
       await storage.migrate();
       await storage.verifySchema();
       const preserved = new Database(upgradeFile);
@@ -715,16 +731,19 @@ describe("trade master HTTP and SQLite", () => {
         expect(
           upgraded
             .prepare(
-              "SELECT version,dialect,checksum FROM schema_migrations WHERE version<=7 ORDER BY version",
+              "SELECT version,dialect,checksum,schema_fingerprint FROM schema_migrations WHERE version<=8 ORDER BY version",
             )
             .all(),
         ).toEqual(
           source
             .prepare(
-              "SELECT version,dialect,checksum FROM schema_migrations WHERE version<=7 ORDER BY version",
+              "SELECT version,dialect,checksum,schema_fingerprint FROM schema_migrations WHERE version<=8 ORDER BY version",
             )
             .all(),
         );
+        expect(
+          upgraded.prepare("SELECT version FROM schema_migrations ORDER BY version").all(),
+        ).toEqual(Array.from({ length: 9 }, (_, index) => ({ version: index + 1 })));
         expect(
           upgraded
             .prepare("SELECT result FROM receipts WHERE idempotency_key=?")
