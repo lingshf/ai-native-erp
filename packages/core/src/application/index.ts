@@ -29,3 +29,4 @@ export class RuntimeInfoService {
 }
 export * from "./reports.ts";
 export * from "./period-close.ts";
+export * from "./ai-assistant.ts";

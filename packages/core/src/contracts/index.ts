@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { aiOpenApi } from "./ai-assistant.ts";
+export * from "./ai-assistant.ts";
 import { masterDataOpenApi } from "./master-data.ts";
 import { dimensionsOpenApi } from "./dimensions.ts";
 import { journalsOpenApi } from "./journals.ts";
@@ -34,6 +36,12 @@ export const errorCodeSchema = z.enum([
   "UNSUPPORTED_MEDIA_TYPE",
   "UNAVAILABLE",
   "INTERNAL_ERROR",
+  "AI_UNAVAILABLE",
+  "AI_TIMEOUT",
+  "AI_CANCELLED",
+  "AI_BUSY",
+  "AI_RESPONSE",
+  "AI_CLEANUP",
 ]);
 
 export const errorSchema = z.strictObject({
@@ -88,6 +96,7 @@ export const openApiDocument = {
   openapi: "3.1.0",
   info: { title: "AI Native ERP Local runtime contract", version: "1" },
   paths: {
+    ...aiOpenApi.paths,
     ...reportsOpenApi.paths,
     ...periodCloseOpenApi.paths,
     ...dimensionsOpenApi.paths,
@@ -122,6 +131,7 @@ export const openApiDocument = {
   },
   components: {
     schemas: {
+      ...aiOpenApi.schemas,
       ...reportsOpenApi.schemas,
       ...periodCloseOpenApi.schemas,
       ...dimensionsOpenApi.schemas,

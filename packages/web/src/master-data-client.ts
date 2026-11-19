@@ -39,7 +39,12 @@ export async function masterRequest<T>(
   }
   if (!response.ok) {
     const error = errorSchema.safeParse(body);
-    if (!error.success || (response.status === 409 && error.data.code !== "CONFLICT"))
+    if (
+      !error.success ||
+      (response.status === 409 &&
+        error.data.code !== "CONFLICT" &&
+        !(path.startsWith("/api/v1/ai/") && error.data.code === "AI_BUSY"))
+    )
       throw new MasterDataFailure("invalid");
     throw new MasterDataFailure("http", response.status, error.data);
   }

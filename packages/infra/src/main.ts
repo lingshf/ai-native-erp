@@ -21,6 +21,7 @@ try {
       BusinessEventService,
       ReportService,
       PeriodCloseService,
+      AiAssistantService,
     },
     { createSqliteStorage },
     { createMasterDataStore },
@@ -46,6 +47,16 @@ try {
     masterData = new MasterDataService(store);
     await masterData.initialize(new Date().getFullYear());
   }
+  const aiModel = process.env.AI_MODEL?.trim();
+  const aiTimeout = Number(process.env.AI_TIMEOUT_MS ?? "30000");
+  const aiConfigured = Boolean(
+    aiModel &&
+      aiModel !== "auto" &&
+      (!process.env.AI_PROVIDER || process.env.AI_PROVIDER === "copilot") &&
+      Number.isInteger(aiTimeout) &&
+      aiTimeout >= 1 &&
+      aiTimeout <= 300000,
+  );
   const api = await createApi({
     environment,
     ...(masterData && store
@@ -56,6 +67,21 @@ try {
           events: new BusinessEventService(store, journalTools),
           reports: new ReportService(store),
           closing: new PeriodCloseService(store, journalTools),
+          ...(aiConfigured
+            ? {
+                assistant: new AiAssistantService(
+                  store,
+                  new (await import("./copilot-ai.ts")).CopilotAiAdapter({
+                    ...(process.env.AI_MODEL !== undefined ? { model: process.env.AI_MODEL } : {}),
+                    ...(process.env.AI_PROVIDER !== undefined
+                      ? { provider: process.env.AI_PROVIDER }
+                      : {}),
+                  }),
+                  journalTools,
+                  aiTimeout,
+                ),
+              }
+            : {}),
         }
       : {}),
   });

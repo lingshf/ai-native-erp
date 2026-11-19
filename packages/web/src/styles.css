@@ -27,8 +27,27 @@ a {
 }
 button,
 select,
-input {
+input,
+textarea {
   font: inherit;
+}
+.ai-panel {
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid #d6dae0;
+  background: white;
+}
+.ai-panel textarea {
+  display: block;
+  width: min(100%, 48rem);
+  min-height: 6rem;
+  resize: vertical;
+}
+.ai-panel .explanation {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 24rem;
+  overflow: auto;
 }
 button,
 select {

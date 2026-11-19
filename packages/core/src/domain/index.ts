@@ -222,3 +222,4 @@ export function projectTeachingLedger(
   };
 }
 export * from "./reports.ts";
+export * from "./ai-assistant.ts";
