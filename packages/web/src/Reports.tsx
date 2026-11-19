@@ -121,6 +121,22 @@ export function Reports({ preferences }: { preferences: Preferences }) {
     setReloading(false);
   }
   if (reloading || context.isPending) return <p role="status">{t("reports.loading")}</p>;
+  if (
+    context.isError &&
+    context.error instanceof ReportFailure &&
+    context.error.status === 503 &&
+    failureLabel(context.error) === "reports.unavailable"
+  )
+    return (
+      <section className="reports">
+        <h2>{t("reports.group")}</h2>
+        <p role="status">{t("reports.unconfigured")}</p>
+        <Link to="/ledger-reports">{t("ledger.title")}</Link>
+        <button type="button" onClick={() => void context.refetch()}>
+          {t("reports.reload")}
+        </button>
+      </section>
+    );
   if (context.isError)
     return (
       <Failure

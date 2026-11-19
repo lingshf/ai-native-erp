@@ -444,7 +444,7 @@ function CompanyJournals({
       </div>
       {listing.isPending && <p role="status">{t("master.loading")}</p>}
       {listing.isError && <p role="alert">{t("journal.error")}</p>}
-      {!listing.isPending && !listing.isError && !rows.length && <p>{t("master.empty")}</p>}
+      {!listing.isPending && !listing.isError && !rows.length && <p>{t("journal.empty")}</p>}
       <VirtualRows
         items={rows}
         title={t("journal.title")}

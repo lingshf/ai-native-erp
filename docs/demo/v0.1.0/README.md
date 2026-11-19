@@ -36,7 +36,7 @@ npm run start:local
 | 10 | 勾选“显示教学说明” | 只多出说明文字，规则不变 | [13](screenshots/13-overview-teaching-on.png)、[14](screenshots/14-journals-teaching-on.png) |
 | 11 | 贸易主数据 | 伙伴、商品、过账配置、付款条件、税码（预览） | [04](screenshots/04-trade-master.png) |
 | 12 | 发票 / 付款与收款 / 预付、贷项与专用纠错 | 仅展示页面与规则；贸易端到端未验收（M1-07） | [07](screenshots/07-trade-invoices.png)、[08](screenshots/08-trade-settlements.png)、[09](screenshots/09-trade-adjustments.png) |
-| 13 | 只读报表 → 试算平衡表 | 读取旧快照，未配置时提示“已验证快照不可用或未配置”（预期） | [12](screenshots/12-trial-balance.png) |
+| 13 | 只读报表 → 试算平衡表 | 读取旧快照；Unreleased 未配置时显示中性状态并引导至总账报表，历史截图为修复前提示 | [12](screenshots/12-trial-balance.png) |
 
 ## 本次演示的限制（如实说明）
 

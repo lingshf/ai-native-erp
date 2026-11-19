@@ -103,6 +103,33 @@ afterAll(() => {
 });
 beforeEach(() => window.history.replaceState(null, "", "/#/journals"));
 afterEach(() => window.history.replaceState(null, "", "/"));
+it.each([
+  ["zh", "没有凭证。"],
+  ["en", "No journals."],
+] as const)(
+  "shows journal-specific empty drafts and posted lists in %s",
+  async (language, empty) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockImplementation(async (path) =>
+        response({
+          items: String(path).includes("/companies") ? [company] : [],
+          nextCursor: null,
+        }),
+      ),
+    );
+    render(<App />);
+    if (language === "en")
+      fireEvent.change(document.querySelector("#workspace-language")!, { target: { value: "en" } });
+    await screen.findByText(empty);
+    expect(screen.queryByText(label(language, "master.empty"))).toBeNull();
+    fireEvent.change(screen.getByRole("combobox", { name: label(language, "journal.title") }), {
+      target: { value: "posted" },
+    });
+    await screen.findByText(empty);
+    expect(screen.queryByText(label(language, "master.empty"))).toBeNull();
+  },
+);
 it("keeps AI candidate generation, discard and adoption nonmutating, cancels stale responses and gates teaching", async () => {
   let state: "valid" | "invalid" | "unavailable" | "busy" | "held" = "valid";
   let release: (response: Response) => void = () => {},
