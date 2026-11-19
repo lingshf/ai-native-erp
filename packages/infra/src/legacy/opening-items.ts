@@ -168,22 +168,21 @@ export function validateOpeningItems(
     .all() as { company: string; object: string; target: string }[]) {
     const target = parse(row.target);
     const value = row.object === "dimension_values";
-    dimensionConfigs.set(row.company, [
-      ...(dimensionConfigs.get(row.company) ?? []),
-      {
-        ...(value
-          ? {
-              kind: "value",
-              code: String(target.value_code),
-              dimension: String(target.dimension_code),
-            }
-          : { kind: "dimension", code: String(target.code) }),
-        name: String(target.name ?? ""),
-        active: target.active === true,
-        ...LEGACY_DIMENSION_WINDOW,
-        revision: 1,
-      } as DimensionConfig,
-    ]);
+    let configs = dimensionConfigs.get(row.company);
+    if (!configs) dimensionConfigs.set(row.company, (configs = []));
+    configs.push({
+      ...(value
+        ? {
+            kind: "value",
+            code: String(target.value_code),
+            dimension: String(target.dimension_code),
+          }
+        : { kind: "dimension", code: String(target.code) }),
+      name: String(target.name ?? ""),
+      active: target.active === true,
+      ...LEGACY_DIMENSION_WINDOW,
+      revision: 1,
+    } as DimensionConfig);
     if (target.active !== true) continue;
     catalog
       .set(row.company, catalog.get(row.company) ?? new Set())

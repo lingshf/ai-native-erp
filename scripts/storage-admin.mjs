@@ -140,7 +140,8 @@ function readOpeningItems(readFileSync, file) {
   try {
     return readFileSync(file);
   } catch (error) {
-    if (error?.code === "ENOENT" || error?.code === "EISDIR") throw new InvalidConfiguration();
+    if (["ENOENT", "EISDIR", "EACCES", "EPERM"].includes(error?.code))
+      throw new InvalidConfiguration();
     throw error;
   }
 }

@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { test } from "vitest";
 import { backupSqlite, createSqliteStorage } from "../src/storage/index.ts";
@@ -10,8 +11,8 @@ import { legacyFixture, captureDirectory, openingItemsFile } from "./support/leg
 
 const root = resolve(import.meta.dirname, "..", "..", "..");
 const script = resolve(root, "scripts", "storage-admin.mjs");
-function run(args) {
-  const result = spawnSync(process.execPath, [script, ...args], {
+function run(args, preload = []) {
+  const result = spawnSync(process.execPath, [...preload, script, ...args], {
     cwd: root,
     encoding: "utf8",
     timeout: 15_000,
@@ -129,6 +130,54 @@ test("legacy-import CLI requires a readable opening-items file when AP/AR contro
   const absentFile = run([...options, "--opening-items", resolve(f.directory, "absent.json")]);
   assert.equal(absentFile.status, 1);
   assert.equal(JSON.parse(absentFile.stderr).error.code, "INVALID_INPUT");
+  assert.equal(readdirSync(f.directory).includes("target.sqlite"), false);
+});
+test("legacy-import CLI reports an existing but unreadable opening-items file as INVALID_INPUT", (t) => {
+  const f = legacyFixture(t),
+    target = resolve(f.directory, "target.sqlite");
+  const options = [
+    "legacy-import",
+    "--snapshot-dir",
+    f.target,
+    "--target",
+    target,
+    "--drafts",
+    "skip",
+    "--receipts",
+    "archive-only",
+    "--source-events",
+    "archive-only",
+    "--transfer-queue",
+    "archive-only",
+    "--seals",
+    "archive-only",
+    "--audit",
+    "archive-only",
+  ];
+  const denied = resolve(f.directory, "denied.json");
+  writeFileSync(denied, openingItemsFile().bytes);
+  for (const code of ["EACCES", "EPERM"]) {
+    const preload = resolve(f.directory, `deny-${code}.mjs`);
+    writeFileSync(
+      preload,
+      `import fs from "node:fs";
+import { syncBuiltinESMExports } from "node:module";
+const read = fs.readFileSync;
+fs.readFileSync = (file, ...rest) => {
+  if (String(file) === ${JSON.stringify(denied)})
+    throw Object.assign(new Error("synthetic ${code}"), { code: "${code}" });
+  return read(file, ...rest);
+};
+syncBuiltinESMExports();
+`,
+    );
+    const unreadable = run(
+      [...options, "--opening-items", denied],
+      ["--import", pathToFileURL(preload).href],
+    );
+    assert.equal(unreadable.status, 1, unreadable.stderr);
+    assert.equal(JSON.parse(unreadable.stderr).error.code, "INVALID_INPUT");
+  }
   assert.equal(readdirSync(f.directory).includes("target.sqlite"), false);
 });
 
