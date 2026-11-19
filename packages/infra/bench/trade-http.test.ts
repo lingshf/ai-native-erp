@@ -1,7 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { summarizeTradeSamples } from "./trade-http.ts";
+import { healthSchema } from "@erp/core/contracts";
+import { measureTradeResponse, summarizeTradeSamples } from "./trade-http.ts";
 
 describe("trade benchmark evidence", () => {
+  it("stops timing only after the full response and shared contract have been parsed", async () => {
+    let time = 0;
+    const body = JSON.stringify({
+      service: "ai-native-erp",
+      contractVersion: "1",
+      profile: "local",
+      data: "configured",
+    });
+    const result = await measureTradeResponse(
+      async () => {
+        time += 7;
+        return body;
+      },
+      {
+        parse(value) {
+          time += 13;
+          return healthSchema.parse(value);
+        },
+      },
+      () => time,
+    );
+    expect(result).toEqual({ value: JSON.parse(body), ms: 20, bytes: Buffer.byteLength(body) });
+  });
   it("uses nearest-rank percentiles without sorting away raw sample order", () => {
     const raw = Array.from({ length: 24 }, (_, index) => 24 - index);
     const result = summarizeTradeSamples(raw, 23);

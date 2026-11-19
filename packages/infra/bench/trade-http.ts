@@ -9,9 +9,11 @@ import { dirname, join, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import {
+  healthSchema,
   openItemPageSchema,
   tradeInvoicePreviewSchema,
   tradeInvoiceReceiptSchema,
+  tradeOrderSchema,
   tradeReportSchema,
 } from "@erp/core/contracts";
 import type { TradeInvoiceCommand, TradeOrderCommand } from "@erp/core/domain";
@@ -28,6 +30,18 @@ const samples = 24;
 const repeats = 3;
 const output = resolve("artifacts", "ci", "trade");
 const root = fileURLToPath(new URL("../../..", import.meta.url));
+
+export async function measureTradeResponse<T>(
+  read: () => Promise<string>,
+  contract: { parse(value: unknown): T },
+  now: () => number = () => performance.now(),
+) {
+  const started = now();
+  const data = await read();
+  const value = contract.parse(JSON.parse(data));
+  const ms = now() - started;
+  return { value, ms, bytes: Buffer.byteLength(data) };
+}
 
 export function summarizeTradeSamples(rawMs: readonly number[], budgetMs: number) {
   assert.ok(rawMs.length >= samples, "At least 24 samples are required");
@@ -123,48 +137,49 @@ async function startProduction(filename: string) {
     log = `${log}${String(chunk)}`.slice(-16_384);
   });
   const agent = new Agent({ keepAlive: true, maxSockets: 1 });
-  async function http(path: string, body?: unknown) {
+  async function http<T>(path: string, contract: { parse(value: unknown): T }, body?: unknown) {
     const text = body === undefined ? undefined : JSON.stringify(body);
-    const started = performance.now();
-    const data = await new Promise<string>((done, reject) => {
-      const req = request(
-        `${origin}${path}`,
-        {
-          method: body === undefined ? "GET" : "POST",
-          agent,
-          headers: {
-            origin,
-            ...(text === undefined
-              ? {}
-              : {
-                  "content-type": "application/json",
-                  "content-length": Buffer.byteLength(text),
-                }),
-          },
-        },
-        (response) => {
-          let value = "";
-          response.setEncoding("utf8");
-          response.on("data", (chunk) => {
-            value += chunk;
-          });
-          response.once("error", reject);
-          response.once("end", () => {
-            if (
-              response.statusCode !== (body === undefined ? 200 : 201) &&
-              !(path.endsWith("/preview") && response.statusCode === 200)
-            ) {
-              reject(new Error(`HTTP ${response.statusCode} ${path}: ${value}`));
-            } else done(value);
-          });
-        },
-      );
-      req.setTimeout(60_000, () => req.destroy(new Error(`HTTP timeout: ${path}`)));
-      req.once("error", reject);
-      req.end(text);
-    });
-    const value: unknown = JSON.parse(data);
-    return { value, ms: performance.now() - started, bytes: Buffer.byteLength(data) };
+    return measureTradeResponse(
+      () =>
+        new Promise<string>((done, reject) => {
+          const req = request(
+            `${origin}${path}`,
+            {
+              method: body === undefined ? "GET" : "POST",
+              agent,
+              headers: {
+                origin,
+                ...(text === undefined
+                  ? {}
+                  : {
+                      "content-type": "application/json",
+                      "content-length": Buffer.byteLength(text),
+                    }),
+              },
+            },
+            (response) => {
+              let value = "";
+              response.setEncoding("utf8");
+              response.on("data", (chunk) => {
+                value += chunk;
+              });
+              response.once("error", reject);
+              response.once("end", () => {
+                if (
+                  response.statusCode !== (body === undefined ? 200 : 201) &&
+                  !(path.endsWith("/preview") && response.statusCode === 200)
+                ) {
+                  reject(new Error(`HTTP ${response.statusCode} ${path}: ${value}`));
+                } else done(value);
+              });
+            },
+          );
+          req.setTimeout(60_000, () => req.destroy(new Error(`HTTP timeout: ${path}`)));
+          req.once("error", reject);
+          req.end(text);
+        }),
+      contract,
+    );
   }
   try {
     const deadline = performance.now() + 60_000;
@@ -173,7 +188,7 @@ async function startProduction(filename: string) {
       if (child.exitCode !== null || child.signalCode !== null)
         throw new Error(`Production main.ts exited before readiness: ${log}`);
       try {
-        await http("/api/v1/health");
+        await http("/api/v1/health", healthSchema);
         break;
       } catch {
         if (performance.now() > deadline) throw new Error(`Production startup timeout: ${log}`);
@@ -262,7 +277,7 @@ async function runOnce(filename: string, run: number) {
         }),
       ),
     };
-    await server.http("/api/v1/trade/orders", order);
+    await server.http("/api/v1/trade/orders", tradeOrderSchema, order);
     const reads = [
       {
         name: "open-items-first-100",
@@ -281,13 +296,16 @@ async function runOnce(filename: string, run: number) {
       const raw: number[] = [],
         responseBytes: number[] = [];
       for (let index = 0; index < warmups + samples; index++) {
-        const result = await server.http(scenario.path);
-        if (scenario.name === "open-items-first-100") {
-          const page = openItemPageSchema.parse(result.value);
+        const result =
+          scenario.name === "open-items-first-100"
+            ? await server.http(scenario.path, openItemPageSchema)
+            : await server.http(scenario.path, tradeReportSchema);
+        if (!("basis" in result.value)) {
+          const page = result.value;
           assert.equal(page.items.length, 100);
           assert.ok(page.nextCursor);
         } else {
-          const report = tradeReportSchema.parse(result.value);
+          const report = result.value;
           assert.equal(report.items.length, 100);
           assert.equal(report.basis, scenario.name.startsWith("aging") ? "current" : "monthEnd");
           assert.equal(
@@ -323,28 +341,31 @@ async function runOnce(filename: string, run: number) {
         const path = `/api/v1/trade/invoices${operation === "preview" ? "/preview" : ""}`;
         for (let index = 0; index < warmups + samples; index++) {
           const command = invoice(side, orderId);
-          const previewResult = await server.http("/api/v1/trade/invoices/preview", command);
-          const preview = tradeInvoicePreviewSchema.parse(previewResult.value);
+          const previewResult = await server.http(
+            "/api/v1/trade/invoices/preview",
+            tradeInvoicePreviewSchema,
+            command,
+          );
+          const preview = previewResult.value;
           assert.equal(preview.calculation.lines.length, 100);
           assert.equal(preview.poMatch, side === "AP" ? "matched" : "notApplicable");
           assert.equal(preview.matches.length, side === "AP" ? 100 : 0);
           const journalLines = preview.journal.journals.flatMap((journal) => journal.lines).length;
           assert.ok(journalLines >= 200, "100 distinct dimension segments");
-          const result =
-            operation === "preview"
-              ? previewResult
-              : await server.http(path, {
-                  command,
-                  fingerprint: preview.fingerprint,
-                  idempotencyKey: randomUUID(),
-                  confirmation: "POST",
-                });
+          let result: { ms: number; bytes: number } = previewResult;
           if (operation === "confirm") {
-            const receipt = tradeInvoiceReceiptSchema.parse(result.value);
+            const confirmed = await server.http(path, tradeInvoiceReceiptSchema, {
+              command,
+              fingerprint: preview.fingerprint,
+              idempotencyKey: randomUUID(),
+              confirmation: "POST",
+            });
+            const receipt = confirmed.value;
             assert.equal(receipt.documentId, command.documentId);
             assert.equal(receipt.gross, preview.calculation.gross);
             assert.equal(receipt.journalIds.length, 1);
             postedGlLines += journalLines;
+            result = confirmed;
           }
           if (index >= warmups) {
             raw.push(result.ms);
@@ -384,7 +405,7 @@ async function runOnce(filename: string, run: number) {
       writerWorkers: 1,
       concurrency: 1,
       elapsedIncludes:
-        "loopback request, production worker dispatch, SQL, response serialization/transfer and client JSON parsing",
+        "loopback request, production worker dispatch, SQL, complete response serialization/transfer, client JSON decoding and shared response-contract parsing",
       confirmationExcludes:
         "The separately requested prerequisite preview; confirmation still recomputes/validates and commits through production code.",
     },
@@ -432,6 +453,7 @@ export async function runTradeBenchmark() {
       JSON.stringify(
         {
           benchmark: "M1-07 production HTTP trade",
+          measurementVersion: "http-contract-v2",
           startedAt,
           endedAt: new Date().toISOString(),
           environment: machine(),

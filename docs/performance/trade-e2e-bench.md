@@ -1,5 +1,12 @@
 # M1-07 trade benchmark evidence
 
+> **Invalidated acceptance evidence:** the measurements below predate review
+> 5976793336 and exclude shared response-contract parsing. Every old percentile,
+> including the linked raw JSON, is withdrawn as an acceptance value. The
+> corrected `http-contract-v2` runner times the full HTTP response, JSON decoding
+> and shared contract parsing; replacement three-run evidence is pending the
+> required rebase after PR #47 merges.
+
 Measured on 2026-11-19, 13:41:54.787–13:45:54.040 UTC. This document records
 performance evidence; it does not replace the separate browser acceptance test.
 
