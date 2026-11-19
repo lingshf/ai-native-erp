@@ -7,11 +7,14 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   DimensionService,
   JournalService,
+  BusinessEventService,
+  ReportService,
   MasterDataService,
   StorageError,
   type MasterDataStore,
 } from "@erp/core/application";
-import type { JournalDraft, Account } from "@erp/core/domain";
+import { parseAiCandidate, type JournalDraft, type Account } from "@erp/core/domain";
+import { journalDetailSchema, journalReceiptSchema } from "@erp/core/contracts";
 import { createSqliteStorage } from "../../src/storage/index.ts";
 import { createMasterDataStore } from "../../src/storage/master-data.ts";
 import { journalTools } from "../../src/storage/journals.ts";
@@ -106,6 +109,227 @@ describe("journal application on real SQLite", () => {
     return service.confirm(p.input);
   }
 
+  it("binds registered adapters to their module through the single posting pipeline with independent dates and zero-write denials", async () => {
+    const registry = { TEST_AP: ["AP"], TEST_AR: ["AR"] } as const;
+    const controlled = new JournalService(store, journalTools, registry);
+    const ap = controlled.adapter("TEST_AP"),
+      ar = controlled.adapter("TEST_AR");
+    const { builtin: _, revision: __, ...cash } = await master.account("DEFAULT", "1000");
+    for (const [code, module] of [
+      ["2100", "AP"],
+      ["1300", "AR"],
+    ] as const)
+      await master.saveAccount(
+        "DEFAULT",
+        {
+          ...cash,
+          code,
+          name: module,
+          purpose: "control",
+          controlModule: module,
+          category: module === "AP" ? "LIABILITY" : "ASSET",
+          reportGroup: module === "AP" ? "payables" : "receivables",
+          normalSide: module === "AP" ? "CREDIT" : "DEBIT",
+          manualAllowed: false,
+        },
+        0,
+      );
+    await master.setPeriod(
+      "DEFAULT",
+      "2026-03",
+      1,
+      "frozen",
+      "Tax date is not a period gate",
+      true,
+    );
+    const draft = await service.save(
+      "DEFAULT",
+      journalDraft({
+        documentDate: "2025-12-29",
+        taxDate: "2026-03-01",
+        lines: [
+          { account: "5000", debit: "53.27", credit: "", dimensions: {}, suspense: null },
+          { account: "2100", debit: "", credit: "53.27", dimensions: {}, suspense: null },
+        ],
+      }),
+    );
+    const before = counts();
+    expect(() => service.adapter("TEST_AP")).toThrow(
+      expect.objectContaining({ code: "INVALID_INPUT" }),
+    );
+    expect(() => controlled.adapter("UNREGISTERED")).toThrow(
+      expect.objectContaining({ code: "INVALID_INPUT" }),
+    );
+    for (const caller of [service, ar])
+      await expect(caller.preview("DEFAULT", draft)).rejects.toMatchObject({
+        issue: { rule: "manual" },
+      });
+    const candidate = parseAiCandidate(
+      JSON.stringify({
+        date: draft.date,
+        memo: draft.memo,
+        kind: draft.kind,
+        rationale: "Untrusted AI",
+        lines: draft.lines.map(({ account, debit, credit }) => ({ account, debit, credit })),
+      }),
+      randomUUID(),
+    );
+    expect(candidate).not.toBeNull();
+    if (!candidate) throw new Error("Missing synthetic AI candidate");
+    await expect(service.preview("DEFAULT", candidate.draft)).rejects.toMatchObject({
+      issue: { rule: "manual" },
+    });
+    const imported = { ...draft, id: randomUUID(), revision: 0, sourceRef: "IMPORT" };
+    await expect(service.preview("DEFAULT", imported)).rejects.toMatchObject({
+      issue: { rule: "manual" },
+    });
+    const plan = await ap.preview("DEFAULT", draft);
+    const confirm = {
+      company: "DEFAULT",
+      draftId: draft.id,
+      revision: draft.revision,
+      fingerprint: plan.fingerprint,
+      idempotencyKey: randomUUID(),
+      confirmation: "POST" as const,
+    };
+    await expect(
+      new BusinessEventService(store, journalTools).enqueue({
+        ...confirm,
+        confirmation: "QUEUE",
+      }),
+    ).rejects.toMatchObject({ issue: { rule: "manual" } });
+    await expect(service.confirm(confirm)).rejects.toMatchObject({ issue: { rule: "manual" } });
+    await expect(ar.confirm(confirm)).rejects.toMatchObject({ issue: { rule: "manual" } });
+    expect(counts()).toEqual(before);
+    await changeAccount("2100", { controlModule: "AR" });
+    const stale = counts();
+    await expect(ap.confirm(confirm)).rejects.toMatchObject({ issue: { rule: "manual" } });
+    expect(counts()).toEqual(stale);
+    await changeAccount("2100", { controlModule: "AP" });
+    const fresh = await ap.preview("DEFAULT", draft);
+    expect(fresh.plan).toMatchObject({
+      date: "2026-01-15",
+      documentDate: "2025-12-29",
+      taxDate: "2026-03-01",
+      module: "TEST_AP",
+    });
+    const receipt = journalReceiptSchema.parse(
+      await ap.confirm({ ...confirm, fingerprint: fresh.fingerprint }),
+    );
+    expect(receipt.module).toBe("TEST_AP");
+    expect(
+      await new JournalService(store, journalTools, registry).adapter("TEST_AP").confirm({
+        ...confirm,
+        fingerprint: fresh.fingerprint,
+      }),
+    ).toEqual(receipt);
+    for (const caller of [service, ar])
+      await expect(
+        caller.confirm({ ...confirm, fingerprint: fresh.fingerprint }),
+      ).rejects.toMatchObject({ code: "CONFLICT" });
+    const detail = journalDetailSchema.parse(await service.entry("DEFAULT", draft.id));
+    expect(detail.entry).toMatchObject({
+      date: "2026-01-15",
+      documentDate: "2025-12-29",
+      taxDate: "2026-03-01",
+      module: "TEST_AP",
+      lines: [
+        { account: "5000", debit: 5327 },
+        { account: "2100", credit: 5327 },
+      ],
+    });
+    const arDraft = await service.save(
+      "DEFAULT",
+      journalDraft({
+        lines: [
+          { account: "1300", debit: "12.34", credit: "", dimensions: {}, suspense: null },
+          { account: "4000", debit: "", credit: "12.34", dimensions: {}, suspense: null },
+        ],
+      }),
+    );
+    const arPlan = await ar.preview("DEFAULT", arDraft);
+    const arReceipt = await ar.confirm({
+      ...confirm,
+      draftId: arDraft.id,
+      revision: arDraft.revision,
+      fingerprint: arPlan.fingerprint,
+      idempotencyKey: randomUUID(),
+    });
+    expect(arReceipt.module).toBe("TEST_AR");
+    expect((await service.entry("DEFAULT", arDraft.id)).entry).toMatchObject({
+      date: arDraft.date,
+      documentDate: arDraft.date,
+      taxDate: arDraft.date,
+    });
+    const report = await new ReportService(store).report("DEFAULT", "2026-01", "adjusted");
+    expect(report.reconciliation.allPass).toBe(true);
+    expect(report.trial.rows.find((row) => row.code === "2100")).toMatchObject({
+      credit: 5327,
+      closing: -5327,
+    });
+    expect(report.trial.rows.find((row) => row.code === "1300")).toMatchObject({
+      debit: 1234,
+      closing: 1234,
+    });
+    const posted = counts();
+    await expect(
+      ap.preview("DEFAULT", {
+        ...draft,
+        id: randomUUID(),
+        revision: 0,
+        sourceRef: "CLOSED-ACCOUNTING",
+        date: "2026-03-01",
+        documentDate: "2026-01-15",
+        taxDate: "2026-01-15",
+      }),
+    ).rejects.toMatchObject({ issue: { rule: "period" } });
+    await expect(
+      service.preview(
+        "DEFAULT",
+        journalDraft({
+          operation: "reverse",
+          originalId: draft.id,
+          lines: [],
+        }),
+      ),
+    ).rejects.toMatchObject({ issue: { rule: "source" } });
+    expect(counts()).toEqual(posted);
+    await changeAccount("2100", { active: false, controlModule: "AR" });
+    const reverse = journalDraft({ operation: "reverse", originalId: draft.id, lines: [] });
+    await expect(ar.preview("DEFAULT", reverse)).rejects.toMatchObject({
+      issue: { rule: "source" },
+    });
+    expect((await ap.preview("DEFAULT", reverse)).plan.journals[0].lines).toEqual(
+      detail.entry.lines.map((line, index) => ({
+        ...line,
+        debit: line.credit,
+        credit: line.debit,
+        role: "historical",
+        historical: { entryId: draft.id, lineNo: index + 1 },
+      })),
+    );
+    const db = new Database(filename, { readonly: true });
+    try {
+      expect(
+        db
+          .prepare("SELECT accounting_date,document_date,tax_date FROM journal_entries WHERE id=?")
+          .get(draft.id),
+      ).toEqual({
+        accounting_date: "2026-01-15",
+        document_date: "2025-12-29",
+        tax_date: "2026-03-01",
+      });
+      expect(
+        JSON.parse(
+          db
+            .prepare("SELECT result FROM receipts WHERE idempotency_key=?")
+            .get(receipt.idempotencyKey).result,
+        ).module,
+      ).toBe("TEST_AP");
+    } finally {
+      db.close();
+    }
+  });
   it("keeps preview read-only, enforces draft CAS and durable idempotency, and uses indexed identities", async () => {
     const unsaved = journalDraft();
     const empty = counts();
@@ -118,6 +342,7 @@ describe("journal application on real SQLite", () => {
     });
     await service.remove("DEFAULT", unused.id, 2);
     const draft = await service.save("DEFAULT", journalDraft());
+    expect(draft).toMatchObject({ documentDate: draft.date, taxDate: draft.date });
     await expect(service.save("DEFAULT", { ...draft, revision: 0 })).rejects.toMatchObject({
       code: "CONFLICT",
     });

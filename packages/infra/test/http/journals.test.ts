@@ -16,6 +16,128 @@ import { createApi } from "../../src/http/index.ts";
 import { createSqliteStorage } from "../../src/storage/index.ts";
 import { createMasterDataStore } from "../../src/storage/master-data.ts";
 import { journalTools } from "../../src/storage/journals.ts";
+it("round-trips independent dates while rejecting client-supplied adapter authority without posting", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "erp-journal-dates-http-"));
+  const config = { filename: join(directory, "ledger.sqlite") };
+  const storage = createSqliteStorage(config);
+  let api: Awaited<ReturnType<typeof createApi>> | undefined;
+  let store: ReturnType<typeof createMasterDataStore> | undefined;
+  try {
+    try {
+      await storage.migrate();
+    } finally {
+      await storage.close();
+    }
+    store = createMasterDataStore(config);
+    const masterData = new MasterDataService(store);
+    await masterData.initialize(2026);
+    const journals = new JournalService(store, journalTools);
+    const { builtin: _, revision: __, ...cash } = await masterData.account("DEFAULT", "1000");
+    await masterData.saveAccount(
+      "DEFAULT",
+      {
+        ...cash,
+        code: "1300",
+        name: "AR control",
+        purpose: "control",
+        controlModule: "AR",
+        reportGroup: "receivables",
+        manualAllowed: false,
+      },
+      0,
+    );
+    api = await createApi({
+      environment: { ERP_PORT: "0" },
+      allowPortZero: true,
+      masterData,
+      journals,
+      logError: () => {},
+    });
+    const base = await api.listen();
+    const server = api.app;
+    const post = (action: string, payload: unknown) =>
+      server.inject({ method: "POST", url: `${base}/api/v1/journals/${action}`, payload });
+    const draft = journalDraftSchema.parse({
+      id: randomUUID(),
+      revision: 0,
+      sourceRef: "HTTP-DATES",
+      memo: "Independent dates",
+      date: "2026-01-15",
+      documentDate: "2025-12-29",
+      taxDate: "2026-03-01",
+      kind: "normal",
+      operation: "journal",
+      originalId: null,
+      headerDimensions: {},
+      lines: [
+        { account: "1000", debit: "1", credit: "", dimensions: {}, suspense: null },
+        { account: "4000", debit: "", credit: "1", dimensions: {}, suspense: null },
+      ],
+    });
+    const request = { company: "DEFAULT", draft };
+    const saved = journalDraftSchema.parse((await post("drafts", request)).json());
+    const before = await journals.list("DEFAULT", "draft", { limit: 100 });
+    const control = {
+      ...saved,
+      lines: saved.lines.map((line, index) => ({
+        ...line,
+        account: index ? line.account : "1300",
+      })),
+    };
+    const denied = await post("preview", { company: "DEFAULT", draft: control });
+    expect(denied.statusCode).toBe(400);
+    expect(errorSchema.parse(denied.json()).fieldErrors).toEqual([
+      { path: "lines.0.account", messageKey: "api.error.journals.manual" },
+    ]);
+    for (const payload of [
+      { company: "DEFAULT", draft: control, module: "AR" },
+      { company: "DEFAULT", draft: { ...control, adapter: "AR" } },
+      { company: "DEFAULT", draft: { ...control, controlModules: ["AR"] } },
+    ])
+      expect((await post("preview", payload)).statusCode).toBe(400);
+    const invalid = await post("preview", {
+      company: "DEFAULT",
+      draft: { ...saved, taxDate: "2026-02-30" },
+    });
+    expect(invalid.statusCode).toBe(400);
+    expect(errorSchema.parse(invalid.json()).fieldErrors[0].path).toBe("taxDate");
+    expect(await journals.list("DEFAULT", "draft", { limit: 100 })).toEqual(before);
+    expect((await journals.list("DEFAULT", "posted", { limit: 100 })).items).toEqual([]);
+    const preview = journalPreviewSchema.parse(
+      (await post("preview", { company: "DEFAULT", draft: saved })).json(),
+    );
+    expect(preview.plan).toMatchObject({
+      date: draft.date,
+      documentDate: draft.documentDate,
+      taxDate: draft.taxDate,
+      module: null,
+    });
+    const confirmation = {
+      company: "DEFAULT",
+      draftId: saved.id,
+      revision: saved.revision,
+      fingerprint: preview.fingerprint,
+      idempotencyKey: randomUUID(),
+      confirmation: "POST",
+    };
+    expect((await post("confirm", { ...confirmation, module: "AR" })).statusCode).toBe(400);
+    const receipt = journalReceiptSchema.parse((await post("confirm", confirmation)).json());
+    expect(receipt.module).toBeNull();
+    const detail = await api.app.inject({
+      method: "GET",
+      url: `${base}/api/v1/journals/${saved.id}?company=DEFAULT`,
+    });
+    expect(journalDetailSchema.parse(detail.json()).entry).toMatchObject({
+      date: draft.date,
+      documentDate: draft.documentDate,
+      taxDate: draft.taxDate,
+    });
+  } finally {
+    await api?.close();
+    await store?.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 it("exposes strict journal DTOs, actionable field errors, immutable methods and an explicit POST confirmation", async () => {
   const directory = await mkdtemp(join(tmpdir(), "erp-journal-http-"));
   const config = { filename: join(directory, "ledger.sqlite") };

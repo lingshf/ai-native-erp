@@ -543,6 +543,16 @@ function CompanyJournals({
                   onChange={(event) => change({ memo: event.target.value })}
                 />
               </label>
+              {(["documentDate", "taxDate"] as const).map((field) => (
+                <label key={field}>
+                  {t(`journal.${field}`)}
+                  <input
+                    type="date"
+                    value={draft[field] ?? ""}
+                    onChange={(event) => change({ [field]: event.target.value || undefined })}
+                  />
+                </label>
+              ))}
               <label>
                 {t("journal.kind")}
                 <select
@@ -838,6 +848,10 @@ function CompanyJournals({
             {plan.plan.sourceRef} · {plan.plan.date} · {plan.plan.currency}
           </p>
           <p>{plan.plan.memo}</p>
+          <p>
+            {t("journal.documentDate")}: {plan.plan.documentDate} · {t("journal.taxDate")}:{" "}
+            {plan.plan.taxDate}
+          </p>
           {dirty && <p role="status">{t("journal.unsaved")}</p>}
           {plan.plan.journals.map((journal, index) => (
             <section key={journal.role}>
@@ -914,6 +928,15 @@ function CompanyJournals({
             {detail.entry.sourceRef} · {detail.entry.date}
           </h3>
           <p>{detail.entry.memo}</p>
+          {detail.entry.module && (
+            <p>
+              {t("journal.module")}: {detail.entry.module}
+            </p>
+          )}
+          <p>
+            {t("journal.documentDate")}: {detail.entry.documentDate} · {t("journal.taxDate")}:{" "}
+            {detail.entry.taxDate}
+          </p>
           <LinePlan lines={detail.entry.lines} company={company} language={language} t={t} />
           {detail.entry.kind === "closing" && (
             <Link
@@ -930,6 +953,7 @@ function CompanyJournals({
             </Link>
           )}
           {!detail.businessEventId &&
+            !detail.entry.module &&
             detail.entry.kind !== "closing" &&
             detail.entry.role !== "reversal" &&
             (["reverse", "replace", "reclassify"] as const)
@@ -1093,6 +1117,8 @@ export function JournalError({
     ["credit", "journal.credit"],
     ["dimensions", "journal.dimensions"],
     ["date", "journal.date"],
+    ["documentDate", "journal.documentDate"],
+    ["taxDate", "journal.taxDate"],
     ["sourceRef", "journal.sourceRef"],
     ["owner", "journal.owner"],
     ["reason", "journal.reason"],

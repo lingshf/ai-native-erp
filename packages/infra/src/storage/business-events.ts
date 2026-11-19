@@ -17,6 +17,7 @@ import {
 } from "@erp/core/contracts";
 import type { Page, PageQuery } from "@erp/core/domain";
 import type { Connection, Row } from "./types.ts";
+import { storedJournalPlan } from "./journals.ts";
 function decoded<T>(schema: ContractSchema<T>, value: unknown): T {
   const parsed = schema.safeParse(value);
   if (!parsed.success) throw new StorageError("STORAGE_FAILURE");
@@ -25,6 +26,11 @@ function decoded<T>(schema: ContractSchema<T>, value: unknown): T {
 function json(value: unknown): unknown {
   if (typeof value !== "string") throw new StorageError("STORAGE_FAILURE");
   return JSON.parse(value);
+}
+function storedPreview(value: unknown): unknown {
+  const parsed = json(value);
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return parsed;
+  return { ...parsed, plan: storedJournalPlan(Reflect.get(parsed, "plan")) };
 }
 function flag(value: unknown): boolean {
   if (value !== 0 && value !== 0n && value !== 1 && value !== 1n)
@@ -233,7 +239,7 @@ export function businessRepository(db: Connection): BusinessRepository {
       return rows[0]
         ? decoded(businessRecordSchema, {
             event: json(rows[0].input),
-            preview: json(rows[0].preview),
+            preview: storedPreview(rows[0].preview),
             receipt: json(rows[0].result),
             createdAt: rows[0].created_at,
           })
@@ -346,7 +352,10 @@ export function businessRepository(db: Connection): BusinessRepository {
             plan:
               rows[0].transfer_plan === null
                 ? null
-                : decoded(businessPreviewSchema.shape.plan, json(rows[0].transfer_plan)),
+                : decoded(
+                    businessPreviewSchema.shape.plan,
+                    storedJournalPlan(json(rows[0].transfer_plan)),
+                  ),
           })
         : null;
     },
