@@ -6,6 +6,7 @@ import Database from "better-sqlite3";
 import { beforeEach, afterEach, it, expect, vi } from "vitest";
 import {
   AiAssistantService,
+  AiContextService,
   AiFailure,
   MasterDataService,
   JournalService,
@@ -73,36 +74,39 @@ beforeEach(async () => {
   respond = async () => JSON.stringify(proposal());
   write.mockReset();
   write.mockRejectedValue(new Error("AI must never open a write transaction"));
+  const observed: MasterDataStore = {
+    read: (work) =>
+      store.read((repo) => {
+        const current = ++transaction;
+        const observe = (method: (typeof reads)[number]["method"]) => {
+          reads.push({ transaction: current, method });
+        };
+        return work({
+          ...repo,
+          accounts: (company, query) => {
+            observe("accounts");
+            return repo.accounts(company, { ...query, limit: 2 });
+          },
+          reportBalances: (...args) => {
+            observe("balances");
+            return repo.reportBalances(...args);
+          },
+          reportSnapshot: (...args) => {
+            observe("snapshot");
+            return repo.reportSnapshot(...args);
+          },
+          closeState: (...args) => {
+            observe("closing");
+            return repo.closeState(...args);
+          },
+        });
+      }),
+    write,
+  };
+  const context = new AiContextService(observed);
+  const previews = new JournalService(observed, journalTools);
   assistant = new AiAssistantService(
-    {
-      read: (work) =>
-        store.read((repo) => {
-          const current = ++transaction;
-          const observe = (method: (typeof reads)[number]["method"]) => {
-            reads.push({ transaction: current, method });
-          };
-          return work({
-            ...repo,
-            accounts: (company, query) => {
-              observe("accounts");
-              return repo.accounts(company, { ...query, limit: 2 });
-            },
-            reportBalances: (...args) => {
-              observe("balances");
-              return repo.reportBalances(...args);
-            },
-            reportSnapshot: (...args) => {
-              observe("snapshot");
-              return repo.reportSnapshot(...args);
-            },
-            closeState: (...args) => {
-              observe("closing");
-              return repo.closeState(...args);
-            },
-          });
-        }),
-      write,
-    },
+    { context: context.context.bind(context), preview: previews.preview.bind(previews) },
     port,
     journalTools,
     3000,
@@ -289,7 +293,11 @@ it("returns validated candidates without writes, rechecks late configuration and
 it("bounds timeout/cancellation, redacts failures, rejects HTTP boundary misuse and leaves manual endpoints available", async () => {
   respond = () => new Promise(() => {});
   const timed = new AiAssistantService(
-    { read: (work) => store.read(work), write },
+    {
+      context: (mode, input) =>
+        new AiContextService({ read: (work) => store.read(work), write }).context(mode, input),
+      preview: (company, draft) => new JournalService(store, journalTools).preview(company, draft),
+    },
     port,
     journalTools,
     25,

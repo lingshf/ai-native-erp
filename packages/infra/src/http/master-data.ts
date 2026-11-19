@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import type { MasterDataService } from "@erp/core/application";
+import type { ApplicationServices } from "@erp/core/application";
 import {
   companyInputSchema,
   companySchema,
@@ -38,7 +38,7 @@ function noQuery(request: FastifyRequest): void {
 }
 export function registerMasterDataRoutes(
   server: FastifyInstance,
-  service: MasterDataService | undefined,
+  service: ApplicationServices["masterData"] | undefined,
   boundary: LocalFinanceBoundary,
 ): void {
   const prepare = (request: FastifyRequest, reply: FastifyReply, methods: readonly string[]) => {

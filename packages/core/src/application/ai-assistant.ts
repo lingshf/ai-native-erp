@@ -12,7 +12,7 @@ import {
   type Account,
 } from "@erp/core/domain";
 import type { MasterDataStore } from "./master-data.ts";
-import { JournalService, type JournalTools } from "./journals.ts";
+import type { JournalService, JournalTools } from "./journals.ts";
 
 export type AiFailureReason =
   | "unavailable"
@@ -68,26 +68,27 @@ export interface AiRequest {
   readonly month: string;
   readonly prompt: string;
 }
-export class AiAssistantService {
+export interface AiReads {
+  context(mode: "draft" | "explain", input: AiRequest): Promise<AiContext>;
+  preview: JournalService["preview"];
+}
+export class AiContextService {
   private readonly store: MasterDataStore;
-  private readonly port: AiPort;
-  private readonly tools: JournalTools;
-  private readonly timeoutMs: number;
-  constructor(store: MasterDataStore, port: AiPort, tools: JournalTools, timeoutMs = 30000) {
+  constructor(store: MasterDataStore) {
     this.store = store;
-    this.port = port;
-    this.tools = tools;
-    this.timeoutMs = timeoutMs;
   }
-  private async ask(mode: "draft" | "explain", input: AiRequest, signal?: AbortSignal) {
+  draft(input: AiRequest): Promise<AiContext> {
+    return this.context("draft", input);
+  }
+  explain(input: AiRequest): Promise<AiContext> {
+    return this.context("explain", input);
+  }
+  context(mode: "draft" | "explain", input: AiRequest): Promise<AiContext> {
     checkedCode(input.company);
     checkedTeachingMonth(input.month);
     if (typeof input.prompt !== "string" || !input.prompt.trim() || input.prompt.length > 4000)
       throw new DomainError("INVALID_INPUT");
-    if (!Number.isInteger(this.timeoutMs) || this.timeoutMs < 1 || this.timeoutMs > 300000)
-      throw new AiFailure("unavailable");
-    if (signal?.aborted) throw new AiFailure("cancelled");
-    const context: AiContext = await this.store.read(async (repo) => {
+    return this.store.read(async (repo) => {
       const owner = await repo.company(input.company),
         period = await repo.period(input.company, input.month);
       if (!owner || !period) throw new DomainError("NOT_FOUND");
@@ -144,6 +145,24 @@ export class AiAssistantService {
           : {}),
       };
     });
+  }
+}
+export class AiAssistantService {
+  private readonly reads: AiReads;
+  private readonly port: AiPort;
+  private readonly tools: Pick<JournalTools, "id">;
+  private readonly timeoutMs: number;
+  constructor(reads: AiReads, port: AiPort, tools: Pick<JournalTools, "id">, timeoutMs = 30000) {
+    this.reads = reads;
+    this.port = port;
+    this.tools = tools;
+    this.timeoutMs = timeoutMs;
+  }
+  private async ask(mode: "draft" | "explain", input: AiRequest, signal?: AbortSignal) {
+    if (!Number.isInteger(this.timeoutMs) || this.timeoutMs < 1 || this.timeoutMs > 300000)
+      throw new AiFailure("unavailable");
+    if (signal?.aborted) throw new AiFailure("cancelled");
+    const context = await this.reads.context(mode, input);
     if (signal?.aborted) throw new AiFailure("cancelled");
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -197,7 +216,7 @@ export class AiAssistantService {
         )
       )
         return issue("lines.dimensions", "api.error.ai.explicitDimensions");
-      await new JournalService(this.store, this.tools).preview(input.company, candidate.draft);
+      await this.reads.preview(input.company, candidate.draft);
     } catch (error) {
       if (!(error instanceof DomainError) || !["INVALID_INPUT", "CONFLICT"].includes(error.code))
         throw error;

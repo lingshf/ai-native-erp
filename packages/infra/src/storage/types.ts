@@ -8,6 +8,7 @@ export interface TargetStorage extends UnitOfWork {
 
 export interface SqliteStorageConfig {
   readonly filename: string;
+  readonly readonly?: boolean;
 }
 
 export type Row = Record<string, unknown>;

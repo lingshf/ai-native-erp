@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "47 3 * * *"
   workflow_dispatch:
+    inputs:
+      ref:
+        description: Candidate branch, tag or SHA (blank uses selected workflow ref)
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -11,13 +16,16 @@ permissions:
 jobs:
   bench:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Full serial, concurrent and saturated-queue capacity evidence is manual/nightly only.
+    # The PR workflow and its <=10 minute limit are intentionally unchanged.
+    timeout-minutes: 45
     concurrency:
-      group: bench-${{ github.ref }}
+      group: bench-${{ inputs.ref || github.ref }}
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 1
       - uses: actions/setup-node@v7
         with:
@@ -32,13 +40,44 @@ jobs:
       - name: Install dependencies
         if: steps.gate.outputs.run == 'true'
         run: npm ci --no-audit --no-fund
-      - name: SQLite ledger benchmarks (including million GL rows)
+      - name: Check out OLD MAIN baseline (not current main)
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: 5b23d8c3ffbfbd61ce57dabc747920ac454432aa
+          path: .bench-baseline
+          fetch-depth: 1
+      - name: Install OLD MAIN dependencies
+        if: steps.gate.outputs.run == 'true'
+        working-directory: .bench-baseline
+        run: npm ci --no-audit --no-fund
+      - name: Generate the shared deterministic million-line fixture
+        if: steps.gate.outputs.run == 'true'
+        run: node packages/infra/bench/reports.ts prepare
+        env:
+          ERP_BENCH_FIXTURE: artifacts/ci/million.sqlite
+      - name: OLD MAIN production child baseline (must run first)
+        if: steps.gate.outputs.run == 'true'
+        run: node packages/infra/bench/reports.ts
+        env:
+          ERP_BENCH_MODE: baseline
+          ERP_BENCH_SOURCE_ROOT: .bench-baseline
+          ERP_BENCH_FIXTURE: artifacts/ci/million.sqlite
+          ERP_BENCH_OUTPUT: artifacts/ci/baseline
+      - name: Candidate SQLite benchmarks (same runner and fixture, R=2/3/4)
         if: steps.gate.outputs.run == 'true'
         run: npm run bench
+        env:
+          ERP_BENCH_MODE: candidate
+          ERP_BENCH_FIXTURE: artifacts/ci/million.sqlite
+          ERP_BENCH_BASELINE_JSON: artifacts/ci/baseline.json
       - uses: actions/upload-artifact@v7
         if: always() && steps.gate.outputs.run == 'true'
         with:
           name: sqlite-ledger-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/ci/bench.*
+          path: |
+            artifacts/ci/bench.*
+            artifacts/ci/baseline.*
+            artifacts/ci/million.sqlite.json
           retention-days: 14
           if-no-files-found: error

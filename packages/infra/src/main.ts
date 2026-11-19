@@ -1,9 +1,8 @@
 import { randomUUID } from "node:crypto";
-import type { MasterDataService } from "@erp/core/application";
-import { parseRuntimeConfiguration } from "./index.ts";
-import type { createMasterDataStore } from "./storage/master-data.ts";
+import { parseRuntimeConfiguration, RuntimeConfigurationError } from "./index.ts";
+import type { SqliteExecutor } from "./workers/executor.ts";
 
-let store: ReturnType<typeof createMasterDataStore> | undefined;
+let executor: SqliteExecutor | undefined;
 try {
   const environment = {
     ...(process.env.ERP_PROFILE !== undefined ? { ERP_PROFILE: process.env.ERP_PROFILE } : {}),
@@ -11,42 +10,25 @@ try {
     ...(process.env.ERP_PORT !== undefined ? { ERP_PORT: process.env.ERP_PORT } : {}),
   };
   parseRuntimeConfiguration(environment);
-  const [
-    { createApi },
-    { defaultErrorLogger },
-    {
-      MasterDataService,
-      DimensionService,
-      JournalService,
-      BusinessEventService,
-      ReportService,
-      PeriodCloseService,
-      AiAssistantService,
-    },
-    { createSqliteStorage },
-    { createMasterDataStore },
-    { journalTools },
-  ] = await Promise.all([
-    import("./http/index.ts"),
-    import("./http/errors.ts"),
-    import("@erp/core/application"),
-    import("./storage/index.ts"),
-    import("./storage/master-data.ts"),
-    import("./storage/journals.ts"),
-  ]);
-  let masterData: MasterDataService | undefined;
+  await import("./workers/main-thread-guard.ts");
+  const [{ createApi }, { defaultErrorLogger }, { AiAssistantService }, { SqliteExecutor }] =
+    await Promise.all([
+      import("./http/index.ts"),
+      import("./http/errors.ts"),
+      import("@erp/core/application"),
+      import("./workers/executor.ts"),
+    ]);
   if (process.env.ERP_SQLITE_FILE !== undefined) {
-    const config = { filename: process.env.ERP_SQLITE_FILE };
-    const storage = createSqliteStorage(config);
-    try {
-      await storage.verifySchema();
-    } finally {
-      await storage.close();
-    }
-    store = createMasterDataStore(config);
-    masterData = new MasterDataService(store);
-    await masterData.initialize(new Date().getFullYear());
+    const readers = process.env.ERP_SQLITE_READERS;
+    if (readers !== undefined && !/^(?:[2-9]|[12][0-9]|3[0-2])$/u.test(readers))
+      throw new RuntimeConfigurationError();
+    executor = await SqliteExecutor.create({
+      filename: process.env.ERP_SQLITE_FILE,
+      ...(readers !== undefined ? { readers: Number(readers) } : {}),
+    });
+    await executor.execute("masterData", "initialize", [new Date().getFullYear()]);
   }
+  const services = executor?.services();
   const aiModel = process.env.AI_MODEL?.trim();
   const aiTimeout = Number(process.env.AI_TIMEOUT_MS ?? "30000");
   const aiConfigured = Boolean(
@@ -59,25 +41,23 @@ try {
   );
   const api = await createApi({
     environment,
-    ...(masterData && store
+    ...(services
       ? {
-          masterData,
-          dimensions: new DimensionService(store),
-          journals: new JournalService(store, journalTools),
-          events: new BusinessEventService(store, journalTools),
-          reports: new ReportService(store),
-          closing: new PeriodCloseService(store, journalTools),
+          ...services,
           ...(aiConfigured
             ? {
                 assistant: new AiAssistantService(
-                  store,
+                  {
+                    context: (mode, input) => services.aiContext[mode](input),
+                    preview: services.journals.preview,
+                  },
                   new (await import("./copilot-ai.ts")).CopilotAiAdapter({
                     ...(process.env.AI_MODEL !== undefined ? { model: process.env.AI_MODEL } : {}),
                     ...(process.env.AI_PROVIDER !== undefined
                       ? { provider: process.env.AI_PROVIDER }
                       : {}),
                   }),
-                  journalTools,
+                  { id: randomUUID },
                   aiTimeout,
                 ),
               }
@@ -89,7 +69,7 @@ try {
   const close = () => {
     api
       .close()
-      .finally(() => store?.close())
+      .finally(() => executor?.close())
       .catch(() => {
         defaultErrorLogger({ requestId: randomUUID(), errorType: "InternalError" });
         process.exitCode = 1;
@@ -98,7 +78,7 @@ try {
   process.once("SIGINT", close);
   process.once("SIGTERM", close);
 } catch (error) {
-  await store?.close().catch(() => {
+  await executor?.close().catch(() => {
     console.error(JSON.stringify({ requestId: randomUUID(), errorType: "InternalError" }));
   });
   const kind =

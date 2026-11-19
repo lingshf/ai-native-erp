@@ -220,6 +220,15 @@ it("closes monthly through zero-write preview, atomic/idempotent confirmation, p
   });
   const { result, confirmation } = await close(input),
     after = counts();
+  await store.read(async (repo) => {
+    for (const watermark of [undefined, oldLedger.watermark]) {
+      const stages = await repo.reportStages("DEFAULT", "2026-01", watermark);
+      for (const stage of ["unadjusted", "adjusted", "postClosing"] as const)
+        expect(stages[stage]).toEqual(
+          await repo.reportBalances("DEFAULT", "2026-01", stage, watermark),
+        );
+    }
+  });
   expect(result).toMatchObject({
     period: { status: "closed", revision: 3 },
     receipt: { operation: "period.close" },

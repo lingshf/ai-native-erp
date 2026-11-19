@@ -1,4 +1,4 @@
-import { DomainError, type DimensionService } from "@erp/core/application";
+import { DomainError, type ApplicationServices } from "@erp/core/application";
 import {
   dimensionConfigSchema,
   dimensionPageSchema,
@@ -31,7 +31,7 @@ function parse<T>(schema: ContractSchema<T>, input: unknown): T {
 }
 export function registerDimensionRoutes(
   server: FastifyInstance,
-  service: DimensionService | undefined,
+  service: ApplicationServices["dimensions"] | undefined,
   boundary: LocalFinanceBoundary,
 ): void {
   server.all("/api/v1/dimensions", async (request, reply) => {

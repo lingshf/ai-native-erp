@@ -1,5 +1,5 @@
 import { businessError } from "@erp/core/domain";
-import type { BusinessEventService } from "@erp/core/application";
+import type { ApplicationServices } from "@erp/core/application";
 import {
   businessMasterSaveSchema,
   businessMasterSchema,
@@ -33,7 +33,7 @@ function parse<T>(schema: ContractSchema<T>, value: unknown): T {
 }
 export function registerBusinessRoutes(
   server: FastifyInstance,
-  service: BusinessEventService | undefined,
+  service: ApplicationServices["events"] | undefined,
   boundary: LocalFinanceBoundary,
 ) {
   const ready = (request: FastifyRequest) => {

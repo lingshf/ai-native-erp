@@ -1,12 +1,11 @@
 import Database from "better-sqlite3";
 import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { compileDimensionRules, dimensionBalance, type DimensionConfig } from "@erp/core/domain";
 import { journalBenchmark } from "./journals.ts";
 import { businessEventBenchmark } from "./business-events.ts";
-import { reportsBenchmark } from "./reports.ts";
+import { reportsBenchmark, reportsMarkdown } from "./reports.ts";
 
 function dimensionBenchmark() {
   const base = { revision: 1, active: true, from: "2026-01-01", to: "2026-12-31" };
@@ -93,7 +92,8 @@ function dimensionBenchmark() {
   };
 }
 
-const directory = mkdtempSync(join(tmpdir(), "erp-ci-bench-"));
+mkdirSync("artifacts/ci", { recursive: true });
+const directory = mkdtempSync(join("artifacts", "ci", "micro-run-"));
 try {
   const database = new Database(join(directory, "bench.sqlite"), { timeout: 5000 });
   try {
@@ -180,20 +180,7 @@ try {
       "",
       `Hot ${businessEvents.listRows}-item event list p95 ${businessEvents.list.p95Ms.toFixed(3)} ms; budget ≤ ${businessEvents.readBudgetMs} ms. JSON artifact includes all measured raw samples and p50/p95/p99.`,
       "",
-      "## Million-GL ledger capacity benchmark",
-      "",
-      `Deterministic ${reports.fixture.seed}: 1 company, 200 accounts, 24 periods, 3 dimensions, 1,000,000 actual journal_lines; 100,000 cash lines in the selected month. WAL/NORMAL, all schema/foreign-key/seal constraints enabled. Generation ${(reports.fixture.generationMs / 1000).toFixed(2)} s; ${(reports.fixture.bytes / 1024 / 1024).toFixed(1)} MiB. Logical digest: ${reports.fixture.logicalSha256}.`,
-      "",
-      `${reports.warmup} warmups and ${reports.samples} hot samples per path; real loopback fetch through JSON and shared client contract parsing. No balance table. Existing paths p95 ≤ ${reports.budgetMs} ms; close-preview ≤ 2000 ms (complete transfer plan, with prior-period blockers on the open-period fixture).`,
-      "",
-      "| Path | p50 ms | p95 ms | p99 ms | Budget ms | Result |",
-      "| --- | ---: | ---: | ---: | ---: | --- |",
-      ...Object.entries(reports.metrics).map(
-        ([name, metric]) =>
-          `| ${name} | ${metric.p50Ms.toFixed(3)} | ${metric.p95Ms.toFixed(3)} | ${metric.p99Ms.toFixed(3)} | ${metric.budgetMs} | ${metric.pass ? "PASS" : "MISS — design follow-up required"} |`,
-      ),
-      "",
-      `Overall: **${reports.allPass ? "PASS" : "BUDGET MISS: report to design; do not claim capacity acceptance"}**. Event-loop max ${reports.eventLoopMaxMs.toFixed(3)} ms. Raw samples and EXPLAIN QUERY PLAN results are in bench.json.`,
+      reportsMarkdown(reports),
       "",
     ].join("\n");
     mkdirSync("artifacts/ci", { recursive: true });

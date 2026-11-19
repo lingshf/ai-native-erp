@@ -1,4 +1,4 @@
-import type { ReportService } from "@erp/core/application";
+import type { ApplicationServices } from "@erp/core/application";
 import {
   reportQuerySchema,
   reportSchema,
@@ -10,7 +10,7 @@ import type { LocalFinanceBoundary } from "./legacy.ts";
 import { httpError } from "./errors.ts";
 export function registerReportRoutes(
   server: FastifyInstance,
-  service: ReportService | undefined,
+  service: ApplicationServices["reports"] | undefined,
   boundary: LocalFinanceBoundary,
 ) {
   for (const kind of ["trial", "income", "balance-sheet", "reconciliation"]) {
