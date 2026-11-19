@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type Database from "better-sqlite3";
+import type { ReconciliationConnection } from "../storage/reconciliation.ts";
 import { StorageError } from "@erp/core/application";
 import {
   DomainError,
@@ -123,7 +123,7 @@ function account(target: Fields): Account {
  * The same function serves the library dry-run and the import; every blocking issue is listed.
  */
 export function validateOpeningItems(
-  plan: Database.Database,
+  plan: ReconciliationConnection,
   bytes: Uint8Array | undefined,
 ): { plan: OpeningPlan; issues: OpeningIssue[] } {
   const issues: OpeningIssue[] = [];
