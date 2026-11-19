@@ -92,7 +92,23 @@ export class AiAssistantService {
         period = await repo.period(input.company, input.month);
       if (!owner || !period) throw new DomainError("NOT_FOUND");
       if (mode === "draft" && period.status !== "open") journalError("date", "period");
-      const rows = await repo.reportBalances(input.company, input.month, "adjusted");
+      const rows =
+        mode === "explain"
+          ? await repo.reportBalances(input.company, input.month, "adjusted")
+          : undefined;
+      const accounts: Account[] = [];
+      if (rows) accounts.push(...rows);
+      else {
+        let cursor: string | undefined;
+        do {
+          const page = await repo.accounts(input.company, {
+            limit: 500,
+            ...(cursor !== undefined ? { cursor } : {}),
+          });
+          accounts.push(...page.items);
+          cursor = page.nextCursor ?? undefined;
+        } while (cursor !== undefined);
+      }
       return {
         company: {
           code: owner.code,
@@ -102,7 +118,7 @@ export class AiAssistantService {
         },
         period,
         snapshot: await repo.reportSnapshot(input.company),
-        accounts: rows
+        accounts: accounts
           .filter((row) => mode === "explain" || (row.active && row.manualAllowed))
           .map((row) => ({
             code: row.code,
@@ -116,7 +132,7 @@ export class AiAssistantService {
             contraOf: row.contraOf,
           })),
         dimensions: await repo.dimensionCatalog(input.company),
-        ...(mode === "explain"
+        ...(rows
           ? {
               report: buildReports(owner, input.month, "adjusted", rows),
               closing: await repo.closeState(

@@ -26,6 +26,9 @@ let api: Awaited<ReturnType<typeof createApi>>, base: string, assistant: AiAssis
 let respond: AiPort["complete"], calls: Parameters<AiPort["complete"]>[0][];
 const write = vi.fn<MasterDataStore["write"]>();
 const logs: unknown[] = [];
+const reads: { transaction: number; method: "accounts" | "balances" | "snapshot" | "closing" }[] =
+  [];
+let transaction = 0;
 const input = { company: "AI", month: "2026-01", prompt: "Synthetic cash revenue" };
 const proposal = () => ({
   date: "2026-01-15",
@@ -65,11 +68,41 @@ beforeEach(async () => {
   });
   calls = [];
   logs.length = 0;
+  reads.length = 0;
+  transaction = 0;
   respond = async () => JSON.stringify(proposal());
   write.mockReset();
   write.mockRejectedValue(new Error("AI must never open a write transaction"));
   assistant = new AiAssistantService(
-    { read: (work) => store.read(work), write },
+    {
+      read: (work) =>
+        store.read((repo) => {
+          const current = ++transaction;
+          const observe = (method: (typeof reads)[number]["method"]) => {
+            reads.push({ transaction: current, method });
+          };
+          return work({
+            ...repo,
+            accounts: (company, query) => {
+              observe("accounts");
+              return repo.accounts(company, { ...query, limit: 2 });
+            },
+            reportBalances: (...args) => {
+              observe("balances");
+              return repo.reportBalances(...args);
+            },
+            reportSnapshot: (...args) => {
+              observe("snapshot");
+              return repo.reportSnapshot(...args);
+            },
+            closeState: (...args) => {
+              observe("closing");
+              return repo.closeState(...args);
+            },
+          });
+        }),
+      write,
+    },
     port,
     journalTools,
     3000,
@@ -147,6 +180,17 @@ it("returns validated candidates without writes, rechecks late configuration and
   expect(result.draft).toMatchObject({ revision: 0, operation: "journal", originalId: null });
   expect(result.draft.id).toMatch(/^[0-9a-f-]{36}$/u);
   expect(calls[0]?.context.company.code).toBe("AI");
+  expect(reads.filter((read) => read.method === "balances")).toHaveLength(0);
+  expect(reads.filter((read) => read.method === "closing")).toHaveLength(0);
+  expect(reads.filter((read) => read.method === "accounts").length).toBeGreaterThan(1);
+  const catalog = await master.accounts("AI", { limit: 500 });
+  expect(calls[0]?.context.accounts.map((account) => account.code)).toEqual(
+    catalog.items
+      .filter((account) => account.active && account.manualAllowed)
+      .map((account) => account.code),
+  );
+  expect(calls[0]?.context).not.toHaveProperty("report");
+  expect(calls[0]?.context).not.toHaveProperty("closing");
   expect(JSON.stringify(calls)).not.toMatch(/PRIVATE-DRAFT|OTHER-COMPANY-PRIVATE/u);
   for (const candidate of [
     { ...proposal(), kind: "closing" },
@@ -228,12 +272,16 @@ it("returns validated candidates without writes, rechecks late configuration and
   });
   respond = async () => JSON.stringify(proposal());
   expect(aiDraftResultSchema.parse(await (await send()).json()).status).toBe("invalid");
+  expect(reads.filter((read) => read.method === "balances")).toHaveLength(0);
+  reads.length = 0;
   respond = async () => "Snapshot explanation <not HTML>";
   expect(aiExplainResultSchema.parse(await (await send("explain")).json()).text).toContain(
     "Snapshot explanation",
   );
   expect(calls.at(-1)?.context).toHaveProperty("snapshot.accountRevision");
   expect(calls.at(-1)?.context).toHaveProperty("closing.drafts", 1);
+  expect(reads.map((read) => read.method).sort()).toEqual(["balances", "closing", "snapshot"]);
+  expect(new Set(reads.map((read) => read.transaction)).size).toBe(1);
   expect(JSON.stringify(calls.at(-1))).not.toContain("PRIVATE-DRAFT");
   expect(counts()).toEqual(before);
   expect(write).not.toHaveBeenCalled();
