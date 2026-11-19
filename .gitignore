@@ -12,3 +12,4 @@ coverage/
 *.tsbuildinfo
 .vite/
 artifacts/ci/
+.legacy-import-target-bench-*/
