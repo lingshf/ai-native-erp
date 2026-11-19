@@ -2,6 +2,7 @@ import { parentPort, workerData } from "node:worker_threads";
 import Database from "better-sqlite3";
 import {
   MasterDataService,
+  TradeMasterService,
   DimensionService,
   JournalService,
   BusinessEventService,
@@ -33,6 +34,7 @@ try {
   }
   store = createMasterDataStore({ filename: config.filename, readonly: !config.writer });
   const services: ApplicationServices = {
+    trade: new TradeMasterService(store),
     masterData: new MasterDataService(store),
     dimensions: new DimensionService(store),
     journals: new JournalService(store, journalTools),

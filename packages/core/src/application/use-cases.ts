@@ -5,9 +5,11 @@ import type { BusinessEventService } from "./business-events.ts";
 import type { ReportService } from "./reports.ts";
 import type { PeriodCloseService } from "./period-close.ts";
 import type { AiContextService } from "./ai-assistant.ts";
+import type { TradeMasterService } from "./trade-master.ts";
 
 export type ExecutionLane = "write" | "heavy" | "light";
 export interface ApplicationServices {
+  trade: Pick<TradeMasterService, "list" | "get" | "save">;
   masterData: Pick<
     MasterDataService,
     | "initialize"
@@ -47,6 +49,7 @@ export interface ApplicationServices {
 }
 
 export const applicationLanes = {
+  trade: { list: "light", get: "light", save: "write" },
   masterData: {
     initialize: "write",
     createCompany: "write",

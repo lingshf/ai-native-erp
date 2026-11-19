@@ -32,3 +32,4 @@ export * from "./period-close.ts";
 export * from "./ai-assistant.ts";
 export * from "./use-cases.ts";
 export { postingAdapters, type PostingAdapterRegistry } from "./posting-adapters.ts";
+export * from "./trade-master.ts";

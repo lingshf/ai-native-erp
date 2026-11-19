@@ -31,3 +31,17 @@ source module rather than the working directory. Missing assets return 503.
 Application services and ports are exported by `@erp/core/application`, DTOs
 by `@erp/core/contracts`, and runtime configuration by `@erp/infra`.
 Run HTTP tests with `npm test -- packages/infra/test/http`.
+
+Trade master maintenance lives at `/#/trade`. Each of `tradeParty`, `tradeProduct`,
+`tradeProfile`, `tradeTerms` and `taxCode` has `GET/POST/PUT /api/v1/trade/{kind}`.
+Writes require `{company,kind,code,expectedRevision,active,data}`; create uses
+revision 0 and update uses the last returned revision. Codes cannot be renamed.
+All references are company-scoped and must cover the configuration's inclusive
+validity window. Saving configuration never posts a journal or initiates payment.
+Lists use `company`, bounded `limit` (default 100, maximum 500), optional code
+`cursor`, and literal, case-sensitive name-prefix `search`. Current and
+recorded-at history (including disabled configurations) are available through
+`GET /api/v1/trade/{kind}/{code}?company=...&at=...`.
+Percentages and tax rates are exact decimal strings with at most six fractional
+digits. Tax rates have explicit inclusive, non-overlapping date intervals;
+missing tax is never interpreted as zero-rated or exempt.

@@ -6,8 +6,10 @@ import { businessEn, businessZh } from "./business-labels.ts";
 import { ledgerEn, ledgerZh } from "./ledger-labels.ts";
 import { closeEn, closeZh } from "./close-labels.ts";
 import { aiEn, aiZh } from "./ai-labels.ts";
+import { tradeEn, tradeZh } from "./trade-labels.ts";
 
 export const zh = {
+  ...tradeZh,
   ...aiZh,
   ...closeZh,
   ...ledgerZh,
@@ -59,6 +61,7 @@ export type Language = "zh" | "en";
 export type LabelResources = Readonly<Record<LabelKey, string>>;
 
 export const en = {
+  ...tradeEn,
   ...aiEn,
   ...closeEn,
   ...ledgerEn,
