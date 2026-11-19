@@ -89,6 +89,7 @@ const filenames = [
   "006-reports.sql",
   "007-period-close.sql",
   "008-journal-dates.sql",
+  "009-trade-master.sql",
 ];
 
 export function normalizeMigration(text: string): string {
@@ -159,6 +160,28 @@ export async function inspectSchema(
           ]
         : []),
       ...(latest >= 8 ? ["trigger:journal_entries_dates"] : []),
+      ...(latest >= 9
+        ? [
+            ...[
+              "trade_terms",
+              "trade_profiles",
+              "trade_tax_codes",
+              "trade_parties",
+              "trade_products",
+              "trade_config_history",
+            ].map((name) => `table:${name}`),
+            ...[
+              "trade_terms_name",
+              "trade_profiles_name",
+              "trade_tax_codes_name",
+              "trade_parties_name",
+              "trade_products_name",
+              "trade_config_history_at",
+            ].map((name) => `index:${name}`),
+            "trigger:trade_config_history_no_update",
+            "trigger:trade_config_history_no_delete",
+          ]
+        : []),
     ])
   )
     throw new StorageError("SCHEMA_MISMATCH");

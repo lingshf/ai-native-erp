@@ -228,6 +228,11 @@ export class SqliteExecutor implements ApplicationExecutor {
       (...args: ServiceMethod<S, M>["args"]) =>
         this.execute(service, method, args);
     return {
+      trade: {
+        list: bind("trade", "list"),
+        get: bind("trade", "get"),
+        save: bind("trade", "save"),
+      },
       masterData: {
         initialize: bind("masterData", "initialize"),
         createCompany: bind("masterData", "createCompany"),

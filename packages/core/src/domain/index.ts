@@ -4,6 +4,8 @@ export * from "./journals.ts";
 export * from "./business-events.ts";
 export * from "./period-close.ts";
 export * from "./trade-calculator.ts";
+export * from "./trade-master.ts";
+import type { TradeIssue } from "./trade-master.ts";
 import type { DimensionFieldIssue } from "./dimensions.ts";
 import type { JournalFieldIssue } from "./journals.ts";
 import type { BusinessIssue } from "./business-events.ts";
@@ -22,6 +24,7 @@ export class DomainError extends Error {
     | JournalFieldIssue
     | BusinessIssue
     | TradeCalculationIssue
+    | TradeIssue
     | undefined;
   constructor(
     code: DomainErrorCode,
@@ -30,7 +33,8 @@ export class DomainError extends Error {
       | DimensionFieldIssue
       | JournalFieldIssue
       | BusinessIssue
-      | TradeCalculationIssue,
+      | TradeCalculationIssue
+      | TradeIssue,
   ) {
     super(
       code === "OVERFLOW" ? "The exact integer range was exceeded." : "Invalid projection input.",

@@ -14,6 +14,7 @@ import { registerBusinessRoutes } from "./business-events.ts";
 import { registerReportRoutes } from "./reports.ts";
 import { registerPeriodCloseRoutes } from "./period-close.ts";
 import { registerAiRoutes } from "./ai-assistant.ts";
+import { registerTradeRoutes } from "./trade-master.ts";
 import { isMasterDataPath, registerMasterDataRoutes } from "./master-data.ts";
 import { healthSchema } from "@erp/core/contracts";
 import { LocalRuntimeInfo, parseRuntimeConfiguration } from "@erp/infra";
@@ -34,6 +35,7 @@ export { validateDevOrigin } from "./legacy.ts";
 const HEALTH_PATH = "/api/v1/health";
 
 export interface CreateApiOptions {
+  readonly trade?: ApplicationServices["trade"];
   readonly environment?: RuntimeEnvironment;
   readonly allowPortZero?: boolean;
   readonly webRoot?: string;
@@ -127,6 +129,7 @@ export async function createApi(options: CreateApiOptions = {}): Promise<LocalAp
     registerReportRoutes(server, options.reports, boundary);
     registerPeriodCloseRoutes(server, options.closing, boundary);
     registerAiRoutes(server, options.assistant, boundary);
+    registerTradeRoutes(server, options.trade, boundary);
     const root = options.webRoot ?? defaultWebRoot();
     if (!isAbsolute(root)) throw new TypeError("Web root must be absolute");
     let built = false;
