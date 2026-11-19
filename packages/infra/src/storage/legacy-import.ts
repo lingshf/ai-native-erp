@@ -549,8 +549,8 @@ export async function executeLegacyImport(
     }
     db.pragma("journal_mode=WAL");
     db.pragma("synchronous=NORMAL");
-    // Amortize Windows flushes without unbounded WAL-index lookup growth.
-    db.pragma("wal_autocheckpoint=262144");
+    // Bound checkpoint work per commit and the final close without an unbounded WAL.
+    db.pragma("wal_autocheckpoint=65536");
     db.pragma("cache_size=-131072");
     const repo = masterDataRepository(raw);
     // All metadata is complete and immutable during the journal phase.

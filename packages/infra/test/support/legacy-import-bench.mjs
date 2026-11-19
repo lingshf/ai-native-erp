@@ -189,6 +189,7 @@ try {
                 peakRssMiB: process.resourceUsage().maxRSS / 1024,
                 commitMs: profile.commitMs,
                 commitCpuMs: profile.commitCpuMs,
+                walMiB: observeWal() / 1024 ** 2,
               }),
             );
         },

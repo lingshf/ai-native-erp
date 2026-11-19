@@ -301,9 +301,17 @@ it("pages chronological same-entry lines with exact running balances and a stabl
         .all(...params)
         .map((row) => String((row as { detail: string }).detail))
         .join("\n");
-    expect(
-      plan(REPORT_BALANCES_SQL, ["2026-02", "2026-02", "2026-02", "2026-01", "A", "2026-02", "A"]),
-    ).toContain("SEARCH l USING COVERING INDEX journal_lines_report_totals");
+    const reportPlan = plan(REPORT_BALANCES_SQL, [
+      "2026-02",
+      "2026-02",
+      "2026-02",
+      "2026-01",
+      "A",
+      "2026-02",
+      "A",
+    ]);
+    expect(reportPlan).toContain("SEARCH l USING COVERING INDEX journal_lines_report_totals");
+    expect(reportPlan).not.toContain("USE TEMP B-TREE FOR GROUP BY");
     const ledgerPlan = plan(
       `${LEDGER_ROWS_SQL} ORDER BY e.accounting_date,e.id,l.line_no LIMIT ?`,
       ["A", "2026-02", 9999, "1000", 100],

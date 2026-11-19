@@ -22,6 +22,10 @@ CREATE TABLE legacy_refs (
 CREATE INDEX legacy_refs_target ON legacy_refs(target_id,object_type,run_id);
 -- Cover the deferred entry/line FK probe; a company-only covering scan is quadratic.
 CREATE INDEX journal_lines_entry_period ON journal_lines(company_id,entry_id,period);
+-- Stream account aggregates instead of sorting every imported GL row.
+DROP INDEX journal_lines_report_totals;
+CREATE INDEX journal_lines_report_totals
+  ON journal_lines(company_id,account_code,period,debit_minor,credit_minor);
 CREATE TABLE write_seq (
   id INTEGER PRIMARY KEY CHECK(id=1),
   value INTEGER NOT NULL CHECK(typeof(value)='integer' AND value>=0)
