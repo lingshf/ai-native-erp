@@ -5,4 +5,6 @@ export type PostingAdapterRegistry = Readonly<
 >;
 
 // Register production adapters here when their module is implemented, never from request data.
-export const postingAdapters: PostingAdapterRegistry = Object.freeze({});
+export const postingAdapters: PostingAdapterRegistry = Object.freeze({
+  TRADE: Object.freeze(["AP", "AR", "TAX"] as const),
+});

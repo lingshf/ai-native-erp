@@ -3,7 +3,7 @@ import { tradeConfigSchema } from "@erp/core/contracts";
 import type { TradeKind, TradeConfig } from "@erp/core/domain";
 import type { Connection, Row, Parameters } from "./types.ts";
 
-const tables = {
+export const tradeTables = {
   tradeParty: "trade_parties",
   tradeProduct: "trade_products",
   tradeProfile: "trade_profiles",
@@ -24,7 +24,7 @@ function decode(value: unknown): TradeConfig {
   if (!parsed.success) throw new StorageError("STORAGE_FAILURE");
   return parsed.data;
 }
-function rowConfig(kind: TradeKind, row: Row): TradeConfig {
+export function tradeConfigRow(kind: TradeKind, row: Row): TradeConfig {
   const base = { name: row.name, from: row.valid_from, to: row.valid_to };
   const data =
     kind === "tradeParty"
@@ -157,20 +157,20 @@ export function tradeRepository(db: Connection): TradeRepository {
         );
         return rows[0] ? decode(json(rows[0].snapshot)) : null;
       }
-      const rows = await db.query(`SELECT * FROM ${tables[kind]} WHERE company_id=? AND code=?`, [
-        company,
-        code,
-      ]);
-      return rows[0] ? rowConfig(kind, rows[0]) : null;
+      const rows = await db.query(
+        `SELECT * FROM ${tradeTables[kind]} WHERE company_id=? AND code=?`,
+        [company, code],
+      );
+      return rows[0] ? tradeConfigRow(kind, rows[0]) : null;
     },
     async tradePage(company, kind, query) {
       const prefix = query.search;
       const end = prefix === undefined ? null : prefixEnd(prefix);
       // The lexicographic successor includes suffixes beginning with the largest Unicode scalar.
       const search = prefix === undefined ? "" : ` AND name>=?${end === null ? "" : " AND name<?"}`;
-      const index = prefix === undefined ? "" : ` INDEXED BY ${tables[kind]}_name`;
+      const index = prefix === undefined ? "" : ` INDEXED BY ${tradeTables[kind]}_name`;
       const rows = await db.query(
-        `SELECT * FROM ${tables[kind]}${index} WHERE company_id=? AND code>?${search} ORDER BY code LIMIT ?`,
+        `SELECT * FROM ${tradeTables[kind]}${index} WHERE company_id=? AND code>?${search} ORDER BY code LIMIT ?`,
         [
           company,
           query.cursor ?? "",
@@ -178,13 +178,13 @@ export function tradeRepository(db: Connection): TradeRepository {
           query.limit + 1,
         ],
       );
-      const items = rows.slice(0, query.limit).map((row) => rowConfig(kind, row));
+      const items = rows.slice(0, query.limit).map((row) => tradeConfigRow(kind, row));
       return { items, nextCursor: rows.length > query.limit ? items[items.length - 1].code : null };
     },
     async saveTradeConfig(company, config, expected, at) {
       const values = fields(config),
         columns = Object.keys(values),
-        table = tables[config.kind];
+        table = tradeTables[config.kind];
       if (expected === 0) {
         await db.query(
           `INSERT INTO ${table}(company_id,code,${columns.join(",")}) VALUES(?,?,${columns.map(() => "?").join(",")})`,

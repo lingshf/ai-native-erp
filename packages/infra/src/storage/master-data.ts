@@ -21,6 +21,7 @@ import { businessRepository } from "./business-events.ts";
 import { reportRepository } from "./reports.ts";
 import { periodCloseRepository } from "./period-close.ts";
 import { tradeRepository } from "./trade-master.ts";
+import { tradeDocumentRepository } from "./trade-documents.ts";
 import type { Connection, Row, SqliteStorageConfig } from "./types.ts";
 
 function decode<T>(schema: ContractSchema<T>, value: unknown): T {
@@ -80,6 +81,7 @@ function page<T>(
 function repository(db: Connection): MasterDataRepository {
   return {
     ...tradeRepository(db),
+    ...tradeDocumentRepository(db),
     ...dimensionRepository(db),
     ...journalRepository(db),
     ...businessRepository(db),

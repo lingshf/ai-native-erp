@@ -6,10 +6,15 @@ import type { ReportService } from "./reports.ts";
 import type { PeriodCloseService } from "./period-close.ts";
 import type { AiContextService } from "./ai-assistant.ts";
 import type { TradeMasterService } from "./trade-master.ts";
+import type { TradeDocumentService } from "./trade-documents.ts";
 
 export type ExecutionLane = "write" | "heavy" | "light";
 export interface ApplicationServices {
   trade: Pick<TradeMasterService, "list" | "get" | "save">;
+  tradeDocs: Pick<
+    TradeDocumentService,
+    "createOrder" | "order" | "preview" | "confirm" | "list" | "detail" | "openItems"
+  >;
   masterData: Pick<
     MasterDataService,
     | "initialize"
@@ -50,6 +55,15 @@ export interface ApplicationServices {
 
 export const applicationLanes = {
   trade: { list: "light", get: "light", save: "write" },
+  tradeDocs: {
+    createOrder: "write",
+    order: "light",
+    preview: "heavy",
+    confirm: "write",
+    list: "light",
+    detail: "light",
+    openItems: "light",
+  },
   masterData: {
     initialize: "write",
     createCompany: "write",

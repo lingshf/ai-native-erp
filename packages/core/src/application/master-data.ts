@@ -24,6 +24,7 @@ import type { BusinessRepository } from "./business-events.ts";
 import type { ReportRepository } from "./reports.ts";
 import type { PeriodCloseRepository } from "./period-close.ts";
 import type { TradeRepository } from "./trade-master.ts";
+import type { TradeDocumentRepository } from "./trade-documents.ts";
 import { businessError } from "@erp/core/domain";
 
 export interface MasterDataRepository
@@ -32,7 +33,8 @@ export interface MasterDataRepository
     BusinessRepository,
     ReportRepository,
     PeriodCloseRepository,
-    TradeRepository {
+    TradeRepository,
+    TradeDocumentRepository {
   company(code: string): Promise<Company | null>;
   companies(query: PageQuery): Promise<Page<Company>>;
   currencyScale(currency: string): Promise<number | null>;

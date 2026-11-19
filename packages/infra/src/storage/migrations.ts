@@ -90,6 +90,7 @@ const filenames = [
   "007-period-close.sql",
   "008-journal-dates.sql",
   "009-trade-master.sql",
+  "010-trade-documents.sql",
 ];
 
 export function normalizeMigration(text: string): string {
@@ -180,6 +181,34 @@ export async function inspectSchema(
             ].map((name) => `index:${name}`),
             "trigger:trade_config_history_no_update",
             "trigger:trade_config_history_no_delete",
+          ]
+        : []),
+      ...(latest >= 10
+        ? [
+            ...[
+              "trade_orders",
+              "trade_order_lines",
+              "trade_documents",
+              "trade_document_lines",
+              "open_items",
+              "settlements",
+            ].map((name) => `table:${name}`),
+            ...[
+              "trade_documents_external",
+              "trade_documents_company",
+              "trade_document_lines_order",
+              "open_items_party_due",
+              "settlements_item",
+            ].map((name) => `index:${name}`),
+            "trigger:open_items_no_delete",
+            "trigger:open_items_balance_only",
+            ...[
+              "trade_orders",
+              "trade_order_lines",
+              "trade_documents",
+              "trade_document_lines",
+              "settlements",
+            ].flatMap((name) => [`trigger:${name}_no_update`, `trigger:${name}_no_delete`]),
           ]
         : []),
     ])

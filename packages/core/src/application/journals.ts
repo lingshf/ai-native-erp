@@ -87,6 +87,12 @@ export class JournalService {
     return Object.freeze({
       preview: (company: string, draft: JournalDraft) => this.previewFor(company, draft, adapter),
       confirm: (input: JournalConfirm) => this.confirmFor(input, adapter),
+      plan: (
+        repo: MasterDataRepository,
+        company: string,
+        draft: JournalDraft,
+        master: readonly DimensionMap[],
+      ) => this.planFor(repo, company, draft, master, adapter),
     });
   }
   list(company: string, status: "draft" | "posted", query: PageQuery) {
