@@ -185,7 +185,7 @@ function SettlementEntry({
   const page = useInfiniteQuery({
     queryKey: ["tradeOpenItems", company.code],
     initialPageParam: "",
-    refetchOnMount: true,
+    refetchOnMount: "always",
     queryFn: ({ pageParam, signal }) =>
       masterRequest(
         `/api/v1/trade/open-items?company=${encodeURIComponent(company.code)}&status=open&limit=100${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`,

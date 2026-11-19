@@ -123,6 +123,90 @@ GL 核对固定为本公司**全部伙伴及 AP/AR**、从账首至同一截止�
 
 迁移 **013** 仅增加 `periods.modules`（JSON 数组，原期间全部 `[]`）及两项查询索引，001–012、原事实/GL/回执/版本不改。新公司与新开期间同样默认 `[]`，不会继承或自动打开 trade/tax。`/#/period-close` 显式勾选 trade 和 tax、填写原因后保存；`PUT /api/v1/periods` 现在必须含 `modules: [] | ["trade"] | ["tax"] | ["trade","tax"]`，沿期间 revision CAS/历史记录。所有 TRADE 写入（含无 GL 应用反向、专用取消）统一要求**会计日期间**开放且两模块均准入，税日期间不另检查；普通 GL 行为不变。准入撤销再打开也会变更期间版本，旧预览失效；成功原幂等封套重试仍先返回旧回执。期间写入、付款确认均先保存完整封套并逐字读回，失败不发送；期间 CAS 的未知结果只重试原封套，冲突后明确报错并重新读取期间。
 
+### 贸易 GUI 主路径验收（M1-07）
+
+只使用全新的临时教学账套，不打开 4173、原账、`.bak` 或已有账套。先 `npm run build`，再在 PowerShell 启动独立实例：
+
+```powershell
+$demo = Join-Path ([IO.Path]::GetTempPath()) ("erp-trade-demo-" + [guid]::NewGuid())
+New-Item -ItemType Directory -Path $demo | Out-Null
+$env:ERP_SQLITE_FILE = Join-Path $demo "demo.sqlite"
+$env:ERP_PORT = "4187"
+$env:ERP_HOST = "127.0.0.1"
+$env:ERP_PROFILE = "local"
+npm run storage:admin -- migrate --provider sqlite --file $env:ERP_SQLITE_FILE
+npm run start:local
+```
+
+浏览器打开 `http://127.0.0.1:4187`。以下使用默认公司、CNY 两位精度、**同一当天日期**，全部日期位于默认公司的当前财年。各主数据有效期设为该年 01-01 至 12-31。只操作虚构数据；不代表银行付款、实物退货或生产合规验收。
+
+先在「科目表」新建下表六个有效科目，均选择用途 `control`、禁止手工输入；资产正常借方、负债正常贷方。现金 `1000`、收入/折扣 `4000`、费用 `5000` 使用初始内置科目。在「期间结账」选择当天月份，勾选 `trade` 和 `tax`，填写虚构演示原因，明确保存期间准入。
+
+| 科目 | 类别 / 报表组 | 统驭模块 |
+| --- | --- | --- |
+| 2100 | LIABILITY / payables | AP |
+| 1250 | ASSET / prepayments | AP |
+| 1300 | ASSET / receivables | AR |
+| 2300 | LIABILITY / otherLiabilities | AR |
+| 1400 | ASSET / otherAssets | TAX |
+| 2200 | LIABILITY / taxLiabilities | TAX |
+
+在「贸易主数据」按顺序新建以下配置。名称任填虚构名称；均启用；未列出的引用留空、维度 `{}`。
+
+| 类型 / 代码 | 字段 |
+| --- | --- |
+| 付款条件 `N30` | 到期 30 天、折扣 7 天、折扣率 `1.5`、允许部分付款折扣 |
+| 税码 `VAT` | ordinary、可抵扣 `100`、进项 `1400`、销项 `2200`；税率 JSON 为 `[{"id":"STANDARD","from":"2026-01-01","to":"2026-12-31","ratePercent":"13"}]`（把年份改成当前财年） |
+| 过账配置 `PAY` | AP、统驭 `2100`、预付 `1250`、现金 `1000`、折扣 `4000` |
+| 过账配置 `REC` | AR、统驭 `1300`、预收 `2300`、现金 `1000`、折扣 `4000` |
+| 伙伴 `PARTY` | both、AP 配置 `PAY`、AR 配置 `REC`、条款 `N30`、允许税码 `VAT` |
+| 非库存商品 `EXPENSE` | expense、费用 `5000`、允许税码 `VAT` |
+| 非库存商品 `SERVICE` | service、收入 `4000`、允许税码 `VAT` |
+
+**订单目前只有 API，没有订单录入 GUI**。在第二个 PowerShell 窗口显式创建采购订单（与浏览器使用同一新临时实例）；之后的发票匹配及财务主路径全部在 GUI 完成：
+
+```powershell
+$origin = "http://127.0.0.1:4187"
+$today = Get-Date -Format "yyyy-MM-dd"
+$po = @{
+  company="DEFAULT"; orderId="PO-DEMO"; side="AP"; party="PARTY"; currency="CNY"
+  orderDate=$today; priceIncludesTax=$false; rounding="line"
+  lines=@(@{
+    lineId="OL1"; product="EXPENSE"; taxCode="VAT"; quantity="10"
+    unitPrice="10"; discountPercent="0"; taxableCharge="0"
+  })
+} | ConvertTo-Json -Depth 5
+Invoke-RestMethod "$origin/api/v1/trade/orders" -Method Post `
+  -Headers @{Origin=$origin} -ContentType "application/json" -Body $po
+```
+
+| 顺序 / 页面 | 操作与预期 |
+| --- | --- |
+| 采购和销售发票 | AP、伙伴 `PARTY`、外部号 `AP-DEMO`、订单 `PO-DEMO`；行 `L1`：`EXPENSE`、`VAT`、数量 `10`、单价 `10`、订单行 `OL1`，其余金额 `0`。预览显示净额 **100.00**、税 **13.00**、总额 **113.00**、匹配成功；再明确「确认发票」。 |
+| 付款与收款 | 伙伴 `PARTY`、AP，选择 `AP-DEMO`；核销金额输入整数最小单位 **5650**，勾选现金折扣。预览核销 **56.50**、现金 **55.75**、折扣 **0.75**、余款 **56.50**，再明确确认账面核销。 |
+| 预付、贷项与纠错 | 新建 AP 预付，伙伴 `PARTY`、总额 **2000**；预览并确认。选择「应用预付/贷项」，来源选刚创建的预付，目标 `AP-DEMO`、金额 **2000**，预览确认后发票余款 **36.50**、预付余款 **0.00**。 |
+| 采购和销售发票 | AR、伙伴 `PARTY`、外部号 `AR-DEMO`；行 `L1`：`SERVICE`、`VAT`、数量 `10`、单价 `10`，不填订单。预览 **113.00**，明确确认。 |
+| 预付、贷项与纠错 | 「非库存贷项」来源 `AR-DEMO`、原行 `L1`、数量 `2`；预览确认 **22.60**。再「取消单据」选择刚创建的贷项，原发票当前版本填 `2`，填写原因、预览确认；之后选择 `AR-DEMO`、原发票版本留空，填写原因、预览确认取消销售发票。 |
+| 往来未结项与账龄 | 当前或当天月份的月末查询：发票未结 **36.50**、贷项/预付 **0.00**。当天仍为未到期；月份变更须「应用筛选」。切换「GL 核对」，`2100` 子账和贸易 GL 均为 **-36.50**，各行贸易差异/总差异 **0.00**。 |
+
+每次返回付款/纠错页都会重新读取未结项，避免跨页新发票或核销后仍显示缓存余额/版本。已部分核销的 `AP-DEMO` 不能直接取消，须先专用反向依赖。预览永不自动确认；会话存储不能写入并逐字读回时不发送确认；未知结果只用原确认封套显式重试。
+
+页面支持 Tab / Shift+Tab、方向键选择、Space 勾选和 Enter 按钮；发票还支持 Alt+Shift+N 新行、Ctrl+Enter 预览。可在未提交时切换中/英和红/绿偏好，输入与预览保留，不触发财务提交。下图来自上述全新虚构账套主路径的真实浏览器：
+
+![贸易主路径：月末 GL 核对（英文、绿主题）](docs/images/trade-main-path-en-green.png)
+
+![贸易主路径：月末 GL 核对（中文、红主题）](docs/images/trade-main-path-zh-red.png)
+
+真实浏览器测试为 `packages/infra/test/http/trade-gui.slow.test.ts`，中/英 × 红/绿四组合均仅用键盘完成同一主路径，另测存储拒写、提交已落库但响应丢失的原封套重试、依赖阻止取消。只预置六个基础 GL 科目及上述 API 采购订单；贸易配置、期间准入、发票、付款、动作和报表操作经过真实 Web。测试自行构建前端、临时建库、启动 loopback HTTP 与生产 SQLite workers，结束关闭并清理自有目录；不触碰已有实例。
+
+```powershell
+npx playwright install --only-shell chromium
+npx vitest run packages\infra\test\http\trade-gui.slow.test.ts
+node packages\infra\bench\trade-http.ts
+```
+
+如果本机已安装 Edge 且 Chromium 下载受限，可在运行慢测前显式设 `$env:ERP_E2E_BROWSER_CHANNEL="msedge"`；CI 使用固定 Playwright Chromium。截图/浏览器 trace 输出到 `artifacts/ci/trade-e2e`，Full main/每晚层上传；PR 受影响测试仍排除 `*.slow.test.ts`，不安装浏览器、不设墙钟门槛。百万 GL 行 + 1000 伙伴 + 10 万未结项的三次 loopback HTTP p95 只在 Bench 层衡量，口径、原始采样和结果见[贸易性能证据](docs/performance/trade-e2e-bench.md)。
+
 ### 贸易计算器（M1-02）
 
 `@erp/core/domain` 导出无 I/O 的 `calculateTrade` 和对称 half-up 的 `roundTradeRatio`。计算输入显式包含 `side: "ap" | "ar"`、相同的 `currency`/`accountingCurrency`、`scale: 0..4`、`priceMode: "exclusive" | "inclusive"`、`rounding: "line" | "document"` 及 1–100 个唯一 `id` 的行。行的 `quantity`、`unitPrice`、`discountPercent`、`taxableCharges` 均为非负十进制字符串，数量必须正；数量/单价/百分比最多六位小数，费用使用币种精度。税配置显式传 `code`、`treatment: "standard" | "zero" | "exempt"`、`ratePercent`、`deductiblePercent`（百分比 0–100）；调用者先按 `taxDate` 解析并验证有效税码，计算器不查主数据、不替上层推断税码。未知字段（包括客户端税额、库存类型）明确拒绝，单据舍入后总额必须正。
