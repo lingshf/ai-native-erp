@@ -255,7 +255,12 @@ function SettlementEntry({
       };
     }
     try {
-      window.sessionStorage.setItem(storageKey(company.code), JSON.stringify({ command, pending }));
+      const serialized = JSON.stringify({ command, pending });
+      window.sessionStorage.setItem(storageKey(company.code), serialized);
+      if (window.sessionStorage.getItem(storageKey(company.code)) !== serialized) {
+        setStorageFailed(true);
+        return;
+      }
     } catch {
       setStorageFailed(true);
       return;

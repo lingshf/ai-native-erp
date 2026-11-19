@@ -257,6 +257,16 @@ describe("trade invoices on real SQLite", () => {
     const master = new MasterDataService(seedStore);
     try {
       await master.initialize(2026);
+      for (let month = 1; month <= 12; month++)
+        await master.setPeriod(
+          "DEFAULT",
+          `2026-${String(month).padStart(2, "0")}`,
+          1,
+          "open",
+          "Enable fictional trade",
+          true,
+          ["trade", "tax"],
+        );
       for (const [code, category, reportGroup, controlModule] of [
         ["2100", "LIABILITY", "payables", "AP"],
         ["1250", "ASSET", "prepayments", "AP"],
@@ -431,6 +441,410 @@ describe("trade invoices on real SQLite", () => {
       reason: "Fictional cancellation",
     });
   }
+  it("keeps TC-T10 January history after February settlement, with independent credits/advances and saved inactive accounts", async () => {
+    const command = invoice({
+      accountingDate: "2026-01-05",
+      documentDate: "2026-01-05",
+      taxDate: "2026-01-05",
+      priceIncludesTax: true,
+      lines: [line({ quantity: "81.97", unitPrice: "1" })],
+    });
+    await post(command);
+    await act({
+      ...actionHeader(),
+      kind: "credit",
+      invoiceId: command.documentId,
+      revision: 1,
+      accountingDate: "2026-01-06",
+      lines: [{ sourceLineId: "L1", quantity: "10" }],
+    });
+    await act({ ...advance("AP", 500), accountingDate: "2026-01-06" });
+    const january = await service.report("DEFAULT", { month: "2026-01", limit: 1 });
+    expect(january.totals).toEqual({
+      invoiceGrossMinor: 8197,
+      notDue: 8197,
+      overdue1_30: 0,
+      overdue31_60: 0,
+      overdue61_90: 0,
+      overdue91Plus: 0,
+      creditGrossMinor: 1000,
+      advanceGrossMinor: 500,
+    });
+    const first = await current(command.documentId);
+    const paid = await settle({
+      ...payment(command, 4099, false, first.revision),
+      accountingDate: "2026-02-12",
+    });
+    const trade = new TradeMasterService(store);
+    const party = await trade.get("DEFAULT", "tradeParty", "V1");
+    await trade.save({
+      ...party,
+      company: "DEFAULT",
+      expectedRevision: party.revision,
+      active: false,
+    });
+    const account = await master.account("DEFAULT", "2100");
+    await master.saveAccount("DEFAULT", { ...account, active: false }, account.revision);
+    const historical = await service.report("DEFAULT", { month: "2026-01", limit: 100 });
+    expect(historical.totals).toEqual(january.totals);
+    expect(historical.items.find((i) => i.documentId === command.documentId)).toMatchObject({
+      remainingGrossMinor: 8197,
+      dueDate: "2026-02-04",
+      overdueDays: 0,
+      ageingBucket: "notDue",
+      controlAccount: "2100",
+    });
+    expect(historical.items.filter((i) => i.kind !== "invoice")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "credit",
+          dueDate: null,
+          overdueDays: null,
+          ageingBucket: null,
+        }),
+        expect.objectContaining({
+          kind: "advance",
+          dueDate: null,
+          overdueDays: null,
+          ageingBucket: null,
+        }),
+      ]),
+    );
+    const february = await service.report("DEFAULT", { month: "2026-02", limit: 100 });
+    expect(february.totals).toMatchObject({
+      invoiceGrossMinor: 4098,
+      overdue1_30: 4098,
+      notDue: 0,
+      creditGrossMinor: 1000,
+      advanceGrossMinor: 500,
+    });
+    const detail = await service.itemDetail("DEFAULT", command.documentId, "2026-01");
+    expect(detail.current.remainingGross).toBe(4098);
+    expect(detail.selected.remainingGrossMinor).toBe(8197);
+    expect(detail.current.revision).toBeGreaterThan(detail.selected.version);
+    expect(detail.settlements).toEqual([]);
+    expect(
+      (await service.itemDetail("DEFAULT", command.documentId, "2026-02")).settlements[0].paymentId,
+    ).toBe(paid.receipt.paymentId);
+    expect(
+      (await service.reconciliation("DEFAULT", "2026-01")).rows.every(
+        (r) => r.differenceMinor === 0,
+      ),
+    ).toBe(true);
+    await store.close();
+    store = createMasterDataStore({ filename });
+    service = new TradeDocumentService(
+      store,
+      new JournalService(store, journalTools),
+      journalTools,
+    );
+    expect((await service.report("DEFAULT", { month: "2026-01", limit: 100 })).totals).toEqual(
+      january.totals,
+    );
+  });
+
+  it("puts the exact due date and 1/30/31/60/61/90/91 day edges in disjoint invoice buckets", async () => {
+    const dates = [
+      "2026-03-31",
+      "2026-03-30",
+      "2026-03-01",
+      "2026-02-28",
+      "2026-01-30",
+      "2026-01-29",
+      "2025-12-31",
+      "2025-12-30",
+    ];
+    const ids: string[] = [];
+    for (const documentDate of dates) {
+      const command = invoice({
+        accountingDate: "2026-04-30",
+        documentDate,
+        lines: [line({ quantity: "1", unitPrice: "1", taxCode: "EXEMPT" })],
+      });
+      await post(command);
+      ids.push(command.documentId);
+    }
+    const report = await service.report("DEFAULT", { month: "2026-04", limit: 100 });
+    expect(ids.map((id) => report.items.find((r) => r.documentId === id)?.overdueDays)).toEqual([
+      0, 1, 30, 31, 60, 61, 90, 91,
+    ]);
+    expect(report.totals).toEqual({
+      invoiceGrossMinor: 800,
+      notDue: 100,
+      overdue1_30: 200,
+      overdue31_60: 200,
+      overdue61_90: 200,
+      overdue91Plus: 100,
+      creditGrossMinor: 0,
+      advanceGrossMinor: 0,
+    });
+  });
+
+  it("aggregates applications, reversals, refunds and cancellations at their own accounting dates, including no-GL actions", async () => {
+    const command = invoice();
+    await post(command);
+    const credited = await act({
+      ...actionHeader(),
+      kind: "credit",
+      invoiceId: command.documentId,
+      revision: 1,
+      lines: [{ sourceLineId: "L1", quantity: "10" }],
+    });
+    const creditId = credited.receipt.actionId;
+    const applied = await act({
+      ...actionHeader(),
+      kind: "apply",
+      sourceId: creditId,
+      sourceRevision: 1,
+      targetId: command.documentId,
+      targetRevision: (await current(command.documentId)).revision,
+      gross: 11300,
+    });
+    expect(applied.receipt.journalIds).toEqual([]);
+    expect((await service.report("DEFAULT", { month: "2026-01", limit: 100 })).items).toEqual([]);
+    await undo(applied.receipt.actionId, [creditId, command.documentId], "2026-02-01");
+    const february = await service.report("DEFAULT", { month: "2026-02", limit: 100 });
+    expect(february.totals).toMatchObject({ invoiceGrossMinor: 11300, creditGrossMinor: 11300 });
+    const refundCommand: TradeSettlementCommand = {
+      ...payment(command, 11300, false, (await current(creditId)).revision),
+      accountingDate: "2026-03-01",
+      items: [
+        {
+          itemId: creditId,
+          revision: (await current(creditId)).revision,
+          gross: 11300,
+          takeDiscount: false,
+        },
+      ],
+    };
+    const refund = await settle(refundCommand);
+    expect(
+      (await service.report("DEFAULT", { month: "2026-03", limit: 100 })).totals.creditGrossMinor,
+    ).toBe(0);
+    await undo(refund.receipt.paymentId, [creditId], "2026-04-01");
+    await cancel(creditId, command.documentId, "2026-04-01");
+    await cancel(command.documentId, undefined, "2026-05-01");
+    expect((await service.report("DEFAULT", { month: "2026-02", limit: 100 })).totals).toEqual(
+      february.totals,
+    );
+    expect(
+      (await service.report("DEFAULT", { month: "2026-04", limit: 100 })).totals,
+    ).toMatchObject({ invoiceGrossMinor: 11300, creditGrossMinor: 0 });
+    expect((await service.report("DEFAULT", { month: "2026-05", limit: 100 })).items).toEqual([]);
+    for (const month of ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05"])
+      expect(
+        (await service.reconciliation("DEFAULT", month)).rows.every((r) => r.differenceMinor === 0),
+      ).toBe(true);
+  });
+
+  it("keeps other-source GL and true trade differences visible on saved control accounts", async () => {
+    await post(invoice());
+    const draft = {
+      id: randomUUID(),
+      revision: 0,
+      sourceRef: "FICTIONAL-IMPORT",
+      date: "2026-01-25",
+      memo: "Other source on saved AP",
+      kind: "normal" as const,
+      operation: "journal" as const,
+      originalId: null,
+      headerDimensions: {},
+      lines: [
+        { account: "2100", debit: "", credit: "7.00", dimensions: {}, suspense: null },
+        { account: "5000", debit: "7.00", credit: "", dimensions: {}, suspense: null },
+      ],
+    };
+    const saved = await journals.save("DEFAULT", draft);
+    const imported = new JournalService(store, journalTools, { IMPORT: ["AP"] }).adapter("IMPORT");
+    const preview = await imported.preview("DEFAULT", saved);
+    await imported.confirm({
+      company: "DEFAULT",
+      draftId: saved.id,
+      revision: saved.revision,
+      fingerprint: preview.fingerprint,
+      idempotencyKey: randomUUID(),
+      confirmation: "POST",
+    });
+    expect(
+      (await service.reconciliation("DEFAULT", "2026-01")).rows.find((r) => r.account === "2100"),
+    ).toEqual({
+      account: "2100",
+      subledgerMinor: -11300,
+      tradeGlMinor: -11300,
+      otherSourceMinor: -700,
+      glMinor: -12000,
+      tradeDifferenceMinor: 0,
+      differenceMinor: -700,
+    });
+    const orphan = await journals.save("DEFAULT", {
+      ...draft,
+      id: randomUUID(),
+      sourceRef: "FICTIONAL-UNLINKED-TRADE",
+    });
+    const adapter = journals.adapter("TRADE");
+    const orphanPreview = await adapter.preview("DEFAULT", orphan);
+    await adapter.confirm({
+      company: "DEFAULT",
+      draftId: orphan.id,
+      revision: orphan.revision,
+      fingerprint: orphanPreview.fingerprint,
+      idempotencyKey: randomUUID(),
+      confirmation: "POST",
+    });
+    expect(
+      (await service.reconciliation("DEFAULT", "2026-01")).rows.find((r) => r.account === "2100"),
+    ).toMatchObject({
+      subledgerMinor: -11300,
+      tradeGlMinor: -12000,
+      otherSourceMinor: -700,
+      tradeDifferenceMinor: -700,
+      differenceMinor: -1400,
+    });
+    const raw = new Database(filename);
+    try {
+      raw
+        .prepare(
+          "UPDATE open_items SET remaining_gross_minor=10000,remaining_net_minor=9000,remaining_tax_minor=1000,revision=revision+1",
+        )
+        .run();
+    } finally {
+      raw.close();
+    }
+    // Historical/current reads derive from immutable facts, not a damaged mutable balance cache.
+    expect((await service.report("DEFAULT", { limit: 100 })).totals.invoiceGrossMinor).toBe(11300);
+  });
+
+  it("pins keyset pages to scope and facts while computing full unpaged totals and isolating companies/parties/sides", async () => {
+    const ap = invoice();
+    await post(ap);
+    await post(invoice({ party: "V2" }));
+    await post(invoice({ side: "AR", party: "C1", lines: [line({ product: "CONSULT" })] }));
+    const first = await service.report("DEFAULT", { month: "2026-01", limit: 1 });
+    if (first.nextCursor === null) throw new Error("Missing continuation cursor");
+    expect(first.items).toHaveLength(1);
+    expect(first.totals.invoiceGrossMinor).toBe(33900);
+    const second = await service.report("DEFAULT", {
+      month: "2026-01",
+      limit: 2,
+      cursor: first.nextCursor,
+      snapshot: first.snapshot,
+    });
+    expect(new Set([...first.items, ...second.items].map((r) => r.documentId)).size).toBe(3);
+    expect(second.totals).toEqual(first.totals);
+    await expect(
+      service.report("DEFAULT", { month: "2026-02", limit: 1, snapshot: first.snapshot }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(
+      (await service.report("DEFAULT", { limit: 100, side: "AR", party: "C1" })).totals
+        .invoiceGrossMinor,
+    ).toBe(11300);
+    await master.createCompany({
+      code: "OTHER",
+      name: "Other fictional",
+      currency: "CNY",
+      scale: 2,
+      year: 2026,
+      closeMode: "annual",
+    });
+    expect((await service.report("OTHER", { month: "2026-01", limit: 100 })).items).toEqual([]);
+    await expect(service.itemDetail("OTHER", ap.documentId)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    await settle(payment(ap, 1000));
+    await expect(
+      service.report("DEFAULT", {
+        month: "2026-01",
+        limit: 2,
+        cursor: first.nextCursor,
+        snapshot: first.snapshot,
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    for (const bad of [{ month: "2026-13", limit: 10 }, { limit: 10, cursor: "bad" }, { limit: 0 }])
+      await expect(service.report("DEFAULT", bad)).rejects.toMatchObject({ code: "INVALID_INPUT" });
+    const db = new Database(filename, { readonly: true });
+    try {
+      expect(
+        JSON.stringify(
+          db
+            .prepare(
+              "EXPLAIN QUERY PLAN SELECT sum(applied_gross_minor) FROM settlements WHERE company_id=? AND item_id=? AND accounting_date<=?",
+            )
+            .all("DEFAULT", ap.documentId, "2026-01-31"),
+        ),
+      ).toContain("settlements_item");
+    } finally {
+      db.close();
+    }
+  });
+
+  it.each([{ modules: ["trade"] }, { modules: ["tax"] }, { modules: [] }] as const)(
+    "rejects trade writes when admissions are $modules, invalidates ABA previews, and preserves completed retry",
+    async ({ modules }) => {
+      const original = invoice();
+      const posted = await post(original);
+      const command = invoice();
+      const preview = await service.preview(command);
+      await master.setPeriod(
+        "DEFAULT",
+        "2026-01",
+        2,
+        "open",
+        "Explicit module change",
+        true,
+        modules,
+      );
+      await expect(service.preview(command)).rejects.toMatchObject({ issue: { rule: "period" } });
+      expect(
+        await service.confirm({
+          command: original,
+          fingerprint: posted.preview.fingerprint,
+          idempotencyKey: posted.key,
+          confirmation: "POST",
+        }),
+      ).toEqual(posted.receipt);
+      await master.setPeriod("DEFAULT", "2026-01", 3, "open", "Restore module admission", true, [
+        "trade",
+        "tax",
+      ]);
+      await expect(
+        service.confirm({
+          command,
+          fingerprint: preview.fingerprint,
+          idempotencyKey: randomUUID(),
+          confirmation: "POST",
+        }),
+      ).rejects.toMatchObject({ code: "CONFLICT", issue: { rule: "stale" } });
+    },
+  );
+  it("applies module admission to no-GL reversals without writing any partial evidence", async () => {
+    const command = invoice();
+    await post(command);
+    const credit = await act({
+      ...actionHeader(),
+      kind: "credit",
+      invoiceId: command.documentId,
+      revision: 1,
+      lines: [{ sourceLineId: "L1", quantity: "10" }],
+    });
+    const application = await act({
+      ...actionHeader(),
+      kind: "apply",
+      sourceId: credit.receipt.actionId,
+      sourceRevision: 1,
+      targetId: command.documentId,
+      targetRevision: (await current(command.documentId)).revision,
+      gross: 11300,
+    });
+    expect(application.receipt.journalIds).toEqual([]);
+    await master.setPeriod("DEFAULT", "2026-01", 2, "open", "Revoke tax admission", true, [
+      "trade",
+    ]);
+    const before = counts();
+    await expect(
+      undo(application.receipt.actionId, [credit.receipt.actionId, command.documentId]),
+    ).rejects.toMatchObject({ issue: { path: "accountingDate", rule: "reference" } });
+    expect(counts()).toEqual(before);
+  });
   async function departments() {
     const dimensions = new DimensionService(store);
     const range = { revision: 0, active: true, from: "2026-01-01", to: "2026-12-31" };
@@ -998,7 +1412,7 @@ describe("trade invoices on real SQLite", () => {
       expect(counts()).toEqual(before);
     }
     const preview = await service.previewAction(command);
-    await master.setPeriod("DEFAULT", "2026-01", 1, "frozen", "Fictional hold", true);
+    await master.setPeriod("DEFAULT", "2026-01", 2, "frozen", "Fictional hold", true);
     await expect(
       service.confirmAction({
         command,
@@ -1838,7 +2252,7 @@ describe("trade invoices on real SQLite", () => {
       taxRateId: "NEW",
       ratePercent: "9",
     });
-    await master.setPeriod("DEFAULT", "2026-02", 1, "frozen", "Fictional tax month closed", true);
+    await master.setPeriod("DEFAULT", "2026-02", 2, "frozen", "Fictional tax month closed", true);
     const crossed = await post(
       invoice({ taxDate: "2026-02-27", documentDate: "2026-02-26", accountingDate: "2026-03-02" }),
     );
@@ -1863,6 +2277,7 @@ describe("trade invoices on real SQLite", () => {
   });
 
   it.each([
+    { version: 12, fault: "none" },
     { version: 9, fault: "none" },
     { version: 11, fault: "none" },
     { version: 10, fault: "none" },
@@ -2004,7 +2419,12 @@ describe("trade invoices on real SQLite", () => {
         );
         if (version === 9) expect(copied.map((row) => row.name)).not.toContain("trade_documents");
         for (const { name } of copied) {
-          if (name === "trade_documents") {
+          if (name === "trade_item_sources") continue;
+          if (name === "periods")
+            await db.query(
+              "INSERT INTO main.periods SELECT company_id,month,status,revision FROM existing.periods",
+            );
+          else if (name === "trade_documents") {
             const columns = await db.query("PRAGMA main.table_info(trade_documents)");
             const selections = columns.map((column) =>
               column.name === "snapshot"
@@ -2073,7 +2493,7 @@ describe("trade invoices on real SQLite", () => {
         try {
           expect(
             check.prepare("SELECT version FROM schema_migrations ORDER BY version").all(),
-          ).toEqual(Array.from({ length: 12 }, (_, index) => ({ version: index + 1 })));
+          ).toEqual(Array.from({ length: 13 }, (_, index) => ({ version: index + 1 })));
           expect(
             check
               .prepare(
@@ -2103,6 +2523,19 @@ describe("trade invoices on real SQLite", () => {
         }
         const upgradedJournals = new JournalService(upgraded, journalTools);
         const docs = new TradeDocumentService(upgraded, upgradedJournals, journalTools);
+        const upgradedMaster = new MasterDataService(upgraded);
+        const migratedPeriods = await upgradedMaster.periods("DEFAULT", { limit: 100 });
+        expect(migratedPeriods.items.every((p) => p.modules.length === 0)).toBe(true);
+        await expect(docs.preview(invoice())).rejects.toMatchObject({ issue: { rule: "period" } });
+        await upgradedMaster.setPeriod(
+          "DEFAULT",
+          "2026-01",
+          2,
+          "open",
+          "Explicit post-upgrade admission",
+          true,
+          ["trade", "tax"],
+        );
         if (version === 11 && legacyPaymentId) {
           expect((await docs.detail("DEFAULT", oldInvoice.documentId)).openItem).toMatchObject({
             remainingGross: 10170,
@@ -2246,6 +2679,49 @@ describe("trade invoices on real SQLite", () => {
         "/api/v1/trade/open-items?company=DEFAULT&party=V1&status=open",
       );
       expect(items.json().items).toEqual([expect.objectContaining({ itemId: command.documentId })]);
+      const historical = await send(
+        "GET",
+        "/api/v1/trade/reports/open-items?company=DEFAULT&month=2026-01&limit=1",
+      );
+      expect(historical.statusCode).toBe(200);
+      expect(historical.headers["cache-control"]).toContain("no-store");
+      expect(historical.json()).toMatchObject({
+        asOf: "2026-01-31",
+        totals: { invoiceGrossMinor: 11526 },
+      });
+      const reportDetail = await send(
+        "GET",
+        `/api/v1/trade/reports/open-items/${command.documentId}?company=DEFAULT&month=2026-01`,
+      );
+      expect(reportDetail.statusCode).toBe(200);
+      expect(reportDetail.json()).toMatchObject({
+        selected: { journalId: first.json().journalIds[0] },
+        document: { documentId: command.documentId },
+      });
+      expect(
+        (
+          await send("GET", "/api/v1/trade/reports/reconciliation?company=DEFAULT&month=2026-01")
+        ).json().rows,
+      ).toEqual(
+        expect.arrayContaining([expect.objectContaining({ account: "2100", differenceMinor: 0 })]),
+      );
+      expect(
+        (await send("GET", "/api/v1/trade/reports/reconciliation?company=DEFAULT&party=V1"))
+          .statusCode,
+      ).toBe(400);
+      expect((await send("POST", "/api/v1/trade/reports/open-items", {})).statusCode).toBe(405);
+      expect(
+        (await send("GET", "/api/v1/trade/reports/open-items?company=DEFAULT&month=2026-13"))
+          .statusCode,
+      ).toBe(400);
+      expect(
+        (
+          await api.app.inject({
+            url: "/api/v1/trade/reports/open-items?company=DEFAULT",
+            headers: { host, origin: "https://external.invalid" },
+          })
+        ).statusCode,
+      ).toBe(403);
       const settlement = payment(command, 5000, true);
       const plannedPayment = await send("POST", "/api/v1/trade/settlements/preview", settlement);
       expect(plannedPayment.statusCode).toBe(200);

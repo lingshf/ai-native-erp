@@ -407,7 +407,12 @@ it("freezes annual months without GL, revalidates unfreezes, closes the year onc
   for (let i = 0; i < 2; i++) {
     const response = await request("periods/2026-12/open-next", { company: "A", revision: 2 });
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ month: "2027-01", status: "open", revision: 1 });
+    expect(await response.json()).toEqual({
+      month: "2027-01",
+      status: "open",
+      revision: 1,
+      modules: [],
+    });
   }
   expect(counts().config_history).toBe(count + 1);
   const guard = new Database(filename);

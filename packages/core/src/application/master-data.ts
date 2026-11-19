@@ -7,6 +7,7 @@ import {
   checkedCode,
   checkedCompany,
   checkedExpectedRevision,
+  checkedName,
   checkedPage,
   checkedTeachingMonth,
   defaultAccounts,
@@ -25,7 +26,18 @@ import type { ReportRepository } from "./reports.ts";
 import type { PeriodCloseRepository } from "./period-close.ts";
 import type { TradeRepository } from "./trade-master.ts";
 import type { TradeDocumentRepository } from "./trade-documents.ts";
+import type { TradeReportingRepository } from "./trade-reporting.ts";
 import { businessError } from "@erp/core/domain";
+
+export interface PeriodChangeCommand {
+  readonly company: string;
+  readonly month: string;
+  readonly revision: number;
+  readonly status: Period["status"];
+  readonly reason: string;
+  readonly confirmed: boolean;
+  readonly modules: Period["modules"];
+}
 
 export interface MasterDataRepository
   extends DimensionRepository,
@@ -34,7 +46,8 @@ export interface MasterDataRepository
     ReportRepository,
     PeriodCloseRepository,
     TradeRepository,
-    TradeDocumentRepository {
+    TradeDocumentRepository,
+    TradeReportingRepository {
   company(code: string): Promise<Company | null>;
   companies(query: PageQuery): Promise<Page<Company>>;
   currencyScale(currency: string): Promise<number | null>;
@@ -46,6 +59,11 @@ export interface MasterDataRepository
   saveAccount(company: string, account: Account, expected: number): Promise<void>;
   periods(company: string, query: PageQuery): Promise<Page<Period>>;
   period(company: string, month: string): Promise<Period | null>;
+  periodChange(
+    company: string,
+    month: string,
+    revision: number,
+  ): Promise<{ readonly command: PeriodChangeCommand; readonly result: Period } | null>;
   savePeriod(company: string, period: Period, expected: number): Promise<void>;
   history(
     company: string,
@@ -106,6 +124,7 @@ export class MasterDataService {
         month: `${company.year}-${String(month).padStart(2, "0")}`,
         status: "open",
         revision: 1,
+        modules: [],
       };
       await repo.savePeriod(company.code, period, 0);
       await repo.history(company.code, "period", period.month, 1, period, at, "");
@@ -190,18 +209,63 @@ export class MasterDataService {
     status: Period["status"],
     reason: string,
     confirmed: boolean,
+    modules?: Period["modules"],
   ): Promise<Period> {
     checkedCode(company);
     checkedTeachingMonth(month);
+    checkedExpectedRevision(expected);
     if (status === "closed") throw new DomainError("INVALID_INPUT");
     return this.store.write(async (repo) => {
       const old = required(await repo.period(company, month));
+      if (
+        modules !== undefined &&
+        (!Array.isArray(modules) ||
+          modules.length > 2 ||
+          new Set(modules).size !== modules.length ||
+          modules.some((module) => module !== "trade" && module !== "tax"))
+      )
+        throw new DomainError("INVALID_INPUT");
+      const command: PeriodChangeCommand | undefined =
+        modules !== undefined && confirmed === true
+          ? {
+              company,
+              month,
+              revision: expected,
+              status,
+              reason: checkedName(reason, 160),
+              confirmed,
+              modules: [...modules],
+            }
+          : undefined;
+      if (command && old.revision !== expected) {
+        const accepted = await repo.periodChange(company, month, expected + 1);
+        if (accepted && JSON.stringify(accepted.command) === JSON.stringify(command))
+          return accepted.result;
+      }
       cas(old.revision, expected);
-      const next = changedPeriod(old, status, reason, confirmed);
+      if (
+        modules !== undefined &&
+        [...modules].sort().join() !== [...old.modules].sort().join() &&
+        confirmed !== true
+      )
+        throw new DomainError("INVALID_INPUT");
+      const next = {
+        ...changedPeriod(old, status, reason, confirmed),
+        modules: modules === undefined ? old.modules : [...modules].sort(),
+      };
       if (next.status !== "open" && (await repo.pendingTransfers(company, month)))
         businessError("status", "pending", true);
       await repo.savePeriod(company, next, expected);
-      await repo.history(company, "period", month, next.revision, next, this.now(), reason.trim());
+      const snapshot = command ? { ...next, command } : next;
+      await repo.history(
+        company,
+        "period",
+        month,
+        next.revision,
+        snapshot,
+        this.now(),
+        reason.trim(),
+      );
       return next;
     });
   }

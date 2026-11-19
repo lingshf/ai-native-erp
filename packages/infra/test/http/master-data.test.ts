@@ -60,6 +60,19 @@ describe("master data HTTP and real SQLite use cases", () => {
     if (directory) await rm(directory, { recursive: true, force: true });
   });
   const headers = () => ({ host });
+  function periodEvidence() {
+    const raw = new Database(join(directory, "target.sqlite"), { readonly: true });
+    try {
+      return {
+        periods: raw.prepare("SELECT * FROM periods WHERE company_id='DEFAULT'").all(),
+        history: raw
+          .prepare("SELECT * FROM config_history WHERE company_id='DEFAULT' AND kind='period'")
+          .all(),
+      };
+    } finally {
+      raw.close();
+    }
+  }
   it("seeds once, isolates company charts and currencies, and bounds stable company pagination", async () => {
     await service.initialize(2027);
     const seed = await api.app.inject({ url: "/api/v1/companies", headers: headers() });
@@ -265,6 +278,7 @@ describe("master data HTTP and real SQLite use cases", () => {
       status: "frozen",
       reason: "Review",
       confirmed: false,
+      modules: [],
     };
     const request = {
       method: "PUT" as const,
@@ -286,6 +300,97 @@ describe("master data HTTP and real SQLite use cases", () => {
       (await api.app.inject({ ...request, payload: { ...command, revision: 2, status: "open" } }))
         .statusCode,
     ).toBe(200);
+  });
+  it.for([
+    { initial: [], target: ["trade", "tax"] },
+    { initial: ["trade", "tax"], target: [] },
+  ] as const)(
+    "rejects an unconfirmed module change from $initial to $target without changing period or history",
+    async ({ initial, target }) => {
+      if (initial.length)
+        await service.setPeriod(
+          "DEFAULT",
+          "2026-01",
+          1,
+          "open",
+          "Explicit admission",
+          true,
+          initial,
+        );
+      const period = (await service.periods("DEFAULT", { limit: 1 })).items[0];
+      const before = periodEvidence();
+      const response = await api.app.inject({
+        method: "PUT",
+        url: "/api/v1/periods",
+        headers: headers(),
+        payload: {
+          company: "DEFAULT",
+          month: period.month,
+          revision: period.revision,
+          status: period.status,
+          reason: "Unconfirmed module change",
+          confirmed: false,
+          modules: target,
+        },
+      });
+      expect(response.statusCode).toBe(400);
+      expect(periodEvidence()).toEqual(before);
+    },
+  );
+  it("recovers an exact accepted admission after a lost response and restart without writing again or accepting a different command", async () => {
+    const command = {
+      company: "DEFAULT",
+      month: "2026-01",
+      revision: 1,
+      status: "open",
+      reason: "Explicit admission before lost response",
+      confirmed: true,
+      modules: ["trade", "tax"],
+    } as const;
+    const request = {
+      method: "PUT" as const,
+      url: "/api/v1/periods",
+      headers: headers(),
+      payload: command,
+    };
+    const accepted = await api.app.inject(request);
+    expect(accepted.statusCode).toBe(200);
+    const committed = periodEvidence();
+    const retry = await api.app.inject(request);
+    expect(retry.statusCode).toBe(200);
+    expect(retry.json()).toEqual(accepted.json());
+    for (const change of [
+      { reason: "A different confirmation" },
+      { status: "frozen" },
+      { confirmed: false },
+      { modules: ["tax", "trade"] },
+    ]) {
+      expect(
+        (await api.app.inject({ ...request, payload: { ...command, ...change } })).statusCode,
+      ).toBe(409);
+    }
+    expect(periodEvidence()).toEqual(committed);
+    await store.close();
+    store = createMasterDataStore({ filename: join(directory, "target.sqlite") });
+    service = new MasterDataService(store, () => now);
+    await service.setPeriod("DEFAULT", "2026-01", 2, "open", "Later revoke", true, []);
+    const later = periodEvidence();
+    expect(
+      await service.setPeriod(
+        command.company,
+        command.month,
+        command.revision,
+        command.status,
+        command.reason,
+        command.confirmed,
+        command.modules,
+      ),
+    ).toEqual(accepted.json());
+    expect(periodEvidence()).toEqual(later);
+    expect((await service.periods("DEFAULT", { limit: 1 })).items[0]).toMatchObject({
+      revision: 3,
+      modules: [],
+    });
   });
   it("uses the company/account primary-key index and keeps bounded lists below 1s p95 at 50 companies and 2000 accounts", async () => {
     const raw = new Database(join(directory, "target.sqlite"));
@@ -391,6 +496,7 @@ it("upgrades an authentic immutable 001 target only on explicit migration, prese
         { version: 10 },
         { version: 11 },
         { version: 12 },
+        { version: 13 },
       ]);
     } finally {
       raw.close();

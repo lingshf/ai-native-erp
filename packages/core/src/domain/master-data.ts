@@ -53,6 +53,7 @@ export interface Period {
   readonly month: string;
   readonly status: "open" | "frozen" | "closed";
   readonly revision: number;
+  readonly modules: readonly ("trade" | "tax")[];
 }
 export interface Page<T> {
   readonly items: readonly T[];

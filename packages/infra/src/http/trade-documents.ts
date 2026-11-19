@@ -23,6 +23,11 @@ import {
   tradeActionPreviewSchema,
   tradeActionReceiptSchema,
   tradeActionListSchema,
+  tradeReportQuerySchema,
+  tradeReportSchema,
+  tradeReportingScopeSchema,
+  tradeReconciliationSchema,
+  tradeItemDetailSchema,
   type ContractSchema,
 } from "@erp/core/contracts";
 import { DomainError } from "@erp/core/domain";
@@ -54,6 +59,28 @@ export function registerTradeDocumentRoutes(
     }
     return service;
   };
+  server.all("/api/v1/trade/reports/open-items", async (request, reply) => {
+    boundary.assert(request, reply, ["GET"]);
+    const { company, limit, ...query } = parse(tradeReportQuerySchema, request.query);
+    return tradeReportSchema.parse(
+      await ready(request).report(company, { ...query, limit: Number(limit) }),
+    );
+  });
+  server.all("/api/v1/trade/reports/reconciliation", async (request, reply) => {
+    boundary.assert(request, reply, ["GET"]);
+    const { company, month } = parse(tradeReportingScopeSchema, request.query);
+    return tradeReconciliationSchema.parse(await ready(request).reconciliation(company, month));
+  });
+  server.all<{ Params: { itemId: string } }>(
+    "/api/v1/trade/reports/open-items/:itemId",
+    async (request, reply) => {
+      boundary.assert(request, reply, ["GET"]);
+      const { company, month } = parse(tradeReportingScopeSchema, request.query);
+      return tradeItemDetailSchema.parse(
+        await ready(request).itemDetail(company, request.params.itemId, month),
+      );
+    },
+  );
   server.all("/api/v1/trade/orders", async (request, reply) => {
     boundary.assert(request, reply, ["POST"]);
     const app = ready(request);

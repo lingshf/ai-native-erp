@@ -101,7 +101,7 @@ export function rawContract(fixture) {
         "INSERT INTO books(tenant_id,book_id) VALUES('LOCAL','LOCAL')",
         "INSERT INTO companies(tenant_id,book_id,company_id) VALUES('LOCAL','LOCAL','LOCAL')",
         "INSERT INTO ledger_companies(company_id,name,currency,scale,year,close_mode,revision) VALUES('LOCAL','Old','CNY',2,2026,'annual',1)",
-        "INSERT INTO periods VALUES('LOCAL','2026-01','open',1)",
+        "INSERT INTO periods(company_id,month,status,revision) VALUES('LOCAL','2026-01','open',1)",
       ])
         await f.raw(sql);
       for (const account of defaultAccounts().filter((row) => ["1000", "3000"].includes(row.code)))

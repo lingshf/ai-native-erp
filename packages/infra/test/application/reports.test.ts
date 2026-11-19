@@ -195,7 +195,11 @@ it("reconciles multiple periods/stages, contra groups and current configuration 
     db.close();
     const write = new Database(filename);
     try {
-      write.prepare("INSERT INTO periods VALUES('A','2027-01','open',1)").run();
+      write
+        .prepare(
+          "INSERT INTO periods(company_id,month,status,revision) VALUES('A','2027-01','open',1)",
+        )
+        .run();
     } finally {
       write.close();
     }

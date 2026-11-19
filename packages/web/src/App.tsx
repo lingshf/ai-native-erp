@@ -14,6 +14,9 @@ import { ReportIndex, Reports } from "./Reports.tsx";
 import "./styles.css";
 
 const storage = () => window.localStorage;
+const TradeReports = lazy(() =>
+  import("./TradeReports.tsx").then((module) => ({ default: module.TradeReports })),
+);
 const TradeAdjustments = lazy(() =>
   import("./TradeAdjustments.tsx").then((module) => ({ default: module.TradeAdjustments })),
 );
@@ -137,6 +140,7 @@ function Workspace() {
               <NavLink to="/trade-invoices">{t("tinv.title")}</NavLink>
               <NavLink to="/trade-settlements">{t("tset.title")}</NavLink>
               <NavLink to="/trade-adjustments">{t("tadj.title")}</NavLink>
+              <NavLink to="/trade-reports">{t("trpt.title")}</NavLink>
               <NavLink to="/ledger-reports">{t("ledger.title")}</NavLink>
               <NavLink to="/ledger">{t("ledger.detail")}</NavLink>
               <NavLink to="/period-close">{t("close.title")}</NavLink>
@@ -217,6 +221,14 @@ function Workspace() {
               element={
                 <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
                   <TradeMaster preferences={preferences} />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/trade-reports"
+              element={
+                <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                  <TradeReports preferences={preferences} />
                 </Suspense>
               }
             />

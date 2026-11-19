@@ -27,6 +27,16 @@ try {
   }
   const master = new MasterDataService(store);
   await master.initialize(2026);
+  for (const period of (await master.periods("DEFAULT", { limit: 100 })).items)
+    await master.setPeriod(
+      "DEFAULT",
+      period.month,
+      period.revision,
+      "open",
+      "Enable fictional trade",
+      true,
+      ["trade", "tax"],
+    );
   for (const [code, category, reportGroup, controlModule] of [
     ["2100", "LIABILITY", "payables", "AP"],
     ["1250", "ASSET", "prepayments", "AP"],
