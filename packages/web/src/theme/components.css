@@ -99,7 +99,8 @@
 }
 
 /* ---------- 表单：Field / FormGrid（标签在上，design/ui §5） ---------- */
-.form-grid {
+/* 全部用 ui- 前缀：发票页已有 fieldset.form-grid、贸易报表已有 .field，共享 CSS 不得改到它们。 */
+.ui-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
   gap: var(--space-4) var(--space-5);
@@ -108,38 +109,38 @@
   padding: 0;
   border: 0;
 }
-.form-grid .span-2 {
+.ui-form-grid .ui-span-2 {
   grid-column: span 2;
 }
 @media (max-width: 599px) {
-  .form-grid .span-2 {
+  .ui-form-grid .ui-span-2 {
     grid-column: auto;
   }
 }
-.field {
+.ui-field {
   display: grid;
   align-content: start;
   gap: var(--space-1);
   min-width: 0;
 }
-.field > label,
-.field > .label {
+.ui-field > label,
+.ui-field > .label {
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
   color: var(--color-text-muted);
 }
-.field .hint,
-.field .error-text {
+.ui-field .ui-hint,
+.ui-field .ui-error-text {
   margin: 0;
   font-size: var(--text-xs);
   line-height: var(--leading-xs);
   color: var(--color-text-muted);
 }
-.field .error-text {
+.ui-field .ui-error-text {
   color: var(--color-danger);
 }
-.field input:not([type="checkbox"]),
-.field select {
+.ui-field input:not([type="checkbox"]),
+.ui-field select {
   width: 100%;
   min-width: 0;
   min-height: 0;
@@ -150,25 +151,25 @@
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
 }
-.field input:disabled,
-.field select:disabled {
+.ui-field input:disabled,
+.ui-field select:disabled {
   background: var(--color-surface-alt);
   color: var(--color-text-muted);
 }
-.field [aria-invalid="true"] {
+.ui-field [aria-invalid="true"] {
   border-color: var(--color-danger);
 }
-.check {
+.ui-check {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   min-height: var(--control-h);
   color: var(--color-text);
 }
-.check input {
+.ui-check input {
   margin: 0;
 }
-.form-actions {
+.ui-form-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;

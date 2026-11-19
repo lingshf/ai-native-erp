@@ -415,7 +415,7 @@ function AccountEditor({
   function issue(path: keyof AccountCommand) {
     const key = fieldMessage(error, path);
     return key ? (
-      <p id={`account-${path}-error`} role="alert" className="error-text">
+      <p id={`account-${path}-error`} role="alert" className="ui-error-text">
         {t(key)}
       </p>
     ) : null;
@@ -427,8 +427,8 @@ function AccountEditor({
       summary={initial.revision === 0 ? t("master.new") : `${initial.code} · ${initial.name}`}
     >
       <form className="acct-form" onSubmit={(event) => void submit(event)}>
-        <fieldset disabled={busy} className="form-grid">
-          <div className="field">
+        <fieldset disabled={busy} className="ui-form-grid">
+          <div className="ui-field">
             <label htmlFor="account-code">{t("master.code")}</label>
             <input
               id="account-code"
@@ -442,7 +442,7 @@ function AccountEditor({
             />
             {issue("code")}
           </div>
-          <div className="field span-2">
+          <div className="ui-field ui-span-2">
             <label htmlFor="account-name">{t("master.name")}</label>
             <input
               id="account-name"
@@ -452,7 +452,7 @@ function AccountEditor({
               onChange={(event) => patch({ name: event.target.value })}
             />
           </div>
-          <div className="field">
+          <div className="ui-field">
             <label htmlFor="account-category">{t("master.category")}</label>
             <select
               id="account-category"
@@ -471,7 +471,7 @@ function AccountEditor({
             </select>
             {issue("category")}
           </div>
-          <div className="field">
+          <div className="ui-field">
             <label htmlFor="account-report">{t("master.reportGroup")}</label>
             <select
               id="account-report"
@@ -485,7 +485,7 @@ function AccountEditor({
               ))}
             </select>
           </div>
-          <div className="field">
+          <div className="ui-field">
             <label htmlFor="account-side">{t("master.normalSide")}</label>
             <select
               id="account-side"
@@ -504,7 +504,7 @@ function AccountEditor({
             </select>
             {issue("normalSide")}
           </div>
-          <div className="field">
+          <div className="ui-field">
             <label htmlFor="account-purpose">{t("master.purpose")}</label>
             <select
               id="account-purpose"
@@ -524,7 +524,7 @@ function AccountEditor({
             {issue("purpose")}
           </div>
           {draft.purpose === "control" && (
-            <div className="field span-2">
+            <div className="ui-field ui-span-2">
               <label htmlFor="account-module">{t("master.controlModule")}</label>
               <select
                 id="account-module"
@@ -540,12 +540,12 @@ function AccountEditor({
                   </option>
                 ))}
               </select>
-              <p id="account-module-hint" className="hint">
+              <p id="account-module-hint" className="ui-hint">
                 {t("master.moduleHint")}
               </p>
             </div>
           )}
-          <div className="field">
+          <div className="ui-field">
             <label htmlFor="account-contra">{t("master.contraOf")}</label>
             <input
               id="account-contra"
@@ -560,8 +560,8 @@ function AccountEditor({
             />
             {issue("contraOf")}
           </div>
-          <div className="field acct-checks">
-            <label className="check">
+          <div className="ui-field acct-checks">
+            <label className="ui-check">
               <input
                 type="checkbox"
                 checked={draft.manualAllowed}
@@ -570,7 +570,7 @@ function AccountEditor({
               />
               {t("master.manualAllowed")}
             </label>
-            <label className="check">
+            <label className="ui-check">
               <input
                 type="checkbox"
                 checked={draft.active}
@@ -580,7 +580,7 @@ function AccountEditor({
             </label>
           </div>
         </fieldset>
-        <div className="form-actions">
+        <div className="ui-form-actions">
           {/* Outside the fieldset only for layout; still disabled exactly while busy. */}
           <button type="submit" className="btn btn-primary" disabled={busy}>
             {t(busy ? "master.saving" : "master.save")}
