@@ -8,19 +8,39 @@ import {
   verifyLedgerSnapshot,
 } from "../../../../scripts/legacy-snapshot-verifier.mjs";
 
-export function captureDirectory(directory) {
+export function captureDirectory(directory, { mtime = false } = {}) {
   return fs
     .readdirSync(directory)
     .sort()
     .map((name) => {
       const file = join(directory, name);
+      const stat = fs.statSync(file, { bigint: true });
       return [
         name,
-        fs.statSync(file).isDirectory()
-          ? captureDirectory(file)
+        stat.isDirectory()
+          ? captureDirectory(file, { mtime })
           : createHash("sha256").update(fs.readFileSync(file)).digest("hex"),
+        ...(mtime && stat.isFile() ? [stat.mtimeNs.toString()] : []),
       ];
     });
+}
+
+export function snapshotRejection(check, before, after = before, code = "INVALID_SNAPSHOT") {
+  const describe = (stat) =>
+    stat
+      ? Object.fromEntries(
+          ["size", "mtimeNs", "ino", "dev", "ctimeNs"].map((key) => [key, String(stat[key])]),
+        )
+      : null;
+  return (error) => {
+    assert.equal(error.code, code);
+    assert.equal(error.name, "StorageError");
+    const diagnostic = { check, before: describe(before), after: describe(after) };
+    assert.deepEqual(error.diagnostic, diagnostic);
+    assert.ok(error.message.endsWith(JSON.stringify(diagnostic)));
+    assert.ok(!error.message.includes(".sqlite") && !error.message.includes("SELECT"));
+    return true;
+  };
 }
 
 export function legacyFixture(t, { wal = false, history = false, many = false } = {}) {

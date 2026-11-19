@@ -1,16 +1,17 @@
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import fs from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { openVerifiedTeachingReader } from "../../../scripts/legacy-snapshot-reader.mjs";
 import { inspectLedger, verifyLedgerSnapshot } from "../../../scripts/legacy-snapshot-verifier.mjs";
-import { legacyFixture, captureDirectory } from "./support/legacy-fixture.mjs";
+import { legacyFixture, captureDirectory, snapshotRejection } from "./support/legacy-fixture.mjs";
 
 test("shared opener verifies the real pair and holds a read-only reader without changing either source", (t) => {
   const f = legacyFixture(t, { wal: true });
-  const before = captureDirectory(f.directory);
+  const before = captureDirectory(f.directory, { mtime: true });
   const reader = openVerifiedTeachingReader(f.target);
   f.readers.push(reader);
   assert.equal(reader.info.snapshotSha256, f.manifest.ledgers.teaching.sha256);
@@ -19,7 +20,7 @@ test("shared opener verifies the real pair and holds a read-only reader without 
     f.book.reports(f.month).trialBalances,
   );
   reader.close();
-  assert.deepEqual(captureDirectory(f.directory), before);
+  assert.deepEqual(captureDirectory(f.directory, { mtime: true }), before);
   for (const [sql, message] of [
     ["DROP TRIGGER immutable_audit_UPDATE", /Incomplete immutable enterprise schema/],
     ["ALTER TABLE configs ADD COLUMN unexpected TEXT", /Incompatible enterprise schema/],
@@ -41,10 +42,18 @@ test("shared opener verifies the real pair and holds a read-only reader without 
     } finally {
       db.close();
     }
-    const unchanged = captureDirectory(invalid.directory);
+    // Keep the physical digest valid so the shared entrance reaches schema/integrity inspection.
+    const bytes = readFileSync(file);
+    invalid.manifest.ledgers.enterprise.bytes = bytes.length;
+    invalid.manifest.ledgers.enterprise.sha256 = createHash("sha256").update(bytes).digest("hex");
+    writeFileSync(join(invalid.target, "manifest.json"), JSON.stringify(invalid.manifest));
+    const unchanged = captureDirectory(invalid.directory, { mtime: true });
     assert.throws(() => inspectLedger(file, "enterprise"), { code: "SNAPSHOT_INVALID", message });
-    assert.throws(() => openVerifiedTeachingReader(invalid.target), { code: "INVALID_SNAPSHOT" });
-    assert.deepEqual(captureDirectory(invalid.directory), unchanged);
+    assert.throws(
+      () => openVerifiedTeachingReader(invalid.target),
+      snapshotRejection("schema", fs.statSync(file, { bigint: true })),
+    );
+    assert.deepEqual(captureDirectory(invalid.directory, { mtime: true }), unchanged);
   }
 
   // Frozen a401d6f producer output, including its original manifest, not this verifier's output.
@@ -75,7 +84,7 @@ test("shared opener verifies the real pair and holds a read-only reader without 
     expected.ledgers.enterprise.logical.tables.find((table) => table.name === "journal_seals").rows,
     1,
   );
-  const frozen = captureDirectory(f.directory);
+  const frozen = captureDirectory(f.directory, { mtime: true });
   assert.deepEqual(verifyLedgerSnapshot(target), expected);
   const postedReader = openVerifiedTeachingReader(target);
   f.readers.push(postedReader);
@@ -86,13 +95,57 @@ test("shared opener verifies the real pair and holds a read-only reader without 
   } finally {
     postedReader.close();
   }
-  assert.deepEqual(captureDirectory(f.directory), frozen);
+  assert.deepEqual(captureDirectory(f.directory, { mtime: true }), frozen);
 });
 
 test("shared opener classifies failed manifest verification and never returns a success-shaped empty reader", (t) => {
   const f = legacyFixture(t);
-  writeFileSync(join(f.target, "manifest.json"), "{}");
-  const before = captureDirectory(f.directory);
-  assert.throws(() => openVerifiedTeachingReader(f.target), { code: "INVALID_SNAPSHOT" });
-  assert.deepEqual(captureDirectory(f.directory), before);
+  const manifestFile = join(f.target, "manifest.json");
+  for (const check of ["manifest", "digest", "logical-digest"]) {
+    const manifest = structuredClone(f.manifest);
+    if (check === "digest") manifest.ledgers.teaching.sha256 = "0".repeat(64);
+    if (check === "logical-digest") manifest.ledgers.teaching.logical.sha256 = "0".repeat(64);
+    writeFileSync(manifestFile, JSON.stringify(check === "manifest" ? {} : manifest));
+    const before = captureDirectory(f.directory, { mtime: true });
+    assert.throws(
+      () => openVerifiedTeachingReader(f.target),
+      snapshotRejection(
+        check,
+        fs.statSync(check === "manifest" ? manifestFile : f.snapshot, { bigint: true }),
+      ),
+    );
+    assert.deepEqual(captureDirectory(f.directory, { mtime: true }), before);
+  }
+});
+
+test("shared opener rejects an mtime-only change during pair verification before handing out a reader", (t) => {
+  const f = legacyFixture(t);
+  const file = join(f.target, "erp.sqlite");
+  const originalRead = fs.readFileSync;
+  const originalStat = fs.statSync(file, { bigint: true });
+  let reads = 0;
+  let injected: ReturnType<typeof captureDirectory> | undefined;
+  const spy = vi.spyOn(fs, "readFileSync").mockImplementation((...args) => {
+    const bytes = originalRead(...args);
+    if (args[0] === file && ++reads === 2) {
+      // Simulate an external metadata change after logical inspection, with unchanged bytes.
+      fs.utimesSync(file, new Date(), new Date("2000-01-01T00:00:00Z"));
+      injected = captureDirectory(f.directory, { mtime: true });
+    }
+    return bytes;
+  });
+  try {
+    assert.throws(
+      () => {
+        const reader = openVerifiedTeachingReader(f.target);
+        f.readers.push(reader);
+      },
+      { code: "INVALID_SNAPSHOT" },
+    );
+    assert.ok(injected);
+    assert.notEqual(fs.statSync(file, { bigint: true }).mtimeNs, originalStat.mtimeNs);
+    assert.deepEqual(captureDirectory(f.directory, { mtime: true }), injected);
+  } finally {
+    spy.mockRestore();
+  }
 });

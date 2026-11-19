@@ -7,13 +7,7 @@ import { verifyLedgerSnapshot } from "./legacy-snapshot-verifier.mjs";
 
 export function openVerifiedTeachingReader(directory) {
   preflightLegacySnapshotPair(directory);
-  let verifiedManifest;
-  try {
-    verifiedManifest = verifyLedgerSnapshot(directory);
-  } catch (error) {
-    if (error instanceof StorageError) throw error;
-    throw new StorageError("INVALID_SNAPSHOT");
-  }
+  const verifiedManifest = verifyLedgerSnapshot(directory);
   try {
     return openLegacyTeachingSnapshot({ directory, verifiedManifest });
   } catch (error) {
