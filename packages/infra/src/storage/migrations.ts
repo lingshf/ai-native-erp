@@ -115,7 +115,7 @@ function same(actual: readonly string[], expected: readonly string[]): boolean {
 }
 
 export async function inspectSchema(
-  connection: Connection,
+  connection: Pick<Connection, "query">,
   allowOutdated: boolean,
 ): Promise<number> {
   const rows = await connection.query(

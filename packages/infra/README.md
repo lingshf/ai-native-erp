@@ -29,6 +29,24 @@ The SQLite application ID is persisted in the main DELETE-mode header before
 WAL. Unknown files are refused before opening SQL connections. A marked but
 empty interrupted target is recoverable only through explicit migration. The
 operator must protect the containing directory from replacement attacks.
+Target backends register process-owned leases before opening SQLite; maintenance
+uses the same exclusive admission gate and refuses live leases. Dead-process
+leases can be reclaimed, but a leftover maintenance lock is fail-closed and
+requires operator investigation. Stop the service, not just its HTTP listener,
+before restoring. An abruptly terminated worker can retain its process's lease
+until the service process exits.
+
+The existing admin CLI also exposes `backup <db> <out>` and `restore <db> <in>`.
+Both paths are mandatory. Online backup uses SQLite's incremental backup API,
+then verifies and converts the new snapshot to a standalone DELETE-mode file;
+existing outputs are never overwritten. Restore holds one maintenance lock
+through exclusive SQLite admission, input validation, TRUNCATE checkpoint,
+handle closure, sidecar checks, checkpointed timestamped `.bak` creation,
+same-directory atomic replacement and final validation or verified rollback.
+The `.bak` is retained after either outcome and includes committed crash-WAL
+transactions. Remaining WAL/SHM/journal files cause refusal, never manual deletion.
+Input and rollback copies must pass integrity, application ID, migration
+checksums and schema fingerprint validation against the running code.
 If a process dies between exclusive file creation and persisting the application
 marker, the remaining zero-byte/unmarked file is intentionally refused even by
 `migrate()`. There is no automatic adoption/deletion or unsafe recovery; the

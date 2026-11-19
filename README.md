@@ -140,9 +140,14 @@ CLI 输出标注`live:false`、快照 SHA、`scale:2`精确最小单位；总账
 npm run storage:admin -- --help
 npm run storage:admin -- verify --provider sqlite --file new-target.sqlite
 npm run storage:admin -- provision --provider sqlite --file new-target.sqlite --tenant T1 --book B1 --company C1
+npm run storage:admin -- backup new-target.sqlite independent-backup.sqlite
+# Restore MUST be offline: stop the service and all other database tools first.
+npm run storage:admin -- restore new-target.sqlite independent-backup.sqlite
 ```
 
 `provision`只建立技术作用域，不是建账或 GL 导入。目标库连接使用 WAL/NORMAL、外键和 5000ms 忙等待；只读旧快照不改变 journal 模式。D4：已发布 001 的历史 dialect 允许值/checksum 保持不变，运行时只支持 sqlite。详见[存储说明](packages/infra/README.md)。
+
+`backup <db> <out>` 必须显式指定两个路径，输出须不存在；通过 SQLite 在线备份 API 生成经过完整性和当前迁移校验的单文件，服务运行中也可执行。**恢复必须先停服务**：`restore <db> <in>` 从取得维护锁到 checkpoint、关闭句柄、换库、验证及必要回滚完成，全程独占；持锁时服务启动会失败。恢复前原库完整 checkpoint 为带时间戳的 `.bak`，成功输出其路径；新库验证失败则自动还原，并保留 `.bak`。损坏、迁移不匹配、仍被使用的数据库均拒绝恢复；替换前若残留 `-wal`/`-shm`，拒绝且不手动删除。不要复制正在运行的库主文件作为备份，也不要删除 sidecar。异常终止遗留的 `.maintenance-lock` 须在确认没有维护进程后由操作员调查处理，不能带锁强启服务。
 
 ## 性能证据
 

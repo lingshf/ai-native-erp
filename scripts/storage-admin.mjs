@@ -9,6 +9,15 @@ class InvalidConfiguration extends Error {
 function parseArguments(args) {
   if (args.length === 1 && args[0] === "--help") return null;
   const [action, ...tokens] = args;
+  if (action === "backup" || action === "restore") {
+    if (tokens.length !== 2 || tokens.some((token) => !token || token.startsWith("--")))
+      throw new InvalidConfiguration();
+    return {
+      action,
+      configuration: { filename: resolve(tokens[0]) },
+      transfer: resolve(tokens[1]),
+    };
+  }
   if (!["migrate", "verify", "provision"].includes(action)) throw new InvalidConfiguration();
   const options = new Map();
   const valued = new Set(["--provider", "--file", "--tenant", "--book", "--company"]);
@@ -47,6 +56,7 @@ try {
       JSON.stringify({
         usage: "storage-admin.mjs migrate|verify|provision --provider sqlite --file FILE",
         scope: "provision requires --tenant ID, optionally --book ID and --company ID",
+        backup: "storage-admin.mjs backup <db> <out> | restore <db> <in> (stop service first)",
         safety:
           "Explicit new target only; no .env, DATA_DIR, original-ledger defaults, implicit migration or business seeding.",
       }),
@@ -55,14 +65,21 @@ try {
     const application = await import("@erp/core/application");
     StorageFailure = application.StorageError;
     const scope = command.scope ? application.parseScope(command.scope) : undefined;
-    const { createSqliteStorage } = await import("@erp/infra/storage");
-    const storage = createSqliteStorage(command.configuration);
-    try {
-      if (command.action === "migrate") await storage.migrate();
-      await storage.verifySchema();
-      if (command.action === "provision") await storage.provision(scope);
-    } finally {
-      await storage.close();
+    const { createSqliteStorage, backupSqlite, restoreSqlite } = await import("@erp/infra/storage");
+    let restored;
+    if (command.action === "backup") {
+      await backupSqlite(command.configuration.filename, command.transfer);
+    } else if (command.action === "restore") {
+      restored = await restoreSqlite(command.configuration.filename, command.transfer);
+    } else {
+      const storage = createSqliteStorage(command.configuration);
+      try {
+        if (command.action === "migrate") await storage.migrate();
+        await storage.verifySchema();
+        if (command.action === "provision") await storage.provision(scope);
+      } finally {
+        await storage.close();
+      }
     }
     console.log(
       JSON.stringify({
@@ -70,6 +87,7 @@ try {
         action: command.action,
         provider: "sqlite",
         ...(scope ? { scope } : {}),
+        ...(restored ? { backup: restored.backup } : {}),
       }),
     );
   }
