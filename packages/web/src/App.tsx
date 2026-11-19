@@ -26,6 +26,9 @@ const Journals = lazy(() =>
 const BusinessEvents = lazy(() =>
   import("./BusinessEvents.tsx").then((module) => ({ default: module.BusinessEvents })),
 );
+const LedgerReports = lazy(() =>
+  import("./LedgerReports.tsx").then((module) => ({ default: module.LedgerReports })),
+);
 
 export function App() {
   const [client] = useState(
@@ -115,6 +118,8 @@ function Workspace() {
               <span>{t("journal.group")}</span>
               <NavLink to="/journals">{t("journal.title")}</NavLink>
               <NavLink to="/events">{t("business.title")}</NavLink>
+              <NavLink to="/ledger-reports">{t("ledger.title")}</NavLink>
+              <NavLink to="/ledger">{t("ledger.detail")}</NavLink>
             </div>
             <div className="navigation-group">
               <span>{t("reports.group")}</span>
@@ -179,6 +184,17 @@ function Workspace() {
         </aside>
         <main id="workspace-main" tabIndex={-1}>
           <Routes>
+            {["/ledger-reports", "/ledger"].map((path) => (
+              <Route
+                key={path}
+                path={path}
+                element={
+                  <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                    <LedgerReports preferences={preferences} />
+                  </Suspense>
+                }
+              />
+            ))}
             <Route
               path="/events"
               element={

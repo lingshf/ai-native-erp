@@ -3,6 +3,8 @@ import { masterDataOpenApi } from "./master-data.ts";
 import { dimensionsOpenApi } from "./dimensions.ts";
 import { journalsOpenApi } from "./journals.ts";
 import { businessEventsOpenApi } from "./business-events.ts";
+import { reportsOpenApi } from "./reports.ts";
+export * from "./reports.ts";
 export * from "./dimensions.ts";
 import {
   legacyContextSchema,
@@ -84,6 +86,7 @@ export const openApiDocument = {
   openapi: "3.1.0",
   info: { title: "AI Native ERP Local runtime contract", version: "1" },
   paths: {
+    ...reportsOpenApi.paths,
     ...dimensionsOpenApi.paths,
     ...journalsOpenApi.paths,
     ...businessEventsOpenApi.paths,
@@ -116,6 +119,7 @@ export const openApiDocument = {
   },
   components: {
     schemas: {
+      ...reportsOpenApi.schemas,
       ...dimensionsOpenApi.schemas,
       ...journalsOpenApi.schemas,
       ...businessEventsOpenApi.schemas,

@@ -22,7 +22,7 @@ import type { LocalFinanceBoundary } from "./legacy.ts";
 import { httpError } from "./errors.ts";
 
 export function isMasterDataPath(path: string): boolean {
-  return /^\/api\/v1\/(?:companies|accounts|periods|dimensions|journals|services|parties|posting-rules|events|transfer-queue)(?:\/|$)/u.test(
+  return /^\/api\/v1\/(?:companies|accounts|periods|dimensions|journals|services|parties|posting-rules|events|transfer-queue|reports|ledger)(?:\/|$)/u.test(
     path,
   );
 }

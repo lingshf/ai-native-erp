@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   companiesPageSchema,
   accountsPageSchema,
@@ -40,9 +40,9 @@ const fresh = (): JournalDraftDto => ({
 });
 const url = (company: string) => `company=${encodeURIComponent(company)}`;
 export function Journals({ preferences }: { preferences: Preferences }) {
+  const [params, setParams] = useSearchParams();
   const t: T = (key) => label(preferences.language, key);
-  const [selected, setSelected] = useState<string>(),
-    [locked, setLocked] = useState(false);
+  const [locked, setLocked] = useState(false);
   const companies = useInfiniteQuery({
     queryKey: ["companies"],
     initialPageParam: "",
@@ -55,7 +55,7 @@ export function Journals({ preferences }: { preferences: Preferences }) {
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
   const items = companies.data?.pages.flatMap((page) => page.items) ?? [];
-  const company = items.find((item) => item.code === (selected ?? items[0]?.code));
+  const company = items.find((item) => item.code === (params.get("company") ?? items[0]?.code));
   return (
     <section>
       <h2>{t("journal.title")}</h2>
@@ -73,7 +73,7 @@ export function Journals({ preferences }: { preferences: Preferences }) {
         id="journal-company"
         disabled={locked}
         value={company?.code ?? ""}
-        onChange={(event) => setSelected(event.target.value)}
+        onChange={(event) => setParams({ company: event.target.value })}
       >
         {items.map((item) => (
           <option key={item.code} value={item.code}>
@@ -92,8 +92,9 @@ export function Journals({ preferences }: { preferences: Preferences }) {
       )}
       {company && (
         <CompanyJournals
-          key={company.code}
+          key={`${company.code}:${params.get("id") ?? ""}`}
           company={company}
+          initialEntryId={params.get("id")}
           language={preferences.language}
           lock={setLocked}
         />
@@ -104,16 +105,18 @@ export function Journals({ preferences }: { preferences: Preferences }) {
 }
 function CompanyJournals({
   company,
+  initialEntryId,
   language,
   lock,
 }: {
   company: CompanyDto;
+  initialEntryId: string | null;
   language: Language;
   lock: (value: boolean) => void;
 }) {
   const t: T = (key) => label(language, key),
     client = useQueryClient();
-  const [status, setStatus] = useState<"draft" | "posted">("draft");
+  const [status, setStatus] = useState<"draft" | "posted">(initialEntryId ? "posted" : "draft");
   const [draft, setDraft] = useState<JournalDraftDto | null>(null),
     [detail, setDetail] = useState<JournalDetailDto | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -134,6 +137,23 @@ function CompanyJournals({
     returnFocus = useRef<HTMLElement | null>(null),
     focusLine = useRef<number | null>(null);
   const lineCount = draft?.lines.length ?? 0;
+  useEffect(() => {
+    if (!initialEntryId) return;
+    const controller = new AbortController();
+    void masterRequest(
+      `/api/v1/journals/${encodeURIComponent(initialEntryId)}?${url(company.code)}`,
+      journalDetailSchema,
+      { signal: controller.signal },
+    ).then(
+      (value) => {
+        if (!controller.signal.aborted) setDetail(value);
+      },
+      (error) => {
+        if (!controller.signal.aborted) setError(error);
+      },
+    );
+    return () => controller.abort();
+  }, [company.code, initialEntryId]);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -1166,14 +1186,16 @@ export function VirtualRows<T>({
   title,
   header,
   render,
+  forceVirtual = false,
 }: {
   items: readonly T[];
   title: string;
   header: readonly string[];
   render: (item: T, index: number) => ReactNode;
+  forceVirtual?: boolean;
 }) {
   const scroll = useRef<HTMLElement>(null),
-    virtual = items.length > 100;
+    virtual = forceVirtual || items.length > 100;
   const rows = useVirtualizer({
     count: virtual ? items.length : 0,
     getScrollElement: () => scroll.current,

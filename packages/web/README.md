@@ -40,3 +40,20 @@ Unknown submission results lock the original command, key/plan and withdrawal
 reason for explicit same-command retries. Same-reason withdrawal is idempotent.
 Lists use 100-item pages and virtualize after 100 loaded items. Labels are bilingual;
 language/theme/teaching preferences never save or change business input.
+
+The lazy live `/#/ledger-reports` and `/#/ledger` routes query the target SQLite
+ledger, clearly separate from the verified legacy snapshot routes. Select a report
+group amount, an account amount, then a GL source link to open the original journal
+by company/ID. Trial stage is retained through drilldown. Company/period, income,
+balance sheet and reconciliation selections are explicit and bilingual; errors are
+never presented as zero balances. Configured inactive accounts remain visible.
+
+The live ledger fetches 500-line keyset pages, automatically loads near the end of
+the scroll region, and also offers an accessible Load more button. It virtualizes
+even the first page with 44px rows and five-row overscan per side. The focused DOM
+test scrolls a single full page and bounds mounted rows to viewport plus
+overscan (including one partially visible row). Actual 100,000-line scrolling and
+million-row capacity verification remain manual/Bench work, not PR tests.
+API pages pin a posting watermark; Refresh starts a new read rather
+than mixing newly posted entries into the existing running balances. Dimension
+filters use a concrete value or `~` for unassigned.

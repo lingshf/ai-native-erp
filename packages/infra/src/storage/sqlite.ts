@@ -15,7 +15,7 @@ import { StorageError } from "@erp/core/application";
 import { inspectSchema } from "./migrations.ts";
 import type { Backend, Connection, Parameters, Row, SqliteStorageConfig } from "./types.ts";
 
-const APPLICATION_ID = 0x45525032;
+export const APPLICATION_ID = 0x45525032;
 const initializing = new Set<string>();
 
 class ImmediateDriver extends SqliteDriver {
