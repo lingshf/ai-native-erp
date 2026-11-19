@@ -23,10 +23,15 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 | [M0-11](M0-11-ledger-business-events.md) | 迁移 4：业务事件、过账规则、待转队列 | M0-10 | done | [#20](https://github.com/lingshf/ai-native-erp/pull/20) |
 | [M0-12](M0-12-ledger-reports-benchmark.md) | 迁移 5：查询与报表 + 100 万 GL 行基准 | M0-10 | done | [#21](https://github.com/lingshf/ai-native-erp/pull/21) |
 | [M0-13](M0-13-ledger-period-close.md) | 迁移 6：结账与期间推进 | M0-12 | done | [#22](https://github.com/lingshf/ai-native-erp/pull/22) |
-| [M0-13a](M0-13a-sqlite-event-loop-blocking.md) | 同步 SQLite 阻塞事件循环：度量与处理 | M0-13 | todo | |
-| [M0-14](M0-14-ai-assistant.md) | 迁移 7：AI 助手（候选） | M0-10 | todo | |
-| [M0-15](M0-15-remove-legacy-code.md) | 删除旧代码 | M0-08..M0-14, M0-13a | todo | |
-| [M0-R](M0-R-milestone-review.md) | M0 里程碑评审 + 测试审计（设计角色） | M0-15, M0-06, M0-06a, M0-07, M0-13a | todo | |
+| [M0-13a](M0-13a-sqlite-event-loop-blocking.md) | 同步 SQLite 阻塞事件循环：度量与处理 | M0-13 | done | [#25](https://github.com/lingshf/ai-native-erp/pull/25) |
+| [M0-14](M0-14-ai-assistant.md) | 迁移 7：AI 助手（候选） | M0-10 | done | [#24](https://github.com/lingshf/ai-native-erp/pull/24) |
+| [M0-15](M0-15-remove-legacy-code.md) | 删除旧代码 | M0-08..M0-14, M0-13a | done | [#27](https://github.com/lingshf/ai-native-erp/pull/27) |
+| [M0-R](M0-R-milestone-review.md) | M0 里程碑评审 + 测试审计（设计角色） | M0-15, M0-06, M0-06a, M0-07, M0-13a | in-review | [#28](https://github.com/lingshf/ai-native-erp/pull/28) |
+| [M0-R1](M0-R1-controlled-posting-dates.md) | 控制科目受控过账 + 单据日期/税日期（**阻塞 M1-03**） | M0-R | todo | |
+| [M0-R2](M0-R2-test-speedup.md) | 测试提速与精简（不阻塞 M1） | M0-R | todo | |
+| [M0-R3](M0-R3-bench-nightly-trim.md) | 每晚 Bench 精简（不阻塞 M1） | M0-R | todo | |
+| [M0-R4](M0-R4-windows-invalid-snapshot.md) | Windows INVALID_SNAPSHOT 间歇失败（不阻塞 M1；M2 前必须） | M0-R | todo | |
+| [M0-R5](M0-R5-sqlite-backup-restore.md) | SQLite 目标库备份与恢复（不阻塞 M1；M2 前必须） | M0-R | todo | |
 
 ## M1：贸易 AP/AR（非库存）
 
@@ -34,7 +39,7 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 | --- | --- | --- | --- | --- |
 | [M1-01](M1-01-trade-master-data.md) | 贸易主数据 | M0-R | todo | |
 | [M1-02](M1-02-trade-calculator.md) | 贸易计算器（纯函数） | M0-R | todo | |
-| [M1-03](M1-03-trade-invoices.md) | 采购/销售发票与未结项、订单行匹配 | M1-01, M1-02 | todo | |
+| [M1-03](M1-03-trade-invoices.md) | 采购/销售发票与未结项、订单行匹配 | M1-01, M1-02, M0-R1 | todo | |
 | [M1-04](M1-04-trade-settlements.md) | 付款/收款、部分核销与现金折扣 | M1-03 | todo | |
 | [M1-05](M1-05-trade-prepayments-credits-cancel.md) | 预付/预收、贷项、专用取消与反向 | M1-04 | todo | |
 | [M1-06](M1-06-trade-open-items-ageing.md) | 未结项、账龄、历史余额与 GL 核对 | M1-05 | todo | |
@@ -45,7 +50,7 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 
 1. 第一批（按顺序，同时只开一个以避免 `package.json`/lock 冲突）：M0-01 → M0-02 → M0-03 → M0-04 → M0-05 → M0-06→ M0-07。M0-02 与 M0-03 可并行，后合并者重新生成 lock。
 2. 第二批：M0-08 → M0-09 → M0-10 → 之后 M0-11、M0-12、M0-14 可并行 → M0-13 → M0-13a → M0-15→ M0-R。
-3. M1 在 M0-R 完成后开始；M1-01 与 M1-02 可并行。
+3. M1 在 M0-R 完成后开始；M1-01 与 M1-02 可并行。M0-R1 与它们并行，必须在 M1-03 之前合并；M0-R2..R5 不阻塞 M1，穿插派发（建议 M0-R3 优先，以节省 Actions 分钟数）；M0-R4、M0-R5 是 M2 的前置门禁。M0 评审报告见 [design/reviews/M0.md](../reviews/M0.md)。
 
 ## 决定记录
 
