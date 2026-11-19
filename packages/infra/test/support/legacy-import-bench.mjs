@@ -25,6 +25,43 @@ const targetDirectory = execute
   ? mkdtempSync(join(tmpdir(), "erp-legacy-import-target-bench-"))
   : undefined;
 const sourceLines = execute ? 1_000_002 : 1_000_000;
+const target = targetDirectory ? join(targetDirectory, "target.sqlite") : undefined;
+const originalExec = Database.prototype.exec;
+const originalClose = Database.prototype.close;
+const profile = {
+  commits: 0,
+  commitMs: 0,
+  commitCpuMs: 0,
+  maxCommitMs: 0,
+  writerCloseMs: 0,
+  queries: {},
+};
+if (execute) {
+  Database.prototype.exec = function (sql) {
+    if (this.name !== target || sql !== "COMMIT") return originalExec.call(this, sql);
+    const start = performance.now();
+    const cpu = process.cpuUsage();
+    try {
+      return originalExec.call(this, sql);
+    } finally {
+      const ms = performance.now() - start;
+      const used = process.cpuUsage(cpu);
+      profile.commits++;
+      profile.commitMs += ms;
+      profile.commitCpuMs += (used.user + used.system) / 1000;
+      profile.maxCommitMs = Math.max(profile.maxCommitMs, ms);
+    }
+  };
+  Database.prototype.close = function () {
+    const writer = this.name === target && !this.readonly;
+    const start = performance.now();
+    try {
+      return originalClose.call(this);
+    } finally {
+      if (writer) profile.writerCloseMs += performance.now() - start;
+    }
+  };
+}
 function metadata(file) {
   const hash = createHash("sha256");
   const fd = openSync(join(directory, file), "r");
@@ -94,28 +131,32 @@ try {
     seals: "archive-only",
     audit: "archive-only",
   };
-  let summary, result, trialP95Ms, journals;
+  let summary, result, trialP95Ms, journals, importSeconds, integritySeconds;
+  const trialSamplesMs = [];
+  const cpu = process.cpuUsage();
   const digest = createHash("sha256");
   if (execute) {
-    const target = join(targetDirectory, "target.sqlite");
     result = await executeLegacyImport(
       snapshot,
       { target, choices },
       {
         beforeBatchCommit(batch) {
           const seconds = (performance.now() - start) / 1000;
-          assert.ok(seconds <= 600, "Million-line import exceeded time budget.");
           if (batch % 20 === 0)
             console.error(
               JSON.stringify({
                 batch,
                 seconds,
                 peakRssMiB: process.resourceUsage().maxRSS / 1024,
+                commitMs: profile.commitMs,
+                commitCpuMs: profile.commitCpuMs,
               }),
             );
         },
       },
     );
+    importSeconds = (performance.now() - start) / 1000;
+    const integrityStart = performance.now();
     const db = new Database(target, { readonly: true });
     try {
       assert.equal(db.prepare("SELECT count(*) n FROM journal_lines").get().n, 1_000_000);
@@ -123,19 +164,40 @@ try {
       assert.equal(journals, 50_003);
       assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
       assert.equal(db.prepare("SELECT count(*) n FROM receipts").get().n, 0);
+      integritySeconds = (performance.now() - integrityStart) / 1000;
       const reports = reportRepository({
-        query: async (sql, values = []) => db.prepare(sql).all(...values),
+        query: async (sql, values = []) => {
+          const name = sql.includes("FROM accounts a") ? "balances" : "closing";
+          profile.queries[name] ??= {
+            calls: 0,
+            ms: 0,
+            cpuMs: 0,
+            maxMs: 0,
+            plan: db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...values),
+          };
+          const metric = profile.queries[name];
+          const start = performance.now();
+          const cpu = process.cpuUsage();
+          try {
+            return db.prepare(sql).all(...values);
+          } finally {
+            const ms = performance.now() - start;
+            const used = process.cpuUsage(cpu);
+            metric.calls++;
+            metric.ms += ms;
+            metric.cpuMs += (used.user + used.system) / 1000;
+            metric.maxMs = Math.max(metric.maxMs, ms);
+          }
+        },
       });
       for (let i = 0; i < 5; i++) await reports.reportBalances("TEACHING", "2026-01", "adjusted");
-      const samples = [];
       for (let i = 0; i < 20; i++) {
         const start = performance.now();
         await reports.reportBalances("TEACHING", "2026-01", "adjusted");
-        samples.push(performance.now() - start);
+        trialSamplesMs.push(performance.now() - start);
       }
-      samples.sort((a, b) => a - b);
+      const samples = [...trialSamplesMs].sort((a, b) => a - b);
       trialP95Ms = samples[18];
-      assert.ok(trialP95Ms <= 1000, "Imported million-line hot trial exceeded p95 1s.");
     } finally {
       db.close();
     }
@@ -150,6 +212,7 @@ try {
   }
   const seconds = (performance.now() - start) / 1000;
   const peakRssMiB = process.resourceUsage().maxRSS / 1024;
+  const used = process.cpuUsage(cpu);
   snapshot.close();
   snapshot = undefined;
   assert.deepEqual(
@@ -162,13 +225,26 @@ try {
       lines: 1_000_000,
       seconds,
       peakRssMiB,
-      ...(execute ? { journals, trialP95Ms } : {}),
+      ...(execute
+        ? {
+            journals,
+            trialP95Ms,
+            importSeconds,
+            integritySeconds,
+            trialSamplesMs,
+            cpuSeconds: (used.user + used.system) / 1e6,
+            profile,
+          }
+        : {}),
       ...(execute ? result : { sha256: digest.digest("hex") }),
     }),
   );
   assert.ok(seconds <= (execute ? 600 : 120), "Million-line import exceeded time budget.");
   assert.ok(peakRssMiB <= 512, "Million-line import exceeded 512 MiB peak RSS.");
+  if (execute) assert.ok(trialP95Ms <= 1000, "Imported million-line hot trial exceeded p95 1s.");
 } finally {
+  Database.prototype.exec = originalExec;
+  Database.prototype.close = originalClose;
   snapshot?.close();
   rmSync(directory, { recursive: true, force: true });
   if (targetDirectory) rmSync(targetDirectory, { recursive: true, force: true });
