@@ -10,7 +10,6 @@ import {
   type PreferenceIssue,
 } from "./ui/index.ts";
 import { useHealth } from "./health.ts";
-import { ReportIndex, Reports } from "./Reports.tsx";
 
 const storage = () => window.localStorage;
 const Migration = lazy(() =>
@@ -45,6 +44,10 @@ const BusinessEvents = lazy(() =>
 );
 const PeriodClose = lazy(() =>
   import("./PeriodClose.tsx").then((module) => ({ default: module.PeriodClose })),
+);
+const Reports = lazy(() => import("./Reports.tsx").then((module) => ({ default: module.Reports })));
+const ReportIndex = lazy(() =>
+  import("./Reports.tsx").then((module) => ({ default: module.ReportIndex })),
 );
 const LedgerReports = lazy(() =>
   import("./LedgerReports.tsx").then((module) => ({ default: module.LedgerReports })),
@@ -333,8 +336,22 @@ function Workspace() {
                 }
               />
               <Route path="/" element={<Overview preferences={preferences} />} />
-              <Route path="/reports" element={<ReportIndex />} />
-              <Route path="/reports/*" element={<Reports preferences={preferences} />} />
+              <Route
+                path="/reports"
+                element={
+                  <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                    <ReportIndex />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/reports/*"
+                element={
+                  <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                    <Reports preferences={preferences} />
+                  </Suspense>
+                }
+              />
               <Route
                 path="*"
                 element={
