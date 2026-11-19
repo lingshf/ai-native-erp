@@ -19,6 +19,8 @@ const company = {
   revision: 1,
 };
 const item = {
+  kind: "invoice",
+  segments: [{ dimensions: {}, gross: 11300, remainingGross: 11300 }],
   itemId,
   side: "AP",
   party: "V1",

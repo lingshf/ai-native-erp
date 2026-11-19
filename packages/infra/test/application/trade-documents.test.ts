@@ -1,9 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { copyFile, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   JournalService,
   DimensionService,
@@ -20,6 +20,7 @@ import {
   type TradeOrderCommand,
   type TradeWrite,
   type TradeSettlementCommand,
+  type TradeActionCommand,
 } from "@erp/core/domain";
 import { createSqliteStorage } from "../../src/storage/index.ts";
 import { createMasterDataStore } from "../../src/storage/master-data.ts";
@@ -239,53 +240,72 @@ function order(changes: Partial<TradeOrderCommand> = {}): TradeOrderCommand {
 }
 
 describe("trade invoices on real SQLite", () => {
+  let templateDirectory: string, template: string;
   let directory: string, filename: string;
   let store: ReturnType<typeof createMasterDataStore>;
   let master: MasterDataService, journals: JournalService, service: TradeDocumentService;
-  beforeEach(async () => {
-    directory = await mkdtemp(join(tmpdir(), "erp-trade-docs-"));
-    filename = join(directory, "ledger.sqlite");
-    const storage = createSqliteStorage({ filename });
+  beforeAll(async () => {
+    templateDirectory = await mkdtemp(join(tmpdir(), "erp-trade-template-"));
+    template = join(templateDirectory, "template.sqlite");
+    const storage = createSqliteStorage({ filename: template });
     try {
       await storage.migrate();
     } finally {
       await storage.close();
     }
+    const seedStore = createMasterDataStore({ filename: template });
+    const master = new MasterDataService(seedStore);
+    try {
+      await master.initialize(2026);
+      for (const [code, category, reportGroup, controlModule] of [
+        ["2100", "LIABILITY", "payables", "AP"],
+        ["1250", "ASSET", "prepayments", "AP"],
+        ["1300", "ASSET", "receivables", "AR"],
+        ["2300", "LIABILITY", "otherLiabilities", "AR"],
+        ["1400", "ASSET", "otherAssets", "TAX"],
+        ["2200", "LIABILITY", "taxLiabilities", "TAX"],
+      ] as const) {
+        const account: AccountInput = {
+          code,
+          name: `Control ${code}`,
+          category,
+          reportGroup,
+          controlModule,
+          purpose: "control",
+          normalSide: category === "ASSET" ? "DEBIT" : "CREDIT",
+          contraOf: null,
+          active: true,
+          manualAllowed: false,
+        };
+        await master.saveAccount("DEFAULT", account, 0);
+      }
+      const trade = new TradeMasterService(seedStore);
+      for (const command of configs) await trade.save(command);
+    } finally {
+      await seedStore.close();
+    }
+  });
+  afterAll(async () => {
+    if (templateDirectory) await rm(templateDirectory, { recursive: true, force: true });
+  });
+  beforeEach(async () => {
+    directory = await mkdtemp(join(tmpdir(), "erp-trade-docs-"));
+    filename = join(directory, "ledger.sqlite");
+    await copyFile(template, filename);
     store = createMasterDataStore({ filename });
     master = new MasterDataService(store);
     journals = new JournalService(store, journalTools);
     service = new TradeDocumentService(store, journals, journalTools);
-    await master.initialize(2026);
-    for (const [code, category, reportGroup, controlModule] of [
-      ["2100", "LIABILITY", "payables", "AP"],
-      ["1250", "ASSET", "prepayments", "AP"],
-      ["1300", "ASSET", "receivables", "AR"],
-      ["2300", "LIABILITY", "otherLiabilities", "AR"],
-      ["1400", "ASSET", "otherAssets", "TAX"],
-      ["2200", "LIABILITY", "taxLiabilities", "TAX"],
-    ] as const) {
-      const account: AccountInput = {
-        code,
-        name: `Control ${code}`,
-        category,
-        reportGroup,
-        controlModule,
-        purpose: "control",
-        normalSide: category === "ASSET" ? "DEBIT" : "CREDIT",
-        contraOf: null,
-        active: true,
-        manualAllowed: false,
-      };
-      await master.saveAccount("DEFAULT", account, 0);
-    }
-    const trade = new TradeMasterService(store);
-    for (const command of configs) await trade.save(command);
   });
   afterEach(async () => {
     await store?.close();
     if (directory) await rm(directory, { recursive: true, force: true });
   });
   const tables = [
+    "trade_actions",
+    "trade_item_sources",
+    "trade_credit_lines",
+    "trade_action_items",
     "trade_payments",
     "settlements",
     "journal_entries",
@@ -351,7 +371,645 @@ describe("trade invoices on real SQLite", () => {
     };
     return { preview, receipt: await service.confirmSettlement(envelope), envelope };
   }
-
+  const actionHeader = () => ({
+    company: "DEFAULT",
+    actionId: randomUUID(),
+    accountingDate: "2026-01-25",
+    documentDate: "2026-01-25",
+    taxDate: "2026-01-25",
+  });
+  function advance(side: "AP" | "AR" = "AP", gross = 5650): TradeActionCommand {
+    return {
+      ...actionHeader(),
+      kind: "advance",
+      side,
+      party: side === "AP" ? "V1" : "C1",
+      currency: "CNY",
+      gross,
+      dimensions: {},
+    };
+  }
+  async function act(command: TradeActionCommand) {
+    const before = counts();
+    const preview = await service.previewAction(command);
+    expect(counts()).toEqual(before);
+    const envelope = {
+      command,
+      fingerprint: preview.fingerprint,
+      idempotencyKey: randomUUID(),
+      confirmation: "POST" as const,
+    };
+    const receipt = await service.confirmAction(envelope);
+    return { preview, receipt, envelope };
+  }
+  async function current(itemId: string) {
+    const page = await service.openItems("DEFAULT", { limit: 500 });
+    const item = page.items.find((item) => item.itemId === itemId);
+    if (!item) throw new Error("Missing test item");
+    return item;
+  }
+  async function undo(settlementId: string, ids: string[], day = "2026-01-25") {
+    return act({
+      ...actionHeader(),
+      kind: "reverse",
+      settlementId,
+      reason: "Fictional correction",
+      accountingDate: day,
+      items: await Promise.all(
+        ids.map(async (itemId) => ({ itemId, revision: (await current(itemId)).revision })),
+      ),
+    });
+  }
+  async function cancel(itemId: string, relatedId?: string, day = "2026-01-25") {
+    return act({
+      ...actionHeader(),
+      kind: "cancel",
+      itemId,
+      revision: (await current(itemId)).revision,
+      relatedRevision: relatedId ? (await current(relatedId)).revision : null,
+      accountingDate: day,
+      reason: "Fictional cancellation",
+    });
+  }
+  async function departments() {
+    const dimensions = new DimensionService(store);
+    const range = { revision: 0, active: true, from: "2026-01-01", to: "2026-12-31" };
+    await dimensions.save("DEFAULT", {
+      ...range,
+      kind: "dimension",
+      code: "DEPT",
+      name: "Department",
+    });
+    for (const code of ["D1", "D2", "D3"])
+      await dimensions.save("DEFAULT", {
+        ...range,
+        kind: "value",
+        dimension: "DEPT",
+        code,
+        name: code,
+      });
+    return { dimensions, range };
+  }
+  it("allocates TC-T07 control segments 2/3/2 as 1/1/1 then 1/2/1 and restores the actual first allocation after a later settlement", async () => {
+    await departments();
+    const inv = invoice({
+      lines: ["0.02", "0.03", "0.02"].map((unitPrice, index) =>
+        line({
+          lineId: `L${index}`,
+          quantity: "1",
+          unitPrice,
+          dimensions: { DEPT: `D${index + 1}` },
+        }),
+      ),
+    });
+    await post(inv);
+    expect((await current(inv.documentId)).segments.map((s) => s.remainingGross)).toEqual([
+      2, 3, 2,
+    ]);
+    const first = await settle(payment(inv, 3));
+    expect(first.receipt.allocations[0].segments?.map((s) => s.gross)).toEqual([1, 1, 1]);
+    expect((await current(inv.documentId)).segments.map((s) => s.remainingGross)).toEqual([
+      1, 2, 1,
+    ]);
+    const last = await settle(payment(inv, 4, false, 2));
+    expect(last.receipt.allocations[0].segments?.map((s) => s.gross)).toEqual([1, 2, 1]);
+    await undo(first.receipt.paymentId, [inv.documentId]);
+    expect((await current(inv.documentId)).segments.map((s) => s.remainingGross)).toEqual([
+      1, 1, 1,
+    ]);
+    await undo(last.receipt.paymentId, [inv.documentId]);
+    expect((await current(inv.documentId)).segments.map((s) => s.remainingGross)).toEqual([
+      2, 3, 2,
+    ]);
+  });
+  it("keeps a real same-account cross-dimension application and allows only historical reversal after fixed dimensions change", async () => {
+    const { dimensions, range } = await departments();
+    const source = invoice({
+      side: "AR",
+      party: "C1",
+      lines: [
+        line({ product: "CONSULT", quantity: "1", unitPrice: "0.05", dimensions: { DEPT: "D1" } }),
+      ],
+    });
+    const target = invoice({
+      side: "AR",
+      party: "C1",
+      lines: [
+        line({ product: "CONSULT", quantity: "1", unitPrice: "0.05", dimensions: { DEPT: "D2" } }),
+      ],
+    });
+    await post(source);
+    await post(target);
+    const credit = await act({
+      ...actionHeader(),
+      kind: "credit",
+      invoiceId: source.documentId,
+      revision: 1,
+      lines: [{ sourceLineId: "L1", quantity: "1" }],
+    });
+    const applied = await act({
+      ...actionHeader(),
+      kind: "apply",
+      sourceId: credit.receipt.actionId,
+      sourceRevision: 1,
+      targetId: target.documentId,
+      targetRevision: 1,
+      gross: 5,
+    });
+    const entry = (await journals.entry("DEFAULT", applied.receipt.journalIds[0])).entry;
+    expect(entry.lines.map((l) => [l.account, l.debit, l.credit, l.dimensions])).toEqual([
+      ["1300", 5, 0, { DEPT: "D1" }],
+      ["1300", 0, 5, { DEPT: "D2" }],
+    ]);
+    await dimensions.save("DEFAULT", {
+      ...range,
+      kind: "structure",
+      code: "1300",
+      required: ["DEPT"],
+      optional: [],
+      forbidden: [],
+      allowed: [],
+      fixed: { DEPT: "D3" },
+      conditionals: [],
+    });
+    await undo(applied.receipt.actionId, [credit.receipt.actionId, target.documentId]);
+    await expect(
+      service.previewAction({
+        ...actionHeader(),
+        kind: "apply",
+        sourceId: credit.receipt.actionId,
+        sourceRevision: 3,
+        targetId: target.documentId,
+        targetRevision: 3,
+        gross: 5,
+      }),
+    ).rejects.toMatchObject({ issue: { scope: "dimensions", rule: "conflict" } });
+    await cancel(credit.receipt.actionId, source.documentId);
+  });
+  it.each(["AP", "AR"] as const)(
+    "posts %s advances separately, applies partial amounts on both revisions, refunds and reverses the saved original amounts",
+    async (side) => {
+      const inv = invoice(
+        side === "AR" ? { side, party: "C1", lines: [line({ product: "CONSULT" })] } : {},
+      );
+      await post(inv);
+      const a = await act(advance(side));
+      const entry = (await journals.entry("DEFAULT", a.receipt.journalIds[0])).entry;
+      expect(entry.lines.map((l) => [l.account, l.debit, l.credit])).toEqual(
+        side === "AP"
+          ? [
+              ["1250", 5650, 0],
+              ["1000", 0, 5650],
+            ]
+          : [
+              ["2300", 0, 5650],
+              ["1000", 5650, 0],
+            ],
+      );
+      expect(entry.lines.some((l) => l.account === "4000" || l.account === "2200")).toBe(false);
+      const apply: TradeActionCommand = {
+        ...actionHeader(),
+        kind: "apply",
+        sourceId: a.receipt.actionId,
+        sourceRevision: 1,
+        targetId: inv.documentId,
+        targetRevision: 1,
+        gross: 3001,
+      };
+      const applied = await act(apply);
+      expect((await current(a.receipt.actionId)).remainingGross).toBe(2649);
+      expect(await current(inv.documentId)).toMatchObject({
+        remainingGross: 8299,
+        remainingNet: 7344,
+        remainingTax: 955,
+      });
+      expect(await service.confirmAction(applied.envelope)).toEqual(applied.receipt);
+      await expect(
+        service.previewAction({ ...apply, actionId: randomUUID() }),
+      ).rejects.toMatchObject({ issue: { rule: "stale" } });
+      const refunded = await settle(
+        payment({ ...inv, documentId: a.receipt.actionId }, 2649, false, 2),
+      );
+      const refundEntry = (await journals.entry("DEFAULT", refunded.receipt.journalIds[0])).entry;
+      expect(refundEntry.lines[0]).toMatchObject(
+        side === "AP" ? { account: "1250", credit: 2649 } : { account: "2300", debit: 2649 },
+      );
+      await undo(refunded.receipt.paymentId, [a.receipt.actionId]);
+      await undo(applied.receipt.actionId, [a.receipt.actionId, inv.documentId]);
+      expect((await current(a.receipt.actionId)).remainingGross).toBe(5650);
+      expect((await current(inv.documentId)).remainingGross).toBe(11300);
+      const final = await act({
+        ...apply,
+        actionId: randomUUID(),
+        sourceRevision: (await current(a.receipt.actionId)).revision,
+        targetRevision: (await current(inv.documentId)).revision,
+        gross: 5650,
+      });
+      expect(final.receipt.changes[0].after).toMatchObject({
+        remainingGross: 0,
+        remainingNet: 0,
+        remainingTax: 0,
+      });
+    },
+  );
+  it("rejects foreign/missing/non-invoice targets, over-application, reused identities and stale confirmations without partial writes", async () => {
+    const inv = invoice(),
+      other = invoice({ party: "V2" });
+    await post(inv);
+    await post(other);
+    const a = await act(advance());
+    const command: Extract<TradeActionCommand, { kind: "apply" }> = {
+      ...actionHeader(),
+      kind: "apply",
+      sourceId: a.receipt.actionId,
+      sourceRevision: 1,
+      targetId: inv.documentId,
+      targetRevision: 1,
+      gross: 5650,
+    };
+    for (const patch of [
+      { gross: 5651 },
+      { targetId: other.documentId },
+      { targetId: a.receipt.actionId },
+      { sourceId: inv.documentId },
+      { sourceId: randomUUID() },
+      { targetRevision: 2 },
+      { accountingDate: "2026-01-24" },
+    ]) {
+      const before = counts();
+      await expect(service.previewAction({ ...command, ...patch })).rejects.toBeDefined();
+      expect(counts()).toEqual(before);
+    }
+    const preview = await service.previewAction(command);
+    await settle(payment(inv, 1));
+    const before = counts();
+    await expect(
+      service.confirmAction({
+        command,
+        fingerprint: preview.fingerprint,
+        idempotencyKey: randomUUID(),
+        confirmation: "POST",
+      }),
+    ).rejects.toMatchObject({ issue: { rule: "stale" } });
+    expect(counts()).toEqual(before);
+    const invalidAdvance = advance();
+    await expect(
+      service.previewAction({ ...invalidAdvance, currency: "USD" } as TradeActionCommand),
+    ).rejects.toMatchObject({ issue: { rule: "currency" } });
+    await expect(
+      service.previewAction({ ...advance(), actionId: inv.documentId }),
+    ).rejects.toMatchObject({ issue: { rule: "duplicate" } });
+  });
+  it.each(["AP", "AR"] as const)(
+    "allocates %s credits from original prices/tax cumulatively, preserves the paid invoice and supports explicit credit refunds",
+    async (side) => {
+      const inv = invoice({
+        ...(side === "AR" ? { side, party: "C1" } : {}),
+        lines: [
+          line({
+            quantity: "3",
+            unitPrice: "24.396667",
+            product: side === "AP" ? "RENT" : "CONSULT",
+          }),
+        ],
+      });
+      await post(inv);
+      await settle(payment(inv, 8197));
+      let revision = 2;
+      const credits = [];
+      for (let index = 0; index < 3; index++) {
+        credits.push(
+          await act({
+            ...actionHeader(),
+            kind: "credit",
+            invoiceId: inv.documentId,
+            revision: revision++,
+            lines: [{ sourceLineId: "L1", quantity: "1" }],
+          }),
+        );
+      }
+      const original = await service.detail("DEFAULT", inv.documentId);
+      expect(original.openItem.remainingGross).toBe(original.document.gross - 8197);
+      expect(credits.reduce((n, c) => n + c.receipt.gross, 0)).toBe(original.document.gross);
+      expect(credits.reduce((n, c) => n + c.receipt.creditLines[0].tax, 0)).toBe(
+        original.document.tax,
+      );
+      await expect(
+        service.previewAction({
+          ...actionHeader(),
+          kind: "credit",
+          invoiceId: inv.documentId,
+          revision,
+          lines: [{ sourceLineId: "L1", quantity: "0.000001" }],
+        }),
+      ).rejects.toMatchObject({ issue: { rule: "quantity" } });
+      const creditId = credits[0].receipt.actionId;
+      await expect(
+        service.previewSettlement(
+          payment({ ...inv, documentId: creditId }, credits[0].receipt.gross, true),
+        ),
+      ).rejects.toMatchObject({ issue: { path: "items.0.takeDiscount" } });
+      const refunded = await settle(
+        payment({ ...inv, documentId: creditId }, credits[0].receipt.gross),
+      );
+      expect((await current(creditId)).status).toBe("settled");
+      await undo(refunded.receipt.paymentId, [creditId]);
+      await cancel(creditId, inv.documentId);
+      await act({
+        ...actionHeader(),
+        kind: "credit",
+        invoiceId: inv.documentId,
+        revision: (await current(inv.documentId)).revision,
+        lines: [{ sourceLineId: "L1", quantity: "1" }],
+      });
+    },
+  );
+  it("records same-account same-dimension credit applications without GL, reverses them without current account availability, and never loses either side", async () => {
+    const inv = invoice();
+    await post(inv);
+    const credit = await act({
+      ...actionHeader(),
+      kind: "credit",
+      invoiceId: inv.documentId,
+      revision: 1,
+      lines: [{ sourceLineId: "L1", quantity: "5" }],
+    });
+    const applied = await act({
+      ...actionHeader(),
+      kind: "apply",
+      sourceId: credit.receipt.actionId,
+      sourceRevision: 1,
+      targetId: inv.documentId,
+      targetRevision: 2,
+      gross: 5650,
+    });
+    expect(applied.receipt.journalIds).toEqual([]);
+    expect(applied.preview.journal.journals).toEqual([]);
+    const control = await master.account("DEFAULT", "2100");
+    const { builtin: _, revision, ...input } = control;
+    await master.saveAccount("DEFAULT", { ...input, active: false }, revision);
+    const reversed = await undo(applied.receipt.actionId, [
+      credit.receipt.actionId,
+      inv.documentId,
+    ]);
+    expect(reversed.receipt.journalIds).toEqual([]);
+    expect((await current(credit.receipt.actionId)).remainingGross).toBe(5650);
+    expect((await current(inv.documentId)).remainingGross).toBe(11300);
+    const canceled = await cancel(credit.receipt.actionId, inv.documentId);
+    const historical = (await journals.entry("DEFAULT", canceled.receipt.journalIds[0])).entry;
+    expect(historical.lines.every((l) => l.role === "historical")).toBe(true);
+  });
+  it("requires dependency undo, restores credited and order quantities, and rejects duplicate cancellations and inverse dates", async () => {
+    await service.createOrder(order());
+    const inv = invoice({ orderId: "PO-1", lines: [line({ orderLineId: "OL1" })] });
+    await post(inv);
+    const credit = await act({
+      ...actionHeader(),
+      kind: "credit",
+      invoiceId: inv.documentId,
+      revision: 1,
+      lines: [{ sourceLineId: "L1", quantity: "1" }],
+    });
+    await expect(cancel(inv.documentId)).rejects.toMatchObject({ issue: { rule: "reference" } });
+    const refunded = await settle(payment({ ...inv, documentId: credit.receipt.actionId }, 1130));
+    await expect(cancel(credit.receipt.actionId, inv.documentId)).rejects.toMatchObject({
+      issue: { rule: "reference" },
+    });
+    await undo(refunded.receipt.paymentId, [credit.receipt.actionId], "2026-02-01");
+    await expect(cancel(credit.receipt.actionId, inv.documentId)).rejects.toMatchObject({
+      issue: { path: "accountingDate" },
+    });
+    await cancel(credit.receipt.actionId, inv.documentId, "2026-02-01");
+    await cancel(inv.documentId, undefined, "2026-02-01");
+    await expect(cancel(inv.documentId, undefined, "2026-02-01")).rejects.toBeDefined();
+    expect((await current(inv.documentId)).status).toBe("cancelled");
+    await post({
+      ...inv,
+      documentId: randomUUID(),
+      externalInvoice: "REPLACEMENT",
+      accountingDate: "2026-02-01",
+    });
+    expect((await service.actions("DEFAULT", inv.documentId)).map((r) => r.command.kind)).toEqual(
+      expect.arrayContaining(["credit", "cancel"]),
+    );
+  });
+  it("cancels full unapplied AP and AR advances by exact history after configuration is disabled and prevents refund/cancel double use", async () => {
+    const ap = await act(advance()),
+      ar = await act(advance("AR"));
+    for (const code of ["1250", "2300"]) {
+      const { builtin: _, revision, ...input } = await master.account("DEFAULT", code);
+      await master.saveAccount("DEFAULT", { ...input, active: false }, revision);
+    }
+    for (const a of [ap, ar]) {
+      const canceled = await cancel(a.receipt.actionId);
+      const source = (await journals.entry("DEFAULT", a.receipt.journalIds[0])).entry;
+      const reverse = (await journals.entry("DEFAULT", canceled.receipt.journalIds[0])).entry;
+      expect(reverse.lines.map((l) => [l.account, l.debit, l.credit, l.dimensions])).toEqual(
+        source.lines.map((l) => [l.account, l.credit, l.debit, l.dimensions]),
+      );
+      expect(await service.confirmAction(a.envelope)).toEqual(a.receipt);
+    }
+  });
+  it("rolls back both application balances, receipts, GL and evidence on a late failure and survives reopen with immutable retry", async () => {
+    const inv = invoice();
+    await post(inv);
+    const a = await act(advance());
+    const command: TradeActionCommand = {
+      ...actionHeader(),
+      kind: "apply",
+      sourceId: a.receipt.actionId,
+      sourceRevision: 1,
+      targetId: inv.documentId,
+      targetRevision: 1,
+      gross: 1,
+    };
+    const preview = await service.previewAction(command);
+    const failing = new TradeDocumentService(
+      {
+        read: store.read,
+        write: (work) =>
+          store.write((repo) =>
+            work({
+              ...repo,
+              insertTradeAction: async () => {
+                throw new Error("injected late failure");
+              },
+            }),
+          ),
+      },
+      journals,
+      journalTools,
+    );
+    const before = counts();
+    await expect(
+      failing.confirmAction({
+        command,
+        fingerprint: preview.fingerprint,
+        idempotencyKey: randomUUID(),
+        confirmation: "POST",
+      }),
+    ).rejects.toMatchObject({ code: "STORAGE_FAILURE" });
+    expect(counts()).toEqual(before);
+    expect((await current(a.receipt.actionId)).revision).toBe(1);
+    expect((await current(inv.documentId)).revision).toBe(1);
+    const accepted = await act(command);
+    await store.close();
+    store = createMasterDataStore({ filename });
+    journals = new JournalService(store, journalTools);
+    service = new TradeDocumentService(store, journals, journalTools);
+    expect(await service.confirmAction(accepted.envelope)).toEqual(accepted.receipt);
+    expect((await current(inv.documentId)).remainingGross).toBe(11299);
+    const db = new Database(filename);
+    try {
+      expect(db.pragma("foreign_key_check")).toEqual([]);
+      expect(() => db.prepare("DELETE FROM trade_actions").run()).toThrow("immutable");
+    } finally {
+      db.close();
+    }
+  });
+  it("serializes competing application confirmations from independent SQLite handles and preserves the successful original envelope", async () => {
+    const inv = invoice();
+    await post(inv);
+    const a = await act(advance());
+    const command: TradeActionCommand = {
+      ...actionHeader(),
+      kind: "apply",
+      sourceId: a.receipt.actionId,
+      sourceRevision: 1,
+      targetId: inv.documentId,
+      targetRevision: 1,
+      gross: 5650,
+    };
+    const otherExecutor = await SqliteExecutor.create({ filename, readers: 2 });
+    const other = otherExecutor.services().tradeDocs;
+    try {
+      const competing = { ...command, actionId: randomUUID() };
+      const [first, second] = await Promise.all([
+        service.previewAction(command),
+        other.previewAction(competing),
+      ]);
+      const envelope = {
+        command,
+        fingerprint: first.fingerprint,
+        idempotencyKey: randomUUID(),
+        confirmation: "POST" as const,
+      };
+      const next = {
+        ...envelope,
+        command: competing,
+        fingerprint: second.fingerprint,
+        idempotencyKey: randomUUID(),
+      };
+      const results = await Promise.allSettled([
+        service.confirmAction(envelope),
+        other.confirmAction(next),
+      ]);
+      expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      expect(results.filter((r) => r.status === "rejected")).toMatchObject([
+        { reason: { code: "CONFLICT" } },
+      ]);
+      expect((await current(inv.documentId)).remainingGross).toBe(5650);
+      expect((await current(a.receipt.actionId)).remainingGross).toBe(0);
+    } finally {
+      await otherExecutor.close();
+    }
+  });
+  it("allocates non-deductible tax without a negative expense slice, uses original tax after rate changes and rejects inactive new-write accounts", async () => {
+    const trade = new TradeMasterService(store);
+    const tax = await trade.get("DEFAULT", "taxCode", "VAT");
+    if (tax.kind !== "taxCode") throw new Error("Missing tax");
+    await trade.save({
+      ...base,
+      kind: tax.kind,
+      code: tax.code,
+      expectedRevision: tax.revision,
+      data: { ...tax.data, deductiblePercent: "50" },
+    });
+    const inv = invoice({ lines: [line({ quantity: "3", unitPrice: "0.05" })] });
+    await post(inv);
+    const credits = [];
+    for (let revision = 1; revision <= 3; revision++)
+      credits.push(
+        await act({
+          ...actionHeader(),
+          accountingDate: "2026-03-16",
+          taxDate: "2026-03-16",
+          kind: "credit",
+          invoiceId: inv.documentId,
+          revision,
+          lines: [{ sourceLineId: "L1", quantity: "1" }],
+        }),
+      );
+    expect(credits.map((c) => c.receipt.creditLines[0].tax)).toEqual([1, 0, 1]);
+    expect(credits.reduce((n, c) => n + c.receipt.creditLines[0].deductibleTax, 0)).toBe(1);
+    await cancel(credits[0].receipt.actionId, inv.documentId, "2026-03-16");
+    const control = await master.account("DEFAULT", "2100");
+    const { builtin: _, revision, ...input } = control;
+    await master.saveAccount("DEFAULT", { ...input, active: false }, revision);
+    await expect(
+      service.previewAction({
+        ...actionHeader(),
+        accountingDate: "2026-03-16",
+        kind: "credit",
+        invoiceId: inv.documentId,
+        revision: 5,
+        lines: [{ sourceLineId: "L1", quantity: "1" }],
+      }),
+    ).rejects.toMatchObject({ issue: { rule: "account" } });
+  });
+  it("requires new undo identities, reasons, exact object revisions and an open accounting period, including no-GL reversals", async () => {
+    const inv = invoice();
+    await post(inv);
+    const credit = await act({
+      ...actionHeader(),
+      kind: "credit",
+      invoiceId: inv.documentId,
+      revision: 1,
+      lines: [{ sourceLineId: "L1", quantity: "1" }],
+    });
+    const applied = await act({
+      ...actionHeader(),
+      kind: "apply",
+      sourceId: credit.receipt.actionId,
+      sourceRevision: 1,
+      targetId: inv.documentId,
+      targetRevision: 2,
+      gross: 1130,
+    });
+    const command: TradeActionCommand = {
+      ...actionHeader(),
+      kind: "reverse",
+      settlementId: applied.receipt.actionId,
+      reason: "Correction",
+      items: [
+        { itemId: credit.receipt.actionId, revision: 2 },
+        { itemId: inv.documentId, revision: 3 },
+      ],
+    };
+    for (const invalid of [
+      { ...command, reason: "" },
+      { ...command, reason: " " },
+      { ...command, actionId: applied.receipt.actionId },
+      { ...command, items: [command.items[0]] },
+      { ...command, items: [{ itemId: inv.documentId, revision: 2 }, command.items[0]] },
+    ]) {
+      const before = counts();
+      await expect(service.previewAction(invalid)).rejects.toBeDefined();
+      expect(counts()).toEqual(before);
+    }
+    const preview = await service.previewAction(command);
+    await master.setPeriod("DEFAULT", "2026-01", 1, "frozen", "Fictional hold", true);
+    await expect(
+      service.confirmAction({
+        command,
+        fingerprint: preview.fingerprint,
+        idempotencyKey: randomUUID(),
+        confirmation: "POST",
+      }),
+    ).rejects.toBeDefined();
+    expect((await current(credit.receipt.actionId)).remainingGross).toBe(0);
+    expect(await service.confirmAction(applied.envelope)).toEqual(applied.receipt);
+  });
   it("allocates TC-T06 net/tax exactly, takes an explicit inclusive-deadline discount and consumes the final remainder without changing invoice tax", async () => {
     const trade = new TradeMasterService(store);
     await trade.save({
@@ -1071,7 +1729,10 @@ describe("trade invoices on real SQLite", () => {
     );
     const { entry } = await journals.entry("DEFAULT", mixed.receipt.journalIds[0]);
     expect(entry.lines.map((item) => [item.account, item.debit, item.credit])).toEqual([
-      ["2100", 0, 34860],
+      ["2100", 0, 11300],
+      ["2100", 0, 2260],
+      ["2100", 0, 11300],
+      ["2100", 0, 10000],
       ["5000", 10000, 0],
       ["1400", 1300, 0],
       ["5000", 2000, 0],
@@ -1203,6 +1864,7 @@ describe("trade invoices on real SQLite", () => {
 
   it.each([
     { version: 9, fault: "none" },
+    { version: 11, fault: "none" },
     { version: 10, fault: "none" },
     { version: 10, fault: "missing" },
     { version: 10, fault: "ambiguous" },
@@ -1222,8 +1884,11 @@ describe("trade invoices on real SQLite", () => {
         "differentDueDays",
         "differentDiscountDays",
       ].includes(fault);
-      if (version === 10) {
+      let legacyPaymentId: string | null = null;
+      if (version >= 10) {
         const old = await post(oldInvoice);
+        if (version === 11)
+          legacyPaymentId = (await settle(payment(oldInvoice, 1130))).receipt.paymentId;
         if (
           [
             "ambiguous",
@@ -1332,7 +1997,7 @@ describe("trade invoices on real SQLite", () => {
         }
         await db.query("ATTACH DATABASE ? AS existing", [filename]);
         const copied = (await db.query(
-          "SELECT name FROM main.sqlite_schema WHERE type='table' AND name NOT GLOB 'sqlite_*' AND name<>'schema_migrations' ORDER BY rowid",
+          "SELECT name FROM main.sqlite_schema WHERE type='table' AND name NOT GLOB 'sqlite_*' AND name<>'schema_migrations' ORDER BY CASE name WHEN 'settlements' THEN 1 ELSE 0 END,rowid",
         )) as { name: string }[];
         expect(copied.map((row) => row.name)).toEqual(
           expect.arrayContaining(["journal_entries", "trade_parties", "trade_config_history"]),
@@ -1343,13 +2008,19 @@ describe("trade invoices on real SQLite", () => {
             const columns = await db.query("PRAGMA main.table_info(trade_documents)");
             const selections = columns.map((column) =>
               column.name === "snapshot"
-                ? "json_remove(snapshot,'$.settlementTerms')"
+                ? version === 10
+                  ? "json_remove(snapshot,'$.settlementTerms','$.controlSegments')"
+                  : "json_remove(snapshot,'$.controlSegments')"
                 : String(column.name),
             );
             await db.query(
               `INSERT INTO main.${name} SELECT ${selections.join(",")} FROM existing.${name}`,
             );
-          } else
+          } else if (name === "trade_payments")
+            await db.query(
+              "INSERT INTO main.trade_payments SELECT company_id,payment_id,receipt_key,command_hash,fingerprint,json_remove(receipt,'$.allocations[0].segments') FROM existing.trade_payments",
+            );
+          else
             await db.query(
               `INSERT INTO main.${name} SELECT * FROM existing.${name}${name === "trade_config_history" && fault === "missing" ? " WHERE kind<>'tradeTerms'" : name === "trade_config_history" && fault === "revisionGap" ? " WHERE NOT(kind='tradeTerms' AND revision=1)" : ""}`,
             );
@@ -1363,7 +2034,7 @@ describe("trade invoices on real SQLite", () => {
       const upgraded = createMasterDataStore({ filename: upgradeFile });
       const beforeUpgrade = new Database(upgradeFile, { readonly: true });
       const oldFacts =
-        version === 10
+        version >= 10
           ? Object.fromEntries(
               ["trade_documents", "trade_document_lines", "open_items"].map((table) => [
                 table,
@@ -1402,7 +2073,7 @@ describe("trade invoices on real SQLite", () => {
         try {
           expect(
             check.prepare("SELECT version FROM schema_migrations ORDER BY version").all(),
-          ).toEqual(Array.from({ length: 11 }, (_, index) => ({ version: index + 1 })));
+          ).toEqual(Array.from({ length: 12 }, (_, index) => ({ version: index + 1 })));
           expect(
             check
               .prepare(
@@ -1432,6 +2103,30 @@ describe("trade invoices on real SQLite", () => {
         }
         const upgradedJournals = new JournalService(upgraded, journalTools);
         const docs = new TradeDocumentService(upgraded, upgradedJournals, journalTools);
+        if (version === 11 && legacyPaymentId) {
+          expect((await docs.detail("DEFAULT", oldInvoice.documentId)).openItem).toMatchObject({
+            remainingGross: 10170,
+            revision: 2,
+            segments: [{ gross: 11300, remainingGross: 10170 }],
+          });
+          const command: TradeActionCommand = {
+            ...actionHeader(),
+            kind: "reverse",
+            settlementId: legacyPaymentId,
+            reason: "Reverse pre-012 settlement",
+            items: [{ itemId: oldInvoice.documentId, revision: 2 }],
+          };
+          const preview = await docs.previewAction(command);
+          await docs.confirmAction({
+            command,
+            fingerprint: preview.fingerprint,
+            idempotencyKey: randomUUID(),
+            confirmation: "POST",
+          });
+          expect(
+            (await docs.detail("DEFAULT", oldInvoice.documentId)).openItem.remainingGross,
+          ).toBe(11300);
+        }
         if (version === 10) {
           if (dateEvidence)
             expect((await docs.detail("DEFAULT", oldInvoice.documentId)).openItem).toMatchObject({
@@ -1597,6 +2292,135 @@ describe("trade invoices on real SQLite", () => {
       expect(
         (await send("GET", "/api/v1/trade/tradeParty?company=DEFAULT&limit=5")).statusCode,
       ).toBe(200);
+    } finally {
+      await api.close();
+      await executor.close();
+    }
+  });
+
+  it("serves typed advances, credits, applications and precise corrections through production worker lanes", async () => {
+    const command = invoice();
+    await post(command);
+    await settle(payment(command, 1000));
+    const executor = await SqliteExecutor.create({ filename, readers: 2 });
+    const api = await createApi({
+      environment: { ERP_PORT: "0" },
+      allowPortZero: true,
+      ...executor.services(),
+      logError: () => undefined,
+    });
+    try {
+      const host = new URL(await api.listen()).host;
+      const send = (method: "GET" | "POST", url: string, payload?: unknown) =>
+        api.app.inject({
+          method,
+          url,
+          headers: { host },
+          ...(payload === undefined ? {} : { payload }),
+        });
+      const action = async (command: TradeActionCommand) => {
+        const preview = await send("POST", "/api/v1/trade/actions/preview", command);
+        expect(preview.statusCode).toBe(200);
+        const envelope = {
+          command,
+          fingerprint: preview.json().fingerprint,
+          idempotencyKey: randomUUID(),
+          confirmation: "POST",
+        };
+        const posted = await send("POST", "/api/v1/trade/actions", envelope);
+        expect(posted.statusCode).toBe(201);
+        expect((await send("POST", "/api/v1/trade/actions", envelope)).json()).toEqual(
+          posted.json(),
+        );
+        return posted.json();
+      };
+      const advanceReceipt = await action(advance());
+      const application = await action({
+        ...actionHeader(),
+        kind: "apply",
+        sourceId: advanceReceipt.actionId,
+        sourceRevision: 1,
+        targetId: command.documentId,
+        targetRevision: 2,
+        gross: 1000,
+      });
+      await action({
+        ...actionHeader(),
+        kind: "reverse",
+        settlementId: application.actionId,
+        reason: "HTTP correction",
+        items: [
+          { itemId: advanceReceipt.actionId, revision: 2 },
+          { itemId: command.documentId, revision: 3 },
+        ],
+      });
+      await action({
+        ...actionHeader(),
+        kind: "cancel",
+        itemId: advanceReceipt.actionId,
+        revision: 3,
+        relatedRevision: null,
+        reason: "HTTP cancel advance",
+      });
+      const credit = await action({
+        ...actionHeader(),
+        kind: "credit",
+        invoiceId: command.documentId,
+        revision: 4,
+        lines: [{ sourceLineId: "L1", quantity: "1" }],
+      });
+      const sameControl = await action({
+        ...actionHeader(),
+        kind: "apply",
+        sourceId: credit.actionId,
+        sourceRevision: 1,
+        targetId: command.documentId,
+        targetRevision: 5,
+        gross: credit.gross,
+      });
+      expect(sameControl.journalIds).toEqual([]);
+      await action({
+        ...actionHeader(),
+        kind: "reverse",
+        settlementId: sameControl.actionId,
+        reason: "Undo no-GL application",
+        items: [
+          { itemId: credit.actionId, revision: 2 },
+          { itemId: command.documentId, revision: 6 },
+        ],
+      });
+      await action({
+        ...actionHeader(),
+        kind: "cancel",
+        itemId: credit.actionId,
+        revision: 3,
+        relatedRevision: 7,
+        reason: "HTTP cancel credit",
+      });
+      const chain = await send(
+        "GET",
+        `/api/v1/trade/open-items/${command.documentId}/actions?company=DEFAULT`,
+      );
+      expect(chain.statusCode).toBe(200);
+      expect(chain.json().map((r: { command: { kind: string } }) => r.command.kind)).toEqual(
+        expect.arrayContaining(["apply", "reverse", "credit", "cancel"]),
+      );
+      expect(
+        (await send("POST", "/api/v1/trade/actions/preview", { ...advance(), arbitraryGl: [] }))
+          .statusCode,
+      ).toBe(400);
+      expect(
+        (
+          await send("POST", "/api/v1/trade/actions/preview", {
+            ...actionHeader(),
+            kind: "cancel",
+            itemId: command.documentId,
+            revision: 8,
+            relatedRevision: null,
+            reason: " ",
+          })
+        ).statusCode,
+      ).toBe(400);
     } finally {
       await api.close();
       await executor.close();

@@ -133,6 +133,10 @@ const settlementAmounts = {
   discount: minor,
   allocations: lines(
     z.strictObject({
+      segments: z
+        .array(z.strictObject({ dimensions: dimensionMapSchema, gross: minor.min(1) }))
+        .max(100)
+        .optional(),
       itemId: id,
       revision: minor.min(1),
       gross: minor.min(1),
@@ -226,6 +230,17 @@ export const tradeInvoiceReceiptSchema = z.strictObject({
   postedAt: z.iso.datetime({ precision: 3 }),
 });
 export const openItemSchema = z.strictObject({
+  kind: z.enum(["invoice", "advance", "credit"]),
+  segments: z
+    .array(
+      z.strictObject({
+        dimensions: dimensionMapSchema,
+        gross: minor.min(1),
+        remainingGross: minor,
+      }),
+    )
+    .min(1)
+    .max(100),
   discountPercent: decimal,
   allowPartialDiscount: z.boolean(),
   itemId: id,
@@ -245,9 +260,115 @@ export const openItemSchema = z.strictObject({
   remainingGross: minor,
   remainingNet: minor,
   remainingTax: minor,
-  status: z.enum(["open", "settled"]),
+  status: z.enum(["open", "settled", "cancelled"]),
   revision: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
 });
+const actionHeader = {
+  company: companyCodeSchema,
+  actionId: id,
+  accountingDate: day,
+  documentDate: day,
+  taxDate: day,
+};
+const positive = minor.min(1);
+const reason = z
+  .string()
+  .min(1)
+  .max(160)
+  .regex(/^[^\p{Cc}]*\S[^\p{Cc}]*$/u);
+export const tradeActionCommandSchema = z.discriminatedUnion("kind", [
+  z.strictObject({
+    ...actionHeader,
+    kind: z.literal("advance"),
+    side,
+    party: companyCodeSchema,
+    currency,
+    gross: positive,
+    dimensions: dimensionMapSchema,
+  }),
+  z.strictObject({
+    ...actionHeader,
+    kind: z.literal("credit"),
+    invoiceId: id,
+    revision: positive,
+    lines: lines(z.strictObject({ sourceLineId: lineId, quantity: decimal })),
+  }),
+  z.strictObject({
+    ...actionHeader,
+    kind: z.literal("apply"),
+    sourceId: id,
+    sourceRevision: positive,
+    targetId: id,
+    targetRevision: positive,
+    gross: positive,
+  }),
+  z.strictObject({
+    ...actionHeader,
+    kind: z.literal("cancel"),
+    itemId: id,
+    revision: positive,
+    relatedRevision: positive.nullable(),
+    reason,
+  }),
+  z.strictObject({
+    ...actionHeader,
+    kind: z.literal("reverse"),
+    settlementId: id,
+    reason,
+    items: lines(z.strictObject({ itemId: id, revision: positive })),
+  }),
+]);
+export const tradeActionConfirmSchema = z.strictObject({
+  command: tradeActionCommandSchema,
+  fingerprint,
+  idempotencyKey: id,
+  confirmation: z.literal("POST"),
+});
+const actionResult = {
+  fingerprint,
+  kind: z.enum(["advance", "credit", "apply", "cancel", "reverse"]),
+  gross: positive,
+  changes: z
+    .array(z.strictObject({ before: openItemSchema.nullable(), after: openItemSchema }))
+    .min(1)
+    .max(100),
+  creditLines: z
+    .array(
+      z.strictObject({
+        sourceLineId: lineId,
+        quantity: decimal,
+        net: minor,
+        tax: minor,
+        deductibleTax: minor,
+      }),
+    )
+    .max(100),
+  links: z.array(id).max(101),
+};
+export const tradeActionPreviewSchema = z.strictObject({
+  ...actionResult,
+  journal: journalPlanSchema.extend({
+    journals: z.array(journalPlanSchema.shape.journals.element).max(2),
+  }),
+});
+export const tradeActionReceiptSchema = z.strictObject({
+  ...actionResult,
+  company: companyCodeSchema,
+  actionId: id,
+  idempotencyKey: id,
+  sourceRef: z.string().max(100),
+  journalIds: z.array(id).max(2),
+  postedAt: z.iso.datetime({ precision: 3 }),
+});
+export const tradeActionRecordSchema = z.strictObject({
+  command: tradeActionCommandSchema,
+  commandHash: fingerprint,
+  receipt: tradeActionReceiptSchema,
+});
+export const tradeActionListSchema = z.array(tradeActionRecordSchema);
+export type TradeActionCommandDto = z.infer<typeof tradeActionCommandSchema>;
+export type TradeActionPreviewDto = z.infer<typeof tradeActionPreviewSchema>;
+export type TradeActionReceiptDto = z.infer<typeof tradeActionReceiptSchema>;
 const documentLine = z.strictObject({
   lineId,
   lineNo: z.number().int().min(1).max(100),
@@ -270,6 +391,7 @@ const documentLine = z.strictObject({
   matchStatus: poMatch,
 });
 export const tradeInvoiceDetailSchema = z.strictObject({
+  actions: tradeActionListSchema,
   settlements: z.array(tradeSettlementReceiptSchema),
   document: z.strictObject({
     documentId: id,
@@ -324,7 +446,7 @@ export const openItemQuerySchema = z.strictObject({
     .regex(/^\d{4}-\d{2}-\d{2}\|[0-9a-f-]{36}$/u)
     .optional(),
   party: companyCodeSchema.optional(),
-  status: z.enum(["open", "settled"]).optional(),
+  status: z.enum(["open", "settled", "cancelled"]).optional(),
 });
 export const tradeInvoicePageSchema = z.strictObject({
   items: z
@@ -382,6 +504,43 @@ const pathParam = (name: string, schema: z.ZodType) => ({
 });
 export const tradeDocumentsOpenApi = {
   paths: {
+    "/api/v1/trade/actions/preview": {
+      post: {
+        operationId: "previewTradeAction",
+        requestBody: { required: true, ...ref("TradeActionCommand") },
+        responses: {
+          200: {
+            description: "Read-only typed advance, credit, application or undo plan.",
+            ...ref("TradeActionPreview"),
+          },
+          ...errors([400, 403, 404, 405, 409, 415, 500, 503]),
+        },
+      },
+    },
+    "/api/v1/trade/actions": {
+      post: {
+        operationId: "confirmTradeAction",
+        requestBody: { required: true, ...ref("TradeActionConfirm") },
+        responses: {
+          201: {
+            description:
+              "Atomic immutable action, two-sided balances and exact historical reversals.",
+            ...ref("TradeActionReceipt"),
+          },
+          ...errors([400, 403, 404, 405, 409, 415, 500, 503]),
+        },
+      },
+    },
+    "/api/v1/trade/open-items/{itemId}/actions": {
+      get: {
+        operationId: "getTradeItemActions",
+        parameters: [pathParam("itemId", id), ...query(tradeCompanyQuerySchema)],
+        responses: {
+          200: { description: "Immutable action and dependency chain.", ...ref("TradeActionList") },
+          ...errors([400, 403, 404, 405, 500, 503]),
+        },
+      },
+    },
     "/api/v1/trade/settlements/preview": {
       post: {
         operationId: "previewTradeSettlement",
@@ -492,6 +651,11 @@ export const tradeDocumentsOpenApi = {
     },
   },
   schemas: {
+    TradeActionCommand: z.toJSONSchema(tradeActionCommandSchema),
+    TradeActionConfirm: z.toJSONSchema(tradeActionConfirmSchema),
+    TradeActionPreview: z.toJSONSchema(tradeActionPreviewSchema),
+    TradeActionReceipt: z.toJSONSchema(tradeActionReceiptSchema),
+    TradeActionList: z.toJSONSchema(tradeActionListSchema),
     TradeSettlementCommand: z.toJSONSchema(tradeSettlementCommandSchema),
     TradeSettlementConfirm: z.toJSONSchema(tradeSettlementConfirmSchema),
     TradeSettlementPreview: z.toJSONSchema(tradeSettlementPreviewSchema),

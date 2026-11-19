@@ -22,6 +22,9 @@ export interface ApplicationServices {
     | "openItems"
     | "previewSettlement"
     | "confirmSettlement"
+    | "previewAction"
+    | "confirmAction"
+    | "actions"
   >;
   masterData: Pick<
     MasterDataService,
@@ -64,6 +67,9 @@ export interface ApplicationServices {
 export const applicationLanes = {
   trade: { list: "light", get: "light", save: "write" },
   tradeDocs: {
+    previewAction: "heavy",
+    confirmAction: "write",
+    actions: "light",
     previewSettlement: "heavy",
     confirmSettlement: "write",
     createOrder: "write",

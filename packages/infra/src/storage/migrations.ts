@@ -94,6 +94,7 @@ const filenames = [
   "009-trade-master.sql",
   "010-trade-documents.sql",
   "011-trade-settlements.sql",
+  "012-trade-adjustments.sql",
 ];
 
 export function normalizeMigration(text: string): string {
@@ -338,6 +339,28 @@ export async function inspectSchema(
             "trigger:trade_payments_no_delete",
             "trigger:settlements_payment_source",
             "index:open_items_due_page",
+          ]
+        : []),
+      ...(latest >= 12
+        ? [
+            "trigger:trade_documents_item_source",
+            "index:trade_actions_undo",
+            "index:trade_documents_order_events",
+            "index:trade_action_items_item",
+            "index:trade_credit_lines_source",
+            "table:trade_control_segments",
+            "trigger:trade_control_segments_no_delete",
+            "trigger:trade_control_segments_balance_only",
+            ...[
+              "trade_item_sources",
+              "trade_actions",
+              "trade_action_items",
+              "trade_credit_lines",
+            ].flatMap((name) => [
+              `table:${name}`,
+              `trigger:${name}_no_update`,
+              `trigger:${name}_no_delete`,
+            ]),
           ]
         : []),
     ])

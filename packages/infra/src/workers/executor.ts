@@ -234,6 +234,9 @@ export class SqliteExecutor implements ApplicationExecutor {
         save: bind("trade", "save"),
       },
       tradeDocs: {
+        previewAction: bind("tradeDocs", "previewAction"),
+        confirmAction: bind("tradeDocs", "confirmAction"),
+        actions: bind("tradeDocs", "actions"),
         previewSettlement: bind("tradeDocs", "previewSettlement"),
         confirmSettlement: bind("tradeDocs", "confirmSettlement"),
         createOrder: bind("tradeDocs", "createOrder"),
