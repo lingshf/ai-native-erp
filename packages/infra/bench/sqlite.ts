@@ -6,6 +6,7 @@ import { compileDimensionRules, dimensionBalance, type DimensionConfig } from "@
 import { journalBenchmark } from "./journals.ts";
 import { businessEventBenchmark } from "./business-events.ts";
 import { reportsBenchmark, reportsMarkdown } from "./reports.ts";
+import { tradeCalculatorBenchmark } from "./trade-calculator.ts";
 
 function dimensionBenchmark() {
   const base = { revision: 1, active: true, from: "2026-01-01", to: "2026-12-31" };
@@ -132,6 +133,7 @@ try {
     const p95 = durations[94];
     if (p50 === undefined || p95 === undefined) throw new Error("Missing benchmark samples");
     const dimensions = dimensionBenchmark();
+    const tradeCalculator = tradeCalculatorBenchmark();
     const journals = await journalBenchmark();
     const businessEvents = await businessEventBenchmark();
     const reports = await reportsBenchmark();
@@ -142,6 +144,7 @@ try {
       insertMs,
       query: { rows: 100, samples: durations.length, p50Ms: p50, p95Ms: p95 },
       dimensions,
+      tradeCalculator,
       journals,
       businessEvents,
       reports,
@@ -163,6 +166,12 @@ try {
       `100 samples: p50 ${dimensions.p50Ms.toFixed(3)} ms; p95 ${dimensions.p95Ms.toFixed(3)} ms; p95 budget < ${dimensions.budgetMs} ms.`,
       "",
       "No product tests run in this job; slowest-10 test timings are in CI/Full summaries.",
+      "",
+      "## Trade calculator benchmark",
+      "",
+      "D11: subsecond wall-clock performance gates belong in Bench, not PR/main unit tests. Same frozen 100-line AP document, 10 warmups and 15 samples as the former unit-test gate; pure calculation only.",
+      "",
+      `Median ${tradeCalculator.p50Ms.toFixed(3)} ms; budget < ${tradeCalculator.budgetMs} ms.`,
       "",
       "## Journal loopback HTTP benchmark",
       "",
@@ -191,6 +200,8 @@ try {
     }
     console.log(markdown);
     if (!reports.allPass) throw new Error("Report capacity benchmark gates failed");
+    if (tradeCalculator.p50Ms >= tradeCalculator.budgetMs)
+      throw new Error("Trade calculation exceeds 5ms median budget");
     if (dimensions.p95Ms >= dimensions.budgetMs)
       throw new Error("Dimension validation exceeds 10ms p95 budget");
   } finally {

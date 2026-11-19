@@ -453,7 +453,7 @@ it("uses symmetric exact half-up for settlement/discount ratios and rejects inva
   );
 });
 
-it("does not mutate inputs and calculates a 100-line document in under 5ms when warm", () => {
+it("does not mutate inputs and deterministically calculates a 100-line document", () => {
   const input = Object.freeze(
     document({
       rounding: "document",
@@ -464,16 +464,11 @@ it("does not mutate inputs and calculates a 100-line document in under 5ms when 
       ),
     }),
   );
-  for (let i = 0; i < 10; i++) calculateTrade(input);
-  const timings = Array.from({ length: 15 }, () => {
-    const start = performance.now();
+  for (let i = 0; i < 15; i++) {
     const result = calculateTrade(input);
-    const elapsed = performance.now() - start;
     expect(result.gross).toBe(819728);
     expect(result.net + result.tax).toBe(result.gross);
     expect(result.expense + result.deductibleTax).toBe(result.gross);
     expect(result.lines.every((line) => line.net + line.tax === line.gross)).toBe(true);
-    return elapsed;
-  }).sort((a, b) => a - b);
-  expect(timings[7]).toBeLessThan(5);
+  }
 });
