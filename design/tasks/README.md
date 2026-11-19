@@ -30,15 +30,15 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 | [M0-R1](M0-R1-controlled-posting-dates.md) | 控制科目受控过账 + 单据日期/税日期（**阻塞 M1-03**） | M0-R | migrations(008)+migrations.ts, domain-posting, web-ui:journals | in-progress | |
 | [M0-R2](M0-R2-test-speedup.md) | 测试提速与精简（不阻塞 M1） | M0-R | tests, storage, legacy-teaching 测试 | todo | |
 | [M0-R3](M0-R3-bench-nightly-trim.md) | 每晚 Bench 精简（不阻塞 M1） | M0-R | bench/CI | in-progress | |
-| [M0-R4](M0-R4-windows-invalid-snapshot.md) | Windows INVALID_SNAPSHOT 间歇失败（不阻塞 M1；M2 前必须） | M0-R | legacy-reader, legacy-teaching 测试 | todo | |
-| [M0-R5](M0-R5-sqlite-backup-restore.md) | SQLite 目标库备份与恢复（不阻塞 M1；M2 前必须） | M0-R | storage, admin-cli | todo | |
+| [M0-R4](M0-R4-windows-invalid-snapshot.md) | Windows INVALID_SNAPSHOT 间歇失败（不阻塞 M1；M2 前必须） | M0-R | legacy-reader, legacy-teaching 测试 | in-progress | |
+| [M0-R5](M0-R5-sqlite-backup-restore.md) | SQLite 目标库备份与恢复（不阻塞 M1；M2 前必须） | M0-R | storage, admin-cli | in-progress | |
 
 ## M1：贸易 AP/AR（非库存）
 
 | ID | 标题 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- |
 | [M1-01](M1-01-trade-master-data.md) | 贸易主数据 | M0-R | migrations(009)+migrations.ts, trade-master, web-ui:trade | in-progress | |
-| [M1-02](M1-02-trade-calculator.md) | 贸易计算器（纯函数） | M0-R | pure-calc | in-progress | |
+| [M1-02](M1-02-trade-calculator.md) | 贸易计算器（纯函数） | M0-R | — | done | [#32](https://github.com/lingshf/ai-native-erp/pull/32) |
 | [M1-03](M1-03-trade-invoices.md) | 采购/销售发票与未结项、订单行匹配 | M1-01, M1-02, M0-R1 | migrations(010)+migrations.ts, domain-posting, trade-docs, web-ui:trade | todo | |
 | [M1-04](M1-04-trade-settlements.md) | 付款/收款、部分核销与现金折扣 | M1-03 | migrations(011)+migrations.ts, trade-docs, web-ui:trade | todo | |
 | [M1-05](M1-05-trade-prepayments-credits-cancel.md) | 预付/预收、贷项、专用取消与反向 | M1-04 | migrations(012)+migrations.ts, trade-docs, web-ui:trade | todo | |
