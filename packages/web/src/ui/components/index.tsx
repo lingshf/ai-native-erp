@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import "../../theme/components.css";
 
 // UI-1 shared components (design/ui/README.md §5, §6): thin wrappers that only add layout classes.
@@ -82,6 +82,69 @@ export function MessageBar({
         {symbols[tone]}
       </span>
       <div className="text">{children}</div>
+    </div>
+  );
+}
+
+function hasAlert(node: HTMLElement | null) {
+  return node?.querySelector('[role="alert"]') != null;
+}
+
+/**
+ * Collapsible card (design/ui §5). The body stays expanded and cannot be collapsed while it contains
+ * a role="alert", so errors are never hidden (PG-04).
+ */
+export function FastTab({
+  id,
+  title,
+  summary,
+  children,
+}: {
+  id: string;
+  title: ReactNode;
+  summary?: ReactNode;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(true);
+  const body = useRef<HTMLDivElement>(null);
+  // Runs after every render of the owner; the observer covers alerts rendered by descendants alone.
+  useLayoutEffect(() => {
+    if (hasAlert(body.current)) setOpen(true);
+  });
+  useEffect(() => {
+    const node = body.current;
+    if (!node) return;
+    const observer = new MutationObserver(() => {
+      if (hasAlert(node)) setOpen(true);
+    });
+    observer.observe(node, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["role"],
+    });
+    return () => observer.disconnect();
+  }, []);
+  const bodyId = `${id}-body`;
+  return (
+    <div className="fasttab">
+      <header>
+        <h3>
+          <button
+            type="button"
+            className="fasttab-toggle"
+            aria-expanded={open}
+            aria-controls={bodyId}
+            onClick={() => setOpen(hasAlert(body.current) || !open)}
+          >
+            {title}
+          </button>
+        </h3>
+        {summary && <span className="summary">{summary}</span>}
+      </header>
+      <div id={bodyId} className="body" ref={body} hidden={!open}>
+        {children}
+      </div>
     </div>
   );
 }

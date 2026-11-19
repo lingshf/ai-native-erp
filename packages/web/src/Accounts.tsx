@@ -13,6 +13,8 @@ import {
 } from "@erp/core/contracts";
 import { label, type LabelKey, type Language, type Preferences } from "./ui/index.ts";
 import { MasterDataFailure, masterRequest } from "./master-data-client.ts";
+import { FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
+import "./pages/accounts.css";
 
 type T = (key: Exclude<LabelKey, "shell.httpError">) => string;
 function failure(error: unknown): "master.error" | "master.invalid" | "master.conflict" {
@@ -76,41 +78,56 @@ export function Accounts({ preferences }: { preferences: Preferences }) {
   if (companies.isPending) return <p role="status">{t("master.loading")}</p>;
   if (companies.isError)
     return (
-      <section role="alert">
-        <p>{t(failure(companies.error))}</p>
-        <button type="button" onClick={() => void companies.refetch()}>
+      <section role="alert" className="message-bar danger">
+        <p className="text">{t(failure(companies.error))}</p>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => void companies.refetch()}
+        >
           {t("master.retry")}
         </button>
       </section>
     );
   return (
-    <section>
-      <h2>{t("master.title")}</h2>
-      <label htmlFor="master-company">{t("master.company")}</label>
-      <select
-        id="master-company"
-        value={company?.code ?? ""}
-        onChange={(event) => setSelected(event.target.value)}
-      >
-        {items.map((item) => (
-          <option key={item.code} value={item.code}>
-            {item.code} · {item.name}
-          </option>
-        ))}
-      </select>
-      {companies.hasNextPage && (
-        <button
-          type="button"
-          disabled={companies.isFetchingNextPage}
-          onClick={() => void companies.fetchNextPage()}
-        >
-          {t("master.loadMore")}
-        </button>
-      )}
+    <section className="page accounts">
+      <PageHeader
+        title={t("master.title")}
+        context={
+          <>
+            <div className="field">
+              <label htmlFor="master-company">{t("master.company")}</label>
+              <select
+                id="master-company"
+                value={company?.code ?? ""}
+                onChange={(event) => setSelected(event.target.value)}
+              >
+                {items.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.code} · {item.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {companies.hasNextPage && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={companies.isFetchingNextPage}
+                onClick={() => void companies.fetchNextPage()}
+              >
+                {t("master.loadMore")}
+              </button>
+            )}
+          </>
+        }
+      />
+      <TeachingTip teaching={preferences.teaching} title={t("master.teachingTitle")}>
+        {t("master.teaching")}
+      </TeachingTip>
       {company && (
         <CompanyAccounts key={company.code} company={company} language={preferences.language} />
       )}
-      {preferences.teaching && <p className="teaching">{t("master.teaching")}</p>}
     </section>
   );
 }
@@ -133,14 +150,24 @@ function CompanyAccounts({ company, language }: { company: CompanyDto; language:
   const rows = accounts.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <>
-      <button type="button" onClick={() => setEditing(fresh(company.code))}>
-        {t("master.new")}
-      </button>
+      <div className="acct-actions">
+        <button
+          type="button"
+          className={`btn ${editing ? "btn-secondary" : "btn-primary"}`}
+          onClick={() => setEditing(fresh(company.code))}
+        >
+          {t("master.new")}
+        </button>
+      </div>
       {accounts.isPending && <p role="status">{t("master.loading")}</p>}
       {accounts.isError && (
-        <p role="alert">
-          {t(failure(accounts.error))}
-          <button type="button" onClick={() => void accounts.refetch()}>
+        <p role="alert" className="message-bar danger">
+          <span className="text">{t(failure(accounts.error))}</span>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => void accounts.refetch()}
+          >
             {t("master.retry")}
           </button>
         </p>
@@ -171,6 +198,7 @@ function CompanyAccounts({ company, language }: { company: CompanyDto; language:
       {accounts.hasNextPage && (
         <button
           type="button"
+          className="btn btn-secondary acct-more"
           disabled={accounts.isFetchingNextPage}
           onClick={() => void accounts.fetchNextPage()}
         >
@@ -218,81 +246,86 @@ function AccountRows({
   const before = virtual ? (measured[0]?.start ?? 0) : 0;
   const after = virtual ? virtualizer.getTotalSize() - (measured.at(-1)?.end ?? 0) : 0;
   return (
-    <section
-      ref={scroll}
-      className="accounts-scroll"
-      aria-label={t("master.title")}
-      // biome-ignore lint/a11y/noNoninteractiveTabindex: Named virtual scroll regions must stay keyboard-focusable.
-      tabIndex={0}
-    >
-      <table aria-label={t("master.title")} aria-rowcount={rows.length + 1}>
-        <thead>
-          <tr>
-            {(
-              [
-                "master.code",
-                "master.name",
-                "master.category",
-                "master.active",
-                "master.edit",
-              ] as const
-            ).map((key) => (
-              <th key={key} scope="col">
-                {t(key)}
-              </th>
+    <div className="card">
+      <section
+        ref={scroll}
+        className="grid-wrap acct-scroll"
+        aria-label={t("master.title")}
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: Named virtual scroll regions must stay keyboard-focusable.
+        tabIndex={0}
+      >
+        <table className="grid" aria-label={t("master.title")} aria-rowcount={rows.length + 1}>
+          <thead>
+            <tr>
+              {(
+                [
+                  "master.code",
+                  "master.name",
+                  "master.category",
+                  "master.active",
+                  "master.edit",
+                ] as const
+              ).map((key) => (
+                <th key={key} scope="col">
+                  {t(key)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {before > 0 && (
+              // biome-ignore lint/a11y/noAriaHiddenOnFocusable: Empty native spacer rows contain no focus targets.
+              <tr aria-hidden="true">
+                <td colSpan={5} style={{ height: before, padding: 0 }} />
+              </tr>
+            )}
+            {visible.map(({ account, index }) => (
+              <tr key={account.code} aria-rowindex={index + 2} style={{ height: 44 }}>
+                <td>{account.code}</td>
+                <td>
+                  {account.name}
+                  {account.builtin && (
+                    <small className="acct-builtin"> · {t("master.builtin")}</small>
+                  )}
+                </td>
+                <td>{t(`master.category.${account.category}`)}</td>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={account.active}
+                    disabled
+                    aria-label={`${t("master.active")} ${account.code}`}
+                  />
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="btn btn-subtle btn-sm"
+                    disabled={account.builtin && company.closeMode === "monthly-teaching"}
+                    title={
+                      account.builtin && company.closeMode === "monthly-teaching"
+                        ? t("master.readonly")
+                        : undefined
+                    }
+                    onClick={() => edit(account)}
+                    aria-label={`${t("master.edit")} ${account.code}`}
+                  >
+                    {t("master.edit")}
+                  </button>
+                </td>
+              </tr>
             ))}
-          </tr>
-        </thead>
-        <tbody>
-          {before > 0 && (
-            // biome-ignore lint/a11y/noAriaHiddenOnFocusable: Empty native spacer rows contain no focus targets.
-            <tr aria-hidden="true">
-              <td colSpan={5} style={{ height: before, padding: 0 }} />
-            </tr>
-          )}
-          {visible.map(({ account, index }) => (
-            <tr key={account.code} aria-rowindex={index + 2} style={{ height: 44 }}>
-              <td>{account.code}</td>
-              <td>
-                {account.name}
-                {account.builtin && <small> · {t("master.builtin")}</small>}
-              </td>
-              <td>{t(`master.category.${account.category}`)}</td>
-              <td>
-                <input
-                  type="checkbox"
-                  checked={account.active}
-                  disabled
-                  aria-label={`${t("master.active")} ${account.code}`}
-                />
-              </td>
-              <td>
-                <button
-                  type="button"
-                  disabled={account.builtin && company.closeMode === "monthly-teaching"}
-                  title={
-                    account.builtin && company.closeMode === "monthly-teaching"
-                      ? t("master.readonly")
-                      : undefined
-                  }
-                  onClick={() => edit(account)}
-                  aria-label={`${t("master.edit")} ${account.code}`}
-                >
-                  {t("master.edit")}
-                </button>
-              </td>
-            </tr>
-          ))}
-          {after > 0 && (
-            // biome-ignore lint/a11y/noAriaHiddenOnFocusable: Empty native spacer rows contain no focus targets.
-            <tr aria-hidden="true">
-              <td colSpan={5} style={{ height: after, padding: 0 }} />
-            </tr>
-          )}
-        </tbody>
-      </table>
-      {rows.length === 0 && <p>{t("master.empty")}</p>}
-    </section>
+            {after > 0 && (
+              // biome-ignore lint/a11y/noAriaHiddenOnFocusable: Empty native spacer rows contain no focus targets.
+              <tr aria-hidden="true">
+                <td colSpan={5} style={{ height: after, padding: 0 }} />
+              </tr>
+            )}
+          </tbody>
+        </table>
+        {rows.length === 0 && <p className="empty-state">{t("master.empty")}</p>}
+      </section>
+    </div>
   );
 }
 function AccountEditor({
@@ -382,157 +415,191 @@ function AccountEditor({
   function issue(path: keyof AccountCommand) {
     const key = fieldMessage(error, path);
     return key ? (
-      <p id={`account-${path}-error`} role="alert">
+      <p id={`account-${path}-error`} role="alert" className="error-text">
         {t(key)}
       </p>
     ) : null;
   }
   return (
-    <form className="account-editor" onSubmit={(event) => void submit(event)}>
-      <h3>{t(initial.revision === 0 ? "master.new" : "master.edit")}</h3>
-      <fieldset disabled={busy}>
-        <label htmlFor="account-code">{t("master.code")}</label>
-        <input
-          id="account-code"
-          value={draft.code}
-          disabled={initial.revision !== 0}
-          required
-          pattern="[1-9][0-9]{3}"
-          onChange={(event) => patch({ code: event.target.value })}
-          aria-invalid={fieldMessage(error, "code") ? true : undefined}
-          aria-describedby={fieldMessage(error, "code") ? "account-code-error" : undefined}
-        />
-        {issue("code")}
-        <label htmlFor="account-name">{t("master.name")}</label>
-        <input
-          id="account-name"
-          value={draft.name}
-          required
-          maxLength={80}
-          onChange={(event) => patch({ name: event.target.value })}
-        />
-        <label htmlFor="account-category">{t("master.category")}</label>
-        <select
-          id="account-category"
-          value={draft.category}
-          onChange={(event) => changeChoice("category", event.target.value)}
-          aria-invalid={fieldMessage(error, "category") ? true : undefined}
-          aria-describedby={fieldMessage(error, "category") ? "account-category-error" : undefined}
-        >
-          {accountFieldsSchema.shape.category.options.map((value) => (
-            <option key={value} value={value}>
-              {t(`master.category.${value}`)}
-            </option>
-          ))}
-        </select>
-        {issue("category")}
-        <label htmlFor="account-report">{t("master.reportGroup")}</label>
-        <select
-          id="account-report"
-          value={draft.reportGroup}
-          onChange={(event) => changeChoice("reportGroup", event.target.value)}
-        >
-          {groups[draft.category].map((value) => (
-            <option key={value} value={value}>
-              {t(`master.report.${value}`)}
-            </option>
-          ))}
-        </select>
-        <label htmlFor="account-side">{t("master.normalSide")}</label>
-        <select
-          id="account-side"
-          value={draft.normalSide}
-          onChange={(event) => changeChoice("normalSide", event.target.value)}
-          aria-invalid={fieldMessage(error, "normalSide") ? true : undefined}
-          aria-describedby={
-            fieldMessage(error, "normalSide") ? "account-normalSide-error" : undefined
-          }
-        >
-          {accountFieldsSchema.shape.normalSide.options.map((value) => (
-            <option key={value} value={value}>
-              {t(`master.side.${value}`)}
-            </option>
-          ))}
-        </select>
-        {issue("normalSide")}
-        <label htmlFor="account-purpose">{t("master.purpose")}</label>
-        <select
-          id="account-purpose"
-          value={draft.purpose}
-          onChange={(event) => changeChoice("purpose", event.target.value)}
-          aria-invalid={fieldMessage(error, "purpose") ? true : undefined}
-          aria-describedby={fieldMessage(error, "purpose") ? "account-purpose-error" : undefined}
-        >
-          {accountFieldsSchema.shape.purpose.options.map((value) => (
-            <option key={value} value={value}>
-              {t(`master.purpose.${value}`)}
-            </option>
-          ))}
-        </select>
-        {issue("purpose")}
-        {draft.purpose === "control" && (
-          <>
-            <label htmlFor="account-module">{t("master.controlModule")}</label>
-            <select
-              id="account-module"
-              value={draft.controlModule ?? ""}
+    <FastTab
+      id="account-editor"
+      title={t("master.general")}
+      summary={initial.revision === 0 ? t("master.new") : `${initial.code} · ${initial.name}`}
+    >
+      <form className="acct-form" onSubmit={(event) => void submit(event)}>
+        <fieldset disabled={busy} className="form-grid">
+          <div className="field">
+            <label htmlFor="account-code">{t("master.code")}</label>
+            <input
+              id="account-code"
+              value={draft.code}
+              disabled={initial.revision !== 0}
               required
-              aria-describedby="account-module-hint"
-              onChange={(event) => changeChoice("controlModule", event.target.value)}
+              pattern="[1-9][0-9]{3}"
+              onChange={(event) => patch({ code: event.target.value })}
+              aria-invalid={fieldMessage(error, "code") ? true : undefined}
+              aria-describedby={fieldMessage(error, "code") ? "account-code-error" : undefined}
+            />
+            {issue("code")}
+          </div>
+          <div className="field span-2">
+            <label htmlFor="account-name">{t("master.name")}</label>
+            <input
+              id="account-name"
+              value={draft.name}
+              required
+              maxLength={80}
+              onChange={(event) => patch({ name: event.target.value })}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="account-category">{t("master.category")}</label>
+            <select
+              id="account-category"
+              value={draft.category}
+              onChange={(event) => changeChoice("category", event.target.value)}
+              aria-invalid={fieldMessage(error, "category") ? true : undefined}
+              aria-describedby={
+                fieldMessage(error, "category") ? "account-category-error" : undefined
+              }
             >
-              <option value="">{t("master.chooseModule")}</option>
-              {accountFieldsSchema.shape.controlModule.unwrap().options.map((value) => (
+              {accountFieldsSchema.shape.category.options.map((value) => (
                 <option key={value} value={value}>
-                  {t(`master.module.${value}`)}
+                  {t(`master.category.${value}`)}
                 </option>
               ))}
             </select>
-            <p id="account-module-hint">{t("master.moduleHint")}</p>
-          </>
-        )}
-        <label htmlFor="account-contra">{t("master.contraOf")}</label>
-        <input
-          id="account-contra"
-          value={draft.contraOf ?? ""}
-          placeholder={t("master.none")}
-          pattern="[1-9][0-9]{3}"
-          onChange={(event) => patch({ contraOf: event.target.value || null })}
-          aria-invalid={fieldMessage(error, "contraOf") ? true : undefined}
-          aria-describedby={fieldMessage(error, "contraOf") ? "account-contraOf-error" : undefined}
-        />
-        {issue("contraOf")}
-        <label>
-          <input
-            type="checkbox"
-            checked={draft.manualAllowed}
-            disabled={draft.purpose === "control"}
-            onChange={(event) => patch({ manualAllowed: event.target.checked })}
-          />
-          {t("master.manualAllowed")}
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={draft.active}
-            onChange={(event) => patch({ active: event.target.checked })}
-          />
-          {t("master.active")}
-        </label>
-        <button type="submit">{t(busy ? "master.saving" : "master.save")}</button>
-      </fieldset>
-      <button type="button" onClick={cancel}>
-        {t("master.cancel")}
-      </button>
-      {error !== undefined && (
-        <div role="alert">
-          <p>{t(failure(error))}</p>
-          {failure(error) === "master.conflict" && (
-            <button type="button" onClick={saved}>
-              {t("master.reload")}
-            </button>
+            {issue("category")}
+          </div>
+          <div className="field">
+            <label htmlFor="account-report">{t("master.reportGroup")}</label>
+            <select
+              id="account-report"
+              value={draft.reportGroup}
+              onChange={(event) => changeChoice("reportGroup", event.target.value)}
+            >
+              {groups[draft.category].map((value) => (
+                <option key={value} value={value}>
+                  {t(`master.report.${value}`)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="account-side">{t("master.normalSide")}</label>
+            <select
+              id="account-side"
+              value={draft.normalSide}
+              onChange={(event) => changeChoice("normalSide", event.target.value)}
+              aria-invalid={fieldMessage(error, "normalSide") ? true : undefined}
+              aria-describedby={
+                fieldMessage(error, "normalSide") ? "account-normalSide-error" : undefined
+              }
+            >
+              {accountFieldsSchema.shape.normalSide.options.map((value) => (
+                <option key={value} value={value}>
+                  {t(`master.side.${value}`)}
+                </option>
+              ))}
+            </select>
+            {issue("normalSide")}
+          </div>
+          <div className="field">
+            <label htmlFor="account-purpose">{t("master.purpose")}</label>
+            <select
+              id="account-purpose"
+              value={draft.purpose}
+              onChange={(event) => changeChoice("purpose", event.target.value)}
+              aria-invalid={fieldMessage(error, "purpose") ? true : undefined}
+              aria-describedby={
+                fieldMessage(error, "purpose") ? "account-purpose-error" : undefined
+              }
+            >
+              {accountFieldsSchema.shape.purpose.options.map((value) => (
+                <option key={value} value={value}>
+                  {t(`master.purpose.${value}`)}
+                </option>
+              ))}
+            </select>
+            {issue("purpose")}
+          </div>
+          {draft.purpose === "control" && (
+            <div className="field span-2">
+              <label htmlFor="account-module">{t("master.controlModule")}</label>
+              <select
+                id="account-module"
+                value={draft.controlModule ?? ""}
+                required
+                aria-describedby="account-module-hint"
+                onChange={(event) => changeChoice("controlModule", event.target.value)}
+              >
+                <option value="">{t("master.chooseModule")}</option>
+                {accountFieldsSchema.shape.controlModule.unwrap().options.map((value) => (
+                  <option key={value} value={value}>
+                    {t(`master.module.${value}`)}
+                  </option>
+                ))}
+              </select>
+              <p id="account-module-hint" className="hint">
+                {t("master.moduleHint")}
+              </p>
+            </div>
           )}
+          <div className="field">
+            <label htmlFor="account-contra">{t("master.contraOf")}</label>
+            <input
+              id="account-contra"
+              value={draft.contraOf ?? ""}
+              placeholder={t("master.none")}
+              pattern="[1-9][0-9]{3}"
+              onChange={(event) => patch({ contraOf: event.target.value || null })}
+              aria-invalid={fieldMessage(error, "contraOf") ? true : undefined}
+              aria-describedby={
+                fieldMessage(error, "contraOf") ? "account-contraOf-error" : undefined
+              }
+            />
+            {issue("contraOf")}
+          </div>
+          <div className="field acct-checks">
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={draft.manualAllowed}
+                disabled={draft.purpose === "control"}
+                onChange={(event) => patch({ manualAllowed: event.target.checked })}
+              />
+              {t("master.manualAllowed")}
+            </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={draft.active}
+                onChange={(event) => patch({ active: event.target.checked })}
+              />
+              {t("master.active")}
+            </label>
+          </div>
+        </fieldset>
+        <div className="form-actions">
+          {/* Outside the fieldset only for layout; still disabled exactly while busy. */}
+          <button type="submit" className="btn btn-primary" disabled={busy}>
+            {t(busy ? "master.saving" : "master.save")}
+          </button>
+          <button type="button" className="btn btn-subtle" onClick={cancel}>
+            {t("master.cancel")}
+          </button>
         </div>
-      )}
-    </form>
+        {error !== undefined && (
+          <MessageBar tone="danger" role="alert">
+            <p>{t(failure(error))}</p>
+            {failure(error) === "master.conflict" && (
+              <button type="button" className="btn btn-secondary" onClick={saved}>
+                {t("master.reload")}
+              </button>
+            )}
+          </MessageBar>
+        )}
+      </form>
+    </FastTab>
   );
 }
