@@ -15,6 +15,7 @@ import { DatabaseSync } from "node:sqlite";
 import { performance } from "node:perf_hooks";
 import { LegacyImportSnapshot, legacyImportPlan } from "../../src/legacy/import-plan.ts";
 import { executeLegacyImport } from "../../src/storage/legacy-import.ts";
+import { openingItemsFile } from "./legacy-fixture.mjs";
 import Database from "better-sqlite3";
 import { reportRepository } from "../../src/storage/reports.ts";
 import { reportSchema } from "@erp/core/contracts";
@@ -231,7 +232,7 @@ try {
   if (execute) {
     result = await executeLegacyImport(
       snapshot,
-      { target, choices },
+      { target, choices, openingItems: openingItemsFile() },
       {
         beforeBatchCommit(number) {
           batch = number;

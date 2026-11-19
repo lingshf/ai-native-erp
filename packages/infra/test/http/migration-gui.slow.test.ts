@@ -8,7 +8,7 @@ import { createApi } from "../../src/http/index.ts";
 import { MigrationReader } from "../../src/workers/migration-reader.ts";
 import { executeLegacyImport } from "../../src/storage/legacy-import.ts";
 import { LegacyImportSnapshot, type ImportChoices } from "../../src/legacy/import-plan.ts";
-import { legacyFixture } from "../support/legacy-fixture.mjs";
+import { legacyFixture, openingItemsFile } from "../support/legacy-fixture.mjs";
 
 let directory: string, browser: Browser;
 const artifacts = resolve(process.env.ERP_E2E_ARTIFACTS ?? "artifacts\\ci\\migration-e2e");
@@ -42,7 +42,7 @@ for (const language of ["zh", "en"] as const)
         seals: "archive-only",
         audit: "archive-only",
       };
-      await executeLegacyImport(snapshot, { target, choices });
+      await executeLegacyImport(snapshot, { target, choices, openingItems: openingItemsFile() });
       const migration = new MigrationReader(target);
       const api = await createApi({
         migration,
@@ -68,7 +68,7 @@ for (const language of ["zh", "en"] as const)
         await page.goto(`${origin}/#/migration`);
         await expect
           .poll(() => page.getByRole("status").textContent(), { timeout: 10_000 })
-          .toBe(language === "zh" ? "阻断" : "Blocked");
+          .toBe(language === "zh" ? "待确认" : "Awaiting confirmation");
         expect(await page.locator(".workspace").getAttribute("data-theme")).toBe(theme);
         expect(await page.getByRole("button").count()).toBe(0);
         const summary = page

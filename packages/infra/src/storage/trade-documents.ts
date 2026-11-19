@@ -211,11 +211,15 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
     },
     async tradeItemSource(company, itemId) {
       const rows = await db.query(
-        "SELECT journal_id,original_id FROM trade_item_sources WHERE company_id=? AND item_id=?",
+        "SELECT journal_id,original_id,EXISTS(SELECT 1 FROM legacy_refs r WHERE r.object_type='opening_items' AND r.target_id=s.item_id) AS opening FROM trade_item_sources s WHERE company_id=? AND item_id=?",
         [company, itemId],
       );
       return rows[0]
-        ? { journalId: str(rows[0].journal_id), originalId: optional(rows[0].original_id) }
+        ? {
+            journalId: str(rows[0].journal_id),
+            originalId: optional(rows[0].original_id),
+            opening: Number(rows[0].opening) === 1,
+          }
         : null;
     },
     async tradeCreditLines(company, invoiceId) {

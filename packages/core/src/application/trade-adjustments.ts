@@ -118,12 +118,22 @@ export async function prepareTradeAction(
     });
     master.push(defaults);
   };
-  const account = async (code: string, role: TradeAccountRole, side: "AP" | "AR") => {
-    const key = JSON.stringify([code, role, side]);
+  const account = async (
+    code: string,
+    role: TradeAccountRole,
+    side: "AP" | "AR",
+    alternate?: TradeAccountRole,
+  ) => {
+    const key = JSON.stringify([code, role, side, alternate ?? null]);
     if (checkedAccounts.has(key)) return;
     const value = await repo.account(companyCode, code);
     try {
-      assertTradeAccount(value, role, side);
+      try {
+        assertTradeAccount(value, role, side);
+      } catch (error) {
+        if (!(error instanceof DomainError) || !alternate) throw error;
+        assertTradeAccount(value, alternate, side);
+      }
     } catch (error) {
       if (error instanceof DomainError) tradeDocumentError(code, "account");
       throw error;
@@ -213,12 +223,25 @@ export async function prepareTradeAction(
     if (source.party !== target.party || source.side !== target.side)
       tradeDocumentError("targetId", "party");
     if (source.currency !== target.currency) tradeDocumentError("targetId", "currency");
+    // D30: legacy opening items may sit on either same-side trade account role.
+    const opening = async (id: string) =>
+      (await repo.tradeItemSource(companyCode, id))?.opening === true;
     await account(
       source.controlAccount,
       source.kind === "advance" ? "advanceAccount" : "controlAccount",
       source.side,
+      (await opening(source.itemId))
+        ? source.kind === "advance"
+          ? "controlAccount"
+          : "advanceAccount"
+        : undefined,
     );
-    await account(target.controlAccount, "controlAccount", target.side);
+    await account(
+      target.controlAccount,
+      "controlAccount",
+      target.side,
+      (await opening(target.itemId)) ? "advanceAccount" : undefined,
+    );
     gross = command.gross;
     changes.push(
       { before: source, after: consume(source, gross) },
@@ -229,6 +252,9 @@ export async function prepareTradeAction(
     for (const segment of allocateTradeSegments(target, gross))
       push(target.controlAccount, target.side === "AP", segment.gross, segment.dimensions);
   } else if (command.kind === "credit") {
+    // D30: opening items carry no trade document lines to credit.
+    if ((await repo.tradeItemSource(companyCode, command.invoiceId))?.opening)
+      tradeDocumentError("invoiceId", "reference");
     const invoice = required(await repo.tradeDocument(companyCode, command.invoiceId));
     const original = await item(command.invoiceId, command.revision);
     const entry = required(await repo.journalEntry(companyCode, invoice.journalId));
@@ -371,6 +397,9 @@ export async function prepareTradeAction(
       },
     );
   } else if (command.kind === "cancel") {
+    // D30: opening items are legacy balances, not cancellable trade evidence.
+    if ((await repo.tradeItemSource(companyCode, command.itemId))?.opening)
+      tradeDocumentError("itemId", "reference");
     const original = await item(command.itemId, command.revision);
     if (
       original.remainingGross !== original.gross ||

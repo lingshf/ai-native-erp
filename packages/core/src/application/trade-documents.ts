@@ -74,6 +74,8 @@ export interface TradeDocumentRepository {
   ): Promise<{
     readonly journalId: string;
     readonly originalId: string | null;
+    /** M2-03b legacy opening item: no trade document; only settlement and apply may use it. */
+    readonly opening: boolean;
   } | null>;
   tradeCreditLines(company: string, invoiceId: string): Promise<readonly TradeCreditLine[]>;
   insertTradeItem(
@@ -204,7 +206,9 @@ export class TradeDocumentService {
       const current = required(await repo.openItem(company, id));
       const source = required(await repo.tradeItemSource(company, id));
       const record =
-        selected.kind === "invoice" ? required(await repo.tradeDocument(company, id)) : null;
+        selected.kind === "invoice" && !source.opening
+          ? required(await repo.tradeDocument(company, id))
+          : null;
       let document: TradeInvoiceDetail["document"] | null = null;
       if (record !== null) {
         const { snapshot: _, ...saved } = record;
@@ -342,6 +346,7 @@ export class TradeDocumentService {
       tradeDocumentError("paymentId", "duplicate", true);
     const allocations: TradeSettlementAllocation[] = [];
     const controls: OpenItem[] = [];
+    const openingItems = new Set<string>();
     const controlLines: { index: number; dimensions: DimensionMap }[] = [];
     const lines: JournalInputLine[] = [];
     const ap = command.side === "AP";
@@ -373,6 +378,8 @@ export class TradeDocumentService {
       const gross = selection.gross;
       if (controls.length && (controls[0].kind === "invoice") !== (item.kind === "invoice"))
         tradeDocumentError(path, "reference");
+      if ((await repo.tradeItemSource(command.company, item.itemId))?.opening)
+        openingItems.add(item.itemId);
       const net =
         gross === item.remainingGross
           ? item.remainingNet
@@ -429,6 +436,12 @@ export class TradeDocumentService {
       ...controls.map((item) => ({
         code: item.controlAccount,
         role: item.kind === "advance" ? ("advanceAccount" as const) : ("controlAccount" as const),
+        // D30: a legacy opening item may sit on either same-side trade account role.
+        alternate: openingItems.has(item.itemId)
+          ? item.kind === "advance"
+            ? ("controlAccount" as const)
+            : ("advanceAccount" as const)
+          : undefined,
         side: command.side,
         path: "items",
       })),
@@ -637,13 +650,24 @@ export class TradeDocumentService {
   private async accountRoles(
     repo: Repo,
     company: string,
-    uses: readonly { code: string; role: TradeAccountRole; side?: TradeSide; path: string }[],
+    uses: readonly {
+      code: string;
+      role: TradeAccountRole;
+      alternate?: TradeAccountRole;
+      side?: TradeSide;
+      path: string;
+    }[],
   ): Promise<readonly Account[]> {
     const accounts = await repo.accountsByCodes(company, [...new Set(uses.map((use) => use.code))]);
     const byCode = new Map(accounts.map((account) => [account.code, account]));
     for (const use of uses) {
       try {
-        assertTradeAccount(byCode.get(use.code) ?? null, use.role, use.side);
+        try {
+          assertTradeAccount(byCode.get(use.code) ?? null, use.role, use.side);
+        } catch (error) {
+          if (!(error instanceof DomainError) || !use.alternate) throw error;
+          assertTradeAccount(byCode.get(use.code) ?? null, use.alternate, use.side);
+        }
       } catch (error) {
         if (error instanceof DomainError) tradeDocumentError(use.path, "account");
         throw error;

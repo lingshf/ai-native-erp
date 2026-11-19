@@ -182,7 +182,7 @@ export async function reconcileLegacy(
       WHERE f.legacy_id IS NULL OR f.evidence<>e.evidence OR (e.target IS NOT NULL AND e.target<>f.target_id)
       UNION ALL SELECT f.source,f.object_type,f.legacy_id,'extra' FROM legacy_refs f
       LEFT JOIN reconciliation_expected e ON e.source=f.source AND e.object=f.object_type AND e.legacy=f.legacy_id
-      WHERE e.legacy IS NULL ORDER BY 1,2,3`,
+      WHERE e.legacy IS NULL AND f.object_type NOT IN('opening_items','opening_accounts') ORDER BY 1,2,3`,
     )) {
       report.differences.push({
         section: "legacy_refs",
@@ -199,7 +199,7 @@ export async function reconcileLegacy(
       ),
       rows(
         db,
-        "SELECT source,object_type object,count(*) count FROM legacy_refs GROUP BY source,object_type ORDER BY source,object_type",
+        "SELECT source,object_type object,count(*) count FROM legacy_refs WHERE object_type NOT IN('opening_items','opening_accounts') GROUP BY source,object_type ORDER BY source,object_type",
       ),
       ["source", "object"],
     );

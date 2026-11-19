@@ -40,6 +40,7 @@
   "packages/infra/test/legacy-import-plan.test.ts": 1830,
   "packages/infra/test/legacy-import-upgrade.test.ts": 274,
   "packages/infra/test/legacy-opener.test.ts": 589,
+  "packages/infra/test/legacy-opening-items.test.ts": 4500,
   "packages/infra/test/legacy-periods.test.ts": 231,
   "packages/infra/test/legacy-reconciliation.test.ts": 8665,
   "packages/infra/test/legacy-snapshot-diagnostics.test.ts": 292,

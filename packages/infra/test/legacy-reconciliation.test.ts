@@ -14,7 +14,7 @@ import {
 import { executeLegacyImport } from "../src/storage/legacy-import.ts";
 import { readMigrationStatus } from "../src/storage/reconciliation.ts";
 import { createMasterDataStore } from "../src/storage/master-data.ts";
-import { legacyFixture, captureDirectory } from "./support/legacy-fixture.mjs";
+import { legacyFixture, captureDirectory, openingItemsFile } from "./support/legacy-fixture.mjs";
 
 const choices: ImportChoices = {
   drafts: "import-as-draft",
@@ -31,9 +31,12 @@ async function fixture(
     drafts?: ImportChoices["drafts"];
     tradeControls?: boolean;
     controlAmounts?: readonly number[];
+    /** Reproduces a target without opening=done (D26 gate) after a valid M2-03b import. */
+    withoutOpening?: boolean;
   } = {},
 ) {
-  const f = legacyFixture(t, { ...options, tradeControls: options.tradeControls ?? false });
+  const tradeControls = options.tradeControls ?? false;
+  const f = legacyFixture(t, { ...options, tradeControls, tradeAdvances: tradeControls });
   if (options.controlAmounts?.length) {
     const source = new Database(join(f.target, "erp.sqlite"));
     try {
@@ -95,7 +98,24 @@ async function fixture(
   await executeLegacyImport(snapshot, {
     target,
     choices: { ...choices, drafts: options.drafts ?? choices.drafts },
+    ...(tradeControls
+      ? {
+          openingItems: openingItemsFile({
+            accounts: ["1300", "1400", "2100", "2300"],
+            items: { "1300": options.controlAmounts ?? [] },
+            master: true,
+          }),
+        }
+      : {}),
   });
+  if (options.withoutOpening) {
+    const db = new Database(target);
+    try {
+      db.exec("UPDATE legacy_import_runs SET opening=NULL");
+    } finally {
+      db.close();
+    }
+  }
   const confirmation = join(f.directory, "confirmation.json");
   const report = await checkLegacyReconciliation(snapshot, target);
   writeFileSync(
@@ -331,7 +351,7 @@ test("import-time differences persist failed report and block business runtime",
   await assert.rejects(
     executeLegacyImport(
       snapshot,
-      { target, choices },
+      { target, choices, openingItems: openingItemsFile() },
       {
         beforeReconcile(db) {
           db.exec("UPDATE periods SET status='frozen'");
@@ -382,8 +402,33 @@ const gateCases = [
   { name: "LEGACY +100/-100", amounts: [100, -100] },
   { name: "control without entries", amounts: [] },
 ] as const;
+test.for(gateCases)(
+  "valid opening items satisfy the gate without a blocker: $name",
+  async ({ amounts }, t) => {
+    const f = await fixture(t, { tradeControls: true, controlAmounts: amounts });
+    assert.deepEqual(f.report.blockers, []);
+    assert.equal(f.report.verdict, "pending");
+    const db = new Database(f.targetFile, { readonly: true });
+    try {
+      const run = db.prepare("SELECT opening,opening_details_sha FROM legacy_import_runs").get();
+      assert.equal(run.opening, "done");
+      assert.match(run.opening_details_sha, /^[0-9a-f]{64}$/u);
+      assert.equal(db.prepare("SELECT count(*) n FROM open_items").get().n, amounts.length);
+    } finally {
+      db.close();
+    }
+    assert.equal(
+      (await confirmLegacyReconciliation(f.snapshotReader, f.targetFile, f.confirmation)).verdict,
+      "pass",
+    );
+  },
+);
 test.for(gateCases)("opening gate blocks valid confirmation: $name", async ({ amounts }, t) => {
-  const f = await fixture(t, { tradeControls: true, controlAmounts: amounts });
+  const f = await fixture(t, {
+    tradeControls: true,
+    controlAmounts: amounts,
+    withoutOpening: true,
+  });
   assert.equal(f.report.verdict, "blocked");
   assert.ok(f.report.blockers.some((blocker) => blocker.account === "1300"));
   assert.equal(
@@ -410,7 +455,11 @@ test.for(
     (["check", "confirm"] as const).map((action) => ({ ...scenario, action })),
   ),
 )("CLI opening gate exits nonzero: $name / $action", async ({ amounts, action }, t) => {
-  const f = await fixture(t, { tradeControls: true, controlAmounts: amounts });
+  const f = await fixture(t, {
+    tradeControls: true,
+    controlAmounts: amounts,
+    withoutOpening: true,
+  });
   const result = spawnSync(
     process.execPath,
     [
@@ -429,7 +478,7 @@ test.for(
   assert.equal(state(f.targetFile).run.status, "imported");
 });
 test("only opening=done satisfies the control-account gate; true differences still take priority", async (t) => {
-  const f = await fixture(t, { tradeControls: true });
+  const f = await fixture(t, { tradeControls: true, withoutOpening: true });
   const db = new Database(f.targetFile);
   try {
     db.exec("UPDATE periods SET status='frozen'");

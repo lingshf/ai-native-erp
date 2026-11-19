@@ -47,6 +47,13 @@ import { journalTools } from "./journals.ts";
 import { APPLICATION_ID } from "./sqlite.ts";
 import { advanceWriteSequence } from "./write-sequence.ts";
 import { reconcileLegacy, saveReconciliation } from "../legacy/reconcile.ts";
+import {
+  openingItemsError,
+  validateOpeningItems,
+  type OpeningIssue,
+  type OpeningPlan,
+} from "../legacy/opening-items.ts";
+import { TradeMasterService } from "@erp/core/application";
 import type { Connection, Row } from "./types.ts";
 
 type Planned = {
@@ -171,6 +178,105 @@ function stage(
       "Legacy plan is not executable. Resolve unmappable or unsupported records in the dry-run plan before importing.";
     throw error;
   }
+}
+/** Library dry-run: the same staging and opening-items validation as the import, without a target. */
+export function checkLegacyOpeningItems(
+  snapshot: LegacyImportSnapshot,
+  request: { choices: ImportChoices; openingItems?: { bytes: Uint8Array } },
+): { sha: string | null; issues: OpeningIssue[] } {
+  const temporary = mkdtempSync(join(tmpdir(), "erp-opening-"));
+  const plan = new Database(join(temporary, "plan.sqlite"));
+  try {
+    stage(snapshot, request.choices, plan);
+    const result = validateOpeningItems(plan, request.openingItems?.bytes);
+    return { sha: result.plan.sha, issues: result.issues };
+  } finally {
+    plan.close();
+    rmSync(temporary, { recursive: true });
+  }
+}
+async function writeOpening(
+  db: Database.Database,
+  repo: MasterDataRepository,
+  opening: OpeningPlan,
+  run: string,
+  at: string,
+): Promise<void> {
+  const store: MasterDataStore = {
+    read: async (work) => work(repo),
+    write: async (work) => work(repo),
+  };
+  const master = new TradeMasterService(store, () => at);
+  for (const { company, config } of opening.configs)
+    await master.save({
+      company,
+      kind: config.kind,
+      code: config.code,
+      active: true,
+      expectedRevision: 0,
+      data: config.data,
+    } as Parameters<TradeMasterService["save"]>[0]);
+  const refs = prepared(
+    db,
+    "INSERT INTO legacy_refs(source,object_type,legacy_id,target_id,run_id,evidence) VALUES(?,?,?,?,?,?)",
+  );
+  for (const entry of opening.entries) {
+    await repo.insertTradeItem(
+      entry.company,
+      entry.item,
+      id(entry.source, entry.company, "journals", entry.journalLegacyRef),
+      null,
+    );
+    refs.run(entry.source, "opening_items", entry.legacyId, entry.item.itemId, run, entry.evidence);
+  }
+  for (const account of opening.accounts)
+    refs.run(
+      account.source,
+      "opening_accounts",
+      `${account.company}:${account.account}`,
+      `${account.company}:${account.account}`,
+      run,
+      JSON.stringify({
+        balanceMinor: account.balanceMinor,
+        cutover: account.cutover,
+        declaration: account.declaration,
+        rows: account.rows,
+        sha: opening.sha,
+        side: account.side,
+      }),
+    );
+}
+/** Re-derives every target AP/AR control balance from target rows only; any difference blocks. */
+function openingDifferences(db: Database.Database): string[] {
+  return (
+    db
+      .prepare(
+        `WITH controls AS (
+          SELECT a.company_id,a.code,a.control_module AS side,
+            coalesce((SELECT max(e.accounting_date) FROM journal_entries e WHERE e.company_id=a.company_id),
+              printf('%04d-12-31',c.year)) AS cutover
+          FROM accounts a JOIN ledger_companies c ON c.company_id=a.company_id
+          WHERE a.purpose='control' AND a.control_module IN('AP','AR'))
+        SELECT c.company_id,c.code,
+          coalesce((SELECT sum(l.debit_minor-l.credit_minor) FROM journal_lines l JOIN journal_entries e ON e.company_id=l.company_id AND e.id=l.entry_id
+            WHERE l.company_id=c.company_id AND l.account_code=c.code AND e.import_run IS NOT NULL AND e.accounting_date<=c.cutover),0) AS gl,
+          coalesce((SELECT sum(CASE WHEN (o.side='AR')=(s.kind='invoice') THEN o.gross_minor ELSE -o.gross_minor END)
+            FROM open_items o JOIN trade_item_sources s ON s.company_id=o.company_id AND s.item_id=o.item_id
+            JOIN legacy_refs r ON r.object_type='opening_items' AND r.target_id=o.item_id
+            WHERE o.company_id=c.company_id AND o.control_account=c.code),0) AS opening,
+          EXISTS(SELECT 1 FROM legacy_refs r WHERE r.object_type='opening_accounts' AND r.target_id=c.company_id||':'||c.code) AS declared
+        FROM controls c ORDER BY 1,2`,
+      )
+      .all() as {
+      company_id: string;
+      code: string;
+      gl: bigint;
+      opening: bigint;
+      declared: bigint;
+    }[]
+  )
+    .filter((row) => row.gl !== row.opening || !Number(row.declared))
+    .map((row) => `${row.company_id}/${row.code}: GL ${row.gl}, opening items ${row.opening}`);
 }
 function* jobs(plan: Database.Database): Generator<Planned> {
   const first = plan
@@ -448,10 +554,16 @@ async function apply(
 
 export async function executeLegacyImport(
   snapshot: LegacyImportSnapshot,
-  request: { target: string; choices: ImportChoices; batchLines?: number },
+  request: {
+    target: string;
+    choices: ImportChoices;
+    batchLines?: number;
+    openingItems?: { bytes: Uint8Array };
+  },
   hooks: {
     beforeBatchCommit?: (batch: number) => void;
     beforeReconcile?: (db: Database.Database) => void;
+    beforeOpeningRecheck?: (db: Database.Database) => void;
   } = {},
 ): Promise<{ runId: string; status: "imported"; batches: number }> {
   const batchLines = request.batchLines ?? 5000;
@@ -478,6 +590,9 @@ export async function executeLegacyImport(
   const plan = new Database(join(temporary, "plan.sqlite"));
   try {
     stage(snapshot, request.choices, plan);
+    const checked = validateOpeningItems(plan, request.openingItems?.bytes);
+    if (checked.issues.length) throw openingItemsError(checked.issues);
+    const opening = checked.plan;
     release = acquireMaintenance(target);
     const existed = existsSync(target);
     if (existed) {
@@ -511,6 +626,7 @@ export async function executeLegacyImport(
         run.status !== "importing" ||
         run.snapshot_sha !== snapshotSha ||
         run.choices !== choices ||
+        (run.opening_details_sha ?? null) !== opening.sha ||
         Number(run.migration_version) !== version ||
         run.counts !== tableCounts(db) ||
         run.write_sequence !==
@@ -533,8 +649,8 @@ export async function executeLegacyImport(
         await migrateConnection(raw);
         const version = await inspectSchema(raw, false);
         db.prepare(
-          "INSERT INTO legacy_import_runs(id,tool,snapshot_sha,choices,migration_version,status,created_at) VALUES(?,'legacy.import.v2',?,?,?,'importing',?)",
-        ).run(runId, snapshotSha, choices, version, at);
+          "INSERT INTO legacy_import_runs(id,tool,snapshot_sha,choices,migration_version,status,created_at,opening_details_sha) VALUES(?,'legacy.import.v2',?,?,?,'importing',?,?)",
+        ).run(runId, snapshotSha, choices, version, at, opening.sha);
         db.prepare("UPDATE legacy_import_runs SET counts=? WHERE id=?").run(tableCounts(db), runId);
         await raw.commit();
       } catch (error) {
@@ -560,7 +676,8 @@ export async function executeLegacyImport(
       batch = 0,
       pending: Planned[] = [],
       lines = 0,
-      failedReconciliation = false;
+      failedReconciliation = false,
+      openingDifference: string[] = [];
     async function flush(final = false) {
       if (!db) throw new StorageError("CLOSED");
       await raw.begin();
@@ -575,9 +692,18 @@ export async function executeLegacyImport(
             runId,
             at,
           );
-        if (pending.length) await advanceWriteSequence(raw);
         if (final) {
-          db.prepare("UPDATE legacy_import_runs SET status='imported' WHERE id=?").run(runId);
+          // M2-03b: items, the bound SHA/declarations and opening=done commit atomically.
+          await writeOpening(db, repo, opening, runId, at);
+          hooks.beforeOpeningRecheck?.(db);
+          openingDifference = openingDifferences(db);
+          if (openingDifference.length) throw new StorageError("CONFLICT");
+        }
+        if (pending.length || (final && opening.accounts.length)) await advanceWriteSequence(raw);
+        if (final) {
+          db.prepare(
+            "UPDATE legacy_import_runs SET opening='done',status='imported' WHERE id=?",
+          ).run(runId);
           hooks.beforeReconcile?.(db);
           const report = await reconcileLegacy(snapshot, db);
           saveReconciliation(db, report);
@@ -611,7 +737,15 @@ export async function executeLegacyImport(
       lines += Number(job.lines);
       index++;
     }
-    await flush(true);
+    try {
+      await flush(true);
+    } catch (error) {
+      if (!openingDifference.length) throw error;
+      db?.prepare("UPDATE legacy_import_runs SET status='failed' WHERE id=?").run(runId);
+      const failure = new StorageError("CONFLICT");
+      failure.message = `Opening items do not match the imported AP/AR control balances; target retained as failed:\n${openingDifference.join("\n")}`;
+      throw failure;
+    }
     if (failedReconciliation) {
       const error = new StorageError("CONFLICT");
       error.message =
