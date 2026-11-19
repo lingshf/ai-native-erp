@@ -11,13 +11,13 @@ permissions:
 
 jobs:
   full:
-    name: full (shard ${{ matrix.shard }}/3)
+    name: full (shard ${{ matrix.shard }}/5)
     runs-on: ubuntu-latest
     timeout-minutes: 8
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4, 5]
     concurrency:
       group: full-${{ github.ref }}-${{ matrix.shard }}
       cancel-in-progress: true
@@ -56,7 +56,7 @@ jobs:
       - name: All tests including slow tests
         id: tests
         if: steps.gate.outputs.run == 'true'
-        run: npm run test:ci -- --shard=${{ matrix.shard }}/3
+        run: npm run test:ci -- --shard=${{ matrix.shard }}/5
       - name: Web build
         if: steps.gate.outputs.run == 'true' && matrix.shard == 2
         run: npm run build

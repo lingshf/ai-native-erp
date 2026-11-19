@@ -36,3 +36,11 @@ M0 测试审计（[design/reviews/M0.md](../reviews/M0.md) §5）：Linux 上 Vi
 - 并发初始化契约沿用外部写锁契约的测试内 `PRAGMA busy_timeout=1`，保留真实锁竞争；独立连接配置测试仍断言生产忙超时为 5,000ms。恢复失败矩阵逐项保留锁、备份和存储拒绝访问断言，真实服务启动拒绝只在独立维护锁用例启动一次子进程。
 - Vitest 配置：`maxWorkers` 跟随 `availableParallelism()`；全局 `isolate: false`，配合 `unstubGlobals`/`unstubEnvs` 及 web setup 的 restore/cleanup；`packages/infra` 中含顶层 `vi.mock(` 的测试文件在加载配置时自动归入 `infra-isolated` 项目（`isolate: true`），新增 mock 文件无需手工登记。自定义 sequencer 会让 `--sequence.shuffle.files` 失效，所以用环境变量 `TEST_FILE_ORDER=reverse|shuffle:<seed>` 做顺序诊断：它在每个项目内反转或按种子打乱文件顺序，项目分组不变；不设置时仍按权重排序。验证 isolate:false 下没有顺序依赖时，用 `--maxWorkers=1` 分别跑默认顺序、`reverse` 和至少一个 `shuffle:<seed>`。CLI 子进程测试每个用例只启动一次 CLI，前置状态在进程内用同一套 storage API 准备，以免多次冷启动叠加后超过单例 5s。
 - 合并前记录 PR CI 与 Full 基线和候选分支完整运行结果；合并后的 main Full 总墙钟由协调者核实，不能用单用例耗时相减替代。
+
+## R6：Full 分片再平衡
+
+- `fa812a0` 的 Linux Full run `44546224409` 为 13.83 / 17.78 / 28.33s。第 3 片同时包含 `application/trade-documents.test.ts`（JSON 文件耗时 17,316ms，旧权重 5,855ms）和 `storage-admin-cli.test.ts`（11,416ms，旧权重 5,660ms）；新增 `legacy-import-execute` / `legacy-import-upgrade` 分别仅 1,600 / 361ms，不能把超标归因于新增文件本身。
+- 从该次 Full 的全部三个 `vitest.json` 重新生成 58 个文件的权重，并将 Full 增至五片。旧权重还缺少 6 个新增文件；新权重避免重文件相撞。不改测试内容、用例集合、PR 分层、runner 规格或 25s / 22s 目标。
+- 方案比较采用双 worker、各项目内最长文件优先的文件成本模型（不含启动/导入等开销，不是实测 Vitest Duration）：更新权重后三 / 四 / 五片的最慢片分别约 20.52 / 19.66 / 18.34s。原三片模型与 Linux 实测的残差为 -0.15 / 2.70 / 3.78s；以残差中位数作预算，四片约 22.36s，五片约 21.04s，因此选择五片而不是仅修到 25s 附近。五片仍需合并后的多次 Full 实测确认，残差不是稳定开销保证。
+- 后续刷新应使用同一代码版本的完整 Full 分片报告；不要混入迁移前的较低成本来稀释当前权重。执行 `node scripts/ci.ts weights --root=/home/runner/work/ai-native-erp/ai-native-erp REPORT_1.json REPORT_2.json REPORT_3.json REPORT_4.json REPORT_5.json`，并检查每个测试文件都有权重。新文件仍自动进入 Full，未知文件的中位权重回退不影响覆盖。
+- 本地双 worker 对照只用来评估编排，不代替 Linux 验收；Full 仍仅在 main push / schedule 触发。合并后跟踪各片实测 Duration、较大分片的多次运行中位数及总 runner 分钟数；若中位数超过 22s，继续调权重或加片，不放宽阈值。
