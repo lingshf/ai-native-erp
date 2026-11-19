@@ -245,7 +245,10 @@ function CloseWizard({
           month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, "0")}`;
         if (opened.month !== expected || opened.status !== "open")
           throw new MasterDataFailure("invalid");
-        await client.invalidateQueries({ queryKey: ["close-periods", company.code] });
+        await Promise.all([
+          client.invalidateQueries({ queryKey: ["close-periods", company.code] }),
+          client.invalidateQueries({ queryKey: ["ledger-periods", company.code] }),
+        ]);
         setPending(null);
         next(opened.month);
       }
