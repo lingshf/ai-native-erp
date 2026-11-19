@@ -1,0 +1,286 @@
+/* UI-1 外壳：顶栏、分组导航、main 边距与最大宽（design/ui/README.md §4.1）。只引用 token。 */
+.workspace {
+  min-height: 100dvh;
+}
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: var(--space-4);
+  z-index: 10;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+}
+.skip-link:focus {
+  top: var(--space-2);
+}
+
+/* ---------- 顶栏 ---------- */
+.appbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: var(--appbar-h);
+  padding: 0 var(--space-4);
+  background: var(--color-appbar);
+  color: var(--color-on-appbar);
+}
+.appbar :focus-visible {
+  outline-color: var(--color-surface);
+}
+.brand-mark {
+  flex: none;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-on-appbar);
+}
+.brand-mark > span {
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--color-appbar);
+}
+.brand-mark > span:nth-child(2) {
+  margin-right: 5px;
+}
+.appbar h1 {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0 auto 0 0;
+  overflow: hidden;
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.appbar-prefs {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.appbar-prefs legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.appbar-pref {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.appbar-prefs label {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--color-appbar-muted);
+}
+.appbar-prefs select {
+  width: auto;
+  min-height: 0;
+  height: 36px;
+  padding: 0 var(--space-1) 0 var(--space-2);
+  border: 1px solid var(--color-appbar-muted);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-on-appbar);
+}
+.appbar-prefs select option {
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+.appbar-prefs .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  cursor: pointer;
+}
+.appbar-prefs input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--color-on-appbar);
+}
+
+/* 目标尺寸（design/ui §7）：桌面 36px；窄屏或粗指针 44px。整个复选项标签都是点击区域。 */
+@media (max-width: 760px), (pointer: coarse) {
+  :root {
+    --control-h: 44px;
+  }
+  .appbar-prefs select {
+    height: 44px;
+  }
+  .appbar-prefs .checkbox-label {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+  .appbar-prefs input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* ---------- 导航 + 内容 ---------- */
+.shell {
+  display: grid;
+  grid-template-columns: var(--nav-w) minmax(0, 1fr);
+  min-height: calc(100dvh - var(--appbar-h));
+  /* 导航底色贯穿整页（含整页截图），不依赖导航自身高度 */
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) var(--nav-w),
+    var(--color-border) var(--nav-w) calc(var(--nav-w) + 1px),
+    transparent calc(var(--nav-w) + 1px)
+  );
+}
+.sidebar {
+  position: sticky;
+  top: var(--appbar-h);
+  align-self: start;
+  min-width: 0;
+  max-height: calc(100dvh - var(--appbar-h));
+  overflow-y: auto;
+}
+.nav {
+  padding: var(--space-3) var(--space-2) var(--space-6);
+}
+.nav-group {
+  margin-top: var(--space-4);
+}
+.nav-group:first-child {
+  margin-top: 0;
+}
+.nav-group > span {
+  display: block;
+  padding: 0 var(--space-3) var(--space-1);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-muted);
+}
+.nav a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  text-decoration: none;
+}
+.nav a:hover {
+  background: var(--color-surface-alt);
+}
+.nav a[aria-current="page"] {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: var(--weight-semibold);
+}
+.nav a[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 0;
+  width: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+}
+.shell-body {
+  min-width: 0;
+}
+.shell-body > .warning {
+  margin: var(--space-5) var(--space-8) 0;
+}
+main {
+  min-width: 0;
+  max-width: calc(var(--content-max) + 2 * var(--space-8));
+  padding: var(--space-5) var(--space-8) var(--space-10);
+  /* 页面内容超宽时只在 main 内横向滚动，根页面不溢出。
+     暂留例外：发票行表格尚无自身滚动容器，由 UI-03 消除（见 design/tasks/UI-03-trade-invoices.md）。 */
+  overflow-x: auto;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- 窄屏 ---------- */
+@media (max-width: 760px) {
+  .appbar {
+    gap: var(--space-3);
+    padding: 0 var(--space-3);
+  }
+  .appbar h1 {
+    font-size: var(--text-md);
+  }
+  .appbar-prefs {
+    gap: var(--space-2);
+  }
+  .appbar-prefs label:not(.checkbox-label),
+  .appbar-prefs .checkbox-label > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    background: none;
+  }
+  .sidebar {
+    z-index: 4;
+    max-height: none;
+    overflow: visible;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .nav {
+    display: flex;
+    gap: var(--space-1);
+    overflow-x: auto;
+    padding: var(--space-2);
+  }
+  .nav-group {
+    display: flex;
+    gap: var(--space-1);
+    margin: 0;
+  }
+  .nav-group > span {
+    display: none;
+  }
+  .nav a {
+    min-height: 44px;
+    white-space: nowrap;
+  }
+  .nav a[aria-current="page"]::before {
+    top: auto;
+    right: 8px;
+    bottom: 2px;
+    left: 8px;
+    width: auto;
+    height: 3px;
+  }
+  .shell-body > .warning {
+    margin: var(--space-4) var(--space-4) 0;
+  }
+  main {
+    padding: var(--space-4);
+  }
+}
