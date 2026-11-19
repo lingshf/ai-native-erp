@@ -44,7 +44,7 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 | [M1-05](M1-05-trade-prepayments-credits-cancel.md) | 预付/预收、贷项、专用取消与反向 | M1-04 | — | done | [#48](https://github.com/lingshf/ai-native-erp/pull/48) |
 | [M1-06](M1-06-trade-open-items-ageing.md) | 未结项、账龄、历史余额与 GL 核对 | M1-05 | — | done | [#49](https://github.com/lingshf/ai-native-erp/pull/49) |
 | [M1-07](M1-07-trade-e2e-bench.md) | GUI 端到端验收与性能基准 | M1-06 | bench/CI, web-ui:trade | done | [#54](https://github.com/lingshf/ai-native-erp/pull/54)、[#56](https://github.com/lingshf/ai-native-erp/pull/56) |
-| [M1-R](M1-R-milestone-review.md) | M1 里程碑评审 + 测试审计（设计角色） | M1-07 | — | done | [#57](https://github.com/lingshf/ai-native-erp/pull/57)，报告见 [design/reviews/M1.md](../reviews/M1.md) |
+| [M1-R](M1-R-milestone-review.md) | M1 里程碑评审 + 测试审计（设计角色） | M1-07 | — | done（随 #57 合并落地，不是基线 `336c0cd` 中已合并的内容） | [#57](https://github.com/lingshf/ai-native-erp/pull/57)，报告见 [design/reviews/M1.md](../reviews/M1.md) |
 | [M1-R1](M1-R1-trade-order-entry.md) | 非库存订单录入 GUI（不阻塞 v0.2.0） | M1-R | web-ui:trade | todo | |
 | [M1-R2](M1-R2-trade-teaching-and-lists.md) | 贸易页教学提示补齐 + 调整页列表虚拟滚动（不阻塞 v0.2.0） | M1-R | web-ui:trade | todo | |
 | [M1-R3](M1-R3-trade-report-capacity.md) | 账龄/余额容量：带历史与并发的基准（不阻塞 v0.2.0） | M1-R | bench/CI, storage | todo | |
@@ -59,17 +59,19 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 | [M2-01](M2-01-legacy-snapshot-producer.md) | 旧账快照与旧账备份生成 | M0-R4, M0-R5 | — | done | [#42](https://github.com/lingshf/ai-native-erp/pull/42) |
 | [M2-02](M2-02-legacy-import-mapping.md) | 旧账→目标库映射与 dry-run | M0-R4, M0-R5 | — | done | [#43](https://github.com/lingshf/ai-native-erp/pull/43) |
 | [M2-03](M2-03-legacy-import-execute.md) | 导入执行（写入新的目标库） | M2-02, M0-R1 | migrations(014)+migrations.ts, domain-posting, storage, admin-cli | done | [#47](https://github.com/lingshf/ai-native-erp/pull/47) |
-| [M2-04](M2-04-legacy-reconciliation.md) | 迁移核对报告 | M2-03 | legacy-import, admin-cli, web-ui:migration | todo | |
-| [M2-05](M2-05-migration-rehearsal.md) | 隔离试迁移演练与操作手册 | M2-01, M2-04 | bench/CI, docs/runbook | todo | |
+| [M2-03b](M2-03b-legacy-opening-open-items.md) | 旧账 AP/AR 期初未结项导入（D25） | M2-03, M1-06 | legacy-import, domain-posting, storage, admin-cli | todo | |
+| [M2-04](M2-04-legacy-reconciliation.md) | 迁移核对报告 | M2-03, M2-03b | legacy-import, admin-cli, web-ui:migration | todo | |
+| [M2-05](M2-05-migration-rehearsal.md) | 隔离试迁移演练与操作手册 | M2-01, M2-04（经 M2-04 继承 M2-03b） | bench/CI, docs/runbook | todo | |
 | [M2-06](M2-06-controlled-cutover.md) | 受控切换与回退 | M2-05 | admin-cli, docs/runbook | todo | |
 | [M2-R](M2-R-milestone-review.md) | M2 里程碑评审 + 测试审计（设计角色） | M2-06 | — | todo | |
 
-**待用户决定**（已报告协调者）。四项都**没有真实操作的默认值**：未决定时，任务的工具开发和虚构验收照常进行，只有对应的真实操作不能执行。
+**待用户决定**（已报告协调者）。三项都**没有真实操作的默认值**：未决定时，任务的工具开发和虚构验收照常进行，只有对应的真实操作不能执行。
 
 - A：是否授权对真实旧账的私有副本取快照并做隔离演练（M2-05）。未授权前不读取真实旧账。
 - B：是否授权真实停写与切换（M2-06），以及切换后新运行时的端口（当前新运行时拒绝 4173）。未授权前不停 4173、不切换。
-- C：导入范围——草稿（含 ID3）导入为草稿还是跳过；回执、来源事件、转账队列、封印、审计分别导入还是只做只读归档。未确认前，对真实数据只允许 dry-run 列出选项和数量，不做真实导入。虚构夹具测试中显式传入的选项只是测试数据，不代表这项决定。
-- D（M1-R 提出）：旧账 AP/AR 控制科目余额在切换时是否导入为期初未结项（需新增导入路径写 `open_items` 并与控制科目对平），还是接受它们在贸易核对中作为“其他来源”差异、另行清理。M2-03 目前只导入凭证、不建未结项；见 [M1 评审 §7](../reviews/M1.md)。须在 M2-05 前决定。
+- C：导入范围——草稿（含 ID3）导入为草稿还是跳过；回执、来源事件、转账队列、封印、审计分别导入还是只做只读归档。未确认前，对真实数据只允许 dry-run 列出选项和数量，不做真实导入。虚构夹具测试中显式传入的选项只是测试数据，不代表这项决定。
+
+**已决**：D25（协调者代定，M1-R 提出）——旧账 AP/AR 控制科目余额在切换时导入为期初未结项，使贸易子账与 GL 一致；不采用“其他来源差异另行清理”。由 M2-03b 实现，M2-04 核对，M2-05 之前必须完成。见 [M1 评审 §7](../reviews/M1.md) 与[路线图 §6](../roadmap.md#6-决定记录)。
 
 ## 派发顺序
 
@@ -100,8 +102,8 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
      - 集成由准备合并的那个任务的开发者串行完成：rebase 到最新 main，同步改迁移文件名、manifest 顺序和 schema/对象检查，跑包含从旧版本升级的 CI，评审角色按新 head 重新评审后才能合并。同一时间只做一个迁移集成。
      - 改同一张表的两个任务不能并行开发。
    - 公共文件（`package.json`/lockfile、`web/src/App.tsx` 路由与导航、`ui/index.ts`、contracts 汇总导出）：只做追加式小改动，由后合并者 rebase 解决。改 `package.json`/lockfile 的任务同时只开一个。
-   - 当前前置状态：M0 全部、M1 全部（含 M1-R，结论通过，见 [design/reviews/M1.md](../reviews/M1.md)）、M2-01..03 均已合并，以上历史派发顺序不代表仍在开发。M1-R1..R4 不阻塞 v0.2.0，可与 M2-04 按冲突域穿插派发；main 迁移已到 014。
-5. M2（草案）：M0-R4、M0-R5 都合并后，M2-01 与 M2-02 可并行（冲突域不重叠）。M2-03 需要 M2-02 和 M0-R1；迁移 014 必须在 M1 的 013 合并之后集成（M2-03 先就绪就等待，不互换编号）；M2-03 与 M1-03、M1-06 同属 `domain-posting`，不能同时开发，这条不因迁移串行集成规则而豁免。M2-01、M2-03、M2-04、M2-06 都改 `admin-cli`，不能同时进行。之后依次为 M2-04 → M2-05 → M2-06 → M2-R。真实操作只看决定 A/B/C。
+   - 当前前置状态：基线 main `336c0cd` 已含 M0 全部、M1-01..07（#54、#56）、M2-01..03（#47）；M1-R 随 #57 合并落地（结论通过，见 [design/reviews/M1.md](../reviews/M1.md)）。以上历史派发顺序不代表仍在开发。M1-R1..R4 不阻塞 v0.2.0，可与 M2-03b 按冲突域穿插派发；main 迁移已到 014。
+5. M2（草案）：M0-R4、M0-R5 都合并后，M2-01 与 M2-02 可并行（冲突域不重叠）。M2-03 需要 M2-02 和 M0-R1；迁移 014 必须在 M1 的 013 合并之后集成（M2-03 先就绪就等待，不互换编号）；M2-03 与 M1-03、M1-06 同属 `domain-posting`，不能同时开发，这条不因迁移串行集成规则而豁免。M2-01、M2-03、M2-04、M2-06 都改 `admin-cli`，不能同时进行。之后依次为 M2-03b → M2-04 → M2-05 → M2-06 → M2-R；M2-03b 与 M2-04 都改 `admin-cli`、`legacy-import`，串行。真实操作看决定 A/B/C；D25 已决（导入期初未结项），M2-03b 合并前不做真实导入演练。
 
 ## 决定记录
 
