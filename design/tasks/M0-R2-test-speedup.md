@@ -17,7 +17,7 @@ M0 测试审计（[design/reviews/M0.md](../reviews/M0.md) §5）：Linux 上 Vi
 
 ## 验收标准
 
-- Linux Full 的 Vitest 总时长 ≤ 25s（基线 43.2s）；PR CI 中不再出现超过 5s 的单个用例。
+- Linux main Full 中 Vitest 报告的总时长（Duration，墙钟）≤ 25s（基线 43.22s，main Full 44459418837）。这是整体墙钟目标，以合并后的 main Full 实测为准，不按单个用例耗时相减估算；PR CI 中不再出现超过 5s 的单个用例。
 - 不删除任何行为的唯一覆盖：每处删除或合并在 PR 描述里写出“由哪个测试覆盖”。
 - 生产代码只为可注入超时做最小改动，默认值和行为不变。
 - CI 绿。
