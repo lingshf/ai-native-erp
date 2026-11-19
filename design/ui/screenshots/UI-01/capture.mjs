@@ -2,6 +2,8 @@
 // 用全新临时虚构账套（迁移 + 默认公司初始化，不连 4173、不用 .bak），进程内启动 API 托管 <webDist>，
 // 用系统 Chrome（channel=chrome）截图。DPR = 1，整页，PNG 宽 = 视口宽。
 // 每张断言：scrollWidth ≤ 视口宽、溢出元素只在自身滚动容器内；并检查偏好三个控件可见、可用 Tab 到达。
+// 另断言偏好控件点击区域（桌面 36px，窄屏或粗指针 44px，粗指针用 hasTouch 模拟），
+// 以及 main 自身不横向滚动（UI-03 发票页例外，仅记录）。
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -24,7 +26,36 @@ const variants = [
   ["en", "green", 1440, false],
   ["en", "green", 390, false],
 ];
-const extra = [["overview", "", "zh", "red", 1440, true]];
+// [page, path, language, theme, width, teaching, coarse pointer]
+const extra = [
+  ["overview", "", "zh", "red", 1440, true, false],
+  ["overview", "", "zh", "red", 1440, false, true],
+];
+// UI-03 例外：发票行表格尚无自身滚动容器，暂由 main 横向滚动（见 design/tasks/UI-03-trade-invoices.md）。
+const mainScrollException = new Set(["trade-invoices"]);
+
+function hitAreas() {
+  const box = (el) => {
+    const r = el.getBoundingClientRect();
+    return [Math.round(r.width), Math.round(r.height)];
+  };
+  const checkbox = document.getElementById("workspace-teaching");
+  return {
+    coarse: matchMedia("(pointer: coarse)").matches,
+    "workspace-language": box(document.getElementById("workspace-language")),
+    "workspace-theme": box(document.getElementById("workspace-theme")),
+    // The wrapping label is the click target of the checkbox.
+    "workspace-teaching": box(checkbox.closest("label") ?? checkbox),
+  };
+}
+
+function mainScroll() {
+  const main = document.querySelector("main");
+  const scrollers = [...main.querySelectorAll("*")]
+    .filter((el) => el.scrollWidth > el.clientWidth + 1 && /(auto|scroll)/.test(getComputedStyle(el).overflowX))
+    .map((el) => `${el.tagName.toLowerCase()}.${el.className} ${el.scrollWidth}/${el.clientWidth}`);
+  return { main: [main.scrollWidth, main.clientWidth], scrollers };
+}
 
 function overflowReport() {
   const vw = document.documentElement.clientWidth;
@@ -65,12 +96,16 @@ let failed = 0;
 try {
   const shots = [
     ...pages.flatMap(([name, path]) =>
-      variants.map(([language, theme, width, teaching]) => [name, path, language, theme, width, teaching]),
+      variants.map(([language, theme, width, teaching]) => [name, path, language, theme, width, teaching, false]),
     ),
     ...extra,
   ];
-  for (const [name, path, language, theme, width, teaching] of shots) {
-    const context = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: 1 });
+  for (const [name, path, language, theme, width, teaching, coarse] of shots) {
+    const context = await browser.newContext({
+      viewport: { width, height: 900 },
+      deviceScaleFactor: 1,
+      hasTouch: coarse,
+    });
     await context.addInitScript((value) => {
       window.localStorage.setItem("erp.workspace.preferences.v1", value);
     }, JSON.stringify({ language, theme, teaching }));
@@ -81,6 +116,14 @@ try {
     await tab.waitForLoadState("networkidle");
     await tab.evaluate(() => document.fonts.ready);
     const report = await tab.evaluate(overflowReport);
+    const hits = await tab.evaluate(hitAreas);
+    const scroll = await tab.evaluate(mainScroll);
+    // design/ui §7: 36px on desktop, 44px on narrow screens or coarse pointers.
+    const minTarget = width <= 760 || hits.coarse ? 44 : 36;
+    const smallTargets = ["workspace-language", "workspace-theme", "workspace-teaching"].filter(
+      (id) => hits[id][1] < minTarget || (id === "workspace-teaching" && hits[id][0] < minTarget),
+    );
+    const mainOk = scroll.main[0] <= scroll.main[1] || mainScrollException.has(name);
     // Preferences must be visible and reachable by real Tab presses from the document start.
     const reach = {};
     for (const id of ["workspace-language", "workspace-theme", "workspace-teaching"]) {
@@ -100,7 +143,7 @@ try {
       document.activeElement?.blur?.();
       window.scrollTo(0, 0);
     });
-    const file = `${name}-${language}-${theme}-${width}${teaching ? "-teaching" : ""}.png`;
+    const file = `${name}-${language}-${theme}-${width}${teaching ? "-teaching" : ""}${coarse ? "-coarse" : ""}.png`;
     await tab.screenshot({ path: join(outDir, file), fullPage: true });
     const size = await tab.evaluate(() => [
       document.documentElement.scrollWidth,
@@ -110,10 +153,13 @@ try {
       report.vw === width &&
       report.scrollWidth <= width &&
       report.escaped.length === 0 &&
+      (!coarse || hits.coarse) &&
+      smallTargets.length === 0 &&
+      mainOk &&
       Object.values(reach).every((n) => n >= 0);
     if (!ok) failed++;
     console.log(
-      `${ok ? "PASS" : "FAIL"} ${file} viewport ${width} page ${size[0]}x${size[1]} tabs ${JSON.stringify(reach)}${report.escaped.length ? ` escaped: ${report.escaped.join(", ")}` : ""}`,
+      `${ok ? "PASS" : "FAIL"} ${file} viewport ${width} page ${size[0]}x${size[1]} tabs ${JSON.stringify(reach)} targets ${JSON.stringify(hits)} main ${scroll.main.join("/")}${scroll.scrollers.length ? ` scrollers: ${scroll.scrollers.join(", ")}` : ""}${smallTargets.length ? ` small: ${smallTargets.join(", ")}` : ""}${report.escaped.length ? ` escaped: ${report.escaped.join(", ")}` : ""}`,
     );
     await context.close();
   }

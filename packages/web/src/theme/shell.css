@@ -92,7 +92,7 @@
 .appbar-prefs select {
   width: auto;
   min-height: 0;
-  height: 30px;
+  height: 36px;
   padding: 0 var(--space-1) 0 var(--space-2);
   border: 1px solid var(--color-appbar-muted);
   border-radius: var(--radius-sm);
@@ -107,13 +107,33 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: 0;
+  min-height: 36px;
+  cursor: pointer;
 }
 .appbar-prefs input[type="checkbox"] {
   width: 16px;
   height: 16px;
   margin: 0;
   accent-color: var(--color-on-appbar);
+}
+
+/* 目标尺寸（design/ui §7）：桌面 36px；窄屏或粗指针 44px。整个复选项标签都是点击区域。 */
+@media (max-width: 760px), (pointer: coarse) {
+  :root {
+    --control-h: 44px;
+  }
+  .appbar-prefs select {
+    height: 44px;
+  }
+  .appbar-prefs .checkbox-label {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+  .appbar-prefs input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
 }
 
 /* ---------- 导航 + 内容 ---------- */
@@ -192,16 +212,14 @@ main {
   min-width: 0;
   max-width: calc(var(--content-max) + 2 * var(--space-8));
   padding: var(--space-5) var(--space-8) var(--space-10);
-  /* 页面内容超宽时只在 main 内横向滚动，根页面不溢出 */
+  /* 页面内容超宽时只在 main 内横向滚动，根页面不溢出。
+     暂留例外：发票行表格尚无自身滚动容器，由 UI-03 消除（见 design/tasks/UI-03-trade-invoices.md）。 */
   overflow-x: auto;
   overflow-wrap: anywhere;
 }
 
 /* ---------- 窄屏 ---------- */
 @media (max-width: 760px) {
-  :root {
-    --control-h: 44px;
-  }
   .appbar {
     gap: var(--space-3);
     padding: 0 var(--space-3);
@@ -220,18 +238,6 @@ main {
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
-  }
-  .appbar-prefs select {
-    height: 36px;
-  }
-  .appbar-prefs .checkbox-label {
-    min-width: 36px;
-    min-height: 36px;
-    justify-content: center;
-  }
-  .appbar-prefs input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
   }
   .shell {
     grid-template-columns: minmax(0, 1fr);
