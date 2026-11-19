@@ -8,17 +8,19 @@ import {
   verifyLedgerSnapshot,
 } from "../../../../scripts/legacy-snapshot-verifier.mjs";
 
-export function captureDirectory(directory) {
+export function captureDirectory(directory, { mtime = false } = {}) {
   return fs
     .readdirSync(directory)
     .sort()
     .map((name) => {
       const file = join(directory, name);
+      const stat = fs.statSync(file, { bigint: true });
       return [
         name,
-        fs.statSync(file).isDirectory()
-          ? captureDirectory(file)
+        stat.isDirectory()
+          ? captureDirectory(file, { mtime })
           : createHash("sha256").update(fs.readFileSync(file)).digest("hex"),
+        ...(mtime && stat.isFile() ? [stat.mtimeNs.toString()] : []),
       ];
     });
 }

@@ -47,10 +47,13 @@ test("bridge rejects absent/unverified/empty/directory inputs instead of creatin
   assert.equal(fs.existsSync(join(f.directory, "absent")), false);
 });
 
-test("real M00 WAL snapshot preserves committed data, all hashes/names and draft ID3", (t) => {
+test("real M00 WAL snapshot preserves committed data, source bytes/mtimes and draft ID3", (t) => {
   const f = legacyFixture(t, { wal: true });
   assert.deepEqual([...fs.readFileSync(f.teaching).subarray(18, 20)], [2, 2]);
-  const before = captureDirectory(f.directory);
+  for (const suffix of ["-wal", "-shm"]) {
+    assert.ok(fs.statSync(f.teaching + suffix).size > 0);
+  }
+  const before = captureDirectory(f.directory, { mtime: true });
   const reader = open(f);
   assert.equal(reader.info.sourceKind, "verified-teaching-snapshot");
   assert.equal(reader.info.live, false);
@@ -64,22 +67,22 @@ test("real M00 WAL snapshot preserves committed data, all hashes/names and draft
     { id: 3, status: "draft" },
   );
   reader.close();
-  assert.deepEqual(captureDirectory(f.directory), before);
+  assert.deepEqual(captureDirectory(f.directory, { mtime: true }), before);
 });
 
-test("explicit verifier then bridge consumption preserves source WAL/SHM and snapshot bytes after setup", (t) => {
+test("explicit verifier then bridge consumption preserves source WAL/SHM and snapshot bytes/mtimes", (t) => {
   const f = legacyFixture(t, { wal: true });
   // M00 creation and its bounded, pinned-source setup are finished before this baseline.
-  const before = captureDirectory(f.directory);
+  const before = captureDirectory(f.directory, { mtime: true });
   const manifest = verifyLedgerSnapshot(f.target);
-  assert.deepEqual(captureDirectory(f.directory), before);
+  assert.deepEqual(captureDirectory(f.directory, { mtime: true }), before);
   const reader = openLegacyTeachingSnapshot({ directory: f.target, verifiedManifest: manifest });
   f.readers.push(reader);
   assert.equal(reader.info.snapshotSha256, manifest.ledgers.teaching.sha256);
   assert.equal(reader.trialBalances(f.month).month, f.month);
   assert.ok(reader.ledger({ month: f.month, account: "1000" }).entries.length > 0);
   reader.close();
-  assert.deepEqual(captureDirectory(f.directory), before);
+  assert.deepEqual(captureDirectory(f.directory, { mtime: true }), before);
 });
 
 test("non-SQL preflight validates both fixed M00 snapshot files without creating sidecars", (t) => {
@@ -96,15 +99,15 @@ test("non-SQL preflight validates both fixed M00 snapshot files without creating
     walHeader[18] = 2;
     walHeader[19] = 2;
     fs.writeFileSync(file, walHeader);
-    const before = captureDirectory(f.directory);
+    const before = captureDirectory(f.directory, { mtime: true });
     assert.throws(() => preflight(f.target), code("INVALID_SNAPSHOT"));
-    assert.deepEqual(captureDirectory(f.directory), before);
+    assert.deepEqual(captureDirectory(f.directory, { mtime: true }), before);
     fs.writeFileSync(file, original);
     for (const suffix of ["-wal", "-shm", "-journal"]) {
       fs.writeFileSync(file + suffix, "");
-      const withSidecar = captureDirectory(f.directory);
+      const withSidecar = captureDirectory(f.directory, { mtime: true });
       assert.throws(() => preflight(f.target), code("INVALID_SNAPSHOT"));
-      assert.deepEqual(captureDirectory(f.directory), withSidecar);
+      assert.deepEqual(captureDirectory(f.directory, { mtime: true }), withSidecar);
       fs.unlinkSync(file + suffix);
     }
     fs.writeFileSync(file, "");
@@ -257,18 +260,18 @@ test("changed verified bytes, WAL headers/sidecars and symlink ancestors fail wi
   walHeader[18] = 2;
   walHeader[19] = 2;
   fs.writeFileSync(f.snapshot, walHeader);
-  const beforeHeaderRejection = captureDirectory(f.directory);
+  const beforeHeaderRejection = captureDirectory(f.directory, { mtime: true });
   assert.throws(
     () => openLegacyTeachingSnapshot(metadataFor(f.snapshot, f.target)),
     code("INVALID_SNAPSHOT"),
   );
-  assert.deepEqual(captureDirectory(f.directory), beforeHeaderRejection);
+  assert.deepEqual(captureDirectory(f.directory, { mtime: true }), beforeHeaderRejection);
   fs.writeFileSync(f.snapshot, original);
   for (const suffix of ["-wal", "-shm", "-journal"]) {
     fs.writeFileSync(f.snapshot + suffix, "");
-    const before = captureDirectory(f.directory);
+    const before = captureDirectory(f.directory, { mtime: true });
     assert.throws(() => open(f), code("INVALID_SNAPSHOT"));
-    assert.deepEqual(captureDirectory(f.directory), before);
+    assert.deepEqual(captureDirectory(f.directory, { mtime: true }), before);
     fs.unlinkSync(f.snapshot + suffix);
   }
   const alias = join(f.directory, "alias");

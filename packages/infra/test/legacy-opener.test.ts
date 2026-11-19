@@ -10,7 +10,7 @@ import { legacyFixture, captureDirectory } from "./support/legacy-fixture.mjs";
 
 test("shared opener verifies the real pair and holds a read-only reader without changing either source", (t) => {
   const f = legacyFixture(t, { wal: true });
-  const before = captureDirectory(f.directory);
+  const before = captureDirectory(f.directory, { mtime: true });
   const reader = openVerifiedTeachingReader(f.target);
   f.readers.push(reader);
   assert.equal(reader.info.snapshotSha256, f.manifest.ledgers.teaching.sha256);
@@ -19,7 +19,7 @@ test("shared opener verifies the real pair and holds a read-only reader without 
     f.book.reports(f.month).trialBalances,
   );
   reader.close();
-  assert.deepEqual(captureDirectory(f.directory), before);
+  assert.deepEqual(captureDirectory(f.directory, { mtime: true }), before);
   for (const [sql, message] of [
     ["DROP TRIGGER immutable_audit_UPDATE", /Incomplete immutable enterprise schema/],
     ["ALTER TABLE configs ADD COLUMN unexpected TEXT", /Incompatible enterprise schema/],
@@ -41,10 +41,10 @@ test("shared opener verifies the real pair and holds a read-only reader without 
     } finally {
       db.close();
     }
-    const unchanged = captureDirectory(invalid.directory);
+    const unchanged = captureDirectory(invalid.directory, { mtime: true });
     assert.throws(() => inspectLedger(file, "enterprise"), { code: "SNAPSHOT_INVALID", message });
     assert.throws(() => openVerifiedTeachingReader(invalid.target), { code: "INVALID_SNAPSHOT" });
-    assert.deepEqual(captureDirectory(invalid.directory), unchanged);
+    assert.deepEqual(captureDirectory(invalid.directory, { mtime: true }), unchanged);
   }
 
   // Frozen a401d6f producer output, including its original manifest, not this verifier's output.
@@ -75,7 +75,7 @@ test("shared opener verifies the real pair and holds a read-only reader without 
     expected.ledgers.enterprise.logical.tables.find((table) => table.name === "journal_seals").rows,
     1,
   );
-  const frozen = captureDirectory(f.directory);
+  const frozen = captureDirectory(f.directory, { mtime: true });
   assert.deepEqual(verifyLedgerSnapshot(target), expected);
   const postedReader = openVerifiedTeachingReader(target);
   f.readers.push(postedReader);
@@ -86,13 +86,13 @@ test("shared opener verifies the real pair and holds a read-only reader without 
   } finally {
     postedReader.close();
   }
-  assert.deepEqual(captureDirectory(f.directory), frozen);
+  assert.deepEqual(captureDirectory(f.directory, { mtime: true }), frozen);
 });
 
 test("shared opener classifies failed manifest verification and never returns a success-shaped empty reader", (t) => {
   const f = legacyFixture(t);
   writeFileSync(join(f.target, "manifest.json"), "{}");
-  const before = captureDirectory(f.directory);
+  const before = captureDirectory(f.directory, { mtime: true });
   assert.throws(() => openVerifiedTeachingReader(f.target), { code: "INVALID_SNAPSHOT" });
-  assert.deepEqual(captureDirectory(f.directory), before);
+  assert.deepEqual(captureDirectory(f.directory, { mtime: true }), before);
 });

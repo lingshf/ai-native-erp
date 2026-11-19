@@ -33,7 +33,30 @@ type SnapshotEntry =
   VerifiedTeachingSnapshotConfiguration["verifiedManifest"]["ledgers"]["teaching"];
 
 function fail(code: ConstructorParameters<typeof StorageError>[0]): never {
+  if (code === "INVALID_SNAPSHOT") return invalidSnapshot("validation");
   throw new StorageError(code);
+}
+
+function invalidSnapshot(
+  check: "validation" | "header" | "sidecar" | "identity" | "digest",
+  before?: BigIntStats,
+  after?: BigIntStats,
+): never {
+  const describe = (stat?: BigIntStats) =>
+    stat
+      ? {
+          size: String(stat.size),
+          mtimeNs: String(stat.mtimeNs),
+          ino: String(stat.ino),
+          dev: String(stat.dev),
+          ctimeNs: String(stat.ctimeNs),
+        }
+      : null;
+  const diagnostic = { check, before: describe(before), after: describe(after) };
+  const error = new StorageError("INVALID_SNAPSHOT");
+  Object.assign(error, { diagnostic });
+  error.message += ` ${JSON.stringify(diagnostic)}`;
+  throw error;
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -105,12 +128,16 @@ function sameFile(left: BigIntStats, right: BigIntStats): boolean {
   );
 }
 
-function noSidecars(file: string): void {
+function assertSameFile(before: BigIntStats, after: BigIntStats): void {
+  if (!sameFile(before, after)) invalidSnapshot("identity", before, after);
+}
+
+function noSidecars(file: string, before: BigIntStats): void {
   for (const suffix of ["-wal", "-shm", "-journal"]) {
     // lstat also rejects dangling symlink sidecars, unlike existsSync alone.
     try {
       lstatSync(file + suffix);
-      fail("INVALID_SNAPSHOT");
+      invalidSnapshot("sidecar", before, regularPath(file));
     } catch (error) {
       if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT"))
         throw error;
@@ -118,7 +145,7 @@ function noSidecars(file: string): void {
   }
 }
 
-function header(fd: number): void {
+function header(fd: number, before: BigIntStats): void {
   const buffer = Buffer.alloc(100);
   if (
     readSync(fd, buffer, 0, 100, 0) !== 100 ||
@@ -126,23 +153,19 @@ function header(fd: number): void {
     buffer[18] !== 1 ||
     buffer[19] !== 1
   )
-    fail("INVALID_SNAPSHOT");
+    invalidSnapshot("header", before, fstatSync(fd, { bigint: true }));
 }
 
 function openSnapshotFile(file: string): { fd: number; before: BigIntStats } {
   const before = regularPath(file);
-  if (before.size < 100n) return fail("INVALID_SNAPSHOT");
-  noSidecars(file);
+  if (before.size < 100n) return invalidSnapshot("header", before, before);
+  noSidecars(file, before);
   const fd = openSync(file, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
   try {
-    header(fd);
-    noSidecars(file);
-    if (
-      !sameFile(before, fstatSync(fd, { bigint: true })) ||
-      !sameFile(before, regularPath(file))
-    ) {
-      return fail("INVALID_SNAPSHOT");
-    }
+    header(fd, before);
+    noSidecars(file, before);
+    assertSameFile(before, fstatSync(fd, { bigint: true }));
+    assertSameFile(before, regularPath(file));
     return { fd, before };
   } catch (error) {
     closeSync(fd);
@@ -570,30 +593,24 @@ export function openLegacyTeachingSnapshot(
     const opened = openSnapshotFile(file);
     fd = opened.fd;
     const before = opened.before;
-    if (before.size !== BigInt(entry.bytes)) return fail("INVALID_SNAPSHOT");
+    if (before.size !== BigInt(entry.bytes)) return invalidSnapshot("digest", before, before);
     db = new DatabaseSync(file, { readOnly: true });
     db.exec("BEGIN");
     all(db, "SELECT rootpage FROM sqlite_schema LIMIT 1");
     // The first SQLite read now holds SHARED until close; no mode change or checkpoint.
-    header(fd);
-    noSidecars(file);
-    if (
-      !sameFile(before, regularPath(file)) ||
-      !sameFile(before, fstatSync(fd, { bigint: true })) ||
-      digest(fd) !== entry.sha256 ||
-      !sameFile(before, regularPath(file)) ||
-      !sameFile(before, fstatSync(fd, { bigint: true }))
-    )
-      return fail("INVALID_SNAPSHOT");
+    header(fd, before);
+    noSidecars(file, before);
+    assertSameFile(before, regularPath(file));
+    assertSameFile(before, fstatSync(fd, { bigint: true }));
+    if (digest(fd) !== entry.sha256)
+      return invalidSnapshot("digest", before, fstatSync(fd, { bigint: true }));
+    assertSameFile(before, regularPath(file));
+    assertSameFile(before, fstatSync(fd, { bigint: true }));
     schema(db);
-    header(fd);
-    noSidecars(file);
-    if (
-      !sameFile(before, regularPath(file)) ||
-      !sameFile(before, fstatSync(fd, { bigint: true }))
-    ) {
-      return fail("INVALID_SNAPSHOT");
-    }
+    header(fd, before);
+    noSidecars(file, before);
+    assertSameFile(before, regularPath(file));
+    assertSameFile(before, fstatSync(fd, { bigint: true }));
     // POSIX close() on any descriptor for this file drops this process's SQLite locks.
     const reader = new SnapshotReader(db, fd, entry);
     fd = undefined;

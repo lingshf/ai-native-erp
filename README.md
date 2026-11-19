@@ -122,6 +122,10 @@ npm run preview:legacy -- --snapshot-dir C:\private\verified-snapshot
 
 `scripts/legacy-snapshot-reader.mjs`先做双文件非 SQL preflight，再校验 manifest、字节/逻辑摘要及只读 Enterprise 完整性。只读校验不含初始化、种子、迁移或写业务方法；旧快照格式和检查强度不变。WAL 头、sidecar、符号链接、身份/摘要变化都明确失败，不能放宽已知 Windows 间歇 INVALID_SNAPSHOT 护栏。
 
+只读回归测试同时比较读取前后源快照和已有 WAL/SHM 的内容及纳秒 mtime；接受与拒绝路径都不得 checkpoint 源文件、清理 sidecar 或修改源快照。测试夹具在独立目录生成，不能用真实账套代替。
+
+`INVALID_SNAPSHOT` 的读取器诊断会区分 `header`、`sidecar`、`identity`、`digest` 和一般 `validation` 检查，并在错误对象的 `diagnostic` 及消息中记录前后两次的 `size`、`mtimeNs`、`ino`、`dev`、`ctimeNs`（十进制字符串；尚无文件元数据时为 `null`），不包含文件路径、SQL 或业务数据。可手动或由外部夜间任务运行 `node scripts/stress-legacy-snapshot.mjs --iterations 50`：记录 Node/SQLite/平台版本，循环运行只读验收和诊断测试，失败时保留具体检查信息并以非零状态退出；不接入 PR CI。
+
 CLI 输出标注`live:false`、快照 SHA、`scale:2`精确最小单位；总账保留同月完整分录和稳定游标，不因分页改变总额。来源变化 409 必须显式重新加载，不能静默切账。读取器测试用已提交的小型确定性 SQL 数据及冻结旧输出，不再调用旧 Book 或 Enterprise 写模型；另冻结由旧 main a401d6f 生产者生成的含过账、回执和封印的双账快照及原始 manifest，独立检验新 verifier 的兼容性与消费前后字节不变。来源记录在夹具的`producer.json`，原始 manifest 以`.oracle`保存，测试只复制为固定消费文件名，不重算预期。
 
 旧账快照创建/备份/恢复不在当前新运行时提供。真正 M2 迁移仍需另行授权、独立备份、核对和回滚准备；读取现有快照不代表完成迁移，更不能操作受保护的 4173 账套、ID3 草稿或旧 checkout。
