@@ -72,7 +72,7 @@ npm run start:local
 | 5 | 贸易主数据（第 3 步完成后） | 伙伴、商品、过账配置、付款条件、税码 | [06](screenshots/06-trade-master.png) |
 | 6 | 采购和销售发票 | AP、`PARTY`、外部号 `AP-DEMO`、订单 `PO-DEMO`；行 `L1`：`EXPENSE`、`VAT`、数量 `10`、单价 `10`、订单行 `OL1`，其余 `0`。预览：净额 100.00、税 13.00、总额 113.00、匹配成功；再点“确认发票” | [07](screenshots/07-invoice-preview.png)、[08](screenshots/08-invoice-posted.png) |
 | 7 | 付款与收款 | `PARTY`、AP，选 `AP-DEMO`；核销金额输入 `5650`（最小单位），勾选现金折扣。预览核销 56.50、现金 55.75、折扣 0.75、余款 56.50；确认账面核销。折扣符合条件也须用户勾选才采用 | [09](screenshots/09-settlement-preview.png) |
-| 8 | 预付、贷项与专用纠错 | 新建 AP 预付 `PARTY`、总额 `2000`，预览确认；“应用预付/贷项”：来源选该预付、目标 `AP-DEMO`、金额 `2000`。发票余款 36.50、预付余款 0.00 | [10](screenshots/10-adjustments.png) |
+| 8 | 预付、贷项与专用纠错 | 新建 AP 预付 `PARTY`、总额 `2000`，预览确认；**应用预付是单独的一步，须单独预览并确认**：选“应用预付/贷项”，来源选该预付、目标 `AP-DEMO`、金额 `2000`，预览后点确认。确认之前发票余款仍是 56.50；确认后才变为 36.50，预付余款 0.00 | [10](screenshots/10-adjustments.png) |
 | 9 | 往来未结项与账龄 → 未结项 | 月份留空（当前余额）：发票未结 36.50；点单据下钻到发票行、核销记录和凭证 | [11](screenshots/11-open-items.png) |
 | 10 | 账龄 | 当天仍为未到期；贷项/预付单列，不抵消发票桶 | [12](screenshots/12-ageing.png) |
 | 11 | GL 核对 | `2100`：子账与贸易 GL 均为 -36.50，贸易差异 0.00、其他来源 0.00；**看贸易差异，其他来源另列，从不自动抵平** | [13](screenshots/13-reconciliation.png) |
