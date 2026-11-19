@@ -60,13 +60,42 @@ class WeightedShardSequencer extends BaseSequencer {
       );
     }
     const byName = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
-    return [...files].sort(
+    const sorted = [...files].sort(
       (a, b) =>
         (projectWeight.get(b.project.name) ?? 0) - (projectWeight.get(a.project.name) ?? 0) ||
         byName(a.project.name, b.project.name) ||
         weight(b) - weight(a) ||
         byName(this.key(a), this.key(b)),
     );
+    // Order diagnostic for isolate: false (a custom sequencer disables Vitest's
+    // `--sequence.shuffle.files`): TEST_FILE_ORDER=reverse|shuffle:<seed> reorders files
+    // inside each project and keeps project grouping. Unset keeps the weighted order.
+    const order = process.env.TEST_FILE_ORDER;
+    if (!order) return sorted;
+    const shuffleSeed = /^shuffle:(\d+)$/u.exec(order)?.[1];
+    if (order !== "reverse" && shuffleSeed === undefined) {
+      throw new Error(`TEST_FILE_ORDER must be "reverse" or "shuffle:<seed>", got "${order}"`);
+    }
+    let state = Number(shuffleSeed ?? 0) >>> 0;
+    const random = () => {
+      state = (state + 0x6d2b79f5) >>> 0;
+      let t = state;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const groups = new Map<string, TestSpecification[]>();
+    for (const spec of sorted) {
+      groups.set(spec.project.name, [...(groups.get(spec.project.name) ?? []), spec]);
+    }
+    return [...groups.values()].flatMap((group) => {
+      if (order === "reverse") return group.reverse();
+      for (let i = group.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(random() * (i + 1));
+        [group[i], group[j]] = [group[j], group[i]];
+      }
+      return group;
+    });
   }
 }
 

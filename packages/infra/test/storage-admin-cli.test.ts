@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { test } from "vitest";
+import { backupSqlite, createSqliteStorage } from "../src/storage/index.ts";
 
 const root = resolve(import.meta.dirname, "..", "..", "..");
 const script = resolve(root, "scripts", "storage-admin.mjs");
@@ -61,21 +62,45 @@ test("storage CLI help and invalid configuration never choose an implicit target
   assert.deepEqual(readdirSync(directory), []);
 });
 
-test("storage CLI backup and restore require explicit paths and report the rollback copy", (t) => {
+// Each CLI spawn cold-loads core and storage, so every case below spawns the CLI once and
+// prepares its precondition in-process with the same storage API the CLI calls.
+function sqliteTarget(t) {
   const directory = fixture(t);
   const filename = resolve(directory, "target.sqlite");
+  return { directory, filename, target: ["--provider", "sqlite", "--file", filename] };
+}
+async function withStorage(filename, use) {
+  const store = createSqliteStorage({ filename });
+  try {
+    return await use(store);
+  } finally {
+    await store.close();
+  }
+}
+function assertAction(result, action) {
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).action, action);
+}
+
+test("storage CLI backs up a migrated target to an explicit snapshot path", async (t) => {
+  const { directory, filename } = sqliteTarget(t);
   const snapshot = resolve(directory, "snapshot.sqlite");
-  assert.equal(run(["migrate", "--provider", "sqlite", "--file", filename]).status, 0);
-  const backup = run(["backup", filename, snapshot]);
-  assert.equal(backup.status, 0, backup.stderr);
+  await withStorage(filename, (store) => store.migrate());
+  assertAction(run(["backup", filename, snapshot]), "backup");
+  await withStorage(snapshot, (store) => store.verifySchema());
+});
+
+test("storage CLI restores an explicit snapshot and reports the rollback copy", async (t) => {
+  const { directory, filename } = sqliteTarget(t);
+  const snapshot = resolve(directory, "snapshot.sqlite");
+  await withStorage(filename, (store) => store.migrate());
+  await backupSqlite(filename, snapshot);
   const database = new DatabaseSync(filename);
   database.exec("INSERT INTO tenants VALUES('SYNTHETIC',0)");
   database.close();
   const restored = run(["restore", filename, snapshot]);
-  assert.equal(restored.status, 0, restored.stderr);
-  const result = JSON.parse(restored.stdout);
-  assert.equal(result.action, "restore");
-  assert.ok(statSync(result.backup).size > 0);
+  assertAction(restored, "restore");
+  assert.ok(statSync(JSON.parse(restored.stdout).backup).size > 0);
   const check = new DatabaseSync(filename);
   try {
     assert.equal(check.prepare("SELECT count(*) AS n FROM tenants").get().n, 0);
@@ -84,39 +109,45 @@ test("storage CLI backup and restore require explicit paths and report the rollb
   }
 });
 
-test("storage CLI explicitly migrates, verifies and provisions an independent target", async (t) => {
-  const directory = fixture(t);
-  const filename = resolve(directory, "target.sqlite");
-  const target = ["--provider", "sqlite", "--file", filename];
+test("storage CLI verify refuses an absent target without creating it", (t) => {
+  const { directory, target } = sqliteTarget(t);
   const absent = run(["verify", ...target]);
   assert.equal(absent.status, 1);
   assert.deepEqual(readdirSync(directory), []);
-  for (const action of ["migrate", "migrate", "verify"]) {
-    const result = run([action, ...target]);
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(JSON.parse(result.stdout).action, action);
-  }
+});
+
+test("storage CLI explicitly migrates a new independent target", async (t) => {
+  const { filename, target } = sqliteTarget(t);
+  assertAction(run(["migrate", ...target]), "migrate");
   assert.ok(statSync(filename).size > 0);
-  const provision = run([
+  await withStorage(filename, (store) => store.verifySchema());
+});
+
+test("storage CLI migrate is repeatable on an already migrated target", async (t) => {
+  const { filename, target } = sqliteTarget(t);
+  await withStorage(filename, (store) => store.migrate());
+  assertAction(run(["migrate", ...target]), "migrate");
+  await withStorage(filename, (store) => store.verifySchema());
+});
+
+test("storage CLI verifies a migrated target", async (t) => {
+  const { filename, target } = sqliteTarget(t);
+  await withStorage(filename, (store) => store.migrate());
+  assertAction(run(["verify", ...target]), "verify");
+});
+
+test("storage CLI provisions an explicit scope on a migrated target", async (t) => {
+  const { filename, target } = sqliteTarget(t);
+  await withStorage(filename, (store) => store.migrate());
+  assertAction(
+    run(["provision", ...target, "--tenant", "T1", "--book", "B1", "--company", "C1"]),
     "provision",
-    ...target,
-    "--tenant",
-    "T1",
-    "--book",
-    "B1",
-    "--company",
-    "C1",
-  ]);
-  assert.equal(provision.status, 0, provision.stderr);
-  const { createSqliteStorage } = await import("../src/storage/index.ts");
-  const store = createSqliteStorage({ filename });
-  try {
+  );
+  await withStorage(filename, async (store) => {
     await store.verifySchema();
     const scope = { level: "company", tenantId: "T1", bookId: "B1", companyId: "C1" };
     assert.equal(await store.read(scope, (session) => session.revisions.get(scope)), 0);
-  } finally {
-    await store.close();
-  }
+  });
 });
 
 test("storage CLI refuses an existing foreign database without changing its bytes", (t) => {
