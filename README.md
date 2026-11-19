@@ -91,6 +91,24 @@ D6 历史反向逐行精确镜像同公司原已过账行，即使科目/维度�
 
 011 追加不可变付款身份、发票折扣条件快照与来源校验；001–010 不改。010 没有保存发票对应的条款修订号，墙钟（含过账时间）不能证明配置与发票先后。升级先验证该伙伴及其曾引用条款的完整修订链，再以固化单据日加候选到期/折扣天数，同时匹配旧未结项的到期日及折扣截止日，排除不可能的条款；剩余候选的折扣率与部分折扣策略语义一致才回填。百分比按精确整数规范化，描述等无关字段改变或同毫秒同语义修订不阻断。链缺失/断档、无日期匹配候选或匹配候选语义不同（即便时间戳看似有序）时，错误列出受影响公司/发票及原因，拒绝升级并回滚，不按时间猜测；原余额及日期不改。新发票直接固化条件，不再依赖历史回查。发票详情的 `settlements` 返回核销来源、凭证及每次余额链路，结果仅表示账面已结算/剩余，**不表示银行支付、清算或对账完成**。
 
+### 预付、贷项、专用取消与反向（M1-05）
+
+`/trade-adjustments` 提供类型化预付/预收、贷项、应用、取消与反向表单；`POST /api/v1/trade/actions/preview` 零写预览，`POST /api/v1/trade/actions` 以 `{command, fingerprint, idempotencyKey, confirmation:"POST"}` 原子确认。每个新动作使用新的 UUID `actionId`，共同字段为 `company`、`accountingDate`、`documentDate`、`taxDate`，不接受客户端 GL/税额。未知写结果锁定并保存原确认封套供安全重试，切语言保留输入；不自动调用 AI。
+
+| `command.kind` | 专用字段与规则 |
+| --- | --- |
+| `advance` | `side`、`party`、`currency`、整数最小币种单位 `gross`、`dimensions`。AP 借预付资产、贷普通现金；AR 借普通现金、贷预收负债，不确认收入或预收税，不代表预付发票路线。 |
+| `credit` | `invoiceId`、原发票当前 `revision`、`lines:[{sourceLineId,quantity}]`。按原行累计可贷数量分配原净额/税/可抵扣税与尾差；保留原损益/税科目及最终控制维度，产生独立反向未结项，不修改已付原发票、不产生实物退货。 |
+| `apply` | `sourceId/sourceRevision`、`targetId/targetRevision`、`gross`。来源只能是同伙伴/币种/AP或AR的贷项或预付，目标只能是发票；原子扣减两边余额，末笔取尽各自净/税及分段尾差。 |
+| `cancel` | `itemId`、`revision`、`relatedRevision`（取消贷项时必须是原发票当前版本，其余为 `null`）、`reason`。仅完整未结且无有效依赖的发票/贷项/预付可取消；取消贷项恢复可贷数量，取消发票恢复订单可开数量。 |
+| `reverse` | `settlementId`、`items:[{itemId,revision}]`（必须恰好覆盖原核销/应用两边或全部选中项）、`reason`。精确恢复原净/税/控制分段分配；现金反向仍不表示银行退票已处理。 |
+
+付款界面 `/trade-settlements` 同时支持预付和贷项剩余余额的退款，现金方向与发票结算相反；退款不可拿折扣，也不得与发票混选。`GET /api/v1/trade/open-items` 返回 `kind`、`status`（含 `cancelled`）及 `segments`，`GET /api/v1/trade/open-items/{itemId}/actions?company=...` 与发票详情的 `actions` 返回不可变操作链；原 `settlements` 保留核销证据，反向不会删除旧记录。所有后续动作日期不得早于受影响对象最晚事件日；有效依赖先逐项专用撤销，不自动级联，通用手工冲销仍拒绝贸易凭证。
+
+控制/预付维度按原最终集合分段，键按 ASCII 规范序排列，逐段按当步剩余金额比例 half-up，末段取尽。新发票逐行固化控制维度（包含商品/表头/行维度）；原已过账发票保留原单段，不重写历史。相同控制科目的跨维度应用仍写真实转移分录，只有逐科目及完整维度均净零才可无 GL，但业务来源、回执、双边余额及链路仍完整持久化。新写入验证当前有效角色/结构，不能改投新伙伴默认或 profile；完整专用取消/反向复制服务器原凭证全行（含内部平衡），不因当前停用/结构变化阻断。
+
+迁移 **012** 追加来源身份、不可变动作/关联/贷项行及控制分段；事务内重建 `open_items` 和其直接外键子表以支持三类未结项及取消状态，逐列保留原数据、余额、版本、核销和条款，既有发票回填原控制单段；001–011 不修改。011 及之前的原核销回执仍可精确反向，原幂等封套继续返回原回执。月末历史余额/账龄不是本页面的当前余额口径，另由后续查询切片提供。
+
 ### 贸易计算器（M1-02）
 
 `@erp/core/domain` 导出无 I/O 的 `calculateTrade` 和对称 half-up 的 `roundTradeRatio`。计算输入显式包含 `side: "ap" | "ar"`、相同的 `currency`/`accountingCurrency`、`scale: 0..4`、`priceMode: "exclusive" | "inclusive"`、`rounding: "line" | "document"` 及 1–100 个唯一 `id` 的行。行的 `quantity`、`unitPrice`、`discountPercent`、`taxableCharges` 均为非负十进制字符串，数量必须正；数量/单价/百分比最多六位小数，费用使用币种精度。税配置显式传 `code`、`treatment: "standard" | "zero" | "exempt"`、`ratePercent`、`deductiblePercent`（百分比 0–100）；调用者先按 `taxDate` 解析并验证有效税码，计算器不查主数据、不替上层推断税码。未知字段（包括客户端税额、库存类型）明确拒绝，单据舍入后总额必须正。

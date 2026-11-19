@@ -9,6 +9,10 @@ import {
   checkedTradeInvoice,
   checkedTradeOrder,
   checkedTradeSettlement,
+  checkedTradeAction,
+  allocateTradeSegments,
+  tradeDimensionKey,
+  tradeSegments,
   roundTradeRatio,
   formatMinor,
   matchTradeOrderLine,
@@ -43,16 +47,43 @@ import {
   type TradeSettlementAllocation,
   type TradeSettlementReceipt,
   type TradePaymentRecord,
+  type TradeActionCommand,
+  type TradeActionConfirm,
+  type TradeActionPreview,
+  type TradeActionReceipt,
+  type TradeActionRecord,
+  type TradeCreditLine,
 } from "@erp/core/domain";
+import { prepareTradeAction } from "./trade-adjustments.ts";
 import type { JournalPreview, JournalService, JournalTools } from "./journals.ts";
 import type { MasterDataRepository, MasterDataStore } from "./master-data.ts";
 
 export interface OpenItemQuery extends PageQuery {
   readonly party?: string;
-  readonly status?: "open" | "settled";
+  readonly status?: OpenItem["status"];
 }
 export interface TradeDocumentRepository {
+  tradeAction(company: string, id: string, byReceipt?: boolean): Promise<TradeActionRecord | null>;
+  tradeItemActions(company: string, itemId: string): Promise<readonly TradeActionRecord[]>;
+  tradeUndo(company: string, kind: "cancel" | "reverse", relatedId: string): Promise<boolean>;
+  tradeItemSource(
+    company: string,
+    itemId: string,
+  ): Promise<{
+    readonly journalId: string;
+    readonly originalId: string | null;
+  } | null>;
+  tradeCreditLines(company: string, invoiceId: string): Promise<readonly TradeCreditLine[]>;
+  insertTradeItem(
+    company: string,
+    item: OpenItem,
+    journalId: string,
+    originalId: string | null,
+  ): Promise<void>;
+  changeOpenItem(company: string, before: OpenItem, after: OpenItem): Promise<void>;
+  insertTradeAction(company: string, record: TradeActionRecord): Promise<void>;
   tradeOrder(company: string, orderId: string): Promise<TradeOrder | null>;
+  tradeOrderLatestDate(company: string, orderId: string): Promise<string>;
   insertTradeOrder(company: string, order: TradeOrder): Promise<void>;
   /** Exact invoiced quantity in micros per requested order line, aggregated in storage. */
   tradeOrderInvoiced(
@@ -107,6 +138,7 @@ export interface TradeInvoicePreview {
   readonly journal: JournalPreview["plan"];
 }
 export interface TradeInvoiceDetail {
+  readonly actions: readonly TradeActionRecord[];
   readonly document: Omit<TradeDocumentRecord, "snapshot">;
   readonly calculation: TradeCalculation;
   readonly matches: readonly TradeLineMatch[];
@@ -127,7 +159,7 @@ interface Prepared {
   readonly journal: JournalPreview;
   readonly commandHash: string;
   readonly lines: readonly TradeDocumentLine[];
-  readonly controlIndex: number;
+  readonly controlIndexes: readonly number[];
   readonly settlementTerms: {
     readonly discountPercent: string;
     readonly allowPartialDiscount: boolean;
@@ -152,8 +184,88 @@ export class TradeDocumentService {
     this.journals = journals;
     this.tools = tools;
   }
+  async previewAction(command: TradeActionCommand): Promise<TradeActionPreview> {
+    checkedTradeAction(command);
+    return this.store.read(
+      async (repo) => (await prepareTradeAction(repo, this.journals, this.tools, command)).preview,
+    );
+  }
+  async confirmAction(input: TradeActionConfirm): Promise<TradeActionReceipt> {
+    if (
+      input?.confirmation !== "POST" ||
+      typeof input.fingerprint !== "string" ||
+      !/^[0-9a-f]{64}$/u.test(input.fingerprint)
+    )
+      tradeDocumentError("fingerprint", "shape");
+    checkedJournalId(input.idempotencyKey);
+    checkedTradeAction(input.command);
+    const command = input.command;
+    return this.store.write(async (repo) => {
+      const commandHash = this.tools.hash(["trade-action-v1", command]);
+      const previous = await repo.tradeAction(command.company, input.idempotencyKey, true);
+      if (previous) {
+        if (
+          previous.commandHash !== commandHash ||
+          previous.receipt.fingerprint !== input.fingerprint
+        )
+          tradeDocumentError("idempotencyKey", "idempotency", true);
+        return previous.receipt;
+      }
+      if (await repo.journalReceipt(command.company, input.idempotencyKey))
+        tradeDocumentError("idempotencyKey", "idempotency", true);
+      const prepared = await prepareTradeAction(repo, this.journals, this.tools, command);
+      if (prepared.preview.fingerprint !== input.fingerprint)
+        tradeDocumentError("fingerprint", "stale", true);
+      const posted = await this.journals.commit(repo, prepared.journal, input.idempotencyKey);
+      const { journal: _, ...preview } = prepared.preview;
+      const receipt: TradeActionReceipt = {
+        ...preview,
+        company: command.company,
+        actionId: command.actionId,
+        idempotencyKey: input.idempotencyKey,
+        sourceRef: posted.sourceRef,
+        journalIds: posted.journalIds,
+        postedAt: posted.postedAt,
+      };
+      for (const change of receipt.changes) {
+        if (change.before) await repo.changeOpenItem(command.company, change.before, change.after);
+        else
+          await repo.insertTradeItem(
+            command.company,
+            change.after,
+            posted.journalIds[0],
+            command.kind === "credit" ? command.invoiceId : null,
+          );
+      }
+      await repo.insertTradeAction(command.company, { command, commandHash, receipt });
+      await repo.businessAudit(
+        command.company,
+        posted.sourceRef,
+        `trade.${command.kind}.confirm`,
+        {
+          actionId: command.actionId,
+          links: receipt.links,
+          reason: "reason" in command ? command.reason : null,
+        },
+        posted.postedAt,
+      );
+      return receipt;
+    });
+  }
+  async actions(company: string, itemId: string): Promise<readonly TradeActionRecord[]> {
+    checkedCode(company);
+    checkedJournalId(itemId);
+    return this.store.read(async (repo) => {
+      required(await repo.openItem(company, itemId));
+      return repo.tradeItemActions(company, itemId);
+    });
+  }
   private async prepareSettlement(repo: Repo, command: TradeSettlementCommand) {
-    if (await repo.tradePayment(command.company, command.paymentId))
+    if (
+      (await repo.tradePayment(command.company, command.paymentId)) ||
+      (await repo.tradeAction(command.company, command.paymentId)) ||
+      (await repo.openItem(command.company, command.paymentId))
+    )
       tradeDocumentError("paymentId", "duplicate", true);
     const company = await this.company(repo, command.company, command.currency);
     const party = await this.config(
@@ -179,6 +291,7 @@ export class TradeDocumentService {
       tradeDocumentError("paymentId", "duplicate", true);
     const allocations: TradeSettlementAllocation[] = [];
     const controls: OpenItem[] = [];
+    const controlLines: { index: number; dimensions: DimensionMap }[] = [];
     const lines: JournalInputLine[] = [];
     const ap = command.side === "AP";
     const push = (account: string, debit: boolean, amount: number, dimensions: DimensionMap) => {
@@ -207,22 +320,27 @@ export class TradeDocumentService {
       if ((await repo.latestSettlementDate(command.company, item.itemId)) > command.accountingDate)
         tradeDocumentError("accountingDate", "reference");
       const gross = selection.gross;
+      if (controls.length && (controls[0].kind === "invoice") !== (item.kind === "invoice"))
+        tradeDocumentError(path, "reference");
       const net =
         gross === item.remainingGross
           ? item.remainingNet
           : roundTradeRatio(BigInt(item.remainingNet) * BigInt(gross), BigInt(item.remainingGross));
       const tax = gross - net;
       const discountAvailable =
+        item.kind === "invoice" &&
         command.accountingDate >= item.documentDate &&
         command.accountingDate <= item.discountDate &&
         quantityMicros(item.discountPercent) > 0n &&
-        (item.allowPartialDiscount || (item.revision === 1 && gross === item.gross));
+        (item.allowPartialDiscount || (item.remainingGross === item.gross && gross === item.gross));
       if (selection.takeDiscount && !discountAvailable)
         tradeDocumentError(`${path}.takeDiscount`, "reference");
       const discount = selection.takeDiscount
         ? roundTradeRatio(BigInt(net) * quantityMicros(item.discountPercent), 100_000_000n)
         : 0;
+      const segments = allocateTradeSegments(item, gross);
       allocations.push({
+        segments,
         itemId: item.itemId,
         revision: item.revision,
         gross,
@@ -238,7 +356,15 @@ export class TradeDocumentService {
         remainingTax: item.remainingTax - tax,
       });
       controls.push(item);
-      push(item.controlAccount, ap, gross, item.dimensions);
+      for (const segment of segments) {
+        controlLines.push({ index: lines.length, dimensions: segment.dimensions });
+        push(
+          item.controlAccount,
+          item.kind === "invoice" ? ap : !ap,
+          segment.gross,
+          segment.dimensions,
+        );
+      }
     }
     const sum = (key: "gross" | "cash" | "discount") => {
       const value = allocations.reduce((n, a) => n + BigInt(a[key]), 0n);
@@ -251,7 +377,7 @@ export class TradeDocumentService {
     const accounts = await this.accountRoles(repo, command.company, [
       ...controls.map((item) => ({
         code: item.controlAccount,
-        role: "controlAccount" as const,
+        role: item.kind === "advance" ? ("advanceAccount" as const) : ("controlAccount" as const),
         side: command.side,
         path: "items",
       })),
@@ -262,7 +388,7 @@ export class TradeDocumentService {
         ? [{ code: profile.data.discountAccount, role: "discountAccount" as const, path: "party" }]
         : []),
     ]);
-    push(profile.data.cashAccount, !ap, cash, {});
+    push(profile.data.cashAccount, controls[0].kind === "invoice" ? !ap : ap, cash, {});
     push(profile.data.discountAccount, !ap, discount, {});
     const draft: JournalDraft = {
       id: command.paymentId,
@@ -284,10 +410,10 @@ export class TradeDocumentService {
       draft,
       lines.map(() => ({})),
     );
-    for (const [index, item] of controls.entries()) {
+    for (const { index, dimensions } of controlLines) {
       if (
-        this.tools.hash([journal.plan.journals[0].lines[index].dimensions]) !==
-        this.tools.hash([item.dimensions])
+        tradeDimensionKey(journal.plan.journals[0].lines[index].dimensions) !==
+        tradeDimensionKey(dimensions)
       )
         tradeDocumentError(`items.${index}.dimensions`, "account");
     }
@@ -615,6 +741,11 @@ export class TradeDocumentService {
       order = await repo.tradeOrder(command.company, command.orderId);
       if (!order) tradeDocumentError("orderId", "order");
       if (
+        command.accountingDate < order.orderDate ||
+        command.accountingDate < (await repo.tradeOrderLatestDate(command.company, order.orderId))
+      )
+        tradeDocumentError("accountingDate", "reference");
+      if (
         order.side !== command.side ||
         order.party !== command.party ||
         order.currency !== command.currency
@@ -672,14 +803,18 @@ export class TradeDocumentService {
     };
     const controlSide = command.side === "AP" ? "credit" : "debit",
       lineSide = command.side === "AP" ? "debit" : "credit";
-    const controlIndex = 0;
-    push(
-      profile.data.controlAccount,
-      controlSide,
-      calculation.gross,
-      {},
-      party.data.defaultDimensions,
-    );
+    const controlIndexes: number[] = [];
+    for (const [index, line] of command.lines.entries()) {
+      if (!calculation.lines[index].gross) continue;
+      controlIndexes.push(journalLines.length);
+      push(
+        profile.data.controlAccount,
+        controlSide,
+        calculation.lines[index].gross,
+        line.dimensions,
+        { ...party.data.defaultDimensions, ...resolved[index].product.data.defaultDimensions },
+      );
+    }
     const lines: TradeDocumentLine[] = command.lines.map((line, index) => {
       const calc = calculation.lines[index];
       const { product, account, tax } = resolved[index];
@@ -787,7 +922,7 @@ export class TradeDocumentService {
       commandHash,
       journal,
       lines,
-      controlIndex,
+      controlIndexes,
       settlementTerms: {
         discountPercent: terms.data.discountPercent,
         allowPartialDiscount: terms.data.allowPartialDiscount,
@@ -807,7 +942,11 @@ export class TradeDocumentService {
     };
   }
   private async unique(repo: Repo, command: TradeInvoiceCommand) {
-    if (await repo.tradeDocument(command.company, command.documentId))
+    if (
+      (await repo.openItem(command.company, command.documentId)) ||
+      (await repo.tradeAction(command.company, command.documentId)) ||
+      (await repo.tradePayment(command.company, command.documentId))
+    )
       tradeDocumentError("documentId", "duplicate", true);
     if (
       await repo.tradeDocumentByExternal(
@@ -869,7 +1008,7 @@ export class TradeDocumentService {
       const journal = await this.journals.commit(repo, prepared.journal, input.idempotencyKey);
       const preview = prepared.preview;
       const controlLine = journal.journalIds.length
-        ? prepared.journal.plan.journals[0].lines[prepared.controlIndex]
+        ? prepared.journal.plan.journals[0].lines[prepared.controlIndexes[0]]
         : null;
       const receipt: TradeInvoiceReceipt = {
         company: command.company,
@@ -915,6 +1054,12 @@ export class TradeDocumentService {
           matches: preview.matches,
           receipt,
           settlementTerms: prepared.settlementTerms,
+          controlSegments: tradeSegments(
+            prepared.controlIndexes.map((index) => {
+              const line = prepared.journal.plan.journals[0].lines[index];
+              return { dimensions: line.dimensions, gross: line.debit + line.credit };
+            }),
+          ),
         },
       };
       await repo.insertTradeDocument(command.company, record);
@@ -952,6 +1097,7 @@ export class TradeDocumentService {
       const record = required(await repo.tradeDocument(company, documentId));
       const { snapshot, ...document } = record;
       return {
+        actions: await repo.tradeItemActions(company, documentId),
         document,
         calculation: snapshot.calculation,
         matches: snapshot.matches,
@@ -970,7 +1116,7 @@ export class TradeDocumentService {
     checkedCode(company);
     checkedPage(query);
     if (query.party !== undefined) checkedCode(query.party);
-    if (query.status !== undefined && query.status !== "open" && query.status !== "settled")
+    if (query.status !== undefined && !["open", "settled", "cancelled"].includes(query.status))
       tradeDocumentError("status", "shape");
     if (query.cursor !== undefined && !/^\d{4}-\d\d-\d\d\|[0-9a-f-]{36}$/u.test(query.cursor))
       tradeDocumentError("cursor", "shape");

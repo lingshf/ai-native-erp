@@ -5,6 +5,7 @@ import {
   roundTradeRatio,
   type DimensionMap,
   type TradeCalculation,
+  type JournalPlan,
 } from "./index.ts";
 
 export interface TradeDocumentIssue {
@@ -143,6 +144,8 @@ export interface TradeDocumentLine {
   readonly matchStatus: PoMatch;
 }
 export interface OpenItem {
+  readonly kind: "invoice" | "advance" | "credit";
+  readonly segments: readonly TradeControlSegment[];
   readonly discountPercent: string;
   readonly allowPartialDiscount: boolean;
   readonly itemId: string;
@@ -162,7 +165,7 @@ export interface OpenItem {
   readonly remainingGross: number;
   readonly remainingNet: number;
   readonly remainingTax: number;
-  readonly status: "open" | "settled";
+  readonly status: "open" | "settled" | "cancelled";
   readonly revision: number;
 }
 export interface TradeInvoiceReceipt {
@@ -224,6 +227,7 @@ export interface TradeDocumentSnapshot {
   readonly calculation: TradeCalculation;
   readonly matches: readonly TradeLineMatch[];
   readonly receipt: TradeInvoiceReceipt;
+  readonly controlSegments?: readonly TradeControlSegment[];
   readonly settlementTerms?: {
     readonly discountPercent: string;
     readonly allowPartialDiscount: boolean;
@@ -247,6 +251,7 @@ export interface TradeSettlementCommand {
   }[];
 }
 export interface TradeSettlementAllocation {
+  readonly segments?: readonly TradeSegmentAllocation[];
   readonly itemId: string;
   readonly revision: number;
   readonly gross: number;
@@ -277,6 +282,244 @@ export interface TradeSettlementReceipt {
 export interface TradePaymentRecord {
   readonly commandHash: string;
   readonly receipt: TradeSettlementReceipt;
+}
+export interface TradeSegmentAllocation {
+  readonly dimensions: DimensionMap;
+  readonly gross: number;
+}
+export interface TradeControlSegment extends TradeSegmentAllocation {
+  readonly remainingGross: number;
+}
+export function tradeDimensionKey(dimensions: DimensionMap): string {
+  return JSON.stringify(
+    Object.fromEntries(Object.entries(dimensions).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))),
+  );
+}
+export function tradeSegments(
+  lines: readonly TradeSegmentAllocation[],
+): readonly TradeControlSegment[] {
+  const grouped = new Map<string, TradeControlSegment>();
+  for (const line of lines) {
+    const key = tradeDimensionKey(line.dimensions);
+    const gross = (grouped.get(key)?.gross ?? 0) + line.gross;
+    if (!Number.isSafeInteger(gross)) tradeDocumentError("segments", "shape");
+    grouped.set(key, { dimensions: JSON.parse(key) as DimensionMap, gross, remainingGross: gross });
+  }
+  return [...grouped.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([, value]) => value);
+}
+export function allocateTradeSegments(
+  item: OpenItem,
+  amount: number,
+): readonly TradeSegmentAllocation[] {
+  let remaining = amount,
+    total = item.remainingGross;
+  const result: TradeSegmentAllocation[] = [];
+  for (const segment of item.segments) {
+    if (!segment.remainingGross) continue;
+    const gross =
+      segment.remainingGross === total
+        ? remaining
+        : roundTradeRatio(BigInt(remaining) * BigInt(segment.remainingGross), BigInt(total));
+    if (gross) result.push({ dimensions: segment.dimensions, gross });
+    remaining -= gross;
+    total -= segment.remainingGross;
+  }
+  if (remaining !== 0) tradeDocumentError("segments", "quantity");
+  return result;
+}
+export function changeTradeSegments(
+  item: OpenItem,
+  allocations: readonly TradeSegmentAllocation[],
+  reverse = false,
+): readonly TradeControlSegment[] {
+  if (
+    allocations.some(
+      (a) =>
+        !item.segments.some(
+          (s) => tradeDimensionKey(s.dimensions) === tradeDimensionKey(a.dimensions),
+        ),
+    )
+  )
+    tradeDocumentError("segments", "reference");
+  return item.segments.map((segment) => {
+    const amount = allocations
+      .filter((a) => tradeDimensionKey(a.dimensions) === tradeDimensionKey(segment.dimensions))
+      .reduce((n, a) => n + a.gross, 0);
+    const remainingGross = segment.remainingGross + (reverse ? amount : -amount);
+    if (
+      !Number.isSafeInteger(remainingGross) ||
+      remainingGross < 0 ||
+      remainingGross > segment.gross
+    )
+      tradeDocumentError("segments", "quantity");
+    return { ...segment, remainingGross };
+  });
+}
+interface TradeActionHeader {
+  readonly company: string;
+  readonly actionId: string;
+  readonly accountingDate: string;
+  readonly documentDate: string;
+  readonly taxDate: string;
+}
+export type TradeActionCommand = TradeActionHeader &
+  (
+    | {
+        readonly kind: "advance";
+        readonly side: TradeSide;
+        readonly party: string;
+        readonly currency: string;
+        readonly gross: number;
+        readonly dimensions: DimensionMap;
+      }
+    | {
+        readonly kind: "credit";
+        readonly invoiceId: string;
+        readonly revision: number;
+        readonly lines: readonly {
+          readonly sourceLineId: string;
+          readonly quantity: string;
+        }[];
+      }
+    | {
+        readonly kind: "apply";
+        readonly sourceId: string;
+        readonly sourceRevision: number;
+        readonly targetId: string;
+        readonly targetRevision: number;
+        readonly gross: number;
+      }
+    | {
+        readonly kind: "cancel";
+        readonly itemId: string;
+        readonly revision: number;
+        readonly relatedRevision: number | null;
+        readonly reason: string;
+      }
+    | {
+        readonly kind: "reverse";
+        readonly settlementId: string;
+        readonly items: readonly { readonly itemId: string; readonly revision: number }[];
+        readonly reason: string;
+      }
+  );
+export interface TradeItemChange {
+  readonly before: OpenItem | null;
+  readonly after: OpenItem;
+}
+export interface TradeCreditLine {
+  readonly sourceLineId: string;
+  readonly quantity: string;
+  readonly net: number;
+  readonly tax: number;
+  readonly deductibleTax: number;
+}
+export interface TradeActionPreview {
+  readonly fingerprint: string;
+  readonly kind: TradeActionCommand["kind"];
+  readonly gross: number;
+  readonly changes: readonly TradeItemChange[];
+  readonly creditLines: readonly TradeCreditLine[];
+  readonly links: readonly string[];
+  readonly journal: JournalPlan;
+}
+export interface TradeActionReceipt extends Omit<TradeActionPreview, "journal"> {
+  readonly company: string;
+  readonly actionId: string;
+  readonly idempotencyKey: string;
+  readonly sourceRef: string;
+  readonly journalIds: readonly string[];
+  readonly postedAt: string;
+}
+export interface TradeActionRecord {
+  readonly command: TradeActionCommand;
+  readonly commandHash: string;
+  readonly receipt: TradeActionReceipt;
+}
+export interface TradeActionConfirm {
+  readonly command: TradeActionCommand;
+  readonly fingerprint: string;
+  readonly idempotencyKey: string;
+  readonly confirmation: "POST";
+}
+export function checkedTradeAction(command: TradeActionCommand): void {
+  const shared = ["company", "actionId", "kind", "accountingDate", "documentDate", "taxDate"];
+  if (!command || typeof command !== "object") tradeDocumentError("command", "shape");
+  switch (command.kind) {
+    case "advance":
+      plain(command, [...shared, "side", "party", "currency", "gross", "dimensions"], "command");
+      if (command.side !== "AP" && command.side !== "AR") tradeDocumentError("side", "shape");
+      text(command.party, orderCode, "party");
+      text(command.currency, /^[A-Z]{3}$/u, "currency");
+      dimensions(command.dimensions, "dimensions");
+      positive(command.gross, "gross");
+      break;
+    case "credit":
+      plain(command, [...shared, "invoiceId", "revision", "lines"], "command");
+      checkedJournalId(command.invoiceId);
+      positive(command.revision, "revision");
+      if (!Array.isArray(command.lines) || command.lines.length < 1 || command.lines.length > 100)
+        tradeDocumentError("lines", "shape");
+      if (new Set(command.lines.map((l) => l.sourceLineId)).size !== command.lines.length)
+        tradeDocumentError("lines", "duplicate");
+      command.lines.forEach((line, index) => {
+        plain(line, ["sourceLineId", "quantity"], `lines.${index}`);
+        text(line.sourceLineId, identifier, `lines.${index}.sourceLineId`);
+        quantity(line.quantity, `lines.${index}.quantity`);
+      });
+      break;
+    case "apply":
+      plain(
+        command,
+        [...shared, "sourceId", "sourceRevision", "targetId", "targetRevision", "gross"],
+        "command",
+      );
+      checkedJournalId(command.sourceId);
+      checkedJournalId(command.targetId);
+      positive(command.sourceRevision, "sourceRevision");
+      positive(command.targetRevision, "targetRevision");
+      positive(command.gross, "gross");
+      break;
+    case "cancel":
+      plain(command, [...shared, "itemId", "revision", "relatedRevision", "reason"], "command");
+      checkedJournalId(command.itemId);
+      positive(command.revision, "revision");
+      if (command.relatedRevision !== null) positive(command.relatedRevision, "relatedRevision");
+      break;
+    case "reverse":
+      plain(command, [...shared, "settlementId", "items", "reason"], "command");
+      checkedJournalId(command.settlementId);
+      if (!Array.isArray(command.items) || command.items.length < 1 || command.items.length > 100)
+        tradeDocumentError("items", "shape");
+      if (new Set(command.items.map((i) => i.itemId)).size !== command.items.length)
+        tradeDocumentError("items", "duplicate");
+      for (const item of command.items) {
+        plain(item, ["itemId", "revision"], "items");
+        checkedJournalId(item.itemId);
+        positive(item.revision, "revision");
+      }
+      break;
+    default:
+      tradeDocumentError("kind", "shape");
+  }
+  text(command.company, orderCode, "company");
+  checkedJournalId(command.actionId);
+  for (const key of ["accountingDate", "documentDate", "taxDate"] as const)
+    checkedJournalDay(command[key], key);
+  if (command.kind === "cancel" || command.kind === "reverse") {
+    if (
+      typeof command.reason !== "string" ||
+      control.test(command.reason) ||
+      command.reason.trim().length < 1 ||
+      command.reason.length > 160
+    )
+      tradeDocumentError("reason", "shape");
+  }
+}
+function positive(value: number, path: string): void {
+  if (!Number.isSafeInteger(value) || value <= 0) tradeDocumentError(path, "shape");
 }
 export function checkedTradeSettlement(command: TradeSettlementCommand): void {
   plain(

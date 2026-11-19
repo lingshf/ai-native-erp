@@ -8,8 +8,16 @@ import type {
   TradeDocumentSummary,
   TradeConfig,
   TradeOrder,
+  TradeActionRecord,
+  TradeCreditLine,
+  TradeControlSegment,
 } from "@erp/core/domain";
-import { quantityMicros, tradeDocumentError, type TradeSettlementReceipt } from "@erp/core/domain";
+import {
+  quantityMicros,
+  tradeDimensionKey,
+  tradeDocumentError,
+  type TradeSettlementReceipt,
+} from "@erp/core/domain";
 import { tradeConfigRow, tradeTables } from "./trade-master.ts";
 import type { Connection, Row } from "./types.ts";
 
@@ -66,8 +74,15 @@ function documentLineRow(row: Row): TradeDocumentLine {
     matchStatus: str(row.match_status) as TradeDocumentLine["matchStatus"],
   };
 }
-function openItemRow(row: Row): OpenItem {
+function openItemRow(row: Row, segments: readonly TradeControlSegment[]): OpenItem {
+  if (
+    segments.reduce((n, s) => n + s.gross, 0) !== int(row.gross_minor) ||
+    segments.reduce((n, s) => n + s.remainingGross, 0) !== int(row.remaining_gross_minor)
+  )
+    throw new StorageError("STORAGE_FAILURE");
   return {
+    kind: str(row.kind) as OpenItem["kind"],
+    segments,
     discountPercent: str(row.discount_percent),
     allowPartialDiscount: int(row.allow_partial_discount) === 1,
     itemId: str(row.item_id),
@@ -92,9 +107,42 @@ function openItemRow(row: Row): OpenItem {
   };
 }
 const openItemSelect =
-  "SELECT o.*,d.external_no,t.discount_percent,t.allow_partial_discount FROM open_items o JOIN trade_documents d ON d.company_id=o.company_id AND d.document_id=o.item_id JOIN trade_invoice_terms t ON t.company_id=o.company_id AND t.item_id=o.item_id";
+  "SELECT o.*,d.kind,d.external_no,t.discount_percent,t.allow_partial_discount FROM open_items o JOIN trade_item_sources d ON d.company_id=o.company_id AND d.item_id=o.item_id JOIN trade_invoice_terms t ON t.company_id=o.company_id AND t.item_id=o.item_id";
 
 export function tradeDocumentRepository(db: Connection): TradeDocumentRepository {
+  async function segments(company: string, ids: readonly string[]) {
+    const result = new Map<string, TradeControlSegment[]>();
+    if (!ids.length) return result;
+    const rows = await db.query(
+      `SELECT * FROM trade_control_segments WHERE company_id=? AND item_id IN(${ids.map(() => "?").join(",")}) ORDER BY item_id,dimension_key COLLATE BINARY`,
+      [company, ...ids],
+    );
+    for (const row of rows) {
+      const id = str(row.item_id),
+        list = result.get(id) ?? [];
+      list.push({
+        dimensions: json<DimensionMap>(row.dimension_key),
+        gross: int(row.gross_minor),
+        remainingGross: int(row.remaining_gross_minor),
+      });
+      result.set(id, list);
+    }
+    return result;
+  }
+  async function insertSegments(
+    company: string,
+    id: string,
+    values: readonly TradeControlSegment[],
+  ) {
+    for (const segment of values)
+      await db.query("INSERT INTO trade_control_segments VALUES(?,?,?,?,?)", [
+        company,
+        id,
+        tradeDimensionKey(segment.dimensions),
+        segment.gross,
+        segment.remainingGross,
+      ]);
+  }
   async function document(where: string, parameters: (string | number)[]) {
     const rows = await db.query(
       `SELECT d.*,o.control_account,o.dimensions,o.discount_date FROM trade_documents d JOIN open_items o ON o.company_id=d.company_id AND o.item_id=d.document_id WHERE ${where}`,
@@ -137,10 +185,160 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
     return record;
   }
   return {
+    async tradeAction(company, id, byReceipt = false) {
+      const rows = await db.query(
+        `SELECT record FROM trade_actions WHERE company_id=? AND ${byReceipt ? "receipt_key" : "action_id"}=?`,
+        [company, id],
+      );
+      return rows[0] ? json<TradeActionRecord>(rows[0].record) : null;
+    },
+    async tradeItemActions(company, itemId) {
+      const rows = await db.query(
+        "SELECT a.record FROM trade_action_items i JOIN trade_actions a ON a.company_id=i.company_id AND a.action_id=i.action_id WHERE i.company_id=? AND i.item_id=? ORDER BY a.sequence",
+        [company, itemId],
+      );
+      return rows.map((row) => json<TradeActionRecord>(row.record));
+    },
+    async tradeUndo(company, kind, relatedId) {
+      return (
+        (
+          await db.query(
+            "SELECT 1 FROM trade_actions WHERE company_id=? AND kind=? AND related_id=?",
+            [company, kind, relatedId],
+          )
+        ).length > 0
+      );
+    },
+    async tradeItemSource(company, itemId) {
+      const rows = await db.query(
+        "SELECT journal_id,original_id FROM trade_item_sources WHERE company_id=? AND item_id=?",
+        [company, itemId],
+      );
+      return rows[0]
+        ? { journalId: str(rows[0].journal_id), originalId: optional(rows[0].original_id) }
+        : null;
+    },
+    async tradeCreditLines(company, invoiceId) {
+      const rows = await db.query(
+        "SELECT c.* FROM trade_credit_lines c JOIN open_items o ON o.company_id=c.company_id AND o.item_id=c.credit_id WHERE c.company_id=? AND c.invoice_id=? AND o.status<>'cancelled' ORDER BY c.credit_id,c.source_line_id",
+        [company, invoiceId],
+      );
+      return rows.map(
+        (row): TradeCreditLine => ({
+          sourceLineId: str(row.source_line_id),
+          quantity: str(row.quantity),
+          net: int(row.net_minor),
+          tax: int(row.tax_minor),
+          deductibleTax: int(row.deductible_tax_minor),
+        }),
+      );
+    },
+    async insertTradeItem(company, item, journalId, originalId) {
+      await db.query(
+        "INSERT INTO trade_item_sources(company_id,item_id,kind,external_no,journal_id,original_id) VALUES(?,?,?,?,?,?)",
+        [company, item.itemId, item.kind, item.externalNo, journalId, originalId],
+      );
+      await db.query(
+        "INSERT INTO open_items(company_id,item_id,side,party_id,control_account,dimensions,currency,accounting_date,document_date,due_date,discount_date,gross_minor,net_minor,tax_minor,remaining_gross_minor,remaining_net_minor,remaining_tax_minor,status,revision) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        [
+          company,
+          item.itemId,
+          item.side,
+          item.party,
+          item.controlAccount,
+          JSON.stringify(item.dimensions),
+          item.currency,
+          item.accountingDate,
+          item.documentDate,
+          item.dueDate,
+          item.discountDate,
+          item.gross,
+          item.net,
+          item.tax,
+          item.remainingGross,
+          item.remainingNet,
+          item.remainingTax,
+          item.status,
+          item.revision,
+        ],
+      );
+      await db.query("INSERT INTO trade_invoice_terms VALUES(?,?,?,?)", [
+        company,
+        item.itemId,
+        item.discountPercent,
+        item.allowPartialDiscount ? 1 : 0,
+      ]);
+      await insertSegments(company, item.itemId, item.segments);
+    },
+    async changeOpenItem(company, before, after) {
+      const rows = await db.query(
+        "UPDATE open_items SET remaining_gross_minor=?,remaining_net_minor=?,remaining_tax_minor=?,status=?,revision=revision+1 WHERE company_id=? AND item_id=? AND revision=? RETURNING item_id",
+        [
+          after.remainingGross,
+          after.remainingNet,
+          after.remainingTax,
+          after.status,
+          company,
+          before.itemId,
+          before.revision,
+        ],
+      );
+      if (rows.length !== 1) tradeDocumentError("revision", "stale", true);
+      for (const segment of after.segments) {
+        const updated = await db.query(
+          "UPDATE trade_control_segments SET remaining_gross_minor=? WHERE company_id=? AND item_id=? AND dimension_key=? RETURNING item_id",
+          [segment.remainingGross, company, after.itemId, tradeDimensionKey(segment.dimensions)],
+        );
+        if (updated.length !== 1) throw new StorageError("STORAGE_FAILURE");
+      }
+    },
+    async insertTradeAction(company, record) {
+      const c = record.command,
+        r = record.receipt;
+      const relatedId =
+        c.kind === "credit"
+          ? c.invoiceId
+          : c.kind === "cancel"
+            ? c.itemId
+            : c.kind === "reverse"
+              ? c.settlementId
+              : null;
+      await db.query(
+        "INSERT INTO trade_actions(company_id,action_id,kind,related_id,accounting_date,receipt_key,command_hash,record) VALUES(?,?,?,?,?,?,?,?)",
+        [
+          company,
+          c.actionId,
+          c.kind,
+          relatedId,
+          c.accountingDate,
+          r.idempotencyKey,
+          record.commandHash,
+          JSON.stringify(record),
+        ],
+      );
+      for (const change of r.changes)
+        await db.query("INSERT INTO trade_action_items VALUES(?,?,?)", [
+          company,
+          c.actionId,
+          change.after.itemId,
+        ]);
+      if (c.kind === "credit")
+        for (const line of r.creditLines)
+          await db.query("INSERT INTO trade_credit_lines VALUES(?,?,?,?,?,?,?,?)", [
+            company,
+            c.actionId,
+            c.invoiceId,
+            line.sourceLineId,
+            line.quantity,
+            line.net,
+            line.tax,
+            line.deductibleTax,
+          ]);
+    },
     async latestSettlementDate(company, itemId) {
       const rows = await db.query(
-        "SELECT MAX(accounting_date) AS day FROM settlements WHERE company_id=? AND item_id=?",
-        [company, itemId],
+        "SELECT MAX(day) AS day FROM (SELECT accounting_date AS day FROM settlements WHERE company_id=? AND item_id=? UNION ALL SELECT a.accounting_date FROM trade_action_items i JOIN trade_actions a ON a.company_id=i.company_id AND a.action_id=i.action_id WHERE i.company_id=? AND i.item_id=?)",
+        [company, itemId, company, itemId],
       );
       return rows[0].day === null ? "" : str(rows[0].day);
     },
@@ -184,6 +382,14 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
         ],
       );
       if (rows.length !== 1) tradeDocumentError("revision", "stale", true);
+      if (!a.segments) throw new StorageError("STORAGE_FAILURE");
+      for (const segment of a.segments) {
+        const updated = await db.query(
+          "UPDATE trade_control_segments SET remaining_gross_minor=remaining_gross_minor-? WHERE company_id=? AND item_id=? AND dimension_key=? AND remaining_gross_minor>=? RETURNING item_id",
+          [segment.gross, company, a.itemId, tradeDimensionKey(segment.dimensions), segment.gross],
+        );
+        if (updated.length !== 1) tradeDocumentError("segments", "stale", true);
+      }
       await db.query(
         "INSERT INTO settlements(company_id,settlement_id,item_id,side,accounting_date,applied_gross_minor,applied_net_minor,applied_tax_minor,discount_minor,receipt_key,journal_id,recorded_at) SELECT ?,?,?,side,?,?,?,?,?,?,?,? FROM open_items WHERE company_id=? AND item_id=?",
         [
@@ -274,13 +480,20 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
       if (!orderLineIds.length) return [];
       // Summed exactly in SQLite over only the referenced lines; TEXT keeps 64-bit precision.
       const rows = await db.query(
-        `SELECT order_line_id,CAST(SUM(quantity_micros) AS TEXT) AS micros FROM trade_document_lines WHERE company_id=? AND order_id=? AND order_id IS NOT NULL AND order_line_id IN(${orderLineIds.map(() => "?").join(",")}) GROUP BY order_line_id`,
+        `SELECT l.order_line_id,CAST(SUM(l.quantity_micros) AS TEXT) AS micros FROM trade_document_lines l JOIN open_items o ON o.company_id=l.company_id AND o.item_id=l.document_id WHERE l.company_id=? AND l.order_id=? AND l.order_id IS NOT NULL AND o.status<>'cancelled' AND l.order_line_id IN(${orderLineIds.map(() => "?").join(",")}) GROUP BY l.order_line_id`,
         [company, orderId, ...orderLineIds],
       );
       return rows.map((row) => ({
         orderLineId: str(row.order_line_id),
         micros: BigInt(str(row.micros)),
       }));
+    },
+    async tradeOrderLatestDate(company, orderId) {
+      const rows = await db.query(
+        "SELECT MAX(day) AS day FROM (SELECT accounting_date AS day FROM trade_documents WHERE company_id=? AND order_id=? UNION ALL SELECT a.accounting_date FROM trade_documents d JOIN trade_action_items i ON i.company_id=d.company_id AND i.item_id=d.document_id JOIN trade_actions a ON a.company_id=i.company_id AND a.action_id=i.action_id WHERE d.company_id=? AND d.order_id=?)",
+        [company, orderId, company, orderId],
+      );
+      return rows[0].day === null ? "" : str(rows[0].day);
     },
     async tradeConfigsByCodes(company, kind, codes) {
       if (!codes.length) return [];
@@ -388,6 +601,17 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
         "INSERT INTO trade_invoice_terms(company_id,item_id,discount_percent,allow_partial_discount) VALUES(?,?,?,?)",
         [company, record.documentId, terms.discountPercent, terms.allowPartialDiscount ? 1 : 0],
       );
+      await insertSegments(
+        company,
+        record.documentId,
+        record.snapshot.controlSegments ?? [
+          {
+            dimensions: record.controlDimensions,
+            gross: record.gross,
+            remainingGross: record.gross,
+          },
+        ],
+      );
     },
     async tradeDocumentPage(company, query) {
       const rows = await db.query(
@@ -422,7 +646,9 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
         company,
         itemId,
       ]);
-      return rows[0] ? openItemRow(rows[0]) : null;
+      return rows[0]
+        ? openItemRow(rows[0], (await segments(company, [itemId])).get(itemId) ?? [])
+        : null;
     },
     async openItemPage(company, query) {
       const [due, item] = query.cursor === undefined ? ["", ""] : query.cursor.split("|");
@@ -442,7 +668,13 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
           query.limit + 1,
         ],
       );
-      const items = rows.slice(0, query.limit).map(openItemRow);
+      const values = await segments(
+        company,
+        rows.slice(0, query.limit).map((row) => str(row.item_id)),
+      );
+      const items = rows
+        .slice(0, query.limit)
+        .map((row) => openItemRow(row, values.get(str(row.item_id)) ?? []));
       return {
         items,
         nextCursor:

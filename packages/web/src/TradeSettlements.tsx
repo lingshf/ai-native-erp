@@ -195,6 +195,7 @@ function SettlementEntry({
     getNextPageParam: (p) => p.nextCursor ?? undefined,
   });
   const rows = page.data?.pages.flatMap((p) => p.items) ?? [];
+  const firstSelected = rows.find((item) => item.itemId === command.items[0]?.itemId);
   const scroll = useRef<HTMLDivElement>(null);
   const virtual = rows.length > 100;
   const virtualizer = useVirtualizer({
@@ -355,15 +356,19 @@ function SettlementEntry({
                 if (!row) return null;
                 const selected = command.items.find((item) => item.itemId === row.itemId);
                 const available =
+                  row.kind === "invoice" &&
                   command.accountingDate >= row.documentDate &&
                   command.accountingDate <= row.discountDate &&
                   Number(row.discountPercent) > 0 &&
                   (row.allowPartialDiscount ||
-                    (row.revision === 1 && (selected?.gross ?? row.remainingGross) === row.gross));
+                    (row.remainingGross === row.gross &&
+                      (selected?.gross ?? row.remainingGross) === row.gross));
                 const eligible =
                   row.side === command.side &&
                   row.party === command.party &&
-                  row.currency === company.currency;
+                  row.currency === company.currency &&
+                  (!firstSelected ||
+                    (firstSelected.kind === "invoice") === (row.kind === "invoice"));
                 return (
                   <tr key={row.itemId} aria-rowindex={index + 2} style={{ height: 48 }}>
                     <td>
@@ -393,7 +398,9 @@ function SettlementEntry({
                     <td>
                       {row.party} · {row.side}
                     </td>
-                    <td>{row.externalNo}</td>
+                    <td>
+                      <span>{row.externalNo}</span> · {t(`tadj.${row.kind}`)}
+                    </td>
                     <td>{money(row.remainingGross)}</td>
                     <td>
                       {selected && (
