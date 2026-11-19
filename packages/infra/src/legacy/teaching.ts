@@ -160,7 +160,7 @@ export function preflightLegacySnapshotPair(directory: string): void {
       fail("INVALID_SNAPSHOT");
     const path = resolve(directory);
     regularPath(path, true);
-    // M00 filenames in scripts/ledger-snapshot.mjs; never accept manifest-selected paths.
+    // Fixed M00 filenames; never accept manifest-selected paths.
     for (const filename of ["teaching.sqlite", "erp.sqlite"]) {
       const { fd } = openSnapshotFile(join(path, filename));
       closeSync(fd);

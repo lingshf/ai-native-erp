@@ -49,15 +49,10 @@ jobs:
           else
             npm run test:ci -- --changed "origin/$BASE_REF" --passWithNoTests
           fi
-      - name: Legacy tests
-        id: legacy
-        if: steps.scope.outputs.legacy == 'true'
-        run: npm run test:legacy:ci
       - name: Web build
         run: npm run build
       - name: Test timing summary
         if: always()
         env:
           TEST_OUTCOME: ${{ steps.tests.outcome }}
-          LEGACY_OUTCOME: ${{ steps.legacy.outcome }}
         run: node scripts/ci.ts summary

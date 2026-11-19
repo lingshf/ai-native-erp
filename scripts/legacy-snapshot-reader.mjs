@@ -3,7 +3,7 @@ import {
   preflightLegacySnapshotPair,
   openLegacyTeachingSnapshot,
 } from "@erp/infra/legacy-teaching";
-import { verifyLedgerSnapshot } from "./ledger-snapshot.mjs";
+import { verifyLedgerSnapshot } from "./legacy-snapshot-verifier.mjs";
 
 export function openVerifiedTeachingReader(directory) {
   preflightLegacySnapshotPair(directory);

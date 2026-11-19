@@ -1,0 +1,12 @@
+{
+  "producerCommit": "a401d6f7a33f959bfb64095db664cf66a0b39cfb",
+  "sourceBlobs": {
+    "src/book.mjs": "876a72e6d01edf4d6e1a32a3e8db98369b5ea047",
+    "src/enterprise.mjs": "6d817679d862deb909403ed5b28a14e577c89540",
+    "scripts/ledger-snapshot.mjs": "a7bf43c8743b15ba753397a43f028b40ef305f43"
+  },
+  "fixture": "Fictional EUR journal with USD reporting, DEPT=OPS, one posted source/receipt/journal/seal and two GL lines. Original manifest and SQLite bytes frozen; no current verifier used to produce them.",
+  "reference": "POSTED-ORACLE",
+  "acceptedJournalIds": [1],
+  "manifestSha256": "9d919dd2a21b74617764cbcacce5410bed56f790a99c938c4a8f26f2aa84e2c4"
+}

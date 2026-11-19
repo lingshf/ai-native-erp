@@ -7,16 +7,6 @@ export interface TestTiming {
   name: string;
   file: string;
   durationMs: number;
-  source: "vitest" | "legacy";
-}
-
-interface LegacyEvent {
-  type: string;
-  data: {
-    name?: string;
-    file?: string;
-    details?: { type?: string; duration_ms?: number };
-  };
 }
 
 export function selectPrTests(files: string[]) {
@@ -28,7 +18,6 @@ export function selectPrTests(files: string[]) {
         name.startsWith("tsconfig")
       );
     }),
-    legacy: files.some((file) => /^(src|public|tests)\//.test(file)),
   };
 }
 
@@ -68,7 +57,6 @@ export function vitestTimings(report: unknown): TestTiming[] {
         name: test.fullName,
         file: suite.name,
         durationMs: test.duration,
-        source: "vitest",
       });
     }
   }
@@ -86,34 +74,15 @@ export function testSummary(timings: TestTiming[]) {
     "",
     `Executed tests with timings: ${timings.length}`,
     "",
-    "| Layer | Test | File | Duration (ms) |",
-    "| --- | --- | --- | ---: |",
+    "| Test | File | Duration (ms) |",
+    "| --- | --- | ---: |",
     ...slowest.map(
       (test) =>
-        `| ${test.source} | ${cell(test.name)} | ${cell(relative(process.cwd(), test.file))} | ${test.durationMs.toFixed(2)} |`,
+        `| ${cell(test.name)} | ${cell(relative(process.cwd(), test.file))} | ${test.durationMs.toFixed(2)} |`,
     ),
-    ...(slowest.length ? [] : ["| - | No affected tests | - | - |"]),
+    ...(slowest.length ? [] : ["| No affected tests | - | - |"]),
     "",
   ].join("\n");
-}
-
-export default async function* legacyReporter(source: AsyncIterable<LegacyEvent>) {
-  const timings: TestTiming[] = [];
-  for await (const event of source) {
-    if (event.type !== "test:pass" && event.type !== "test:fail") continue;
-    const { name, file, details } = event.data;
-    if (details?.type === "suite") continue;
-    if (
-      typeof name !== "string" ||
-      typeof file !== "string" ||
-      !Number.isFinite(details?.duration_ms)
-    ) {
-      throw new Error("Missing legacy test timing");
-    }
-    if (typeof details?.duration_ms !== "number") throw new Error("Invalid legacy duration");
-    timings.push({ name, file, durationMs: details.duration_ms, source: "legacy" });
-  }
-  yield `${JSON.stringify(timings)}\n`;
 }
 
 function output(name: string, value: boolean) {
@@ -126,23 +95,6 @@ function summary(text: string) {
   const path = process.env.GITHUB_STEP_SUMMARY;
   if (!path) throw new Error("GITHUB_STEP_SUMMARY is required");
   appendFileSync(path, `${text}\n`);
-}
-
-function readLegacyTimings(value: unknown): TestTiming[] {
-  if (!Array.isArray(value)) throw new Error("Invalid legacy JSON report");
-  return value.map((test: unknown) => {
-    if (
-      !isRecord(test) ||
-      typeof test.name !== "string" ||
-      typeof test.file !== "string" ||
-      typeof test.durationMs !== "number" ||
-      !Number.isFinite(test.durationMs) ||
-      test.source !== "legacy"
-    ) {
-      throw new Error("Invalid legacy timing");
-    }
-    return { name: test.name, file: test.file, durationMs: test.durationMs, source: "legacy" };
-  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
@@ -160,8 +112,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     const scope = selectPrTests(files);
     mkdirSync("artifacts/ci", { recursive: true });
     output("all", scope.all);
-    output("legacy", scope.legacy);
-    summary(`## PR scope\n\nBase: ${cell(base)}; all tests: ${scope.all}; legacy: ${scope.legacy}`);
+    summary(`## PR scope\n\nBase: ${cell(base)}; all tests: ${scope.all}`);
     console.log(JSON.stringify({ base, ...scope, files }));
   } else if (command === "gate") {
     const event = process.env.GITHUB_EVENT_NAME;
@@ -177,18 +128,17 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       `## 24-hour gate\n\nEvent: ${event}; latest main commit: ${new Date(Number(timestamp) * 1000).toISOString()}.\n\n${run ? "Run requested." : "Skipped: no new main commit in the past 24 hours; no install, tests, build or benchmark."}`,
     );
   } else if (command === "summary") {
-    const timings: TestTiming[] = [];
-    for (const [file, outcome, parse] of [
-      ["vitest.json", process.env.TEST_OUTCOME, vitestTimings],
-      ["legacy.json", process.env.LEGACY_OUTCOME, readLegacyTimings],
-    ] as const) {
-      const path = `artifacts/ci/${file}`;
-      if (existsSync(path)) timings.push(...parse(JSON.parse(readFileSync(path, "utf8"))));
-      else if (outcome === "success" || outcome === "failure") {
-        summary(`Missing ${file}; the test step did not produce its report. See the failed step.`);
-        throw new Error(`Missing ${file}`);
-      }
+    const path = "artifacts/ci/vitest.json";
+    if (
+      !existsSync(path) &&
+      (process.env.TEST_OUTCOME === "success" || process.env.TEST_OUTCOME === "failure")
+    ) {
+      summary(
+        "Missing vitest.json; the test step did not produce its report. See the failed step.",
+      );
+      throw new Error("Missing vitest.json");
     }
+    const timings = existsSync(path) ? vitestTimings(JSON.parse(readFileSync(path, "utf8"))) : [];
     summary(testSummary(timings));
   } else {
     throw new Error(`Unknown CI command: ${command}`);

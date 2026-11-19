@@ -1,0 +1,453 @@
+{
+  "version": 1,
+  "status": "verified",
+  "crossDatabaseAtomic": false,
+  "ledgers": {
+    "teaching": {
+      "file": "teaching.sqlite",
+      "bytes": 118784,
+      "sha256": "2fd45199262696cee8977ef6387dc6cfeebd50526a79f4eea63a66e07113a6cb",
+      "logical": {
+        "sha256": "0b479e2f953f06cc4605d33145a872c5f9823376a0ff0c739dc8167879169588",
+        "schemaVersion": 0,
+        "tables": [
+          {
+            "name": "account_dimension_structures",
+            "columns": [
+              "account",
+              "active",
+              "revision",
+              "segments_json",
+              "allowed_json"
+            ],
+            "rows": 0,
+            "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          {
+            "name": "account_properties",
+            "columns": [
+              "code",
+              "normal_side",
+              "purpose",
+              "related_account",
+              "revision"
+            ],
+            "rows": 0,
+            "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          {
+            "name": "account_settings",
+            "columns": [
+              "code",
+              "active",
+              "manual_allowed",
+              "revision"
+            ],
+            "rows": 0,
+            "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          {
+            "name": "accounts",
+            "columns": [
+              "code",
+              "name",
+              "category"
+            ],
+            "rows": 8,
+            "sha256": "10a5ef6e1481baaeb2a9df2fea5e9392d530d97b13e5e4d87f82c9e6526ab687"
+          },
+          {
+            "name": "dimension_values",
+            "columns": [
+              "dimension",
+              "code",
+              "name",
+              "active",
+              "revision"
+            ],
+            "rows": 0,
+            "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          {
+            "name": "dimensions",
+            "columns": [
+              "code",
+              "name",
+              "active",
+              "revision"
+            ],
+            "rows": 0,
+            "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          {
+            "name": "journals",
+            "columns": [
+              "id",
+              "date",
+              "memo",
+              "kind",
+              "status",
+              "reversal_of"
+            ],
+            "rows": 3,
+            "sha256": "38885dfcd22167f5d00a7004eefda375a52322dd65ee6fcd11d308dad6c07c99"
+          },
+          {
+            "name": "line_dimensions",
+            "columns": [
+              "line_id",
+              "dimension",
+              "value"
+            ],
+            "rows": 0,
+            "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          {
+            "name": "lines",
+            "columns": [
+              "id",
+              "journal_id",
+              "account",
+              "debit",
+              "credit"
+            ],
+            "rows": 6,
+            "sha256": "d22670a28d66b67db59a2b7a9b976fa31563c2a11259778ed4440c255d3dc95a"
+          },
+          {
+            "name": "periods",
+            "columns": [
+              "month",
+              "status"
+            ],
+            "rows": 1,
+            "sha256": "be8f5eef4bd1a2c6ad1197bbfc52ec59041ef114722a8a92a40ae2e4e444a1f9"
+          },
+          {
+            "name": "posting_events",
+            "columns": [
+              "reference",
+              "input_json",
+              "plan_json",
+              "preview_token",
+              "journal_id"
+            ],
+            "rows": 0,
+            "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          {
+            "name": "posting_rules",
+            "columns": [
+              "id",
+              "scope",
+              "match_code",
+              "revenue_account",
+              "active",
+              "revision"
+            ],
+            "rows": 0,
+            "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          {
+            "name": "teaching_services",
+            "columns": [
+              "code",
+              "name",
+              "group_code",
+              "active",
+              "revision"
+            ],
+            "rows": 0,
+            "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          }
+        ]
+      },
+      "canonicalSha256": "18419937F1193DBF031FDA32BA02EC225AE6A07AB24C012D74C7144BB7A39EFF",
+      "journals": [
+        {
+          "id": 3,
+          "status": "draft"
+        },
+        {
+          "id": 2,
+          "status": "posted"
+        },
+        {
+          "id": 1,
+          "status": "posted"
+        }
+      ],
+      "postedTotals": {
+        "debit": "1400000",
+        "credit": "1400000"
+      }
+    },
+    "enterprise": {
+      "file": "erp.sqlite",
+      "bytes": 184320,
+      "sha256": "c025233a2f240d6b6907c784a54c9b66c35cc26e28df7a905cc27251e944186a",
+      "logical": {
+        "sha256": "2499ece427cae63fcd3bcfac94b3437af389a699e83b290e3598a2a17e02f891",
+        "schemaVersion": 1,
+        "tables": [
+          {
+            "name": "accounts",
+            "columns": [
+              "company",
+              "code",
+              "category",
+              "purpose",
+              "data"
+            ],
+            "rows": 15,
+            "sha256": "de1f1ba7b24ba630069c9fd2bbb968eefd9921441de34fbc0f78ec3e8189c589"
+          },
+          {
+            "name": "adapter_facts",
+            "columns": [
+              "company",
+              "reference",
+              "data"
+            ],
+            "rows": 0,
+            "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          {
+            "name": "audit",
+            "columns": [
+              "id",
+              "company",
+              "action",
+              "reference",
+              "data",
+              "at"
+            ],
+            "rows": 4,
+            "sha256": "a03db742b5c94cb83508e2cbee3f0bfff676e604368df2cf3e245cc89bd6b56f"
+          },
+          {
+            "name": "chart_templates",
+            "columns": [
+              "code",
+              "revision",
+              "data"
+            ],
+            "rows": 1,
+            "sha256": "aeaa5304cebeed65dbd591c5e8d1e3def78ba89ea1f9f2801c0ce25c6dc43669"
+          },
+          {
+            "name": "clearing_links",
+            "columns": [
+              "company",
+              "line_id",
+              "reference"
+            ],
+            "rows": 0,
+            "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          {
+            "name": "companies",
+            "columns": [
+              "code",
+              "name",
+              "year",
+              "currency",
+              "scale",
+              "report_currency",
+              "report_scale",
+              "template",
+              "template_revision"
+            ],
+            "rows": 1,
+            "sha256": "ce1ba69c36f491ebbab3d6385ac6a1c9d4d515f69b49813a9d4031b7ff696c0a"
+          },
+          {
+            "name": "config_versions",
+            "columns": [
+              "company",
+              "kind",
+              "code",
+              "revision",
+              "active",
+              "data"
+            ],
+            "rows": 17,
+            "sha256": "91a29666feb988cf569faeeae6c73f88f337570ff99d9ab74c83c1bd1f8f206e"
+          },
+          {
+            "name": "configs",
+            "columns": [
+              "company",
+              "kind",
+              "code",
+              "revision",
+              "active",
+              "data"
+            ],
+            "rows": 17,
+            "sha256": "91a29666feb988cf569faeeae6c73f88f337570ff99d9ab74c83c1bd1f8f206e"
+          },
+          {
+            "name": "corrections",
+            "columns": [
+              "company",
+              "original_id",
+              "output_id",
+              "reference",
+              "type"
+            ],
+            "rows": 0,
+            "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          {
+            "name": "currencies",
+            "columns": [
+              "code",
+              "scale"
+            ],
+            "rows": 2,
+            "sha256": "5f4308fba23a8624c925b3b1529da37c49e65358cc2c01e6cf81532f0f6e05b1"
+          },
+          {
+            "name": "journal_seals",
+            "columns": [
+              "company",
+              "journal_id"
+            ],
+            "rows": 1,
+            "sha256": "0ea18143ce4541a631bbbd4427662c26143aa203a265debf63bff4c3043a8553"
+          },
+          {
+            "name": "journals",
+            "columns": [
+              "id",
+              "company",
+              "reference",
+              "accounting_date",
+              "document_date",
+              "tax_date",
+              "kind",
+              "operation",
+              "memo",
+              "details",
+              "substr_month"
+            ],
+            "rows": 1,
+            "sha256": "7a9503f5953188161dcce61a8027af24616cd8f80b2bc95a7b597d22e1791f5a"
+          },
+          {
+            "name": "lines",
+            "columns": [
+              "id",
+              "company",
+              "journal_id",
+              "line_no",
+              "account",
+              "debit",
+              "credit",
+              "data"
+            ],
+            "rows": 2,
+            "sha256": "8615c1ce5430dca1a98e871888aba04b90c482b2ceed0bb7b57dc3a994068459"
+          },
+          {
+            "name": "meta",
+            "columns": [
+              "id",
+              "revision"
+            ],
+            "rows": 1,
+            "sha256": "d27604afc8ef0567e01d15c75376c11c27e3c7a3aa3d4ff5ee2ee48cfd1cfec7"
+          },
+          {
+            "name": "periods",
+            "columns": [
+              "company",
+              "month",
+              "revision",
+              "status",
+              "modules"
+            ],
+            "rows": 12,
+            "sha256": "7be4925f7e947a2089c155c1664a3a7928b7d292dcf1d82b7ab8a2fad28acadc"
+          },
+          {
+            "name": "receipts",
+            "columns": [
+              "company",
+              "reference",
+              "evidence"
+            ],
+            "rows": 1,
+            "sha256": "4b43e5b76d8bc51a83663a8f07b696224e757626932aa3aee61577556e246fe9"
+          },
+          {
+            "name": "source_events",
+            "columns": [
+              "company",
+              "reference",
+              "operation",
+              "accounting_date",
+              "command"
+            ],
+            "rows": 1,
+            "sha256": "29ee3218d337710b245dfe21bdfe3955dcbdf1e7ac472376c21bdbe3cdbe50ec"
+          },
+          {
+            "name": "sqlite_sequence",
+            "columns": [
+              "name",
+              "seq"
+            ],
+            "rows": 3,
+            "sha256": "75b4bd8777113ca35892656c1d192013da5917a5015c44372ed787216f7ccf8f"
+          },
+          {
+            "name": "statistics",
+            "columns": [
+              "company",
+              "reference",
+              "data"
+            ],
+            "rows": 0,
+            "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          },
+          {
+            "name": "transfer_queue",
+            "columns": [
+              "company",
+              "reference",
+              "status",
+              "journal_ids",
+              "error",
+              "reason"
+            ],
+            "rows": 0,
+            "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          }
+        ]
+      },
+      "integrity": {
+        "ok": true,
+        "schemaVersion": 1,
+        "revision": 18,
+        "counts": {
+          "companies": 1,
+          "currencies": 2,
+          "configs": 17,
+          "config_versions": 17,
+          "periods": 12,
+          "source_events": 1,
+          "receipts": 1,
+          "journals": 1,
+          "lines": 2,
+          "statistics": 0,
+          "clearing_links": 0,
+          "transfer_queue": 0,
+          "corrections": 0,
+          "audit": 4
+        }
+      }
+    }
+  }
+}
