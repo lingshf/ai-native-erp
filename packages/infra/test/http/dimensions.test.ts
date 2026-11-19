@@ -206,6 +206,7 @@ describe("dimension HTTP and typed persistence", () => {
         { version: 7 },
         { version: 8 },
         { version: 9 },
+        { version: 10 },
       ]);
       expect(
         raw

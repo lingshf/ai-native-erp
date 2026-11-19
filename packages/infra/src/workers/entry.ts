@@ -3,6 +3,7 @@ import Database from "better-sqlite3";
 import {
   MasterDataService,
   TradeMasterService,
+  TradeDocumentService,
   DimensionService,
   JournalService,
   BusinessEventService,
@@ -33,11 +34,13 @@ try {
     }
   }
   store = createMasterDataStore({ filename: config.filename, readonly: !config.writer });
+  const journals = new JournalService(store, journalTools);
   const services: ApplicationServices = {
     trade: new TradeMasterService(store),
+    tradeDocs: new TradeDocumentService(store, journals, journalTools),
     masterData: new MasterDataService(store),
     dimensions: new DimensionService(store),
-    journals: new JournalService(store, journalTools),
+    journals,
     events: new BusinessEventService(store, journalTools),
     reports: new ReportService(store),
     closing: new PeriodCloseService(store, journalTools),

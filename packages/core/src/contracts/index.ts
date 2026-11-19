@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { aiOpenApi } from "./ai-assistant.ts";
 import { tradeMasterOpenApi } from "./trade-master.ts";
+import { tradeDocumentsOpenApi } from "./trade-documents.ts";
+export * from "./trade-documents.ts";
 export * from "./trade-master.ts";
 export * from "./ai-assistant.ts";
 import { masterDataOpenApi } from "./master-data.ts";
@@ -99,6 +101,7 @@ export const openApiDocument = {
   info: { title: "AI Native ERP Local runtime contract", version: "1" },
   paths: {
     ...tradeMasterOpenApi.paths,
+    ...tradeDocumentsOpenApi.paths,
     ...aiOpenApi.paths,
     ...reportsOpenApi.paths,
     ...periodCloseOpenApi.paths,
@@ -135,6 +138,7 @@ export const openApiDocument = {
   components: {
     schemas: {
       ...tradeMasterOpenApi.schemas,
+      ...tradeDocumentsOpenApi.schemas,
       ...aiOpenApi.schemas,
       ...reportsOpenApi.schemas,
       ...periodCloseOpenApi.schemas,
