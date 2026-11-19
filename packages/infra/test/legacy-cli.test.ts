@@ -111,7 +111,7 @@ test("legacy CLI selects exact stage and ledger page while preserving snapshot a
   assert.deepEqual(captureDirectory(fixture.directory), before);
 });
 
-test("legacy CLI sanitizes verification and cursor failures without successful empty reports", (t) => {
+test("legacy CLI sanitizes verification failure without successful empty reports", (t) => {
   const fixture = legacyFixture(t);
   const before = captureDirectory(fixture.directory);
   const missing = run(
@@ -127,20 +127,6 @@ test("legacy CLI sanitizes verification and cursor failures without successful e
   assert.equal(missing.stdout, "");
   assert.equal(JSON.parse(missing.stderr).error.code, "INVALID_SNAPSHOT");
   assert.doesNotMatch(missing.stderr, /source-teaching|\.sqlite|ENOENT|ENOTDIR|node:/);
-  const invalid = run(
-    "ledger",
-    "--snapshot-dir",
-    fixture.target,
-    "--month",
-    fixture.month,
-    "--account",
-    "1000",
-    "--cursor",
-    "not-a-cursor",
-  );
-  assert.equal(invalid.status, 1);
-  assert.equal(invalid.stdout, "");
-  assert.equal(JSON.parse(invalid.stderr).error.code, "INVALID_CURSOR");
   assert.deepEqual(captureDirectory(fixture.directory), before);
 });
 

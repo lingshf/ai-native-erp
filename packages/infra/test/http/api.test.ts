@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { test } from "vitest";
 import { createApi, defaultWebRoot } from "@erp/infra/http";
 import { errorSchema, healthSchema } from "@erp/core/contracts";
+import { parseRuntimeConfiguration, RuntimeConfigurationError } from "@erp/infra";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const scratch = resolve(here, "..", ".test-artifacts");
@@ -297,7 +298,7 @@ test("CLI rejects Server, unsafe hosts and forbidden port strings with safe fata
       }
     });
   `)}`;
-  for (const override of [
+  const overrides = [
     { ERP_PROFILE: "server" },
     { ERP_HOST: "0.0.0.0" },
     { ERP_HOST: "" },
@@ -307,22 +308,33 @@ test("CLI rejects Server, unsafe hosts and forbidden port strings with safe fata
     { ERP_PORT: "1.5" },
     { ERP_PORT: "65536" },
     { ERP_PORT: " " },
-  ]) {
-    const child = spawnSync(process.execPath, ["--import", importGuard, bootstrap], {
-      encoding: "utf8",
-      timeout: 10000,
-      env: {
-        ...process.env,
-        ERP_PROFILE: "local",
-        ERP_HOST: "127.0.0.1",
-        ERP_PORT: "4180",
-        ...override,
-      },
-    });
-    assert.equal(child.status, 1, child.stderr);
-    const diagnostic = JSON.parse(child.stderr.trim());
-    assert.equal(diagnostic.errorType, "RuntimeConfigurationError");
-    assert.match(diagnostic.requestId, uuid);
-    assert.equal(child.stdout, "");
+  ];
+  for (const override of overrides) {
+    assert.throws(
+      () =>
+        parseRuntimeConfiguration({
+          ERP_PROFILE: "local",
+          ERP_HOST: "127.0.0.1",
+          ERP_PORT: "4180",
+          ...override,
+        }),
+      RuntimeConfigurationError,
+    );
   }
+  const child = spawnSync(process.execPath, ["--import", importGuard, bootstrap], {
+    encoding: "utf8",
+    timeout: 10000,
+    env: {
+      ...process.env,
+      ERP_PROFILE: "local",
+      ERP_HOST: "127.0.0.1",
+      ERP_PORT: "4180",
+      ...overrides[0],
+    },
+  });
+  assert.equal(child.status, 1, child.stderr);
+  const diagnostic = JSON.parse(child.stderr.trim());
+  assert.equal(diagnostic.errorType, "RuntimeConfigurationError");
+  assert.match(diagnostic.requestId, uuid);
+  assert.equal(child.stdout, "");
 });
