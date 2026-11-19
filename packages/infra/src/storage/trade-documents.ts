@@ -9,7 +9,7 @@ import type {
   TradeConfig,
   TradeOrder,
 } from "@erp/core/domain";
-import { quantityMicros } from "@erp/core/domain";
+import { quantityMicros, tradeDocumentError, type TradeSettlementReceipt } from "@erp/core/domain";
 import { tradeConfigRow, tradeTables } from "./trade-master.ts";
 import type { Connection, Row } from "./types.ts";
 
@@ -68,6 +68,8 @@ function documentLineRow(row: Row): TradeDocumentLine {
 }
 function openItemRow(row: Row): OpenItem {
   return {
+    discountPercent: str(row.discount_percent),
+    allowPartialDiscount: int(row.allow_partial_discount) === 1,
     itemId: str(row.item_id),
     side: str(row.side) as OpenItem["side"],
     party: str(row.party_id),
@@ -90,7 +92,7 @@ function openItemRow(row: Row): OpenItem {
   };
 }
 const openItemSelect =
-  "SELECT o.*,d.external_no FROM open_items o JOIN trade_documents d ON d.company_id=o.company_id AND d.document_id=o.item_id";
+  "SELECT o.*,d.external_no,t.discount_percent,t.allow_partial_discount FROM open_items o JOIN trade_documents d ON d.company_id=o.company_id AND d.document_id=o.item_id JOIN trade_invoice_terms t ON t.company_id=o.company_id AND t.item_id=o.item_id";
 
 export function tradeDocumentRepository(db: Connection): TradeDocumentRepository {
   async function document(where: string, parameters: (string | number)[]) {
@@ -135,6 +137,79 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
     return record;
   }
   return {
+    async latestSettlementDate(company, itemId) {
+      const rows = await db.query(
+        "SELECT MAX(accounting_date) AS day FROM settlements WHERE company_id=? AND item_id=?",
+        [company, itemId],
+      );
+      return rows[0].day === null ? "" : str(rows[0].day);
+    },
+    async tradePayment(company, id, byReceipt = false) {
+      const rows = await db.query(
+        `SELECT command_hash,receipt FROM trade_payments WHERE company_id=? AND ${byReceipt ? "receipt_key" : "payment_id"}=?`,
+        [company, id],
+      );
+      return rows[0]
+        ? {
+            commandHash: str(rows[0].command_hash),
+            receipt: json<TradeSettlementReceipt>(rows[0].receipt),
+          }
+        : null;
+    },
+    async insertTradePayment(company, record) {
+      const r = record.receipt;
+      await db.query(
+        "INSERT INTO trade_payments(company_id,payment_id,receipt_key,command_hash,fingerprint,receipt) VALUES(?,?,?,?,?,?)",
+        [
+          company,
+          r.paymentId,
+          r.idempotencyKey,
+          record.commandHash,
+          r.fingerprint,
+          JSON.stringify(r),
+        ],
+      );
+    },
+    async settleOpenItem(company, paymentId, key, journalId, day, at, a) {
+      const rows = await db.query(
+        "UPDATE open_items SET remaining_gross_minor=?,remaining_net_minor=?,remaining_tax_minor=?,status=?,revision=revision+1 WHERE company_id=? AND item_id=? AND revision=? RETURNING item_id",
+        [
+          a.remainingGross,
+          a.remainingNet,
+          a.remainingTax,
+          a.remainingGross === 0 ? "settled" : "open",
+          company,
+          a.itemId,
+          a.revision,
+        ],
+      );
+      if (rows.length !== 1) tradeDocumentError("revision", "stale", true);
+      await db.query(
+        "INSERT INTO settlements(company_id,settlement_id,item_id,side,accounting_date,applied_gross_minor,applied_net_minor,applied_tax_minor,discount_minor,receipt_key,journal_id,recorded_at) SELECT ?,?,?,side,?,?,?,?,?,?,?,? FROM open_items WHERE company_id=? AND item_id=?",
+        [
+          company,
+          paymentId,
+          a.itemId,
+          day,
+          a.gross,
+          a.net,
+          a.tax,
+          a.discount,
+          key,
+          journalId,
+          at,
+          company,
+          a.itemId,
+        ],
+      );
+    },
+    async itemSettlements(company, itemId) {
+      const rows = await db.query(
+        "SELECT p.receipt FROM settlements s JOIN trade_payments p ON p.company_id=s.company_id AND p.payment_id=s.settlement_id WHERE s.company_id=? AND s.item_id=? ORDER BY s.accounting_date,s.recorded_at,s.settlement_id",
+        [company, itemId],
+      );
+      return rows.map((row) => json<TradeSettlementReceipt>(row.receipt));
+    },
     async tradeOrder(company, orderId) {
       const rows = await db.query("SELECT * FROM trade_orders WHERE company_id=? AND order_id=?", [
         company,
@@ -306,6 +381,12 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
           record.net,
           record.tax,
         ],
+      );
+      const terms = record.snapshot.settlementTerms;
+      if (!terms) throw new StorageError("STORAGE_FAILURE");
+      await db.query(
+        "INSERT INTO trade_invoice_terms(company_id,item_id,discount_percent,allow_partial_discount) VALUES(?,?,?,?)",
+        [company, record.documentId, terms.discountPercent, terms.allowPartialDiscount ? 1 : 0],
       );
     },
     async tradeDocumentPage(company, query) {

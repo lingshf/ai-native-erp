@@ -13,7 +13,15 @@ export interface ApplicationServices {
   trade: Pick<TradeMasterService, "list" | "get" | "save">;
   tradeDocs: Pick<
     TradeDocumentService,
-    "createOrder" | "order" | "preview" | "confirm" | "list" | "detail" | "openItems"
+    | "createOrder"
+    | "order"
+    | "preview"
+    | "confirm"
+    | "list"
+    | "detail"
+    | "openItems"
+    | "previewSettlement"
+    | "confirmSettlement"
   >;
   masterData: Pick<
     MasterDataService,
@@ -56,6 +64,8 @@ export interface ApplicationServices {
 export const applicationLanes = {
   trade: { list: "light", get: "light", save: "write" },
   tradeDocs: {
+    previewSettlement: "heavy",
+    confirmSettlement: "write",
     createOrder: "write",
     order: "light",
     preview: "heavy",

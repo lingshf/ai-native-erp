@@ -1,4 +1,20 @@
 export const tradeEn = {
+  "tset.title": "Payments and receipts",
+  "tset.boundary":
+    "Book settlement only: this does not initiate, verify or reconcile bank payments. Discounts use the payment accounting date and do not change original tax.",
+  "tset.minorHint":
+    "Enter the selected gross settlement amount in integer minor currency units (100 = 1.00 for a 2-decimal currency). Select up to 100 items for the same partner and subledger.",
+  "tset.select": "Select open item",
+  "tset.amount": "Settlement gross",
+  "tset.discount": "Take cash discount",
+  "tset.cash": "Book cash",
+  "tset.available": "Available",
+  "tset.unavailable": "Unavailable",
+  "tset.remaining": "Remaining",
+  "tset.settled": "Book settled",
+  "tset.result": "Settlement calculation and links",
+  "tset.confirm": "Confirm book settlement",
+  "tset.posted": "Book settlement posted; source and journals:",
   "trade.discard": "Discard unsaved trade configuration changes?",
   "trade.uncertain":
     "Save outcome is unknown. The draft is locked; retry the same revision and verify the stored result before leaving.",
@@ -145,6 +161,22 @@ export const tradeEn = {
   "tinv.issue.decimal": "Invalid amount or quantity precision.",
 } as const;
 export const tradeZh: Record<keyof typeof tradeEn, string> = {
+  "tset.title": "付款与收款",
+  "tset.boundary":
+    "仅记账核销，不发起、验证或完成银行付款与对账。折扣按付款记账日判断，不改变原税额。",
+  "tset.minorHint":
+    "核销总额输入整数最小货币单位（两位小数币种中 100 表示 1.00）。最多选择同伙伴、同子账的 100 个未结项。",
+  "tset.select": "选择未结项",
+  "tset.amount": "核销总额",
+  "tset.discount": "采用现金折扣",
+  "tset.cash": "账面现金",
+  "tset.available": "可用",
+  "tset.unavailable": "不可用",
+  "tset.remaining": "剩余",
+  "tset.settled": "账面已结算",
+  "tset.result": "核销计算与链路",
+  "tset.confirm": "确认账面核销",
+  "tset.posted": "账面核销已记账；来源及凭证：",
   "trade.discard": "放弃尚未保存的贸易配置修改？",
   "trade.uncertain":
     "保存结果尚未确定。草稿已锁定；请以相同版本安全重试并核对保存结果，再离开页面。",

@@ -103,6 +103,70 @@ const amounts = {
   cashDiscountBase: minor,
 };
 const treatment = z.enum(["standard", "zero", "exempt"]);
+export const tradeSettlementCommandSchema = z.strictObject({
+  company: companyCodeSchema,
+  paymentId: id,
+  side,
+  party: companyCodeSchema,
+  currency,
+  accountingDate: day,
+  documentDate: day,
+  taxDate: day,
+  items: lines(
+    z.strictObject({
+      itemId: id,
+      revision: minor.min(1),
+      gross: minor.min(1),
+      takeDiscount: z.boolean(),
+    }),
+  ),
+});
+export const tradeSettlementConfirmSchema = z.strictObject({
+  command: tradeSettlementCommandSchema,
+  fingerprint,
+  idempotencyKey: id,
+  confirmation: z.literal("POST"),
+});
+const settlementAmounts = {
+  gross: minor,
+  cash: minor,
+  discount: minor,
+  allocations: lines(
+    z.strictObject({
+      itemId: id,
+      revision: minor.min(1),
+      gross: minor.min(1),
+      net: minor,
+      tax: minor,
+      discount: minor,
+      cash: minor,
+      discountAvailable: z.boolean(),
+      discountDate: day,
+      settledGross: minor,
+      remainingGross: minor,
+      remainingNet: minor,
+      remainingTax: minor,
+    }),
+  ),
+};
+export const tradeSettlementPreviewSchema = z.strictObject({
+  fingerprint,
+  ...settlementAmounts,
+  journal: journalPlanSchema,
+});
+export const tradeSettlementReceiptSchema = z.strictObject({
+  ...settlementAmounts,
+  company: companyCodeSchema,
+  paymentId: id,
+  idempotencyKey: id,
+  fingerprint,
+  sourceRef: z.string().max(100),
+  journalIds: z.array(id).min(1).max(2),
+  postedAt: z.iso.datetime({ precision: 3 }),
+});
+export type TradeSettlementCommandDto = z.infer<typeof tradeSettlementCommandSchema>;
+export type TradeSettlementPreviewDto = z.infer<typeof tradeSettlementPreviewSchema>;
+export type TradeSettlementReceiptDto = z.infer<typeof tradeSettlementReceiptSchema>;
 export const tradeCalculationSchema = z.strictObject({
   ...amounts,
   algorithm: z.literal("trade-v1-half-up-largest-remainder"),
@@ -162,6 +226,8 @@ export const tradeInvoiceReceiptSchema = z.strictObject({
   postedAt: z.iso.datetime({ precision: 3 }),
 });
 export const openItemSchema = z.strictObject({
+  discountPercent: decimal,
+  allowPartialDiscount: z.boolean(),
   itemId: id,
   side,
   party: companyCodeSchema,
@@ -204,6 +270,7 @@ const documentLine = z.strictObject({
   matchStatus: poMatch,
 });
 export const tradeInvoiceDetailSchema = z.strictObject({
+  settlements: z.array(tradeSettlementReceiptSchema),
   document: z.strictObject({
     documentId: id,
     side,
@@ -315,6 +382,33 @@ const pathParam = (name: string, schema: z.ZodType) => ({
 });
 export const tradeDocumentsOpenApi = {
   paths: {
+    "/api/v1/trade/settlements/preview": {
+      post: {
+        operationId: "previewTradeSettlement",
+        requestBody: { required: true, ...ref("TradeSettlementCommand") },
+        responses: {
+          200: {
+            description: "Book settlement only; explicit discount and remaining balances.",
+            ...ref("TradeSettlementPreview"),
+          },
+          ...errors([400, 403, 404, 405, 409, 415, 500, 503]),
+        },
+      },
+    },
+    "/api/v1/trade/settlements": {
+      post: {
+        operationId: "confirmTradeSettlement",
+        requestBody: { required: true, ...ref("TradeSettlementConfirm") },
+        responses: {
+          201: {
+            description:
+              "Atomic GL, revision-checked balances and settlement links. Not bank payment or reconciliation.",
+            ...ref("TradeSettlementReceipt"),
+          },
+          ...errors([400, 403, 404, 405, 409, 415, 500, 503]),
+        },
+      },
+    },
     "/api/v1/trade/orders": {
       post: {
         operationId: "createTradeOrder",
@@ -398,6 +492,10 @@ export const tradeDocumentsOpenApi = {
     },
   },
   schemas: {
+    TradeSettlementCommand: z.toJSONSchema(tradeSettlementCommandSchema),
+    TradeSettlementConfirm: z.toJSONSchema(tradeSettlementConfirmSchema),
+    TradeSettlementPreview: z.toJSONSchema(tradeSettlementPreviewSchema),
+    TradeSettlementReceipt: z.toJSONSchema(tradeSettlementReceiptSchema),
     TradeOrderCommand: z.toJSONSchema(tradeOrderCommandSchema),
     TradeOrder: z.toJSONSchema(tradeOrderSchema),
     TradeInvoiceCommand: z.toJSONSchema(tradeInvoiceCommandSchema),

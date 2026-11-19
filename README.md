@@ -83,6 +83,14 @@ D6 历史反向逐行精确镜像同公司原已过账行，即使科目/维度�
 
 业务现金取消从来源进入并沿用 D6；来源 GL 详情链接业务事件，不允许手工纠错绕过。普通凭证的 QUEUE 与立即 POST 是不同明确命令；队列转入按**当前配置**重新预览确认，待转/失败项目阻止冻结或关闭期间。D7：同一已撤回项、同一 trim 后 reason 重试幂等返回，不同 reason 409；任何未知写结果保留原键、计划和命令，只允许明确原命令重试，不自动重放或悄悄保存。
 
+### 账面付款、收款与部分核销（M1-04）
+
+`/trade-settlements` 显式选择同法人、伙伴、AP/AR、币种的 1–100 个未结项，输入每项核销总额（整数最小货币单位）及当前 `revision`。列表分页并虚拟滚动。`POST /api/v1/trade/settlements/preview` 只读计算，`POST /api/v1/trade/settlements` 以 `command`、`fingerprint`、UUID `idempotencyKey` 和 `confirmation: "POST"` 原子确认。`command` 包含 UUID `paymentId`、`company`、`side`、`party`、`currency`、`accountingDate`、`documentDate`、`taxDate` 及 `items: [{ itemId, revision, gross, takeDiscount }]`，不接受客户端 GL/税额。`paymentId` 不可重用；同确认封套可安全重试，写结果未知时界面锁定并保留原封套。预览后配置或余额变动须重新预览；已成功原封套重试不受后续配置或关期影响。
+
+按剩余净额/税额比例 half-up 分配，末次取尽；只有明确 `takeDiscount: true` 且付款记账日在原单据日至折扣截止日（含当天）内，才按保存的净额折扣率计算（常用条件 30/7/1.5%，不覆盖显式配置）。不允许部分折扣时，仅无既有核销的原始全额可用，不能最后一笔追认。折扣不改变原发票税额。控制科目及最终维度取原未结项，现金/折扣取当前 profile；新配置若不再容许原维度或原科目停用，明确拒绝，不重定向历史余额。核销日期不得早于依赖对象的最晚记账日。
+
+011 追加不可变付款身份、发票折扣条件快照与来源校验；001–010 不改。010 没有保存发票对应的条款修订号，墙钟（含过账时间）不能证明配置与发票先后。升级先验证该伙伴及其曾引用条款的完整修订链，再以固化单据日加候选到期/折扣天数，同时匹配旧未结项的到期日及折扣截止日，排除不可能的条款；剩余候选的折扣率与部分折扣策略语义一致才回填。百分比按精确整数规范化，描述等无关字段改变或同毫秒同语义修订不阻断。链缺失/断档、无日期匹配候选或匹配候选语义不同（即便时间戳看似有序）时，错误列出受影响公司/发票及原因，拒绝升级并回滚，不按时间猜测；原余额及日期不改。新发票直接固化条件，不再依赖历史回查。发票详情的 `settlements` 返回核销来源、凭证及每次余额链路，结果仅表示账面已结算/剩余，**不表示银行支付、清算或对账完成**。
+
 ### 贸易计算器（M1-02）
 
 `@erp/core/domain` 导出无 I/O 的 `calculateTrade` 和对称 half-up 的 `roundTradeRatio`。计算输入显式包含 `side: "ap" | "ar"`、相同的 `currency`/`accountingCurrency`、`scale: 0..4`、`priceMode: "exclusive" | "inclusive"`、`rounding: "line" | "document"` 及 1–100 个唯一 `id` 的行。行的 `quantity`、`unitPrice`、`discountPercent`、`taxableCharges` 均为非负十进制字符串，数量必须正；数量/单价/百分比最多六位小数，费用使用币种精度。税配置显式传 `code`、`treatment: "standard" | "zero" | "exempt"`、`ratePercent`、`deductiblePercent`（百分比 0–100）；调用者先按 `taxDate` 解析并验证有效税码，计算器不查主数据、不替上层推断税码。未知字段（包括客户端税额、库存类型）明确拒绝，单据舍入后总额必须正。

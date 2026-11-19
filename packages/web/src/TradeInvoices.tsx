@@ -140,7 +140,7 @@ function storeSaved(company: string, saved: Saved): boolean {
     return false;
   }
 }
-function useInvoiceLeaveGuard(guard: Guard) {
+export function useInvoiceLeaveGuard(guard: Guard) {
   // Listeners read the latest guard so a just-finished post never keeps blocking navigation.
   const latest = useRef(guard);
   latest.current = guard;

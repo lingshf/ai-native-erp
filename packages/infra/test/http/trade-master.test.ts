@@ -743,7 +743,7 @@ describe("trade master HTTP and SQLite", () => {
         );
         expect(
           upgraded.prepare("SELECT version FROM schema_migrations ORDER BY version").all(),
-        ).toEqual(Array.from({ length: 10 }, (_, index) => ({ version: index + 1 })));
+        ).toEqual(Array.from({ length: 11 }, (_, index) => ({ version: index + 1 })));
         expect(
           upgraded
             .prepare("SELECT result FROM receipts WHERE idempotency_key=?")

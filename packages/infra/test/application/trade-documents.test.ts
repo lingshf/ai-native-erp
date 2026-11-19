@@ -6,6 +6,7 @@ import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   JournalService,
+  DimensionService,
   MasterDataService,
   TradeDocumentService,
   TradeMasterService,
@@ -18,6 +19,7 @@ import {
   type TradeInvoiceLineInput,
   type TradeOrderCommand,
   type TradeWrite,
+  type TradeSettlementCommand,
 } from "@erp/core/domain";
 import { createSqliteStorage } from "../../src/storage/index.ts";
 import { createMasterDataStore } from "../../src/storage/master-data.ts";
@@ -284,6 +286,8 @@ describe("trade invoices on real SQLite", () => {
     if (directory) await rm(directory, { recursive: true, force: true });
   });
   const tables = [
+    "trade_payments",
+    "settlements",
     "journal_entries",
     "journal_lines",
     "receipts",
@@ -319,6 +323,359 @@ describe("trade invoices on real SQLite", () => {
     await expect(service.preview(command)).rejects.toMatchObject({ issue });
     expect(counts()).toEqual(before);
   }
+  function payment(
+    document: TradeInvoiceCommand,
+    gross: number,
+    takeDiscount = false,
+    revision = 1,
+  ): TradeSettlementCommand {
+    return {
+      company: "DEFAULT",
+      paymentId: randomUUID(),
+      side: document.side,
+      party: document.party,
+      currency: document.currency,
+      accountingDate: "2026-01-25",
+      documentDate: "2026-01-25",
+      taxDate: "2026-01-25",
+      items: [{ itemId: document.documentId, revision, gross, takeDiscount }],
+    };
+  }
+  async function settle(command: TradeSettlementCommand, key = randomUUID()) {
+    const preview = await service.previewSettlement(command);
+    const envelope = {
+      command,
+      fingerprint: preview.fingerprint,
+      idempotencyKey: key,
+      confirmation: "POST" as const,
+    };
+    return { preview, receipt: await service.confirmSettlement(envelope), envelope };
+  }
+
+  it("allocates TC-T06 net/tax exactly, takes an explicit inclusive-deadline discount and consumes the final remainder without changing invoice tax", async () => {
+    const trade = new TradeMasterService(store);
+    await trade.save({
+      ...base,
+      kind: "taxCode",
+      code: "VAT",
+      expectedRevision: 1,
+      data: {
+        ...window,
+        mode: "ordinary",
+        deductiblePercent: "100",
+        inputAccount: "1400",
+        outputAccount: "2200",
+        rates: [{ id: "RATE", from: "2026-01-01", to: "2026-12-31", ratePercent: "12" }],
+      },
+    });
+    const command = invoice({
+      accountingDate: "2026-01-05",
+      documentDate: "2026-01-05",
+      taxDate: "2026-01-05",
+      lines: [line({ quantity: "1", unitPrice: "73.19" })],
+    });
+    await post(command);
+    const first = payment(command, 4099, true);
+    const partial = { ...first, accountingDate: "2026-01-12" };
+    const before = counts();
+    const planned = await service.previewSettlement(partial);
+    expect(counts()).toEqual(before);
+    expect(planned).toMatchObject({
+      gross: 4099,
+      discount: 55,
+      cash: 4044,
+      allocations: [
+        {
+          net: 3660,
+          tax: 439,
+          remainingGross: 4098,
+          remainingNet: 3659,
+          remainingTax: 439,
+          discountAvailable: true,
+        },
+      ],
+    });
+    const { receipt, envelope } = await settle(partial);
+    expect((await journals.entry("DEFAULT", receipt.journalIds[0])).entry.lines).toMatchObject([
+      { account: "2100", debit: 4099, credit: 0 },
+      { account: "1000", debit: 0, credit: 4044 },
+      { account: "4000", debit: 0, credit: 55 },
+    ]);
+    expect(await service.confirmSettlement(envelope)).toEqual(receipt);
+    await expect(
+      service.previewSettlement({
+        ...partial,
+        paymentId: randomUUID(),
+        accountingDate: "2026-01-13",
+        documentDate: "2026-01-12",
+        items: [{ ...partial.items[0], revision: 2, gross: 4098 }],
+      }),
+    ).rejects.toMatchObject({ issue: { path: "items.0.takeDiscount", rule: "reference" } });
+    const final = await settle({
+      ...partial,
+      paymentId: randomUUID(),
+      accountingDate: "2026-01-13",
+      items: [{ ...partial.items[0], revision: 2, gross: 4098, takeDiscount: false }],
+    });
+    expect(final.receipt).toMatchObject({
+      discount: 0,
+      cash: 4098,
+      allocations: [
+        {
+          net: 3659,
+          tax: 439,
+          settledGross: 8197,
+          remainingGross: 0,
+          remainingNet: 0,
+          remainingTax: 0,
+        },
+      ],
+    });
+    const detail = await service.detail("DEFAULT", command.documentId);
+    expect(detail.document).toMatchObject({ net: 7319, tax: 878, gross: 8197 });
+    expect(detail.openItem).toMatchObject({ remainingGross: 0, status: "settled", revision: 3 });
+    expect(detail.settlements).toHaveLength(2);
+    const full = { ...command, documentId: randomUUID(), externalInvoice: "FULL" };
+    await post(full);
+    expect(
+      (await settle({ ...payment(full, 8197, true), accountingDate: "2026-01-12" })).receipt,
+    ).toMatchObject({ discount: 110, cash: 8087 });
+  });
+
+  it("freezes invoice discount terms, prohibits partial discounts when disabled, and never automatically takes an available discount", async () => {
+    const terms = configs.find((c) => c.kind === "tradeTerms");
+    if (terms?.kind !== "tradeTerms") throw new Error("Missing terms fixture");
+    const trade = new TradeMasterService(store);
+    await trade.save({
+      ...terms,
+      expectedRevision: 1,
+      data: { ...terms.data, allowPartialDiscount: false },
+    });
+    const command = invoice();
+    await post(command);
+    await trade.save({
+      ...terms,
+      expectedRevision: 2,
+      data: { ...terms.data, discountPercent: "50", allowPartialDiscount: true },
+    });
+    await expect(service.previewSettlement(payment(command, 5650, true))).rejects.toMatchObject({
+      issue: { path: "items.0.takeDiscount", rule: "reference" },
+    });
+    const full = await service.previewSettlement(payment(command, 11300, true));
+    expect(full).toMatchObject({ discount: 150, cash: 11150 });
+    await settle(payment(command, 5650));
+    await expect(service.previewSettlement(payment(command, 5650, true, 2))).rejects.toMatchObject({
+      issue: { path: "items.0.takeDiscount", rule: "reference" },
+    });
+    expect((await settle(payment(command, 5650, false, 2))).receipt.discount).toBe(0);
+  });
+
+  it("rejects overpayment, foreign party/currency/side, duplicate or missing selections, backdating, and stale concurrent revisions atomically", async () => {
+    const command = invoice();
+    await post(command);
+    const valid = payment(command, 1000);
+    const before = counts();
+    for (const invalid of [
+      { ...valid, items: [] },
+      { ...valid, items: [{ ...valid.items[0], gross: 11301 }] },
+      { ...valid, party: "V2" },
+      { ...valid, currency: "USD" },
+      { ...valid, side: "AR" as const },
+      { ...valid, items: [valid.items[0], valid.items[0]] },
+      { ...valid, items: [{ ...valid.items[0], itemId: randomUUID() }] },
+      { ...valid, accountingDate: "2026-01-19" },
+    ])
+      await expect(service.previewSettlement(invalid)).rejects.toBeDefined();
+    expect(counts()).toEqual(before);
+    const competing = { ...valid, paymentId: randomUUID() };
+    const [a, b] = await Promise.all([
+      service.previewSettlement(valid),
+      service.previewSettlement(competing),
+    ]);
+    const envelope = (c: TradeSettlementCommand, fingerprint: string) => ({
+      command: c,
+      fingerprint,
+      idempotencyKey: randomUUID(),
+      confirmation: "POST" as const,
+    });
+    const results = await Promise.allSettled([
+      service.confirmSettlement(envelope(valid, a.fingerprint)),
+      service.confirmSettlement(envelope(competing, b.fingerprint)),
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((r) => r.status === "rejected")).toMatchObject([
+      { reason: { code: "CONFLICT", issue: { rule: "stale" } } },
+    ]);
+    expect(counts()).toMatchObject({ trade_payments: 1, settlements: 1 });
+    const after = counts();
+    await expect(
+      service.previewSettlement({
+        ...valid,
+        paymentId: randomUUID(),
+        accountingDate: "2026-01-24",
+        items: [{ ...valid.items[0], revision: 2 }],
+      }),
+    ).rejects.toMatchObject({ issue: { path: "accountingDate" } });
+    expect(counts()).toEqual(after);
+  });
+
+  it("posts AR collections in the opposite direction and rejects identity reuse while preserving retry after restart or configuration edits", async () => {
+    const command = invoice({ side: "AR", party: "C1", lines: [line({ product: "CONSULT" })] });
+    await post(command);
+    const result = await settle(payment(command, 11300, true));
+    expect(
+      (await journals.entry("DEFAULT", result.receipt.journalIds[0])).entry.lines,
+    ).toMatchObject([
+      { account: "1300", debit: 0, credit: 11300 },
+      { account: "1000", debit: 11150, credit: 0 },
+      { account: "4000", debit: 150, credit: 0 },
+    ]);
+    const other = invoice({ side: "AR", party: "C1", lines: [line({ product: "CONSULT" })] });
+    await post(other);
+    await expect(
+      service.previewSettlement({ ...payment(other, 100), paymentId: result.receipt.paymentId }),
+    ).rejects.toMatchObject({ issue: { rule: "duplicate" } });
+    await expect(
+      service.confirmSettlement({
+        ...result.envelope,
+        command: { ...result.envelope.command, documentDate: "2026-01-24" },
+      }),
+    ).rejects.toMatchObject({ issue: { rule: "idempotency" } });
+    await store.close();
+    store = createMasterDataStore({ filename });
+    service = new TradeDocumentService(
+      store,
+      new JournalService(store, journalTools),
+      journalTools,
+    );
+    expect(await service.confirmSettlement(result.envelope)).toEqual(result.receipt);
+  });
+
+  it("preserves original control dimensions and account after partner edits, uses current cash profile, and rejects structural redirection or inactive original accounts", async () => {
+    const dimensions = new DimensionService(store);
+    const range = { revision: 0, active: true, from: "2026-01-01", to: "2026-12-31" };
+    await dimensions.save("DEFAULT", {
+      ...range,
+      kind: "dimension",
+      code: "DEPT",
+      name: "Department",
+    });
+    for (const code of ["A", "B"])
+      await dimensions.save("DEFAULT", {
+        ...range,
+        kind: "value",
+        dimension: "DEPT",
+        code,
+        name: code,
+      });
+    const command = invoice({ headerDimensions: { DEPT: "A" } });
+    await post(command);
+    const trade = new TradeMasterService(store);
+    const party = await trade.get("DEFAULT", "tradeParty", "V1");
+    const profile = await trade.get("DEFAULT", "tradeProfile", "PAY");
+    if (party.kind !== "tradeParty" || profile.kind !== "tradeProfile")
+      throw new Error("Fixture kind");
+    const cash = await master.account("DEFAULT", "1000");
+    await master.saveAccount("DEFAULT", { ...cash, code: "1010", name: "Second cash" }, 0);
+    const control = await master.account("DEFAULT", "2100");
+    await master.saveAccount("DEFAULT", { ...control, code: "2110", name: "New control" }, 0);
+    await trade.save({
+      ...base,
+      kind: party.kind,
+      code: party.code,
+      expectedRevision: party.revision,
+      data: { ...party.data, defaultDimensions: { DEPT: "B" } },
+    });
+    await trade.save({
+      ...base,
+      kind: profile.kind,
+      code: profile.code,
+      expectedRevision: profile.revision,
+      data: { ...profile.data, controlAccount: "2110", cashAccount: "1010" },
+    });
+    const selection = payment(command, 1000);
+    const preview = await service.previewSettlement(selection);
+    expect(preview.journal.journals[0].lines).toMatchObject([
+      { account: "2100", debit: 1000, dimensions: { DEPT: "A" } },
+      { account: "1010", credit: 1000 },
+    ]);
+    await dimensions.save("DEFAULT", {
+      ...range,
+      kind: "structure",
+      code: "2100",
+      required: ["DEPT"],
+      optional: [],
+      forbidden: [],
+      allowed: [],
+      fixed: { DEPT: "B" },
+      conditionals: [],
+    });
+    await expect(service.previewSettlement(selection)).rejects.toBeDefined();
+    await master.saveAccount("DEFAULT", { ...control, active: false }, control.revision);
+    await expect(service.previewSettlement(selection)).rejects.toMatchObject({
+      issue: { rule: "account" },
+    });
+  });
+
+  it("settles explicitly selected multiple invoices atomically and rolls back GL, receipts, links and all balances on a late failure", async () => {
+    const first = invoice(),
+      second = invoice();
+    await post(first);
+    await post(second);
+    const command = {
+      ...payment(first, 1000, true),
+      items: [payment(first, 1000, true).items[0], payment(second, 2000, true).items[0]],
+    };
+    const preview = await service.previewSettlement(command);
+    const envelope = {
+      command,
+      fingerprint: preview.fingerprint,
+      idempotencyKey: randomUUID(),
+      confirmation: "POST" as const,
+    };
+    const before = counts();
+    const original = store.write.bind(store);
+    let reachedFailure = false;
+    store.write = (operation) =>
+      original((repo) =>
+        operation({
+          ...repo,
+          settleOpenItem: async (...args) => {
+            await repo.settleOpenItem(...args);
+            if (args[6].itemId === second.documentId) {
+              reachedFailure = true;
+              throw new Error("Synthetic late failure");
+            }
+          },
+        }),
+      );
+    await expect(service.confirmSettlement(envelope)).rejects.toMatchObject({
+      code: "STORAGE_FAILURE",
+    });
+    expect(reachedFailure).toBe(true);
+    store.write = original;
+    expect(counts()).toEqual(before);
+    expect((await service.detail("DEFAULT", first.documentId)).openItem).toMatchObject({
+      remainingGross: 11300,
+      revision: 1,
+    });
+    const receipt = await service.confirmSettlement(envelope);
+    expect(receipt).toMatchObject({ gross: 3000, discount: 40, cash: 2960 });
+    expect(counts()).toMatchObject({ trade_payments: 1, settlements: 2 });
+    const raw = new Database(filename);
+    try {
+      raw.pragma("foreign_keys = ON");
+      expect(() =>
+        raw
+          .prepare(
+            "INSERT INTO settlements SELECT company_id,?,item_id,side,accounting_date,applied_gross_minor,applied_net_minor,applied_tax_minor,discount_minor,receipt_key,NULL,recorded_at FROM settlements LIMIT 1",
+          )
+          .run(randomUUID()),
+      ).toThrow("settlement requires trade payment source");
+    } finally {
+      raw.close();
+    }
+  });
 
   it("posts an AP expense invoice through the TRADE adapter with GL, open item, receipt and audit in one transaction", async () => {
     const command = invoice({ externalInvoice: " inv-7  a " });
@@ -844,110 +1201,279 @@ describe("trade invoices on real SQLite", () => {
     );
   });
 
-  it("upgrades an authentic populated 009 ledger to 010 and then posts trade invoices on it", async () => {
-    const historical = await journals.save("DEFAULT", {
-      id: randomUUID(),
-      revision: 0,
-      sourceRef: "PRE-010-JOURNAL",
-      date: "2026-01-15",
-      memo: "Historical capital",
-      kind: "normal",
-      operation: "journal",
-      originalId: null,
-      headerDimensions: {},
-      lines: [
-        { account: "1000", debit: "50.00", credit: "", dimensions: {}, suspense: null },
-        { account: "3000", debit: "", credit: "50.00", dimensions: {}, suspense: null },
-      ],
-    });
-    const plan = await journals.preview("DEFAULT", historical);
-    await journals.confirm({
-      company: "DEFAULT",
-      draftId: historical.id,
-      revision: historical.revision,
-      fingerprint: plan.fingerprint,
-      idempotencyKey: randomUUID(),
-      confirmation: "POST",
-    });
-    const upgradeFile = join(directory, "upgrade-009.sqlite");
-    const backend = sqliteBackend({ filename: upgradeFile });
-    const db = await backend.acquire(false, true);
-    try {
-      await db.begin();
-      const migrations = (await readdir(new URL("../../migrations/sqlite/", import.meta.url)))
-        .filter((name) => /^00\d-.*\.sql$/u.test(name))
-        .sort();
-      expect(migrations).toHaveLength(9);
-      for (const [index, name] of migrations.entries()) {
-        const sql = normalizeMigration(
-          await readFile(new URL(`../../migrations/sqlite/${name}`, import.meta.url), "utf8"),
-        );
-        await db.script(sql);
-        await db.query(
-          "INSERT INTO schema_migrations(version,dialect,checksum,schema_fingerprint) VALUES(?,'sqlite',?,?)",
-          [index + 1, createHash("sha256").update(sql).digest("hex"), await schemaFingerprint(db)],
-        );
+  it.each([
+    { version: 9, fault: "none" },
+    { version: 10, fault: "none" },
+    { version: 10, fault: "missing" },
+    { version: 10, fault: "ambiguous" },
+    { version: 10, fault: "clockRollback" },
+    { version: 10, fault: "sameMillisecondSameSemantics" },
+    { version: 10, fault: "partialPolicy" },
+    { version: 10, fault: "revisionGap" },
+    { version: 10, fault: "differentTermDates" },
+    { version: 10, fault: "differentDueDays" },
+    { version: 10, fault: "differentDiscountDays" },
+  ])(
+    "upgrades authentic version $version with $fault term history safely",
+    async ({ version, fault }) => {
+      const oldInvoice = invoice();
+      const dateEvidence = [
+        "differentTermDates",
+        "differentDueDays",
+        "differentDiscountDays",
+      ].includes(fault);
+      if (version === 10) {
+        const old = await post(oldInvoice);
+        if (
+          [
+            "ambiguous",
+            "clockRollback",
+            "sameMillisecondSameSemantics",
+            "partialPolicy",
+            "revisionGap",
+          ].includes(fault) ||
+          dateEvidence
+        ) {
+          expect(
+            (await service.detail("DEFAULT", oldInvoice.documentId)).openItem.discountPercent,
+          ).toBe("1.5");
+          const at =
+            fault === "clockRollback"
+              ? new Date(Date.parse(old.receipt.postedAt) - 1).toISOString()
+              : old.receipt.postedAt;
+          const trade = new TradeMasterService(store, () => at);
+          const terms = await trade.get("DEFAULT", "tradeTerms", "N30");
+          if (terms.kind !== "tradeTerms") throw new Error("Missing terms");
+          await trade.save({
+            ...base,
+            kind: terms.kind,
+            code: terms.code,
+            expectedRevision: terms.revision,
+            data: {
+              ...terms.data,
+              name: "Revised description only unless discount semantics explicitly change",
+              dueDays:
+                fault === "differentTermDates" || fault === "differentDueDays"
+                  ? 60
+                  : terms.data.dueDays,
+              discountDays:
+                fault === "differentTermDates" || fault === "differentDiscountDays"
+                  ? 14
+                  : terms.data.discountDays,
+              discountPercent:
+                fault === "clockRollback" || dateEvidence
+                  ? "9"
+                  : fault === "ambiguous"
+                    ? "50"
+                    : "1.500000",
+              allowPartialDiscount: fault !== "partialPolicy",
+            },
+          });
+          if (fault === "sameMillisecondSameSemantics") {
+            const party = await trade.get("DEFAULT", "tradeParty", "V1");
+            if (party.kind !== "tradeParty") throw new Error("Missing party");
+            await trade.save({
+              ...base,
+              kind: party.kind,
+              code: party.code,
+              expectedRevision: party.revision,
+              data: { ...party.data, name: "Partner description changed" },
+            });
+          }
+        }
       }
-      await db.query("ATTACH DATABASE ? AS existing", [filename]);
-      const copied = (await db.query(
-        "SELECT name FROM main.sqlite_schema WHERE type='table' AND name NOT GLOB 'sqlite_*' AND name<>'schema_migrations' ORDER BY rowid",
-      )) as { name: string }[];
-      expect(copied.map((row) => row.name)).toEqual(
-        expect.arrayContaining(["journal_entries", "trade_parties", "trade_config_history"]),
-      );
-      expect(copied.map((row) => row.name)).not.toContain("trade_documents");
-      for (const { name } of copied)
-        await db.query(`INSERT INTO main.${name} SELECT * FROM existing.${name}`);
-      await db.commit();
-    } finally {
-      await db.release();
-      await backend.close();
-    }
-    const storage = createSqliteStorage({ filename: upgradeFile });
-    const upgraded = createMasterDataStore({ filename: upgradeFile });
-    try {
-      await expect(storage.verifySchema()).rejects.toMatchObject({ code: "SCHEMA_MISMATCH" });
-      await storage.migrate();
-      await storage.verifySchema();
-      const check = new Database(upgradeFile, { readonly: true });
-      const source = new Database(filename, { readonly: true });
-      try {
-        expect(
-          check.prepare("SELECT version FROM schema_migrations ORDER BY version").all(),
-        ).toEqual(Array.from({ length: 10 }, (_, index) => ({ version: index + 1 })));
-        for (const [table, order] of Object.entries({
-          journal_entries: "sequence",
-          journal_lines: "company_id,entry_id,line_no",
-          trade_config_history: "company_id,kind,config_key,revision",
-        }))
-          expect(check.prepare(`SELECT * FROM ${table} ORDER BY ${order}`).all()).toEqual(
-            source.prepare(`SELECT * FROM ${table} ORDER BY ${order}`).all(),
-          );
-      } finally {
-        check.close();
-        source.close();
-      }
-      const upgradedJournals = new JournalService(upgraded, journalTools);
-      const docs = new TradeDocumentService(upgraded, upgradedJournals, journalTools);
-      const command = invoice();
-      const preview = await docs.preview(command);
-      const receipt = await docs.confirm({
-        command,
-        fingerprint: preview.fingerprint,
+      const historical = await journals.save("DEFAULT", {
+        id: randomUUID(),
+        revision: 0,
+        sourceRef: "PRE-010-JOURNAL",
+        date: "2026-01-15",
+        memo: "Historical capital",
+        kind: "normal",
+        operation: "journal",
+        originalId: null,
+        headerDimensions: {},
+        lines: [
+          { account: "1000", debit: "50.00", credit: "", dimensions: {}, suspense: null },
+          { account: "3000", debit: "", credit: "50.00", dimensions: {}, suspense: null },
+        ],
+      });
+      const plan = await journals.preview("DEFAULT", historical);
+      await journals.confirm({
+        company: "DEFAULT",
+        draftId: historical.id,
+        revision: historical.revision,
+        fingerprint: plan.fingerprint,
         idempotencyKey: randomUUID(),
         confirmation: "POST",
       });
-      expect((await docs.detail("DEFAULT", receipt.documentId)).openItem).toMatchObject({
-        remainingGross: 11300,
-      });
-      expect((await upgradedJournals.entry("DEFAULT", historical.id)).entry.sourceRef).toBe(
-        "PRE-010-JOURNAL",
-      );
-    } finally {
-      await upgraded.close();
-      await storage.close();
-    }
-  });
+      const upgradeFile = join(directory, `upgrade-${version}.sqlite`);
+      const backend = sqliteBackend({ filename: upgradeFile });
+      const db = await backend.acquire(false, true);
+      try {
+        await db.begin();
+        const migrations = (await readdir(new URL("../../migrations/sqlite/", import.meta.url)))
+          .filter((name) => /^\d{3}-.*\.sql$/u.test(name))
+          .sort()
+          .slice(0, version);
+        expect(migrations).toHaveLength(version);
+        for (const [index, name] of migrations.entries()) {
+          const sql = normalizeMigration(
+            await readFile(new URL(`../../migrations/sqlite/${name}`, import.meta.url), "utf8"),
+          );
+          await db.script(sql);
+          await db.query(
+            "INSERT INTO schema_migrations(version,dialect,checksum,schema_fingerprint) VALUES(?,'sqlite',?,?)",
+            [
+              index + 1,
+              createHash("sha256").update(sql).digest("hex"),
+              await schemaFingerprint(db),
+            ],
+          );
+        }
+        await db.query("ATTACH DATABASE ? AS existing", [filename]);
+        const copied = (await db.query(
+          "SELECT name FROM main.sqlite_schema WHERE type='table' AND name NOT GLOB 'sqlite_*' AND name<>'schema_migrations' ORDER BY rowid",
+        )) as { name: string }[];
+        expect(copied.map((row) => row.name)).toEqual(
+          expect.arrayContaining(["journal_entries", "trade_parties", "trade_config_history"]),
+        );
+        if (version === 9) expect(copied.map((row) => row.name)).not.toContain("trade_documents");
+        for (const { name } of copied) {
+          if (name === "trade_documents") {
+            const columns = await db.query("PRAGMA main.table_info(trade_documents)");
+            const selections = columns.map((column) =>
+              column.name === "snapshot"
+                ? "json_remove(snapshot,'$.settlementTerms')"
+                : String(column.name),
+            );
+            await db.query(
+              `INSERT INTO main.${name} SELECT ${selections.join(",")} FROM existing.${name}`,
+            );
+          } else
+            await db.query(
+              `INSERT INTO main.${name} SELECT * FROM existing.${name}${name === "trade_config_history" && fault === "missing" ? " WHERE kind<>'tradeTerms'" : name === "trade_config_history" && fault === "revisionGap" ? " WHERE NOT(kind='tradeTerms' AND revision=1)" : ""}`,
+            );
+        }
+        await db.commit();
+      } finally {
+        await db.release();
+        await backend.close();
+      }
+      const storage = createSqliteStorage({ filename: upgradeFile });
+      const upgraded = createMasterDataStore({ filename: upgradeFile });
+      const beforeUpgrade = new Database(upgradeFile, { readonly: true });
+      const oldFacts =
+        version === 10
+          ? Object.fromEntries(
+              ["trade_documents", "trade_document_lines", "open_items"].map((table) => [
+                table,
+                beforeUpgrade.prepare(`SELECT * FROM ${table}`).all(),
+              ]),
+            )
+          : {};
+      beforeUpgrade.close();
+      try {
+        await expect(storage.verifySchema()).rejects.toMatchObject({ code: "SCHEMA_MISMATCH" });
+        if (fault !== "none" && fault !== "sameMillisecondSameSemantics" && !dateEvidence) {
+          await expect(storage.migrate()).rejects.toMatchObject({
+            code: "CONFLICT",
+            message: expect.stringContaining(oldInvoice.documentId),
+          });
+          const raw = new Database(upgradeFile, { readonly: true });
+          try {
+            expect(
+              raw.prepare("SELECT MAX(version) AS version FROM schema_migrations").get(),
+            ).toEqual({ version: 10 });
+            expect(
+              raw.prepare("SELECT name FROM sqlite_schema WHERE name='trade_payments'").all(),
+            ).toEqual([]);
+            expect(
+              raw.prepare("SELECT remaining_gross_minor AS remaining FROM open_items").get(),
+            ).toEqual({ remaining: 11300 });
+          } finally {
+            raw.close();
+          }
+          return;
+        }
+        await storage.migrate();
+        await storage.verifySchema();
+        const check = new Database(upgradeFile, { readonly: true });
+        const source = new Database(filename, { readonly: true });
+        try {
+          expect(
+            check.prepare("SELECT version FROM schema_migrations ORDER BY version").all(),
+          ).toEqual(Array.from({ length: 11 }, (_, index) => ({ version: index + 1 })));
+          expect(
+            check
+              .prepare(
+                "SELECT version,dialect,checksum,schema_fingerprint FROM schema_migrations WHERE version<=? ORDER BY version",
+              )
+              .all(version),
+          ).toEqual(
+            source
+              .prepare(
+                "SELECT version,dialect,checksum,schema_fingerprint FROM schema_migrations WHERE version<=? ORDER BY version",
+              )
+              .all(version),
+          );
+          for (const [table, facts] of Object.entries(oldFacts))
+            expect(check.prepare(`SELECT * FROM ${table}`).all()).toEqual(facts);
+          for (const [table, order] of Object.entries({
+            journal_entries: "sequence",
+            journal_lines: "company_id,entry_id,line_no",
+            trade_config_history: "company_id,kind,config_key,revision",
+          }))
+            expect(check.prepare(`SELECT * FROM ${table} ORDER BY ${order}`).all()).toEqual(
+              source.prepare(`SELECT * FROM ${table} ORDER BY ${order}`).all(),
+            );
+        } finally {
+          check.close();
+          source.close();
+        }
+        const upgradedJournals = new JournalService(upgraded, journalTools);
+        const docs = new TradeDocumentService(upgraded, upgradedJournals, journalTools);
+        if (version === 10) {
+          if (dateEvidence)
+            expect((await docs.detail("DEFAULT", oldInvoice.documentId)).openItem).toMatchObject({
+              documentDate: "2026-01-18",
+              dueDate: "2026-02-17",
+              discountDate: "2026-01-25",
+              discountPercent: "1.5",
+              allowPartialDiscount: true,
+            });
+          const command = payment(oldInvoice, 11300, true);
+          const preview = await docs.previewSettlement(command);
+          const receipt = await docs.confirmSettlement({
+            command,
+            fingerprint: preview.fingerprint,
+            idempotencyKey: randomUUID(),
+            confirmation: "POST",
+          });
+          expect(receipt).toMatchObject({ discount: 150, cash: 11150 });
+          expect(
+            (await docs.detail("DEFAULT", oldInvoice.documentId)).openItem.remainingGross,
+          ).toBe(0);
+        }
+        const command = invoice();
+        const preview = await docs.preview(command);
+        const receipt = await docs.confirm({
+          command,
+          fingerprint: preview.fingerprint,
+          idempotencyKey: randomUUID(),
+          confirmation: "POST",
+        });
+        expect((await docs.detail("DEFAULT", receipt.documentId)).openItem).toMatchObject({
+          remainingGross: 11300,
+        });
+        expect((await upgradedJournals.entry("DEFAULT", historical.id)).entry.sourceRef).toBe(
+          "PRE-010-JOURNAL",
+        );
+      } finally {
+        await upgraded.close();
+        await storage.close();
+      }
+    },
+  );
 
   it("serves orders, preview, confirm, list, detail and open items over HTTP through production worker lanes", async () => {
     const executor = await SqliteExecutor.create({ filename, readers: 2 });
@@ -1025,6 +1551,29 @@ describe("trade invoices on real SQLite", () => {
         "/api/v1/trade/open-items?company=DEFAULT&party=V1&status=open",
       );
       expect(items.json().items).toEqual([expect.objectContaining({ itemId: command.documentId })]);
+      const settlement = payment(command, 5000, true);
+      const plannedPayment = await send("POST", "/api/v1/trade/settlements/preview", settlement);
+      expect(plannedPayment.statusCode).toBe(200);
+      expect(plannedPayment.json()).toMatchObject({ gross: 5000, discount: 66, cash: 4934 });
+      const paymentEnvelope = {
+        command: settlement,
+        fingerprint: plannedPayment.json().fingerprint,
+        idempotencyKey: randomUUID(),
+        confirmation: "POST",
+      };
+      const paid = await send("POST", "/api/v1/trade/settlements", paymentEnvelope);
+      expect(paid.statusCode).toBe(201);
+      expect((await send("POST", "/api/v1/trade/settlements", paymentEnvelope)).json()).toEqual(
+        paid.json(),
+      );
+      const paidDetail = await send(
+        "GET",
+        `/api/v1/trade/invoices/${command.documentId}?company=DEFAULT`,
+      );
+      expect(paidDetail.json()).toMatchObject({
+        openItem: { remainingGross: 6526, revision: 2 },
+        settlements: [{ paymentId: settlement.paymentId }],
+      });
       expect(
         (await send("GET", `/api/v1/trade/invoices/${randomUUID()}?company=DEFAULT`)).statusCode,
       ).toBe(404);
