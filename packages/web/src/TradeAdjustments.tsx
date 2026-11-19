@@ -221,7 +221,7 @@ function ActionEntry({
   const page = useInfiniteQuery({
     queryKey: ["tradeActionItems", company.code],
     initialPageParam: "",
-    refetchOnMount: true,
+    refetchOnMount: "always",
     queryFn: ({ pageParam, signal }) =>
       masterRequest(
         `/api/v1/trade/open-items?company=${encodeURIComponent(company.code)}&limit=100${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`,

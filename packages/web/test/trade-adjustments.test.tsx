@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   tradeActionCommandSchema,
@@ -6,6 +7,7 @@ import {
   type TradeActionCommandDto,
 } from "@erp/core/contracts";
 import { App } from "../src/App.tsx";
+import { TradeAdjustments } from "../src/TradeAdjustments.tsx";
 import { label, type LabelKey } from "../src/ui/index.ts";
 
 const invoiceId = "00000000-0000-4000-8000-000000000001";
@@ -184,6 +186,28 @@ afterEach(() => {
   window.history.replaceState(null, "", "/");
 });
 describe("typed trade adjustments", () => {
+  it("reloads current items when returning from another trade page despite an infinitely fresh cache", async () => {
+    mockApi();
+    const client = new QueryClient({
+      defaultOptions: { queries: { staleTime: Infinity, retry: false } },
+    });
+    const mount = () =>
+      render(
+        <QueryClientProvider client={client}>
+          <TradeAdjustments preferences={{ language: "zh", theme: "red", teaching: false }} />
+        </QueryClientProvider>,
+      );
+    const reads = () =>
+      vi
+        .mocked(fetch)
+        .mock.calls.filter(([url]) => String(url).startsWith("/api/v1/trade/open-items")).length;
+    const first = mount();
+    await waitFor(() => expect(reads()).toBe(1));
+    first.unmount();
+    mount();
+    await waitFor(() => expect(reads()).toBe(2));
+    client.clear();
+  });
   it("previews customer advances without automatic posting, preserves inputs on language changes and invalidates changed amounts", async () => {
     const { previews, posts } = mockApi();
     await open();

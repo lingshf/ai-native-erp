@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   tradeSettlementCommandSchema,
@@ -6,6 +7,7 @@ import {
   type TradeSettlementCommandDto,
 } from "@erp/core/contracts";
 import { App } from "../src/App.tsx";
+import { TradeSettlements } from "../src/TradeSettlements.tsx";
 import { label, type LabelKey } from "../src/ui/index.ts";
 
 const itemId = "00000000-0000-4000-8000-000000000001";
@@ -192,6 +194,28 @@ afterEach(() => {
 });
 
 describe("trade payments and receipts", () => {
+  it("reloads current balances when returning from another trade page despite an infinitely fresh cache", async () => {
+    mockApi();
+    const client = new QueryClient({
+      defaultOptions: { queries: { staleTime: Infinity, retry: false } },
+    });
+    const mount = () =>
+      render(
+        <QueryClientProvider client={client}>
+          <TradeSettlements preferences={{ language: "zh", theme: "red", teaching: false }} />
+        </QueryClientProvider>,
+      );
+    const reads = () =>
+      vi
+        .mocked(fetch)
+        .mock.calls.filter(([url]) => String(url).startsWith("/api/v1/trade/open-items")).length;
+    const first = mount();
+    await waitFor(() => expect(reads()).toBe(1));
+    first.unmount();
+    mount();
+    await waitFor(() => expect(reads()).toBe(2));
+    client.clear();
+  });
   it("does not post if the pending envelope cannot be read back byte-for-byte", async () => {
     const { posts } = mockApi();
     render(<App />);

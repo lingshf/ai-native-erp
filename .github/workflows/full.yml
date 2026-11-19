@@ -43,6 +43,9 @@ jobs:
       - name: Biome
         if: steps.gate.outputs.run == 'true' && matrix.shard == 1
         run: npm run check
+      - name: Install Chromium for real-browser slow tests
+        if: steps.gate.outputs.run == 'true'
+        run: npx playwright install --with-deps --only-shell chromium
       - name: Typecheck
         if: steps.gate.outputs.run == 'true' && matrix.shard == 1
         run: npm run typecheck
@@ -66,5 +69,12 @@ jobs:
         with:
           name: vitest-shard-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/ci/vitest.json
+          if-no-files-found: ignore
+          retention-days: 14
+      - uses: actions/upload-artifact@v7
+        if: always() && steps.gate.outputs.run == 'true'
+        with:
+          name: trade-gui-shard-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ci/trade-e2e/
           if-no-files-found: ignore
           retention-days: 14
