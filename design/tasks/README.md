@@ -37,7 +37,7 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 
 | ID | 标题 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- |
-| [M1-01](M1-01-trade-master-data.md) | 贸易主数据 | M0-R | migrations(009)+migrations.ts, trade-master, web-ui:trade | todo | |
+| [M1-01](M1-01-trade-master-data.md) | 贸易主数据 | M0-R | migrations(009)+migrations.ts, trade-master, web-ui:trade | in-progress | |
 | [M1-02](M1-02-trade-calculator.md) | 贸易计算器（纯函数） | M0-R | pure-calc | in-progress | |
 | [M1-03](M1-03-trade-invoices.md) | 采购/销售发票与未结项、订单行匹配 | M1-01, M1-02, M0-R1 | migrations(010)+migrations.ts, domain-posting, trade-docs, web-ui:trade | todo | |
 | [M1-04](M1-04-trade-settlements.md) | 付款/收款、部分核销与现金折扣 | M1-03 | migrations(011)+migrations.ts, trade-docs, web-ui:trade | todo | |
