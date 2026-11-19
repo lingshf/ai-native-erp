@@ -1210,10 +1210,18 @@ describe("trade invoices on real SQLite", () => {
     { version: 10, fault: "sameMillisecondSameSemantics" },
     { version: 10, fault: "partialPolicy" },
     { version: 10, fault: "revisionGap" },
+    { version: 10, fault: "differentTermDates" },
+    { version: 10, fault: "differentDueDays" },
+    { version: 10, fault: "differentDiscountDays" },
   ])(
     "upgrades authentic version $version with $fault term history safely",
     async ({ version, fault }) => {
       const oldInvoice = invoice();
+      const dateEvidence = [
+        "differentTermDates",
+        "differentDueDays",
+        "differentDiscountDays",
+      ].includes(fault);
       if (version === 10) {
         const old = await post(oldInvoice);
         if (
@@ -1223,7 +1231,8 @@ describe("trade invoices on real SQLite", () => {
             "sameMillisecondSameSemantics",
             "partialPolicy",
             "revisionGap",
-          ].includes(fault)
+          ].includes(fault) ||
+          dateEvidence
         ) {
           expect(
             (await service.detail("DEFAULT", oldInvoice.documentId)).openItem.discountPercent,
@@ -1243,8 +1252,20 @@ describe("trade invoices on real SQLite", () => {
             data: {
               ...terms.data,
               name: "Revised description only unless discount semantics explicitly change",
+              dueDays:
+                fault === "differentTermDates" || fault === "differentDueDays"
+                  ? 60
+                  : terms.data.dueDays,
+              discountDays:
+                fault === "differentTermDates" || fault === "differentDiscountDays"
+                  ? 14
+                  : terms.data.discountDays,
               discountPercent:
-                fault === "clockRollback" ? "9" : fault === "ambiguous" ? "50" : "1.500000",
+                fault === "clockRollback" || dateEvidence
+                  ? "9"
+                  : fault === "ambiguous"
+                    ? "50"
+                    : "1.500000",
               allowPartialDiscount: fault !== "partialPolicy",
             },
           });
@@ -1353,7 +1374,7 @@ describe("trade invoices on real SQLite", () => {
       beforeUpgrade.close();
       try {
         await expect(storage.verifySchema()).rejects.toMatchObject({ code: "SCHEMA_MISMATCH" });
-        if (fault !== "none" && fault !== "sameMillisecondSameSemantics") {
+        if (fault !== "none" && fault !== "sameMillisecondSameSemantics" && !dateEvidence) {
           await expect(storage.migrate()).rejects.toMatchObject({
             code: "CONFLICT",
             message: expect.stringContaining(oldInvoice.documentId),
@@ -1412,6 +1433,14 @@ describe("trade invoices on real SQLite", () => {
         const upgradedJournals = new JournalService(upgraded, journalTools);
         const docs = new TradeDocumentService(upgraded, upgradedJournals, journalTools);
         if (version === 10) {
+          if (dateEvidence)
+            expect((await docs.detail("DEFAULT", oldInvoice.documentId)).openItem).toMatchObject({
+              documentDate: "2026-01-18",
+              dueDate: "2026-02-17",
+              discountDate: "2026-01-25",
+              discountPercent: "1.5",
+              allowPartialDiscount: true,
+            });
           const command = payment(oldInvoice, 11300, true);
           const preview = await docs.previewSettlement(command);
           const receipt = await docs.confirmSettlement({

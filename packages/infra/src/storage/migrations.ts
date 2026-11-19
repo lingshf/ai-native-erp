@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { StorageError } from "@erp/core/application";
 import { tradeConfigSchema } from "@erp/core/contracts";
-import { checkedTradePercent, type TradeConfig } from "@erp/core/domain";
+import { addTradeDays, checkedTradePercent, type TradeConfig } from "@erp/core/domain";
 import type { Connection } from "./types.ts";
 import { schemaFingerprint } from "./schema.ts";
 
@@ -118,9 +118,10 @@ async function migration(filename: string): Promise<{ sql: string; checksum: str
 
 async function recoverLegacyTradeTerms(connection: Connection) {
   // 010 has no invoice-to-config revision pointer. Per-object revisions prove
-  // chain completeness, not invoice order; every reachable discount must agree.
+  // chain completeness, not invoice order. Persisted dates exclude impossible
+  // terms; the remaining candidates must agree on discount semantics.
   const documents = await connection.query(
-    "SELECT company_id,document_id,party_id FROM trade_documents ORDER BY company_id,document_id",
+    "SELECT d.company_id,d.document_id,d.party_id,d.document_date,i.due_date,i.discount_date FROM trade_documents d LEFT JOIN open_items i ON i.company_id=d.company_id AND i.item_id=d.document_id ORDER BY d.company_id,d.document_id",
   );
   if (documents.length === 0) return [];
   const histories = await connection.query(
@@ -192,6 +193,12 @@ async function recoverLegacyTradeTerms(connection: Connection) {
       if (!terms) missing = true;
       for (const term of terms ?? []) {
         if (term.kind !== "tradeTerms") throw new StorageError("SCHEMA_MISMATCH");
+        if (
+          typeof document.document_date !== "string" ||
+          addTradeDays(document.document_date, term.data.dueDays) !== document.due_date ||
+          addTradeDays(document.document_date, term.data.discountDays) !== document.discount_date
+        )
+          continue;
         const { discountPercent, allowPartialDiscount } = term.data;
         semantics.set(
           `${checkedTradePercent(discountPercent, "discountPercent")}|${allowPartialDiscount}`,
@@ -203,7 +210,11 @@ async function recoverLegacyTradeTerms(connection: Connection) {
       affectedInvoices.push({
         company: document.company_id,
         documentId: document.document_id,
-        reason: missing || semantics.size === 0 ? "missingHistory" : "ambiguousTerms",
+        reason: missing
+          ? "missingHistory"
+          : semantics.size === 0
+            ? "noMatchingTerms"
+            : "ambiguousTerms",
       });
       continue;
     }
