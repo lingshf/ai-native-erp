@@ -16,10 +16,9 @@ import {
   healthSchema,
   type ContractSchema,
 } from "@erp/core/contracts";
-import { generateLedgerFixture } from "./generate-ledger.ts";
+import type { generateLedgerFixture } from "./generate-ledger.ts";
 import type { SchedulerEvent, ServerWindow, TraceEvent } from "./report-child.ts";
 
-const OLD_MAIN = "5b23d8c3ffbfbd61ce57dabc747920ac454432aa";
 const WARMUP = 5;
 const SAMPLES = 50;
 const SCOPE = "company=DEFAULT&month=2026-12";
@@ -87,7 +86,7 @@ export function serialMetric(name: string, rawMs: number[]): Metric {
 export function compareRegression(
   candidate: Metric,
   baseline: Metric | undefined,
-  matched: boolean,
+  matched: boolean | null,
 ) {
   const change = (current: number, previous: number | undefined) =>
     previous === undefined || previous <= 0 ? null : (current / previous - 1) * 100;
@@ -104,16 +103,69 @@ export function compareRegression(
     candidateP99Ms: candidate.p99Ms,
     p99DeltaMs: baseline ? candidate.p99Ms - baseline.p99Ms : null,
     p99ChangePercent: change(candidate.p99Ms, baseline?.p99Ms),
-    pass: matched && baseline !== undefined && candidate.p50Ms <= baseline.p50Ms * 1.1,
+    pass:
+      matched === null
+        ? null
+        : matched && baseline !== undefined && candidate.p50Ms <= baseline.p50Ms * 1.1,
   };
 }
-function evaluateBudgets(
+
+interface EvidenceIdentity {
+  revision: string;
+  fixture: Pick<Fixture, "logicalSha256" | "seed">;
+  warmup: number;
+  samples: number;
+  parameters: { originalLedgerPageSize: number };
+  runner: string | null;
+  workflowRun: string | null;
+  workflowAttempt: string | null;
+  node: string;
+  startedAt: string;
+  completedAt: string;
+}
+
+export function requestedBaseline(value: string | undefined) {
+  if (!value) return null;
+  if (!/^[a-f0-9]{40}$/i.test(value))
+    throw new Error("Baseline must be a full 40-character commit SHA");
+  return value.toLowerCase();
+}
+
+export function matchBaseline(
+  source: EvidenceIdentity,
+  baseline: EvidenceIdentity | undefined,
+  expectedRevision: string | null,
+): boolean | null {
+  if (expectedRevision === null && baseline === undefined) return null;
+  return Boolean(
+    expectedRevision &&
+      baseline &&
+      source.workflowRun &&
+      source.runner &&
+      baseline.revision === expectedRevision &&
+      baseline.fixture.logicalSha256 === source.fixture.logicalSha256 &&
+      baseline.fixture.seed === source.fixture.seed &&
+      baseline.warmup === WARMUP &&
+      source.warmup === WARMUP &&
+      baseline.samples === SAMPLES &&
+      source.samples === SAMPLES &&
+      baseline.parameters.originalLedgerPageSize === 100 &&
+      source.parameters.originalLedgerPageSize === 100 &&
+      baseline.runner === source.runner &&
+      baseline.workflowRun === source.workflowRun &&
+      baseline.workflowAttempt === source.workflowAttempt &&
+      baseline.node === source.node &&
+      baseline.completedAt <= source.startedAt,
+  );
+}
+
+export function evaluateBudgets(
   metrics: Record<string, Metric>,
   windows: Record<string, Window>,
   pools: PoolResult[],
   latePageRatio: number | null,
   mode: Mode,
-  matchedBaseline: boolean,
+  matchedBaseline: boolean | null,
   baseline?: Record<string, Metric>,
 ) {
   const checked = Object.fromEntries(
@@ -132,9 +184,10 @@ function evaluateBudgets(
       Object.values(checked).every((metric) => metric.pass) &&
       Object.values(windows).every((metric) => metric.pass) &&
       (mode === "baseline" ||
-        (Object.values(regression).every((metric) => metric.pass) &&
+        (Object.values(regression).every((metric) => metric.pass !== false) &&
           latePageRatio !== null &&
           latePageRatio <= 3 &&
+          pools.length > 0 &&
           pools.every(
             (pool) =>
               pool.reservationPass &&
@@ -368,6 +421,16 @@ export function reservationVerified(round: QueueRound) {
   );
 }
 
+export async function prepareFixture(filename: string, root = resolve(".")): Promise<Fixture> {
+  const { generateLedgerFixture: generate } = await import(
+    pathToFileURL(join(root, "packages", "infra", "bench", "generate-ledger.ts")).href
+  );
+  await mkdir(dirname(filename), { recursive: true });
+  const fixture: Fixture = await generate(filename);
+  await writeFile(`${filename}.json`, `${JSON.stringify(fixture, null, 2)}\n`);
+  return fixture;
+}
+
 export async function reportsBenchmark() {
   const startedAt = new Date().toISOString();
   const mode: Mode = process.env.ERP_BENCH_MODE === "baseline" ? "baseline" : "candidate";
@@ -376,8 +439,9 @@ export async function reportsBenchmark() {
     cwd: root,
     encoding: "utf8",
   }).trim();
-  if (mode === "baseline" && revision !== OLD_MAIN)
-    throw new Error(`Baseline must be OLD MAIN ${OLD_MAIN}, not ${revision}`);
+  const baselineRevision = requestedBaseline(process.env.ERP_BENCH_BASELINE_SHA);
+  if (mode === "baseline" && (baselineRevision === null || revision !== baselineRevision))
+    throw new Error(`Baseline SHA mismatch: requested ${baselineRevision}, actual ${revision}`);
   await mkdir("artifacts/ci", { recursive: true });
   const directory = await mkdtemp(resolve("artifacts/ci/report-run-"));
   const filename = join(directory, "synthetic.sqlite");
@@ -389,7 +453,7 @@ export async function reportsBenchmark() {
       fixture = JSON.parse(await readFile(`${source}.json`, "utf8")) as Fixture;
       await copyFile(source, filename);
     } else {
-      fixture = await generateLedgerFixture(filename);
+      fixture = await prepareFixture(filename, root);
     }
     const { pages, queryPlans } = await prepareQueries(filename, root);
     const metrics: Record<string, Metric> = {};
@@ -491,7 +555,9 @@ export async function reportsBenchmark() {
     await server.close();
     server = undefined;
     if (mode === "candidate") {
-      for (const readers of [2, 3, 4]) {
+      for (const readers of process.env.ERP_BENCH_SWEEP === "true"
+        ? [2, 3, 4]
+        : [DEFAULT_READERS]) {
         server = await ProductionChild.start(filename, root, mode, readers);
         const concurrentPaths = ["trial", "balance-sheet", "ledger"];
         const concurrentRound = () => Promise.all(concurrentPaths.map((name) => read(name)));
@@ -579,36 +645,26 @@ export async function reportsBenchmark() {
       }
     }
     const baseline = process.env.ERP_BENCH_BASELINE_JSON
-      ? (JSON.parse(await readFile(resolve(process.env.ERP_BENCH_BASELINE_JSON), "utf8")) as {
-          revision: string;
-          fixture: Fixture;
-          warmup: number;
-          samples: number;
+      ? (JSON.parse(
+          await readFile(resolve(process.env.ERP_BENCH_BASELINE_JSON), "utf8"),
+        ) as EvidenceIdentity & {
           metrics: Record<string, Metric>;
-          parameters: { originalLedgerPageSize: number; fixtureSeed: string };
-          runner: string | null;
-          workflowRun: string | null;
-          workflowAttempt: string | null;
-          node: string;
-          completedAt: string;
         })
       : undefined;
-    const matchedBaseline = Boolean(
-      baseline &&
-        process.env.RUNNER_NAME &&
-        process.env.GITHUB_RUN_ID &&
-        baseline.revision === OLD_MAIN &&
-        baseline.fixture.logicalSha256 === fixture.logicalSha256 &&
-        baseline.fixture.seed === fixture.seed &&
-        baseline.warmup === WARMUP &&
-        baseline.samples === SAMPLES &&
-        baseline.parameters.originalLedgerPageSize === 100 &&
-        baseline.runner === (process.env.RUNNER_NAME ?? null) &&
-        baseline.workflowRun === (process.env.GITHUB_RUN_ID ?? null) &&
-        baseline.workflowAttempt === (process.env.GITHUB_RUN_ATTEMPT ?? null) &&
-        baseline.node === process.version &&
-        baseline.completedAt <= startedAt,
-    );
+    const identity: EvidenceIdentity = {
+      revision,
+      fixture,
+      warmup: WARMUP,
+      samples: SAMPLES,
+      parameters: { originalLedgerPageSize: 100 },
+      runner: process.env.RUNNER_NAME ?? null,
+      workflowRun: process.env.GITHUB_RUN_ID ?? null,
+      workflowAttempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
+      node: process.version,
+      startedAt,
+      completedAt: new Date().toISOString(),
+    };
+    const matchedBaseline = matchBaseline(identity, baseline, baselineRevision);
     const latePageRatio =
       mode === "candidate"
         ? required(metrics["ledger-page-200"]).p95Ms / required(metrics["ledger-page-1"]).p95Ms
@@ -620,7 +676,8 @@ export async function reportsBenchmark() {
       node: process.version,
       startedAt,
       completedAt: new Date().toISOString(),
-      baselineRevision: OLD_MAIN,
+      baselineRevision,
+      baselineActualRevision: baseline?.revision ?? null,
       runner: process.env.RUNNER_NAME ?? null,
       workflowRun: process.env.GITHUB_RUN_ID ?? null,
       workflowAttempt: process.env.GITHUB_RUN_ATTEMPT ?? null,
@@ -663,8 +720,8 @@ export async function reportsBenchmark() {
       mainThreadGuard:
         mode === "candidate"
           ? "Module._load rejects better-sqlite3 and better_sqlite3.node in server main isolate; workers are separate isolates"
-          : "not applicable: unchanged OLD MAIN loads SQLite",
-      note: "Actual production main.ts is imported in a separate process. Fixture generation, cursor-key preparation and EXPLAIN complete before server startup. Each scenario has five warmup rounds before a server-only 10ms monitorEventLoopDelay window; client fetch, queue wait, JSON and contract parsing are included in HTTP timings, not in server sampler CPU. Accounts, not health, proves the reserved SQLite slot. All raw rounds and scheduler order evidence are retained. Thresholds are never relaxed on misses.",
+          : "not applicable: baseline may load SQLite",
+      note: "Actual production main.ts is imported in a separate process. Baseline and candidate each generate their own physical fixture using their own source revision; pairing requires identical logical seed/digest, not identical schema or database bytes. Fixture generation, cursor-key preparation and EXPLAIN complete before server startup. Each scenario has five warmup rounds before a server-only 10ms monitorEventLoopDelay window; client fetch, queue wait, JSON and contract parsing are included in HTTP timings, not in server sampler CPU. Accounts, not health, proves the reserved SQLite slot. All raw rounds and scheduler order evidence are retained. Thresholds are never relaxed on misses.",
     };
   } finally {
     await server?.close();
@@ -673,13 +730,14 @@ export async function reportsBenchmark() {
 }
 
 export function reportsMarkdown(reports: Awaited<ReturnType<typeof reportsBenchmark>>) {
-  const status = (pass: boolean) => (pass ? "PASS" : "MISS");
+  const status = (pass: boolean | null) => (pass === null ? "N/A" : pass ? "PASS" : "MISS");
   const common = [
     "## Million-GL production capacity",
     "",
     `${reports.mode}: \`${reports.revision}\`; runner \`${reports.runner}\`; workflow run \`${reports.workflowRun}\`.`,
-    `CPU parallelism ${reports.cpuCount}; production default R=${reports.defaultReaders} (max(2,min(3,CPU-1))). Serial samples use that default; the comparison below also measures R=2/3/4 explicitly.`,
+    `CPU parallelism ${reports.cpuCount}; production default R=${reports.defaultReaders} (max(2,min(3,CPU-1))). Serial samples use that default; measured candidate pools: ${reports.pools.map((pool) => `R=${pool.readers}`).join(", ") || "not applicable"}.`,
     `Fixture ${reports.fixture.seed}: ${reports.fixture.lines} GL rows; 100000 cash rows in 2026-12; digest \`${reports.fixture.logicalSha256}\`. Five warmups + 50 samples/rounds per scenario. All HTTP timings include queue wait, response JSON and shared client contract parsing. Original ledger limit=100; late pages 1/100/200 limit=500.`,
+    "Baseline and candidate use separately generated physical databases from their own code/schema. Only the logical fixture seed/digest must match; a newer candidate schema is never handed to the baseline.",
     "",
     "| Serial path | p50 ms | p95 ms | p99 ms | Budget ms | Result |",
     "| --- | ---: | ---: | ---: | ---: | --- |",
@@ -699,7 +757,7 @@ export function reportsMarkdown(reports: Awaited<ReturnType<typeof reportsBenchm
   if (reports.mode === "baseline") {
     return [
       ...common,
-      `OLD MAIN original-five baseline: **${status(reports.allPass)}** against the unchanged latency and main-loop budgets. This is measurement, not candidate acceptance; new scenarios and regression comparison are not applicable until the candidate run.`,
+      `Requested original-five baseline: **${status(reports.allPass)}** against the unchanged latency and main-loop budgets. This is measurement, not candidate acceptance; new scenarios and regression comparison are not applicable until the candidate run.`,
       "",
     ].join("\n");
   }
@@ -725,9 +783,11 @@ export function reportsMarkdown(reports: Awaited<ReturnType<typeof reportsBenchm
     "",
     `Late-page p95 / first-page p95 ≤3: ${reports.latePages.p95Ratio?.toFixed(3) ?? "not measured in baseline"} — ${status(reports.latePages.pass)}.`,
     "",
-    "### Matched OLD MAIN p50 regression (≤10%); p95/p99 deltas are informational",
+    "### Relative p50 regression (≤10%); p95/p99 deltas are informational",
     "",
-    `Baseline must be \`${OLD_MAIN}\`, earlier in this same workflow on the same runner, using the same fixture digest, page size, warmups and sample count. Matched: **${status(reports.matchedBaseline)}**.`,
+    reports.matchedBaseline === null
+      ? "Relative regression: **N/A** (no baseline requested). All candidate absolute and scenario gates still apply."
+      : `Requested baseline: \`${reports.baselineRevision}\`; recorded: \`${reports.baselineActualRevision}\`. It must run earlier in this same workflow on the same runner, using the same fixture digest, page size, warmups and sample count. Matched: **${status(reports.matchedBaseline)}**.`,
     "",
     "Only the original five paths use the p50 relative gate; their p95 and p99 must each meet the 1000ms / 2000ms absolute budget. Other scenarios retain their specified p95 budgets.",
     "",
@@ -746,37 +806,22 @@ export function reportsMarkdown(reports: Awaited<ReturnType<typeof reportsBenchm
 }
 
 type ReportEvidence = Omit<Awaited<ReturnType<typeof reportsBenchmark>>, "regression">;
-export function recalculateEvidence(source: ReportEvidence, baseline: ReportEvidence) {
-  const matched = Boolean(
-    source.workflowRun &&
-      source.runner &&
-      baseline.revision === OLD_MAIN &&
-      baseline.fixture.logicalSha256 === source.fixture.logicalSha256 &&
-      baseline.fixture.seed === source.fixture.seed &&
-      baseline.warmup === WARMUP &&
-      source.warmup === WARMUP &&
-      baseline.samples === SAMPLES &&
-      source.samples === SAMPLES &&
-      baseline.parameters.originalLedgerPageSize === 100 &&
-      source.parameters.originalLedgerPageSize === 100 &&
-      baseline.runner === source.runner &&
-      baseline.workflowRun === source.workflowRun &&
-      baseline.workflowAttempt === source.workflowAttempt &&
-      baseline.node === source.node &&
-      baseline.completedAt <= source.startedAt,
-  );
+export function recalculateEvidence(source: ReportEvidence, baseline?: ReportEvidence) {
+  const matched = matchBaseline(source, baseline, source.baselineRevision);
   const metrics = Object.fromEntries(
     Object.entries(source.metrics).map(([name, metric]) => [
       name,
       serialMetric(name, metric.rawMs),
     ]),
   );
-  const baselineMetrics = Object.fromEntries(
-    Object.entries(baseline.metrics).map(([name, metric]) => [
-      name,
-      serialMetric(name, metric.rawMs),
-    ]),
-  );
+  const baselineMetrics =
+    baseline &&
+    Object.fromEntries(
+      Object.entries(baseline.metrics).map(([name, metric]) => [
+        name,
+        serialMetric(name, metric.rawMs),
+      ]),
+    );
   const windows = Object.fromEntries(
     Object.entries(source.windows).map(([name, window]) => [
       name,
@@ -806,6 +851,7 @@ export function recalculateEvidence(source: ReportEvidence, baseline: ReportEvid
     required(metrics["ledger-page-200"]).p95Ms / required(metrics["ledger-page-1"]).p95Ms;
   return {
     ...source,
+    baselineActualRevision: baseline?.revision ?? null,
     windows,
     pools,
     matchedBaseline: matched,
@@ -818,8 +864,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   if (process.argv[2] === "prepare") {
     const filename = resolve(process.env.ERP_BENCH_FIXTURE ?? "artifacts/ci/million.sqlite");
     await mkdir(dirname(filename), { recursive: true });
-    const fixture = await generateLedgerFixture(filename);
-    await writeFile(`${filename}.json`, `${JSON.stringify(fixture, null, 2)}\n`);
+    const fixture = await prepareFixture(
+      filename,
+      resolve(process.env.ERP_BENCH_SOURCE_ROOT ?? "."),
+    );
     console.log(`Prepared ${fixture.lines} lines: ${fixture.logicalSha256}`);
   } else if (process.argv[2] === "recalculate") {
     const [candidateFile, baselineFile, output] = process.argv.slice(3);
@@ -860,5 +908,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     await writeFile(`${output}.json`, `${JSON.stringify(reports, null, 2)}\n`);
     await writeFile(`${output}.md`, reportsMarkdown(reports));
     console.log(reportsMarkdown(reports));
+    if (reports.mode === "candidate" && !reports.allPass) process.exitCode = 1;
   }
 }

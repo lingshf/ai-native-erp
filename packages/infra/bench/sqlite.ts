@@ -190,6 +190,7 @@ try {
       appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdown);
     }
     console.log(markdown);
+    if (!reports.allPass) throw new Error("Report capacity benchmark gates failed");
     if (dimensions.p95Ms >= dimensions.budgetMs)
       throw new Error("Dimension validation exceeds 10ms p95 budget");
   } finally {
