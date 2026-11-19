@@ -99,12 +99,12 @@ export function registerMasterDataRoutes(
       );
     }
     noQuery(request);
-    const { company, month, revision, status, reason, confirmed } = parse(
+    const { company, month, revision, status, reason, confirmed, modules } = parse(
       periodCommandSchema,
       request.body,
     );
     return periodSchema.parse(
-      await app.setPeriod(company, month, revision, status, reason, confirmed),
+      await app.setPeriod(company, month, revision, status, reason, confirmed, modules),
     );
   });
 }

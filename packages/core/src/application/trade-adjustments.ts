@@ -472,7 +472,12 @@ export async function prepareTradeAction(
   let journal: JournalPreview;
   if (emptyReverse) {
     const period = await repo.period(companyCode, day.slice(0, 7));
-    if (period?.status !== "open") tradeDocumentError("accountingDate", "reference");
+    if (
+      period?.status !== "open" ||
+      !period.modules.includes("trade") ||
+      !period.modules.includes("tax")
+    )
+      tradeDocumentError("accountingDate", "reference");
     dependencies.push(period, await repo.journalConfigurationStamp(companyCode));
     journal = {
       fingerprint: "",

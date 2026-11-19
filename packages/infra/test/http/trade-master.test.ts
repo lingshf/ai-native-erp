@@ -661,7 +661,9 @@ describe("trade master HTTP and SQLite", () => {
         "journal_seals",
         "journal_corrections",
       ])
-        await db.query(`INSERT INTO ${table} SELECT * FROM existing.${table}`);
+        await db.query(
+          `INSERT INTO ${table} SELECT ${table === "periods" ? "company_id,month,status,revision" : "*"} FROM existing.${table}`,
+        );
       await db.script(`
         INSERT INTO tenants(tenant_id) VALUES('KEEP');
         INSERT INTO books(tenant_id,book_id) VALUES('KEEP','KEEP');
@@ -743,7 +745,7 @@ describe("trade master HTTP and SQLite", () => {
         );
         expect(
           upgraded.prepare("SELECT version FROM schema_migrations ORDER BY version").all(),
-        ).toEqual(Array.from({ length: 12 }, (_, index) => ({ version: index + 1 })));
+        ).toEqual(Array.from({ length: 13 }, (_, index) => ({ version: index + 1 })));
         expect(
           upgraded
             .prepare("SELECT result FROM receipts WHERE idempotency_key=?")

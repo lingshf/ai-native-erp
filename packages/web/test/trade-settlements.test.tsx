@@ -192,6 +192,17 @@ afterEach(() => {
 });
 
 describe("trade payments and receipts", () => {
+  it("does not post if the pending envelope cannot be read back byte-for-byte", async () => {
+    const { posts } = mockApi();
+    render(<App />);
+    await selectPartial();
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.preview") }));
+    await screen.findByRole("region", { name: t("tset.result") });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {});
+    fireEvent.click(screen.getByRole("button", { name: t("tset.confirm") }));
+    await screen.findByText(t("tinv.storageFailed"));
+    expect(posts).toEqual([]);
+  });
   it("requires explicit selection and discount, invalidates a changed preview, and shows remaining balances and accounting links", async () => {
     const { previews, posts } = mockApi();
     render(<App />);

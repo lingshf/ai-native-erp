@@ -16,9 +16,11 @@ import { label, type LabelKey, type Preferences } from "./ui/index.ts";
 import { MasterDataFailure, masterRequest } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
 import { VirtualRows } from "./Journals.tsx";
+import { TradePeriodAdmission } from "./TradePeriodAdmission.tsx";
 export function PeriodClose({ preferences }: { preferences: Preferences }) {
   const [params, setParams] = useSearchParams();
   const [locked, setLocked] = useState(false);
+  const [admissionLocked, setAdmissionLocked] = useState(false);
   const [held, setHeld] = useState<{ company: CompanyDto; period: PeriodDto } | null>(null);
   const t = (key: Exclude<LabelKey, "shell.httpError">) => label(preferences.language, key);
   const companies = useInfiniteQuery({
@@ -80,7 +82,7 @@ export function PeriodClose({ preferences }: { preferences: Preferences }) {
       <label htmlFor="close-company">{t("master.company")}</label>
       <select
         id="close-company"
-        disabled={locked}
+        disabled={locked || admissionLocked}
         value={selectedCompany?.code ?? ""}
         onChange={(event) => setParams({ company: event.target.value })}
       >
@@ -91,14 +93,18 @@ export function PeriodClose({ preferences }: { preferences: Preferences }) {
         ))}
       </select>
       {companies.hasNextPage && (
-        <button disabled={locked} type="button" onClick={() => void companies.fetchNextPage()}>
+        <button
+          disabled={locked || admissionLocked}
+          type="button"
+          onClick={() => void companies.fetchNextPage()}
+        >
           {t("master.loadMore")}
         </button>
       )}
       <label htmlFor="close-month">{t("ledger.period")}</label>
       <select
         id="close-month"
-        disabled={locked}
+        disabled={locked || admissionLocked}
         value={selectedPeriod?.month ?? ""}
         onChange={(event) => setParams({ company: company?.code ?? "", month: event.target.value })}
       >
@@ -126,17 +132,30 @@ export function PeriodClose({ preferences }: { preferences: Preferences }) {
         <p role="alert">{t("ledger.invalid")}</p>
       )}
       {selectedCompany && selectedPeriod && (
-        <CloseWizard
-          key={`${selectedCompany.code}:${selectedPeriod.month}`}
-          company={selectedCompany}
+        <TradePeriodAdmission
+          key={`admission:${selectedCompany.code}:${selectedPeriod.month}:${selectedPeriod.revision}`}
+          company={selectedCompany.code}
           period={selectedPeriod}
           preferences={preferences}
-          setLocked={lock}
-          next={(month) => {
-            lock(false);
-            setParams({ company: selectedCompany.code, month });
-          }}
+          lock={setAdmissionLocked}
+          disabled={locked}
         />
+      )}
+      {selectedCompany && selectedPeriod && (
+        <fieldset disabled={admissionLocked}>
+          <legend>{t("close.title")}</legend>
+          <CloseWizard
+            key={`${selectedCompany.code}:${selectedPeriod.month}`}
+            company={selectedCompany}
+            period={selectedPeriod}
+            preferences={preferences}
+            setLocked={lock}
+            next={(month) => {
+              lock(false);
+              setParams({ company: selectedCompany.code, month });
+            }}
+          />
+        </fieldset>
       )}
     </section>
   );
@@ -172,6 +191,10 @@ function CloseWizard({
   const [pending, setPending] = useState<Pending | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  useEffect(
+    () => setPreview((current) => (current?.revision === period.revision ? current : null)),
+    [period.revision],
+  );
   const t = (key: Exclude<LabelKey, "shell.httpError">) => label(preferences.language, key);
   useEffect(() => {
     setLocked(busy || pending !== null);

@@ -76,7 +76,7 @@ export async function generateLedgerFixture(filename: string) {
       (_, i) => `${2025 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, "0")}`,
     );
     const insertPeriod = db.prepare(
-      "INSERT INTO periods VALUES('DEFAULT',?,'open',1) ON CONFLICT DO NOTHING",
+      "INSERT INTO periods(company_id,month,status,revision) VALUES('DEFAULT',?,'open',1) ON CONFLICT DO NOTHING",
     );
     for (const month of periods) insertPeriod.run(month);
     const accounts = db.prepare("SELECT code,normal_side FROM accounts ORDER BY code").all() as {

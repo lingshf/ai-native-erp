@@ -218,7 +218,7 @@ export class PeriodCloseService {
         if (existing.status !== "open") throw new DomainError("CONFLICT");
         return existing;
       }
-      const next: Period = { month: nextMonth, status: "open", revision: 1 };
+      const next: Period = { month: nextMonth, status: "open", revision: 1, modules: [] };
       await repo.savePeriod(company, next, 0);
       await repo.history(
         company,

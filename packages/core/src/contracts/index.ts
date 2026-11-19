@@ -2,6 +2,8 @@ import { z } from "zod";
 import { aiOpenApi } from "./ai-assistant.ts";
 import { tradeMasterOpenApi } from "./trade-master.ts";
 import { tradeDocumentsOpenApi } from "./trade-documents.ts";
+import { tradeReportingOpenApi } from "./trade-reporting.ts";
+export * from "./trade-reporting.ts";
 export * from "./trade-documents.ts";
 export * from "./trade-master.ts";
 export * from "./ai-assistant.ts";
@@ -102,6 +104,7 @@ export const openApiDocument = {
   paths: {
     ...tradeMasterOpenApi.paths,
     ...tradeDocumentsOpenApi.paths,
+    ...tradeReportingOpenApi.paths,
     ...aiOpenApi.paths,
     ...reportsOpenApi.paths,
     ...periodCloseOpenApi.paths,
@@ -139,6 +142,7 @@ export const openApiDocument = {
     schemas: {
       ...tradeMasterOpenApi.schemas,
       ...tradeDocumentsOpenApi.schemas,
+      ...tradeReportingOpenApi.schemas,
       ...aiOpenApi.schemas,
       ...reportsOpenApi.schemas,
       ...periodCloseOpenApi.schemas,

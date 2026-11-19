@@ -25,6 +25,7 @@ import type { ReportRepository } from "./reports.ts";
 import type { PeriodCloseRepository } from "./period-close.ts";
 import type { TradeRepository } from "./trade-master.ts";
 import type { TradeDocumentRepository } from "./trade-documents.ts";
+import type { TradeReportingRepository } from "./trade-reporting.ts";
 import { businessError } from "@erp/core/domain";
 
 export interface MasterDataRepository
@@ -34,7 +35,8 @@ export interface MasterDataRepository
     ReportRepository,
     PeriodCloseRepository,
     TradeRepository,
-    TradeDocumentRepository {
+    TradeDocumentRepository,
+    TradeReportingRepository {
   company(code: string): Promise<Company | null>;
   companies(query: PageQuery): Promise<Page<Company>>;
   currencyScale(currency: string): Promise<number | null>;
@@ -106,6 +108,7 @@ export class MasterDataService {
         month: `${company.year}-${String(month).padStart(2, "0")}`,
         status: "open",
         revision: 1,
+        modules: [],
       };
       await repo.savePeriod(company.code, period, 0);
       await repo.history(company.code, "period", period.month, 1, period, at, "");
@@ -190,6 +193,7 @@ export class MasterDataService {
     status: Period["status"],
     reason: string,
     confirmed: boolean,
+    modules?: Period["modules"],
   ): Promise<Period> {
     checkedCode(company);
     checkedTeachingMonth(month);
@@ -197,7 +201,18 @@ export class MasterDataService {
     return this.store.write(async (repo) => {
       const old = required(await repo.period(company, month));
       cas(old.revision, expected);
-      const next = changedPeriod(old, status, reason, confirmed);
+      if (
+        modules !== undefined &&
+        (!Array.isArray(modules) ||
+          modules.length > 2 ||
+          new Set(modules).size !== modules.length ||
+          modules.some((module) => module !== "trade" && module !== "tax"))
+      )
+        throw new DomainError("INVALID_INPUT");
+      const next = {
+        ...changedPeriod(old, status, reason, confirmed),
+        modules: modules === undefined ? old.modules : [...modules].sort(),
+      };
       if (next.status !== "open" && (await repo.pendingTransfers(company, month)))
         businessError("status", "pending", true);
       await repo.savePeriod(company, next, expected);

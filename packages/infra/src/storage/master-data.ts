@@ -22,6 +22,7 @@ import { reportRepository } from "./reports.ts";
 import { periodCloseRepository } from "./period-close.ts";
 import { tradeRepository } from "./trade-master.ts";
 import { tradeDocumentRepository } from "./trade-documents.ts";
+import { tradeReportingRepository } from "./trade-reporting.ts";
 import type { Connection, Row, SqliteStorageConfig } from "./types.ts";
 
 function decode<T>(schema: ContractSchema<T>, value: unknown): T {
@@ -67,6 +68,7 @@ function periodRow(row: Row): Period {
     month: row.month,
     status: row.status,
     revision: numeric(row.revision),
+    modules: JSON.parse(String(row.modules)),
   });
 }
 function page<T>(
@@ -82,6 +84,7 @@ function repository(db: Connection): MasterDataRepository {
   return {
     ...tradeRepository(db),
     ...tradeDocumentRepository(db),
+    ...tradeReportingRepository(db),
     ...dimensionRepository(db),
     ...journalRepository(db),
     ...businessRepository(db),
@@ -218,17 +221,22 @@ function repository(db: Connection): MasterDataRepository {
     },
     async savePeriod(company, period, expected) {
       if (expected === 0)
-        await db.query("INSERT INTO periods(company_id,month,status,revision) VALUES(?,?,?,?)", [
-          company,
-          period.month,
-          period.status,
-          period.revision,
-        ]);
+        await db.query(
+          "INSERT INTO periods(company_id,month,status,revision,modules) VALUES(?,?,?,?,?)",
+          [company, period.month, period.status, period.revision, JSON.stringify(period.modules)],
+        );
       else if (
         (
           await db.query(
-            "UPDATE periods SET status=?,revision=? WHERE company_id=? AND month=? AND revision=? RETURNING month",
-            [period.status, period.revision, company, period.month, expected],
+            "UPDATE periods SET status=?,revision=?,modules=? WHERE company_id=? AND month=? AND revision=? RETURNING month",
+            [
+              period.status,
+              period.revision,
+              JSON.stringify(period.modules),
+              company,
+              period.month,
+              expected,
+            ],
           )
         ).length !== 1
       )

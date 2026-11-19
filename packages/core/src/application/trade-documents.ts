@@ -53,7 +53,9 @@ import {
   type TradeActionReceipt,
   type TradeActionRecord,
   type TradeCreditLine,
+  type TradeReportQuery,
 } from "@erp/core/domain";
+import { readTradeReport, readTradeReconciliation, tradeReportDates } from "./trade-reporting.ts";
 import { prepareTradeAction } from "./trade-adjustments.ts";
 import type { JournalPreview, JournalService, JournalTools } from "./journals.ts";
 import type { MasterDataRepository, MasterDataStore } from "./master-data.ts";
@@ -183,6 +185,55 @@ export class TradeDocumentService {
     this.store = store;
     this.journals = journals;
     this.tools = tools;
+  }
+  report(company: string, query: TradeReportQuery) {
+    return this.store.read((repo) => readTradeReport(repo, this.tools, company, query));
+  }
+  reconciliation(company: string, month?: string) {
+    return this.store.read((repo) => readTradeReconciliation(repo, this.tools, company, month));
+  }
+  itemDetail(company: string, id: string, month?: string) {
+    checkedCode(company);
+    checkedJournalId(id);
+    const dates = tradeReportDates(month, this.tools.now());
+    return this.store.read(async (repo) => {
+      required(await repo.company(company));
+      const selected = required(
+        await repo.tradeReportItem(company, id, dates.cutoff, dates.ageingDate),
+      );
+      const current = required(await repo.openItem(company, id));
+      const source = required(await repo.tradeItemSource(company, id));
+      const record =
+        selected.kind === "invoice" ? required(await repo.tradeDocument(company, id)) : null;
+      let document: TradeInvoiceDetail["document"] | null = null;
+      if (record !== null) {
+        const { snapshot: _, ...saved } = record;
+        document = saved;
+      }
+      const actions = (await repo.tradeItemActions(company, id)).filter(
+        (a) => a.command.accountingDate <= dates.cutoff,
+      );
+      const settlements = (await repo.itemSettlements(company, id)).filter((s) =>
+        s.allocations.some((a) => a.itemId === id),
+      );
+      // Payment dates come from immutable linked journals, not postedAt wall-clock time.
+      const dated = await Promise.all(
+        settlements.map(async (s) => ({
+          receipt: s,
+          date: required(await repo.journalEntry(company, s.journalIds[0])).date,
+        })),
+      );
+      return {
+        company,
+        asOf: dates.asOf,
+        selected,
+        current,
+        actions,
+        document,
+        originalDocumentId: source.originalId,
+        settlements: dated.filter((s) => s.date <= dates.cutoff).map((s) => s.receipt),
+      };
+    });
   }
   async previewAction(command: TradeActionCommand): Promise<TradeActionPreview> {
     checkedTradeAction(command);

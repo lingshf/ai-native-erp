@@ -66,10 +66,15 @@ export const accountCommandSchema = accountFieldsSchema.extend({
   revision: revisionSchema,
 });
 const monthSchema = z.string().regex(/^(?:19\d{2}|[2-9]\d{3})-(?:0[1-9]|1[0-2])$/u);
+export const periodModulesSchema = z
+  .array(z.enum(["trade", "tax"]))
+  .max(2)
+  .refine((modules) => new Set(modules).size === modules.length);
 export const periodSchema = z.strictObject({
   month: monthSchema,
   status: z.enum(["open", "frozen", "closed"]),
   revision: storedRevision,
+  modules: periodModulesSchema.default([]),
 });
 export const periodCommandSchema = z.strictObject({
   company: companyCodeSchema,
@@ -78,6 +83,7 @@ export const periodCommandSchema = z.strictObject({
   status: periodSchema.shape.status,
   reason: name(160),
   confirmed: z.boolean(),
+  modules: periodModulesSchema,
 });
 const limit = z
   .string()

@@ -265,6 +265,7 @@ describe("master data HTTP and real SQLite use cases", () => {
       status: "frozen",
       reason: "Review",
       confirmed: false,
+      modules: [],
     };
     const request = {
       method: "PUT" as const,
@@ -391,6 +392,7 @@ it("upgrades an authentic immutable 001 target only on explicit migration, prese
         { version: 10 },
         { version: 11 },
         { version: 12 },
+        { version: 13 },
       ]);
     } finally {
       raw.close();

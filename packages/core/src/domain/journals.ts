@@ -222,6 +222,7 @@ export function buildJournalPlan(input: {
   readonly adapter?: {
     readonly module: string;
     readonly controlModules: readonly NonNullable<Account["controlModule"]>[];
+    readonly periodModules?: readonly ("trade" | "tax")[];
   };
 }): JournalPlan {
   const { draft, company, period, original, corrections } = input;
@@ -232,6 +233,8 @@ export function buildJournalPlan(input: {
   checkedJournalDay(dates.documentDate, "documentDate");
   checkedJournalDay(dates.taxDate, "taxDate");
   if (!period || period.month !== draft.date.slice(0, 7) || period.status !== "open")
+    journalError("date", "period");
+  if (input.adapter?.periodModules?.some((module) => !period.modules.includes(module)))
     journalError("date", "period");
   const accounts = new Map(input.accounts.map((account) => [account.code, account]));
   const compiled = compileDimensionRules(input.catalog);

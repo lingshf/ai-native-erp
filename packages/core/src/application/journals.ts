@@ -83,7 +83,11 @@ export class JournalService {
   }
   adapter(module: string) {
     if (!Object.hasOwn(this.adapters, module)) journalError("adapter", "manual");
-    const adapter = { module, controlModules: this.adapters[module] };
+    const adapter = {
+      module,
+      controlModules: this.adapters[module],
+      periodModules: module === "TRADE" ? (["trade", "tax"] as const) : [],
+    };
     return Object.freeze({
       preview: (company: string, draft: JournalDraft) => this.previewFor(company, draft, adapter),
       confirm: (input: JournalConfirm) => this.confirmFor(input, adapter),

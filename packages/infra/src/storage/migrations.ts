@@ -95,6 +95,7 @@ const filenames = [
   "010-trade-documents.sql",
   "011-trade-settlements.sql",
   "012-trade-adjustments.sql",
+  "013-trade-reporting.sql",
 ];
 
 export function normalizeMigration(text: string): string {
@@ -341,6 +342,7 @@ export async function inspectSchema(
             "index:open_items_due_page",
           ]
         : []),
+      ...(latest >= 13 ? ["index:trade_actions_reporting", "index:open_items_reporting"] : []),
       ...(latest >= 12
         ? [
             "trigger:trade_documents_item_source",

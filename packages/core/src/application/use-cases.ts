@@ -25,6 +25,9 @@ export interface ApplicationServices {
     | "previewAction"
     | "confirmAction"
     | "actions"
+    | "report"
+    | "reconciliation"
+    | "itemDetail"
   >;
   masterData: Pick<
     MasterDataService,
@@ -67,6 +70,9 @@ export interface ApplicationServices {
 export const applicationLanes = {
   trade: { list: "light", get: "light", save: "write" },
   tradeDocs: {
+    report: "heavy",
+    reconciliation: "heavy",
+    itemDetail: "light",
     previewAction: "heavy",
     confirmAction: "write",
     actions: "light",

@@ -81,7 +81,7 @@ it("drills preview amounts at the same compound pin and retries unknown close/ne
         if (!preview) throw new Error("Missing preview");
         result = {
           preview,
-          period: { month: "2026-12", status: "closed", revision: 2 },
+          period: { month: "2026-12", status: "closed", revision: 2, modules: [] },
           receipt: {
             company: "DEFAULT",
             sourceRef: "CLOSE:2026-12:1",
@@ -138,6 +138,7 @@ it("drills preview amounts at the same compound pin and retries unknown close/ne
   }
   fireEvent.click(screen.getByRole("button", { name: "确认结账" }));
   await screen.findByText(/结果未知/u);
+  expect(screen.getByLabelText("准入 trade").matches(":disabled")).toBe(true);
   const client = mount.mock.contexts.find((context) => context instanceof QueryClient);
   if (!(client instanceof QueryClient)) throw new Error("Missing mounted QueryClient");
   await act(async () => {

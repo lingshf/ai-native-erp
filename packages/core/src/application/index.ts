@@ -34,3 +34,4 @@ export * from "./use-cases.ts";
 export { postingAdapters, type PostingAdapterRegistry } from "./posting-adapters.ts";
 export * from "./trade-master.ts";
 export * from "./trade-documents.ts";
+export * from "./trade-reporting.ts";
