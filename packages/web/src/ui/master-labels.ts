@@ -34,6 +34,8 @@ export const masterZh = {
   "master.builtin": "内置",
   "master.readonly": "月度教学公司的内置八科目保持不可修改。",
   "master.none": "无",
+  "master.teachingTitle": "教学说明",
+  "master.general": "常规",
   "master.teaching": "保存使用版本比较；发生冲突时不自动覆盖。停用不删除科目与历史版本。",
   "master.category.ASSET": "资产",
   "master.category.LIABILITY": "负债",
@@ -112,6 +114,8 @@ export const masterEn = {
   "master.builtin": "Built-in",
   "master.readonly": "The eight built-in accounts of a monthly teaching company cannot be edited.",
   "master.none": "None",
+  "master.teachingTitle": "Teaching note",
+  "master.general": "General",
   "master.teaching":
     "Saves compare revisions and never automatically overwrite conflicts. Deactivation preserves accounts and history.",
   "master.category.ASSET": "Asset",
