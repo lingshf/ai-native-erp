@@ -9,25 +9,13 @@ import {
 } from "@erp/core/contracts";
 import { httpError } from "./errors.ts";
 
+export { validateDevOrigin } from "./dev-origin.ts";
+
 export const LEGACY_PATHS = new Set([
   "/api/v1/legacy/context",
   "/api/v1/legacy/trial",
   "/api/v1/legacy/ledger",
 ]);
-
-export function validateDevOrigin(value: string | undefined): string | undefined {
-  if (value === undefined) return undefined;
-  const match = /^http:\/\/(?:127\.0\.0\.1|\[::1\]):([1-9][0-9]{0,4})$/u.exec(value);
-  if (
-    !match ||
-    Number(match[1]) > 65535 ||
-    Number(match[1]) === 4173 ||
-    new URL(value).origin !== value
-  ) {
-    throw new TypeError("Invalid Local development origin");
-  }
-  return value;
-}
 
 export function financeHeaders(reply: FastifyReply): void {
   reply.header("Cache-Control", "no-store").header("X-Content-Type-Options", "nosniff");

@@ -58,14 +58,25 @@ test("launcher import has no execution side effects; invalid runtime precedes sn
   }
 });
 
-test("launcher rejects missing/duplicate/unknown arguments and noncanonical dev origins safely", {
-  timeout: 30_000,
-}, () => {
+test("launcher rejects missing/duplicate/unknown arguments and noncanonical dev origins before startup", async () => {
+  const { runPreview } = await import("../../../../scripts/preview-legacy-snapshot.mjs");
   for (const args of [
     [],
     ["--snapshot-dir"],
+    ["--snapshot-dir", ""],
+    ["--snapshot-dir", "--dev-origin"],
     ["--snapshot-dir", "x", "--extra", "x"],
     ["--snapshot-dir", "x", "--snapshot-dir", "y"],
+    ["--snapshot-dir", "x", "--dev-origin"],
+    ["--snapshot-dir", "x", "--dev-origin", ""],
+    [
+      "--snapshot-dir",
+      "x",
+      "--dev-origin",
+      "http://127.0.0.1:5173",
+      "--dev-origin",
+      "http://127.0.0.1:5174",
+    ],
     ...[
       "http://localhost:5173",
       "http://0.0.0.0:5173",
@@ -82,20 +93,57 @@ test("launcher rejects missing/duplicate/unknown arguments and noncanonical dev 
       "*",
     ].map((origin) => ["--snapshot-dir", "private-secret-missing", "--dev-origin", origin]),
   ]) {
-    const child = spawnSync(process.execPath, [script, ...args], {
-      env: { ...process.env, ...environment },
-      encoding: "utf8",
-      timeout: 10000,
+    const runtime = new EventEmitter();
+    const events = [];
+    runtime.stderr = { write: (line) => events.push(JSON.parse(line)) };
+    let started = false;
+    const result = await runPreview(args, environment, {
+      runtime,
+      startPreview() {
+        started = true;
+        throw new Error("private-secret startup must not run");
+      },
     });
-    assert.equal(child.status, 1, child.stderr);
-    const event = JSON.parse(child.stderr.trim());
-    assert.ok(
-      ["PreviewArgumentsError", "RuntimeConfigurationError"].includes(event.errorType),
-      child.stderr,
+    assert.equal(started, false);
+    assert.equal(result, undefined);
+    assert.equal(runtime.exitCode, 1);
+    assert.equal(events.length, 1);
+    assert.deepEqual(Object.keys(events[0]).sort(), ["errorType", "requestId"]);
+    assert.equal(events[0].errorType, "PreviewArgumentsError");
+    assert.match(
+      events[0].requestId,
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
     );
-    assert.equal(child.stdout, "");
-    assert.equal(child.stderr.includes("private-secret"), false);
+    assert.equal(JSON.stringify(events).includes("private-secret"), false);
+    assert.deepEqual(runtime.eventNames(), []);
   }
+});
+
+test("actual CLI rejects arguments without loading HTTP or snapshot dependencies", () => {
+  const guard = `import { registerHooks } from "node:module";
+    registerHooks({ resolve(specifier, context, nextResolve) {
+      if (specifier === "@erp/infra/http" || specifier.endsWith("legacy-snapshot-reader.mjs")) {
+        throw new Error("Heavy preview dependency loaded before argument rejection");
+      }
+      return nextResolve(specifier, context);
+    } });`;
+  const child = spawnSync(
+    process.execPath,
+    [
+      "--import",
+      `data:text/javascript,${encodeURIComponent(guard)}`,
+      script,
+      "--snapshot-dir",
+      "private-secret-missing",
+      "--dev-origin",
+      "http://localhost:5173",
+    ],
+    { env: { ...process.env, ...environment }, encoding: "utf8", timeout: 10000 },
+  );
+  assert.equal(child.status, 1, child.stderr);
+  assert.equal(JSON.parse(child.stderr.trim()).errorType, "PreviewArgumentsError");
+  assert.equal(child.stdout, "");
+  assert.equal(child.stderr.includes("private-secret"), false);
 });
 
 test("composition owns real resources and idempotently drains API before closing snapshot", async (t) => {

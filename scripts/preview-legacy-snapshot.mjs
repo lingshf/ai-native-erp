@@ -1,9 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { createApi, validateDevOrigin } from "@erp/infra/http";
 import { parseRuntimeConfiguration } from "@erp/infra";
-import { openVerifiedTeachingReader } from "./legacy-snapshot-reader.mjs";
+import { validateDevOrigin } from "../packages/infra/src/http/dev-origin.ts";
 
 function argumentsError() {
   const error = new Error("Invalid preview arguments");
@@ -43,14 +42,17 @@ export async function startLegacyPreview({
   devOrigin,
   environment = {},
   allowPortZero = false,
-  openReader = openVerifiedTeachingReader,
-  createApi: makeApi = createApi,
+  openReader,
+  createApi: makeApi,
 }) {
   parseRuntimeConfiguration(environment, { allowPortZero });
   validateDevOrigin(devOrigin);
   if (typeof snapshotDirectory !== "string" || snapshotDirectory.length === 0)
     throw argumentsError();
-  const reader = openReader(resolve(snapshotDirectory));
+  const readSnapshot =
+    openReader ?? (await import("./legacy-snapshot-reader.mjs")).openVerifiedTeachingReader;
+  const createPreviewApi = makeApi ?? (await import("@erp/infra/http")).createApi;
+  const reader = readSnapshot(resolve(snapshotDirectory));
   let api;
   let closing;
   const close = () =>
@@ -69,7 +71,7 @@ export async function startLegacyPreview({
       if (errors.length) throw new AggregateError(errors, "Preview close failed");
     })());
   try {
-    api = await makeApi({ environment, allowPortZero, devOrigin, legacyReader: reader });
+    api = await createPreviewApi({ environment, allowPortZero, devOrigin, legacyReader: reader });
     const address = await api.listen();
     return { address, close };
   } catch (error) {
