@@ -20,8 +20,7 @@
 .trade-reports .trpt-reconciliation th:nth-child(n + 2) {
   text-align: right;
 }
-.trade-reports .trpt-items th:first-child,
-.trade-reports .trpt-items th:nth-child(2) {
+.trade-reports .trpt-items th:nth-child(-n + 2) {
   width: 120px;
 }
 .trade-reports .trpt-items th:nth-child(7) {

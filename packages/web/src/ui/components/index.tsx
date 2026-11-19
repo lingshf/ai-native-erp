@@ -1,12 +1,8 @@
 import type { ReactNode } from "react";
-import type { Language } from "../labels.ts";
 import "../../theme/components.css";
 
 // UI-1 shared components (design/ui/README.md §5, §6): thin wrappers that only add layout classes.
 // Children keep their own IDs, names and events.
-
-// design/ui §6: tip title per language; the decorative mark is aria-hidden.
-const teachingNote: Readonly<Record<Language, string>> = { zh: "教学说明", en: "Teaching note" };
 
 export function PageHeader({
   title,
@@ -28,22 +24,24 @@ export function PageHeader({
   );
 }
 
-/** Not rendered at all when teaching is off (PG-04: boundaries, risks and errors live elsewhere). */
+/**
+ * Not rendered at all when teaching is off (PG-04: boundaries, risks and errors live elsewhere).
+ * `title` comes from the caller's labels; it is both the visible heading and the accessible name.
+ */
 export function TeachingTip({
   teaching,
-  language,
+  title,
   children,
 }: {
   teaching: boolean;
-  language: Language;
+  title: string;
   children: ReactNode;
 }) {
   if (!teaching) return null;
-  const title = teachingNote[language];
   return (
     <aside className="teaching-tip" aria-label={title}>
       <span className="mark" aria-hidden="true">
-        {title[0]}
+        {Array.from(title)[0]}
       </span>
       <strong>{title}</strong>
       <p>{children}</p>

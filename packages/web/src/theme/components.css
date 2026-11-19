@@ -43,8 +43,8 @@
 .btn-subtle:active:not(:disabled) {
   background: var(--color-primary-soft);
 }
+/* 不压低高度：沿用 --control-h（桌面 36px，窄屏或粗指针 44px，design/ui §7）。 */
 .btn-sm {
-  min-height: 28px;
   padding: 0 var(--space-2);
   font-size: var(--text-sm);
 }
@@ -165,6 +165,12 @@
   color: var(--color-text);
   font-weight: var(--weight-semibold);
   cursor: pointer;
+}
+/* design/ui §7：窄屏或粗指针下视图按钮自身保持 44px（断点与 shell.css 一致）。 */
+@media (max-width: 760px), (pointer: coarse) {
+  .segmented button {
+    min-height: var(--control-h);
+  }
 }
 .segmented button:hover:not(:disabled),
 .segmented button:active:not(:disabled) {

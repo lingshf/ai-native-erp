@@ -52,7 +52,7 @@ export function TradeReports({ preferences }: { preferences: Preferences }) {
       ) : (
         <>
           {header()}
-          <TeachingTip teaching={preferences.teaching} language={preferences.language}>
+          <TeachingTip teaching={preferences.teaching} title={t("trpt.teachingTitle")}>
             {t("trpt.teaching")}
           </TeachingTip>
         </>
@@ -187,7 +187,7 @@ function CompanyReports({
           )}
         </>,
       )}
-      <TeachingTip teaching={preferences.teaching} language={preferences.language}>
+      <TeachingTip teaching={preferences.teaching} title={t("trpt.teachingTitle")}>
         {t("trpt.teaching")}
       </TeachingTip>
       <form
