@@ -36,7 +36,8 @@
     "verify": "npm run check && npm run typecheck && npm run check:boundaries && npm test && npm run test:legacy && npm run build",
     "verify:sqlite": "vitest run packages/infra/test/storage-sqlite.test.ts packages/infra/test/storage-admin-cli.test.ts",
     "check": "biome ci",
-    "bench": "node packages/infra/bench/sqlite.ts"
+    "bench": "node packages/infra/bench/sqlite.ts",
+    "bench:generate-ledger": "node packages/infra/bench/generate-ledger.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.6",

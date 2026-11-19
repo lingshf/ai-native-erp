@@ -40,3 +40,41 @@ Unknown submission results lock the original command, key/plan and withdrawal
 reason for explicit same-command retries. Same-reason withdrawal is idempotent.
 Lists use 100-item pages and virtualize after 100 loaded items. Labels are bilingual;
 language/theme/teaching preferences never save or change business input.
+
+The lazy live `/#/ledger-reports` and `/#/ledger` routes query the target SQLite
+ledger, clearly separate from the verified legacy snapshot routes. Select a report
+group amount, an account amount, then a GL source link to open the original journal
+by company/ID. Trial stage is retained through drilldown. Company/period, income,
+balance sheet and reconciliation selections are explicit and bilingual; errors are
+never presented as zero balances. Configured inactive accounts remain visible.
+
+The live ledger fetches 500-line keyset pages, automatically loads near the end of
+the scroll region, and also offers an accessible Load more button. It virtualizes
+even the first page with 44px rows and five-row overscan per side. The focused DOM
+test scrolls a single full page and bounds mounted rows to viewport plus
+overscan (including one partially visible row). Actual 100,000-line scrolling and
+million-row capacity verification remain manual/Bench work, not PR tests.
+Reports carry both the GL posting watermark and the same-company aggregate account
+revision through group/account links, page requests, filter submissions and
+query-cache keys. Navigation and repeated selections revalidate cached results;
+pending revalidation and failed reads never display stale cached tables.
+Historical GL remains readable only while the account configuration still matches.
+Reclassification without new postings returns 409 and requires an explicit refresh,
+not a historical-classification mode or an automatic latest-data fallback.
+Standalone ledger entry has a separate initial-read phase: its first response writes
+both pins into the URL and seeds the corresponding pinned query state before filters
+or pagination become available. Every subsequent ledger request, including first-page
+refetches and changed filters, must carry both pins and validate the response against
+them. The temporary initial-read query is discarded on unmount and never refetches
+on focus, reconnect or mount; normal pinned reads inherit the app's disabled focus
+and reconnect refetch policy. Cache invalidation can only refetch the pinned scope.
+A ledger 409 latches a needs-refresh state outside the query cache: filters, paging,
+retries and automatic refetches stop, cached rows are hidden, and even resetting the
+query cache cannot unlock it. Only explicit refresh clears this state, obtains the
+latest two-part snapshot, and pins it back into the URL and query state.
+Income account drilldowns
+show signed period amounts in the statement direction alongside raw trial columns;
+the selected group subtotal reconciles to those period amounts, not closing balances.
+All posted-journal selection paths share cancellation, so a late deep-link response
+or error cannot replace a newer selection. Dimension filters use a concrete value
+or `~` for unassigned.

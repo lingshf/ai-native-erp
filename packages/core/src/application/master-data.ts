@@ -21,12 +21,14 @@ import {
 import type { DimensionRepository } from "./dimensions.ts";
 import type { JournalRepository } from "./journals.ts";
 import type { BusinessRepository } from "./business-events.ts";
+import type { ReportRepository } from "./reports.ts";
 import { businessError } from "@erp/core/domain";
 
 export interface MasterDataRepository
   extends DimensionRepository,
     JournalRepository,
-    BusinessRepository {
+    BusinessRepository,
+    ReportRepository {
   company(code: string): Promise<Company | null>;
   companies(query: PageQuery): Promise<Page<Company>>;
   currencyScale(currency: string): Promise<number | null>;

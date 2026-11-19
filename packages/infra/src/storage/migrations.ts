@@ -86,6 +86,7 @@ const filenames = [
   "003-dimensions.sql",
   "004-journals.sql",
   "005-business-events.sql",
+  "006-reports.sql",
 ];
 
 export function normalizeMigration(text: string): string {
@@ -136,6 +137,13 @@ export async function inspectSchema(
       ...(latest >= 3 ? dimensionNames : []),
       ...(latest >= 4 ? journalNames : []),
       ...(latest >= 5 ? businessNames : []),
+      ...(latest >= 6
+        ? [
+            "index:journal_lines_ledger_account",
+            "index:journal_entries_ledger_date",
+            "index:journal_lines_report_totals",
+          ]
+        : []),
     ])
   )
     throw new StorageError("SCHEMA_MISMATCH");

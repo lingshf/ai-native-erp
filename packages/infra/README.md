@@ -174,6 +174,63 @@ complete response JSON and shared client DTO decoding, with 10 warmups and
 validation; confirm includes commit. Raw samples and p50/p95/p99 are stored in the
 existing bench artifacts. This remains separate from million-GL capacity acceptance.
 
+## Live ledger reports and capacity (M0-12)
+
+`ReportService` uses one read transaction per request. `/api/v1/reports/trial`,
+`income`, `balance-sheet` and `reconciliation` return the same consistent report
+bundle; `/api/v1/ledger` returns at most 500 chronological lines. All routes retain
+the local finance Host/Origin boundary, strict input/output contracts and no-store
+headers. No GL rows are loaded wholesale into application memory.
+
+SQL aggregates by account using a covering company/period/account/debit/credit index.
+The first million-row SQL probe exceeded 1 second with the original non-covering
+index; 006 adds the covering index without introducing a balance table. Classification
+uses current configuration, including inactive accounts and signed contra amounts.
+Trial and balance-sheet balances include all earlier periods; income separates the
+selected period from calendar YTD. Equity includes cumulative unclosed profit, not
+only this year's income, so crossing a year without a closing entry cannot silently
+drop historical value. Unadjusted excludes only current-period adjusting entries;
+postClosing currently equals adjusted because the journal schema has no closing
+entry kind yet. The reconciliation endpoint computes all three trial-stage checks,
+balance sheet, equity roll-forward and profit in one read snapshot (six checks).
+Other report bundles carry the selected-stage trial check and the three statement
+checks. No currency translation or full closing is claimed.
+
+Migration 006 only adds covering report, account/period and chronological journal indexes. Ledger
+pages order by accounting date, journal ID and line number, pin the initial posting
+sequence watermark, and bind cursors to company, account, period, stage and dimension
+filter. Totals and running prefixes are SQL aggregates; the client cannot supply
+trusted balances. Unassigned dimension filtering matches missing or null values.
+Reports and ledger pages return a compound snapshot: the GL posting `watermark`
+and `accountRevision`, the sum of all current account revisions in that company.
+Requests must supply both pins together or neither, including first-page
+drilldowns, filters and group navigation; cursors carry and validate both.
+Historical report reads filter immutable entries by sequence; current-watermark
+reads retain the covering-index fast path. Unavailable/future watermarks fail with
+409, as does any changed account configuration, even without new GL entries.
+The sum detects edits to lower-revision accounts that `MAX(revision)` would miss,
+is company-scoped, and detects changing a classification back to its original value.
+Account creation starts at revision 1, each edit increments it, and accounts cannot
+be deleted; unsafe integer aggregates fail explicitly. Snapshot validation and the
+report/ledger query share one read transaction. Partial pins and cursor/pin
+mismatches fail with 400. There is only the current-classification basis, not a
+historical-classification mode: a changed configuration requires an explicit
+refresh of both pins, never a silent latest-data fallback.
+Ordinary report requests do not create receipts.
+
+`npm run bench:generate-ledger -- <absolute-new-file>` refuses existing files and
+builds the production schema with a deterministic 1-company, 200-account, 24-period,
+3-dimension, 1,000,000-line fixture. It keeps foreign keys, immutable triggers,
+balanced journal seals, receipts and audit enabled. Bulk loading is **not** posting
+throughput. One account/month contains exactly 100,000 lines for scrolling checks.
+`npm run bench` owns and cleans its temporary fixture, performs 5 warmups and 50
+hot loopback HTTP samples per trial/income/balance-sheet/ledger path, and includes
+complete response JSON/shared client decoding. Each p95 budget is 1000 ms.
+JSON/Markdown/Actions summary record fixture size/time/digest, raw samples,
+percentiles, query plans and explicit PASS/MISS. Misses require a design follow-up,
+not a smaller fixture or an anticipatory materialized balance table. Generation
+and capacity sampling run only in Bench/manual workflows, never PR tests.
+
 ## Validation
 
 From repository root, after `npm ci`:

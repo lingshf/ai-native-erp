@@ -53,7 +53,7 @@ npm run build
 npm run start:local
 ```
 
-启动只校验最新 schema，不自动迁移；旧的 001–004 目标库也须先显式运行 migrate 升级到 005，已发布 SQL/checksum 保持不变。首次连接有效目标库时，在固定 LOCAL tenant/book 下建立 DEFAULT 月度教学公司（CNY、精度 2、当前财年）、旧 Book 对应的八科目和 12 个开放期间；重复启动不覆盖已有主数据，不创建凭证。未设置 ERP_SQLITE_FILE 的启动与快照 CLI 仍不打开业务库。已配置时 health 返回 `data:configured`。
+启动只校验最新 schema，不自动迁移；旧的 001–005 目标库也须先显式运行 migrate 升级到 006，已发布 SQL/checksum 保持不变。首次连接有效目标库时，在固定 LOCAL tenant/book 下建立 DEFAULT 月度教学公司（CNY、精度 2、当前财年）、旧 Book 对应的八科目和 12 个开放期间；重复启动不覆盖已有主数据，不创建凭证。未设置 ERP_SQLITE_FILE 的启动与快照 CLI 仍不打开业务库。已配置时 health 返回 `data:configured`。
 
 左侧“基础配置 → 科目表”提供公司选择、科目新建/编辑/停用；教学公司的内置八科目保持不可修改。统驭模块必须显式选择，不默认推断为 AP。中英、红绿、教学切换不清空编辑器。写入用 revision CAS，版本冲突返回 409 并保留输入，要求显式重新载入；可修正的科目规则校验返回 400 和安全的 fieldErrors，在对应字段说明如何修正，保留草稿且不提示无效重载。列表每次取 100 行，可继续加载；超过 100 行启用 TanStack Virtual。`/api/v1/companies`（GET/POST）、`/accounts`（GET/POST/PUT）、`/periods`（GET/PUT）使用有界游标分页；科目历史可用 `GET /api/v1/accounts/1500?company=DEFAULT&at=2026-01-02T12%3A00%3A00.000Z` 查询。期间冻结可重开，关闭须明确确认且不可重开；有业务活动后的结账流程留待 M0-11。公司创建/期间管理界面仍未提供；凭证界面见下文 M0-10。
 
@@ -69,7 +69,7 @@ npm run start:local
 
 **D6：历史反向行逐项精确镜像同公司原已过账行**，即使原科目已停用/禁止手工或原维度值已失效；不重跑默认/派生。仍检查原凭证、同公司科目、金额正好取反、镜像证据及不能重复冲回。新业务/自动清算行均按当前启用、用途及维度结构校验。替换原子生成反向和新凭证；重分类必须全额，合并展示原反向与新分配，仅允许再全额冲回；纠错日期不能早于原凭证及其任何后代。金额以精确最小单位计算，单项/凭证/公司累计借贷金额均不能超过安全整数范围；公司累计值保存在不可变封存记录，通过索引读取末值，不逐次扫描全 GL。
 
-004 复用已发布 001 的 `receipts` 与 `audit`，为新凭证增加来源/幂等唯一索引，`audit_log` 是同一真实审计存储的只读投影，不写两份审计。完整目标库新 GL 报表留 M0-12，完整期间结账留 M0-13，不提供旧账转换/导入。`npm run bench` 另测 100 行 × 3 维度的真实 loopback HTTP（含客户端响应/契约解析，确认包含事务提交），输出 p95/p99 及事件循环延迟；当前仅独立小库，**不等于已通过百万 GL 容量验收**，须等 M0-12 合成生成器。
+004 复用已发布 001 的 `receipts` 与 `audit`，为新凭证增加来源/幂等唯一索引，`audit_log` 是同一真实审计存储的只读投影，不写两份审计。当前 GL 报表见下方 M0-12；完整期间结账仍未实现，不提供旧账转换/导入。`npm run bench` 的 100 行 × 3 维度凭证真实 HTTP 微基准与百万行报表基准使用不同合成库，不把小库的过账耗时冒充大库容量结果。
 
 ### M0-11：业务事件、过账规则与待转队列
 
@@ -101,7 +101,17 @@ npm run preview:legacy -- --snapshot-dir "$snapshotDir"
 
 PR CI限时10分钟：安装、Biome、类型和边界检查后，对实际PR base运行受影响Vitest；任意workspace的`package.json`/lock、Vitest或`tsconfig*`改动回退全部非慢测试。只有旧`src/`、`public/`、`tests/`改动才运行旧套件（M0-15删除此分支）。`*.slow.test.ts`/`*.slow.test.tsx`不进入PR或`test:changed`，只进入完整运行；本地`npm test`/`verify`仍是完整模式。CI/Full的summary合并Vitest与实际执行的旧套件，列出最慢10个测试。
 
-Full在push到main及每天03:17 UTC触发；Bench每天03:47 UTC及手动触发。每晚检查所检出main提交的committer时间，过去24小时无新提交时跳过安装、测试、构建/基准，仅保留checkout、Node/npm缓存与门控开销；push和手动运行不受该门控限制。所有job有超时、同层并发取消和npm缓存。`npm run bench`只在独立临时SQLite文件上测1万行占位插入/热查询、100×3维度纯规则及凭证真实HTTP预览/确认，不代表M0-12的百万GL行基准；结果写入summary，`artifacts/ci/bench.json`及`.md`由Bench工作流保留14天，不修改活动账套。
+Full在push到main及每天03:17 UTC触发；Bench每天03:47 UTC及手动触发。每晚检查所检出main提交的committer时间，过去24小时无新提交时跳过安装、测试、构建/基准，仅保留checkout、Node/npm缓存与门控开销；push和手动运行不受该门控限制。所有job有超时、同层并发取消和npm缓存。`npm run bench` 包含微基准及独立百万 GL 报表容量基准；结果写入 summary，`artifacts/ci/bench.json` 及 `.md` 由 Bench 的 `sqlite-ledger-*` artifact 保留14天，不修改活动账套，不进入 PR 测试层。
+
+### 总账报表与百万行基准（M0-12）
+
+当前账套入口 `/#/ledger-reports` 与 `/#/ledger`，旧版快照报表仍明确保留在独立只读边界。报表类别金额可下钻到科目、分页总账、原凭证；维度筛选支持具体值或 `~`（未分配）。金额以公司本位币最小单位精确聚合，借正贷负；资产/费用展示借方净额，其他类别展示贷方净额，备抵自然抵减。停用不隐藏历史，按**当前科目配置**归类；不做跨公司合计或汇兑换算。
+
+`GET /api/v1/reports/trial|income|balance-sheet|reconciliation?company=...&month=YYYY-MM&stage=adjusted` 返回同一只读事务中的报表组合（试算、报表类别、当期/本年利润、资产负债、权益变动和对账）；reconciliation 独立检查三个试算阶段及资产负债、权益变动、利润，共六项，其他组合包含所选阶段及三项报表检查。累计试算/资产负债不丢弃以前年度；日历年累计利润单独计算，未结转历史损益计入权益而不重复计入本期利润。未调整阶段仅排除当期 adjusting；当前 schema 尚无 closing 分录，因此 adjusted 与 postClosing 暂时相同，UI 明示，并不伪造结账。
+
+`GET /api/v1/ledger?company=...&month=...&account=...&limit=100` 使用 SQL 聚合及按日期/凭证ID/行号的 keyset 分页，无 offset 或全量 GL 内存载入。游标绑定公司、期间、科目、阶段、维度和首屏过账水位；新过账须刷新后显示。逐行余额由服务端重算，不信任客户端传入余额。006 仅增加查询索引，不增加期间余额表。
+
+`npm run bench:generate-ledger -- C:\absolute\new-synthetic.sqlite` 确定性生成 **1 公司、200 科目、24 期间、3 维度、100 万实际 GL 行**，其中一个科目单期恰有10万行。只接受新文件，不能覆盖已有账套；使用生产迁移、外键、不可变触发器和平衡封印，批量加载不代表过账吞吐。`npm run bench` 自动创建/清理临时库；试算、单期利润表/资产负债表、单科目总账首页分别测5次预热和50次真实 loopback HTTP（含完整 JSON 与共享客户端契约解析）。p95 预算均为1秒；JSON 记录原始样本、生成耗时/大小/逻辑摘要与 EXPLAIN。超预算明确标记 MISS 并交设计角色跟进，不预先实现余额表，不用小库替代。
 
 ## 本地查看完整需求与进度
 

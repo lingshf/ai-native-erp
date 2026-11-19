@@ -6,6 +6,7 @@ import { performance } from "node:perf_hooks";
 import { compileDimensionRules, dimensionBalance, type DimensionConfig } from "@erp/core/domain";
 import { journalBenchmark } from "./journals.ts";
 import { businessEventBenchmark } from "./business-events.ts";
+import { reportsBenchmark } from "./reports.ts";
 
 function dimensionBenchmark() {
   const base = { revision: 1, active: true, from: "2026-01-01", to: "2026-12-31" };
@@ -133,8 +134,9 @@ try {
     const dimensions = dimensionBenchmark();
     const journals = await journalBenchmark();
     const businessEvents = await businessEventBenchmark();
+    const reports = await reportsBenchmark();
     const report = {
-      kind: "placeholder-not-million-GL",
+      kind: "sqlite-ledger-capacity",
       node: process.version,
       rows: count.rows,
       insertMs,
@@ -142,11 +144,12 @@ try {
       dimensions,
       journals,
       businessEvents,
+      reports,
     };
     const markdown = [
-      "## SQLite placeholder benchmark",
+      "## SQLite micro benchmark",
       "",
-      "Synthetic 10,000 rows, temporary file, WAL/NORMAL. Not the M0-12 million-GL-row baseline.",
+      "Synthetic 10,000-row micro fixture, temporary file, WAL/NORMAL. The actual million-GL capacity results are reported separately below.",
       "",
       "| Operation | Rows | Samples | Duration / p50 (ms) | p95 (ms) |",
       "| --- | ---: | ---: | ---: | ---: |",
@@ -163,7 +166,7 @@ try {
       "",
       "## Journal loopback HTTP benchmark",
       "",
-      `100 business lines × 3 dimensions; 10 warmups and 100 samples. Timed from fetch through response.json and the shared client contract parse; confirm includes validation, transaction and commit. Initial GL rows: ${journals.initialGlRows}. Million-row capacity verified: **${journals.millionGlBaselineVerified}** (M0-12 generator pending).`,
+      `100 business lines × 3 dimensions; 10 warmups and 100 samples. Timed from fetch through response.json and the shared client contract parse; confirm includes validation, transaction and commit. Initial GL rows: ${journals.initialGlRows}. This independent posting micro fixture is not the million-GL report fixture.`,
       "",
       `Preview p95 ${journals.preview.p95Ms.toFixed(3)} ms; confirm p95 ${journals.confirm.p95Ms.toFixed(3)} ms; each budget ≤ ${journals.budgetMs} ms. Event-loop max ${journals.eventLoopMaxMs.toFixed(3)} ms.`,
       "",
@@ -176,6 +179,21 @@ try {
       `Preview p95 ${businessEvents.preview.p95Ms.toFixed(3)} ms; confirm p95 ${businessEvents.confirm.p95Ms.toFixed(3)} ms; budget ≤ ${businessEvents.budgetMs} ms. Event-loop max ${businessEvents.eventLoopMaxMs.toFixed(3)} ms.`,
       "",
       `Hot ${businessEvents.listRows}-item event list p95 ${businessEvents.list.p95Ms.toFixed(3)} ms; budget ≤ ${businessEvents.readBudgetMs} ms. JSON artifact includes all measured raw samples and p50/p95/p99.`,
+      "",
+      "## Million-GL ledger capacity benchmark",
+      "",
+      `Deterministic ${reports.fixture.seed}: 1 company, 200 accounts, 24 periods, 3 dimensions, 1,000,000 actual journal_lines; 100,000 cash lines in the selected month. WAL/NORMAL, all schema/foreign-key/seal constraints enabled. Generation ${(reports.fixture.generationMs / 1000).toFixed(2)} s; ${(reports.fixture.bytes / 1024 / 1024).toFixed(1)} MiB. Logical digest: ${reports.fixture.logicalSha256}.`,
+      "",
+      `${reports.warmup} warmups and ${reports.samples} hot samples per path; real loopback fetch through JSON and shared client contract parsing. No balance table. Each p95 budget ≤ ${reports.budgetMs} ms.`,
+      "",
+      "| Path | p50 ms | p95 ms | p99 ms | Budget |",
+      "| --- | ---: | ---: | ---: | --- |",
+      ...Object.entries(reports.metrics).map(
+        ([name, metric]) =>
+          `| ${name} | ${metric.p50Ms.toFixed(3)} | ${metric.p95Ms.toFixed(3)} | ${metric.p99Ms.toFixed(3)} | ${metric.pass ? "PASS" : "MISS — design follow-up required"} |`,
+      ),
+      "",
+      `Overall: **${reports.allPass ? "PASS" : "BUDGET MISS: report to design; do not claim capacity acceptance"}**. Event-loop max ${reports.eventLoopMaxMs.toFixed(3)} ms. Raw samples and EXPLAIN QUERY PLAN results are in bench.json.`,
       "",
     ].join("\n");
     mkdirSync("artifacts/ci", { recursive: true });
