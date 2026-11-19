@@ -1,4 +1,5 @@
 import { mkdtemp, rm } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { monitorEventLoopDelay, performance } from "node:perf_hooks";
@@ -50,6 +51,7 @@ export async function reportsBenchmark() {
     }
     const scope = "company=DEFAULT&month=2026-12",
       rawMs: Record<string, number[]> = {};
+    const closeCommand = { company: "DEFAULT", revision: 1, commandId: randomUUID() };
     lag.enable();
     for (const kind of ["trial", "income", "balance-sheet", "ledger", "close-preview"]) {
       const samples: number[] = [];
@@ -60,11 +62,11 @@ export async function reportsBenchmark() {
           if (result.total !== 100000 || result.items.length !== 100 || !result.nextCursor)
             throw new Error("Invalid capacity ledger page");
         } else if (kind === "close-preview") {
-          const result = await read("periods/2026-12/close-preview", closePreviewSchema, {
-            company: "DEFAULT",
-            revision: 1,
-            commandId: "00000000-0000-4000-8000-000000000001",
-          });
+          const result = await read(
+            "periods/2026-12/close-preview",
+            closePreviewSchema,
+            closeCommand,
+          );
           if (
             result.action !== "close" ||
             result.lines.length === 0 ||
