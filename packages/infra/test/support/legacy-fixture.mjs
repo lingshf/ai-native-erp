@@ -25,6 +25,24 @@ export function captureDirectory(directory, { mtime = false } = {}) {
     });
 }
 
+export function snapshotRejection(check, before, after = before, code = "INVALID_SNAPSHOT") {
+  const describe = (stat) =>
+    stat
+      ? Object.fromEntries(
+          ["size", "mtimeNs", "ino", "dev", "ctimeNs"].map((key) => [key, String(stat[key])]),
+        )
+      : null;
+  return (error) => {
+    assert.equal(error.code, code);
+    assert.equal(error.name, "StorageError");
+    const diagnostic = { check, before: describe(before), after: describe(after) };
+    assert.deepEqual(error.diagnostic, diagnostic);
+    assert.ok(error.message.endsWith(JSON.stringify(diagnostic)));
+    assert.ok(!error.message.includes(".sqlite") && !error.message.includes("SELECT"));
+    return true;
+  };
+}
+
 export function legacyFixture(t, { wal = false, history = false, many = false } = {}) {
   const directory = resolve(`.legacy-fixture-${randomUUID()}`);
   fs.mkdirSync(directory);

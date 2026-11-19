@@ -2,6 +2,8 @@ import fs from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, parse, resolve, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { StorageError } from "@erp/core/application";
+import { snapshotError, snapshotStat } from "@erp/infra/legacy-teaching";
 import { legacyEnterpriseIntegrity } from "./legacy-enterprise-integrity.mjs";
 
 const hash = (value) => createHash("sha256").update(value).digest("hex");
@@ -157,34 +159,75 @@ function describe(file, kind) {
 }
 
 export function verifyLedgerSnapshot(target) {
-  const directory = regularPath(target, true);
-  const manifestPath = regularPath(join(directory, "manifest.json"));
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-  if (
-    !manifest ||
-    manifest.version !== 1 ||
-    manifest.status !== "verified" ||
-    manifest.crossDatabaseAtomic !== false ||
-    !manifest.ledgers ||
-    Object.keys(manifest.ledgers).sort().join(",") !== "enterprise,teaching" ||
-    Object.keys(manifest).sort().join(",") !== "crossDatabaseAtomic,ledgers,status,version"
-  )
-    fail("Invalid snapshot manifest version or fields.");
-  for (const kind of Object.keys(filenames)) {
-    const entry = manifest.ledgers[kind];
+  let file;
+  let before;
+  let check = "path";
+  try {
+    file = typeof target === "string" ? resolve(target) : undefined;
+    before = snapshotStat(file);
+    const directory = regularPath(target, true);
+    file = join(directory, "manifest.json");
+    before = snapshotStat(file);
+    regularPath(file);
+    check = "manifest";
+    const manifestBytes = fs.readFileSync(file);
+    const manifest = JSON.parse(manifestBytes.toString("utf8"));
+    const verified = [{ file, before, sha256: hash(manifestBytes) }];
     if (
-      !entry ||
-      entry.file !== filenames[kind] ||
-      !Number.isSafeInteger(entry.bytes) ||
-      entry.bytes <= 0 ||
-      !/^[a-f0-9]{64}$/.test(entry.sha256)
+      !manifest ||
+      manifest.version !== 1 ||
+      manifest.status !== "verified" ||
+      manifest.crossDatabaseAtomic !== false ||
+      !manifest.ledgers ||
+      Object.keys(manifest.ledgers).sort().join(",") !== "enterprise,teaching" ||
+      Object.keys(manifest).sort().join(",") !== "crossDatabaseAtomic,ledgers,status,version"
     )
-      fail("Invalid manifest file or digest.");
-    const file = regularPath(join(directory, entry.file));
-    if (fs.statSync(file).size !== entry.bytes || hash(fs.readFileSync(file)) !== entry.sha256)
-      fail("Snapshot byte count or hash differs.");
-    if (JSON.stringify(describe(file, kind)) !== JSON.stringify(entry))
-      fail("Snapshot logical digest or integrity differs.");
+      fail("Invalid snapshot manifest version or fields.");
+    for (const kind of Object.keys(filenames)) {
+      file = join(directory, filenames[kind]);
+      before = snapshotStat(file);
+      check = "manifest";
+      const entry = manifest.ledgers[kind];
+      if (
+        !entry ||
+        entry.file !== filenames[kind] ||
+        !Number.isSafeInteger(entry.bytes) ||
+        entry.bytes <= 0 ||
+        !/^[a-f0-9]{64}$/.test(entry.sha256)
+      )
+        fail("Invalid manifest file or digest.");
+      check = "path";
+      regularPath(file);
+      before = fs.lstatSync(file, { bigint: true });
+      check = "digest";
+      if (before.size !== BigInt(entry.bytes) || hash(fs.readFileSync(file)) !== entry.sha256)
+        fail("Snapshot byte count or hash differs.");
+      check = "schema";
+      const actual = describe(file, kind);
+      check = "logical-digest";
+      if (JSON.stringify(actual) !== JSON.stringify(entry))
+        fail("Snapshot logical digest or integrity differs.");
+      verified.push({ file, before, sha256: entry.sha256 });
+    }
+    // Recheck the whole pair and manifest after all SQL handles have closed, before delivery.
+    for (const entry of verified) {
+      ({ file, before } = entry);
+      const unchanged = () => {
+        const after = fs.lstatSync(file, { bigint: true });
+        if (["dev", "ino", "size", "mtimeNs"].some((key) => before[key] !== after[key]))
+          throw snapshotError("identity", before, after);
+      };
+      check = "identity";
+      unchanged();
+      check = "digest";
+      if (hash(fs.readFileSync(file)) !== entry.sha256)
+        fail("Snapshot bytes changed during verification.");
+      check = "identity";
+      unchanged();
+    }
+    return manifest;
+  } catch (error) {
+    if (error instanceof StorageError && "diagnostic" in error) throw error;
+    throw snapshotError(check, before, snapshotStat(file));
   }
-  return manifest;
 }

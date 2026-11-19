@@ -31,17 +31,31 @@ import type {
 type Row = Record<string, SQLOutputValue>;
 type SnapshotEntry =
   VerifiedTeachingSnapshotConfiguration["verifiedManifest"]["ledgers"]["teaching"];
+type SnapshotCheck =
+  | "validation"
+  | "configuration"
+  | "path"
+  | "manifest"
+  | "header"
+  | "sidecar"
+  | "identity"
+  | "digest"
+  | "logical-digest"
+  | "schema"
+  | "projection"
+  | "read";
 
 function fail(code: ConstructorParameters<typeof StorageError>[0]): never {
   if (code === "INVALID_SNAPSHOT") return invalidSnapshot("validation");
   throw new StorageError(code);
 }
 
-function invalidSnapshot(
-  check: "validation" | "header" | "sidecar" | "identity" | "digest",
+export function snapshotError(
+  check: SnapshotCheck,
   before?: BigIntStats,
   after?: BigIntStats,
-): never {
+  code: "INVALID_SNAPSHOT" | "SCHEMA_MISMATCH" = "INVALID_SNAPSHOT",
+) {
   const describe = (stat?: BigIntStats) =>
     stat
       ? {
@@ -53,10 +67,29 @@ function invalidSnapshot(
         }
       : null;
   const diagnostic = { check, before: describe(before), after: describe(after) };
-  const error = new StorageError("INVALID_SNAPSHOT");
-  Object.assign(error, { diagnostic });
+  const error = new StorageError(code);
   error.message += ` ${JSON.stringify(diagnostic)}`;
-  throw error;
+  return Object.assign(error, { diagnostic });
+}
+
+function invalidSnapshot(check: SnapshotCheck, before?: BigIntStats, after?: BigIntStats): never {
+  throw snapshotError(check, before, after);
+}
+
+export function snapshotStat(file?: string): BigIntStats | undefined {
+  if (file === undefined) return undefined;
+  try {
+    return lstatSync(file, { bigint: true });
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      ["ENOENT", "ENOTDIR", "EACCES", "EPERM", "ELOOP"].includes(String(error.code))
+    )
+      return undefined;
+    throw error;
+  }
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -109,13 +142,20 @@ function configuration(value: unknown): { directory: string; entry: SnapshotEntr
 }
 
 function regularPath(path: string, directory = false): BigIntStats {
-  const root = parse(path).root;
-  for (let cursor = path; cursor !== root; cursor = dirname(cursor)) {
-    if (lstatSync(cursor).isSymbolicLink()) fail("INVALID_SNAPSHOT");
+  let before: BigIntStats | undefined;
+  try {
+    before = lstatSync(path, { bigint: true });
+    const root = parse(path).root;
+    for (let cursor = path; cursor !== root; cursor = dirname(cursor)) {
+      if (lstatSync(cursor).isSymbolicLink()) invalidSnapshot("path", before, snapshotStat(path));
+    }
+    if (!(directory ? before.isDirectory() : before.isFile()))
+      invalidSnapshot("path", before, snapshotStat(path));
+    return before;
+  } catch (error) {
+    if (error instanceof StorageError) throw error;
+    return invalidSnapshot("path", before, snapshotStat(path));
   }
-  const stat = lstatSync(path, { bigint: true });
-  if (!(directory ? stat.isDirectory() : stat.isFile())) fail("INVALID_SNAPSHOT");
-  return stat;
 }
 
 function sameFile(left: BigIntStats, right: BigIntStats): boolean {
@@ -128,7 +168,7 @@ function sameFile(left: BigIntStats, right: BigIntStats): boolean {
   );
 }
 
-function assertSameFile(before: BigIntStats, after: BigIntStats): void {
+function assertSnapshotIdentity(before: BigIntStats, after: BigIntStats): void {
   if (!sameFile(before, after)) invalidSnapshot("identity", before, after);
 }
 
@@ -139,8 +179,9 @@ function noSidecars(file: string, before: BigIntStats): void {
       lstatSync(file + suffix);
       invalidSnapshot("sidecar", before, regularPath(file));
     } catch (error) {
+      if (error instanceof StorageError) throw error;
       if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT"))
-        throw error;
+        invalidSnapshot("sidecar", before, snapshotStat(file));
     }
   }
 }
@@ -157,19 +198,22 @@ function header(fd: number, before: BigIntStats): void {
 }
 
 function openSnapshotFile(file: string): { fd: number; before: BigIntStats } {
-  const before = regularPath(file);
-  if (before.size < 100n) return invalidSnapshot("header", before, before);
-  noSidecars(file, before);
-  const fd = openSync(file, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+  let before: BigIntStats | undefined;
+  let fd: number | undefined;
   try {
+    before = regularPath(file);
+    if (before.size < 100n) return invalidSnapshot("header", before, before);
+    noSidecars(file, before);
+    fd = openSync(file, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
     header(fd, before);
     noSidecars(file, before);
-    assertSameFile(before, fstatSync(fd, { bigint: true }));
-    assertSameFile(before, regularPath(file));
+    assertSnapshotIdentity(before, fstatSync(fd, { bigint: true }));
+    assertSnapshotIdentity(before, regularPath(file));
     return { fd, before };
   } catch (error) {
-    closeSync(fd);
-    throw error;
+    if (fd !== undefined) closeSync(fd);
+    if (error instanceof StorageError) throw error;
+    return invalidSnapshot("read", before, snapshotStat(file));
   }
 }
 
@@ -180,7 +224,7 @@ function openSnapshotFile(file: string): { fd: number; before: BigIntStats } {
 export function preflightLegacySnapshotPair(directory: string): void {
   try {
     if (typeof directory !== "string" || !directory.trim() || !isAbsolute(directory))
-      fail("INVALID_SNAPSHOT");
+      invalidSnapshot("path");
     const path = resolve(directory);
     regularPath(path, true);
     // Fixed M00 filenames; never accept manifest-selected paths.
@@ -190,7 +234,7 @@ export function preflightLegacySnapshotPair(directory: string): void {
     }
   } catch (error) {
     if (error instanceof StorageError) throw error;
-    fail("INVALID_SNAPSHOT");
+    invalidSnapshot("path");
   }
 }
 
@@ -444,13 +488,18 @@ function cursorPosition(cursor: unknown, sha256: string, account: string, month:
   }
 }
 
-function mapped<T>(work: () => T): T {
+function mapped<T>(work: () => T, invalid?: () => never): T {
   try {
     return work();
   } catch (error) {
-    if (error instanceof StorageError) throw error;
-    if (error instanceof DomainError)
+    if (error instanceof StorageError) {
+      if (error.code === "INVALID_SNAPSHOT" && invalid) return invalid();
+      throw error;
+    }
+    if (error instanceof DomainError) {
+      if (error.code !== "OVERFLOW" && invalid) return invalid();
       return fail(error.code === "OVERFLOW" ? "OVERFLOW" : "INVALID_SNAPSHOT");
+    }
     return fail("STORAGE_FAILURE");
   }
 }
@@ -461,9 +510,11 @@ class SnapshotReader implements LegacyTeachingReader {
 
   private readonly db: DatabaseSync;
   private readonly fd: number;
-  constructor(db: DatabaseSync, fd: number, entry: SnapshotEntry) {
+  private readonly before: BigIntStats;
+  constructor(db: DatabaseSync, fd: number, entry: SnapshotEntry, before: BigIntStats) {
     this.db = db;
     this.fd = fd;
+    this.before = before;
     this.info = Object.freeze({
       sourceKind: "verified-teaching-snapshot",
       baseline: "M00-verified-snapshot",
@@ -472,6 +523,12 @@ class SnapshotReader implements LegacyTeachingReader {
       snapshotBytes: entry.bytes,
       scale: 2,
     });
+  }
+
+  private read<T>(work: () => T): T {
+    return mapped(work, () =>
+      invalidSnapshot("projection", this.before, fstatSync(this.fd, { bigint: true })),
+    );
   }
 
   private month(month: unknown): string {
@@ -489,7 +546,7 @@ class SnapshotReader implements LegacyTeachingReader {
   }
 
   periods(): readonly LegacyTeachingPeriod[] {
-    return mapped(() => {
+    return this.read(() => {
       if (this.closed) return fail("CLOSED");
       return all(this.db, "SELECT month,status FROM periods ORDER BY month").map((row) => {
         const month = checkedTeachingMonth(text(row.month)),
@@ -501,14 +558,14 @@ class SnapshotReader implements LegacyTeachingReader {
   }
 
   trialBalances(month: string): LegacyTeachingTrialBalances {
-    return mapped(() => {
+    return this.read(() => {
       const value = this.month(month);
       return projectTrialBalances(accounts(this.db), posted(this.db, value), value);
     });
   }
 
   ledger(query: LegacyTeachingLedgerQuery): LegacyTeachingLedger {
-    return mapped(() => {
+    return this.read(() => {
       if (this.closed) return fail("CLOSED");
       if (
         !query ||
@@ -586,33 +643,39 @@ export function openLegacyTeachingSnapshot(
 ): LegacyTeachingReader {
   let db: DatabaseSync | undefined;
   let fd: number | undefined;
+  let file: string | undefined;
+  let before: BigIntStats | undefined;
+  let check: SnapshotCheck = "configuration";
   try {
     const { directory, entry } = configuration(config);
+    check = "path";
     preflightLegacySnapshotPair(directory);
-    const file = join(directory, entry.file);
+    file = join(directory, entry.file);
     const opened = openSnapshotFile(file);
     fd = opened.fd;
-    const before = opened.before;
+    before = opened.before;
     if (before.size !== BigInt(entry.bytes)) return invalidSnapshot("digest", before, before);
+    check = "read";
     db = new DatabaseSync(file, { readOnly: true });
     db.exec("BEGIN");
     all(db, "SELECT rootpage FROM sqlite_schema LIMIT 1");
     // The first SQLite read now holds SHARED until close; no mode change or checkpoint.
     header(fd, before);
     noSidecars(file, before);
-    assertSameFile(before, regularPath(file));
-    assertSameFile(before, fstatSync(fd, { bigint: true }));
+    assertSnapshotIdentity(before, regularPath(file));
+    assertSnapshotIdentity(before, fstatSync(fd, { bigint: true }));
     if (digest(fd) !== entry.sha256)
       return invalidSnapshot("digest", before, fstatSync(fd, { bigint: true }));
-    assertSameFile(before, regularPath(file));
-    assertSameFile(before, fstatSync(fd, { bigint: true }));
+    assertSnapshotIdentity(before, regularPath(file));
+    assertSnapshotIdentity(before, fstatSync(fd, { bigint: true }));
+    check = "schema";
     schema(db);
     header(fd, before);
     noSidecars(file, before);
-    assertSameFile(before, regularPath(file));
-    assertSameFile(before, fstatSync(fd, { bigint: true }));
+    assertSnapshotIdentity(before, regularPath(file));
+    assertSnapshotIdentity(before, fstatSync(fd, { bigint: true }));
     // POSIX close() on any descriptor for this file drops this process's SQLite locks.
-    const reader = new SnapshotReader(db, fd, entry);
+    const reader = new SnapshotReader(db, fd, entry, before);
     fd = undefined;
     db = undefined;
     return reader;
@@ -624,9 +687,22 @@ export function openLegacyTeachingSnapshot(
         /* Preserve the classified initialization failure. */
       }
     }
-    if (error instanceof StorageError) throw error;
+    const after = fd === undefined ? snapshotStat(file) : fstatSync(fd, { bigint: true });
+    if (error instanceof StorageError) {
+      if (
+        error.code === "SCHEMA_MISMATCH" ||
+        (error.code === "INVALID_SNAPSHOT" &&
+          (!("diagnostic" in error) ||
+            (error.diagnostic &&
+              typeof error.diagnostic === "object" &&
+              "check" in error.diagnostic &&
+              error.diagnostic.check === "validation")))
+      )
+        throw snapshotError(check, before, after, error.code);
+      throw error;
+    }
     if (error instanceof DomainError)
-      return fail(error.code === "OVERFLOW" ? "OVERFLOW" : "INVALID_SNAPSHOT");
+      return error.code === "OVERFLOW" ? fail("OVERFLOW") : invalidSnapshot(check, before, after);
     if (
       error &&
       typeof error === "object" &&
@@ -634,7 +710,7 @@ export function openLegacyTeachingSnapshot(
       (error.errcode === 5 || error.errcode === 6)
     )
       return fail("BUSY");
-    return fail("INVALID_SNAPSHOT");
+    return invalidSnapshot(check, before, after);
   } finally {
     if (fd !== undefined) closeSync(fd);
   }

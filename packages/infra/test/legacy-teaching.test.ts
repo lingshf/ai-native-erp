@@ -14,12 +14,21 @@ import {
   projectTrialBalances,
   projectTeachingLedger,
 } from "@erp/core/domain";
-import { legacyFixture, captureDirectory, metadataFor } from "./support/legacy-fixture.mjs";
+import {
+  legacyFixture,
+  captureDirectory,
+  metadataFor,
+  snapshotRejection,
+} from "./support/legacy-fixture.mjs";
 
 const code = (expected) => (error) => {
   assert.equal(error.code, expected);
   assert.equal(error.name, "StorageError");
   assert.ok(!error.message.includes(".sqlite") && !error.message.includes("SELECT"));
+  if (expected === "INVALID_SNAPSHOT") {
+    assert.ok(error.diagnostic);
+    assert.notEqual(error.diagnostic.check, "validation");
+  }
   return true;
 };
 const open = (fixture) => {
@@ -240,7 +249,10 @@ test("changed verified bytes, WAL headers/sidecars and symlink ancestors fail wi
   const f = legacyFixture(t);
   const original = fs.readFileSync(f.snapshot);
   fs.appendFileSync(f.snapshot, "changed after verify");
-  assert.throws(() => open(f), code("INVALID_SNAPSHOT"));
+  assert.throws(
+    () => open(f),
+    snapshotRejection("digest", fs.statSync(f.snapshot, { bigint: true })),
+  );
   fs.writeFileSync(f.snapshot, original);
   const active = legacyFixture(t, { wal: true });
   assert.throws(
@@ -298,7 +310,12 @@ test("schema and foreign-key corruption are classified, not empty-data reports",
   db.close();
   assert.throws(
     () => openLegacyTeachingSnapshot(metadataFor(f.snapshot, f.target)),
-    code("SCHEMA_MISMATCH"),
+    snapshotRejection(
+      "schema",
+      fs.statSync(f.snapshot, { bigint: true }),
+      undefined,
+      "SCHEMA_MISMATCH",
+    ),
   );
   for (const columns of [
     "line_id TEXT,dimension TEXT,value TEXT,PRIMARY KEY(line_id,dimension)",
@@ -311,7 +328,12 @@ test("schema and foreign-key corruption are classified, not empty-data reports",
     db.close();
     assert.throws(
       () => openLegacyTeachingSnapshot(metadataFor(f.snapshot, f.target)),
-      code("SCHEMA_MISMATCH"),
+      snapshotRejection(
+        "schema",
+        fs.statSync(f.snapshot, { bigint: true }),
+        undefined,
+        "SCHEMA_MISMATCH",
+      ),
     );
   }
   const g = legacyFixture(t);
@@ -322,7 +344,7 @@ test("schema and foreign-key corruption are classified, not empty-data reports",
   db.close();
   assert.throws(
     () => openLegacyTeachingSnapshot(metadataFor(g.snapshot, g.target)),
-    code("INVALID_SNAPSHOT"),
+    snapshotRejection("schema", fs.statSync(g.snapshot, { bigint: true })),
   );
 });
 
@@ -380,12 +402,13 @@ test("corrupt stored projections report INVALID_SNAPSHOT, not caller INVALID_INP
     db.close();
     const reader = openLegacyTeachingSnapshot(metadataFor(f.snapshot, f.target));
     f.readers.push(reader);
-    assert.throws(() => reader.trialBalances(f.month), code("INVALID_SNAPSHOT"));
+    const projectionRejection = snapshotRejection(
+      "projection",
+      fs.statSync(f.snapshot, { bigint: true }),
+    );
+    assert.throws(() => reader.trialBalances(f.month), projectionRejection);
     if (fault === "movement") {
-      assert.throws(
-        () => reader.ledger({ month: f.month, account: "1000" }),
-        code("INVALID_SNAPSHOT"),
-      );
+      assert.throws(() => reader.ledger({ month: f.month, account: "1000" }), projectionRejection);
     }
     assert.throws(() => reader.trialBalances("2026-13"), code("INVALID_INPUT"));
     assert.throws(() => reader.trialBalances("2027-01"), code("NOT_FOUND"));
