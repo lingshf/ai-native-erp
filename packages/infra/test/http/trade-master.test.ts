@@ -1,11 +1,21 @@
 import { mkdtemp, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import Database from "better-sqlite3";
 import { beforeEach, afterEach, describe, it, expect } from "vitest";
-import { MasterDataService, TradeMasterService, DimensionService } from "@erp/core/application";
-import { type AccountInput, type TradeWrite, tradeKinds } from "@erp/core/domain";
+import {
+  MasterDataService,
+  TradeMasterService,
+  DimensionService,
+  JournalService,
+} from "@erp/core/application";
+import {
+  type AccountInput,
+  type TradeWrite,
+  type JournalDraft,
+  tradeKinds,
+} from "@erp/core/domain";
 import { createSqliteStorage } from "../../src/storage/index.ts";
 import { createMasterDataStore } from "../../src/storage/master-data.ts";
 import { createApi } from "../../src/http/index.ts";
@@ -13,6 +23,7 @@ import { normalizeMigration } from "../../src/storage/migrations.ts";
 import { schemaFingerprint } from "../../src/storage/schema.ts";
 import { sqliteBackend } from "../../src/storage/sqlite.ts";
 import { SqliteExecutor } from "../../src/workers/executor.ts";
+import { journalTools } from "../../src/storage/journals.ts";
 
 const window = { name: "Trade", from: "2026-01-01", to: "2026-12-31" };
 const common = { company: "DEFAULT", code: "A", active: true, expectedRevision: 0 };
@@ -580,6 +591,32 @@ describe("trade master HTTP and SQLite", () => {
     expect(new Set([...first.items, ...second.items].map((row) => row.code)).size).toBe(200);
   });
   it("upgrades the existing seven-migration ledger without changing its checksums or data", async () => {
+    const journals = new JournalService(store, journalTools);
+    const input: JournalDraft = {
+      id: randomUUID(),
+      revision: 0,
+      sourceRef: "PRE-UPGRADE-JOURNAL",
+      date: "2026-01-15",
+      memo: "Historical capital",
+      operation: "journal",
+      kind: "normal",
+      originalId: null,
+      headerDimensions: {},
+      lines: [
+        { account: "1000", debit: "50.00", credit: "", dimensions: {}, suspense: null },
+        { account: "3000", debit: "", credit: "50.00", dimensions: {}, suspense: null },
+      ],
+    };
+    const draft = await journals.save("DEFAULT", input);
+    const preview = await journals.preview("DEFAULT", draft);
+    const receipt = await journals.confirm({
+      company: "DEFAULT",
+      draftId: draft.id,
+      revision: draft.revision,
+      fingerprint: preview.fingerprint,
+      idempotencyKey: randomUUID(),
+      confirmation: "POST",
+    });
     const upgradeFile = join(directory, "upgrade.sqlite");
     const backend = sqliteBackend({ filename: upgradeFile });
     const db = await backend.acquire(false, true);
@@ -604,6 +641,24 @@ describe("trade master HTTP and SQLite", () => {
           [index + 1, createHash("sha256").update(sql).digest("hex"), await schemaFingerprint(db)],
         );
       }
+      await db.query("ATTACH DATABASE ? AS existing", [filename]);
+      for (const table of [
+        "tenants",
+        "books",
+        "companies",
+        "ledger_companies",
+        "accounts",
+        "periods",
+        "config_history",
+        "receipts",
+        "audit",
+        "journal_drafts",
+        "journal_entries",
+        "journal_lines",
+        "journal_seals",
+        "journal_corrections",
+      ])
+        await db.query(`INSERT INTO ${table} SELECT * FROM existing.${table}`);
       await db.script(`
         INSERT INTO tenants(tenant_id) VALUES('KEEP');
         INSERT INTO books(tenant_id,book_id) VALUES('KEEP','KEEP');
@@ -618,6 +673,7 @@ describe("trade master HTTP and SQLite", () => {
     // Migration verifies the old fingerprint before appending the new typed trade tables.
     const storage = createSqliteStorage({ filename: upgradeFile });
     try {
+      await expect(storage.verifySchema()).rejects.toMatchObject({ code: "SCHEMA_MISMATCH" });
       await storage.migrate();
       await storage.verifySchema();
       const preserved = new Database(upgradeFile);
@@ -637,7 +693,47 @@ describe("trade master HTTP and SQLite", () => {
       const oldMaster = new MasterDataService(oldStore);
       await oldMaster.initialize(2026);
       await new TradeMasterService(oldStore).save(terms);
-      expect((await oldMaster.accounts("DEFAULT", { limit: 100 })).items).toHaveLength(8);
+      expect((await oldMaster.accounts("DEFAULT", { limit: 100 })).items).toHaveLength(12);
+      expect(await new JournalService(oldStore, journalTools).entry("DEFAULT", draft.id)).toEqual(
+        await journals.entry("DEFAULT", draft.id),
+      );
+      const source = new Database(filename, { readonly: true });
+      const upgraded = new Database(upgradeFile, { readonly: true });
+      try {
+        for (const [table, order] of Object.entries({
+          receipts: "company_id,receipt_key",
+          audit: "company_id,sequence",
+          config_history: "company_id,kind,config_key,revision",
+          journal_entries: "sequence",
+          journal_lines: "company_id,entry_id,line_no",
+          journal_seals: "company_id,entry_id",
+        })) {
+          expect(upgraded.prepare(`SELECT * FROM ${table} ORDER BY ${order}`).all()).toEqual(
+            source.prepare(`SELECT * FROM ${table} ORDER BY ${order}`).all(),
+          );
+        }
+        expect(
+          upgraded
+            .prepare(
+              "SELECT version,dialect,checksum FROM schema_migrations WHERE version<=7 ORDER BY version",
+            )
+            .all(),
+        ).toEqual(
+          source
+            .prepare(
+              "SELECT version,dialect,checksum FROM schema_migrations WHERE version<=7 ORDER BY version",
+            )
+            .all(),
+        );
+        expect(
+          upgraded
+            .prepare("SELECT result FROM receipts WHERE idempotency_key=?")
+            .get(receipt.idempotencyKey),
+        ).toBeDefined();
+      } finally {
+        source.close();
+        upgraded.close();
+      }
     } finally {
       await oldStore.close();
       await storage.close();
