@@ -103,6 +103,11 @@ Model suggestions:
   - After a merge, verify it with `gh pr view <n> --json state`, `archive_session` the developer, and mark it 🔴 on the dashboard.
   - New task → new session.
   - Never archive the product owner, reviewer or release manager, or a session with an open PR.
+- **New session vs. reuse:**
+  - Default: archive after merge, then start the next task in a fresh session. Fresh sessions have a clean context, one session = one branch = one PR, and leave no stale worktree. The cost is the startup work: worktree, dependency install, re-reading the code.
+  - Reuse only when both hold: (1) the next task is a direct follow-up in the same conflict domain and the same files (rework, rebase, a small sub-task), and (2) the session's context is still short (not compacted repeatedly).
+  - When reusing, start from a new branch off the latest main and open a separate PR.
+  - Long contexts make each turn slower and more expensive, and they carry stale decisions forward. When in doubt, start fresh.
 - **PR opened:** send the exact head SHA plus review focus to the reviewer (use `enqueue` when the reviewer is busy). Dashboard row → "in review".
 - **CHANGES_REQUESTED:** relay the key points and the review link to the developer; after the fix, request a re-review on the new head.
 - **APPROVED + CI green:**
