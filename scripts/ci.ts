@@ -161,12 +161,58 @@ export function selectShardFiles(
 ) {
   const { shard } = config;
   if (!shard) return files;
+  const isolated = "packages/infra/test/storage-admin-cli.test.ts";
+  if (shard.count > 1 && files.includes(isolated)) {
+    if (shard.index === shard.count) return [isolated];
+    files = files.filter((file) => file !== isolated);
+    return balanceShards(files, weights, shard.count - 1, { workers: 2, projects })[
+      shard.index - 1
+    ];
+  }
   // Every job must plan with the same model, regardless of its execution worker count.
   return balanceShards(files, weights, shard.count, { workers: 2, projects })[shard.index - 1];
 }
 
 function cell(value: string) {
   return value.replaceAll("|", "\\|").replace(/[\r\n]/g, " ");
+}
+
+export function guiStartupSummary(log: string) {
+  const phases: { scenario: string; phase: string; ms: number }[] = [];
+  for (const line of log.split("\n")) {
+    const start = line.indexOf('{"event":"trade-gui-phase"');
+    if (start < 0) continue;
+    const value: unknown = JSON.parse(line.slice(start, line.lastIndexOf("}") + 1));
+    if (
+      !isRecord(value) ||
+      value.event !== "trade-gui-phase" ||
+      typeof value.scenario !== "string" ||
+      typeof value.phase !== "string" ||
+      typeof value.ms !== "number" ||
+      !Number.isFinite(value.ms) ||
+      value.ms < 0
+    ) {
+      throw new Error("Invalid GUI phase timing");
+    }
+    phases.push({ scenario: value.scenario, phase: value.phase, ms: value.ms });
+  }
+  const launch = phases.filter((p) => p.phase === "browser").reduce((sum, p) => sum + p.ms, 0);
+  const page = phases.filter((p) => p.phase === "page").reduce((sum, p) => sum + p.ms, 0);
+  const startup = launch + page;
+  return {
+    phases,
+    markdown: phases.length
+      ? [
+          "## Browser startup diagnostics",
+          "",
+          `Chrome launch: ${launch}ms; newPage: ${page}ms; total: ${startup}ms.`,
+          ...(startup > 10_000
+            ? ["", "> **Warning:** Chrome launch + newPage exceeded 10s (diagnostic only)."]
+            : []),
+          "",
+        ].join("\n")
+      : "",
+  };
 }
 
 export function testSummary(timings: TestTiming[]) {
@@ -242,6 +288,22 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     }
     const timings = existsSync(path) ? vitestTimings(JSON.parse(readFileSync(path, "utf8"))) : [];
     summary(testSummary(timings));
+    const log = "artifacts/ci/vitest.log";
+    if (existsSync(log)) {
+      const startup = guiStartupSummary(readFileSync(log, "utf8"));
+      if (
+        process.env.CI_TEST_LANE === "browser" &&
+        process.env.TEST_OUTCOME === "success" &&
+        (!startup.phases.some((p) => p.phase === "browser") ||
+          !startup.phases.some((p) => p.phase === "page"))
+      ) {
+        throw new Error("Missing browser startup phase timings");
+      }
+      writeFileSync("artifacts/ci/gui-phases.json", `${JSON.stringify(startup.phases, null, 2)}\n`);
+      if (startup.markdown) summary(startup.markdown);
+    } else if (process.env.CI_TEST_LANE === "browser" && process.env.TEST_OUTCOME === "success") {
+      throw new Error("Missing browser test log");
+    }
   } else if (command === "weights") {
     const args = process.argv.slice(3);
     const rootArg = args.find((arg) => arg.startsWith("--root="));

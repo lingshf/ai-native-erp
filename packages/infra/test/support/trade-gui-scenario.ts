@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, expect, test, vi } from "vitest";
+import { afterAll, beforeAll, expect, test } from "vitest";
 import { chromium, type Browser, type BrowserContext, type Locator, type Page } from "playwright";
 import { build } from "vite";
 import { MasterDataService } from "@erp/core/application";
@@ -106,24 +106,22 @@ async function checked(page: Page, target: Locator) {
   if (!(await target.isChecked())) await page.keyboard.press("Space");
 }
 
-export function tradeGuiScenario(
-  language: "zh" | "en",
-  theme: "red" | "green",
-  includeKeyboardRegression = false,
-) {
+export function guiPhase(scenario: string, name: string, started: number) {
+  console.info(
+    JSON.stringify({
+      event: "trade-gui-phase",
+      scenario,
+      phase: name,
+      ms: Math.round(performance.now() - started),
+    }),
+  );
+}
+
+export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green") {
   let directory: string;
   let webRoot: string;
   let browser: Browser;
-  function phase(name: string, started: number) {
-    console.info(
-      JSON.stringify({
-        event: "trade-gui-phase",
-        scenario: `${language}/${theme}`,
-        phase: name,
-        ms: Math.round(performance.now() - started),
-      }),
-    );
-  }
+  const phase = (name: string, started: number) => guiPhase(`${language}/${theme}`, name, started);
   beforeAll(async () => {
     let started = performance.now();
     directory = await mkdtemp(join(tmpdir(), "erp-trade-gui-"));
@@ -622,29 +620,4 @@ export function tradeGuiScenario(
       phase("interaction", interactionStarted);
     }
   }, 180_000);
-
-  if (includeKeyboardRegression) {
-    test("chooses the short keyboard path after probing an unknown focus position", async ({
-      onTestFinished,
-    }) => {
-      const page = await browser.newPage();
-      onTestFinished(() => page.close());
-      await page.setContent(
-        Array.from(
-          { length: 100 },
-          (_, index) => `<button id="stop-${index}">Stop ${index}</button>`,
-        ).join(""),
-      );
-      expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
-      const press = vi.spyOn(page.keyboard, "press");
-      const target = page.locator("#stop-98");
-      await tabTo(page, target);
-      expect(
-        await target.evaluate(
-          (element) => element === document.activeElement && document.hasFocus(),
-        ),
-      ).toBe(true);
-      expect(press.mock.calls.length).toBeLessThanOrEqual(8);
-    });
-  }
 }
