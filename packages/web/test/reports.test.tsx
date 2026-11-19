@@ -89,6 +89,84 @@ function installFetch(ledger = vi.fn().mockResolvedValue(response(page()))) {
   vi.stubGlobal("fetch", fetcher);
   return fetcher;
 }
+it("keeps missing snapshots neutral, supports explicit retry and leaves runtime status independent", async () => {
+  reports();
+  let available = false;
+  const fetcher = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+    if (String(input).endsWith("/context")) {
+      if (available) return response(context);
+      return response(
+        {
+          code: "UNAVAILABLE",
+          messageKey: "api.error.unavailable",
+          params: {},
+          fieldErrors: [],
+          requestId: "12345678-1234-4234-8234-123456789abc",
+          retryable: true,
+        },
+        503,
+      );
+    }
+    if (String(input).includes("/trial?")) return response(trial());
+    return response({
+      service: "ai-native-erp",
+      contractVersion: "1",
+      profile: "local",
+      data: "configured",
+    });
+  });
+  vi.stubGlobal("fetch", fetcher);
+  render(<App />);
+  await screen.findByText(label("zh", "reports.unconfigured"));
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(
+    screen
+      .getAllByRole("link", { name: label("zh", "ledger.title") })
+      .every((link) => link.getAttribute("href") === "#/ledger-reports"),
+  ).toBe(true);
+  fireEvent.change(document.querySelector("#workspace-language")!, { target: { value: "en" } });
+  expect(screen.getByText(label("en", "reports.unconfigured"))).toBeTruthy();
+  await cycleQueryManagers();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  available = true;
+  fireEvent.click(screen.getByRole("button", { name: label("en", "reports.reload") }));
+  await screen.findByRole("link", { name: "1100 原始 Cash" });
+  expect(screen.queryByText(label("en", "reports.unconfigured"))).toBeNull();
+  fireEvent.click(screen.getByRole("link", { name: label("en", "shell.overview") }));
+  await screen.findByText(label("en", "shell.connected"));
+  expect(fetcher.mock.calls.map(([path]) => String(path))).toEqual([
+    "/api/v1/legacy/context",
+    "/api/v1/legacy/context",
+    `/api/v1/legacy/trial?snapshot=${source.snapshotSha256}&month=2025-02`,
+    "/api/v1/health",
+  ]);
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+it.each([
+  [503, { message: "private-path" }, "reports.invalidResponse"],
+  [
+    500,
+    {
+      code: "INTERNAL_ERROR",
+      messageKey: "api.error.internal",
+      params: {},
+      fieldErrors: [],
+      requestId: "12345678-1234-4234-8234-123456789abc",
+      retryable: false,
+    },
+    "reports.internal",
+  ],
+] as const)("does not hide context failures with status %s", async (status, body, key) => {
+  reports();
+  const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response(body, status));
+  vi.stubGlobal("fetch", fetcher);
+  render(<App />);
+  await screen.findByRole("alert");
+  expect(screen.getByText(label("zh", key))).toBeTruthy();
+  expect(screen.queryByText(label("zh", "reports.unconfigured"))).toBeNull();
+  expect(document.body.textContent).not.toContain("private-path");
+  expect(fetcher).toHaveBeenCalledTimes(1);
+});
 const initialOnline = onlineManager.isOnline();
 beforeEach(() => {
   window.history.replaceState(null, "", "/");

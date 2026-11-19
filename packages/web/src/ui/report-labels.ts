@@ -17,6 +17,8 @@ export const reportZh = {
   "reports.teaching": "教学说明：试算阶段只切换本地展示；下钻始终读取同一期间完整月总账。",
   "reports.loading": "正在读取只读快照…",
   "reports.noPeriods": "此快照没有可用会计期间。",
+  "reports.unconfigured":
+    "旧账快照未配置或暂不可用。这不影响当前账套，请使用总账报表查看当前账套数据。",
   "reports.invalidSelection": "网址中的来源、期间或阶段无效。未选择有效期间，未读取财务报表。",
   "reports.emptyTrial": "此阶段没有科目行。",
   "reports.emptyLedger": "此期间此科目没有已过账分录。",
@@ -87,6 +89,8 @@ export const reportEn = {
     "Teaching note: trial stage changes local display only. Drill-down always reads the same period's full-month ledger.",
   "reports.loading": "Reading the read-only snapshot…",
   "reports.noPeriods": "This snapshot has no available accounting periods.",
+  "reports.unconfigured":
+    "A legacy snapshot is not configured or is temporarily unavailable. Your current ledger is unaffected; use General ledger reports for current data.",
   "reports.invalidSelection":
     "The URL source, period or stage is invalid. No valid period is selected and no financial report was requested.",
   "reports.emptyTrial": "No account rows in this stage.",
