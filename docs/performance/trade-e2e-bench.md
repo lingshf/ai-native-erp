@@ -1,14 +1,17 @@
 # M1-07 trade benchmark evidence
 
-> **Invalidated acceptance evidence:** the measurements below predate review
-> 5976793336 and exclude shared response-contract parsing. Every old percentile,
-> including the linked raw JSON, is withdrawn as an acceptance value. The
-> corrected `http-contract-v2` runner times the full HTTP response, JSON decoding
-> and shared contract parsing; replacement three-run evidence is pending the
-> required rebase after PR #47 merges.
+Measured on 2026-11-19, 14:45:07.899–14:49:59.210 UTC using
+`http-contract-v2`, after rebasing onto migration 014 / main
+`fa812a0531ae56adaeaa8a7c73d2bbdcdc44b321`. Measured source head:
+`70761d7` (the subsequent evidence-only commit does not change benchmark code).
+This document records post-rebase local evidence, not the final-head Linux
+acceptance run or the separate browser acceptance test.
 
-Measured on 2026-11-19, 13:41:54.787–13:45:54.040 UTC. This document records
-performance evidence; it does not replace the separate browser acceptance test.
+All earlier `http-contract-v2` predictions on `0cd94fc` remain predictions.
+All pre-v2 measurements are withdrawn because they excluded shared-contract
+parsing. This document and its raw JSON replace that invalid evidence.
+Final-head CI and formal three-run Bench results are recorded in
+[PR #54](https://github.com/lingshf/ai-native-erp/pull/54).
 
 ## Reproduction and method
 
@@ -27,8 +30,9 @@ and one writer worker. There is no Fastify injection or direct application call
 in the measured request path.
 
 Elapsed times include loopback HTTP, production worker dispatch, SQL, response
-serialization/transfer and client JSON parsing. Fixture generation, configuration,
-startup and response assertions are outside the measured requests. Confirmations
+serialization/transfer, client JSON decoding and shared response-contract parsing.
+Fixture generation, configuration, startup and subsequent scenario assertions
+are outside the measured requests. Confirmations
 exclude the separately requested prerequisite preview, but include production
 revalidation, posting and transaction commit; each confirmation is a new invoice,
 not an idempotency replay.
@@ -45,7 +49,7 @@ ordinary 13% VAT, document rounding, discounts and taxable charges, and 100
 distinct dimension segments. Each resulting journal has 300 GL lines. AP also
 matches all 100 lines against a purchase order; AR has no order.
 
-The current report is the most expensive read: its p95 was 375.05–585.76 ms.
+The current report is the most expensive read: its p95 was 421.46–602.04 ms.
 Returning only 100 rows does not avoid the all-item totals aggregation.
 
 ## Exact fixture shape and limitations
@@ -66,7 +70,7 @@ changing it. The initial fixture is asserted before each repetition:
 | Partner configuration-history records | 1,000 |
 | Current invoice gross total | 1,130,000,000 minor units |
 | June 2026 historical gross total | 680,260,000 minor units |
-| Completed fixture size | 561,623,040 bytes |
+| Base GL fixture size, before trade capacity | 566,546,432 bytes |
 
 Capacity items are synthetic invoice-kind projections, not 100,000 invoices
 posted through the application. Their sources reuse the existing synthetic GL
@@ -99,7 +103,7 @@ checkout, a backup or port 4173.
 | CPU | AMD EPYC 7763 64-Core Processor |
 | Exposed logical CPUs / available parallelism | 16 / 16 |
 | Total memory | 68,665,831,424 bytes |
-| Free memory at final metadata capture | 35,458,510,848 bytes |
+| Free memory at final metadata capture | 38,165,868,544 bytes |
 | Request concurrency / read workers / writer workers | 1 / 3 / 1 |
 
 Per-repetition start/end free-memory and host metadata are retained in the JSON.
@@ -120,13 +124,13 @@ four warmups. The raw sample order, p50, p95 and p99 are preserved in the JSON.
 
 | Scenario | Run 1 | Run 2 | Run 3 | p95 budget |
 |---|---:|---:|---:|---:|
-| Open-item first page (100) | 21.50 | 12.96 | 13.18 | ≤1,000 |
-| Current aging report | 585.76 | 375.05 | 441.42 | ≤1,000 |
-| Historical balances, 2026-06 | 302.40 | 335.05 | 299.71 | ≤1,000 |
-| AP invoice preview (100 lines) | 31.76 | 44.74 | 32.70 | ≤2,000 |
-| AP invoice confirm (100 lines) | 399.49 | 377.71 | 423.34 | ≤2,000 |
-| AR invoice preview (100 lines) | 27.57 | 26.31 | 25.58 | ≤2,000 |
-| AR invoice confirm (100 lines) | 385.22 | 359.62 | 384.92 | ≤2,000 |
+| Open-item first page (100) | 23.10 | 26.28 | 57.35 | ≤1,000 |
+| Current aging report | 579.71 | 421.46 | 602.04 | ≤1,000 |
+| Historical balances, 2026-06 | 358.84 | 398.66 | 363.24 | ≤1,000 |
+| AP invoice preview (100 lines) | 53.97 | 56.90 | 41.80 | ≤2,000 |
+| AP invoice confirm (100 lines) | 475.91 | 455.59 | 480.49 | ≤2,000 |
+| AR invoice preview (100 lines) | 41.20 | 44.72 | 52.38 | ≤2,000 |
+| AR invoice confirm (100 lines) | 422.89 | 485.99 | 499.10 | ≤2,000 |
 
 **All three runs passed the unchanged budgets. No D18 warnings occurred.**
 D18 flags a scenario when its p95 exceeds 80% of its budget: 800 ms for reads or
@@ -140,8 +144,8 @@ the existing benchmarks. Real timing gates are not run in PR tests.
 
 ## Raw evidence
 
-Persistent, compact, complete three-run evidence: [trade-bench.json](trade-bench.json).
-It is a minified copy of the aggregate output, retaining all original raw timing
+Persistent, complete three-run local evidence: [trade-bench.json](trade-bench.json).
+It is a copy of the aggregate output, retaining all original raw timing
 values and metadata, with no local absolute fixture paths.
 
 The reproduction command writes these repository-relative files:
