@@ -40,6 +40,10 @@ class WeightedShardSequencer extends BaseSequencer {
         files.map((spec) => this.key(spec)),
         this.weights,
         shard.count,
+        {
+          workers: this.ctx.config.maxWorkers,
+          projects: Object.fromEntries(files.map((spec) => [this.key(spec), spec.project.name])),
+        },
       )[shard.index - 1],
     );
     return files.filter((spec) => selected.has(this.key(spec)));

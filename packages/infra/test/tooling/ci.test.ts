@@ -106,4 +106,25 @@ describe("CI selection and reporting", () => {
     ).toEqual({ "a.test.ts": 15, "b.test.ts": 30 });
     expect(() => fileWeights([{ testResults: [{ name: "x" }] }])).toThrow("Invalid Vitest suite");
   });
+
+  it("balances project worker time instead of adding a serial project tail", () => {
+    const weights = { heavy: 18, medium: 12, web: 8, small: 6, core: 4 };
+    const projects = {
+      heavy: "infra",
+      medium: "infra",
+      small: "infra",
+      web: "web",
+      core: "core",
+    };
+    const files = Object.keys(weights);
+    const options = { workers: 2, projects };
+    expect(balanceShards(files, weights, 2, options)).toEqual([
+      ["heavy", "small", "core"],
+      ["medium", "web"],
+    ]);
+    expect(balanceShards([...files].reverse(), weights, 2, options)).toEqual(
+      balanceShards(files, weights, 2, options),
+    );
+    expect(() => balanceShards(files, weights, 2, { workers: 0 })).toThrow("Invalid worker count");
+  });
 });
