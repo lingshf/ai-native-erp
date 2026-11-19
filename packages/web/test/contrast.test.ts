@@ -77,6 +77,10 @@ const pairs: ReadonlyArray<readonly [string, string, number, string]> = [
   ["color-appbar-muted", "color-appbar", 3, "顶栏偏好下拉框边框"],
   ["color-on-appbar", "color-appbar", 3, "顶栏教学复选框（勾选态填充）"],
   ["color-primary", "color-primary-soft", 3, "导航当前页指示条 / 选中底"],
+  // UI-02a report components: teaching tip, links inside hovered grid rows.
+  ["color-surface", "color-teach", 4.5, "教学提示标记"],
+  ["color-text", "color-teach-bg", 4.5, "教学提示正文"],
+  ["color-primary", "color-surface-alt", 4.5, "表格行内链接 / 悬停行"],
 ];
 
 function failures(css: string) {
