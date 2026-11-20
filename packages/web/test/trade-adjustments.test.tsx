@@ -10,6 +10,7 @@ import { App } from "../src/App.tsx";
 import { TradeAdjustments } from "../src/TradeAdjustments.tsx";
 import { label, type LabelKey } from "../src/ui/index.ts";
 import { adjustmentTeaching } from "../src/ui/trade-adjustment-teaching.ts";
+import { partyFilterLabels } from "../src/ui/trade-adjustment-filter-labels.ts";
 
 const invoiceId = "00000000-0000-4000-8000-000000000001";
 const advanceId = "00000000-0000-4000-8000-000000000002";
@@ -354,8 +355,8 @@ describe("typed trade adjustments", () => {
     const before = { source: options("tadj.source"), target: options("tadj.target") };
     fireEvent.change(screen.getByLabelText(t("tadj.source")), { target: { value: advanceId } });
     fireEvent.change(screen.getByLabelText(t("tadj.target")), { target: { value: invoiceId } });
-    const filter = screen.getByLabelText(t("tadj.partyFilter"));
-    expect(filter.getAttribute("placeholder")).toBe(t("tadj.partyFilterAll"));
+    const filter = screen.getByLabelText(partyFilterLabels.zh.label);
+    expect(filter.getAttribute("placeholder")).toBe(partyFilterLabels.zh.all);
     fireEvent.change(filter, { target: { value: " V2 " } });
     fireEvent.keyDown(filter, { key: "Enter" });
     await screen.findByRole("option", { name: /INV-2/ });
@@ -390,11 +391,11 @@ describe("typed trade adjustments", () => {
     fireEvent.click(await screen.findByRole("button", { name: t("master.loadMore") }));
     await screen.findByRole("option", { name: /ADV-1/ });
     fireEvent.change(screen.getByLabelText(t("tadj.source")), { target: { value: advanceId } });
-    const filter = screen.getByLabelText(t("tadj.partyFilter"));
+    const filter = screen.getByLabelText(partyFilterLabels.zh.label);
     fireEvent.change(filter, { target: { value: "v 1" } });
     fireEvent.blur(filter);
     expect(filter.getAttribute("aria-invalid")).toBe("true");
-    expect(screen.getByText(t("tadj.partyFilterInvalid"))).toBeTruthy();
+    expect(screen.getByText(partyFilterLabels.zh.invalid)).toBeTruthy();
     expect((screen.getByLabelText(t("tadj.source")) as HTMLSelectElement).value).toBe(advanceId);
     expect(reads()).toBe(2);
     fireEvent.change(filter, { target: { value: "V1" } });
@@ -408,6 +409,24 @@ describe("typed trade adjustments", () => {
     await screen.findByRole("button", { name: t("master.loadMore") });
     expect(screen.queryByRole("option", { name: /ADV-1/ })).toBeNull();
     expect(screen.getByRole("option", { name: /INV-1/ })).toBeTruthy();
+  });
+  it("keeps the partner filter labels in matching Chinese and English keys and follows the language switch", async () => {
+    mockApi();
+    await open();
+    expect(Object.keys(partyFilterLabels.en).sort()).toEqual(
+      Object.keys(partyFilterLabels.zh).sort(),
+    );
+    for (const language of ["zh", "en"] as const)
+      for (const text of Object.values(partyFilterLabels[language])) expect(text).not.toBe("");
+    fireEvent.change(screen.getByLabelText(t("tadj.kind")), { target: { value: "cancel" } });
+    fireEvent.change(screen.getByLabelText(partyFilterLabels.zh.label), {
+      target: { value: "V2" },
+    });
+    fireEvent.change(screen.getByLabelText(t("shell.language")), { target: { value: "en" } });
+    const filter = screen.getByLabelText(partyFilterLabels.en.label);
+    expect((filter as HTMLInputElement).value).toBe("V2");
+    expect(filter.getAttribute("placeholder")).toBe(partyFilterLabels.en.all);
+    expect(screen.getByText(partyFilterLabels.en.hint)).toBeTruthy();
   });
   it.each(["missing", "changed", "unreadable"] as const)(
     "does not post when the saved confirmation envelope is %s on readback",

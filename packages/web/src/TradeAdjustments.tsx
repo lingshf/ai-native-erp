@@ -16,6 +16,7 @@ import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
 import { label, type Preferences } from "./ui/index.ts";
 import { adjustmentTeaching } from "./ui/trade-adjustment-teaching.ts";
+import { partyFilterLabels } from "./ui/trade-adjustment-filter-labels.ts";
 import { useInvoiceLeaveGuard } from "./TradeInvoices.tsx";
 import { FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import "./pages/trade-settlements.css";
@@ -251,6 +252,7 @@ function ActionEntry({
     });
   }, [busy, saved.pending, draft, onGuard]);
   const client = useQueryClient();
+  const filterText = partyFilterLabels[preferences.language];
   const [partyFilter, setPartyFilter] = useState("");
   const [partyInput, setPartyInput] = useState("");
   const partyInvalid = partyInput.trim() !== "" && !partyCode.test(partyInput.trim());
@@ -576,11 +578,11 @@ function ActionEntry({
           <div className="ui-form-grid">
             {draft.kind !== "advance" && (
               <div className="ui-field">
-                <label htmlFor="tadj-partyFilter">{t("tadj.partyFilter")}</label>
+                <label htmlFor="tadj-partyFilter">{filterText.label}</label>
                 <input
                   id="tadj-partyFilter"
                   maxLength={60}
-                  placeholder={t("tadj.partyFilterAll")}
+                  placeholder={filterText.all}
                   aria-invalid={partyInvalid}
                   aria-describedby="tadj-partyFilter-hint"
                   value={partyInput}
@@ -593,7 +595,7 @@ function ActionEntry({
                   }}
                 />
                 <p id="tadj-partyFilter-hint" className="tadj-hint">
-                  {t(partyInvalid ? "tadj.partyFilterInvalid" : "tadj.partyFilterHint")}
+                  {partyInvalid ? filterText.invalid : filterText.hint}
                 </p>
               </div>
             )}

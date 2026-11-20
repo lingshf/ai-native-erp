@@ -58,10 +58,6 @@ export const tradeEn = {
   "tadj.revision": "Revision",
   "tadj.status": "Status",
   "tadj.teaching": "Cancel and reverse post new journals; posted journals are never edited.",
-  "tadj.partyFilter": "Filter items by partner code",
-  "tadj.partyFilterAll": "All partners",
-  "tadj.partyFilterHint": "Leave blank for all partners. Press Enter or leave the field to apply.",
-  "tadj.partyFilterInvalid": "Partner codes use capital letters, digits and _ . : - only.",
   "trade.discard": "Discard unsaved trade configuration changes?",
   "trade.uncertain":
     "Save outcome is unknown. The draft is locked; retry the same revision and verify the stored result before leaving.",
@@ -276,10 +272,6 @@ export const tradeZh: Record<keyof typeof tradeEn, string> = {
   "tadj.revision": "版本",
   "tadj.status": "状态",
   "tadj.teaching": "取消与反向都生成新凭证，不修改已过账凭证。",
-  "tadj.partyFilter": "按伙伴代码筛选未结项",
-  "tadj.partyFilterAll": "全部伙伴",
-  "tadj.partyFilterHint": "留空表示全部伙伴；按回车或离开输入框后生效。",
-  "tadj.partyFilterInvalid": "伙伴代码只能包含大写字母、数字和 _ . : -。",
   "trade.discard": "放弃尚未保存的贸易配置修改？",
   "trade.uncertain":
     "保存结果尚未确定。草稿已锁定；请以相同版本安全重试并核对保存结果，再离开页面。",
