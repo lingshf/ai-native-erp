@@ -110,9 +110,9 @@ try {
       if (mode === "delay") {
         await tab.waitForTimeout(700);
         const early = await tab.evaluate(operable);
-        const note = await tab.locator(".overview-pending-note").isVisible();
+        const note = await tab.locator(".overview-pending > [role=status]").isVisible();
         check(early.length === 0 && note, `${name} pending: note visible, operable in main = [${early}]`);
-        const loading = language === "zh" ? "正在加载界面组件…" : "Loading interface components…";
+        const loading = language === "zh" ? "正在加载组件…" : "Loading components…";
         const title = language === "zh" ? "运行状态" : "Runtime status";
         const pendingTree = await tab.locator("main").ariaSnapshot();
         const pendingLines = pendingTree.split("\n").filter((line) => line.trim() && line.trim() !== "- main:");

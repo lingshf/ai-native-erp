@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, type ReactNode, Suspense, useEffect, useRef, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import {
@@ -382,73 +382,48 @@ type SharedUi = {
 // but transparent, inert and aria-hidden (the status region inside is never replaced); only the
 // loading note is visible and exposed. Nothing becomes operable before the final layout. If the
 // chunk fails, the same content is shown with these plain stand-ins and a visible reload notice.
+const Plain = ({ children }: { children?: ReactNode }) => <>{children}</>;
 const plainUi: SharedUi = {
-  Badge: ({ children }) => <span>{children}</span>,
-  MessageBar: ({ children }) => <div>{children}</div>,
-  PageHeader: ({ title, description }) => (
-    <div>
-      <h2>{title}</h2>
-      {description && <p>{description}</p>}
-    </div>
-  ),
-  TeachingTip: ({ teaching, title, children }) =>
-    teaching ? (
-      <aside aria-label={title}>
-        <strong>{title}</strong>
-        <p>{children}</p>
-      </aside>
-    ) : null,
+  Badge: Plain,
+  MessageBar: Plain,
+  PageHeader: ({ title }) => <h2>{title}</h2>,
+  TeachingTip: ({ teaching, children }) => (teaching ? <p>{children}</p> : null),
 };
 
 type SharedUiState = "pending" | "ready" | "failed";
 let loadedUi: SharedUi | undefined;
 
-function useSharedUi(): [SharedUiState, SharedUi] {
-  const [state, setState] = useState<SharedUiState>(loadedUi ? "ready" : "pending");
-  useEffect(() => {
-    if (loadedUi) return;
-    let active = true;
-    // Awaited as a whole: Vite wraps this import() with a CSS preload whose failure would
-    // otherwise escape a .then() chained onto the bare import().
-    const load = async () => {
-      try {
-        const module = await import("./ui/components/index.tsx");
-        loadedUi = module;
-        if (active) setState("ready");
-      } catch {
-        if (active) setState("failed");
-      }
-    };
-    void load();
-    return () => {
-      active = false;
-    };
-  }, []);
-  return [state, state === "ready" && loadedUi ? loadedUi : plainUi];
-}
-
 function Overview({ preferences }: { preferences: Preferences }) {
   const [attempt, setAttempt] = useState(0);
   const loaded = useHealth(attempt);
-  const [uiState, { Badge, MessageBar, PageHeader, TeachingTip }] = useSharedUi();
+  const [uiState, setUiState] = useState<SharedUiState>(loadedUi ? "ready" : "pending");
+  useEffect(() => {
+    if (loadedUi) return;
+    // Awaited as a whole: Vite wraps this import() with a CSS preload whose failure would
+    // otherwise escape a .then() chained onto the bare import().
+    (async () => {
+      try {
+        loadedUi = await import("./ui/components/index.tsx");
+        setUiState("ready");
+      } catch {
+        setUiState("failed");
+      }
+    })();
+  }, []);
+  const { Badge, MessageBar, PageHeader, TeachingTip } = loadedUi ?? plainUi;
   const pending = uiState === "pending";
   const health: typeof loaded = pending ? { kind: "loading" } : loaded;
   const language = preferences.language;
   const t = (key: Exclude<LabelKey, "shell.httpError">) => label(language, key);
   const configured = health.kind === "ready" && health.health.data === "configured";
+  const unhealthy = health.kind !== "loading" && health.kind !== "ready";
   return (
-    <div
-      className={`page overview-page${pending ? " overview-pending" : ""}${uiState === "failed" ? " overview-degraded" : ""}`}
-    >
-      {pending && (
-        <p className="overview-pending-note" role="status">
-          {t("shell.uiLoading")}
-        </p>
-      )}
+    <div className={`page overview-page overview-${uiState}`}>
+      {pending && <p role="status">{t("shell.uiLoading")}</p>}
       {uiState === "failed" && (
         <div className="overview-ui-error" role="alert">
           <p>{t("shell.uiFailed")}</p>
-          <button type="button" onClick={() => window.location.reload()}>
+          <button type="button" onClick={() => location.reload()}>
             {t("shell.uiReload")}
           </button>
         </div>
@@ -465,12 +440,10 @@ function Overview({ preferences }: { preferences: Preferences }) {
           </header>
           <div className="body">
             <div className="overview-status" role="status" aria-live="polite" aria-atomic="true">
-              {health.kind === "loading" && (
-                <p className="overview-loading">{t("shell.healthLoading")}</p>
-              )}
+              {health.kind === "loading" && <p>{t("shell.healthLoading")}</p>}
               {health.kind === "ready" && (
                 <>
-                  <p className="overview-connection">
+                  <p>
                     <Badge tone="success">{t("shell.connected")}</Badge>
                   </p>
                   <dl className="overview-facts">
@@ -500,25 +473,22 @@ function Overview({ preferences }: { preferences: Preferences }) {
                   </dl>
                 </>
               )}
-              {(health.kind === "networkError" || health.kind === "invalidResponse") && (
-                <MessageBar tone="danger">{t(`shell.${health.kind}`)}</MessageBar>
-              )}
-              {health.kind === "httpError" && (
+              {unhealthy && (
                 <MessageBar tone="danger">
-                  {label(language, "shell.httpError", { status: health.status })}
+                  {health.kind === "httpError"
+                    ? label(language, "shell.httpError", { status: health.status })
+                    : t(`shell.${health.kind}`)}
                 </MessageBar>
               )}
             </div>
-            {health.kind !== "loading" && health.kind !== "ready" && (
-              <div className="overview-actions">
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => setAttempt((previous) => previous + 1)}
-                >
-                  {t("shell.retry")}
-                </button>
-              </div>
+            {unhealthy && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setAttempt((previous) => previous + 1)}
+              >
+                {t("shell.retry")}
+              </button>
             )}
           </div>
         </section>
