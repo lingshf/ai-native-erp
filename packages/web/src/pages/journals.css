@@ -216,7 +216,8 @@
   z-index: 20;
 }
 
-/* S5-a：替代 styles.css 全局元素规则的同值类规则；:where() 特异性为 0，原有覆盖照旧生效。\n   按钮字重须胜过 base.css 的 button { font: inherit }，故保留元素特异性。 */
+/* S5-a：替代 styles.css 全局元素规则的同值类规则；:where() 特异性为 0，原有覆盖照旧生效。
+   按钮字重须胜过 base.css 的 button { font: inherit }，故保留元素特异性；按钮状态须胜过全局 button {}，故用类选择器。 */
 :where(.jv-btn, .jv-select) {
   min-height: 44px;
   border-radius: var(--radius-sm);
@@ -249,13 +250,13 @@ button:where(.jv-btn) {
   padding: var(--space-3) var(--space-4);
   cursor: pointer;
 }
-:where(.jv-btn:hover:not(:disabled)) {
+.jv-btn:hover:not(:disabled) {
   background: var(--color-primary-hover);
 }
-:where(.jv-btn:active:not(:disabled)) {
+.jv-btn:active:not(:disabled) {
   background: var(--color-primary-active);
 }
-:where(.jv-btn:disabled) {
+.jv-btn:disabled {
   opacity: 0.65;
   cursor: wait;
 }
