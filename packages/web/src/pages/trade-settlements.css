@@ -83,6 +83,15 @@
   width: 20px;
   height: 20px;
 }
+/* 分配表复选框：label 撑开 44×44 实际点击区（行高仍 48） */
+.trade-settlements .accounts-scroll label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+}
 
 /* 贷项行与反向勾选 */
 :is(.trade-settlements, .trade-adjustments) .tadj-line {
@@ -117,6 +126,7 @@
   font-variant-numeric: tabular-nums;
 }
 
+.trade-settlements .tset-allocation > .btn,
 .trade-adjustments :is(.tadj-allocation, .tadj-lines) > .btn {
   justify-self: start;
 }

@@ -185,7 +185,7 @@ function SettlementEntry({
       {entries.map(([key, value], index) => (
         <div key={key} className={index === 1 ? "kpi emphasis" : "kpi"}>
           <dt className="label">{t(key)}</dt>
-          <dd className="value">{money(value)}</dd>
+          <dd className="value">{Number.isNaN(value) ? t("tset.unloaded") : money(value)}</dd>
         </div>
       ))}
     </dl>
@@ -341,8 +341,9 @@ function SettlementEntry({
       if (sequence.current === version) setBusy(false);
     }
   }
+  // 已选未结项尚未加载时余额未知：NaN 使应付/应收与剩余显示“待加载”，不按 0 推算。
   const due = command.items.reduce(
-    (sum, item) => sum + (rows.find((row) => row.itemId === item.itemId)?.remainingGross ?? 0),
+    (sum, item) => sum + (rows.find((row) => row.itemId === item.itemId)?.remainingGross ?? NaN),
     0,
   );
   const allocated = command.items.reduce((sum, item) => sum + item.gross, 0);
@@ -475,28 +476,30 @@ function SettlementEntry({
                   return (
                     <tr key={row.itemId} aria-rowindex={index + 2} style={{ height: 48 }}>
                       <td>
-                        <input
-                          type="checkbox"
-                          aria-label={`${t("tset.select")} ${row.externalNo}`}
-                          checked={!!selected}
-                          disabled={!eligible || (!selected && command.items.length >= 100)}
-                          onChange={(e) =>
-                            change({
-                              ...command,
-                              items: e.target.checked
-                                ? [
-                                    ...command.items,
-                                    {
-                                      itemId: row.itemId,
-                                      revision: row.revision,
-                                      gross: row.remainingGross,
-                                      takeDiscount: false,
-                                    },
-                                  ]
-                                : command.items.filter((item) => item.itemId !== row.itemId),
-                            })
-                          }
-                        />
+                        <label>
+                          <input
+                            type="checkbox"
+                            aria-label={`${t("tset.select")} ${row.externalNo}`}
+                            checked={!!selected}
+                            disabled={!eligible || (!selected && command.items.length >= 100)}
+                            onChange={(e) =>
+                              change({
+                                ...command,
+                                items: e.target.checked
+                                  ? [
+                                      ...command.items,
+                                      {
+                                        itemId: row.itemId,
+                                        revision: row.revision,
+                                        gross: row.remainingGross,
+                                        takeDiscount: false,
+                                      },
+                                    ]
+                                  : command.items.filter((item) => item.itemId !== row.itemId),
+                              })
+                            }
+                          />
+                        </label>
                       </td>
                       <td>
                         {row.party} · {row.side}
@@ -537,27 +540,27 @@ function SettlementEntry({
                       </td>
                       <td>
                         <span className="tset-discount">
-                          <span>
-                            {row.discountPercent}% · {row.discountDate} ·{" "}
-                            {t(available ? "tset.available" : "tset.unavailable")}
-                          </span>
+                          {row.discountPercent}% · {row.discountDate} ·{" "}
+                          {t(available ? "tset.available" : "tset.unavailable")}
                           {selected && (
-                            <input
-                              type="checkbox"
-                              aria-label={`${t("tset.discount")} ${row.externalNo}`}
-                              checked={selected.takeDiscount}
-                              disabled={!available && !selected.takeDiscount}
-                              onChange={(e) =>
-                                change({
-                                  ...command,
-                                  items: command.items.map((item) =>
-                                    item.itemId === row.itemId
-                                      ? { ...item, takeDiscount: e.target.checked }
-                                      : item,
-                                  ),
-                                })
-                              }
-                            />
+                            <label>
+                              <input
+                                type="checkbox"
+                                aria-label={`${t("tset.discount")} ${row.externalNo}`}
+                                checked={selected.takeDiscount}
+                                disabled={!available && !selected.takeDiscount}
+                                onChange={(e) =>
+                                  change({
+                                    ...command,
+                                    items: command.items.map((item) =>
+                                      item.itemId === row.itemId
+                                        ? { ...item, takeDiscount: e.target.checked }
+                                        : item,
+                                    ),
+                                  })
+                                }
+                              />
+                            </label>
                           )}
                         </span>
                       </td>
@@ -579,16 +582,14 @@ function SettlementEntry({
             </table>
           </div>
           {page.hasNextPage && (
-            <div className="ui-form-actions">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                disabled={page.isFetchingNextPage}
-                onClick={() => void page.fetchNextPage()}
-              >
-                {t("master.loadMore")}
-              </button>
-            </div>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={page.isFetchingNextPage}
+              onClick={() => void page.fetchNextPage()}
+            >
+              {t("master.loadMore")}
+            </button>
           )}
         </fieldset>
       </FastTab>
@@ -606,7 +607,7 @@ function SettlementEntry({
                 <tbody>
                   {result.allocations.map((a) => (
                     <tr key={a.itemId}>
-                      <td>{rows.find((row) => row.itemId === a.itemId)?.externalNo ?? a.itemId}</td>
+                      <td>{a.itemId}</td>
                       <td>{money(a.net)}</td>
                       <td>{money(a.tax)}</td>
                       <td>{money(a.settledGross)}</td>

@@ -7,7 +7,8 @@
 // 反向（撤销 AP-PAID 的核销）。
 // 每张断言：根节点 scrollWidth ≤ 视口宽、溢出元素只在自身滚动容器内、main.scrollWidth ≤ main.clientWidth；
 // main 内每张表格都在自身 overflow-x: auto 容器内，且溢出时能在容器内横向滚动。
-// 第三个参数为 after 时另断言 main 内可见交互控件高度 ≥ 44px，并另截教学关闭图；改前图只记录、不判失败。
+// 第三个参数为 after 时另断言 main 内可见交互控件高度 ≥ 44px（复选框按实际点击区——包裹的 label 或自身——宽高都 ≥ 44px），
+// 并另截教学关闭图；改前图只记录、不判失败。
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -74,13 +75,15 @@ function tableScroll() {
 }
 function smallTargets() {
   const small = [];
-  for (const el of document.querySelectorAll(
-    "main button, main select, main input:not([type=checkbox]), main label:has(> input[type=checkbox])",
-  )) {
-    const box = el.getBoundingClientRect();
+  for (const el of document.querySelectorAll("main button, main select, main input")) {
+    // 复选框按实际点击区判定：包裹它的 label（若有），否则复选框本身；宽高都须 ≥ 44。
+    const target = el.type === "checkbox" ? (el.closest("label") ?? el) : el;
+    const box = target.getBoundingClientRect();
     if (box.width === 0 || el.closest("[hidden]")) continue;
-    if (box.height < 43.5)
-      small.push(`${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""} ${Math.round(box.height)}`);
+    if (box.height < 43.5 || (el.type === "checkbox" && box.width < 43.5))
+      small.push(
+        `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}${el.type === "checkbox" ? `[checkbox ${el.getAttribute("aria-label") ?? ""}]` : ""} ${Math.round(box.width)}x${Math.round(box.height)}`,
+      );
   }
   return small.slice(0, 8);
 }
