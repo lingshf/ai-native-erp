@@ -4,6 +4,7 @@ import { periodCommandSchema, periodSchema, type PeriodDto } from "@erp/core/con
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { label, type Preferences } from "./ui/index.ts";
 import { useInvoiceLeaveGuard } from "./TradeInvoices.tsx";
+import { Badge, FastTab, MessageBar } from "./ui/components/index.tsx";
 
 type Pending = ReturnType<typeof periodCommandSchema.parse>;
 export function TradePeriodAdmission({
@@ -124,44 +125,61 @@ export function TradePeriodAdmission({
     }
   }
   return (
-    <fieldset
-      disabled={disabled || busy || loaded.failed || (period.status === "closed" && !pending)}
-    >
-      <legend>{t("trpt.admission")}</legend>
-      <p>{t("trpt.admissionNote")}</p>
-      {(["trade", "tax"] as const).map((module) => (
-        <label key={module}>
-          <input
-            type="checkbox"
-            checked={modules.includes(module)}
-            disabled={pending !== null}
-            onChange={(e) =>
-              setModules(
-                e.target.checked
-                  ? [...modules, module]
-                  : modules.filter((value) => value !== module),
-              )
-            }
-          />
-          {t(module === "trade" ? "trpt.trade" : "trpt.taxModule")}
-        </label>
+    <FastTab
+      id="trade-period-admission"
+      title={t("trpt.admission")}
+      summary={(["trade", "tax"] as const).map((module) => (
+        <Badge key={module} tone={period.modules.includes(module) ? "success" : "warning"}>
+          {module}
+        </Badge>
       ))}
-      <label htmlFor="trade-period-reason">{t("trpt.reason")}</label>
-      <input
-        id="trade-period-reason"
-        maxLength={160}
-        value={reason}
-        disabled={pending !== null}
-        onChange={(e) => setReason(e.target.value)}
-      />
-      {error && <p role="alert">{t(error)}</p>}
-      <button
-        type="button"
-        disabled={!pending && (!dirty || !reason.trim())}
-        onClick={() => void save()}
+    >
+      <fieldset
+        className="admission"
+        disabled={disabled || busy || loaded.failed || (period.status === "closed" && !pending)}
       >
-        {t(pending ? "master.retry" : "trpt.save")}
-      </button>
-    </fieldset>
+        <p>{t("trpt.admissionNote")}</p>
+        {(["trade", "tax"] as const).map((module) => (
+          <label key={module} className="ui-check">
+            <input
+              type="checkbox"
+              checked={modules.includes(module)}
+              disabled={pending !== null}
+              onChange={(e) =>
+                setModules(
+                  e.target.checked
+                    ? [...modules, module]
+                    : modules.filter((value) => value !== module),
+                )
+              }
+            />
+            {t(module === "trade" ? "trpt.trade" : "trpt.taxModule")}
+          </label>
+        ))}
+        <div className="ui-field">
+          <label htmlFor="trade-period-reason">{t("trpt.reason")}</label>
+          <input
+            id="trade-period-reason"
+            maxLength={160}
+            value={reason}
+            disabled={pending !== null}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </div>
+        {error && (
+          <MessageBar tone={error === "trpt.unknown" ? "warning" : "danger"} role="alert">
+            {t(error)}
+          </MessageBar>
+        )}
+        <button
+          type="button"
+          className="btn btn-secondary"
+          disabled={!pending && (!dirty || !reason.trim())}
+          onClick={() => void save()}
+        >
+          {t(pending ? "master.retry" : "trpt.save")}
+        </button>
+      </fieldset>
+    </FastTab>
   );
 }

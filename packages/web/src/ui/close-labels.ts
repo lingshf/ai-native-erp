@@ -17,6 +17,9 @@ export const closeZh = {
   "close.block.priorPeriods": "请先处理前面的期间。",
   "close.unknown": "结果未知：只能重试原命令，不得改用其他命令。",
   "close.error": "结账操作失败；未将失败显示为成功。",
+  "close.periods": "期间列表",
+  "close.teaching":
+    "先预览结账（零写入），没有阻断项后再确认；结账后本期拒绝过账，再打开下一期间。贸易与税务写入还须先保存本期准入。",
   "close.note":
     "月度教学模式每月结转；年度模式月冻结、十二月年结。按科目反向结清损益累计余额，不带维度；经营损益不含结转。数字下钻保持双重水位，留存收益对手行查看损益汇总来源。预览零写入。",
 } as const;
@@ -39,6 +42,9 @@ export const closeEn = {
   "close.block.priorPeriods": "Process earlier periods first.",
   "close.unknown": "Outcome unknown: retry the original command; do not switch commands.",
   "close.error": "Period close failed; failure is not displayed as success.",
+  "close.periods": "Periods",
+  "close.teaching":
+    "Preview first (writes nothing), then confirm once no blockers remain. A closed period rejects postings; then open the next period. Trade and tax writes also need the period admission saved first.",
   "close.note":
     "Monthly teaching transfers each month; annual mode freezes months and closes in December. Reverse cumulative nominal balances by account without dimensions; operating income excludes closing. Drilldowns retain the compound snapshot; retained-earnings offsets show the source trial summary. Preview writes nothing.",
 } as const satisfies Record<keyof typeof closeZh, string>;

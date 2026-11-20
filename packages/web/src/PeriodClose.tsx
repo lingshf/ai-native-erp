@@ -17,6 +17,8 @@ import { MasterDataFailure, masterRequest } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
 import { VirtualRows } from "./Journals.tsx";
 import { TradePeriodAdmission } from "./TradePeriodAdmission.tsx";
+import { Badge, FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
+import "./pages/period-close.css";
 export function PeriodClose({ preferences }: { preferences: Preferences }) {
   const [params, setParams] = useSearchParams();
   const [locked, setLocked] = useState(false);
@@ -79,60 +81,99 @@ export function PeriodClose({ preferences }: { preferences: Preferences }) {
       : months;
   const error = companies.error ?? periods.error;
   return (
-    <section>
-      <h2>{t("close.title")}</h2>
-      <p>{t("close.note")}</p>
-      <label htmlFor="close-company">{t("master.company")}</label>
-      <select
-        id="close-company"
-        disabled={locked || admissionLocked}
-        value={selectedCompany?.code ?? ""}
-        onChange={(event) => setParams({ company: event.target.value })}
-      >
-        {companyOptions.map((item) => (
-          <option key={item.code} value={item.code}>
-            {item.code} · {item.name}
-          </option>
-        ))}
-      </select>
-      {companies.hasNextPage && (
-        <button
-          disabled={locked || admissionLocked}
-          type="button"
-          onClick={() => void companies.fetchNextPage()}
-        >
-          {t("master.loadMore")}
-        </button>
-      )}
-      <label htmlFor="close-month">{t("ledger.period")}</label>
-      <select
-        id="close-month"
-        disabled={locked || admissionLocked}
-        value={selectedPeriod?.month ?? ""}
-        onChange={(event) => setParams({ company: company?.code ?? "", month: event.target.value })}
-      >
-        {periodOptions.map((item) => (
-          <option key={item.month}>{item.month}</option>
-        ))}
-      </select>
-      {periods.hasNextPage && (
-        <button disabled={locked} type="button" onClick={() => void periods.fetchNextPage()}>
-          {t("master.loadMore")}
-        </button>
-      )}
+    <section className="page period-close">
+      <PageHeader
+        title={t("close.title")}
+        context={
+          <>
+            <div className="field">
+              <label htmlFor="close-company">{t("master.company")}</label>
+              <select
+                id="close-company"
+                disabled={locked || admissionLocked}
+                value={selectedCompany?.code ?? ""}
+                onChange={(event) => setParams({ company: event.target.value })}
+              >
+                {companyOptions.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.code} · {item.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {companies.hasNextPage && (
+              <button
+                className="btn btn-secondary"
+                disabled={locked || admissionLocked}
+                type="button"
+                onClick={() => void companies.fetchNextPage()}
+              >
+                {t("master.loadMore")}
+              </button>
+            )}
+            <div className="field">
+              <label htmlFor="close-month">{t("ledger.period")}</label>
+              <select
+                id="close-month"
+                disabled={locked || admissionLocked}
+                value={selectedPeriod?.month ?? ""}
+                onChange={(event) =>
+                  setParams({ company: company?.code ?? "", month: event.target.value })
+                }
+              >
+                {periodOptions.map((item) => (
+                  <option key={item.month}>{item.month}</option>
+                ))}
+              </select>
+            </div>
+            {periods.hasNextPage && (
+              <button
+                className="btn btn-secondary"
+                disabled={locked}
+                type="button"
+                onClick={() => void periods.fetchNextPage()}
+              >
+                {t("master.loadMore")}
+              </button>
+            )}
+          </>
+        }
+      />
+      <MessageBar tone="info">{t("close.note")}</MessageBar>
       {error && (
-        <p role="alert">
+        <MessageBar tone="danger" role="alert">
           {t("close.error")}{" "}
           <button
+            className="btn btn-secondary"
             type="button"
             onClick={() => void (companies.isError ? companies.refetch() : periods.refetch())}
           >
             {t("master.retry")}
           </button>
-        </p>
+        </MessageBar>
       )}
       {!held && !companies.isPending && (!company || (!periods.isPending && !period)) && (
-        <p role="alert">{t("ledger.invalid")}</p>
+        <MessageBar tone="danger" role="alert">
+          {t("ledger.invalid")}
+        </MessageBar>
+      )}
+      <TeachingTip teaching={preferences.teaching} title={t("master.teachingTitle")}>
+        {t("close.teaching")}
+      </TeachingTip>
+      {selectedCompany && selectedPeriod && (
+        <fieldset disabled={admissionLocked}>
+          <CloseWizard
+            key={`${selectedCompany.code}:${selectedPeriod.month}`}
+            company={selectedCompany}
+            period={selectedPeriod}
+            preferences={preferences}
+            setLocked={lock}
+            next={(month) => {
+              lock(false);
+              setParams({ company: selectedCompany.code, month });
+            }}
+          />
+        </fieldset>
       )}
       {selectedCompany && selectedPeriod && (
         <TradePeriodAdmission
@@ -149,26 +190,46 @@ export function PeriodClose({ preferences }: { preferences: Preferences }) {
       )}
       {!admissionLocked &&
         admissionSaved?.company === selectedCompany?.code &&
-        admissionSaved?.month === selectedPeriod?.month && <p role="status">{t("trpt.saved")}</p>}
-      {selectedCompany && selectedPeriod && (
-        <fieldset disabled={admissionLocked}>
-          <legend>{t("close.title")}</legend>
-          <CloseWizard
-            key={`${selectedCompany.code}:${selectedPeriod.month}`}
-            company={selectedCompany}
-            period={selectedPeriod}
-            preferences={preferences}
-            setLocked={lock}
-            next={(month) => {
-              lock(false);
-              setParams({ company: selectedCompany.code, month });
-            }}
-          />
-        </fieldset>
+        admissionSaved?.month === selectedPeriod?.month && (
+          <MessageBar tone="success" role="status">
+            {t("trpt.saved")}
+          </MessageBar>
+        )}
+      {months.length > 0 && (
+        <div className="card">
+          <div className="grid-wrap close-periods">
+            <table className="grid">
+              <caption>{t("close.periods")}</caption>
+              <thead>
+                <tr>
+                  {(["ledger.period", "tadj.status"] as const).map((key) => (
+                    <th key={key} scope="col">
+                      {t(key)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {months.map((item) => (
+                  <tr
+                    key={item.month}
+                    aria-current={item.month === selectedPeriod?.month || undefined}
+                  >
+                    <td>{item.month}</td>
+                    <td>
+                      <Badge tone={tones[item.status]}>{t(`close.status.${item.status}`)}</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </section>
   );
 }
+const tones = { open: "info", frozen: "warning", closed: "success" } as const;
 type Pending =
   | {
       action: "close";
@@ -313,56 +374,24 @@ function CloseWizard({
       ? `/ledger?${new URLSearchParams({ ...scope, account })}`
       : `/ledger-reports?${new URLSearchParams({ ...scope, view: "trial" })}`;
   }
+  const closedView = result || latestPeriod.status !== "open";
   return (
     <>
-      <p>
-        {period.month} · {t(`close.status.${latestPeriod.status}`)}
-      </p>
-      {busy && <p role="status">{t("master.loading")}</p>}
-      {error !== null && <p role="alert">{t(pending ? "close.unknown" : "close.error")}</p>}
-      {pending && (
-        <button type="button" disabled={busy} onClick={() => void execute(pending)}>
-          {t("close.retry")}
-        </button>
-      )}
-      {latestPeriod.status !== "closed" && !result && (
-        <button
-          type="button"
-          disabled={busy || pending !== null}
-          onClick={() => void loadPreview()}
-        >
-          {t("close.preview")}
-        </button>
-      )}
-      {preview && (
-        <>
-          <h3>{t(preview.action === "freeze" ? "close.freeze" : "close.transfer")}</h3>
-          <p>
-            {t("close.net")}:{" "}
-            {pending ? fmt(preview.netProfit) : <Link to={source()}>{fmt(preview.netProfit)}</Link>}
-          </p>
-          {preview.blockers.map((blocker) => (
-            <p role="alert" key={blocker}>
-              {t(`close.block.${blocker}`)}
-            </p>
-          ))}
-          <VirtualRows
-            items={preview.lines}
-            title={t("close.lines")}
-            header={[t("ledger.account"), t("ledger.debit"), t("ledger.credit")]}
-            render={(line) => (
-              <>
-                <th>{line.account}</th>
-                {[line.debit, line.credit].map((amount, index) => (
-                  <td key={index === 0 ? "debit" : "credit"}>
-                    {pending ? fmt(amount) : <Link to={source(line.account)}>{fmt(amount)}</Link>}
-                  </td>
-                ))}
-              </>
-            )}
-          />
+      <div className="close-command-bar">
+        {latestPeriod.status !== "closed" && !result && (
           <button
             type="button"
+            className="btn btn-secondary"
+            disabled={busy || pending !== null}
+            onClick={() => void loadPreview()}
+          >
+            {t("close.preview")}
+          </button>
+        )}
+        {preview && (
+          <button
+            type="button"
+            className="btn btn-primary"
             disabled={busy || pending !== null || preview.blockers.length > 0}
             onClick={() =>
               void execute({
@@ -379,20 +408,11 @@ function CloseWizard({
           >
             {t("close.confirm")}
           </button>
-        </>
-      )}
-      {(result || latestPeriod.status !== "open") && (
-        <>
-          <p>{t("close.closed")}</p>
-          {result?.receipt.journalIds.map((id) => (
-            <p key={id}>
-              <Link to={`/journals?${new URLSearchParams({ company: company.code, id })}`}>
-                {id}
-              </Link>
-            </p>
-          ))}
+        )}
+        {closedView && (
           <button
             type="button"
+            className="btn btn-danger"
             disabled={
               busy ||
               pending !== null ||
@@ -408,7 +428,79 @@ function CloseWizard({
           >
             {t("close.next")}
           </button>
-        </>
+        )}
+        {pending && (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={busy}
+            onClick={() => void execute(pending)}
+          >
+            {t("close.retry")}
+          </button>
+        )}
+        <span>
+          {period.month} · {t(`close.status.${latestPeriod.status}`)}
+        </span>
+      </div>
+      {busy && <p role="status">{t("master.loading")}</p>}
+      {error !== null && (
+        <MessageBar tone={pending ? "warning" : "danger"} role="alert">
+          {t(pending ? "close.unknown" : "close.error")}
+        </MessageBar>
+      )}
+      {closedView && (
+        <MessageBar tone="info">
+          <p>{t("close.closed")}</p>
+          {result?.receipt.journalIds.map((id) => (
+            <p key={id}>
+              <Link to={`/journals?${new URLSearchParams({ company: company.code, id })}`}>
+                {id}
+              </Link>
+            </p>
+          ))}
+        </MessageBar>
+      )}
+      {preview && (
+        <FastTab
+          id="close-preview"
+          title={t(preview.action === "freeze" ? "close.freeze" : "close.transfer")}
+        >
+          <dl className="kpis">
+            <div className="kpi emphasis">
+              <dt className="label">{t("close.net")}</dt>
+              <dd className="value">
+                {pending ? (
+                  fmt(preview.netProfit)
+                ) : (
+                  <Link to={source()}>{fmt(preview.netProfit)}</Link>
+                )}
+              </dd>
+            </div>
+          </dl>
+          {preview.blockers.map((blocker) => (
+            <MessageBar tone="danger" role="alert" key={blocker}>
+              {t(`close.block.${blocker}`)}
+            </MessageBar>
+          ))}
+          <div className="card">
+            <VirtualRows
+              items={preview.lines}
+              title={t("close.lines")}
+              header={[t("ledger.account"), t("ledger.debit"), t("ledger.credit")]}
+              render={(line) => (
+                <>
+                  <th>{line.account}</th>
+                  {[line.debit, line.credit].map((amount, index) => (
+                    <td key={index === 0 ? "debit" : "credit"}>
+                      {pending ? fmt(amount) : <Link to={source(line.account)}>{fmt(amount)}</Link>}
+                    </td>
+                  ))}
+                </>
+              )}
+            />
+          </div>
+        </FastTab>
       )}
     </>
   );
