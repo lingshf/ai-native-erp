@@ -253,6 +253,7 @@ it("keeps AI candidate generation, discard and adoption nonmutating, cancels sta
   await waitFor(() => expect(screen.queryByText("Synthetic snapshot explanation")).toBeNull());
   expect(screen.queryByRole("option", { name: "教学讲解" })).toBeNull();
   expect(screen.getByLabelText("AI 任务")).toHaveProperty("value", "draft");
+  expect(screen.getByText(label("zh", "ai.boundary"))).toBeTruthy();
   state = "unavailable";
   send();
   await screen.findByText(/AI 不可用/u);
