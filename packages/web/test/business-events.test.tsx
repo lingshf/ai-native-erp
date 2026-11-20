@@ -352,13 +352,6 @@ it("keeps master settings locked while editing or saving and refocuses the first
     ["group", "G"],
   ] as const)
     fireEvent.change(field(key), { target: { value } });
-  // Focus when the error is inserted, before a later task (e.g. passive effects) can move it.
-  let focusedAtError: Element | null | undefined;
-  const observer = new MutationObserver(() => {
-    if (focusedAtError === undefined && document.querySelector('[role="alert"]'))
-      focusedAtError = document.activeElement;
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
   const save = screen.getByRole<HTMLButtonElement>("button", {
     name: label("zh", "business.save"),
   });
@@ -367,7 +360,16 @@ it("keeps master settings locked while editing or saving and refocuses the first
   await waitFor(() => expect(answer).toBeDefined());
   expect(save.matches(":disabled")).toBe(true);
   expect(locked()).toEqual([true, true, true]);
-  answer?.(
+  // Focus when busy=false commits (fieldset re-enabled), before a later task (e.g. passive effects) can move it.
+  // The error (catch) and busy=false (finally) may commit separately, so observe the fieldset, not the alert.
+  const fieldset = save.closest("fieldset");
+  let focusedAtUnlock: Element | null | undefined;
+  const observer = new MutationObserver(() => {
+    if (focusedAtUnlock === undefined && !fieldset?.disabled)
+      focusedAtUnlock = document.activeElement;
+  });
+  if (fieldset) observer.observe(fieldset, { attributes: true, attributeFilter: ["disabled"] });
+  reply(
     new Response(
       JSON.stringify({
         code: "CONFLICT",
@@ -381,8 +383,9 @@ it("keeps master settings locked while editing or saving and refocuses the first
     ),
   );
   await screen.findByRole("alert");
+  await waitFor(() => expect(focusedAtUnlock).toBeDefined());
   observer.disconnect();
-  expect(focusedAtError).toBe(code);
+  expect(focusedAtUnlock).toBe(code);
   expect(document.activeElement).toBe(code);
   expect(save.matches(":disabled")).toBe(false);
   expect(locked()).toEqual([true, true, true]);
@@ -395,7 +398,8 @@ it("keeps master settings locked while editing or saving and refocuses the first
   reply(response({ ...service, code: "S2", name: "Duplicate" }));
   await screen.findByText(label("zh", "business.saved"));
   expect(screen.queryByLabelText(label("zh", "business.code"))).toBeNull();
-  expect(locked()).toEqual([false, false, false]);
+  // The saved status (then) and busy=false (finally) may commit separately; the lock is released after both.
+  await waitFor(() => expect(locked()).toEqual([false, false, false]));
   expect(saves).toHaveLength(2);
 });
 
@@ -429,12 +433,6 @@ it("refocuses the first rule input as soon as a duplicate posting rule save fail
     ["journal.account", "1000"],
   ] as const)
     fireEvent.change(field(key), { target: { value } });
-  let focusedAtError: Element | null | undefined;
-  const observer = new MutationObserver(() => {
-    if (focusedAtError === undefined && document.querySelector('[role="alert"]'))
-      focusedAtError = document.activeElement;
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
   const save = screen.getByRole<HTMLButtonElement>("button", {
     name: label("zh", "business.save"),
   });
@@ -442,6 +440,13 @@ it("refocuses the first rule input as soon as a duplicate posting rule save fail
   fireEvent.click(save);
   await waitFor(() => expect(answer).toBeDefined());
   expect(save.matches(":disabled")).toBe(true);
+  const fieldset = save.closest("fieldset");
+  let focusedAtUnlock: Element | null | undefined;
+  const observer = new MutationObserver(() => {
+    if (focusedAtUnlock === undefined && !fieldset?.disabled)
+      focusedAtUnlock = document.activeElement;
+  });
+  if (fieldset) observer.observe(fieldset, { attributes: true, attributeFilter: ["disabled"] });
   answer?.(
     new Response(
       JSON.stringify({
@@ -456,7 +461,8 @@ it("refocuses the first rule input as soon as a duplicate posting rule save fail
     ),
   );
   await screen.findByRole("alert");
+  await waitFor(() => expect(focusedAtUnlock).toBeDefined());
   observer.disconnect();
-  expect(focusedAtError).toBe(code);
+  expect(focusedAtUnlock).toBe(code);
   expect(document.activeElement).toBe(code);
 });
