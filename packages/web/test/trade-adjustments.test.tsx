@@ -9,6 +9,7 @@ import {
 import { App } from "../src/App.tsx";
 import { TradeAdjustments } from "../src/TradeAdjustments.tsx";
 import { label, type LabelKey } from "../src/ui/index.ts";
+import { adjustmentTeaching } from "../src/ui/trade-adjustment-teaching.ts";
 
 const invoiceId = "00000000-0000-4000-8000-000000000001";
 const advanceId = "00000000-0000-4000-8000-000000000002";
@@ -229,6 +230,24 @@ describe("typed trade adjustments", () => {
     await screen.findByRole("status");
     expect(posts[0].command).toMatchObject({ gross: 1235 });
     expect(screen.getByText(t("tadj.boundary"))).not.toBeNull();
+  });
+  it("renders the correction teaching tip only while teaching is on and keeps the boundary visible", async () => {
+    mockApi();
+    await open();
+    const tip = (language: "zh" | "en") =>
+      screen.queryByText(adjustmentTeaching(language, label(language, "tadj.teaching")));
+    expect(tip("zh")).toBeNull();
+    expect(screen.getByText(t("tadj.boundary"))).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(t("shell.showTeachingExplanations")));
+    expect(tip("zh")?.closest("aside")?.getAttribute("aria-label")).toBe(t("master.teachingTitle"));
+    fireEvent.change(screen.getByLabelText(t("shell.language")), { target: { value: "en" } });
+    expect(tip("zh")).toBeNull();
+    expect(tip("en")?.closest("aside")?.getAttribute("aria-label")).toBe(
+      label("en", "master.teachingTitle"),
+    );
+    fireEvent.click(screen.getByLabelText(label("en", "shell.showTeachingExplanations")));
+    expect(tip("en")).toBeNull();
+    expect(screen.getByText(label("en", "tadj.boundary"))).toBeTruthy();
   });
   it("styles only the irreversible cancel and reverse confirmations as dangerous", async () => {
     mockApi();

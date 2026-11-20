@@ -3,8 +3,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { periodCommandSchema, periodSchema, type PeriodDto } from "@erp/core/contracts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { label, type Preferences } from "./ui/index.ts";
+import { admissionTeaching } from "./ui/trade-admission-teaching.ts";
 import { useInvoiceLeaveGuard } from "./TradeInvoices.tsx";
-import { Badge, FastTab, MessageBar } from "./ui/components/index.tsx";
+import { Badge, FastTab, MessageBar, TeachingTip } from "./ui/components/index.tsx";
 
 type Pending = ReturnType<typeof periodCommandSchema.parse>;
 export function TradePeriodAdmission({
@@ -134,6 +135,12 @@ export function TradePeriodAdmission({
         </Badge>
       ))}
     >
+      <TeachingTip
+        teaching={preferences.teaching}
+        title={admissionTeaching[preferences.language].title}
+      >
+        {admissionTeaching[preferences.language].text}
+      </TeachingTip>
       <fieldset
         aria-label={t("trpt.admission")}
         disabled={disabled || busy || loaded.failed || (period.status === "closed" && !pending)}

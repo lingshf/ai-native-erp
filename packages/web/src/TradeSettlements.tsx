@@ -16,6 +16,7 @@ import {
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
 import { label, type Preferences } from "./ui/index.ts";
+import { settlementTeaching } from "./ui/trade-settlement-teaching.ts";
 import { useInvoiceLeaveGuard } from "./TradeInvoices.tsx";
 import { FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import "./pages/trade-settlements.css";
@@ -394,7 +395,7 @@ function SettlementEntry({
         </MessageBar>
       )}
       <TeachingTip teaching={preferences.teaching} title={t("master.teachingTitle")}>
-        {t("tset.teaching")}
+        {settlementTeaching(preferences.language, t("tset.teaching"))}
       </TeachingTip>
       <FastTab id="tset-general" title={t("master.general")}>
         <fieldset disabled={locked} className="ui-form-grid">

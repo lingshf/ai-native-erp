@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import { App } from "../src/App.tsx";
 import { label } from "../src/ui/index.ts";
+import { masterTeaching } from "../src/ui/trade-master-teaching.ts";
 import type { TradeDto } from "@erp/core/contracts";
 
 const company = {
@@ -366,6 +367,65 @@ describe("trade master maintenance", () => {
     expect(fetcher.mock.calls.some(([path]) => String(path).includes("search=Literal_%25"))).toBe(
       true,
     );
+  });
+  it("renders the master data teaching tip only while teaching is on and keeps errors visible", async () => {
+    window.localStorage.clear();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockImplementation(async (path, options) => {
+        if (String(path).startsWith("/api/v1/companies"))
+          return response({ items: [company], nextCursor: null });
+        if (options?.method)
+          return response(
+            {
+              code: "INVALID_REQUEST",
+              messageKey: "api.error.invalidRequest",
+              params: {},
+              fieldErrors: [{ path: "data.rates", messageKey: "api.error.trade.window" }],
+              requestId: "4bf203b5-e54f-434c-9100-969da1cd7e73",
+              retryable: false,
+            },
+            400,
+          );
+        return response({ items: [], nextCursor: null });
+      }),
+    );
+    render(<App />);
+    const tip = (language: "zh" | "en") =>
+      screen.queryByText(masterTeaching(language, label(language, "trade.teaching")));
+    fireEvent.change(await screen.findByLabelText(label("zh", "trade.kind")), {
+      target: { value: "tradeTerms" },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: label("zh", "trade.new") }));
+    expect(tip("zh")).toBeNull();
+    fireEvent.click(screen.getByLabelText(label("zh", "shell.showTeachingExplanations")));
+    expect(tip("zh")?.closest("aside")?.getAttribute("aria-label")).toBe(
+      label("zh", "master.teachingTitle"),
+    );
+    fireEvent.change(screen.getByLabelText(label("zh", "shell.language")), {
+      target: { value: "en" },
+    });
+    expect(tip("zh")).toBeNull();
+    expect(tip("en")?.closest("aside")?.getAttribute("aria-label")).toBe(
+      label("en", "master.teachingTitle"),
+    );
+    fireEvent.change(screen.getByLabelText(label("en", "trade.code")), {
+      target: { value: "NET30" },
+    });
+    fireEvent.change(screen.getByLabelText(label("en", "trade.name")), {
+      target: { value: "Draft" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: label("en", "dim.save") }));
+    const issue = `data.rates: ${label("en", "trade.issue.window")}`;
+    expect(await screen.findByText(issue)).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(label("en", "shell.showTeachingExplanations")));
+    expect(tip("en")).toBeNull();
+    expect(screen.getByText(issue)).toBeTruthy();
+    expect(screen.getByLabelText<HTMLInputElement>(label("en", "trade.name")).value).toBe("Draft");
+    fireEvent.change(screen.getByLabelText(label("en", "shell.language")), {
+      target: { value: "zh" },
+    });
+    window.localStorage.clear();
   });
   it("keeps failed drafts and distinguishes field errors from stale-revision reload", async () => {
     let conflict = false;

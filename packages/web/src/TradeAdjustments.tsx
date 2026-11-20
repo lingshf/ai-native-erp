@@ -15,6 +15,7 @@ import {
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
 import { label, type Preferences } from "./ui/index.ts";
+import { adjustmentTeaching } from "./ui/trade-adjustment-teaching.ts";
 import { useInvoiceLeaveGuard } from "./TradeInvoices.tsx";
 import { FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import "./pages/trade-settlements.css";
@@ -491,7 +492,7 @@ function ActionEntry({
         </MessageBar>
       )}
       <TeachingTip teaching={preferences.teaching} title={t("master.teachingTitle")}>
-        {t("tadj.teaching")}
+        {adjustmentTeaching(preferences.language, t("tadj.teaching"))}
       </TeachingTip>
       <FastTab id="tadj-general" title={t("master.general")}>
         <fieldset disabled={locked} className="ui-form-grid">
