@@ -9,7 +9,9 @@ import {
   type Preferences,
   type PreferenceIssue,
 } from "./ui/index.ts";
+import type { Badge, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import { useHealth } from "./health.ts";
+import "./pages/overview.css";
 
 const storage = () => window.localStorage;
 const Migration = lazy(() =>
@@ -369,65 +371,128 @@ function Workspace() {
   );
 }
 
+type SharedUi = {
+  Badge: typeof Badge;
+  MessageBar: typeof MessageBar;
+  PageHeader: typeof PageHeader;
+  TeachingTip: typeof TeachingTip;
+};
+// The shared components stay in their own chunk (D39): a static import here would fold them and
+// components.css into the entry. Overview renders the same text, roles and order at once and
+// swaps in the shared components when that chunk arrives.
+const plainUi: SharedUi = {
+  Badge: ({ children }) => <span>{children}</span>,
+  MessageBar: ({ children }) => <div>{children}</div>,
+  PageHeader: ({ title, description }) => (
+    <div>
+      <h2>{title}</h2>
+      {description && <p>{description}</p>}
+    </div>
+  ),
+  TeachingTip: ({ teaching, title, children }) =>
+    teaching ? (
+      <aside aria-label={title}>
+        <strong>{title}</strong>
+        <p>{children}</p>
+      </aside>
+    ) : null,
+};
+
+function useSharedUi() {
+  const [ui, setUi] = useState(plainUi);
+  useEffect(() => {
+    let active = true;
+    void import("./ui/components/index.tsx").then((module) => {
+      if (active) setUi(module);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+  return ui;
+}
+
 function Overview({ preferences }: { preferences: Preferences }) {
   const [attempt, setAttempt] = useState(0);
   const health = useHealth(attempt);
+  const { Badge, MessageBar, PageHeader, TeachingTip } = useSharedUi();
   const language = preferences.language;
   const t = (key: Exclude<LabelKey, "shell.httpError">) => label(language, key);
+  const configured = health.kind === "ready" && health.health.data === "configured";
   return (
-    <>
-      <p className="intro">{t("shell.intro")}</p>
-      <section className="status-card" aria-labelledby="health-heading">
-        <h2 id="health-heading">{t("shell.healthHeading")}</h2>
-        <div role="status" aria-live="polite" aria-atomic="true">
-          {health.kind === "loading" && <p>{t("shell.healthLoading")}</p>}
-          {health.kind === "ready" && (
-            <>
-              <p className="connected">{t("shell.connected")}</p>
-              <dl>
-                <dt>{t("shell.service")}</dt>
-                <dd>{health.health.service}</dd>
-                <dt>{t("shell.contract")}</dt>
-                <dd>{health.health.contractVersion}</dd>
-                <dt>{t("shell.profile")}</dt>
-                <dd>{t("shell.local")}</dd>
-                <dt>{t("shell.data")}</dt>
-                <dd>
-                  {t(
-                    health.health.data === "configured" ? "shell.configured" : "shell.unconfigured",
-                  )}
-                </dd>
-              </dl>
-            </>
-          )}
-          {(health.kind === "networkError" || health.kind === "invalidResponse") && (
-            <p className="error">
-              <span aria-hidden="true">⚠ </span>
-              {t(`shell.${health.kind}`)}
-            </p>
-          )}
-          {health.kind === "httpError" && (
-            <p className="error">
-              <span aria-hidden="true">⚠ </span>
-              {label(language, "shell.httpError", { status: health.status })}
-            </p>
+    <div className="page overview-page">
+      <PageHeader title={t("shell.overview")} description={t("shell.intro")} />
+      <TeachingTip teaching={preferences.teaching} title={t("shell.teachingTitle")}>
+        {t("shell.teachingNote")}
+      </TeachingTip>
+      <section className="card" aria-labelledby="health-heading">
+        <header>
+          <h3 id="health-heading">{t("shell.healthHeading")}</h3>
+        </header>
+        <div className="body">
+          <div className="overview-status" role="status" aria-live="polite" aria-atomic="true">
+            {health.kind === "loading" && (
+              <p className="overview-loading">{t("shell.healthLoading")}</p>
+            )}
+            {health.kind === "ready" && (
+              <>
+                <p className="overview-connection">
+                  <Badge tone="success">{t("shell.connected")}</Badge>
+                </p>
+                <dl className="overview-facts">
+                  <div>
+                    <dt>{t("shell.service")}</dt>
+                    <dd>{health.health.service}</dd>
+                  </div>
+                  <div>
+                    <dt>{t("shell.contract")}</dt>
+                    <dd>
+                      <span>{health.health.contractVersion}</span>
+                      <Badge tone="success">{t("shell.compatible")}</Badge>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{t("shell.profile")}</dt>
+                    <dd>{t("shell.local")}</dd>
+                  </div>
+                  <div>
+                    <dt>{t("shell.data")}</dt>
+                    <dd>
+                      <Badge tone={configured ? "success" : "warning"}>
+                        {t(configured ? "shell.configured" : "shell.unconfigured")}
+                      </Badge>
+                    </dd>
+                  </div>
+                </dl>
+              </>
+            )}
+            {(health.kind === "networkError" || health.kind === "invalidResponse") && (
+              <MessageBar tone="danger">{t(`shell.${health.kind}`)}</MessageBar>
+            )}
+            {health.kind === "httpError" && (
+              <MessageBar tone="danger">
+                {label(language, "shell.httpError", { status: health.status })}
+              </MessageBar>
+            )}
+          </div>
+          {health.kind !== "loading" && health.kind !== "ready" && (
+            <div className="overview-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setAttempt((previous) => previous + 1)}
+              >
+                {t("shell.retry")}
+              </button>
+            </div>
           )}
         </div>
-        {health.kind !== "loading" && health.kind !== "ready" && (
-          <button type="button" onClick={() => setAttempt((previous) => previous + 1)}>
-            {t("shell.retry")}
-          </button>
-        )}
       </section>
-      {!(health.kind === "ready" && health.health.data === "configured") && (
-        <section className="warning data-warning" aria-label={t("shell.data")}>
-          <p>
-            <span aria-hidden="true">⚠ </span>
-            {t("shell.dataWarning")}
-          </p>
+      {!configured && (
+        <section aria-label={t("shell.data")}>
+          <MessageBar tone="warning">{t("shell.dataWarning")}</MessageBar>
         </section>
       )}
-      {preferences.teaching && <p className="teaching">{t("shell.teachingNote")}</p>}
-    </>
+    </div>
   );
 }
