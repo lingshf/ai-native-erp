@@ -11,7 +11,7 @@
 
 ## 2. 准备（同一个 PowerShell 终端，从仓库根目录执行）
 
-这些命令按顺序在同一终端执行过（本次执行见 [run-through.md](run-through.md)）。服务用 `Start-Process` 后台启动，返回的进程对象保存在 `$server`，收尾只停这个对象；先确认 4194 空闲、服务就绪后才写入数据，避免误写入占用该端口的其他服务。
+这些命令按顺序在同一终端执行过（本次执行见 [run-through.md](run-through.md)）。服务用 `Start-Process` 后台启动，返回的进程对象保存在 `$server`，收尾只停这个对象；先确认 4194 空闲、服务就绪，并核对 4194 的监听进程就是 `$server`，之后才写入数据，避免误写入占用该端口的其他服务。
 
 ```powershell
 $day = Get-Date -Format yyyy-MM-dd
@@ -28,6 +28,8 @@ $server = Start-Process node -ArgumentList "packages/infra/src/main.ts" -PassThr
 $ready = $false
 1..20 | ForEach-Object { if (-not $ready) { try { $ready = (Invoke-WebRequest http://127.0.0.1:4194/ -UseBasicParsing).StatusCode -eq 200 } catch { Start-Sleep 1 } } }
 if (-not $ready -or $server.HasExited) { throw "演示服务未就绪，不要继续写入" }
+$owner = (Get-NetTCPConnection -LocalPort 4194 -State Listen -ErrorAction SilentlyContinue).OwningProcess
+if ($owner -ne $server.Id) { throw "4194 的监听进程 ($owner) 不是本次启动的 $($server.Id)，中止，不要写入" }
 node docs\demo\v0.4.0\scripts\seed-trade.mjs http://127.0.0.1:4194 $day
 $shots = Join-Path $env:TEMP "demo-shots"
 node docs\demo\v0.4.0\scripts\capture.mjs http://127.0.0.1:4194 $shots

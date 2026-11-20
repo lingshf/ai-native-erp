@@ -31,6 +31,10 @@
 | 偏好读取失败（模拟） | `getItem` 抛错，应用回退默认 zh / 专业红 / 教学关闭；两个宽度都如实命名为 `preference-read-failed-fallback-zh-red-*`（此前 en/绿 390 的命名有误，已更正）。这是读取失败分支，没有采集 en/绿 的保存失败分支 |
 | 收尾 | 执行前确认 72244 的命令行是 `node ... packages/infra/src/main.ts` 且是 4194 的监听者，再 `Stop-Process -Id 72244`（因 `$server` 对象在该终端外，本次按已核实的进程号停止）、`Remove-Item -Recurse -Force $dir`；4194 无监听，临时目录已删，仓库内无 `.bak` 与 `.legacy-fixture-*` |
 
+## 补充：监听进程核对（#108 最后一项）
+
+截图采集之后，在 README §2 增加了 `(Get-NetTCPConnection -LocalPort 4194 -State Listen).OwningProcess` 与 `$server.Id` 的比较，不一致则抛错中止。该检查用一个新的临时账套和服务单独实际运行了一次：`$server.Id` = 76792，监听进程 = 76792，相等；随后用 `$server` 停止服务、删除临时目录，4194 无监听。不一致分支只验证了比较结果会为真（`$owner -ne 1`），没有真实制造端口冲突。截图不是在带此检查的脚本下重拍的。
+
 ## 粘性顶栏是否遮挡（评审第 2 点）
 
 初版 390 筛选图里顶栏压住正文，是全页截图在页面已滚动时把粘性顶栏画在页面中间的截图产物。为判断正常使用是否也被遮挡，采集时在真实 900 px 高视口里、聚焦伙伴筛选输入框后量了位置（`capture-log.json` 的 `adjustments-focus`）：
