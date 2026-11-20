@@ -215,4 +215,16 @@ describe("design token contrast", () => {
       expect(checked(focus, bg, 3), `focus ring on ${bg}`).toBe(true);
     }
   });
+
+  // UI-10c: the accounts active column reuses the neutral and success Badge tones; both already have pairs.
+  test("UI-10c account active / inactive badges paint only checked text pairs", () => {
+    const components = declarationsIn("theme/components.css");
+    for (const selector of [".badge", ".badge.success"]) {
+      const d = { ...components(".badge"), ...components(selector) };
+      expect(checked(token(d.color), token(d.background), 4.5), selector).toBe(true);
+    }
+    expect(
+      readFileSync(resolve(import.meta.dirname, "../src/pages/accounts.css"), "utf8"),
+    ).not.toMatch(/\.badge/u);
+  });
 });

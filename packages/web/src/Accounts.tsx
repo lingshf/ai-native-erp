@@ -13,7 +13,7 @@ import {
 } from "@erp/core/contracts";
 import { label, type LabelKey, type Language, type Preferences } from "./ui/index.ts";
 import { MasterDataFailure, masterRequest } from "./master-data-client.ts";
-import { FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
+import { Badge, FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import "./pages/accounts.css";
 
 type T = (key: Exclude<LabelKey, "shell.httpError">) => string;
@@ -290,12 +290,11 @@ function AccountRows({
                 </td>
                 <td>{t(`master.category.${account.category}`)}</td>
                 <td>
-                  <input
-                    type="checkbox"
-                    checked={account.active}
-                    disabled
-                    aria-label={`${t("master.active")} ${account.code}`}
-                  />
+                  {account.active ? (
+                    <Badge tone="success">{t("master.active")}</Badge>
+                  ) : (
+                    <span className="badge">{t("master.inactive")}</span>
+                  )}
                 </td>
                 <td>
                   <button
