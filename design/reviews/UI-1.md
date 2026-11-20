@@ -200,7 +200,7 @@
 - PG-05：入口 CSS gzip 3.11 → 3.07 kB（−0.04），入口 JS −0.01（视为不变），其余 chunk 不变。
 - 真实 Chrome `trade-gui-` + `migration-gui.slow` 在 head 上 6 个文件 / 13 个用例通过；合并后 main Full [44772479885](https://github.com/lingshf/ai-native-erp/actions/runs/44772479885) 12 个分片的测试步骤全部为 `success`。
 
-**保留**：仍在生效或有未采集依赖的声明，涉及 `legend`、`select`、`button`、`input[type=checkbox]`、`dl { display }`、`dt`、`dd`、`caption`、`th, td`、`thead, tfoot`。按冲突域登记为 [S5 待办](../tasks/README.md#s5-待办stylescss-剩余全局元素规则候选未排期) S5-a..g。D-7 至此部分完成：`dl` 布局与 `table` 已删除，其余规则移到 S5。
+**保留**：仍在生效或有未采集依赖的声明，涉及 `legend`、`select`、`button`、`input[type=checkbox]`、`dl { display }`、`dt`、`dd`、`caption`、`th, td`、`thead, tfoot`。按冲突域登记为 [S5 待办](../tasks/README.md#s5stylescss-全局元素规则收尾--s4-回顾行动建议-v050) S5-a..g。D-7 至此部分完成：`dl` 布局与 `table` 已删除，其余规则移到 S5。
 
 **已有问题**（与 #106 无关）：迁移页 `.kv` 表不在独立滚动区，版式检查报 `not in own scroller`，base 上已存在，由 UI-10e 引入，登记为 S5-b。
 
