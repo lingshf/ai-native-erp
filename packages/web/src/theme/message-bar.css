@@ -1,0 +1,53 @@
+/*
+ * 消息条（design/ui §5）：随 ui/components/message-bar.tsx 进入口，外壳偏好警告（UI-10a）在共享组件 chunk
+ * 到达前或加载失败时也有完整外观。规则由 components.css 原样移来，其余共享组件仍在 components.css。
+ */
+
+/* D-8：消息条段落不带浏览器默认外边距（原先在 5 个页面 CSS 中各写一份，副本由 UI-09c/d/f 删除）。 */
+.message-bar p {
+  margin: 0;
+}
+.message-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid;
+  border-left-width: 4px;
+  border-radius: var(--radius-sm);
+  line-height: var(--leading-md);
+}
+.message-bar > .icon {
+  font-weight: 700;
+}
+.message-bar > .text {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.message-bar.info {
+  color: var(--color-info);
+  background: var(--color-info-bg);
+  border-color: var(--color-info-border);
+  border-left-color: var(--color-info);
+}
+/* warning / success：UI-08 由各页面 CSS 原样提升（期末、发票、结算 / 调整、总账报表） */
+.message-bar.warning {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning-border);
+  border-left-color: var(--color-warning);
+}
+.message-bar.success {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  border-left-color: var(--color-success);
+}
+.message-bar.danger {
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger-border);
+  border-left-color: var(--color-danger);
+}

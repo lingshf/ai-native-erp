@@ -1,15 +1,8 @@
 /*
  * UI-07d 运行状态页（App.tsx 中的 Overview）：只作用于 .overview-page 之内。
- * 页头、卡片、徽标、消息条、教学提示沿用 components.css；这里只补键值网格、常用入口与 warning 消息条。
- * warning 消息条与 components.css 的 .message-bar.warning 同源（作用域更窄、值相同），修改时两处同步；
- * 此处保留一份是为了共享组件 chunk 加载失败时 plainUi 兜底仍显示警告色（UI-1 D-2）。
+ * 页头、卡片、徽标、教学提示沿用 components.css，消息条沿用 message-bar.css；这里只补键值网格与常用入口。
+ * （UI-1 D-2 的 .message-bar.warning 副本已删：message-bar.css 随 MessageBar 进入口，UI-10a。）
  */
-.overview-page .message-bar.warning {
-  color: var(--color-warning);
-  background: var(--color-warning-bg);
-  border-color: var(--color-warning-border);
-  border-left-color: var(--color-warning);
-}
 .overview-status {
   display: grid;
   gap: var(--space-4);

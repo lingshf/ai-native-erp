@@ -1,5 +1,8 @@
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import "../../theme/components.css";
+import { symbols, type Tone } from "./message-bar.tsx";
+
+export { MessageBar, type Tone } from "./message-bar.tsx";
 
 // UI-1 shared components (design/ui/README.md §5, §6): thin wrappers that only add layout classes.
 // Children keep their own IDs, names and events.
@@ -49,40 +52,12 @@ export function TeachingTip({
   );
 }
 
-export type Tone = "info" | "success" | "warning" | "danger";
-const symbols: Readonly<Record<Tone, string>> = {
-  info: "i",
-  success: "✓",
-  warning: "!",
-  danger: "×",
-};
-
 export function Badge({ tone, children }: { tone: Tone; children: ReactNode }) {
   return (
     <span className={`badge ${tone}`}>
       <span aria-hidden="true">{symbols[tone]}</span>
       {children}
     </span>
-  );
-}
-
-/** Errors keep role="alert"; other tones pass the role they already had (if any). */
-export function MessageBar({
-  tone,
-  role,
-  children,
-}: {
-  tone: Tone;
-  role?: "alert" | "status";
-  children: ReactNode;
-}) {
-  return (
-    <div className={`message-bar ${tone}`} role={role}>
-      <span className="icon" aria-hidden="true">
-        {symbols[tone]}
-      </span>
-      <div className="text">{children}</div>
-    </div>
   );
 }
 

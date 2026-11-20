@@ -50,6 +50,26 @@ describe("narrow app bar brand (UI-09b)", () => {
   });
 });
 
+describe("shell preference warning (UI-10a)", () => {
+  test("paints nothing of its own: colours and border come only from the shared MessageBar rules", () => {
+    expect(css).not.toMatch(/(?:^|[}\s,])\.warning\b/u);
+    for (const file of ["theme/shell.css", "pages/overview.css", "theme/components.css"])
+      expect(
+        readFileSync(resolve(import.meta.dirname, "../src", file), "utf8").replace(
+          /\/\*[\s\S]*?\*\//gu,
+          "",
+        ),
+        file,
+      ).not.toMatch(/\.message-bar\.warning|(?:^|\})\s*\.message-bar\s*\{/u);
+    for (const selector of [
+      ".shell-body > .message-bar",
+      ".shell-body > .message-bar h2",
+      ".shell-body > .message-bar ul",
+    ])
+      expect(declarations(css, selector), selector).not.toMatch(/color|background|border/u);
+  });
+});
+
 describe("app bar preference target sizes (design/ui §7)", () => {
   const base = css.slice(0, css.indexOf("@media"));
   const touch = mediaBlock("(max-width: 760px), (pointer: coarse)");
