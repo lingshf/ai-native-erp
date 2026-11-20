@@ -1,0 +1,434 @@
+[
+ {
+  "name": "overview-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "name": "trade-orders-draft-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "order": "PO-DEMO",
+  "status": 201,
+  "body": {
+   "orderId": "PO-DEMO",
+   "side": "AP",
+   "party": "PARTY",
+   "currency": "CNY",
+   "orderDate": "2026-11-20",
+   "priceIncludesTax": false,
+   "rounding": "line",
+   "commandHash": "5e6233238448772511cfa7407b6a85a96d42d0550267e2b20a9a56066cc1709f",
+   "recordedAt": "2026-11-20T16:48:34.202Z",
+   "lines": [
+    {
+     "lineId": "L1",
+     "product": "EXPENSE",
+     "taxCode": "VAT",
+     "quantity": "10",
+     "unitPrice": "10",
+     "discountPercent": "0",
+     "taxableCharge": "0",
+     "lineNo": 1,
+     "net": 10000,
+     "tax": 1300,
+     "gross": 11300
+    }
+   ]
+  }
+ },
+ {
+  "name": "trade-orders-saved-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders",
+  "errors": []
+ },
+ {
+  "name": "trade-adjustments-all-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "adjustments-focus",
+  "tag": "zh-red-1440",
+  "scrollY": 0,
+  "inputTop": 670,
+  "inputBottom": 706,
+  "headerBottom": 48
+ },
+ {
+  "name": "trade-adjustments-filtered-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "adjustments",
+  "errors": []
+ },
+ {
+  "name": "accounts-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "accounts",
+  "errors": []
+ },
+ {
+  "name": "trade-master-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "trade-master",
+  "errors": []
+ },
+ {
+  "name": "journals-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "journals",
+  "errors": []
+ },
+ {
+  "name": "trade-invoices-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "trade-invoices",
+  "errors": []
+ },
+ {
+  "name": "period-close-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "period-close",
+  "errors": []
+ },
+ {
+  "name": "overview-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "name": "trade-orders-draft-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "order": "PO-DEMO-B",
+  "status": 201,
+  "body": {
+   "orderId": "PO-DEMO-B",
+   "side": "AP",
+   "party": "PARTY",
+   "currency": "CNY",
+   "orderDate": "2026-11-20",
+   "priceIncludesTax": false,
+   "rounding": "line",
+   "commandHash": "2adbf6d82129b1a457b927a1c9ecb4dec061c28e0379a0a9388a5ec28b3dd811",
+   "recordedAt": "2026-11-20T16:48:49.002Z",
+   "lines": [
+    {
+     "lineId": "L1",
+     "product": "EXPENSE",
+     "taxCode": "VAT",
+     "quantity": "10",
+     "unitPrice": "10",
+     "discountPercent": "0",
+     "taxableCharge": "0",
+     "lineNo": 1,
+     "net": 10000,
+     "tax": 1300,
+     "gross": 11300
+    }
+   ]
+  }
+ },
+ {
+  "name": "trade-orders-saved-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders",
+  "errors": []
+ },
+ {
+  "name": "trade-adjustments-all-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "adjustments-focus",
+  "tag": "zh-red-390",
+  "scrollY": 349,
+  "inputTop": 868,
+  "inputBottom": 912,
+  "headerBottom": 48
+ },
+ {
+  "name": "trade-adjustments-filtered-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "adjustments",
+  "errors": []
+ },
+ {
+  "name": "accounts-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "accounts",
+  "errors": []
+ },
+ {
+  "name": "trade-master-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "trade-master",
+  "errors": []
+ },
+ {
+  "name": "journals-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "journals",
+  "errors": []
+ },
+ {
+  "name": "trade-invoices-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "trade-invoices",
+  "errors": []
+ },
+ {
+  "name": "period-close-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "period-close",
+  "errors": []
+ },
+ {
+  "name": "overview-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "name": "trade-orders-draft-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "order": "PO-DEMO-C",
+  "status": 201,
+  "body": {
+   "orderId": "PO-DEMO-C",
+   "side": "AP",
+   "party": "PARTY",
+   "currency": "CNY",
+   "orderDate": "2026-11-20",
+   "priceIncludesTax": false,
+   "rounding": "line",
+   "commandHash": "6843c88875756bbdc27d45795cc79c9c962f1ab927f1b352b8a2f4e2ef793054",
+   "recordedAt": "2026-11-20T16:49:03.537Z",
+   "lines": [
+    {
+     "lineId": "L1",
+     "product": "EXPENSE",
+     "taxCode": "VAT",
+     "quantity": "10",
+     "unitPrice": "10",
+     "discountPercent": "0",
+     "taxableCharge": "0",
+     "lineNo": 1,
+     "net": 10000,
+     "tax": 1300,
+     "gross": 11300
+    }
+   ]
+  }
+ },
+ {
+  "name": "trade-orders-saved-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders",
+  "errors": []
+ },
+ {
+  "name": "trade-adjustments-all-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "adjustments-focus",
+  "tag": "en-green-1440",
+  "scrollY": 0,
+  "inputTop": 690,
+  "inputBottom": 726,
+  "headerBottom": 48
+ },
+ {
+  "name": "trade-adjustments-filtered-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "adjustments",
+  "errors": []
+ },
+ {
+  "name": "accounts-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "accounts",
+  "errors": []
+ },
+ {
+  "name": "trade-master-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "trade-master",
+  "errors": []
+ },
+ {
+  "name": "journals-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "journals",
+  "errors": []
+ },
+ {
+  "name": "trade-invoices-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "trade-invoices",
+  "errors": []
+ },
+ {
+  "name": "period-close-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "period-close",
+  "errors": []
+ },
+ {
+  "name": "overview-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "name": "trade-orders-draft-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "order": "PO-DEMO-D",
+  "status": 201,
+  "body": {
+   "orderId": "PO-DEMO-D",
+   "side": "AP",
+   "party": "PARTY",
+   "currency": "CNY",
+   "orderDate": "2026-11-20",
+   "priceIncludesTax": false,
+   "rounding": "line",
+   "commandHash": "93884fee1ce8b6c5117760bf49f46c1f3e4e458bae5862bae5e0d840a1d8fc27",
+   "recordedAt": "2026-11-20T16:49:18.132Z",
+   "lines": [
+    {
+     "lineId": "L1",
+     "product": "EXPENSE",
+     "taxCode": "VAT",
+     "quantity": "10",
+     "unitPrice": "10",
+     "discountPercent": "0",
+     "taxableCharge": "0",
+     "lineNo": 1,
+     "net": 10000,
+     "tax": 1300,
+     "gross": 11300
+    }
+   ]
+  }
+ },
+ {
+  "name": "trade-orders-saved-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders",
+  "errors": []
+ },
+ {
+  "name": "trade-adjustments-all-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "adjustments-focus",
+  "tag": "en-green-390",
+  "scrollY": 541,
+  "inputTop": 868,
+  "inputBottom": 912,
+  "headerBottom": 48
+ },
+ {
+  "name": "trade-adjustments-filtered-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "adjustments",
+  "errors": []
+ },
+ {
+  "name": "accounts-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "accounts",
+  "errors": []
+ },
+ {
+  "name": "trade-master-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "trade-master",
+  "errors": []
+ },
+ {
+  "name": "journals-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "journals",
+  "errors": []
+ },
+ {
+  "name": "trade-invoices-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "trade-invoices",
+  "errors": []
+ },
+ {
+  "name": "period-close-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "period-close",
+  "errors": []
+ },
+ {
+  "name": "preference-read-failed-fallback-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "name": "preference-read-failed-fallback-zh-red-390",
+  "overflowPx": 0
+ }
+]
