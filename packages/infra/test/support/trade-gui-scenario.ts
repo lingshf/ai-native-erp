@@ -422,11 +422,10 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
     let context: BrowserContext | undefined;
     onTestFinished(async () => {
       const started = performance.now();
-      try {
-        // Explicit context close also disposes the Node request pool used by route.fetch().
-        await context?.close();
-      } finally {
-        const closed = await Promise.allSettled(
+      // Explicit context close also disposes the Node request pool used by route.fetch().
+      const closed = [await Promise.allSettled([context?.close()])].flat();
+      closed.push(
+        ...(await Promise.allSettled(
           servers.map(async ({ executor, api }) => {
             try {
               await api?.close();
@@ -434,9 +433,9 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
               await executor.close();
             }
           }),
-        );
-        for (const result of closed) if (result.status === "rejected") throw result.reason;
-      }
+        )),
+      );
+      for (const result of closed) if (result.status === "rejected") throw result.reason;
       phase("resources", started);
     });
     const opening = (async () => {
