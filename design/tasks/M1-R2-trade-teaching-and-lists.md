@@ -4,6 +4,8 @@
 - 冲突域：web-ui:trade
 - **阻塞 v0.2.0：否**
 
+> **S4 已拆分**：[M1-R2a](M1-R2a-trade-teaching-tests.md)（教学提示补齐与测试；UI-04 / UI-06 已补了大部分提示）与 [M1-R2b](M1-R2b-trade-adjust-picker-filter.md)（未结项选择按伙伴筛选，替代虚拟滚动，决定 P5）。本文件保留为原始需求，以子任务为准。
+
 ## 背景
 
 教学提示只在发票页和报表页（`packages/web/src/TradeInvoices.tsx:253`、`TradeReports.tsx:39`）。付款/收款、调整、主数据、期间准入页在教学模式下没有说明。调整页的未结项选择列表（`TradeAdjustments.tsx:227,576`）只有“加载更多”，没有虚拟滚动，其他贸易列表都有。见 [M1 评审 §3、§6](../reviews/M1.md)。

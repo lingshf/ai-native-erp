@@ -51,6 +51,8 @@
 
 M2 账套迁移/切换（需用户授权，使用已有只读旧账读取器做导入，完整备份与核对；前置门禁 M0-R4、M0-R5；任务草案见 [design/tasks/README.md](tasks/README.md) 的 M2 一节）；之后按 OQ-01 顺序推进库存与成本、税、外币、银行、资产/租赁、期末与关账、公司间/合并、报表与现金流、教学与 AI。
 
+S4（UI-1 后续 + M1 遗留，建议 v0.4.0）：UI-09 / UI-10 小步改进、订单录入 GUI、贸易页教学与列表、发布流程文档。任务与并行安排见 [tasks/README.md](tasks/README.md#s4ui-1-后续--m1-遗留建议-v040)。M2-05/06 仍待用户授权，不在 S4。
+
 ## 4. CI 与测试策略（设计角色牵头）
 
 预算：**PR CI ≤ 10 分钟**（墙钟，含安装）。仓库为 GitHub Free 私有库：Actions 每月 2000 分钟，无分支保护。
@@ -70,6 +72,7 @@ M2 账套迁移/切换（需用户授权，使用已有只读旧账读取器做�
 规则：
 - `concurrency` 取消同一 PR 的旧运行；所有 job 设 `timeout-minutes`；只跑 ubuntu 单平台单 Node 版本。
 - 每个里程碑末做一次测试审计：CI 总时长、最慢 10 个测试、重复/低价值用例 → 精简子任务。
+- 调整 Full 分片或浏览器测试耗时之前，先剖析 runner 冷启动（如 Chrome 首启、磁盘预热），用数据确定瓶颈，再改分片（v0.3.0 回顾，D38 / R6b 教训）。
 - 测试原则：测试行为不测实现；同一行为只在最低能覆盖的层测一次；慢测试（真实浏览器、大数据）不进 PR 层。
 - 因无法开启分支保护，约定：PR 必须 CI 绿 + 评审角色通过后才合并；不直接推 main（设计角色文档 PR 同样走 PR）。
 
@@ -78,6 +81,24 @@ M2 账套迁移/切换（需用户授权，使用已有只读旧账读取器做�
 - 角色：协调者（派发与对接用户）；设计角色（本文件、任务文档、里程碑评审、测试审计，唯一修改 `design/` 任务文档的角色）；开发角色（实现，一个任务 = 一个分支 = 一个 PR）；PR 评审角色（按任务验收标准评论）。
 - 任务状态在 [tasks/README.md](tasks/README.md) 维护：`todo` → `in-progress` → `in-review` → `done`（附 PR 链接）；`blocked` 写原因。开发角色可在 PR 描述中报告，状态由设计角色同步。
 - PR 评审清单：按任务文档完成；SOLID 但不过度设计；测试足够且不重复；性能考虑已落实；产品准则 PG-01..05。
+- **合并检查清单**（v0.3.0 回顾）：
+  - **合并前**（协调者逐项确认，任一不满足不合并）：
+    1. 评审的 `commit_id` 等于 PR 当前 head，结论为通过，该 head 的 PR CI 为绿；
+    2. 满足任务文档的验收标准。UI 任务还须附 PR 当前 head 的真实 Chrome 证据，见 [UI-1 通用验收 5](tasks/README.md#ui-1界面逐步改进)；
+    3. PR 描述写明对应的任务 ID。若有运维可见变化，附旧值 → 新值对照（见下条）。
+  - **合并后**（这些动作只能在合并后做，不作为合并条件）：
+    1. 协调者记录合并提交 `M`，当天通知设计角色；
+    2. **任务表同步**：设计角色把 [tasks/README.md](tasks/README.md) 中该任务改为 `done` 并填入 PR 链接（任务表只由设计角色修改；可攒入当天的文档 PR）。同步前，该任务不算完成，发布 PR 不得引用它；
+    3. **跟踪 main Full**，以第一个“覆盖 `M`”的完整结果解锁同冲突域的下一个任务：
+       - “覆盖 `M`”指运行的 SHA 等于 `M`，或是 `M` 的后代（`git merge-base --is-ancestor M <sha>`）；
+       - “完整结果”指 `full.yml` 的 12 个 job（unit / browser 各 6 个分片）全部结束，没有任何 job 处于 cancelled 状态，并且**每个分片的测试步骤 “All tests including slow tests” 的结论都是 `success`**。job 绿不够：定时运行在 main 最新提交超过 24 小时时，由 `scripts/ci.ts gate` 跳过安装和全部测试（步骤结论为 `skipped`），12 个 job 仍然显示绿。核对命令：`gh run view <run-id> --json headSha,jobs --jq '.headSha, [.jobs[].steps[] | select(.name=="All tests including slow tests") | .conclusion]'`，要求 12 个值都是 `success`。
+- **Full 被取消时**：`full.yml` 的 `concurrency` 按 main ref + lane + 分片分组，并且 `cancel-in-progress`（`.github/workflows/full.yml:26–27`）。后续 push，包括补任务表的文档 PR，会取消 `M` 的 Full。处理方式：
+  - **cancelled 不算红，也不算绿**，不解锁也不触发回退；
+  - 改看覆盖 `M` 的更新 SHA 的 Full，取第一个完整结果：全绿则解锁；红则按失败用例归因，与本任务相关时由本任务修复或回退；
+  - 若连续合并使每次 Full 都被取消，协调者暂停 main 合并（文档 PR 同样暂停），然后重跑 main **当前** SHA 的 push 运行：`gh run rerun <该 SHA 的 push run-id>`。push 运行不经过 24 小时门禁；
+  - 不以定时运行解锁，除非核对命令显示它确实执行了测试。门禁跳过的定时运行不算结果，处理方式同上：重跑当前 main SHA 的 push 运行；
+  - 不重跑已被后续提交取代的旧 SHA：旧 SHA 不含之后合并的提交，它的结果不能代表当前 main。
+- **运维可见变化**（日志字段或 `errorType`、错误码、端口、CLI 输出、配置项）：PR 描述必须写明旧值 → 新值的对照表（v0.3.0 回顾，#81）。
 - 里程碑评审：里程碑最后一个任务合并后，由设计角色做一次（代码是否按设计、设计原则、性能、测试审计），问题生成子任务（`M0-R1`…）。
 - 不再使用旧 G3/G5/G6 门禁、MODEL01 例外流程、逐阶段本地保护同步/新 clone 等重流程。
 
