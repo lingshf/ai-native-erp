@@ -51,14 +51,44 @@ npm run start:local
 
 迁移核对页只读，显示**已保存**的报告：报告由 `legacy-import` 结束时自动保存，或由 `legacy-reconcile --confirm` 更新。`legacy-reconcile --check` 只读、不保存报告，只在终端输出结论，并给出 `--confirm` 所需的 `knownDifferencesSha256`。重现需要一个隔离的**虚构**快照目录、新目标库，该库必须与演示账套分开，且不得使用真实旧账：
 
+**先停止第 1 节启动的演示服务**（否则 4193 仍指向原演示库，看不到迁移报告），再在**同一个 PowerShell 窗口**依次执行。先把四个路径赋给变量（替换为自己的路径；下面的命令只使用变量，不含 `<…>` 占位符）：
+
 ```powershell
-# 六项决定全部显式给出；导入范围含 AP/AR 控制科目时必须追加 --opening-items（即使各科目都声明为 empty）
-npm run storage:admin -- legacy-import --snapshot-dir <虚构快照目录> --target <全新目标.sqlite> --drafts import-as-draft --receipts archive-only --source-events archive-only --transfer-queue archive-only --seals archive-only --audit archive-only --opening-items <期初明细.json>
-npm run storage:admin -- legacy-reconcile --snapshot-dir <同一快照目录> --target <目标.sqlite> --check   # 只读，不保存
-npm run storage:admin -- legacy-reconcile --snapshot-dir <同一快照目录> --target <目标.sqlite> --confirm <确认.json>   # 确认文件只含 knownDifferencesSha256
-$env:ERP_SQLITE_FILE = "<目标.sqlite 绝对路径>"; $env:ERP_PORT = "4193"   # 再启动 start:local，打开 /#/migration
+$snap    = "D:\erp-fictional\snapshot"      # 虚构快照目录（已校验）
+$opening = "D:\erp-fictional\opening.json"  # 期初明细文件
+$target  = "D:\erp-fictional\target.sqlite" # 全新目标库，必须不存在
+$confirm = "D:\erp-fictional\confirm.json"  # 稍后由脚本生成
 ```
 
+**导入**——六项决定都要给出。`--opening-items` 有两种用法：
+
+- 导入范围含 AP/AR 控制科目（多数账套）：**必须**加 `--opening-items $opening`，即使各科目都声明为 `empty`；缺少时以 `INVALID_INPUT` 退出，且不建目标库。
+- 范围不含 AP/AR 控制科目：**省略**该参数，期初门禁不适用。
+
+```powershell
+# 用法 A：含 AP/AR 控制科目
+npm run storage:admin -- legacy-import --snapshot-dir $snap --target $target --drafts import-as-draft --receipts archive-only --source-events archive-only --transfer-queue archive-only --seals archive-only --audit archive-only --opening-items $opening
+# 用法 B：不含 AP/AR 控制科目（去掉 --opening-items）
+# npm run storage:admin -- legacy-import --snapshot-dir $snap --target $target --drafts import-as-draft --receipts archive-only --source-events archive-only --transfer-queue archive-only --seals archive-only --audit archive-only
+```
+
+**只读核对与确认**——`--check` 只读、不保存；结论为 pending（待确认）时退出码非 0 属正常（非通过均非零退出）。确认文件由 `--check` 输出的 `knownDifferencesSha256` 生成，须先人工核实已知差异清单：
+
+```powershell
+npm run storage:admin -- legacy-reconcile --snapshot-dir $snap --target $target --check
+$report = npm run storage:admin -- legacy-reconcile --snapshot-dir $snap --target $target --check 2>$null | Where-Object { $_ -like '{*' } | ConvertFrom-Json
+[IO.File]::WriteAllText($confirm, (@{ knownDifferencesSha256 = $report.knownDifferencesSha256 } | ConvertTo-Json -Compress))
+npm run storage:admin -- legacy-reconcile --snapshot-dir $snap --target $target --confirm $confirm
+```
+
+**查看页面**：
+
+```powershell
+$env:ERP_SQLITE_FILE = $target; $env:ERP_PORT = "4193"; $env:ERP_HOST = "127.0.0.1"; $env:ERP_PROFILE = "local"
+npm run start:local   # 打开 http://127.0.0.1:4193/#/migration
+```
+
+以上命令已用虚构夹具快照（`packages/infra/test/support/legacy-fixture.mjs` 生成）在 PowerShell 中实际执行：用法 A 导入为 `imported`，`--check` 为 `pending`，`--confirm` 后报告为 `pass`；不带 `--opening-items` 时以 `INVALID_INPUT` 退出且未建库。
 期初明细文件格式与规则见[备份与旧账工具](../../user/backup-and-legacy.md#期初未结项m2-03bd25--d30)。要点：
 
 - 判定顺序：真实差异 > 适用的期初门禁 > 未确认的已知差异 > 通过（差异 > 阻断 > 待确认 > 通过）；不含 AP/AR 控制科目时门禁不适用；
