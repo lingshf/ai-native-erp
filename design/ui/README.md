@@ -175,7 +175,7 @@
 
 | 契约 | 来源 |
 | --- | --- |
-| `.workspace[data-theme]`、`html[lang]` | `App.test.tsx`、`trade-gui-{zh,en}-{red,green}.slow.test.ts`（共享 `test/support/trade-gui-scenario.ts`）、`migration-gui.slow.test.ts` |
+| `.workspace[data-theme]`、`html[lang]` | `App.test.tsx`、`trade-gui-{zh,en}-{red,green}-{1,2}.slow.test.ts`（共享 `test/support/trade-gui-scenario.ts`）、`migration-gui.slow.test.ts` |
 | E2E 用 `nav a[href="#/<path>"]` 导航并等待 `main h2` | 同上四个 `trade-gui-*.slow.test.ts` |
 | 迁移页没有 `<button>`；明细用 `details > summary` | `migration-gui.slow.test.ts` |
 | 所有元素 ID（`#trade-kind`、`#tinv-side`、`#workspace-language` …）与按钮可访问名称（`getByRole("button", { name })`） | 同上及 `packages/web/test/*.test.tsx` |

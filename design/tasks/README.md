@@ -143,7 +143,7 @@ UI 任务不改迁移、领域和 infra 代码，与 `legacy-import`、`admin-cl
 5. **现有测试不删除、不削弱**：
    - 涉及范围：
      - `packages/web/test/*.test.{ts,tsx}`；
-     - 四个真实 Chrome 场景 `packages/infra/test/http/trade-gui-{zh-red,zh-green,en-red,en-green}.slow.test.ts`，及其共享场景 `packages/infra/test/support/trade-gui-scenario.ts`；
+     - 四个真实 Chrome 场景 `packages/infra/test/http/trade-gui-{zh-red,zh-green,en-red,en-green}-{1,2}.slow.test.ts`（每个场景分两段），及其共享场景 `packages/infra/test/support/trade-gui-scenario.ts`；
      - `packages/infra/test/http/migration-gui.slow.test.ts`。
    - 不删用例、不放宽断言、不改选择器，只允许**新增**断言。
    - ID、按钮可访问名称、`nav a[href]`、`main h2`、`.workspace[data-theme]`、`html[lang]` 不变。

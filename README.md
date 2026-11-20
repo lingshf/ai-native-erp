@@ -199,11 +199,11 @@ Invoke-RestMethod "$origin/api/v1/trade/orders" -Method Post `
 
 ![贸易主路径：月末 GL 核对（中文、红主题）](docs/images/trade-main-path-zh-red.png)
 
-真实浏览器测试为 `packages/infra/test/http/trade-gui.slow.test.ts`，中/英 × 红/绿四组合均仅用键盘完成同一主路径，另测存储拒写、提交已落库但响应丢失的原封套重试、依赖阻止取消。只预置六个基础 GL 科目及上述 API 采购订单；贸易配置、期间准入、发票、付款、动作和报表操作经过真实 Web。测试自行构建前端、临时建库、启动 loopback HTTP 与生产 SQLite workers，结束关闭并清理自有目录；不触碰已有实例。
+真实浏览器测试为 `packages/infra/test/http/trade-gui-{zh,en}-{red,green}-{1,2}.slow.test.ts`（共享 `packages/infra/test/support/trade-gui-scenario.ts`），中/英 × 红/绿四组合均仅用键盘完成同一主路径，另测存储拒写、提交已落库但响应丢失的原封套重试、依赖阻止取消。每个组合分两段在 Full 的不同分片运行：第 1 段经 GUI 完成期间准入、贸易配置、匹配采购发票与付款，并断言其发出的请求与第 2 段的预置请求逐条一致；第 2 段经真实 HTTP API（预览后显式确认）重放这些请求，再经 GUI 完成预付、红字、取消与报表。只预置六个基础 GL 科目及上述 API 采购订单；贸易配置、期间准入、发票、付款、动作和报表操作经过真实 Web。测试自行构建前端、临时建库、启动 loopback HTTP 与生产 SQLite workers，结束关闭并清理自有目录；不触碰已有实例。
 
 ```powershell
 npx playwright install --only-shell chromium
-npx vitest run packages\infra\test\http\trade-gui.slow.test.ts
+npx vitest run trade-gui-
 node packages\infra\bench\trade-http.ts
 ```
 
