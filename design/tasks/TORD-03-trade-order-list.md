@@ -35,8 +35,15 @@
    - 合计等于逐行 `gross` 之和（含整单舍入的订单）；
    - 另一公司的订单不出现；`limit=0`、`limit=501`、未知参数、缺 `company` 返回 400；
    - `POST` 原有测试不改、全部通过。
-2. 读路径不写库：调用前后 `PRAGMA data_version` 不变，或用等价方式断言没有开写事务。
-3. 性能：在现有基准账套规模下（若基准没有订单，在测试中插入 1 万张订单），首页查询的 `EXPLAIN QUERY PLAN` 显示走主键（`SEARCH trade_orders USING PRIMARY KEY`），不出现 `SCAN` 或 `USE TEMP B-TREE`。
+2. 读路径不写库，用两条互相独立的判据，都要有：
+   - **事务模式**：应用层测试中给 store 装一个记录调用的替身，`GET` 列表只调用 `store.read` 一次，`store.write` 调用 0 次；
+   - **持久变化**：HTTP 层测试另开一个**独立的观察连接**（不是处理请求的那个连接）连到同一账套文件，请求前后各读一次全部用户表（`sqlite_schema` 中 `type='table'` 且不以 `sqlite_` 开头）的行数与 `trade_orders`、`trade_order_lines` 的全部主键，两次结果相同。
+   - 不用 `PRAGMA data_version`：在执行请求的同一连接上读取时，它不反映该连接自己的提交。
+3. **性能（[PG-05](../product-guidelines.md#5-pg-05性能从设计开始)）**：
+   - **执行计划**：首页（无 `cursor`）与续页（有 `cursor`）两种查询的 `EXPLAIN QUERY PLAN` 都显示 `trade_orders` 走主键（`SEARCH trade_orders USING PRIMARY KEY`），行合计对 `trade_order_lines` 也走其主键前缀，不出现对两表的 `SCAN` 或 `USE TEMP B-TREE`。
+   - **无 N+1**：每页的 SQL 语句数固定，与 `limit` 和每张订单的行数无关（例如一条带 `GROUP BY` / 子查询的语句，或“订单一条 + 行合计一条”）。测试用计数替身数 `db.query` 调用次数，`limit=2` 与 `limit=100` 时相同。
+   - **热读 p95 ≤ 1 s**：测量边界同 PG-05，即本机真实 HTTP 请求发出到完整响应读取并通过契约解析。账套为 1 万张订单、每张 1–20 行（合成），分别测首页与深处续页（`cursor` 位于后 10%），各 ≥ 50 次请求，先预热。
+   - 这项基准放在 `packages/infra/bench`（main / 每晚运行），或作为一次性独立取证附在 PR 描述（命令与原始输出）。**不加到 PR 快速套件。**
 4. 页面：jsdom 测试覆盖列表渲染、加载更多、点击订单号进入详情、保存后刷新；键盘可达（Tab 到“加载更多”和订单号，Enter 触发）。
 5. 满足 [UI-1 通用验收](README.md#ui-1界面逐步改进) 1–9：中 / 英、红 / 绿两主题、1440 / 390 截图，PG-05 字节预算：新增 CSS gzip ≤ +0.3 kB、JS 按 PG-05 口径报告；真实 Chrome 证据按[路线图 §5 UI PR 证据清单](../roadmap.md#5-团队流程)。
 6. 现有测试与 E2E 不删除、不削弱（D11）。无迁移、无 `package.json` / lock 变化。

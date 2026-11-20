@@ -337,7 +337,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 **不在本 Sprint**：
 - M2-05 / M2-06：需要用户授权决定 A / B，见上文 M2 节；
 - 订单筛选（伙伴 / 日期 / 方向）：需要新索引即为迁移，单独立项（见 TORD-03）；
-- “S5 累计 CSS +413 B 的瘦身”：不立任务，理由见 [S5 回顾议题 1](../reviews/S5.md#议题-1d131-改为-d133s5-累计-css-413-b)，由 S5 Sprint 评审确认；
+- “S5 累计 CSS +413 B 的瘦身”：协调者已决定不立任务（D140），理由见 [S5 回顾议题 1](../reviews/S5.md#议题-1d131-改为-d133s5-累计-css-413-b)；
 - `package.json` / lock 变化；本 Sprint 计划内没有迁移任务。
 
 | ID | 标题 | 类型 | 依赖 | 冲突域 | 状态 | PR |
@@ -346,7 +346,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [FOCUS-02](FOCUS-02-business-master-save-failure-focus.md) | 业务事件主数据保存失败（409）后焦点晚一帧；聚焦与 `lock` 拆开 | 调查 / 页面 tsx / 测试 | UI-11a（同冲突域串行） | web-ui:journals | todo | — |
 | [UI-11b](UI-11b-s5g-leftover-button-checkbox.md) | S5-g 遗留：`.btn-primary:active`、概览重试按钮、维度命中列复选框 | CSS（必要时 tsx） | S5-g（已合并） | web-ui:components, web-ui:shell（不含 `styles.css`）, web-ui:master | todo | — |
 | [UI-11c](UI-11c-virtualrows-spacer-cells.md) | S5-g 遗留：VirtualRows 占位行 `td` 的边框、对齐与最小宽度 | CSS（必要时 tsx） | FOCUS-02（journals 串行）、UI-11b（components 串行） | web-ui:journals, web-ui:components | todo | — |
-| [UI-11d](UI-11d-delete-styles-css-remaining.md) | 删除 `styles.css` 保留的全局声明，D-7 完成 | CSS + 入口 import 一行 | UI-11b、UI-11c；开工时无进行中的页面 CSS 任务 | web-ui:shell（`styles.css`、`main.tsx` import） | todo | — |
+| [UI-11d](UI-11d-delete-styles-css-remaining.md) | 删除 `styles.css` 保留的全局声明，D-7 完成 | CSS + 入口 import 一行 | UI-11b、UI-11c；从开工到合并期间无进行中的页面 CSS 任务（含 C 线） | web-ui:shell（`styles.css`、`main.tsx` import） | todo | — |
 | [TORD-03](TORD-03-trade-order-list.md) | 订单列表：`GET /api/v1/trade/orders` keyset 分页（走主键，无迁移）+ 订单页列表 | 后端 API + 页面 | — | trade-docs, contracts, web-ui:trade-orders | todo | — |
 | [TORD-04](TORD-04-trade-order-preview.md) | 订单保存前预览：`POST /api/v1/trade/orders/preview`，与保存金额同源 | 后端 API + 页面 | TORD-03（同冲突域串行） | trade-docs, contracts, web-ui:trade-orders | todo | — |
 | [UI-12](UI-12-migration-kv-narrow-wrap.md) | 迁移核对页 390 宽 `.kv` 英文词内断行（Demo #129 观察） | 页面 CSS | TORD-04（C 线排序，无文件依赖） | web-ui:migration | todo | — |
@@ -371,7 +371,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 - **首批**（v0.5.0 tag 后）：UI-11a（A）、UI-11b（B）、TORD-03（C）同时开工，冲突域两两不相交。
 - **跨线等待**：
   - UI-11c 等 A 线的 FOCUS-02 和 B 线的 UI-11b 都合并（journals 与 components 都串行）；
-  - UI-11d 等 UI-11b、UI-11c 合并，并看到覆盖最后一个合并提交的完整 main Full；它的证据覆盖全部页面，**开工时 TORD-03/04、UI-12 等页面 CSS 任务不得在进行中**。协调者在 C 线两个任务之间的空档派发 UI-11d，或让 C 线等它合并；
+  - UI-11d 等 UI-11b、UI-11c 合并，并看到覆盖最后一个合并提交的完整 main Full；它的证据覆盖全部页面，要求全页零差的基线在取证期间不变：**从 UI-11d 开工、取证、评审直到合并，C 线不得有进行中的 TORD-03 / TORD-04 / UI-12 等页面 CSS 任务，也不得启动新的**。协调者在 C 线某个任务合并之后、下一个开工之前派发 UI-11d，C 线下一个任务等 UI-11d 合并后再开工；
   - UI-11b 与 UI-11d 都占 web-ui:shell，由 A 线的依赖保证串行。
 - **迁移规则**：本 Sprint 计划内没有迁移任务。若 TORD-03 / TORD-04 发现必须加索引，停下报告设计角色，另立迁移任务；**两个要加迁移的任务不能并行**（共用 `migrations.ts` 与编号）。
 - **E2E 时段**：在 E2E-01 有结论之前，仍按 D115 / D118 的独占时段（[路线图 §5 工作区隔离](../roadmap.md#5-团队流程)）。三条线需要真实 Chrome 的阶段尽量错开；**E2E-01 需要整台机器**，安排在其他两条线都处于编辑 / 评审阶段、没有 E2E 需求的时段，由协调者定时间。
