@@ -11,9 +11,11 @@
   overflow: auto;
   margin-block: var(--space-2);
 }
-/* .grid-wrap.acct-scroll：科目表滚动区（UI-09c）共用同一阴影，两类名以压过下方 .grid-wrap 的底色。 */
+/* .grid-wrap.acct-scroll：科目表滚动区（UI-09c）共用同一阴影，两类名以压过下方 .grid-wrap 的底色；
+   .grid-wrap.scroll-hint：其他 .grid-wrap 滚动区按需启用同一提示（S5-b 迁移页键值表）。 */
 .journal-scroll,
-.grid-wrap.acct-scroll {
+.grid-wrap.acct-scroll,
+.grid-wrap.scroll-hint {
   /* F2：右侧还有未显示的列时右缘出现渐隐；第一层随内容滚动（local），滚到最右时盖住第二层（scroll，固定在可视右缘）。
      上下各让出卡片圆角（--radius-md），不在 .card 圆角裁剪处叠画背景，不滚动的表格像素不变。 */
   background:

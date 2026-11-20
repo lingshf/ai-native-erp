@@ -42,41 +42,43 @@ export function Migration({ preferences }: { preferences: Preferences }) {
   const compare = (expected: unknown, actual: unknown, pairs: Pair[]) => (
     <>
       {pairs.length > 0 && (
-        <table className="kv">
-          <thead>
-            <tr>
-              <th>{d.field}</th>
-              <th>{t("migration.expected")}</th>
-              <th>{t("migration.actual")}</th>
-              <th>{t("ledger.difference")}</th>
-            </tr>
-          </thead>
-          {pairs.map(([left, right], index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: rows of one immutable report, never reordered
-            <tbody key={index}>
-              {[...new Set([...Object.keys(left ?? {}), ...Object.keys(right ?? {})])].map(
-                (field) => {
-                  const a = left?.[field],
-                    b = right?.[field],
-                    change = delta(field, a, b),
-                    off = a !== b && left !== undefined && right !== undefined;
-                  return (
-                    <tr key={field} data-mismatch={off || undefined}>
-                      <th scope="row">
-                        {field} {off && <strong className="mismatch">{d.mismatch}</strong>}
-                      </th>
-                      <td>{show(a)}</td>
-                      <td>{show(b)}</td>
-                      <td>
-                        {change === undefined ? "—" : change > 0 ? `+${change}` : `${change}`}
-                      </td>
-                    </tr>
-                  );
-                },
-              )}
-            </tbody>
-          ))}
-        </table>
+        <div className="grid-wrap scroll-hint">
+          <table className="kv">
+            <thead>
+              <tr>
+                <th>{d.field}</th>
+                <th>{t("migration.expected")}</th>
+                <th>{t("migration.actual")}</th>
+                <th>{t("ledger.difference")}</th>
+              </tr>
+            </thead>
+            {pairs.map(([left, right], index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: rows of one immutable report, never reordered
+              <tbody key={index}>
+                {[...new Set([...Object.keys(left ?? {}), ...Object.keys(right ?? {})])].map(
+                  (field) => {
+                    const a = left?.[field],
+                      b = right?.[field],
+                      change = delta(field, a, b),
+                      off = a !== b && left !== undefined && right !== undefined;
+                    return (
+                      <tr key={field} data-mismatch={off || undefined}>
+                        <th scope="row">
+                          {field} {off && <strong className="mismatch">{d.mismatch}</strong>}
+                        </th>
+                        <td>{show(a)}</td>
+                        <td>{show(b)}</td>
+                        <td>
+                          {change === undefined ? "—" : change > 0 ? `+${change}` : `${change}`}
+                        </td>
+                      </tr>
+                    );
+                  },
+                )}
+              </tbody>
+            ))}
+          </table>
+        </div>
       )}
       <details>
         <summary>{d.raw}</summary>
