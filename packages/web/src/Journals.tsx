@@ -32,6 +32,8 @@ import { label, type LabelKey, type Language, type Preferences } from "./ui/inde
 import { MasterDataFailure, masterRequest } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
 import { AiPanel } from "./AiPanel.tsx";
+import { Badge, FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
+import "./pages/journals.css";
 type T = (key: Exclude<LabelKey, "shell.httpError">) => string;
 const emptyLine = () => ({ account: "", debit: "", credit: "", dimensions: {}, suspense: null });
 const fresh = (): JournalDraftDto => ({
@@ -47,6 +49,31 @@ const fresh = (): JournalDraftDto => ({
   lines: [emptyLine(), emptyLine()],
 });
 const url = (company: string) => `company=${encodeURIComponent(company)}`;
+// Display-only totals for the editor footer; the server preview remains the balance authority.
+function toMinor(value: string, scale: number) {
+  const match = /^(\d+)(?:\.(\d*))?$/u.exec(value.trim() || "0");
+  const fraction = match?.[2] ?? "";
+  if (!match || fraction.length > scale) return undefined;
+  const minor = Number(match[1] + fraction.padEnd(scale, "0"));
+  return Number.isSafeInteger(minor) ? minor : undefined;
+}
+function lineTotals(lines: JournalDraftDto["lines"], scale: number, language: Language) {
+  let debit: number | undefined = 0,
+    credit: number | undefined = 0;
+  for (const line of lines) {
+    const d = toMinor(line.debit, scale),
+      c = toMinor(line.credit, scale);
+    debit = debit === undefined || d === undefined ? undefined : debit + d;
+    credit = credit === undefined || c === undefined ? undefined : credit + c;
+  }
+  const show = (value: number | undefined) =>
+    value === undefined || !Number.isSafeInteger(value) ? "—" : formatMinor(value, language, scale);
+  return {
+    debit: show(debit),
+    credit: show(credit),
+    balanced: debit === undefined || credit === undefined || debit === credit,
+  };
+}
 export function Journals({ preferences }: { preferences: Preferences }) {
   const [params, setParams] = useSearchParams();
   const t: T = (key) => label(preferences.language, key);
@@ -65,38 +92,54 @@ export function Journals({ preferences }: { preferences: Preferences }) {
   const items = companies.data?.pages.flatMap((page) => page.items) ?? [];
   const company = items.find((item) => item.code === (params.get("company") ?? items[0]?.code));
   return (
-    <section>
-      <h2>{t("journal.title")}</h2>
+    <section className="page journals">
+      <PageHeader
+        title={t("journal.title")}
+        context={
+          <>
+            <div className="field">
+              <label htmlFor="journal-company">{t("master.company")}</label>
+              <select
+                id="journal-company"
+                disabled={locked}
+                value={company?.code ?? ""}
+                onChange={(event) => setParams({ company: event.target.value })}
+              >
+                {items.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.code} · {item.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {companies.hasNextPage && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={companies.isFetchingNextPage}
+                onClick={() => void companies.fetchNextPage()}
+              >
+                {t("master.loadMore")}
+              </button>
+            )}
+          </>
+        }
+      />
+      <TeachingTip teaching={preferences.teaching} title={t("journal.teachingTitle")}>
+        {t("journal.teaching")}
+      </TeachingTip>
       {companies.isPending && <p role="status">{t("master.loading")}</p>}
       {companies.isError && (
-        <p role="alert">
-          {t("journal.error")}
-          <button type="button" onClick={() => void companies.refetch()}>
+        <MessageBar tone="danger" role="alert">
+          {t("journal.error")}{" "}
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => void companies.refetch()}
+          >
             {t("master.retry")}
           </button>
-        </p>
-      )}
-      <label htmlFor="journal-company">{t("master.company")}</label>
-      <select
-        id="journal-company"
-        disabled={locked}
-        value={company?.code ?? ""}
-        onChange={(event) => setParams({ company: event.target.value })}
-      >
-        {items.map((item) => (
-          <option key={item.code} value={item.code}>
-            {item.code} · {item.name}
-          </option>
-        ))}
-      </select>
-      {companies.hasNextPage && (
-        <button
-          type="button"
-          disabled={companies.isFetchingNextPage}
-          onClick={() => void companies.fetchNextPage()}
-        >
-          {t("master.loadMore")}
-        </button>
+        </MessageBar>
       )}
       {company && (
         <CompanyJournals
@@ -108,7 +151,6 @@ export function Journals({ preferences }: { preferences: Preferences }) {
           lock={setLocked}
         />
       )}
-      {preferences.teaching && <p className="teaching">{t("journal.teaching")}</p>}
     </section>
   );
 }
@@ -241,6 +283,7 @@ function CompanyJournals({
     ]),
   ];
   const rows = listing.data?.pages.flatMap((page) => page.items) ?? [];
+  const totals = lineTotals(draft?.lines ?? [], company.scale, language);
   function edit(value: JournalDraftDto | null) {
     detailRequest.current?.abort();
     lineKeys.current = value?.lines.map(() => crypto.randomUUID()) ?? [];
@@ -413,9 +456,10 @@ function CompanyJournals({
   }
   return (
     <>
-      <div className="journal-actions">
+      <div className="toolbar-row">
         <button
           type="button"
+          className={`btn ${draft ? "btn-secondary" : "btn-primary"}`}
           disabled={Boolean(draft) || busy}
           onClick={() => {
             edit(fresh());
@@ -426,7 +470,7 @@ function CompanyJournals({
         >
           {t("journal.new")}
         </button>
-        <label>
+        <label className="jv-status">
           {t("journal.title")}{" "}
           <select
             aria-label={t("journal.title")}
@@ -438,54 +482,69 @@ function CompanyJournals({
             <option value="posted">{t("journal.posted")}</option>
           </select>
         </label>
-        <button type="button" disabled={busy} onClick={() => void listing.refetch()}>
+        <button
+          type="button"
+          className="btn btn-subtle"
+          disabled={busy}
+          onClick={() => void listing.refetch()}
+        >
           {t("master.retry")}
         </button>
       </div>
       {listing.isPending && <p role="status">{t("master.loading")}</p>}
-      {listing.isError && <p role="alert">{t("journal.error")}</p>}
-      {!listing.isPending && !listing.isError && !rows.length && <p>{t("journal.empty")}</p>}
-      <VirtualRows
-        items={rows}
-        title={t("journal.title")}
-        header={[t("journal.date"), t("journal.sourceRef"), t("journal.memo"), ""]}
-        render={(row) => (
-          <>
-            <td>{row.date}</td>
-            <td>{row.sourceRef}</td>
-            <td>{row.memo}</td>
-            <td>
-              <button
-                type="button"
-                disabled={busy || Boolean(draft)}
-                onClick={() =>
-                  void run(async () => {
-                    detailRequest.current?.abort();
-                    if (row.revision !== null) {
-                      const value = await masterRequest(
-                        `/api/v1/journals/drafts/${row.id}?${url(company.code)}`,
-                        journalDraftSchema,
-                      );
-                      if (alive.current) {
-                        edit(value);
-                        setDetail(null);
+      {listing.isError && (
+        <MessageBar tone="danger" role="alert">
+          {t("journal.error")}
+        </MessageBar>
+      )}
+      <div className="card jv-list">
+        <VirtualRows
+          items={rows}
+          title={t("journal.title")}
+          header={[t("journal.date"), t("journal.sourceRef"), t("journal.memo"), ""]}
+          render={(row) => (
+            <>
+              <td>{row.date}</td>
+              <td>{row.sourceRef}</td>
+              <td>{row.memo}</td>
+              <td>
+                <button
+                  type="button"
+                  className="btn btn-subtle btn-sm"
+                  disabled={busy || Boolean(draft)}
+                  onClick={() =>
+                    void run(async () => {
+                      detailRequest.current?.abort();
+                      if (row.revision !== null) {
+                        const value = await masterRequest(
+                          `/api/v1/journals/drafts/${row.id}?${url(company.code)}`,
+                          journalDraftSchema,
+                        );
+                        if (alive.current) {
+                          edit(value);
+                          setDetail(null);
+                        }
+                      } else {
+                        await loadDetail(row.id, true);
                       }
-                    } else {
-                      await loadDetail(row.id, true);
-                    }
-                  })
-                }
-              >
-                {t(row.revision === null ? "journal.view" : "journal.edit")}{" "}
-                {row.sourceRef || row.id}
-              </button>
-            </td>
-          </>
+                    })
+                  }
+                >
+                  {t(row.revision === null ? "journal.view" : "journal.edit")}{" "}
+                  {row.sourceRef || row.id}
+                </button>
+              </td>
+            </>
+          )}
+        />
+        {!listing.isPending && !listing.isError && !rows.length && (
+          <p className="empty-state">{t("journal.empty")}</p>
         )}
-      />
+      </div>
       {listing.hasNextPage && (
         <button
           type="button"
+          className="btn btn-secondary jv-more"
           disabled={listing.isFetchingNextPage}
           onClick={() => void listing.fetchNextPage()}
         >
@@ -496,10 +555,14 @@ function CompanyJournals({
         <JournalError error={error} t={t} uncertain={uncertain} />
       )}
       {busy && <p role="status">{t("journal.pending")}</p>}
-      {notice && <p role="status">{t("journal.saved")}</p>}
+      {notice && (
+        <MessageBar tone="info" role="status">
+          {t("journal.saved")}
+        </MessageBar>
+      )}
       {draft && (
         <form
-          className="journal-editor"
+          className="jv-editor"
           ref={form}
           onSubmit={(event) => event.preventDefault()}
           onKeyDown={(event) => {
@@ -514,81 +577,107 @@ function CompanyJournals({
               {t(`journal.${draft.operation === "journal" ? "editor" : draft.operation}`)}
             </legend>
             {draft.originalId && (
-              <p>
+              <MessageBar tone="info">
                 {t("journal.original")}: {draft.originalId} — {t("journal.correctionDate")}
-              </p>
+              </MessageBar>
             )}
-            <div className="journal-header">
-              <label>
-                {t("journal.sourceRef")}
-                <input
-                  value={draft.sourceRef}
-                  maxLength={100}
-                  onChange={(event) => change({ sourceRef: event.target.value })}
-                />
-              </label>
-              <label>
-                {t("journal.date")}
-                <input
-                  type="date"
-                  value={draft.date}
-                  onChange={(event) => change({ date: event.target.value })}
-                />
-              </label>
-              <label>
-                {t("journal.memo")}
-                <input
-                  value={draft.memo}
-                  maxLength={200}
-                  onChange={(event) => change({ memo: event.target.value })}
-                />
-              </label>
-              {(["documentDate", "taxDate"] as const).map((field) => (
-                <label key={field}>
-                  {t(`journal.${field}`)}
+            <FastTab
+              id="journal-general"
+              title={t("journal.tabGeneral")}
+              summary={[draft.sourceRef, draft.date].filter(Boolean).join(" · ")}
+            >
+              <div className="ui-form-grid">
+                <label className="ui-field">
+                  <span className="label">{t("journal.sourceRef")}</span>
                   <input
-                    type="date"
-                    value={draft[field] ?? ""}
-                    onChange={(event) => change({ [field]: event.target.value || undefined })}
+                    value={draft.sourceRef}
+                    maxLength={100}
+                    onChange={(event) => change({ sourceRef: event.target.value })}
                   />
                 </label>
-              ))}
-              <label>
-                {t("journal.kind")}
-                <select
-                  disabled={draft.operation === "reverse" || draft.operation === "reclassify"}
-                  value={draft.kind}
-                  onChange={(event) =>
-                    change({ kind: event.target.value === "adjusting" ? "adjusting" : "normal" })
-                  }
-                >
-                  <option value="normal">{t("journal.normal")}</option>
-                  <option value="adjusting">{t("journal.adjusting")}</option>
-                </select>
-              </label>
-            </div>
-            {draft.operation !== "reverse" && (
-              <>
-                <p>{t("journal.dimensionHelp")}</p>
-                <DimensionFields
-                  keys={dimensionKeys}
-                  value={draft.headerDimensions}
-                  title={t("journal.header")}
-                  change={(value) => change({ headerDimensions: value })}
-                />
-                {dimensions.isError && (
-                  <p role="alert">
-                    {t("journal.error")}
-                    <button type="button" onClick={() => void dimensions.refetch()}>
-                      {t("master.retry")}
+                <label className="ui-field">
+                  <span className="label">{t("journal.date")}</span>
+                  <input
+                    type="date"
+                    value={draft.date}
+                    onChange={(event) => change({ date: event.target.value })}
+                  />
+                </label>
+                <label className="ui-field ui-span-2">
+                  <span className="label">{t("journal.memo")}</span>
+                  <input
+                    value={draft.memo}
+                    maxLength={200}
+                    onChange={(event) => change({ memo: event.target.value })}
+                  />
+                </label>
+                {(["documentDate", "taxDate"] as const).map((field) => (
+                  <label key={field} className="ui-field">
+                    <span className="label">{t(`journal.${field}`)}</span>
+                    <input
+                      type="date"
+                      value={draft[field] ?? ""}
+                      onChange={(event) => change({ [field]: event.target.value || undefined })}
+                    />
+                  </label>
+                ))}
+                <label className="ui-field">
+                  <span className="label">{t("journal.kind")}</span>
+                  <select
+                    disabled={draft.operation === "reverse" || draft.operation === "reclassify"}
+                    value={draft.kind}
+                    onChange={(event) =>
+                      change({ kind: event.target.value === "adjusting" ? "adjusting" : "normal" })
+                    }
+                  >
+                    <option value="normal">{t("journal.normal")}</option>
+                    <option value="adjusting">{t("journal.adjusting")}</option>
+                  </select>
+                </label>
+              </div>
+              {draft.operation !== "reverse" && (
+                <>
+                  <p className="jv-hint">{t("journal.dimensionHelp")}</p>
+                  <DimensionFields
+                    keys={dimensionKeys}
+                    value={draft.headerDimensions}
+                    title={t("journal.header")}
+                    change={(value) => change({ headerDimensions: value })}
+                  />
+                  {dimensions.isError && (
+                    <MessageBar tone="danger" role="alert">
+                      {t("journal.error")}{" "}
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => void dimensions.refetch()}
+                      >
+                        {t("master.retry")}
+                      </button>
+                    </MessageBar>
+                  )}
+                  {dimensions.hasNextPage && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => void dimensions.fetchNextPage()}
+                    >
+                      {t("master.loadMore")} {t("journal.dimensions")}
                     </button>
-                  </p>
-                )}
-                {dimensions.hasNextPage && (
-                  <button type="button" onClick={() => void dimensions.fetchNextPage()}>
-                    {t("master.loadMore")} {t("journal.dimensions")}
-                  </button>
-                )}
+                  )}
+                </>
+              )}
+            </FastTab>
+            {draft.operation !== "reverse" && (
+              <FastTab
+                id="journal-lines"
+                title={t("journal.tabLines")}
+                summary={
+                  totals.balanced ? undefined : (
+                    <Badge tone="warning">{t("journal.unbalanced")}</Badge>
+                  )
+                }
+              >
                 <datalist id={`journal-accounts-${company.code}`}>
                   {accountItems
                     .filter((account) => account.active && account.manualAllowed)
@@ -599,20 +688,28 @@ function CompanyJournals({
                     ))}
                 </datalist>
                 {accounts.isError && (
-                  <p role="alert">
-                    {t("journal.error")}
-                    <button type="button" onClick={() => void accounts.refetch()}>
+                  <MessageBar tone="danger" role="alert">
+                    {t("journal.error")}{" "}
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => void accounts.refetch()}
+                    >
                       {t("master.retry")}
                     </button>
-                  </p>
+                  </MessageBar>
                 )}
                 {accounts.hasNextPage && (
-                  <button type="button" onClick={() => void accounts.fetchNextPage()}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => void accounts.fetchNextPage()}
+                  >
                     {t("master.loadMore")} {t("journal.account")}
                   </button>
                 )}
-                <div className="journal-editor-scroll">
-                  <table aria-label={t("journal.drafts")}>
+                <div className="grid-wrap jv-lines">
+                  <table className="grid" aria-label={t("journal.drafts")}>
                     <thead>
                       <tr>
                         {(
@@ -624,7 +721,15 @@ function CompanyJournals({
                             "journal.dimensions",
                           ] as const
                         ).map((key) => (
-                          <th key={key} scope="col">
+                          <th
+                            key={key}
+                            scope="col"
+                            className={
+                              key === "journal.debit" || key === "journal.credit"
+                                ? "num"
+                                : undefined
+                            }
+                          >
                             {t(key)}
                           </th>
                         ))}
@@ -716,6 +821,7 @@ function CompanyJournals({
                             <td>
                               <button
                                 type="button"
+                                className="btn btn-subtle btn-sm"
                                 onClick={() => {
                                   lineKeys.current.splice(index, 1);
                                   change({ lines: draft.lines.filter((_, i) => i !== index) });
@@ -728,16 +834,32 @@ function CompanyJournals({
                         );
                       })}
                     </tbody>
+                    <tfoot>
+                      <tr>
+                        <th scope="row" colSpan={2}>
+                          {t("journal.total")}
+                        </th>
+                        <td className="num">{totals.debit}</td>
+                        <td className="num">{totals.credit}</td>
+                        <td colSpan={2} />
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
-                <button type="button" disabled={draft.lines.length >= 500} onClick={addLine}>
+                <button
+                  type="button"
+                  className="btn btn-secondary jv-add"
+                  disabled={draft.lines.length >= 500}
+                  onClick={addLine}
+                >
                   {t("journal.add")}
                 </button>
-              </>
+              </FastTab>
             )}
-            <div className="journal-actions">
+            <div className="ui-form-actions jv-actions">
               <button
                 type="button"
+                className="btn btn-secondary"
                 onClick={() =>
                   void run(async () => {
                     await save();
@@ -747,12 +869,13 @@ function CompanyJournals({
               >
                 {t("journal.save")}
               </button>
-              <button type="button" onClick={() => void preview()}>
+              <button type="button" className="btn btn-primary" onClick={() => void preview()}>
                 {t("journal.preview")}
               </button>
               {draft.revision > 0 && (
                 <button
                   type="button"
+                  className="btn btn-secondary"
                   onClick={(event) => {
                     returnFocus.current = event.currentTarget;
                     setDeleting(true);
@@ -761,13 +884,14 @@ function CompanyJournals({
                   {t("journal.delete")}
                 </button>
               )}
-              <button type="button" onClick={() => edit(null)}>
+              <button type="button" className="btn btn-subtle" onClick={() => edit(null)}>
                 {t("journal.cancel")}
               </button>
               {error !== undefined && (
                 <>
                   <button
                     type="button"
+                    className="btn btn-secondary"
                     onClick={() => edit({ ...draft, id: crypto.randomUUID(), revision: 0 })}
                   >
                     {t("journal.copy")}
@@ -775,6 +899,7 @@ function CompanyJournals({
                   {draft.revision > 0 && (
                     <button
                       type="button"
+                      className="btn btn-secondary"
                       onClick={() =>
                         void run(async () => {
                           const saved = await masterRequest(
@@ -813,28 +938,36 @@ function CompanyJournals({
       {deleting && draft && (
         <Modal title={t("journal.deleteTitle")} busy={busy} close={() => setDeleting(false)}>
           <p>{draft.sourceRef || draft.id}</p>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() =>
-              void run(async () => {
-                await masterRequest(`/api/v1/journals/drafts/${draft.id}`, journalDeletedSchema, {
-                  method: "DELETE",
-                  body: { company: company.code, revision: draft.revision },
-                });
-                if (alive.current) {
-                  setDeleting(false);
-                  edit(null);
-                  void client.invalidateQueries({ queryKey: ["journals", company.code] });
-                }
-              })
-            }
-          >
-            {t("journal.deleteConfirm")}
-          </button>
-          <button type="button" disabled={busy} onClick={() => setDeleting(false)}>
-            {t("journal.back")}
-          </button>
+          <div className="ui-form-actions">
+            <button
+              type="button"
+              className="btn btn-danger"
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  await masterRequest(`/api/v1/journals/drafts/${draft.id}`, journalDeletedSchema, {
+                    method: "DELETE",
+                    body: { company: company.code, revision: draft.revision },
+                  });
+                  if (alive.current) {
+                    setDeleting(false);
+                    edit(null);
+                    void client.invalidateQueries({ queryKey: ["journals", company.code] });
+                  }
+                })
+              }
+            >
+              {t("journal.deleteConfirm")}
+            </button>
+            <button
+              type="button"
+              className="btn btn-subtle"
+              disabled={busy}
+              onClick={() => setDeleting(false)}
+            >
+              {t("journal.back")}
+            </button>
+          </div>
           {error !== undefined && <JournalError error={error} t={t} uncertain={false} />}
         </Modal>
       )}
@@ -844,15 +977,35 @@ function CompanyJournals({
           busy={busy || uncertain}
           close={() => setPlan(null)}
         >
-          <p>
-            {plan.plan.sourceRef} · {plan.plan.date} · {plan.plan.currency}
-          </p>
-          <p>{plan.plan.memo}</p>
-          <p>
-            {t("journal.documentDate")}: {plan.plan.documentDate} · {t("journal.taxDate")}:{" "}
-            {plan.plan.taxDate}
-          </p>
-          {dirty && <p role="status">{t("journal.unsaved")}</p>}
+          <Facts
+            items={[
+              [t("journal.sourceRef"), plan.plan.sourceRef],
+              [t("journal.date"), plan.plan.date],
+              [t("journal.currency"), plan.plan.currency],
+              [t("journal.memo"), plan.plan.memo],
+              [t("journal.documentDate"), plan.plan.documentDate],
+              [t("journal.taxDate"), plan.plan.taxDate],
+            ]}
+          />
+          <div className="kpis">
+            {(["debit", "credit"] as const).map((side) => (
+              <div key={side} className="kpi emphasis">
+                <div className="label">{t(`journal.${side}`)}</div>
+                <p className="value">
+                  {formatMinor(
+                    plan.plan.journals.reduce((sum, journal) => sum + journal[side], 0),
+                    language,
+                    company.scale,
+                  )}
+                </p>
+              </div>
+            ))}
+          </div>
+          {dirty && (
+            <MessageBar tone="info" role="status">
+              {t("journal.unsaved")}
+            </MessageBar>
+          )}
           {plan.plan.journals.map((journal, index) => (
             <section key={journal.role}>
               <h4>
@@ -865,122 +1018,150 @@ function CompanyJournals({
                       : "journal.business",
                 )}
               </h4>
-              <LinePlan lines={journal.lines} company={company} language={language} t={t} />
-              <p>
-                {t("journal.debit")}: {formatMinor(journal.debit, language, company.scale)} /{" "}
-                {t("journal.credit")}: {formatMinor(journal.credit, language, company.scale)}
-              </p>
+              <LinePlan
+                lines={journal.lines}
+                company={company}
+                language={language}
+                t={t}
+                total={journal}
+              />
             </section>
           ))}
           {error !== undefined && <JournalError error={error} t={t} uncertain={uncertain} />}
-          <button
-            type="button"
-            disabled={busy || dirty || (uncertain && plan.command !== "POST")}
-            onClick={() => void confirm("POST")}
-          >
-            {t("journal.confirm")}
-          </button>
-          {draft?.operation === "journal" && (
+          <div className="ui-form-actions">
             <button
               type="button"
-              disabled={busy || dirty || (uncertain && plan.command !== "QUEUE")}
-              onClick={() => void confirm("QUEUE")}
+              className="btn btn-primary"
+              disabled={busy || dirty || (uncertain && plan.command !== "POST")}
+              onClick={() => void confirm("POST")}
             >
-              {t("business.enqueue")}
+              {t("journal.confirm")}
             </button>
-          )}
-          <button type="button" disabled={busy || uncertain} onClick={() => setPlan(null)}>
-            {t("journal.back")}
-          </button>
+            {draft?.operation === "journal" && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={busy || dirty || (uncertain && plan.command !== "QUEUE")}
+                onClick={() => void confirm("QUEUE")}
+              >
+                {t("business.enqueue")}
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn-subtle"
+              disabled={busy || uncertain}
+              onClick={() => setPlan(null)}
+            >
+              {t("journal.back")}
+            </button>
+          </div>
         </Modal>
       )}
       {queued && (
-        <section>
-          <p role="status">{t("business.enqueued")}</p>
+        <MessageBar tone="info">
+          <span role="status">{t("business.enqueued")}</span>{" "}
           <Link
             to={`/events?company=${encodeURIComponent(company.code)}&id=${queued.event.id}&view=queue`}
           >
             {t("business.queue")}
           </Link>
-        </section>
+        </MessageBar>
       )}
       {receipt && (
-        <section aria-label={t("journal.posted")}>
-          <p role="status">{t("journal.postedNotice")}</p>
-          <p>
-            {receipt.sourceRef} · {receipt.postedAt}
-          </p>
-          {receipt.journalIds.map((id) => (
-            <button
-              type="button"
-              key={id}
-              disabled={busy || Boolean(draft)}
-              onClick={() => void run(() => loadDetail(id))}
-            >
-              {t("journal.view")} {id}
-            </button>
-          ))}
+        <section className="card" aria-label={t("journal.posted")}>
+          <div className="body">
+            <MessageBar tone="info" role="status">
+              {t("journal.postedNotice")}
+            </MessageBar>
+            <p>
+              {receipt.sourceRef} · {receipt.postedAt}
+            </p>
+            <div className="ui-form-actions">
+              {receipt.journalIds.map((id) => (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  key={id}
+                  disabled={busy || Boolean(draft)}
+                  onClick={() => void run(() => loadDetail(id))}
+                >
+                  {t("journal.view")} {id}
+                </button>
+              ))}
+            </div>
+          </div>
         </section>
       )}
       {detail && (
-        <section>
-          <h3>
-            {detail.entry.sourceRef} · {detail.entry.date}
-          </h3>
-          <p>{detail.entry.memo}</p>
-          {detail.entry.module && (
+        <section className="card jv-detail">
+          <header>
+            <h3>
+              {detail.entry.sourceRef} · {detail.entry.date}
+            </h3>
+          </header>
+          <div className="body">
+            <p>{detail.entry.memo}</p>
+            {detail.entry.module && (
+              <p>
+                {t("journal.module")}: {detail.entry.module}
+              </p>
+            )}
             <p>
-              {t("journal.module")}: {detail.entry.module}
+              {t("journal.documentDate")}: {detail.entry.documentDate} · {t("journal.taxDate")}:{" "}
+              {detail.entry.taxDate}
             </p>
-          )}
-          <p>
-            {t("journal.documentDate")}: {detail.entry.documentDate} · {t("journal.taxDate")}:{" "}
-            {detail.entry.taxDate}
-          </p>
-          <LinePlan lines={detail.entry.lines} company={company} language={language} t={t} />
-          {detail.entry.kind === "closing" && (
-            <Link
-              to={`/period-close?${new URLSearchParams({ company: company.code, month: detail.entry.date.slice(0, 7) })}`}
-            >
-              {t("close.title")}
-            </Link>
-          )}
-          {detail.businessEventId && (
-            <Link
-              to={`/events?company=${encodeURIComponent(company.code)}&id=${detail.businessEventId}`}
-            >
-              {t("business.original")}
-            </Link>
-          )}
-          {!detail.businessEventId &&
-            !detail.entry.module &&
-            detail.entry.kind !== "closing" &&
-            detail.entry.role !== "reversal" &&
-            (["reverse", "replace", "reclassify"] as const)
-              .filter((action) => detail.entry.role !== "reclassification" || action === "reverse")
-              .map((action) => (
-                <button
-                  key={action}
-                  type="button"
-                  disabled={busy || Boolean(draft)}
-                  onClick={() => correction(action)}
+            <LinePlan lines={detail.entry.lines} company={company} language={language} t={t} />
+            <div className="ui-form-actions">
+              {detail.entry.kind === "closing" && (
+                <Link
+                  to={`/period-close?${new URLSearchParams({ company: company.code, month: detail.entry.date.slice(0, 7) })}`}
                 >
-                  {t(`journal.${action}`)}
+                  {t("close.title")}
+                </Link>
+              )}
+              {detail.businessEventId && (
+                <Link
+                  to={`/events?company=${encodeURIComponent(company.code)}&id=${detail.businessEventId}`}
+                >
+                  {t("business.original")}
+                </Link>
+              )}
+              {!detail.businessEventId &&
+                !detail.entry.module &&
+                detail.entry.kind !== "closing" &&
+                detail.entry.role !== "reversal" &&
+                (["reverse", "replace", "reclassify"] as const)
+                  .filter(
+                    (action) => detail.entry.role !== "reclassification" || action === "reverse",
+                  )
+                  .map((action) => (
+                    <button
+                      key={action}
+                      type="button"
+                      className="btn btn-secondary"
+                      disabled={busy || Boolean(draft)}
+                      onClick={() => correction(action)}
+                    >
+                      {t(`journal.${action}`)}
+                    </button>
+                  ))}
+            </div>
+            <h4>{t("journal.chain")}</h4>
+            {detail.chain.map((edge) => (
+              <p key={edge.outputId}>
+                {edge.date} · {t(`journal.${edge.operation}`)} ·{" "}
+                <button
+                  type="button"
+                  className="btn btn-subtle btn-sm"
+                  disabled={busy || Boolean(draft)}
+                  onClick={() => void run(() => loadDetail(edge.outputId))}
+                >
+                  {edge.outputId}
                 </button>
-              ))}
-          <h4>{t("journal.chain")}</h4>
-          {detail.chain.map((edge) => (
-            <p key={edge.outputId}>
-              {edge.date} · {t(`journal.${edge.operation}`)} ·{" "}
-              <button
-                type="button"
-                disabled={busy || Boolean(draft)}
-                onClick={() => void run(() => loadDetail(edge.outputId))}
-              >
-                {edge.outputId}
-              </button>
-            </p>
-          ))}
+              </p>
+            ))}
+          </div>
         </section>
       )}
     </>
@@ -1000,8 +1181,10 @@ export function DimensionFields({
   return (
     <div className="journal-dimensions">
       {keys.map((key) => (
-        <label key={key}>
-          {title} {key}
+        <label key={key} className="ui-field">
+          <span className="label">
+            {title} {key}
+          </span>
           <input
             value={value[key] === null ? "-" : (value[key] ?? "")}
             onChange={(event) => {
@@ -1137,7 +1320,7 @@ export function JournalError({
             ? t("journal.invalid")
             : t("journal.error");
   return (
-    <p role="alert">
+    <MessageBar tone="danger" role="alert">
       {message}
       {issue && (
         <span>
@@ -1156,7 +1339,19 @@ export function JournalError({
             .join(" · ")}
         </span>
       )}
-    </p>
+    </MessageBar>
+  );
+}
+export function Facts({ items }: { items: readonly (readonly [string, ReactNode])[] }) {
+  return (
+    <dl className="jv-facts">
+      {items.map(([name, value]) => (
+        <div key={name}>
+          <dt>{name}</dt>
+          <dd>{value || "—"}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 export function LinePlan({
@@ -1164,45 +1359,63 @@ export function LinePlan({
   company,
   language,
   t,
+  total,
 }: {
   lines: JournalEntryDto["lines"];
   company: CompanyDto;
   language: Language;
   t: T;
+  total?: { debit: number; credit: number };
 }) {
   const [selected, setSelected] = useState<number | null>(null);
   return (
     <>
-      <VirtualRows
-        items={lines}
-        title={t("journal.previewTitle")}
-        header={[
-          t("journal.account"),
-          t("journal.debit"),
-          t("journal.credit"),
-          t("journal.dimensions"),
-          "",
-        ]}
-        render={(line, index) => (
-          <>
-            <td>
-              {line.account} · {t(`journal.${line.role}`)}
-            </td>
-            <td className="amount">{formatMinor(line.debit, language, company.scale)}</td>
-            <td className="amount">{formatMinor(line.credit, language, company.scale)}</td>
-            <td>
-              {Object.entries(line.dimensions)
-                .map(([key, value]) => `${key}=${value ?? "-"}`)
-                .join(" · ")}
-            </td>
-            <td>
-              <button type="button" onClick={() => setSelected(index)}>
-                {t("journal.details")} {index + 1}
-              </button>
-            </td>
-          </>
-        )}
-      />
+      <div className="card jv-plan">
+        <VirtualRows
+          items={lines}
+          title={t("journal.previewTitle")}
+          header={[
+            t("journal.account"),
+            t("journal.debit"),
+            t("journal.credit"),
+            t("journal.dimensions"),
+            "",
+          ]}
+          footer={
+            total && (
+              <tr>
+                <th scope="row">{t("journal.total")}</th>
+                <td className="num">{formatMinor(total.debit, language, company.scale)}</td>
+                <td className="num">{formatMinor(total.credit, language, company.scale)}</td>
+                <td colSpan={2} />
+              </tr>
+            )
+          }
+          render={(line, index) => (
+            <>
+              <td>
+                {line.account} · {t(`journal.${line.role}`)}
+              </td>
+              <td className="num">{formatMinor(line.debit, language, company.scale)}</td>
+              <td className="num">{formatMinor(line.credit, language, company.scale)}</td>
+              <td>
+                {Object.entries(line.dimensions)
+                  .map(([key, value]) => `${key}=${value ?? "-"}`)
+                  .join(" · ")}
+              </td>
+              <td>
+                <button
+                  type="button"
+                  className="btn btn-subtle btn-sm"
+                  onClick={() => setSelected(index)}
+                >
+                  {t("journal.details")} {index + 1}
+                </button>
+              </td>
+            </>
+          )}
+        />
+      </div>
       {selected !== null && lines[selected] && (
         <aside aria-label={t("journal.details")}>
           <h4>
@@ -1237,12 +1450,14 @@ export function VirtualRows<T>({
   title,
   header,
   render,
+  footer,
   forceVirtual = false,
 }: {
   items: readonly T[];
   title: string;
   header: readonly string[];
   render: (item: T, index: number) => ReactNode;
+  footer?: ReactNode;
   forceVirtual?: boolean;
 }) {
   const scroll = useRef<HTMLElement>(null),
@@ -1266,7 +1481,7 @@ export function VirtualRows<T>({
       // biome-ignore lint/a11y/noNoninteractiveTabindex: Named virtual tables are keyboard scroll regions.
       tabIndex={0}
     >
-      <table aria-label={title} aria-rowcount={items.length + 1}>
+      <table aria-label={title} aria-rowcount={items.length + (footer ? 2 : 1)}>
         <thead>
           <tr>
             {header.map((name) => (
@@ -1296,6 +1511,7 @@ export function VirtualRows<T>({
             </tr>
           )}
         </tbody>
+        {footer && <tfoot>{footer}</tfoot>}
       </table>
     </section>
   );

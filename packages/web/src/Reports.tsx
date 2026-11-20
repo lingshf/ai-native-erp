@@ -11,7 +11,9 @@ import {
   type LegacyLedgerResponse,
   type LegacyTrialStage,
 } from "@erp/core/contracts";
+import { MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import { label, type LabelKey, type Language, type Preferences } from "./ui/index.ts";
+import "./pages/ledger.css";
 import {
   formatMinor,
   parseContext,
@@ -56,21 +58,36 @@ function Failure({
   t: Translate;
 }) {
   return (
-    <section role="alert" className="error">
-      <p>
-        <span aria-hidden="true">⚠ </span>
-        {t(isConflict(error) ? "reports.conflict" : failureLabel(error))}
-      </p>
-      <button type="button" onClick={isConflict(error) ? reload : retry}>
-        {t(isConflict(error) ? "reports.reload" : "reports.retry")}
-      </button>
-    </section>
+    <Alert
+      action={
+        <button
+          className="btn btn-secondary btn-sm"
+          type="button"
+          onClick={isConflict(error) ? reload : retry}
+        >
+          {t(isConflict(error) ? "reports.reload" : "reports.retry")}
+        </button>
+      }
+    >
+      {t(isConflict(error) ? "reports.conflict" : failureLabel(error))}
+    </Alert>
+  );
+}
+function Alert({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
+  return (
+    <div className="message-bar danger" role="alert">
+      <span className="icon" aria-hidden="true">
+        ⚠
+      </span>
+      <div className="text">{children}</div>
+      {action}
+    </div>
   );
 }
 function ScrollTable({ name, children }: { name: string; children: React.ReactNode }) {
   return (
     // biome-ignore lint/a11y/useSemanticElements lint/a11y/noNoninteractiveTabindex: Named scroll regions must stay keyboard-focusable.
-    <div className="report-scroll" role="region" aria-label={name} tabIndex={0}>
+    <div className="grid-wrap" role="region" aria-label={name} tabIndex={0}>
       {children}
     </div>
   );
@@ -120,7 +137,12 @@ export function Reports({ preferences }: { preferences: Preferences }) {
     setGeneration((value) => value + 1);
     setReloading(false);
   }
-  if (reloading || context.isPending) return <p role="status">{t("reports.loading")}</p>;
+  if (reloading || context.isPending)
+    return (
+      <p className="ledger-meta" role="status">
+        {t("reports.loading")}
+      </p>
+    );
   if (
     context.isError &&
     context.error instanceof ReportFailure &&
@@ -128,13 +150,23 @@ export function Reports({ preferences }: { preferences: Preferences }) {
     failureLabel(context.error) === "reports.unavailable"
   )
     return (
-      <section className="reports">
-        <h2>{t("reports.group")}</h2>
-        <p role="status">{t("reports.unconfigured")}</p>
-        <Link to="/ledger-reports">{t("ledger.title")}</Link>
-        <button type="button" onClick={() => void context.refetch()}>
-          {t("reports.reload")}
-        </button>
+      <section className="page reports ledger-page">
+        <PageHeader title={t("reports.group")} />
+        <MessageBar tone="info" role="status">
+          {t("reports.unconfigured")}
+        </MessageBar>
+        <div className="ledger-actions">
+          <Link className="btn btn-primary" to="/ledger-reports">
+            {t("ledger.title")}
+          </Link>
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={() => void context.refetch()}
+          >
+            {t("reports.reload")}
+          </button>
+        </div>
       </section>
     );
   if (context.isError)
@@ -159,57 +191,66 @@ export function Reports({ preferences }: { preferences: Preferences }) {
   const scope = { source, month: month ?? "" };
   const account = ledgerRoute?.params.account;
   return (
-    <section className="reports">
-      <h2>{t("reports.group")}</h2>
-      <p className="snapshot-boundary">{t("reports.snapshot")}</p>
+    <section className="page reports ledger-page">
+      <PageHeader
+        title={t("reports.group")}
+        description={t("reports.snapshot")}
+        context={
+          <div className="field">
+            <label htmlFor="report-period">{t("reports.period")}</label>
+            <select
+              id="report-period"
+              value={invalid || !month ? "" : month}
+              disabled={periods.length === 0 || selectedSource !== source.snapshotSha256}
+              onChange={(event) => {
+                const next = event.target.value;
+                if (periods.some((period) => period.month === next)) {
+                  setParams({
+                    source: source.snapshotSha256,
+                    month: next,
+                    stage: legacyTrialStages.some((value) => value === stage) ? stage : "adjusted",
+                  });
+                }
+              }}
+            >
+              <option value="" disabled>
+                {t("reports.choosePeriod")}
+              </option>
+              {periods.map((period) => (
+                <option value={period.month} key={period.month}>
+                  {period.month} · {t(`reports.${period.status}`)}
+                </option>
+              ))}
+            </select>
+          </div>
+        }
+      />
       <details className="snapshot-identity">
         <summary>{t("reports.source")}</summary>
         <code>{source.snapshotSha256}</code>
       </details>
-      <label htmlFor="report-period">{t("reports.period")}</label>
-      <select
-        id="report-period"
-        value={invalid || !month ? "" : month}
-        disabled={periods.length === 0 || selectedSource !== source.snapshotSha256}
-        onChange={(event) => {
-          const next = event.target.value;
-          if (periods.some((period) => period.month === next)) {
-            setParams({
-              source: source.snapshotSha256,
-              month: next,
-              stage: legacyTrialStages.some((value) => value === stage) ? stage : "adjusted",
-            });
-          }
-        }}
-      >
-        <option value="" disabled>
-          {t("reports.choosePeriod")}
-        </option>
-        {periods.map((period) => (
-          <option value={period.month} key={period.month}>
-            {period.month} · {t(`reports.${period.status}`)}
-          </option>
-        ))}
-      </select>
-      <p className="report-boundary">{t("reports.sign")}</p>
-      {preferences.teaching && <p className="teaching">{t("reports.teaching")}</p>}
+      <p className="ledger-meta">{t("reports.sign")}</p>
+      <TeachingTip teaching={preferences.teaching} title={t("reports.teachingTitle")}>
+        {t("reports.teaching")}
+      </TeachingTip>
       {invalid ? (
-        <section role="alert" className="error">
-          <p>
-            <span aria-hidden="true">⚠ </span>
-            {t("reports.invalidSelection")}
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              void reload();
-            }}
-          >
-            {t("reports.reload")}
-          </button>
-        </section>
+        <Alert
+          action={
+            <button
+              className="btn btn-secondary btn-sm"
+              type="button"
+              onClick={() => {
+                void reload();
+              }}
+            >
+              {t("reports.reload")}
+            </button>
+          }
+        >
+          {t("reports.invalidSelection")}
+        </Alert>
       ) : periods.length === 0 ? (
-        <p>{t("reports.noPeriods")}</p>
+        <p className="empty-state">{t("reports.noPeriods")}</p>
       ) : trialRoute ? (
         <Trial
           key={`${source.snapshotSha256}:${month}`}
@@ -237,10 +278,7 @@ export function Reports({ preferences }: { preferences: Preferences }) {
           }}
         />
       ) : (
-        <p role="alert">
-          <span aria-hidden="true">⚠ </span>
-          {t("reports.routeMissing")}
-        </p>
+        <Alert>{t("reports.routeMissing")}</Alert>
       )}
     </section>
   );
@@ -277,25 +315,30 @@ function Trial({
   });
   const data = query.data?.trialBalances[stage];
   return (
-    <section className="report-card">
-      <h3>{t("reports.trial")}</h3>
-      <label htmlFor="trial-stage">{t("reports.stage")}</label>
-      <select
-        id="trial-stage"
-        value={stage}
-        onChange={(event) => {
-          const next = legacyTrialStages.find((value) => value === event.target.value);
-          if (next) onStage(next);
-        }}
-      >
-        {legacyTrialStages.map((value) => (
-          <option key={value} value={value}>
-            {t(`reports.${value}`)}
-          </option>
-        ))}
-      </select>
+    <section className="ledger-stack">
+      <div className="filter-bar">
+        <div className="field">
+          <label htmlFor="trial-stage">{t("reports.stage")}</label>
+          <select
+            id="trial-stage"
+            value={stage}
+            onChange={(event) => {
+              const next = legacyTrialStages.find((value) => value === event.target.value);
+              if (next) onStage(next);
+            }}
+          >
+            {legacyTrialStages.map((value) => (
+              <option key={value} value={value}>
+                {t(`reports.${value}`)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
       {query.isPending ? (
-        <p role="status">{t("reports.loading")}</p>
+        <p className="ledger-meta" role="status">
+          {t("reports.loading")}
+        </p>
       ) : query.isError ? (
         <Failure
           error={query.error}
@@ -309,54 +352,63 @@ function Trial({
         data && (
           <>
             {data.debit !== data.credit && (
-              <p className="warning">
-                <span aria-hidden="true">⚠ </span>
-                {t("reports.unbalanced")}
-              </p>
+              <MessageBar tone="warning">{t("reports.unbalanced")}</MessageBar>
             )}
-            {data.rows.length === 0 && <p>{t("reports.emptyTrial")}</p>}
-            <ScrollTable name={t("reports.trialScroll")}>
-              <table>
-                <caption>
-                  {t("reports.trial")} · {scope.month} · {t(`reports.${stage}`)}
-                </caption>
-                <thead>
-                  <tr>
-                    {(["code", "name", "debit", "credit"] as const).map((key) => (
-                      <th scope="col" key={key}>
-                        {t(`reports.${key}`)}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.rows.map((row) => (
-                    <tr key={row.code}>
-                      <th scope="row">
-                        <Link
-                          to={`/reports/ledger/${row.code}?${search}`}
-                          aria-label={`${row.code} ${row.name}`}
+            <div className="card">
+              <header>
+                <h3>{t("reports.trial")}</h3>
+                <span className="summary">
+                  {scope.month} · {t(`reports.${stage}`)}
+                </span>
+              </header>
+              {data.rows.length === 0 && <p className="empty-state">{t("reports.emptyTrial")}</p>}
+              <ScrollTable name={t("reports.trialScroll")}>
+                <table className="grid">
+                  <caption className="visually-hidden">
+                    {t("reports.trial")} · {scope.month} · {t(`reports.${stage}`)}
+                  </caption>
+                  <thead>
+                    <tr>
+                      {(["code", "name", "debit", "credit"] as const).map((key) => (
+                        <th
+                          scope="col"
+                          key={key}
+                          className={key === "debit" || key === "credit" ? "num" : undefined}
                         >
-                          {row.code}
-                        </Link>
-                      </th>
-                      <td>{row.name}</td>
-                      <td className="amount">{formatMinor(row.debit, language)}</td>
-                      <td className="amount">{formatMinor(row.credit, language)}</td>
+                          {t(`reports.${key}`)}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <th scope="row" colSpan={2}>
-                      {t("reports.total")}
-                    </th>
-                    <td className="amount">{formatMinor(data.debit, language)}</td>
-                    <td className="amount">{formatMinor(data.credit, language)}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </ScrollTable>
+                  </thead>
+                  <tbody>
+                    {data.rows.map((row) => (
+                      <tr key={row.code}>
+                        <th scope="row">
+                          <Link
+                            to={`/reports/ledger/${row.code}?${search}`}
+                            aria-label={`${row.code} ${row.name}`}
+                          >
+                            {row.code}
+                          </Link>
+                        </th>
+                        <td>{row.name}</td>
+                        <td className="num">{formatMinor(row.debit, language)}</td>
+                        <td className="num">{formatMinor(row.credit, language)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <th scope="row" colSpan={2}>
+                        {t("reports.total")}
+                      </th>
+                      <td className="num">{formatMinor(data.debit, language)}</td>
+                      <td className="num">{formatMinor(data.credit, language)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </ScrollTable>
+            </div>
           </>
         )
       )}
@@ -427,14 +479,20 @@ function Ledger({
     closing: "reports.closingKind",
   } as const;
   return (
-    <section className="report-card">
-      <h3>
-        {t("reports.ledger")} · {scope.account}
-      </h3>
-      <Link to={`/reports/trial?${search}`}>{t("reports.back")}</Link>
-      <p className="report-boundary">{t("reports.fullMonth")}</p>
+    <section className="ledger-stack">
+      <div className="ledger-heading">
+        <h3>
+          {t("reports.ledger")} · {scope.account}
+        </h3>
+        <Link className="btn btn-subtle btn-sm" to={`/reports/trial?${search}`}>
+          {t("reports.back")}
+        </Link>
+      </div>
+      <p className="ledger-meta">{t("reports.fullMonth")}</p>
       {query.isPending ? (
-        <p role="status">{t("reports.loading")}</p>
+        <p className="ledger-meta" role="status">
+          {t("reports.loading")}
+        </p>
       ) : isConflict(query.error) || !first ? (
         <Failure
           error={query.error}
@@ -446,80 +504,87 @@ function Ledger({
         />
       ) : (
         <>
-          <dl className="report-totals">
+          <dl className="kpis">
             {(["opening", "debit", "credit", "closing"] as const).map((field) => (
-              <div key={field}>
-                <dt>{t(`reports.${field}`)}</dt>
-                <dd>{formatMinor(first[field], language)}</dd>
+              <div key={field} className={field === "closing" ? "kpi emphasis" : "kpi"}>
+                <dt className="label">{t(`reports.${field}`)}</dt>
+                <dd className="value">{formatMinor(first[field], language)}</dd>
               </div>
             ))}
-            <div>
-              <dt>{t("reports.totalEntries")}</dt>
-              <dd>{first.totalEntries}</dd>
+            <div className="kpi">
+              <dt className="label">{t("reports.totalEntries")}</dt>
+              <dd className="value">{first.totalEntries}</dd>
             </div>
           </dl>
-          {entries.length === 0 && <p>{t("reports.emptyLedger")}</p>}
-          <ScrollTable name={t("reports.ledgerScroll")}>
-            <table>
-              <caption>
-                {t("reports.ledger")} · {scope.account} · {scope.month}
-              </caption>
-              <thead>
-                <tr>
-                  {(
-                    [
-                      "date",
-                      "journal",
-                      "line",
-                      "memo",
-                      "kind",
-                      "reversalOf",
-                      "sourceKind",
-                      "dimensions",
-                      "debit",
-                      "credit",
-                      "balance",
-                    ] as const
-                  ).map((field) => (
-                    <th scope="col" key={field}>
-                      {t(`reports.${field}`)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((entry) => (
-                  <tr key={entry.lineId}>
-                    <td>{entry.date}</td>
-                    <td>{entry.id}</td>
-                    <th scope="row">{entry.lineId}</th>
-                    <td>{entry.memo}</td>
-                    <td>{t(kinds[entry.kind])}</td>
-                    <td>{entry.reversal_of ?? t("reports.none")}</td>
-                    <td>{entry.source_kind ? t(kinds[entry.source_kind]) : t("reports.none")}</td>
-                    <td>
-                      {entry.dimensions && Object.keys(entry.dimensions).length > 0
-                        ? Object.entries(entry.dimensions).map(([name, value]) => (
-                            <div key={name}>
-                              {name}: {value}
-                            </div>
-                          ))
-                        : t("reports.none")}
-                    </td>
-                    <td className="amount">{formatMinor(entry.debit, language)}</td>
-                    <td className="amount">{formatMinor(entry.credit, language)}</td>
-                    <td className="amount">{formatMinor(entry.balance, language)}</td>
+          {entries.length === 0 && <p className="empty-state">{t("reports.emptyLedger")}</p>}
+          <div className="card">
+            <ScrollTable name={t("reports.ledgerScroll")}>
+              <table className="grid">
+                <caption className="visually-hidden">
+                  {t("reports.ledger")} · {scope.account} · {scope.month}
+                </caption>
+                <thead>
+                  <tr>
+                    {(
+                      [
+                        "date",
+                        "journal",
+                        "line",
+                        "memo",
+                        "kind",
+                        "reversalOf",
+                        "sourceKind",
+                        "dimensions",
+                        "debit",
+                        "credit",
+                        "balance",
+                      ] as const
+                    ).map((field) => (
+                      <th
+                        scope="col"
+                        key={field}
+                        className={
+                          field === "debit" || field === "credit" || field === "balance"
+                            ? "num"
+                            : undefined
+                        }
+                      >
+                        {t(`reports.${field}`)}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </ScrollTable>
+                </thead>
+                <tbody>
+                  {entries.map((entry) => (
+                    <tr key={entry.lineId}>
+                      <td>{entry.date}</td>
+                      <td>{entry.id}</td>
+                      <th scope="row">{entry.lineId}</th>
+                      <td>{entry.memo}</td>
+                      <td>{t(kinds[entry.kind])}</td>
+                      <td>{entry.reversal_of ?? t("reports.none")}</td>
+                      <td>{entry.source_kind ? t(kinds[entry.source_kind]) : t("reports.none")}</td>
+                      <td>
+                        {entry.dimensions && Object.keys(entry.dimensions).length > 0
+                          ? Object.entries(entry.dimensions).map(([name, value]) => (
+                              <div key={name}>
+                                {name}: {value}
+                              </div>
+                            ))
+                          : t("reports.none")}
+                      </td>
+                      <td className="num">{formatMinor(entry.debit, language)}</td>
+                      <td className="num">{formatMinor(entry.credit, language)}</td>
+                      <td className="num">{formatMinor(entry.balance, language)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ScrollTable>
+          </div>
           {query.isFetchNextPageError ? (
             <>
-              <p className="warning">
-                <span aria-hidden="true">⚠ </span>
-                {t("reports.incomplete")}
-              </p>
+              <MessageBar tone="warning">{t("reports.incomplete")}</MessageBar>
               <Failure
                 error={query.error}
                 t={t}
@@ -530,10 +595,13 @@ function Ledger({
               />
             </>
           ) : (
-            <p role="status">{t(query.hasNextPage ? "reports.partial" : "reports.complete")}</p>
+            <p className="ledger-meta" role="status">
+              {t(query.hasNextPage ? "reports.partial" : "reports.complete")}
+            </p>
           )}
           {query.hasNextPage && !query.isFetchNextPageError && (
             <button
+              className="btn btn-secondary"
               type="button"
               disabled={query.isFetching}
               onClick={() => {

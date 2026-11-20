@@ -1,0 +1,104 @@
+/*
+ * UI-07a 总账报表页（/ledger-reports 与 /reports/*）：只作用于 .ledger-page 之内。
+ * 卡片、表格、KPI、消息条沿用 components.css；这里只补布局、行表头与窄屏触控尺寸。
+ */
+.ledger-stack {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.ledger-meta {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+.ledger-heading,
+.ledger-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.ledger-heading h3 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+.ledger-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ledger-totals li {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-alt);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.ledger-totals li.emphasis {
+  background: var(--color-primary-soft);
+  font-weight: var(--weight-semibold);
+}
+.message-bar.warning {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning-border);
+  border-left-color: var(--color-warning);
+}
+.ledger-page .snapshot-identity code {
+  overflow-wrap: anywhere;
+}
+
+.ledger-page thead,
+.ledger-page tfoot {
+  background: none;
+}
+/* 行表头与合计行：不吸顶、不灰底，与数据行同观感 */
+.ledger-page .card tbody th,
+.ledger-page .card tfoot th {
+  position: static;
+  min-width: 0;
+  background: none;
+  color: var(--color-text);
+  font-size: inherit;
+  font-weight: var(--weight-regular);
+}
+.ledger-page .card tfoot th,
+.ledger-page .card tfoot td {
+  font-weight: var(--weight-semibold);
+  border-top: 1px solid var(--color-border-strong);
+}
+.ledger-page .grid tr.selected th,
+.ledger-page .grid tr.selected td {
+  background: var(--color-primary-soft);
+}
+
+/* VirtualRows：窄屏横向滚动，数字列表头右对齐 */
+.ledger-page .journal-scroll table {
+  min-width: 760px;
+}
+.ledger-page .ledger-accounts th:nth-child(n + 2),
+.ledger-page .ledger-detail th:nth-child(n + 3):nth-child(-n + 5) {
+  text-align: right;
+}
+.ledger-page .ledger-accounts tbody th:first-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 760px), (pointer: coarse) {
+  .ledger-page td a,
+  .ledger-page th a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .ledger-page .snapshot-identity summary {
+    line-height: 44px;
+  }
+}
