@@ -46,7 +46,7 @@
   width: 28%;
 }
 .ui-master-scroll :is(th, td):nth-child(3) {
-  width: 72px;
+  width: 104px;
   text-align: center;
 }
 .ui-master-scroll th:nth-child(4) {
@@ -59,7 +59,7 @@
 .ui-master-scroll .btn-sm {
   margin-left: calc(-1 * var(--space-2));
 }
-/* 只读启用复选框：label 撑开 --control-h 见方的点击区 */
+/* 财务维度只读启用复选框（贸易主数据为徽标）：label 撑开 --control-h 见方的点击区 */
 .ui-master-hit {
   display: inline-flex;
   align-items: center;
