@@ -125,7 +125,7 @@
 :is(.journals, .business-events) .message-bar {
   margin-block: var(--space-2);
 }
-/* UI-07c AI 面板：卡片 + 候选结果卡片；margin / padding / border 覆盖 styles.css 旧 .ai-panel 外框（UI-08 清理）。 */
+/* UI-07c AI 面板：卡片 + 候选结果卡片；外框由 .card 提供（styles.css 旧 .ai-panel 外框已在 UI-08 删除）。 */
 .journals .ai-panel {
   margin: 0;
   padding: 0;
@@ -142,6 +142,7 @@
   }
 }
 .journals .ai-panel textarea {
+  display: block;
   resize: vertical;
 }
 .journals .ai-panel .ai-result {
@@ -177,4 +178,33 @@
 .journals .ai-panel .teaching-tip > p {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* ---------- UI-08 由 styles.css 迁入：凭证 / 业务事件仍引用的类 ---------- */
+.ai-panel .explanation {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 384px;
+  overflow: auto;
+}
+.journal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block: var(--space-3);
+}
+.journal-dimensions label {
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.journal-dialog {
+  position: fixed;
+  inset: 5vh auto auto 50%;
+  transform: translateX(-50%);
+  width: min(94vw, 1100px);
+  max-height: 85vh;
+  overflow: auto;
+  z-index: 20;
 }

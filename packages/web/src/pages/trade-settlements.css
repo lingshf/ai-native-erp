@@ -1,6 +1,6 @@
 /*
  * UI-06 结算与调整页：只作用于 .trade-settlements / .trade-adjustments 之内。
- * 通用外观在 components.css；这里只定操作栏、分配表、贷项行、反向勾选与 warning / success 消息条（待 UI-08 提升）。
+ * 通用外观在 components.css；这里只定操作栏、分配表、贷项行、反向勾选（warning / success 消息条已提升到 components.css）。
  */
 :is(.trade-settlements, .trade-adjustments) {
   /* 本页所有控件在桌面与窄屏都 ≥ 44px */
@@ -8,18 +8,6 @@
 }
 :is(.trade-settlements, .trade-adjustments) .message-bar p {
   margin: 0;
-}
-:is(.trade-settlements, .trade-adjustments) .message-bar.warning {
-  color: var(--color-warning);
-  background: var(--color-warning-bg);
-  border-color: var(--color-warning-border);
-  border-left-color: var(--color-warning);
-}
-:is(.trade-settlements, .trade-adjustments) .message-bar.success {
-  color: var(--color-success);
-  background: var(--color-success-bg);
-  border-color: var(--color-success-border);
-  border-left-color: var(--color-success);
 }
 :is(.trade-settlements, .trade-adjustments)
   :is(.tset-entry, .tadj-entry, .tset-result, .tadj-result, .tadj-lines) {
@@ -59,8 +47,13 @@
   margin-left: var(--space-4);
 }
 /* 未结项分配表：在自身滚动容器内（虚拟滚动行高 48 不变） */
+/* 原 styles.css .accounts-scroll 中仍生效的两条（其余被 .grid / .grid-wrap 覆盖），UI-08 迁入 */
 .trade-settlements .accounts-scroll {
+  max-height: 480px;
   margin: 0;
+}
+.trade-settlements .accounts-scroll td {
+  box-shadow: inset 0 -1px var(--color-border);
 }
 .trade-settlements .accounts-scroll table {
   min-width: 760px;

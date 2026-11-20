@@ -1,22 +1,8 @@
-/* 兼容层（UI-01）：页面规则改为引用 theme/tokens.css；各页面任务逐步迁出，UI-08 删除无引用规则。 */
-.ai-panel {
-  margin-block: var(--space-4);
-  padding: var(--space-4);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-}
-.ai-panel textarea {
-  display: block;
-  width: min(100%, 768px);
-  min-height: 96px;
-  resize: vertical;
-}
-.ai-panel .explanation {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  max-height: 384px;
-  overflow: auto;
-}
+/*
+ * 全局元素基线（UI-08 清理后）：只剩元素选择器。类规则已删除（无引用）或迁到 theme/shell.css、
+ * theme/components.css 与 src/pages/*.css。各页尚未全部以组件类覆盖这些元素（见 design/reviews/UI-1.md），
+ * 按 UI-08 清理边界保留；顺序与原兼容层一致，入口 CSS 中仍排在 shell.css 之后。
+ */
 button,
 select {
   min-height: 44px;
@@ -34,28 +20,11 @@ select {
   border-radius: var(--radius-sm);
   padding: var(--space-2);
 }
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 44px;
-  line-height: var(--leading-md);
-}
 input[type="checkbox"] {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
   accent-color: var(--color-primary);
-}
-.intro {
-  margin-top: 0;
-  line-height: var(--leading-lg);
-}
-.status-card {
-  padding: var(--space-6);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
 }
 dl {
   display: grid;
@@ -69,39 +38,6 @@ dt {
 dd {
   margin: 0;
   font-weight: var(--weight-semibold);
-}
-.connected {
-  font-weight: var(--weight-semibold);
-}
-.warning,
-.error {
-  color: var(--color-warning);
-  background: var(--color-warning-bg);
-}
-.warning {
-  padding: var(--space-4);
-  border: 1px solid var(--color-warning-border);
-  border-radius: var(--radius-md);
-  line-height: var(--leading-lg);
-}
-.warning h2 {
-  font-size: var(--text-lg);
-  line-height: var(--leading-lg);
-}
-.warning ul {
-  margin-bottom: 0;
-  padding-left: var(--space-5);
-}
-.warning p {
-  margin: 0;
-}
-.data-warning {
-  margin-top: var(--space-4);
-}
-.error {
-  border-left: 4px solid var(--color-warning-border);
-  padding: var(--space-4);
-  line-height: var(--leading-lg);
 }
 button {
   background: var(--color-primary);
@@ -121,41 +57,6 @@ button:active:not(:disabled) {
 button:disabled {
   opacity: 0.65;
   cursor: wait;
-}
-.reports > label {
-  display: block;
-  font-weight: var(--weight-semibold);
-  margin: var(--space-4) 0 var(--space-2);
-}
-.snapshot-boundary {
-  font-weight: var(--weight-semibold);
-}
-.snapshot-identity {
-  margin-bottom: var(--space-4);
-}
-.snapshot-identity code {
-  display: block;
-  overflow-wrap: anywhere;
-  margin-top: var(--space-2);
-}
-.report-card {
-  min-width: 0;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-}
-.report-card > select {
-  margin: var(--space-2) 0 var(--space-4);
-}
-.report-boundary {
-  line-height: var(--leading-lg);
-}
-.report-scroll {
-  max-width: 100%;
-  overflow-x: auto;
-  margin: var(--space-4) 0;
-  border: 1px solid var(--color-border);
 }
 table {
   border-collapse: collapse;
@@ -179,24 +80,7 @@ thead,
 tfoot {
   background: var(--color-primary-soft);
 }
-.report-totals {
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  margin: var(--space-4) 0;
-}
-.report-totals dd {
-  margin-top: var(--space-1);
-  font-variant-numeric: tabular-nums;
-}
-.teaching {
-  border-left: 3px solid var(--color-border-strong);
-  padding-left: var(--space-4);
-  color: var(--color-text-muted);
-  line-height: var(--leading-lg);
-}
 @media (max-width: 680px) {
-  .status-card {
-    padding: var(--space-4);
-  }
   dl {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-1);
@@ -204,141 +88,4 @@ tfoot {
   dd {
     margin-bottom: var(--space-3);
   }
-}
-.accounts-scroll {
-  max-height: 480px;
-  overflow: auto;
-  margin: var(--space-4) 0;
-  background: var(--color-surface);
-}
-.accounts-scroll table {
-  border-collapse: separate;
-  border-spacing: 0;
-  width: 100%;
-}
-.accounts-scroll th {
-  position: sticky;
-  top: 0;
-  background: var(--color-primary-soft);
-  z-index: 1;
-}
-.accounts-scroll td,
-.accounts-scroll th {
-  white-space: nowrap;
-  height: 44px;
-  padding: 0 var(--space-2);
-  text-align: left;
-}
-.accounts-scroll button {
-  height: 44px;
-  padding: var(--space-2) var(--space-3);
-}
-.accounts-scroll td {
-  border-bottom: 0;
-  box-shadow: inset 0 -1px var(--color-border);
-}
-.accounts-scroll button:disabled {
-  cursor: not-allowed;
-}
-.account-editor {
-  background: var(--color-surface);
-  padding: var(--space-4);
-  border: 1px solid var(--color-border);
-}
-.account-editor fieldset {
-  display: grid;
-  gap: var(--space-2);
-  border: 0;
-}
-.account-editor input:not([type="checkbox"]) {
-  min-height: 44px;
-  min-width: 0;
-}
-.dimensions > label {
-  display: block;
-  margin-top: var(--space-3);
-}
-.dimension-editor fieldset > div {
-  display: grid;
-  gap: var(--space-1);
-}
-.dimension-editor textarea {
-  width: 100%;
-  min-width: 0;
-  resize: vertical;
-  font: inherit;
-}
-.journal-actions,
-.journal-header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-block: var(--space-3);
-}
-.journal-editor fieldset {
-  min-width: 0;
-}
-.journal-editor input {
-  min-height: 44px;
-  max-width: 100%;
-}
-.journal-header label,
-.journal-dimensions label {
-  max-width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.journal-dimensions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.journal-scroll {
-  max-height: 480px;
-  overflow: auto;
-  margin-block: var(--space-2);
-}
-.journal-scroll table {
-  border-collapse: separate;
-  border-spacing: 0;
-  table-layout: fixed;
-  width: 100%;
-}
-.journal-row {
-  height: 44px;
-}
-.journal-row td {
-  border-bottom: 0;
-  box-shadow: inset 0 -1px var(--color-border);
-  height: 44px;
-  box-sizing: border-box;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding-block: 0;
-}
-.journal-row button {
-  height: 44px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.journal-editor-scroll {
-  overflow: auto;
-  max-height: 65vh;
-}
-.journal-editor-scroll input {
-  min-width: 96px;
-  max-width: 192px;
-}
-.journal-dialog {
-  position: fixed;
-  inset: 5vh auto auto 50%;
-  transform: translateX(-50%);
-  width: min(94vw, 1100px);
-  max-height: 85vh;
-  overflow: auto;
-  z-index: 20;
 }

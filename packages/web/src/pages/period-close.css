@@ -1,6 +1,6 @@
 /*
  * UI-07b 期末结账与贸易期间准入：只作用于 .period-close 之内。
- * 通用外观在 components.css；这里只定操作栏、准入表单、期间列表与 warning / success 消息条（待 UI-08 提升）。
+ * 通用外观在 components.css；这里只定操作栏、准入表单、期间列表（warning / success 消息条已提升到 components.css）。
  */
 .period-close {
   /* 本页所有控件在桌面与窄屏都 ≥ 44px */
@@ -8,18 +8,6 @@
 }
 .period-close .message-bar p {
   margin: 0;
-}
-.period-close .message-bar.warning {
-  color: var(--color-warning);
-  background: var(--color-warning-bg);
-  border-color: var(--color-warning-border);
-  border-left-color: var(--color-warning);
-}
-.period-close .message-bar.success {
-  color: var(--color-success);
-  background: var(--color-success-bg);
-  border-color: var(--color-success-border);
-  border-left-color: var(--color-success);
 }
 .period-close > fieldset,
 .period-close #trade-period-admission-body > fieldset {
