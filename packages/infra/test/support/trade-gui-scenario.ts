@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -24,15 +24,12 @@ export async function tabTo(page: Page, target: Locator) {
   // Keep the direction across document wrap, where activeElement briefly leaves the tab stops.
   let direction: "Tab" | "Shift+Tab" | undefined;
   try {
-    for (let count = 0; count < 220; ) {
+    for (let count = 0; count < 220; count++) {
       if (!handle) throw new Error("Keyboard target disappeared");
-      // `presses` is the number of stops between focus and target in document order. Pressing
-      // them without re-inspecting between presses sends the same real key sequence with fewer
-      // round trips; focus is re-checked afterwards. Radio groups collapse to one stop, so any
-      // radio on the way falls back to one press per check to avoid overshooting.
-      const step = await handle.evaluate((element, direction) => {
+      const key = await handle.evaluate((element, direction) => {
         if (!element.isConnected) return "detached";
         if (element === document.activeElement && document.hasFocus()) return null;
+        if (direction) return direction;
         const stops = [
           ...document.querySelectorAll<HTMLElement>(
             "a[href], button, input, select, textarea, [tabindex]",
@@ -47,38 +44,22 @@ export async function tabTo(page: Page, target: Locator) {
         );
         const current = stops.indexOf(document.activeElement as HTMLElement);
         const destination = stops.indexOf(element as HTMLElement);
-        if (current < 0 || !document.hasFocus())
-          return direction ? { key: direction, presses: 1 } : "probe";
-        if (destination < 0) return { key: direction ?? "Tab", presses: 1 };
+        if (current < 0 || !document.hasFocus()) return "probe";
+        if (destination < 0) return "Tab";
         const forward = (destination - current + stops.length) % stops.length;
         const backward = (current - destination + stops.length) % stops.length;
-        const key = direction ?? (backward < forward ? "Shift+Tab" : "Tab");
-        const presses = key === "Tab" ? forward : backward;
-        const passed = Array.from(
-          { length: presses },
-          (_, offset) =>
-            stops[
-              (current + (key === "Tab" ? offset + 1 : -offset - 1) + stops.length) % stops.length
-            ],
-        );
-        return {
-          key,
-          presses: passed.some((stop) => stop.matches("input[type=radio]")) ? 1 : presses,
-        };
+        return backward < forward ? "Shift+Tab" : "Tab";
       }, direction);
-      if (step === null) return;
-      if (step === "detached") {
+      if (key === null) return;
+      if (key === "detached") {
         await handle.dispose();
         handle = await target.elementHandle();
-        count++;
-      } else if (step === "probe") {
+      } else if (key === "probe") {
         // Establish a real tab stop before committing to a traversal direction.
         await page.keyboard.press("Tab");
-        count++;
       } else {
-        direction ??= step.key;
-        for (let press = 0; press < step.presses && count < 220; press++, count++)
-          await page.keyboard.press(direction);
+        direction ??= key;
+        await page.keyboard.press(direction);
       }
     }
     throw new Error(
@@ -137,30 +118,71 @@ export function guiPhase(scenario: string, name: string, started: number) {
   );
 }
 
-type Recorded = { method: string; path: string; body: unknown };
+// `path` keeps the query string; `preview` is the server's full preview response.
+type Recorded = { method: string; path: string; body: unknown; preview?: unknown };
 const parts = {
   1: "period admission, trade configuration, matched AP invoice and payment",
   2: "advance, AR credit and cancellations, open-item reports",
 } as const;
 
-// Placeholders follow first appearance, so links between commands (an invoice documentId
-// reused as a settlement itemId) still have to match while fresh UUIDs and hashes may differ.
-function normalizeRecorded(recorded: Recorded[]) {
-  const tokens = new Map<string, string>();
-  return JSON.parse(
-    JSON.stringify(recorded, (_key, value) => {
+// The only values the GUI generates itself (crypto.randomUUID) in the part 1 writes. The replay
+// reuses them instead of normalizing anything, so every other field, every ID reference and
+// every server-computed preview fingerprint must match the GUI requests exactly.
+type GeneratedIds = {
+  documentId: string;
+  paymentId: string;
+  invoiceKey: string;
+  settlementKey: string;
+};
+function generatedIds(recorded: Recorded[]): GeneratedIds {
+  const body = (path: string) => {
+    const matches = recorded.filter((entry) => entry.method === "POST" && entry.path === path);
+    if (matches.length !== 1)
+      throw new Error(`Expected one GUI POST ${path}, got ${matches.length}`);
+    return matches[0].body as { command: Record<string, unknown>; idempotencyKey: unknown };
+  };
+  const invoice = body("/api/v1/trade/invoices");
+  const settlement = body("/api/v1/trade/settlements");
+  const ids = {
+    documentId: invoice.command.documentId,
+    paymentId: settlement.command.paymentId,
+    invoiceKey: invoice.idempotencyKey,
+    settlementKey: settlement.idempotencyKey,
+  };
+  for (const [field, value] of Object.entries(ids))
+    if (typeof value !== "string") throw new Error(`GUI request lacks generated ${field}`);
+  return ids as GeneratedIds;
+}
+const freshIds = (): GeneratedIds => ({
+  documentId: randomUUID(),
+  paymentId: randomUUID(),
+  invoiceKey: randomUUID(),
+  settlementKey: randomUUID(),
+});
+// The one server value that cannot repeat: preview fingerprints hash the order's server-side
+// `recordedAt` wall-clock time. Each fingerprint must be the one its own preview returned and
+// the confirmation right after it must carry exactly that value; only then are the two fields
+// (`preview.fingerprint`, `body.fingerprint` of that confirmation) replaced by a shared token.
+// Everything else in the preview response is compared as returned.
+function linkFingerprints(recorded: Recorded[]) {
+  return recorded.map((entry, index) => {
+    if (!entry.path.endsWith("/preview")) {
+      const previous = recorded[index - 1];
+      if (!previous?.path.endsWith("/preview")) return entry;
+      const body = entry.body as Record<string, unknown>;
+      const fingerprint = (previous.preview as Record<string, unknown> | undefined)?.fingerprint;
       if (
-        typeof value === "string" &&
-        /^(?:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|[0-9a-f]{64})$/u.test(
-          value,
-        )
-      ) {
-        if (!tokens.has(value)) tokens.set(value, `<${tokens.size + 1}>`);
-        return tokens.get(value);
-      }
-      return value;
-    }),
-  ) as Recorded[];
+        entry.path !== previous.path.slice(0, -"/preview".length) ||
+        body.fingerprint !== fingerprint
+      )
+        throw new Error(`${entry.path} does not confirm the preceding preview fingerprint`);
+      return { ...entry, body: { ...body, fingerprint: `<preview ${index - 1}>` } };
+    }
+    const preview = entry.preview as Record<string, unknown> | undefined;
+    if (typeof preview?.fingerprint !== "string" || !/^[0-9a-f]{64}$/u.test(preview.fingerprint))
+      throw new Error(`${entry.path} returned no fingerprint`);
+    return { ...entry, preview: { ...preview, fingerprint: `<preview ${index}>` } };
+  });
 }
 
 const year = { from: "2026-01-01", to: "2026-12-31" };
@@ -315,32 +337,39 @@ function httpSend(address: string): Send {
     return result;
   };
 }
-// Stands in for the server when part 1 derives the expected request list.
-const dryRun: Send = async () => ({ fingerprint: randomBytes(32).toString("hex") });
-
 // Part 2 starts from the exact state part 1 creates through the GUI. The same commands are
-// replayed through the real HTTP API (preview, then explicit confirmation with the previewed
-// fingerprint); part 1 asserts its GUI requests equal this list, so the two cannot drift.
-async function seedPartOne(transport: Send) {
+// replayed through the real HTTP API (preview, then explicit confirmation with the fingerprint
+// that preview returned). Part 1 replays them against a second fresh server with the GUI's own
+// generated IDs and asserts the requests and preview fingerprints equal the GUI's exactly.
+async function seedPartOne(transport: Send, ids: GeneratedIds) {
   const recorded: Recorded[] = [];
   async function send(method: string, path: string, body: unknown) {
-    recorded.push({ method, path, body });
-    return await transport(method, path, body);
+    const entry: Recorded = { method, path, body };
+    recorded.push(entry);
+    const result = await transport(method, path, body);
+    if (path.endsWith("/preview")) entry.preview = result;
+    return result;
   }
-  async function confirm(path: string, command: unknown) {
+  async function confirm(path: string, command: unknown, idempotencyKey: string) {
     const preview = await send("POST", `${path}/preview`, command);
-    return await send("POST", path, {
+    if (typeof preview.fingerprint !== "string") throw new Error(`No preview fingerprint: ${path}`);
+    const receipt = await send("POST", path, {
       command,
       fingerprint: preview.fingerprint,
-      idempotencyKey: randomUUID(),
+      idempotencyKey,
       confirmation: "POST",
     });
+    if (receipt.fingerprint !== preview.fingerprint)
+      throw new Error(`Replay ${path} confirmed ${String(receipt.fingerprint)}`);
   }
   for (const write of seedWrites) await send(write.method, write.path, write.body);
-  const documentId = randomUUID();
-  await confirm("/api/v1/trade/invoices", seedInvoice(documentId));
-  await confirm("/api/v1/trade/settlements", seedSettlement(randomUUID(), documentId));
-  return { ap: { documentId }, recorded };
+  await confirm("/api/v1/trade/invoices", seedInvoice(ids.documentId), ids.invoiceKey);
+  await confirm(
+    "/api/v1/trade/settlements",
+    seedSettlement(ids.paymentId, ids.documentId),
+    ids.settlementKey,
+  );
+  return { ap: { documentId: ids.documentId }, recorded };
 }
 
 export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", part: 1 | 2) {
@@ -389,9 +418,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
     onTestFinished,
   }) => {
     const name = `${language}-${theme}-part${part}`;
-    const filename = join(directory, `${name}.sqlite`);
-    let executor: SqliteExecutor | undefined;
-    let api: LocalApi | undefined;
+    const servers: { executor: SqliteExecutor; api?: LocalApi }[] = [];
     let context: BrowserContext | undefined;
     onTestFinished(async () => {
       const started = performance.now();
@@ -399,11 +426,16 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         // Explicit context close also disposes the Node request pool used by route.fetch().
         await context?.close();
       } finally {
-        try {
-          await api?.close();
-        } finally {
-          await executor?.close();
-        }
+        const closed = await Promise.allSettled(
+          servers.map(async ({ executor, api }) => {
+            try {
+              await api?.close();
+            } finally {
+              await executor.close();
+            }
+          }),
+        );
+        for (const result of closed) if (result.status === "rejected") throw result.reason;
       }
       phase("resources", started);
     });
@@ -421,7 +453,8 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       phase("page", started);
       return { context, page };
     })();
-    const serving = (async () => {
+    async function provision(file: string, prefix: string) {
+      const filename = join(directory, `${file}.sqlite`);
       let started = performance.now();
       const storage = createSqliteStorage({ filename });
       try {
@@ -462,29 +495,40 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       } finally {
         await store.close();
       }
-      phase("database", started);
+      phase(`${prefix}database`, started);
       started = performance.now();
-      executor = await SqliteExecutor.create({ filename });
-      api = await createApi({
-        ...executor.services(),
+      const server: (typeof servers)[number] = {
+        executor: await SqliteExecutor.create({ filename }),
+      };
+      servers.push(server);
+      server.api = await createApi({
+        ...server.executor.services(),
         webRoot,
         allowPortZero: true,
         environment: { ERP_PROFILE: "local", ERP_HOST: "127.0.0.1", ERP_PORT: "0" },
       });
-      phase("api", started);
-      const address = await api.listen();
+      phase(`${prefix}api`, started);
+      return await server.api.listen();
+    }
+    const serving = (async () => {
+      const address = await provision(name, "");
       if (part === 1) return { address, seeded: undefined };
-      started = performance.now();
-      const seeded = await seedPartOne(httpSend(address));
+      const started = performance.now();
+      const seeded = await seedPartOne(httpSend(address), freshIds());
       phase("seed", started);
       return { address, seeded };
     })();
-    // Wait for both sides so a failure on one never leaves the other creating resources.
-    const [opened, served] = await Promise.allSettled([opening, serving]);
+    // Part 1's replay target: a second, untouched server built the same way, ready by the time
+    // the GUI path finishes.
+    const replaying = part === 1 ? provision(`${name}-replay`, "replay-") : Promise.resolve("");
+    // Wait for all sides so a failure on one never leaves another creating resources.
+    const [opened, served, replayed] = await Promise.allSettled([opening, serving, replaying]);
     if (opened.status === "rejected") throw opened.reason;
     if (served.status === "rejected") throw served.reason;
+    if (replayed.status === "rejected") throw replayed.reason;
     const { page, context: traced } = opened.value;
     const { address, seeded } = served.value;
+    const replayAddress = replayed.value;
     const interactionStarted = performance.now();
     const t = (key: Exclude<Parameters<typeof label>[1], "shell.httpError">) =>
       label(language, key);
@@ -519,9 +563,20 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
     let loseNextResult = false;
     await page.route("**/api/v1/**", async (route) => {
       const request = route.request();
-      const path = new URL(request.url()).pathname;
-      if (request.method() !== "GET")
-        recorded.push({ method: request.method(), path, body: request.postDataJSON() });
+      const url = new URL(request.url());
+      const path = url.pathname;
+      const entry: Recorded | undefined =
+        request.method() === "GET"
+          ? undefined
+          : { method: request.method(), path: path + url.search, body: request.postDataJSON() };
+      if (entry) recorded.push(entry);
+      if (entry && request.method() === "POST" && path.endsWith("/preview")) {
+        // Pass the real server response through unchanged, keeping it for the comparison.
+        const response = await route.fetch();
+        entry.preview = response.ok() ? await response.json() : response.status();
+        await route.fulfill({ response });
+        return;
+      }
       if (
         request.method() === "POST" &&
         ["/api/v1/trade/invoices", "/api/v1/trade/settlements", "/api/v1/trade/actions"].includes(
@@ -793,11 +848,12 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       expect(payment.cash).toBe(5575);
       expect(payment.allocations[0].remainingGross).toBe(5650);
       await post("tset.confirm", "/api/v1/trade/settlements");
-      const replay = await seedPartOne(dryRun);
-      expect(normalizeRecorded(recorded)).toEqual(normalizeRecorded(replay.recorded));
+      const replay = await seedPartOne(httpSend(replayAddress), generatedIds(recorded));
+      expect(linkFingerprints(recorded)).toEqual(linkFingerprints(replay.recorded));
     }
     async function followUp() {
       if (!seeded) throw new Error("Part 2 requires the replayed part 1 state");
+      linkFingerprints(seeded.recorded);
       const { ap } = seeded;
       await navigate("trade-adjustments");
       const advance = await action("advance", { "tinv.party": "PARTY", "tadj.gross": "2000" });

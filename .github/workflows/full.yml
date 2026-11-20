@@ -44,7 +44,8 @@ jobs:
       # take 8-16s. Reading the files into the page cache overlaps with setup-node and npm ci.
       - name: Prewarm Chrome disk cache in background
         if: matrix.lane == 'browser'
-        run: nohup bash scripts/ci-prewarm-chrome.sh /tmp/chrome-prewarm.txt >/tmp/chrome-prewarm.log 2>&1 &
+        continue-on-error: true
+        run: nohup timeout 60 bash scripts/ci-prewarm-chrome.sh /tmp/chrome-prewarm.txt >/tmp/chrome-prewarm.log 2>&1 &
       - uses: actions/setup-node@v7
         with:
           node-version: "26.x"
@@ -61,12 +62,25 @@ jobs:
       - name: Biome
         if: steps.gate.outputs.run == 'true' && matrix.lane == 'unit' && matrix.shard == 1
         run: npm run check
-      - name: Wait for Chrome disk prewarm
+      # Best effort only: the prewarm is never a gate. A failure (the script always writes a
+      # status marker, even when killed) or a 20s wait limit is logged as a warning and the
+      # tests run unchanged, with the complete Duration still reported.
+      - name: Wait for Chrome disk prewarm (best effort, at most 20s)
         if: steps.gate.outputs.run == 'true' && matrix.lane == 'browser'
+        continue-on-error: true
         run: |
           start=$(date +%s%N)
-          timeout 90 bash -c 'until [ -s /tmp/chrome-prewarm.txt ]; do sleep 0.2; done' || { cat /tmp/chrome-prewarm.log; exit 1; }
-          echo "Chrome prewarm $(cat /tmp/chrome-prewarm.txt) waited_ms=$((($(date +%s%N) - start) / 1000000))"
+          timeout 20 bash -c 'until [ -s /tmp/chrome-prewarm.txt ]; do sleep 0.2; done' || true
+          waited="waited_ms=$((($(date +%s%N) - start) / 1000000))"
+          result=$(cat /tmp/chrome-prewarm.txt 2>/dev/null || echo "status=timeout")
+          echo "Chrome prewarm $result $waited"
+          case "$result" in
+            status=ok*) ;;
+            *)
+              echo "::warning title=Chrome prewarm::$result $waited; continuing with the tests"
+              cat /tmp/chrome-prewarm.log 2>/dev/null || true
+              ;;
+          esac
       - name: Verify runner Chrome for real-browser slow tests
         if: steps.gate.outputs.run == 'true'
         run: google-chrome --version
