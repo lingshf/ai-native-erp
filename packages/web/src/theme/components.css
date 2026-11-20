@@ -28,6 +28,10 @@
   table-layout: fixed;
   width: 100%;
 }
+/* S5-f：VirtualRows 合计行底色，原由 styles.css 全局 tfoot 提供（值不变） */
+.journal-scroll tfoot {
+  background: var(--color-primary-soft);
+}
 .journal-row {
   height: 44px;
 }
@@ -189,6 +193,10 @@
 .ui-field .ui-error-text {
   color: var(--color-danger);
 }
+/* S5-f：字段内下拉框的 max-width，原由 styles.css 全局 select 提供（值不变）；输入框不设，保持 none */
+.ui-field select {
+  max-width: 100%;
+}
 .ui-field input:not([type="checkbox"]),
 .ui-field select {
   width: 100%;
@@ -276,6 +284,11 @@
   color: var(--color-text);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
+}
+/* S5-f：同 .ui-field select，输入框不设 max-width */
+.filter-bar .field > select,
+.page-header .field > select {
+  max-width: 100%;
 }
 
 /* ---------- FastTab：标题栏 h3 > button[aria-expanded][aria-controls]，含 role="alert" 时保持展开 ---------- */
