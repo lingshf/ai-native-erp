@@ -403,4 +403,26 @@ describe("trade invoices", () => {
     expect(await screen.findByText(t("tinv.uncertain"))).toBeTruthy();
     expect(posts).toHaveLength(1);
   });
+
+  it("shows the add-line shortcut in kbd without changing the button's accessible name", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockImplementation(async (path) => {
+        const url = String(path);
+        if (url.startsWith("/api/v1/companies"))
+          return response({ items: [company], nextCursor: null });
+        if (url.startsWith("/api/v1/trade/invoices?"))
+          return response({ items: [], nextCursor: null });
+        return response({}, 404);
+      }),
+    );
+    render(<App />);
+    await screen.findByLabelText(t("tinv.party"));
+    const add = screen.getByRole("button", { name: t("tinv.addLine") });
+    expect(add.getAttribute("aria-label")).toBeNull();
+    expect(add.getAttribute("aria-keyshortcuts")).toBe("Alt+Shift+N");
+    expect(add.querySelector("kbd")?.textContent).toBe("Alt+Shift+N");
+    fireEvent.click(add);
+    expect(screen.getByLabelText(`${t("tinv.product")} L2`)).toBeTruthy();
+  });
 });
