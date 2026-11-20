@@ -277,12 +277,12 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- |
-| [S5-a](S5-a-journals-global-rules.md) | 凭证 / 业务事件：无类 `legend`、`select`（含 `max-width`、`jv-status`）、按钮、VirtualRows 表头、复选框改为类规则，补采编辑 / 清账 / 预览状态 | 页面 tsx + CSS | S5-b（C 线前序） | web-ui:journals | todo | — |
-| [S5-b](S5-b-migration-global-rules.md) | 迁移核对页：`dl` / `dt` / `dd` / `thead` 改为类规则；`.kv` 表进独立滚动区 | CSS（必要时 tsx） | — | web-ui:migration | in-review | [#112](https://github.com/lingshf/ai-native-erp/pull/112) |
+| [S5-a](S5-a-journals-global-rules.md) | 凭证 / 业务事件：无类 `legend`（含凭证草稿与暂记户）、`select`（含 `max-width`、`jv-status`）、按钮、VirtualRows 表头、复选框改为类规则，补采编辑 / 清账 / 预览状态 | 页面 tsx + CSS | S5-b（C 线前序） | web-ui:journals | todo | — |
+| [S5-b](S5-b-migration-global-rules.md) | 迁移核对页：`dl` / `dt` / `dd` / `thead` 改为类规则；`.kv` 表进独立滚动区 | CSS（必要时 tsx） | — | web-ui:migration | done | [#112](https://github.com/lingshf/ai-native-erp/pull/112) |
 | [S5-c](S5-c-trade-global-rules.md) | 贸易页面：复选框、`.tinv-facts` / `.trpt-facts`、`cell-link` 圆角、`caption` | CSS | — | web-ui:trade | in-review | [#113](https://github.com/lingshf/ai-native-erp/pull/113) |
 | [S5-d](S5-d-trade-orders-global-rules.md) | 订单录入页：复选框、`.tord-facts` | CSS | S5-h（同冲突域） | web-ui:trade-orders | todo | — |
-| [S5-e](S5-e-ledger-period-master-global-rules.md) | 总账报表 / 期末 / 科目表：`caption`、明细 `th, td`（不含对齐，归 S5-i）、tfoot | CSS | S5-f（A 线前序） | web-ui:ledger, web-ui:period-close, web-ui:master | todo | — |
-| [S5-f](S5-f-shell-components-global-rules.md) | 外壳 / 共享组件：偏好区 `legend` / `select` / 复选框、概览 `dd`、`.field select`、VirtualRows tfoot | CSS | — | web-ui:shell（不含 `styles.css`）, web-ui:components | todo | — |
+| [S5-e](S5-e-ledger-period-master-global-rules.md) | 总账报表 / 期末 / 科目表：`caption`、明细 `th, td`（不含对齐，归 S5-i）、tfoot | CSS | S5-i（A 线前序） | web-ui:ledger, web-ui:period-close, web-ui:master | todo | — |
+| [S5-f](S5-f-shell-components-global-rules.md) | 外壳 / 共享组件：偏好区 `legend` / `select` / 复选框、概览 `dd`、`.field select`、VirtualRows tfoot | CSS | S5-c（同改 `components.css`） | web-ui:shell（不含 `styles.css`）, web-ui:components | todo | — |
 | [S5-i](S5-i-grid-table-select-component-rules.md) | 共享表格与字段：`.grid` / `.journal-scroll` 的 `td` 对齐与 `thead` / `tfoot` 底色、`.ui-field select` 的 `max-width` 改为组件规则（#113 报告的缺口） | CSS | S5-f、S5-c（同改 `components.css`） | web-ui:components | todo | — |
 | [S5-g](S5-g-delete-global-element-rules.md) | 删除 `styles.css` 剩余全局元素规则（D-7 收尾，含 44px 基线的两道检查；文件清空时删除 `main.tsx:5` 的 import） | CSS + 入口 import 一行 | S5-a..f、S5-i 全部（外壳串行最后） | web-ui:shell | todo | — |
 | [S5-h](S5-h-trade-orders-focus-race.md) | 订单录入页保存后焦点断言偶发失败：先复现、核对真实 Chrome，再修复（D92，原因待证实） | 测试 / 页面 tsx | S5-c（B 线前序） | web-ui:trade-orders | todo | — |
@@ -304,7 +304,8 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | B：贸易 | S5-c → S5-h → S5-d | trade → trade-orders → trade-orders |
 | C：迁移与凭证 | S5-b → S5-a | migration → journals |
 
-- **首批可同时开工**：S5-f（A）、S5-c（B）、S5-b（C）。
+- **首批**：S5-c（B）、S5-b（C）可同时开工；S5-b 已合并（#112，main `f083e97`）。
+- **共享 CSS 冲突**：S5-c（#113）与 S5-f 都改 `theme/components.css`，**不同时进行**：S5-f 在 #113 合并后再开工，基于合并后的 main 采集证据。S5-i 在 S5-f 与 S5-c 都合并后开工。
 - **跨线等待**：S5-i 还要等 B 线的 S5-c 合并（#113 在 `components.css` 新增一条规则）。S5-g 等 S5-a..f、S5-i 全部合并，并且按[路线图 §5 合并后](../roadmap.md#5-团队流程)看到覆盖最后一个合并提交的完整 main Full。S5-g 的证据覆盖全部页面，开工时不应有正在进行的页面 CSS 任务。
 - **外壳串行**：S5-f → S5-g，由表内依赖保证。
 - **对比度测试**：本 Sprint 预计不改 `contrast.test.ts`。需要新增配对的任务先报告设计角色加入依赖（`tests:contrast` 串行）。

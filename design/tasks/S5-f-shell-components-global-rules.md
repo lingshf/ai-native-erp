@@ -1,6 +1,6 @@
 # S5-f 外壳 / 共享组件：不再依赖全局元素规则
 
-- Sprint：S5　依赖：—（A 线首个；外壳串行 S5-f → S5-g）　建议分支：`s5-f-shell-rules`
+- Sprint：S5　依赖：S5-c（[#113](https://github.com/lingshf/ai-native-erp/pull/113) 也改 `theme/components.css`，合并后再开工；A 线首个，外壳串行 S5-f → S5-g）　建议分支：`s5-f-shell-rules`
 - 冲突域：web-ui:shell（**不含 `styles.css`**：只改 `theme/shell.css` 与 `App.tsx`）、web-ui:components（`theme/components.css`、`ui/components/`）
 - 类型：CSS（需要类名时改 `App.tsx` 或组件 tsx）
 - 来源：UI-09g [#106](https://github.com/lingshf/ai-native-erp/pull/106) 证据表“保留”

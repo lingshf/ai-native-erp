@@ -1,6 +1,6 @@
 # S5-e 总账报表 / 期末结账 / 科目表：不再依赖全局元素规则
 
-- Sprint：S5　依赖：S5-f（A 线前序）　建议分支：`s5-e-ledger-rules`
+- Sprint：S5　依赖：S5-i（A 线前序；S5-i 依赖 S5-f）　建议分支：`s5-e-ledger-rules`
 - 冲突域：web-ui:ledger、web-ui:period-close、web-ui:master（各自页面 CSS）
 - 类型：CSS
 - 来源：UI-09g [#106](https://github.com/lingshf/ai-native-erp/pull/106) 证据表“保留”

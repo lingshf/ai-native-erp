@@ -20,9 +20,9 @@
 在 `theme/components.css` 中用类规则给出与现值相同的声明。**不改 `styles.css`**：
 1. `.grid` 与 `.journal-scroll` 内 `th` / `td` 的 `text-align: left`。保留 `left`，不改为 `start`：两者在左到右文字下看起来一样，但计算值不同，不满足计算值零差异。改为逻辑属性不在本任务范围内。
 2. `.grid` 与 `.journal-scroll` 内 `thead`、`tfoot` 的 `background: var(--color-primary-soft)`。
-3. `.ui-field select` 的 `max-width: 100%`，可写进现有 `.ui-field select` 规则。
+3. `.ui-field` 内 `select` 的 `max-width: 100%`。不要直接并入现有 `.ui-field select`（特异性 (0,1,1)），否则会高于被替代的全局 `select`（(0,0,1)），可能盖过页面中等特异性的覆盖。用 `:where(.ui-field) select`；若并入，须用探针证明结果相同。
 
-**特异性**：与 S5-c 相同，建议用 `:where(...)` 包住类选择器，使特异性与被替代的全局元素规则一致，例如 `:where(.grid, .journal-scroll) :is(th, td)` 为 (0,0,1)，`:where(.grid, .journal-scroll) :is(thead, tfoot)` 为 (0,0,1)。这样各页已有的 `none`、`right` 等覆盖照常生效。具体写法由开发决定，以探针计算值为准。
+**特异性**：与 S5-c 相同，建议用 `:where(...)` 包住类选择器，使特异性与被替代的全局元素规则一致，例如 `:where(.grid, .journal-scroll) :is(th, td)`、`:where(.grid, .journal-scroll) :is(thead, tfoot)`、`:where(.ui-field) select` 都是 (0,0,1)。这样各页已有的 `none`、`right` 等覆盖照常生效。具体写法由开发决定，以探针计算值为准。
 
 **不在范围**：
 - 页面已有覆盖：S5-b 的 `.kv`、ledger 与发票的 `none`、S5-f 的 VirtualRows `tfoot`、外壳与 `.field` 的 `select`；
@@ -31,7 +31,10 @@
 
 ## 验收标准
 
-1. 满足 [S5 共同验收](README.md#s5stylescss-全局元素规则收尾--s4-回顾行动建议-v050)。取证构建删去 `th, td { text-align }`、`thead, tfoot { background }`、`select { max-width }` 三条声明。**探针范围为全部导航路由**，含运行状态页：组件规则作用于所有页面。
+1. 满足 [S5 共同验收](README.md#s5stylescss-全局元素规则收尾--s4-回顾行动建议-v050)。组件规则作用于所有页面，所以下面两种零差都以**全部导航路由**（含运行状态页）、两主题、1440 / 390 和第 2 条的补采状态为范围，分开列表：
+   - **(a) head 对 base**（`styles.css` 不变）：全页面所有元素计算值“变”为 0，像素差为 0。新规则与全局规则同值，不得改变任何元素。
+   - **(b) 取证构建对 base**：取证构建为 head 删去 `th, td { text-align }`、`thead, tfoot { background }`、`select { max-width }` 三条声明，不提交。S5-i 职责内的全部元素计算值“变”为 0，即 `.grid` / `.journal-scroll` 内的 `th`、`td`、`thead`、`tfoot` 和 `.ui-field` 内的 `select`。
+   - 若 S5-i 职责内有元素变值，说明组件规则不对，修正后重采，不转交。
 2. 补采状态至少包括：
    - 发票过账预览（含 PO 匹配，`.trade-invoices thead` 为 `none`，验证页面覆盖仍然优先）；
    - 结算选中 AP-DEMO；
@@ -40,6 +43,10 @@
    - 期末 fieldset 内的 VirtualRows；
    - 业务事件编辑对话框中的 `.ui-field select`；
    - 科目表、维度、贸易主数据编辑器中的 `select`。
-3. 不在本任务范围的元素计算值仍变的，在证据表中列出元素、文件:行和归属任务（S5-a 的两处 `select`、S5-b 的 `.kv`、S5-f 的偏好区等），不在本任务中改页面 CSS。
+3. **(b) 中职责外的命中**：允许变值的只有下列已归属的元素，它们由各自任务覆盖。证据表逐个列出元素、文件:行、属性与归属任务，不在本任务中改页面 CSS：
+   - S5-a：`Journals.tsx:475` 的 `label.jv-status > select`，以及 `BusinessEvents.tsx` 约 1570–1629 行的 `form > fieldset > label > select`；
+   - S5-f：外壳偏好区 `select`，`.page-header` / `.filter-bar` 的 `.field > select`，VirtualRows `tfoot`。
+   
+   其中所属任务已在 main 上合并的，对应元素应为 0。已有覆盖的元素（S5-b 的 `.kv`、ledger 与发票的 `none`）也应为 0。出现名单外的变值元素，报告设计角色归属后再合并，不自行扩大范围。
 4. 组件规则只用类选择器（可以包在 `:where()` / `:is()` 中，与元素选择器组合），不引入新的纯元素选择器。CSS gzip 计入 S5 合计预算。
 5. 现有组件、页面与对比度测试不删除、不削弱。
