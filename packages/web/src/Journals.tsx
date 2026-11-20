@@ -501,41 +501,50 @@ function CompanyJournals({
         <VirtualRows
           items={rows}
           title={t("journal.title")}
-          header={[t("journal.date"), t("journal.sourceRef"), t("journal.memo"), ""]}
-          render={(row) => (
-            <>
-              <td>{row.date}</td>
-              <td>{row.sourceRef}</td>
-              <td>{row.memo}</td>
-              <td>
-                <button
-                  type="button"
-                  className="btn btn-subtle btn-sm"
-                  disabled={busy || Boolean(draft)}
-                  onClick={() =>
-                    void run(async () => {
-                      detailRequest.current?.abort();
-                      if (row.revision !== null) {
-                        const value = await masterRequest(
-                          `/api/v1/journals/drafts/${row.id}?${url(company.code)}`,
-                          journalDraftSchema,
-                        );
-                        if (alive.current) {
-                          edit(value);
-                          setDetail(null);
+          header={[
+            t("journal.date"),
+            t("journal.sourceRef"),
+            t("journal.memo"),
+            t("journal.actions"),
+          ]}
+          render={(row) => {
+            const action = t(row.revision === null ? "journal.view" : "journal.edit");
+            return (
+              <>
+                <td>{row.date}</td>
+                <td>{row.sourceRef}</td>
+                <td>{row.memo}</td>
+                <td>
+                  {/* The source reference is already in its own column and can be 100 chars; keep it only in the accessible name. */}
+                  <button
+                    type="button"
+                    className="btn btn-subtle btn-sm"
+                    aria-label={`${action} ${row.sourceRef || row.id}`}
+                    disabled={busy || Boolean(draft)}
+                    onClick={() =>
+                      void run(async () => {
+                        detailRequest.current?.abort();
+                        if (row.revision !== null) {
+                          const value = await masterRequest(
+                            `/api/v1/journals/drafts/${row.id}?${url(company.code)}`,
+                            journalDraftSchema,
+                          );
+                          if (alive.current) {
+                            edit(value);
+                            setDetail(null);
+                          }
+                        } else {
+                          await loadDetail(row.id, true);
                         }
-                      } else {
-                        await loadDetail(row.id, true);
-                      }
-                    })
-                  }
-                >
-                  {t(row.revision === null ? "journal.view" : "journal.edit")}{" "}
-                  {row.sourceRef || row.id}
-                </button>
-              </td>
-            </>
-          )}
+                      })
+                    }
+                  >
+                    {action}
+                  </button>
+                </td>
+              </>
+            );
+          }}
         />
         {!listing.isPending && !listing.isError && !rows.length && (
           <p className="empty-state">{t("journal.empty")}</p>

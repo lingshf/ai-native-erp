@@ -44,14 +44,6 @@
 :is(.journals, .business-events) .journal-row .btn-sm {
   height: var(--control-h);
 }
-/* 已过账列表的“查看 <来源号>”：.btn 的 inline-flex 居中会让 text-overflow 失效、文字两端被裁；改为行首起排、末尾省略（UI-1 C1） */
-.journals .jv-list .journal-row .btn {
-  display: inline-block;
-  max-width: 100%;
-  line-height: calc(var(--control-h) - 2px);
-  text-align: start;
-  vertical-align: middle;
-}
 .journals .jv-lines td {
   padding: var(--space-1) var(--space-2);
 }

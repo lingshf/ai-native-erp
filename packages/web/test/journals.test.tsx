@@ -444,6 +444,7 @@ describe("journal editor", () => {
     await screen.findByText(label("en", "journal.postedNotice"));
     expect(confirmations).toHaveLength(2);
     expect(confirmations[0]).toEqual(confirmations[1]);
+    expect(screen.getByRole("columnheader", { name: label("en", "journal.actions") })).toBeTruthy();
     fireEvent.click(
       screen.getAllByRole("button", { name: `${label("en", "journal.view")} ${saved!.id}` })[0],
     );
@@ -581,7 +582,16 @@ describe("journal editor", () => {
       }),
     );
     render(<App />);
-    await screen.findByRole("button", { name: `${label("zh", "journal.edit")} DRAFT-1` });
+    const editDraft = await screen.findByRole("button", {
+      name: `${label("zh", "journal.edit")} DRAFT-1`,
+    });
+    expect(editDraft.textContent).toBe(label("zh", "journal.edit"));
+    expect(
+      within(screen.getByRole("table", { name: label("zh", "journal.title") })).getByRole(
+        "columnheader",
+        { name: label("zh", "journal.actions") },
+      ),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: label("zh", "master.loadMore") }));
     await waitFor(() =>
       expect(
