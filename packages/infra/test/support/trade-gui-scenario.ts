@@ -12,6 +12,8 @@ import { createMasterDataStore } from "../../src/storage/master-data.ts";
 import { SqliteExecutor } from "../../src/workers/executor.ts";
 import { createApi, type LocalApi } from "../../src/http/index.ts";
 import { label, resources } from "../../../web/src/ui/index.ts";
+import { orderLabel, type TradeOrderKey } from "../../../web/src/ui/trade-order-labels.ts";
+import { formatMinor } from "../../../web/src/reports-data.ts";
 
 const root = fileURLToPath(new URL("../../../../", import.meta.url));
 const artifacts = resolve(process.env.ERP_E2E_ARTIFACTS ?? join(root, "artifacts/ci/trade-e2e"));
@@ -278,7 +280,8 @@ const seedWrites: Recorded[] = [
       rounding: "line",
       lines: [
         {
-          lineId: "OL1",
+          // The order page numbers lines L1, L2, … itself.
+          lineId: "L1",
           product: "EXPENSE",
           taxCode: "VAT",
           quantity: "10",
@@ -311,7 +314,7 @@ const seedInvoice = (documentId: string) => ({
       unitPrice: "10",
       discountPercent: "0",
       taxableCharge: "0",
-      orderLineId: "OL1",
+      orderLineId: "L1",
       dimensions: {},
     },
   ],
@@ -697,6 +700,52 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       await post("dim.save", `/api/v1/trade/${kind}`);
       await page.locator("#trade-code").waitFor({ state: "detached" });
     }
+    // The purchase order the AP invoice matches, entered on the order page by keyboard. Side
+    // (AP), rounding (line), prices excluding tax, discount 0 and the order date (the page's
+    // local today under the fixed clock) stay at their defaults; the replay asserts all of them.
+    async function purchaseOrder() {
+      const o = (key: TradeOrderKey, params?: Record<string, string>) =>
+        orderLabel(language, key, params);
+      // Product and tax code offer a datalist, so they are comboboxes.
+      const line = (key: TradeOrderKey, role: "textbox" | "combobox" = "textbox") =>
+        page.getByRole(role, { name: `${o(key)} L1`, exact: true });
+      await navigate("trade-orders");
+      expect(await page.locator("#tord-side").inputValue()).toBe("AP");
+      expect(await page.locator("#tord-orderDate").inputValue()).toBe("2026-01-20");
+      await type(page, page.locator("#tord-orderId"), "PO-DEMO");
+      await type(page, page.locator("#tord-party"), "PARTY");
+      await type(page, line("tord.product", "combobox"), "EXPENSE");
+      await type(page, line("tord.taxCode", "combobox"), "VAT");
+      await type(page, line("tord.quantity"), "10");
+      await type(page, line("tord.unitPrice"), "10");
+      const saving = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === "/api/v1/trade/orders" &&
+          response.request().method() === "POST",
+      );
+      await activate(page, page.getByRole("button", { name: o("tord.save"), exact: true }));
+      const response = await saving;
+      const saved = await response.json();
+      expect(response.status(), JSON.stringify(saved)).toBe(201);
+      expect(saved).toMatchObject({
+        orderId: "PO-DEMO",
+        side: "AP",
+        party: "PARTY",
+        lines: [{ lineId: "L1", net: 10000, tax: 1300, gross: 11300 }],
+      });
+      await page
+        .getByRole("status")
+        .filter({ hasText: o("tord.saved", { orderId: "PO-DEMO" }) })
+        .waitFor();
+      // Only the server's amounts are shown; the page computes no tax itself.
+      const amounts = page.getByRole("table", { name: `${o("tord.lines")} PO-DEMO`, exact: true });
+      const money = (minor: number) => formatMinor(minor, language);
+      for (const row of [amounts.locator("tbody tr").first(), amounts.locator("tr.tord-total")])
+        expect(
+          (await row.locator("td").allTextContents()).slice(-3).map((text) => text.trim()),
+        ).toEqual([money(10000), money(1300), money(11300)]);
+      expect(failures).toEqual([]);
+    }
     async function invoice(side: "AP" | "AR", external: string, matched = false) {
       await navigate("trade-invoices");
       await choose(page, page.locator("#tinv-side"), side);
@@ -727,7 +776,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         await type(
           page,
           page.getByRole("textbox", { name: `${t("tinv.orderLineId")} L1`, exact: true }),
-          "OL1",
+          "L1",
         );
       const preview = await post("tinv.preview", "/api/v1/trade/invoices/preview");
       expect(preview.calculation.gross).toBe(11300);
@@ -841,37 +890,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         revenueAccount: "4000",
         allowedTaxCodes: "VAT",
       });
-      // Orders currently have an API, not an order-entry GUI. This explicit prerequisite
-      // is the same command documented in README; invoice matching itself is GUI-only.
-      const orderResponse = await page.evaluate(async () => {
-        const response = await fetch("/api/v1/trade/orders", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            company: "DEFAULT",
-            orderId: "PO-DEMO",
-            side: "AP",
-            party: "PARTY",
-            currency: "CNY",
-            orderDate: "2026-01-20",
-            priceIncludesTax: false,
-            rounding: "line",
-            lines: [
-              {
-                lineId: "OL1",
-                product: "EXPENSE",
-                taxCode: "VAT",
-                quantity: "10",
-                unitPrice: "10",
-                discountPercent: "0",
-                taxableCharge: "0",
-              },
-            ],
-          }),
-        });
-        return { status: response.status, body: await response.json() };
-      });
-      expect(orderResponse.status, JSON.stringify(orderResponse.body)).toBe(201);
+      await purchaseOrder();
       await invoice("AP", "AP-DEMO", true);
       await navigate("trade-settlements");
       await type(page, page.locator("#tset-party"), "PARTY");
