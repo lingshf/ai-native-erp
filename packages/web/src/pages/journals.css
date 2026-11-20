@@ -134,10 +134,17 @@
   margin-block: var(--space-2);
 }
 /* UI-07c AI 面板：卡片 + 候选结果卡片；外框由 .card 提供（styles.css 旧 .ai-panel 外框已在 UI-08 删除）。 */
-.journals .ai-panel {
+/* UI-09e：外层「凭证草稿」fieldset 去框中框（UI-1 F7），legend 作节标题、层级同 FastTab 标题；行内暂记户 fieldset 不变 */
+.journals .ai-panel,
+.journals .jv-editor > fieldset {
   margin: 0;
   padding: 0;
   border: 0;
+}
+.journals .jv-editor > fieldset > legend {
+  padding: 0 0 var(--space-4);
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
 }
 .journals .ai-panel .ai-form {
   display: grid;
