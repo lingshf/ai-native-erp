@@ -30,7 +30,7 @@
   padding: 0;
   border: 0;
 }
-.period-close .close-command-bar {
+.period-close .bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -40,7 +40,7 @@
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-1);
 }
-.period-close .close-command-bar > span {
+.period-close .bar > span {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -74,19 +74,26 @@
 .period-close > fieldset .card > .journal-scroll {
   max-height: 360px;
 }
-.period-close .close-periods {
+.period-close > .card .grid-wrap {
   max-height: 360px;
 }
-.period-close .close-periods caption {
+.period-close > .card .grid-wrap caption {
   padding: var(--space-3) var(--space-4);
   text-align: left;
   font-weight: var(--weight-semibold);
 }
-.period-close .close-periods tr[aria-current] td {
+.period-close > .card .grid-wrap tr[aria-current="true"] td {
   background: var(--color-primary-soft);
   font-weight: var(--weight-semibold);
 }
 .period-close > fieldset .journal-scroll :is(th, td):nth-child(n + 2) {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+/* 净额 KPI 的下钻链接在窄屏也保持 ≥ 44px 的点击区 */
+.period-close .kpi .value a {
+  display: inline-flex;
+  align-items: center;
+  min-width: 44px;
+  min-height: 44px;
 }

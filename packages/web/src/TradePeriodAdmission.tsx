@@ -136,6 +136,7 @@ export function TradePeriodAdmission({
     >
       <fieldset
         className="admission"
+        aria-label={t("trpt.admission")}
         disabled={disabled || busy || loaded.failed || (period.status === "closed" && !pending)}
       >
         <p>{t("trpt.admissionNote")}</p>

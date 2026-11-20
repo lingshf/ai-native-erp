@@ -161,7 +161,7 @@ export function PeriodClose({ preferences }: { preferences: Preferences }) {
         {t("close.teaching")}
       </TeachingTip>
       {selectedCompany && selectedPeriod && (
-        <fieldset disabled={admissionLocked}>
+        <fieldset disabled={admissionLocked} aria-label={t("close.title")}>
           <CloseWizard
             key={`${selectedCompany.code}:${selectedPeriod.month}`}
             company={selectedCompany}
@@ -197,7 +197,7 @@ export function PeriodClose({ preferences }: { preferences: Preferences }) {
         )}
       {months.length > 0 && (
         <div className="card">
-          <div className="grid-wrap close-periods">
+          <div className="grid-wrap">
             <table className="grid">
               <caption>{t("close.periods")}</caption>
               <thead>
@@ -211,10 +211,7 @@ export function PeriodClose({ preferences }: { preferences: Preferences }) {
               </thead>
               <tbody>
                 {months.map((item) => (
-                  <tr
-                    key={item.month}
-                    aria-current={item.month === selectedPeriod?.month || undefined}
-                  >
+                  <tr key={item.month} aria-current={item.month === selectedPeriod?.month}>
                     <td>{item.month}</td>
                     <td>
                       <Badge tone={tones[item.status]}>{t(`close.status.${item.status}`)}</Badge>
@@ -377,7 +374,7 @@ function CloseWizard({
   const closedView = result || latestPeriod.status !== "open";
   return (
     <>
-      <div className="close-command-bar">
+      <div className="bar">
         {latestPeriod.status !== "closed" && !result && (
           <button
             type="button"
@@ -412,7 +409,7 @@ function CloseWizard({
         {closedView && (
           <button
             type="button"
-            className="btn btn-danger"
+            className="btn btn-secondary"
             disabled={
               busy ||
               pending !== null ||

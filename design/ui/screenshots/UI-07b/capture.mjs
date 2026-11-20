@@ -8,7 +8,7 @@
 //   closed   经 API 预览并确认结账 2026-01 后，回到 2026-01（已结账，准入不可改，“打开下一期间”）。
 // 每张断言：根节点 scrollWidth ≤ 视口宽、溢出元素只在自身滚动容器内、main.scrollWidth ≤ main.clientWidth；
 // main 内每张表格都在自身 overflow-x: auto 容器内，且溢出时能在容器内横向滚动。
-// 第三个参数为 after 时另断言 main 内可见交互控件高度 ≥ 44px（复选框按实际点击区——包裹的 label 或自身——宽高都 ≥ 44px），
+// 第三个参数为 after 时另断言 main 内可见交互控件（button/select/input/表格外的 a[href]）高度 ≥ 44px（复选框和链接宽高都须 ≥ 44px；复选框按实际点击区——包裹的 label 或自身——宽高都 ≥ 44px），
 // 并另截教学关闭图；改前图只记录、不判失败。
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -74,16 +74,21 @@ function tableScroll() {
   }
   return result;
 }
+function inlineLinks() {
+  return document.querySelectorAll("main table a[href]").length;
+}
 function smallTargets() {
   const small = [];
-  for (const el of document.querySelectorAll("main button, main select, main input")) {
+  for (const el of document.querySelectorAll("main button, main select, main input, main a[href]")) {
+    // 表格内联金额链接属于行内文字，不计入（也不声称通过），见 inlineLinks()。
+    if (el.tagName === "A" && el.closest("table")) continue;
     // 复选框按实际点击区判定：包裹它的 label（若有），否则复选框本身；宽高都须 ≥ 44。
     const target = el.type === "checkbox" ? (el.closest("label") ?? el) : el;
     const box = target.getBoundingClientRect();
     if (box.width === 0 || el.closest("[hidden]")) continue;
-    if (box.height < 43.5 || (el.type === "checkbox" && box.width < 43.5))
+    if (box.height < 43.5 || ((el.type === "checkbox" || el.tagName === "A") && box.width < 43.5))
       small.push(
-        `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}${el.type === "checkbox" ? `[checkbox ${target.textContent?.trim() ?? ""}]` : ""} ${Math.round(box.width)}x${Math.round(box.height)}`,
+        `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}${el.type === "checkbox" ? `[checkbox ${target.textContent?.trim() ?? ""}]` : ""}${el.tagName === "A" ? `[link ${el.textContent?.trim() ?? ""}]` : ""} ${Math.round(box.width)}x${Math.round(box.height)}`,
       );
   }
   return small.slice(0, 8);
@@ -299,6 +304,7 @@ try {
       const main = await tab.evaluate(mainScroll);
       const tables = await tab.evaluate(tableScroll);
       const small = after ? await tab.evaluate(smallTargets) : [];
+      const inline = await tab.evaluate(inlineLinks);
       await tab.screenshot({ path: join(outDir, file), fullPage: true });
       const size = await tab.evaluate(() => [
         document.documentElement.scrollWidth,
@@ -314,7 +320,7 @@ try {
         small.length === 0;
       if (!ok && after) failed++;
       console.log(
-        `${ok ? "PASS" : "FAIL"} ${file} viewport ${width} page ${size[0]}x${size[1]} main ${main.join("/")} tables ${tables.length}${loose.length ? ` not in own scroller: ${loose.map((table) => table.name).join(", ")}` : ""}${overflow.escaped.length ? ` escaped: ${overflow.escaped.join(", ")}` : ""}${small.length ? ` <44px: ${small.join(", ")}` : ""}`,
+        `${ok ? "PASS" : "FAIL"} ${file} viewport ${width} page ${size[0]}x${size[1]} main ${main.join("/")} tables ${tables.length} table-inline links (not checked) ${inline}${loose.length ? ` not in own scroller: ${loose.map((table) => table.name).join(", ")}` : ""}${overflow.escaped.length ? ` escaped: ${overflow.escaped.join(", ")}` : ""}${small.length ? ` <44px: ${small.join(", ")}` : ""}`,
       );
       await context.close();
     }

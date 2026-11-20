@@ -249,6 +249,8 @@ it("shows period status badges, keeps derived numbers hidden until preview, and 
   expect(within(current).getByText("开放").closest(".badge")?.className).toBe("badge info");
   expect(within(list).getByText("冻结").closest(".badge")?.className).toBe("badge warning");
   expect(screen.getByText("trade", { selector: ".badge" }).className).toBe("badge warning");
+  expect(screen.getByRole("group", { name: "期末结账" })).toBeTruthy();
+  expect(screen.getByRole("group", { name: "期间贸易模块准入" })).toBeTruthy();
   expect(screen.queryByText("本次结转净额")).toBeNull();
   const previewButton = screen.getByRole("button", { name: "预览结账" });
   expect(previewButton.className).toBe("btn btn-secondary");
@@ -261,7 +263,7 @@ it("shows period status badges, keeps derived numbers hidden until preview, and 
   expect(screen.getByText("本次结转净额")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "打开下一期间" })).toBeNull();
 });
-it("styles open-next as a danger action on a closed period without offering a new preview", async () => {
+it("keeps open-next a secondary action on a closed period without offering a new preview", async () => {
   window.history.replaceState(null, "", "/#/period-close?company=DEFAULT&month=2026-12");
   const company = {
     code: "DEFAULT",
@@ -289,7 +291,7 @@ it("styles open-next as a danger action on a closed period without offering a ne
   );
   render(<App />);
   const next = await screen.findByRole("button", { name: "打开下一期间" });
-  expect(next.className).toBe("btn btn-danger");
+  expect(next.className).toBe("btn btn-secondary");
   expect(next).toHaveProperty("disabled", false);
   expect(screen.getByText("冻结或关闭期间不可再过账。").closest(".message-bar")?.className).toBe(
     "message-bar info",
