@@ -1,6 +1,6 @@
 # UI-11c S5-g 遗留：VirtualRows 占位行 `td` 的边框、对齐与最小宽度
 
-- Sprint：S5 收尾后的 backlog（不计入 S5 目标，版本由协调者定）　依赖：S5-g [#126](https://github.com/lingshf/ai-native-erp/pull/126) 合并；与 [UI-11a](UI-11a-business-queue-actions-column.md)、[FOCUS-02](FOCUS-02-business-master-save-failure-focus.md) 同属 web-ui:journals，与 [UI-11b](UI-11b-s5g-leftover-button-checkbox.md) 同改 `theme/components.css`，都**串行**，先后由协调者定　建议分支：`ui-11c-virtualrows-spacer`
+- Sprint：S6（[计划](README.md#s6订单列表与保存前预览--s5-遗留收尾建议-v060)；S5 收尾后登记的 backlog，不计入 S5 目标）　依赖：S5-g [#126](https://github.com/lingshf/ai-native-erp/pull/126) 合并；与 [UI-11a](UI-11a-business-queue-actions-column.md)、[FOCUS-02](FOCUS-02-business-master-save-failure-focus.md) 同属 web-ui:journals，与 [UI-11b](UI-11b-s5g-leftover-button-checkbox.md) 同改 `theme/components.css`，都**串行**，先后由协调者定　建议分支：`ui-11c-virtualrows-spacer`
 - 冲突域：web-ui:journals（`Journals.tsx` 中的 `VirtualRows`）；若规则写进 `theme/components.css`（VirtualRows 的 `.journal-scroll` / `.journal-row` 组件规则在那里），同时占 web-ui:components。
 - 类型：CSS（必要时 tsx 加类名）
 - 来源：S5-g #126（head `a456f33`）第二道检查，证据 [gist](https://gist.github.com/lingshf/a5d44f3ae2f4eb51cdf4cfaff7533084)。这一项使 `styles.css` 中的 `th, td { border-bottom; vertical-align; min-width }` 仍须保留。

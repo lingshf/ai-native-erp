@@ -1,6 +1,6 @@
 # UI-11d 删除 `styles.css` 保留的全局声明（D-7 完成）
 
-- Sprint：S5 收尾后的 backlog（版本由协调者定）　依赖：[UI-11b](UI-11b-s5g-leftover-button-checkbox.md)、[UI-11c](UI-11c-virtualrows-spacer-cells.md) 都合并（外壳串行最后）　建议分支：`ui-11d-delete-styles-css`
+- Sprint：S6（[计划](README.md#s6订单列表与保存前预览--s5-遗留收尾建议-v060)；S5 收尾后登记的 backlog）　依赖：[UI-11b](UI-11b-s5g-leftover-button-checkbox.md)、[UI-11c](UI-11c-virtualrows-spacer-cells.md) 都合并（外壳串行最后）　建议分支：`ui-11d-delete-styles-css`
 - 冲突域：web-ui:shell（**只改 `src/styles.css`，以及文件清空时 `src/main.tsx` 中 `import "./styles.css";` 这一行**）。证据覆盖全部页面，开工时不应有正在进行的页面 CSS 任务。
 - 类型：CSS，外加入口 import 一行
 - 来源：S5-g [#126](https://github.com/lingshf/ai-native-erp/pull/126) 保留的声明：`input[type="checkbox"]`（整条）；`button { background; color; border; border-radius; cursor }`；`button:hover:not(:disabled)`；`button:active:not(:disabled)`；`th, td { border-bottom; vertical-align; min-width }`。
