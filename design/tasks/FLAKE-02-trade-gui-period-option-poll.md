@@ -21,6 +21,11 @@
    - `#close-month` 的选项来自 `PeriodClose.tsx:123–125` 的 `periodOptions`（分页查询；`<option>` 没有 `value` 属性，值取文本）。
 2. **afterAll teardown 超时**（两轮都有）：第 1 轮没有任何 `choose` 或用例失败，也出现了 3 个 suite 超时。因此 teardown 超时**不是** option 失败的伴随现象。具体卡在哪一步（`harness.launching`、`browser.close()`、删除临时目录），日志没有给出。
 3. 尚未在其他 head 或 CI 上见到这两种失败。
+4. **第 3 轮 trace（待验证的观察，不是结论）**：来源 [gist 修订 b81ded7](https://gist.github.com/lingshf/0f2258dbc1805c681fd297e2ca90c117/b81ded7d26659c2fd8e8222410fc0e2898190e93) 的 `r3-trace-timeline.txt`。
+   - `navigate("period-close")` 的最后一步 `page.locator("main h2").waitFor()` 在约 25.70 s 解析，命中的是 `<h2>Runtime status</h2>`。这是 `shell.overview`（`labels.ts:88`），即跳转前那一页的标题，不是期末页的标题。
+   - 此后 `#close-month` 的 option 被读取了很多次（timeline 中可见 95 次，协调者转报约 120 次），每次都是空数组，直到失败截图。
+   - trace 的 network 部分为 0 字节，看不到 `/periods` 请求的发出与响应时间。
+   - 这些只说明该轮 `navigate()` 可能在期末页渲染前就返回了。为何此后 10 s 内选项一直为空、是否与本轮之前的现象同因，均未验证。
 
 ## 推断（均待验证，不作为结论）
 
@@ -29,13 +34,14 @@
 - **option 空列表**：
   - 截图在轮询超时之后才拍，所以“截图显示 2026-01”不能说明轮询期间选项已存在。轮询的 10 s 内选项可能确实为空，例如期间数据还没返回，或下拉在加载中被重新挂载。
   - locator 也可能在轮询期间命中了已卸载的旧节点，或其他同 id 的元素。
+  - 观察 4 提示：`navigate()` 只等待“`main` 下有一个 `h2`”，没有确认它属于目标页，旧页标题即可满足这一条件。这只能解释提前返回，不能解释之后 10 s 都为空；两者的关系待验证。
 - **teardown 超时**：可能卡在 `browser.close()`、等待 `harness.launching` 或删除临时目录中的任一步，也可能与本机负载有关。按 [S4 回顾](../reviews/S4-retro.md)议题 4 的结论，不能仅凭本机运行判定为负载造成。
 
 ## 范围
 
 1. **先查已有证据**：失败的用例在 artifacts 中已有 `*-last.png` 和 `*-trace.zip`（`trade-gui-scenario.ts:535–536`，仅失败时保存）。先从第 2 轮的 trace 中查 `#close-month` 在轮询期间的 DOM 变化与 periods 请求时间，再决定要加哪些诊断。teardown 超时没有 trace，需要定向诊断。
 2. **定向诊断**（只在失败或超时时输出，不改断言和超时）：
-   - option：轮询每一次读到的选项列表，`#close-month` 的元素数量与 `disabled` 状态，periods 查询的请求与响应时间；
+   - option：轮询每一次读到的选项列表，`#close-month` 的元素数量与 `disabled` 状态，`main h2` 的文本；periods 查询的请求与响应时间（trace 的 network 为空，需用 `page.on("request" / "response")` 之类的方式另行记录）；
    - teardown：`afterAll` 中每一步的开始与结束时间，以定位卡住的那一步。
 3. **稳定性实验**：开始前在 PR 中**预先写明**运行次数（≥ 5 次）和命令，按序保存每一次的完整日志（Tee-Object），成功的和失败的都保存。这是本地诊断，不是失败后反复重跑直到通过，也不是 PR CI 单次重跑的豁免（[路线图 §5 偶发失败](../roadmap.md#5-团队流程)）。
 4. 查明原因后再修复：
