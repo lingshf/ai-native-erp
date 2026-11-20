@@ -19,6 +19,7 @@
 
 ```powershell
 . {
+  $server = $null; $demo = $null; $db = $null; $port = $null
   $port = 4195
   if (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) {
     throw "端口 $port 已被占用：换端口，或先确认占用者归属；不要停止不属于本次演示的进程"
@@ -48,17 +49,35 @@
 }
 ```
 
-（端口 4195 仅为示例，按本版实际选用。端口被占用或归属检查失败时，已创建的临时目录和已启动的 `$server` 仍按下面的收尾清理。通过检查后，再运行本版的 seed 与截图脚本。）
+（端口 4195 仅为示例，按本版实际选用。每轮开头先清空 `$server`、`$demo`、`$db`、`$port`，同一会话复跑时，端口检查先中止也不会让收尾块碰上一轮残留的对象；本轮已创建的临时目录和已启动的 `$server` 仍按下面的收尾清理。）
+
+**seed 与截图前必须再检查一次**，不能依赖上面启动块是否中止过。把下面这段放在每个写入数据的脚本（seed、截图）之前，自己校验：
+
+```powershell
+. {
+  if (-not $server -or -not $port) { throw "本轮没有已启动的 `$server，先运行启动块" }
+  if ($server.HasExited) { throw "本轮服务进程已退出，中止，不要写入数据" }
+  $owner = @((Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue).OwningProcess)
+  if ($owner.Count -ne 1 -or $owner[0] -ne $server.Id) {
+    throw "端口 $port 的监听进程 ($($owner -join ',')) 不是本轮启动的 $($server.Id)，中止，不要写入数据"
+  }
+  "seed 前检查通过：port=$port pid=$($server.Id)"
+}
+# 之后才运行本版的 seed 与截图脚本
+```
 
 ## 收尾
 
-只停本次启动的进程（`$server`），只删本次生成的目录：
+只停本轮启动的进程（`$server`），只删本轮生成的目录。变量为空（本轮没有创建）就什么都不做，处理完立刻清空，避免下一轮误用：
 
 ```powershell
 . {
   if ($server -and -not $server.HasExited) { Stop-Process -Id $server.Id }
-  if ($demo) { Remove-Item -Recurse -Force $demo }
-  if (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) { "端口 $port 仍有监听" } else { "端口 $port 已释放" }
+  if ($demo -and (Split-Path $demo -Leaf) -like "erp-demo-*") { Remove-Item -Recurse -Force $demo }
+  if ($port) {
+    if (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) { "端口 $port 仍有监听（可能不属于本轮，先确认归属，不要强停）" } else { "端口 $port 已释放" }
+  } else { "本轮没有创建任何对象，无需收尾" }
+  $server = $null; $demo = $null; $db = $null; $port = $null
 }
 ```
 
