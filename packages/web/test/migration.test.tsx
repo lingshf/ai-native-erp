@@ -145,6 +145,8 @@ test("migration details show key-value tables with non-color mismatch marks, raw
     ...document.querySelectorAll<HTMLDetailsElement>("main details"),
   ].filter((details) => !details.parentElement?.closest("details"));
   const table = counts?.querySelector("table.kv");
+  // S5-b: each key-value table sits in its own shared horizontal scroll region.
+  expect(table?.parentElement?.matches(".grid-wrap.scroll-hint")).toBe(true);
   expect([...(table?.querySelectorAll("thead th") ?? [])].map((th) => th.textContent)).toEqual([
     "字段",
     "快照预期",

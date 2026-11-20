@@ -31,15 +31,27 @@
   font-size: var(--text-sm);
   overflow-wrap: anywhere;
 }
+/* S5-b：display / dt 颜色 / dd 外边距与字重原由 styles.css 全局 dl、dt、dd 规则给出，这里以类规则给出同值 */
 .migration-page .card > dl {
+  display: grid;
   grid-template-columns: minmax(0, 14em) minmax(0, 1fr);
   gap: var(--space-2) var(--space-4);
   margin: 0;
 }
+.migration-page dt {
+  color: var(--color-text-muted);
+}
 .migration-page dd {
+  margin: 0;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
   overflow-wrap: anywhere;
+}
+@media (max-width: 680px) {
+  .migration-page dd {
+    margin-bottom: var(--space-3);
+  }
 }
 .migration-page .card.empty-state {
   display: block;
@@ -174,10 +186,16 @@
   white-space: pre;
 }
 
-/* UI-10e 键值表：字段 / 旧账（快照预期）/ 目标实际 / 差额；不符行加文字“不符”与 × 符号，不只靠颜色 */
+/* UI-10e 键值表：字段 / 旧账（快照预期）/ 目标实际 / 差额；不符行加文字“不符”与 × 符号，不只靠颜色。
+   S5-b：表放进自身的 .grid-wrap.scroll-hint 横向滚动区（共享滚动样式与 F2 滚动提示）；
+   在 details 内同 .card > .grid-wrap 不加框，原表的上下外边距移到滚动区上 */
+.migration-page details > .grid-wrap {
+  margin-block: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: 0;
+}
 .migration-page .kv {
   width: 100%;
-  margin-block: var(--space-2) var(--space-3);
   border-collapse: collapse;
   table-layout: fixed;
   font-size: var(--text-sm);
@@ -194,6 +212,10 @@
 }
 .migration-page .kv td {
   font-family: var(--font-mono);
+}
+/* S5-b：原由 styles.css 全局 thead 规则给出 */
+.migration-page .kv thead {
+  background: var(--color-primary-soft);
 }
 .migration-page .kv thead th {
   font-weight: var(--weight-semibold);
