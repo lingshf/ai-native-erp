@@ -517,4 +517,134 @@ describe("trade orders", () => {
     expect(lists.slice(before)).toEqual(["/api/v1/trade/orders?company=DEFAULT&limit=100"]);
     expect(screen.queryByText(t("tord.listEmpty"))).toBeNull();
   });
+
+  // TORD-04: preview before save.
+  const previewed = {
+    lines: [{ lineId: "L1", lineNo: 1, net: 9000, tax: 1170, gross: 10170 }],
+    net: 9000,
+    tax: 1170,
+    gross: 10170,
+  };
+  const previewButton = () => screen.getByRole("button", { name: t("tord.preview") });
+  const previewRegion = () =>
+    screen.queryByRole("region", { name: new RegExp(t("tord.previewTitle"), "u") });
+  const routed =
+    (onPreview: Handler, onSave: Handler = () => response(savedOrder, 201)): Handler =>
+    (url, init) =>
+      url === "/api/v1/trade/orders/preview" ? onPreview(url, init) : onSave(url, init);
+
+  it("previews server amounts by keyboard, marks them as a preview and saves the saved amounts", async () => {
+    const { calls, posts } = stubApi(routed(() => response(previewed)));
+    render(<App />);
+    await fillOrder();
+    const form = screen.getByRole("form", { name: t("tord.entry") });
+    // jsdom has no native Tab: the first tabbable control of the form is Preview, before Save.
+    const tabbable = [
+      ...form.querySelectorAll<HTMLElement>("a[href], button, input, select, [tabindex]"),
+    ].filter((element) => element.tabIndex >= 0 && !(element as HTMLButtonElement).disabled);
+    expect(tabbable.slice(0, 2).map((element) => element.textContent)).toEqual([
+      t("tord.preview"),
+      t("tord.save"),
+    ]);
+    // type="button": Enter on it activates Preview only and never submits (saves) the form.
+    expect(previewButton().getAttribute("type")).toBe("button");
+    previewButton().focus();
+    fireEvent.click(document.activeElement as HTMLElement);
+    const region = await waitFor(() => {
+      const found = previewRegion();
+      if (!found) throw new Error("no preview yet");
+      return found;
+    });
+    expect(document.activeElement).toBe(region);
+    expect(within(region).getByText(t("tord.previewNote"))).toBeTruthy();
+    expect(region.querySelector(".badge")?.textContent).toContain(t("tord.previewBadge"));
+    expect(region.textContent).toContain(formatMinor(10170, "zh", 2));
+    expect(document.querySelector(".tord-status .badge")?.textContent).toContain(
+      t("tord.previewBadge"),
+    );
+    const lines = screen.getByRole("table", { name: t("tord.lines") });
+    const row = within(lines).getByText("L1").closest("tr") as HTMLElement;
+    for (const value of [9000, 1170, 10170])
+      expect(row.textContent).toContain(formatMinor(value, "zh", 2));
+    expect(lines.querySelector(".tord-total")?.textContent).toContain(formatMinor(10170, "zh", 2));
+    expect(document.querySelector(".tord-amounts")).toBeNull();
+    expect(screen.queryByText(t("tord.amountsAfterSave"))).toBeNull();
+    expect(calls.filter((call) => call.startsWith("POST"))).toEqual([
+      "POST /api/v1/trade/orders/preview",
+    ]);
+    expect(tradeOrderCommandSchema.parse(posts[0])).toMatchObject({ orderId: "PO-1" });
+
+    save();
+    await screen.findByText(orderLabel("zh", "tord.saved", { orderId: "PO-1" }));
+    expect(posts[1]).toEqual(posts[0]);
+    expect(previewRegion()).toBeNull();
+    expect(document.querySelector(".tord-status .badge")).toBeNull();
+    const total = document.querySelector<HTMLElement>(".tord-amounts .tord-total");
+    expect(total?.textContent).toContain(formatMinor(11300, "zh", 2));
+    expect(total?.textContent).not.toContain(formatMinor(10170, "zh", 2));
+  });
+
+  it("clears the preview as soon as any field changes", async () => {
+    const { posts } = stubApi(routed(() => response(previewed)));
+    render(<App />);
+    await fillOrder();
+    for (const change of [
+      () => fireEvent.change(field("tord.quantity", "L1"), { target: { value: "9" } }),
+      () => fireEvent.click(field("tord.priceIncludesTax")),
+      () => fireEvent.click(screen.getByRole("button", { name: t("tord.addLine") })),
+    ]) {
+      fireEvent.click(previewButton());
+      await waitFor(() => expect(previewRegion()).toBeTruthy());
+      change();
+      expect(previewRegion()).toBeNull();
+      expect(document.querySelector(".tord-lines .tord-total")).toBeNull();
+      expect(screen.queryByText(formatMinor(10170, "zh", 2))).toBeNull();
+      expect(screen.getByText(t("tord.amountsAfterSave"))).toBeTruthy();
+    }
+    expect(posts).toHaveLength(3);
+  });
+
+  it("shows preview failures in the message bar, on the fields, and returns focus to Preview", async () => {
+    let attempt = 0;
+    const { posts } = stubApi(
+      routed(() => {
+        attempt += 1;
+        if (attempt === 1)
+          return failure(400, "INVALID_REQUEST", [
+            { path: "lines.0.taxCode", messageKey: "api.error.trade.missingTax" },
+          ]);
+        throw new TypeError("network down");
+      }),
+    );
+    render(<App />);
+    await fillOrder();
+    fireEvent.change(field("tord.orderId"), { target: { value: "po 1" } });
+    previewButton().focus();
+    fireEvent.click(previewButton());
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toContain(t("tord.previewInvalid"));
+    expect(field("tord.orderId").getAttribute("aria-invalid")).toBe("true");
+    expect(posts).toHaveLength(0);
+    expect(document.activeElement).toBe(previewButton());
+
+    fireEvent.change(field("tord.orderId"), { target: { value: "PO-1" } });
+    fireEvent.click(previewButton());
+    await waitFor(() =>
+      expect(field("tord.taxCode", "L1").getAttribute("aria-invalid")).toBe("true"),
+    );
+    expect(screen.getByRole("alert").textContent).toContain(
+      `${t("tord.taxCode")} L1: ${t("tord.issue.missingTax")}`,
+    );
+    expect(document.activeElement).toBe(previewButton());
+    expect(previewRegion()).toBeNull();
+
+    fireEvent.click(previewButton());
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain(t("tord.previewFailed")),
+    );
+    expect(document.activeElement).toBe(previewButton());
+    expect(previewRegion()).toBeNull();
+    expect(posts).toHaveLength(2);
+    expect(document.querySelector(".tord-amounts")).toBeNull();
+  });
 });

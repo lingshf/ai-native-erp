@@ -72,6 +72,13 @@ export interface TradeOrder extends Omit<TradeOrderCommand, "company" | "lines">
   readonly recordedAt: string;
   readonly lines: readonly TradeOrderLine[];
 }
+/** TORD-04 read-only preview: the amounts createOrder would store; totals add up the lines. */
+export interface TradeOrderPreview {
+  readonly lines: readonly Pick<TradeOrderLine, "lineId" | "lineNo" | "net" | "tax" | "gross">[];
+  readonly net: number;
+  readonly tax: number;
+  readonly gross: number;
+}
 /** TORD-03 list row: order header plus stored line totals; no lines. */
 export interface TradeOrderSummary extends Omit<TradeOrder, "commandHash" | "lines"> {
   readonly lineCount: number;

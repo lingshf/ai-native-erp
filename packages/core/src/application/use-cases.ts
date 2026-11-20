@@ -16,6 +16,7 @@ export interface ApplicationServices {
     | "createOrder"
     | "order"
     | "listOrders"
+    | "previewOrder"
     | "preview"
     | "confirm"
     | "list"
@@ -82,6 +83,7 @@ export const applicationLanes = {
     createOrder: "write",
     order: "light",
     listOrders: "light",
+    previewOrder: "light",
     preview: "heavy",
     confirm: "write",
     list: "light",
