@@ -1,6 +1,6 @@
 # FOCUS-02 业务事件主数据：保存失败、忙碌结束后焦点晚一帧
 
-- Sprint：S5 收尾后的 backlog（不计入 S5 目标，版本由协调者定）　依赖：[FOCUS-01](FOCUS-01-journals-events-passive-focus.md)（[#123](https://github.com/lingshf/ai-native-erp/pull/123)）合并后开工；与 [UI-11a](UI-11a-business-queue-actions-column.md) 同冲突域，**串行**，先后由协调者定　建议分支：`focus-02-business-master-save-failure`
+- Sprint：S5 收尾后的 backlog（不计入 S5 目标，版本由协调者定）　依赖：[FOCUS-01](FOCUS-01-journals-events-passive-focus.md)（已合并，[#123](https://github.com/lingshf/ai-native-erp/pull/123)，main `2aaa610`）；与 [UI-11a](UI-11a-business-queue-actions-column.md) 同冲突域，**串行**，先后由协调者定　建议分支：`focus-02-business-master-save-failure`
 - 冲突域：web-ui:journals（`BusinessEvents.tsx`、`business-events` 测试）
 - 类型：调查 / 页面 tsx / 测试
 - 来源：FOCUS-01 #123（head `6204171`）取证时的辅助发现，证据见 #123 描述及其 [gist](https://gist.github.com/lingshf/b3e452eb266e4cd81d19e2c91e559b0c)。#123 未改这一处。
