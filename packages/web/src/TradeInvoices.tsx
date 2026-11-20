@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
@@ -326,8 +326,10 @@ function InvoiceEntry({
     saved?.pending ? { key: "tinv.uncertain", path: null } : null,
   );
   const [retry, setRetry] = useState(saved?.pending != null);
-  useEffect(() => {
-    // Best-effort draft autosave; the post envelope itself is persisted synchronously in confirm().
+  // Layout effect so storage matches the committed screen: a render that shows the receipt has
+  // already dropped the posted envelope. Best-effort draft autosave; the post envelope itself is
+  // persisted synchronously in confirm().
+  useLayoutEffect(() => {
     storeSaved(company.code, { draft, documentId, dirty, pending });
   }, [company.code, draft, documentId, dirty, pending]);
   useEffect(() => {
@@ -366,7 +368,9 @@ function InvoiceEntry({
     while (used.has(`L${n}`)) n += 1;
     edit({ lines: [...draft.lines, blankLine(n)] });
   };
-  useEffect(() => {
+  // Layout effect: a passive effect leaves the previous render's listener (stale draft and locked
+  // state) attached after commit, silently dropping a shortcut pressed in that window.
+  useLayoutEffect(() => {
     const shortcut = (event: KeyboardEvent) => {
       if (event.altKey && event.shiftKey && event.key.toLowerCase() === "n" && !locked) {
         event.preventDefault();
