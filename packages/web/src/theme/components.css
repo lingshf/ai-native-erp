@@ -562,6 +562,15 @@
   color: var(--color-text-disabled);
   cursor: not-allowed;
 }
+/* F4（UI-09d，D85）：总账报表与期末结账表格内链接（含 0.00）静止为细点线下划线（UA 默认 underline 改 dotted），
+   悬停 / 键盘焦点加深为 2px 实线；下划线始终存在（WCAG 1.4.1）。只列这两页，凭证与贸易页表格外观不变。 */
+:is(.ledger-page, .period-close) :is(td, th) a {
+  text-decoration-style: dotted;
+}
+:is(.ledger-page, .period-close) :is(td, th) a:is(:hover, :focus-visible) {
+  color: var(--color-primary-hover);
+  text-decoration: underline 2px;
+}
 
 /* ---------- 徽标：符号 + 文字，不只靠颜色 ---------- */
 .badge {

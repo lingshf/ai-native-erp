@@ -85,14 +85,6 @@
 .period-close .card .journal-row:hover th {
   background: var(--color-surface-alt);
 }
-/* F4：表格内金额链接（含 0.00）静止为细点线下划线（UA 默认 underline 改 dotted），悬停 / 键盘焦点加深为 2px 实线；下划线始终存在（WCAG 1.4.1） */
-.period-close :is(td, th) a {
-  text-decoration-style: dotted;
-}
-.period-close :is(td, th) a:is(:hover, :focus-visible) {
-  color: var(--color-primary-hover);
-  text-decoration: underline 2px;
-}
 /* 净额 KPI 的下钻链接保持 --control-h 见方的点击区 */
 .period-close .kpi .value a {
   display: inline-flex;

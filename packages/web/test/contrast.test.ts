@@ -185,14 +185,16 @@ describe("design token contrast", () => {
 
   // F4: table links keep an underline in every state (WCAG 1.4.1) and every state's text colour is a checked
   // pair on each row background a link can sit on (card, hovered row, selected row); focus ring likewise.
-  test.each([
-    ["pages/ledger.css", ".ledger-page"],
-    ["pages/period-close.css", ".period-close"],
-  ])("UI-09d %s table links paint only checked pairs and stay underlined", (file, scope) => {
-    const page = declarationsIn(file);
+  // D85: one shared rule in components.css; the two page stylesheets keep no copy.
+  test("UI-09d ledger / period-close table links paint only checked pairs and stay underlined", () => {
+    const page = declarationsIn("theme/components.css");
+    for (const file of ["pages/ledger.css", "pages/period-close.css"])
+      expect(readFileSync(resolve(import.meta.dirname, "../src", file), "utf8"), file).not.toMatch(
+        /text-decoration|--color-primary-hover/u,
+      );
     const base = declarationsIn("theme/base.css");
     const rows = ["color-surface", "color-surface-alt", "color-primary-soft"];
-    const link = `${scope} :is(td, th) a`;
+    const link = ":is(.ledger-page, .period-close) :is(td, th) a";
     const rest = page(link);
     // Rest keeps the UA link underline (base a never removes it) and only thins it to dotted.
     expect(rest["text-decoration-style"]).toBe("dotted");
