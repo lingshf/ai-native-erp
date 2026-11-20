@@ -67,6 +67,12 @@
   min-width: var(--control-h);
   min-height: var(--control-h);
 }
+.ui-master-hit input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--color-primary);
+}
 .ui-master-more {
   justify-self: center;
 }
