@@ -1,41 +1,56 @@
-# FLAKE-02 贸易 GUI E2E：期末月份下拉选项轮询偶发为空，afterAll 关闭浏览器超时（原因未知）
+# FLAKE-02 贸易 / 迁移 GUI E2E：期末月份下拉选项轮询偶发为空；afterAll teardown 超时（两项原因均未知）
 
 - Sprint：S5（排队，不计入 S5 目标）　依赖：—（与 S5-h 无文件重叠，可并行，见下文“与 S5-h 的关系”）　建议分支：`flake-02-trade-gui-option-poll`
 - 冲突域：tests:e2e（`packages/infra/test/support/trade-gui-scenario.ts`、`packages/infra/test/http/trade-gui-*.slow.test.ts`、`packages/infra/test/http/migration-gui.slow.test.ts`）。如果查明需要改页面，再报告设计角色，追加 web-ui:period-close（`PeriodClose.tsx`）
 - 类型：调查 / 测试（必要时页面 tsx）
-- 来源：S5-f [#115](https://github.com/lingshf/ai-native-erp/pull/115) 作者在 head `c2f0310`、干净工作树、真实 Chrome 上的本机 E2E 运行（协调者转报）
+- 来源：S5-f [#115](https://github.com/lingshf/ai-native-erp/pull/115) 作者在 head `c2f0310` 上的两轮本机真实 Chrome E2E（[原始日志](https://gist.github.com/lingshf/0f2258dbc1805c681fd297e2ca90c117/ea629fe74d4d65e10323ec5c2e6fef6ffb37b7cf)，协调者转报）
 
 ## 观察
 
-1. `trade-gui-en-green-1` 失败，报错 `Missing keyboard-selectable option: 2026-01: expected [] to include '2026-01'`。
+来源：[#115 原始日志](https://gist.github.com/lingshf/0f2258dbc1805c681fd297e2ca90c117/ea629fe74d4d65e10323ec5c2e6fef6ffb37b7cf)。两轮运行都在 head `c2f0310`、干净工作树（`status --porcelain` 为空）上，命令为 `ERP_E2E_BROWSER_CHANNEL=chrome npx vitest run trade-gui- migration-gui.slow`。两轮的现象**不同，分开记录**：
+
+| 轮次 | 日志 | 用例 | 失败的 suite |
+|---|---|---|---|
+| 第 1 轮 | `r2-e2e-chrome-run1-failed.log` | 13/13 通过 | 3 个 suite 的 `afterAll` 超过 15 s：`migration-gui.slow.test.ts:29`、`trade-gui-en-green-2.slow.test.ts` 与 `trade-gui-smoke.slow.test.ts`（均为 `trade-gui-scenario.ts:413`） |
+| 第 2 轮 | `r2-e2e-chrome-run2.log` | 12/13 通过 | `trade-gui-en-green-1` 用例失败；另只有 `migration-gui.slow.test.ts:29` 的 `afterAll` 超时 |
+
+1. **option 空列表**（仅第 2 轮）：报错 `Missing keyboard-selectable option: 2026-01: expected [] to include '2026-01'`。
    - 位置：`trade-gui-scenario.ts:90` 的 `choose`，它在 10 s 的 `expect.poll` 中读取 `#close-month` 的全部 `option` 值。调用方是 `:843` 的 `setUp`（`navigate("period-close")` 之后）。
-   - 轮询的最后一次结果是**空数组**：`#close-month` 下一个 `option` 都没读到，不是“有选项但缺 2026-01”。
+   - 轮询最后一次读到的是**空数组**：一个 `option` 都没读到，不是“有选项但缺 2026-01”。
    - 失败截图里下拉框已显示 2026-01。
-2. 同一次运行中有两个 afterAll hook 超过 15 s 默认超时：`migration-gui.slow.test.ts:29`（`browser?.close()` 与删除临时目录），以及 `trade-gui-scenario.ts:413`（`harness.launching` 与 `browser.close()`）。
-3. `#close-month` 的选项来自 `PeriodClose.tsx:123–125` 的 `periodOptions`（分页查询，`<option>` 没有 `value` 属性，值取文本）。
-4. 尚未在其他 head 或 CI 上见到同样的失败，也没有复现。
+   - `#close-month` 的选项来自 `PeriodClose.tsx:123–125` 的 `periodOptions`（分页查询；`<option>` 没有 `value` 属性，值取文本）。
+2. **afterAll teardown 超时**（两轮都有）：第 1 轮没有任何 `choose` 或用例失败，也出现了 3 个 suite 超时。因此 teardown 超时**不是** option 失败的伴随现象。具体卡在哪一步（`harness.launching`、`browser.close()`、删除临时目录），日志没有给出。
+3. 尚未在其他 head 或 CI 上见到这两种失败。
 
 ## 推断（均待验证，不作为结论）
 
-- 截图在轮询超时之后才拍，所以“截图显示 2026-01”不能说明轮询期间选项已存在。轮询期间的 10 s 内选项可能确实为空：期间数据未返回，或下拉在加载中被重新挂载。
-- locator 可能在轮询期间命中了已卸载的旧节点，或其他同 id 的元素。
-- afterAll 超时可能是第一处失败的后果：页面停在未完成状态，浏览器关闭变慢。也可能是本机负载或独立的问题。按 [S4 回顾](../reviews/S4-retro.md)议题 4 的结论，不能仅凭本机运行判定为负载造成。
+两个现象**分别**推断，不预设共同原因：
+
+- **option 空列表**：
+  - 截图在轮询超时之后才拍，所以“截图显示 2026-01”不能说明轮询期间选项已存在。轮询的 10 s 内选项可能确实为空，例如期间数据还没返回，或下拉在加载中被重新挂载。
+  - locator 也可能在轮询期间命中了已卸载的旧节点，或其他同 id 的元素。
+- **teardown 超时**：可能卡在 `browser.close()`、等待 `harness.launching` 或删除临时目录中的任一步，也可能与本机负载有关。按 [S4 回顾](../reviews/S4-retro.md)议题 4 的结论，不能仅凭本机运行判定为负载造成。
 
 ## 范围
 
-1. **先调查，后修复**：
-   - 在同一 head 上按[路线图 §5 偶发失败](../roadmap.md#5-团队流程)重跑，用 Tee-Object 保存完整日志，包括失败的运行；
-   - 失败时额外记录：轮询每一次读到的选项列表，`#close-month` 的元素数量与 `disabled` 状态，periods 查询的请求与响应时间；
-   - 判断 afterAll 超时是否只在 `choose` 失败之后出现。
-2. 查明原因后再修复。若原因在测试，修改测试的等待条件，改为等待真实的就绪信号（例如 periods 响应完成或选项出现），而不是加长时间。若原因在页面（例如加载中重新挂载），报告设计角色追加冲突域，再改 `PeriodClose.tsx`。
-3. 若无法复现，PR 只提交诊断记录（只在失败时输出，不改断言），并在任务状态中写“原因待证实”，不得宣布已修复。
+1. **先查已有证据**：失败的用例在 artifacts 中已有 `*-last.png` 和 `*-trace.zip`（`trade-gui-scenario.ts:535–536`，仅失败时保存）。先从第 2 轮的 trace 中查 `#close-month` 在轮询期间的 DOM 变化与 periods 请求时间，再决定要加哪些诊断。teardown 超时没有 trace，需要定向诊断。
+2. **定向诊断**（只在失败或超时时输出，不改断言和超时）：
+   - option：轮询每一次读到的选项列表，`#close-month` 的元素数量与 `disabled` 状态，periods 查询的请求与响应时间；
+   - teardown：`afterAll` 中每一步的开始与结束时间，以定位卡住的那一步。
+3. **稳定性实验**：开始前在 PR 中**预先写明**运行次数（≥ 5 次）和命令，按序保存每一次的完整日志（Tee-Object），成功的和失败的都保存。这是本地诊断，不是失败后反复重跑直到通过，也不是 PR CI 单次重跑的豁免（[路线图 §5 偶发失败](../roadmap.md#5-团队流程)）。
+4. 查明原因后再修复：
+   - 原因在测试：改等待条件为真实的就绪信号（例如 periods 响应完成或选项出现），而不是加长时间；
+   - 原因在页面（例如加载中重新挂载）：报告设计角色追加冲突域，再改 `PeriodClose.tsx`。
+5. 两个现象各自独立结论。某一项证据不足时，该项保留“原因未知”，只提交诊断，不得宣布已修复。
 
 ## 验收标准
 
-1. **D11**：不加重试，不放宽 `choose` 的 10 s 轮询，不放宽 afterAll 的 15 s 超时，不删除、不削弱断言。等待条件可以改为更准确的就绪信号，但必须在 PR 中说明它比原条件严格或同样严格。
-2. PR 描述按“观察 / 推断 / 未排除”三段写明原因结论。只有复现了失败、并证明修复后不再失败，才能写“已修复”。
-3. 证据：同一 head 上真实 Chrome（`ERP_E2E_BROWSER_CHANNEL=chrome`）的 `trade-gui-*.slow` 与 `migration-gui.slow` 连续运行 ≥ 5 次的完整日志，含失败的运行；CI 上精确 head 的 E2E 结果。
-4. afterAll 超时单独给出结论：是第一处失败的后果，还是独立问题。若是独立问题，在 PR 中另列，报告设计角色拆分任务。
+1. **D11**：不加重试，不放宽 `choose` 的 10 s 轮询，不放宽 `afterAll` 的 15 s 超时，不删除、不削弱断言。等待条件可以改为更准确的就绪信号，但必须在 PR 中说明它比原条件严格或同样严格。
+2. PR 描述对 **option 空列表**和 **teardown 超时**分别按“观察 / 推断 / 未排除”三段写结论。每项的结论可以独立为“已修复”或“原因未知”，不要求二选一归因，也不要求两项同因。只有复现了失败、并证明修复后不再失败，才能对该项写“已修复”。
+3. **验证分层**（PR 的 `verify` 不跑 slow E2E；Full 只在 main push / schedule 上运行）：
+   - **合并前**：在 PR 的精确 head、干净工作树上，本地用真实 Chrome（`ERP_E2E_BROWSER_CHANNEL=chrome`）运行 `trade-gui-*.slow` 与 `migration-gui.slow`，按范围 3 的预定次数保存全部日志，并记录 `git rev-parse HEAD` 与 `git status --porcelain`；
+   - **合并后**：覆盖该合并提交的 main Full 中，各分片的测试步骤实际通过（按[路线图 §5](../roadmap.md#5-团队流程) 的解堵规则核对）。合并后由设计角色在任务表中记录该 run。
+4. teardown 超时若查明与 option 空列表无关、且需要另改文件，在 PR 中另列，报告设计角色拆分任务。
 
 ## 与 S5-h 的关系
 

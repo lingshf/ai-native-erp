@@ -286,7 +286,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [S5-i](S5-i-grid-table-component-rules.md) | 共享表格：`.grid` / `.journal-scroll` 的 `td` 对齐、`thead` 底色与 `.grid tfoot` 底色改为组件规则（#113 报告的缺口；`select` 的 `max-width` 已由 #115 覆盖） | CSS | S5-f、S5-c（同改 `components.css`） | web-ui:components | todo | — |
 | [S5-g](S5-g-delete-global-element-rules.md) | 删除 `styles.css` 剩余全局元素规则（D-7 收尾，含 44px 基线的两道检查；文件清空时删除 `main.tsx:5` 的 import） | CSS + 入口 import 一行 | S5-a..f、S5-i 全部（外壳串行最后） | web-ui:shell | todo | — |
 | [S5-h](S5-h-trade-orders-focus-race.md) | 订单录入页保存后焦点断言偶发失败：先复现、核对真实 Chrome，再修复（D92，原因待证实） | 测试 / 页面 tsx | S5-c（B 线前序） | web-ui:trade-orders | todo | — |
-| [FLAKE-02](FLAKE-02-trade-gui-period-option-poll.md) | 贸易 GUI E2E：期末月份下拉选项轮询偶发为空，afterAll 关闭浏览器超时；先调查、原因待证实（排队，不计入 S5 目标） | 调查 / 测试 | —（与 S5-h 无文件重叠，可并行；共同原因则由设计角色决定合并） | tests:e2e | todo | — |
+| [FLAKE-02](FLAKE-02-trade-gui-period-option-poll.md) | 贸易 GUI E2E：期末月份下拉选项轮询偶发为空；afterAll teardown 超时（两项分别记录，原因均未知）；先查 trace、定向诊断（排队，不计入 S5 目标） | 调查 / 测试 | —（与 S5-h 无文件重叠，可并行；共同原因则由设计角色决定合并） | tests:e2e | todo | — |
 | [PROC-02](PROC-02-release-rc-and-demo-checks.md) | 发布流程：RC 断言范围与 API / GUI 分条；Demo 截图状态断言与进程归属（版本管理） | 文档 | — | docs/release | done | [#111](https://github.com/lingshf/ai-native-erp/pull/111) |
 
 **S5 共同验收**（S5-a..g、S5-i；S5-h、PROC-02、FLAKE-02 见各自文件）：
