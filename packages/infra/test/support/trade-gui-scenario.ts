@@ -19,11 +19,14 @@ import { formatMinor } from "../../../web/src/reports-data.ts";
 const root = fileURLToPath(new URL("../../../../", import.meta.url));
 const artifacts = resolve(process.env.ERP_E2E_ARTIFACTS ?? join(root, "artifacts/ci/trade-e2e"));
 
-// FLAKE-02 diagnostics: one JSON event per line in `<artifacts>/flake02-<suite>.jsonl`, written
-// synchronously on passing and failing runs alike (Vitest drops a passing run's stdout).
-// Writing never throws into the test: a diagnostic must not change the outcome.
+// FLAKE-02 diagnostics, off unless ERP_E2E_DIAG=1: one JSON event per line in
+// `<artifacts>/flake02-<suite>.jsonl`, written synchronously on passing and failing runs alike
+// (Vitest drops a passing run's stdout). They add browser round trips to every poll, so they
+// change its sampling rate; when off, `diagnostics()` is undefined and every call site skips
+// them (no listeners, no page reads, no file writes). Writing never throws into the test.
 export type Diagnostic = (event: string, data?: Record<string, unknown>) => void;
-export function diagnostics(suite: string, directory = artifacts): Diagnostic {
+export function diagnostics(suite: string, directory = artifacts): Diagnostic | undefined {
+  if (process.env.ERP_E2E_DIAG !== "1") return undefined;
   const file = join(directory, `flake02-${suite}.jsonl`);
   let ready = false;
   return (event, data = {}) => {
@@ -47,11 +50,12 @@ export function diagnostics(suite: string, directory = artifacts): Diagnostic {
   };
 }
 export async function timed<T>(
-  log: Diagnostic,
+  log: Diagnostic | undefined,
   step: string,
   run: () => Promise<T>,
   data: Record<string, unknown> = {},
 ) {
+  if (!log) return await run();
   const started = performance.now();
   log("step", { ...data, step, phase: "start" });
   try {
@@ -193,7 +197,7 @@ async function choose(
         const values = await target
           .locator("option")
           .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value));
-        await observe?.(values);
+        if (observe) await observe(values);
         return values;
       },
       { message: `Missing keyboard-selectable option: ${value}`, timeout: 10_000 },
@@ -492,7 +496,7 @@ type Server = { executor: SqliteExecutor; api?: LocalApi };
 
 // One Vite build and one Chrome per file. Chrome starts while Vite builds and the test
 // provisions its database and API; all of it still runs inside the Vitest Duration.
-function guiHarness(phase: Phase, log: Diagnostic) {
+function guiHarness(phase: Phase, log: Diagnostic | undefined) {
   const harness = {
     directory: "",
     webRoot: "",
@@ -504,18 +508,18 @@ function guiHarness(phase: Phase, log: Diagnostic) {
     harness.webRoot = join(harness.directory, "web");
     await mkdir(artifacts, { recursive: true });
     const launchStarted = performance.now();
-    log("step", { step: "launch", phase: "start" });
+    log?.("step", { step: "launch", phase: "start" });
     harness.launching = chromium
       .launch({ headless: true, channel: process.env.ERP_E2E_BROWSER_CHANNEL })
       .then((launched) => {
         harness.browser = launched;
-        log("step", { step: "launch", phase: "end" });
-        launched.on("disconnected", () => log("browser-disconnected"));
+        log?.("step", { step: "launch", phase: "end" });
+        if (log) launched.on("disconnected", () => log("browser-disconnected"));
         phase("browser", launchStarted);
         return launched;
       });
     harness.launching.catch((error) =>
-      log("step", { step: "launch", phase: "error", error: String(error) }),
+      log?.("step", { step: "launch", phase: "error", error: String(error) }),
     );
     const started = performance.now();
     await timed(log, "build", () =>
@@ -630,7 +634,7 @@ async function openTracedPage(
   launching: Promise<Browser>,
   phase: Phase,
   created: (context: BrowserContext) => void,
-  log: Diagnostic,
+  log: Diagnostic | undefined,
   name: string,
 ) {
   const launched = await launching;
@@ -644,7 +648,7 @@ async function openTracedPage(
   phase("tracing", started);
   started = performance.now();
   const page = await context.newPage();
-  watchRequests(page, log, { test: name });
+  if (log) watchRequests(page, log, { test: name });
   phase("page", started);
   return { context, page };
 }
@@ -675,7 +679,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
     const name = `${language}-${theme}-part${part}`;
     const servers: Server[] = [];
     let context: BrowserContext | undefined;
-    log("test", { test: name, phase: "start" });
+    log?.("test", { test: name, phase: "start" });
     onTestFinished(async () => {
       const started = performance.now();
       await timed(log, "onTestFinished:closeAll", () => closeAll(context, servers), { test: name });
@@ -820,7 +824,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       await activate(page, page.locator(`nav a[href="#/${path}"]`));
       await page.waitForURL((url) => url.hash === `#/${path}`);
       await page.locator("main h2").waitFor();
-      log("navigated", { test: name, path, ...(await pageState(page)) });
+      if (log) log("navigated", { test: name, path, ...(await pageState(page)) });
     }
     async function config(kind: string, code: string, fields: Record<string, string>) {
       await choose(page, page.locator("#trade-kind"), kind);
@@ -972,7 +976,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       failed = false;
     } finally {
       await finishTrace(traced, page, name, failed, true);
-      log("test", { test: name, phase: "end", failed });
+      log?.("test", { test: name, phase: "end", failed });
       phase("interaction", interactionStarted);
     }
     async function setUp() {
@@ -982,14 +986,21 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         log,
         "choose:#close-month",
         () =>
-          choose(page, page.locator("#close-month"), "2026-01", expect, async (values) => {
-            log("poll", {
-              test: name,
-              poll: poll++,
-              values,
-              ...(await pageState(page, "#close-month")),
-            });
-          }),
+          choose(
+            page,
+            page.locator("#close-month"),
+            "2026-01",
+            expect,
+            log &&
+              (async (values) => {
+                log("poll", {
+                  test: name,
+                  poll: poll++,
+                  values,
+                  ...(await pageState(page, "#close-month")),
+                });
+              }),
+          ),
         { test: name },
       );
       await checked(page, page.getByLabel(t("trpt.trade"), { exact: true }));
@@ -1274,7 +1285,7 @@ export function tradeGuiSmoke(combinations: readonly (readonly ["zh" | "en", "re
     }) => {
       const name = `smoke-${language}-${theme}`;
       let context: BrowserContext | undefined;
-      log("test", { test: name, phase: "start" });
+      log?.("test", { test: name, phase: "start" });
       onTestFinished(async () => {
         await timed(log, "onTestFinished:context.close", async () => context?.close(), {
           test: name,
@@ -1410,7 +1421,7 @@ export function tradeGuiSmoke(combinations: readonly (readonly ["zh" | "en", "re
         failed = false;
       } finally {
         if (context) await finishTrace(context, page, name, failed);
-        log("test", { test: name, phase: "end", failed });
+        log?.("test", { test: name, phase: "end", failed });
         phase(`${language}/${theme}`, started);
       }
     }, 60_000);

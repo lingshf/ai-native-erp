@@ -29,7 +29,7 @@ beforeAll(async () => {
   browser = await timed(log, "launch", () =>
     chromium.launch({ headless: true, channel: process.env.ERP_E2E_BROWSER_CHANNEL }),
   );
-  browser.on("disconnected", () => log("browser-disconnected"));
+  if (log) browser.on("disconnected", () => log("browser-disconnected"));
   guiPhase("migration", "browser", started);
 }, 60_000);
 afterAll(async () => {
