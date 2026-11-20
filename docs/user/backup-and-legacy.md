@@ -51,11 +51,16 @@ npm run storage:admin -- legacy-reconcile --snapshot-dir <同一快照目录> --
 
 **核对通过不等于允许切换。** 演练（M2-05）和切换（M2-06）仍需另行取得用户授权，本功能没有演练、切换或写操作按钮。
 
-D25 / D26 的统一规则是 **AP/AR 期初未结项解释控制科目期初 GL，不能留下未解释差额**。本功能直接调用现有 `tradeReconciliation`，在目标最后过账日逐科目展示 `subledgerMinor`、`glMinor`、`tradeGlMinor`、`otherSourceMinor`、`tradeDifferenceMinor`、`differenceMinor`，首批只用于显示，不另写公式。
+D25 / D26 的统一规则是 **AP/AR 期初未结项解释控制科目期初 GL，不能留下未解释差额**。本功能直接调用 `tradeReconciliation`（与贸易报表同一函数，单一公式，无模式开关），在切换日（目标最后过账日）逐科目列出 `subledgerMinor`（S）、`glMinor`（G）、`tradeGlMinor`（T）、`openingGlMinor`（P，记账日 ≤ 截止日的旧账期初未结项原始金额带符号合计，借正贷负）、`otherSourceMinor`、`tradeDifferenceMinor`、`differenceMinor`：
 
-期初门禁只认 run 上 M2-03b 阶段的 `opening=done` 标记（由 M2-03b 绑定明细文件 SHA 及逐科目 `detail`/`empty` 声明）。`accounts_in_scope` 中存在 AP/AR 控制科目而 run 无此标记时，报告独立 `blockers` 明确标注“待 M2-03b 消除”，判 `blocked`；控制科目净额为 0、三个差额全为 0，或完全没有分录时也一样阻断。它不进入已知差异清单，确认文件不能豁免；run 保持 `imported`。没有 AP/AR 控制科目时不适用此门禁。
+- `tradeDifferenceMinor = T + P − S`，`otherSourceMinor = G − T − P`，`differenceMinor = G − S`；
+- 没有期初项时 P = 0，结果与 M1 原公式逐字段相同。
 
-按 D26，本 PR 先交付首批核对与门禁验收。M2-03b 把 P 纳入同一 `tradeReconciliation` 后，M2-04b 小跟进再启用 P 差额判定，并补“有效期初项通过、篡改期初项金额或删除明细判差异”的验收；本任务不实现未结明细导入，也不声称完成 M2-04b。M2-05 仍需等待 M2-03b、M2-04b 及用户授权。
+run 有 `opening=done` 时（M2-04b），任一控制科目的 `tradeDifferenceMinor` 或 `otherSourceMinor` 不为 0 即判 `差异`（`trade-reconciliation` 段，键为 `公司:科目`），不进入已知差异清单，确认文件不能放行。例如期初项原始金额被改、期初项被删、或追加了一笔无对应期初项的 LEGACY 分录，都会在该科目的 `otherSourceMinor` 上显示未解释金额，`--confirm` 拒绝。
+
+期初门禁只认 run 上 M2-03b 阶段的 `opening=done` 标记（由 M2-03b 绑定明细文件 SHA 及逐科目 `detail`/`empty` 声明）。`accounts_in_scope` 中存在 AP/AR 控制科目而 run 无此标记时（例如期初阶段之前导入的 run），报告独立 `blockers`（代码 `M2_03B_OPENING_REQUIRED`，页面提示“缺少期初完成标记 opening=done…需用期初明细文件重新导入”），判 `blocked`；控制科目净额为 0、三个差额全为 0，或完全没有分录时也一样阻断。它不进入已知差异清单，确认文件不能豁免；run 保持 `imported`。没有 AP/AR 控制科目时不适用此门禁。
+
+按 D26 分两批交付：M2-04 首批交付核对与门禁；M2-03b 导入期初未结项；M2-04b 启用上面的 P 公式判定。M2-05 仍需用户授权。
 
 ### 期初未结项（M2-03b，D25 / D30）
 
@@ -96,7 +101,7 @@ GL 批次结束后，期初项、新伙伴与主数据、来源证据（`legacy_
 
 期初未结项**不能**开贷项或取消（D30）：两者都以 `reference` 错误拒绝。需要调整时请在旧账侧修正明细后重新导入新目标。
 
-M2-04 门禁不变：有 AP/AR 控制科目而 run 无 `opening=done` 时仍判 `blocked`，净额为 0 也一样。导入了期初项后，报告不再因门禁阻断；贸易子账按 P 公式判定（期初列）留给 M2-04b。**迁移尚未完成**：顺序仍是 M2-03b → M2-04b → M2-05 → M2-06，演练与切换另需用户授权。
+M2-04 门禁不变：有 AP/AR 控制科目而 run 无 `opening=done` 时仍判 `blocked`，净额为 0 也一样。导入了期初项后，报告按 P 公式判定贸易子账（见上文“迁移核对”）；贸易报表“GL 核对”也新增“期初”列。**迁移尚未完成**：之后是 M2-05 → M2-06，演练与切换另需用户授权。
 
 ## 只读旧账报表
 

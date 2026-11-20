@@ -59,6 +59,8 @@ export interface TradeReconciliationRow {
   readonly account: string;
   readonly subledgerMinor: number;
   readonly tradeGlMinor: number;
+  /** P: signed original amount of legacy-opening items on or before the cutoff (D25). */
+  readonly openingGlMinor: number;
   readonly otherSourceMinor: number;
   readonly glMinor: number;
   readonly tradeDifferenceMinor: number;

@@ -671,6 +671,7 @@ describe("trade invoices on real SQLite", () => {
       account: "2100",
       subledgerMinor: -11300,
       tradeGlMinor: -11300,
+      openingGlMinor: 0,
       otherSourceMinor: -700,
       glMinor: -12000,
       tradeDifferenceMinor: 0,
@@ -696,6 +697,7 @@ describe("trade invoices on real SQLite", () => {
     ).toMatchObject({
       subledgerMinor: -11300,
       tradeGlMinor: -12000,
+      openingGlMinor: 0,
       otherSourceMinor: -700,
       tradeDifferenceMinor: -700,
       differenceMinor: -1400,

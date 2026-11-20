@@ -9,7 +9,8 @@ export const migrationZh = {
   "migration.knownSha": "已知差异清单 SHA-256",
   "migration.difference": "差异",
   "migration.blocked": "阻断",
-  "migration.openingRequired": "待 M2-03b 消除：缺少期初完成标记 opening=done。",
+  "migration.openingRequired":
+    "缺少期初完成标记 opening=done（例如期初阶段之前导入的运行）：贸易子账无法按期初公式判定，需用期初明细文件重新导入；确认文件不能放行。",
   "migration.pending": "待确认",
   "migration.pass": "通过",
   "migration.noReport": "尚无核对报告。",
@@ -34,7 +35,8 @@ export const migrationEn = {
   "migration.knownSha": "Known differences SHA-256",
   "migration.difference": "Differences",
   "migration.blocked": "Blocked",
-  "migration.openingRequired": "Pending M2-03b: opening=done completion evidence is missing.",
+  "migration.openingRequired":
+    "Missing opening=done completion evidence (e.g. a run imported before the opening phase): the trade subledger cannot be checked with the opening formula; re-import with an opening items file. A confirmation file cannot release this.",
   "migration.pending": "Awaiting confirmation",
   "migration.pass": "Passed",
   "migration.noReport": "No reconciliation report yet.",

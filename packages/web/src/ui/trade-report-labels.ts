@@ -15,7 +15,7 @@ export const tradeReportZh = {
   "trpt.teaching":
     "历史余额按会计日截止，未来核销不改写早月。当前版本用于新操作，不能把历史版本用于提交。",
   "trpt.reconcileNote":
-    "核对范围：本公司全部伙伴、全部 AP/AR，截止日累计；借方减贷方。伙伴/方向筛选不适用于 GL 核对。其他来源与差异单列，不自动抵平。",
+    "核对范围：本公司全部伙伴、全部 AP/AR，截止日累计；借方减贷方。伙伴/方向筛选不适用于 GL 核对。“期初”为旧账期初未结项的原始金额，用于解释导入的旧账 GL；其他来源与差异单列，不自动抵平。",
   "trpt.invoiceGrossMinor": "发票未结总额",
   "trpt.creditGrossMinor": "信用未结总额",
   "trpt.advanceGrossMinor": "预付/预收未结总额",
@@ -45,6 +45,7 @@ export const tradeReportZh = {
   "trpt.none": "不适用",
   "trpt.subledger": "子账",
   "trpt.tradeGl": "贸易 GL",
+  "trpt.opening": "期初",
   "trpt.other": "其他来源 GL",
   "trpt.gl": "GL 合计",
   "trpt.tradeDifference": "贸易差异",
@@ -78,7 +79,7 @@ export const tradeReportEn: Record<keyof typeof tradeReportZh, string> = {
   "trpt.teaching":
     "History uses accounting-date cutoffs; future settlements do not rewrite earlier months. New actions require current, not historical, versions.",
   "trpt.reconcileNote":
-    "Scope: all company parties and AP/AR, cumulative through cutoff; debit minus credit. Party/side filters do not apply to GL reconciliation. Other sources and differences remain separate; no automatic balancing.",
+    "Scope: all company parties and AP/AR, cumulative through cutoff; debit minus credit. Party/side filters do not apply to GL reconciliation. 'Opening' is the original amount of legacy opening items and explains imported legacy GL; other sources and differences remain separate; no automatic balancing.",
   "trpt.invoiceGrossMinor": "Open invoice gross",
   "trpt.creditGrossMinor": "Open credit gross",
   "trpt.advanceGrossMinor": "Open advance gross",
@@ -108,6 +109,7 @@ export const tradeReportEn: Record<keyof typeof tradeReportZh, string> = {
   "trpt.none": "Not applicable",
   "trpt.subledger": "Subledger",
   "trpt.tradeGl": "Trade GL",
+  "trpt.opening": "Opening",
   "trpt.other": "Other-source GL",
   "trpt.gl": "Total GL",
   "trpt.tradeDifference": "Trade difference",

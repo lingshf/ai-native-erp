@@ -119,7 +119,7 @@ D6 历史反向逐行精确镜像同公司原已过账行，即使科目/维度�
 
 余额为保存的原始净/税/总额减截止日内核销与动作差额；核销用已有 `settlements(company_id,item_id,accounting_date)` 索引 SQL 聚合，应用/取消/反向用不可变前后像差额 SQL 聚合，不重放事件、不新增余额缓存。未来核销、退款、取消不隐藏早月记录；当前停用伙伴/科目或新 profile 不改变原科目/日期。发票到期日当天归未到期，之后分 1–30、31–60、61–90、91+ 天；贷项/预付分别以正金额单列，账龄字段为 null，不净抵发票桶。
 
-GL 核对固定为本公司**全部伙伴及 AP/AR**、从账首至同一截止日的借减贷，伙伴/方向筛选不适用。按原保存控制/预付科目并纳入当前 AP/AR 控制科目，分别返回 `subledgerMinor`、`tradeGlMinor`、`otherSourceMinor`、`glMinor`、`tradeDifferenceMinor`（贸易 GL − 子账）及 `differenceMinor`（全部 GL − 子账）；历史停用/重新分类的已用科目仍纳入。其他来源和真实贸易差异单列，绝不造调整凭证抵平，也不声称独立审计或银行对账。
+GL 核对固定为本公司**全部伙伴及 AP/AR**、从账首至同一截止日的借减贷，伙伴/方向筛选不适用。按原保存控制/预付科目并纳入当前 AP/AR 控制科目，分别返回 `subledgerMinor`、`tradeGlMinor`、`openingGlMinor`（旧账期初未结项原始金额 P，D25）、`otherSourceMinor`（全部 GL − 贸易 GL − P）、`glMinor`、`tradeDifferenceMinor`（贸易 GL + P − 子账）及 `differenceMinor`（全部 GL − 子账）；历史停用/重新分类的已用科目仍纳入。其他来源和真实贸易差异单列，绝不造调整凭证抵平，也不声称独立审计或银行对账。
 
 迁移 **013** 仅增加 `periods.modules`（JSON 数组，原期间全部 `[]`）及两项查询索引，001–012、原事实/GL/回执/版本不改。新公司与新开期间同样默认 `[]`，不会继承或自动打开 trade/tax。`/#/period-close` 显式勾选 trade 和 tax、填写原因后保存；`PUT /api/v1/periods` 现在必须含 `modules: [] | ["trade"] | ["tax"] | ["trade","tax"]`，沿期间 revision CAS/历史记录。所有 TRADE 写入（含无 GL 应用反向、专用取消）统一要求**会计日期间**开放且两模块均准入，税日期间不另检查；普通 GL 行为不变。准入撤销再打开也会变更期间版本，旧预览失效；成功原幂等封套重试仍先返回旧回执。期间写入、付款确认均先保存完整封套并逐字读回，失败不发送；期间 CAS 的未知结果只重试原封套，冲突后明确报错并重新读取期间。
 
@@ -285,12 +285,15 @@ npm run storage:admin -- restore new-target.sqlite independent-backup.sqlite
 
 `backup <db> <out>` 必须显式指定两个路径，输出须不存在；通过 SQLite 在线备份 API 生成经过完整性和当前迁移校验的单文件，服务运行中也可执行。**恢复必须先停服务**：`restore <db> <in>` 从取得维护锁到 checkpoint、关闭句柄、换库、验证及必要回滚完成，全程独占；持锁时服务启动会失败。恢复前原库完整 checkpoint 为带时间戳的 `.bak`，成功输出其路径；新库验证失败则自动还原，并保留 `.bak`。若回滚本身失败，维护锁继续保留、服务仍拒绝启动；错误会给出已验证 `.bak` 的路径，须先人工恢复并验证，再处理维护锁，不能直接删锁强启。损坏或迁移不匹配的输入在任何目标 SQLite 读写打开前拒绝，不改动原库及 crash-WAL/SHM 字节；仍被使用的数据库也拒绝恢复。替换前若残留 `-wal`/`-shm`，拒绝且不手动删除。不要复制正在运行的库主文件作为备份，也不要删除 sidecar。异常终止遗留的 `.maintenance-lock` 须在确认没有维护进程后由操作员调查处理，不能带锁强启服务。
 
-## 历史导入（M2-03，待串行集成）
+## 历史导入（M2-03 #47、M2-03b #63 已合并；核对见 M2-04/M2-04b）
 
-只接受已生成并校验 SHA 的双账快照、显式的新目标路径和全部六项决定 C 选项；不会读取活动旧账、4173 或 `.bak`。以下选项仅为合成验收示例，不代表真实数据授权：
+只接受已生成并校验 SHA 的双账快照、显式的新目标路径和全部六项决定 C 选项；不会读取活动旧账、4173 或 `.bak`。导入后须经迁移核对（`legacy-reconcile`，见 [docs/user/backup-and-legacy.md](docs/user/backup-and-legacy.md)）达到 `reconciled` 才能作为活动库；演练（M2-05）与切换（M2-06）尚未交付，另需用户授权。
+
+以下选项仅为合成验收示例，不代表真实数据授权。示例适用于导入范围**不含** AP/AR 控制科目的快照；只要含 AP/AR 控制科目，就必须追加 `--opening-items FILE.json`（期初未结项明细文件，即使每个科目都声明为 `empty`），否则在写入任何目标前以 `INVALID_INPUT` 拒绝。文件格式见 [docs/user/backup-and-legacy.md](docs/user/backup-and-legacy.md) 的“期初未结项”一节：
 
 ```powershell
 npm run storage:admin -- legacy-import --snapshot-dir C:\synthetic\verified-snapshot --target C:\synthetic\new-import.sqlite --drafts import-as-draft --receipts archive-only --source-events archive-only --transfer-queue archive-only --seals archive-only --audit archive-only
+# 含 AP/AR 控制科目时（必需）：在上面命令末尾追加 --opening-items C:\synthetic\opening-items.json
 node packages\infra\test\support\legacy-import-bench.mjs --execute
 ```
 
