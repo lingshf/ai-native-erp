@@ -175,8 +175,8 @@
 
 | 契约 | 来源 |
 | --- | --- |
-| `.workspace[data-theme]`、`html[lang]` | `App.test.tsx`、`trade-gui-{zh,en}-{red,green}-{1,2}.slow.test.ts`（共享 `test/support/trade-gui-scenario.ts`）、`migration-gui.slow.test.ts` |
-| E2E 用 `nav a[href="#/<path>"]` 导航并等待 `main h2` | 同上四个 `trade-gui-*.slow.test.ts` |
+| `.workspace[data-theme]`、`html[lang]` | `App.test.tsx`、`trade-gui-{zh-red,en-green}-{1,2}.slow.test.ts` 与四组合 `trade-gui-smoke.slow.test.ts`（共享 `test/support/trade-gui-scenario.ts`）、`migration-gui.slow.test.ts` |
+| E2E 用 `nav a[href="#/<path>"]` 导航并等待 `main h2`；冒烟按 hash 直达每个贸易页并核对 `main h2` 为该语言标题 | 同上 `trade-gui-*.slow.test.ts` |
 | 迁移页没有 `<button>`；明细用 `details > summary` | `migration-gui.slow.test.ts` |
 | 所有元素 ID（`#trade-kind`、`#tinv-side`、`#workspace-language` …）与按钮可访问名称（`getByRole("button", { name })`） | 同上及 `packages/web/test/*.test.tsx` |
 | 报表视图切换仍是按钮且名称不变 | `trade-reports.test.tsx`、E2E |

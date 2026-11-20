@@ -199,7 +199,7 @@ Invoke-RestMethod "$origin/api/v1/trade/orders" -Method Post `
 
 ![贸易主路径：月末 GL 核对（中文、红主题）](docs/images/trade-main-path-zh-red.png)
 
-真实浏览器测试为 `packages/infra/test/http/trade-gui-{zh,en}-{red,green}-{1,2}.slow.test.ts`（共享 `packages/infra/test/support/trade-gui-scenario.ts`），中/英 × 红/绿四组合均仅用键盘完成同一主路径，另测存储拒写、提交已落库但响应丢失的原封套重试、依赖阻止取消。每个组合分两段在 Full 的不同分片运行：第 1 段经 GUI 完成期间准入、贸易配置、匹配采购发票与付款，并断言其发出的请求与第 2 段的预置请求逐条一致；第 2 段经真实 HTTP API（预览后显式确认）重放这些请求，再经 GUI 完成预付、红字、取消与报表。只预置六个基础 GL 科目及上述 API 采购订单；贸易配置、期间准入、发票、付款、动作和报表操作经过真实 Web。测试自行构建前端、临时建库、启动 loopback HTTP 与生产 SQLite workers，结束关闭并清理自有目录；不触碰已有实例。
+真实浏览器测试为 `packages/infra/test/http/trade-gui-{zh-red,en-green}-{1,2}.slow.test.ts` 与 `trade-gui-smoke.slow.test.ts`（共享 `packages/infra/test/support/trade-gui-scenario.ts`）。zh/red 与 en/green 两个组合仅用键盘完成完整主路径，另测存储拒写、提交已落库但响应丢失的原封套重试、依赖阻止取消（断言具体错误码）；中/英 × 红/绿四个组合另做页面级冒烟：每个贸易页加载、`lang` 与 `data-theme` 正确、标题为所选语言，且不显示另一语言或硬编码的界面文字。主路径每个组合分两段在 Full 的不同分片运行：第 1 段经 GUI 完成期间准入、贸易配置、匹配采购发票与付款，并断言其发出的请求与第 2 段的预置请求逐条一致；第 2 段经真实 HTTP API（预览后显式确认）重放这些请求，再经 GUI 完成预付、红字、取消与报表。只预置六个基础 GL 科目及上述 API 采购订单；贸易配置、期间准入、发票、付款、动作和报表操作经过真实 Web。测试自行构建前端、临时建库、启动 loopback HTTP 与生产 SQLite workers，结束关闭并清理自有目录；不触碰已有实例。
 
 ```powershell
 npx playwright install --only-shell chromium
@@ -207,7 +207,7 @@ npx vitest run trade-gui-
 node packages\infra\bench\trade-http.ts
 ```
 
-如果本机已安装 Edge 且 Chromium 下载受限，可在运行慢测前显式设 `$env:ERP_E2E_BROWSER_CHANNEL="msedge"`；CI 使用固定 Playwright Chromium。截图/浏览器 trace 输出到 `artifacts/ci/trade-e2e`，Full main/每晚层上传；PR 受影响测试仍排除 `*.slow.test.ts`，不安装浏览器、不设墙钟门槛。百万 GL 行 + 1000 伙伴 + 10 万未结项的三次 loopback HTTP p95 只在 Bench 层衡量，口径、原始采样和结果见[贸易性能证据](docs/performance/trade-e2e-bench.md)。
+如果本机已安装 Edge 且 Chromium 下载受限，可在运行慢测前显式设 `$env:ERP_E2E_BROWSER_CHANNEL="msedge"`；CI 使用固定 Playwright Chromium。截图输出到 `artifacts/ci/trade-e2e`，浏览器 trace 只在失败时写入；Full main/每晚层只在失败时上传；PR 受影响测试仍排除 `*.slow.test.ts`，不安装浏览器、不设墙钟门槛。百万 GL 行 + 1000 伙伴 + 10 万未结项的三次 loopback HTTP p95 只在 Bench 层衡量，口径、原始采样和结果见[贸易性能证据](docs/performance/trade-e2e-bench.md)。
 
 ### 贸易计算器（M1-02）
 

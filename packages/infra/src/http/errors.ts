@@ -6,7 +6,7 @@ import { AiFailure, DomainError, StorageError } from "@erp/core/application";
 
 export interface SafeErrorEvent {
   readonly requestId: string;
-  readonly errorType: "HttpError" | "ParseError" | "InternalError";
+  readonly errorType: "HttpError" | "ParseError" | "DomainRejection" | "InternalError";
 }
 
 export type SafeErrorLogger = (event: SafeErrorEvent) => void;
@@ -90,14 +90,17 @@ export function sendHttpError(
   const definition = errors[status] ?? errors[500]!;
   if (!(status in errors)) status = 500;
   const requestId = request.id || randomUUID();
+  // Requests that parsed but were refused by domain or storage rules are not parse errors.
   log({
     requestId,
     errorType:
       status >= 500
         ? "InternalError"
-        : status === 400 || status === 415
-          ? "ParseError"
-          : "HttpError",
+        : error instanceof DomainError || error instanceof StorageError
+          ? "DomainRejection"
+          : (status === 400 && !(error instanceof AiFailure)) || status === 415
+            ? "ParseError"
+            : "HttpError",
   });
   const body: ErrorResponse = errorSchema.parse({
     ...definition,

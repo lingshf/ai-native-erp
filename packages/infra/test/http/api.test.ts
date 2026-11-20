@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { test } from "vitest";
 import { createApi, defaultWebRoot } from "@erp/infra/http";
 import { errorSchema, healthSchema } from "@erp/core/contracts";
+import { AiFailure, DomainError, StorageError } from "@erp/core/application";
 import { parseRuntimeConfiguration, RuntimeConfigurationError } from "@erp/infra";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -132,8 +133,48 @@ test("Fastify parser errors are strict 400/415 using factory-only body routes", 
   assert.ok(
     api.events.every((event) => Object.keys(event).sort().join(",") === "errorType,requestId"),
   );
+  assert.deepEqual(
+    api.events.map((event) => event.errorType),
+    ["ParseError", "ParseError"],
+  );
   assert.equal(JSON.stringify(api.events).includes("secret"), false);
   assert.equal(JSON.stringify(api.events).includes("sensitive"), false);
+});
+
+test("domain and storage rule rejections are logged apart from parse errors", async (t) => {
+  const api = await fixture(t, {
+    registerTestRoutes(server) {
+      server.get("/__test/domain", async () => {
+        throw new DomainError("INVALID_INPUT", {
+          scope: "tradeDocument",
+          path: "itemId",
+          rule: "reference",
+        });
+      });
+      server.get("/__test/conflict", async () => {
+        throw new DomainError("CONFLICT");
+      });
+      server.get("/__test/storage", async () => {
+        throw new StorageError("INVALID_CURSOR");
+      });
+      server.get("/__test/cancelled", async () => {
+        throw new AiFailure("cancelled");
+      });
+    },
+  });
+  const domain = await api.server.inject("/__test/domain");
+  assert.equal(domain.statusCode, 400);
+  assert.deepEqual(errorSchema.parse(domain.json()).fieldErrors, [
+    { path: "itemId", messageKey: "api.error.tradeDocument.reference" },
+  ]);
+  assertError(await api.server.inject("/__test/conflict"), 409, "CONFLICT");
+  assertError(await api.server.inject("/__test/storage"), 400, "INVALID_REQUEST");
+  assert.equal((await api.server.inject("/__test/cancelled")).statusCode, 400);
+  assertError(await api.server.inject("/api/v1/health?x=1"), 400, "INVALID_REQUEST");
+  assert.deepEqual(
+    api.events.map((event) => event.errorType),
+    ["DomainRejection", "DomainRejection", "DomainRejection", "HttpError", "ParseError"],
+  );
 });
 
 test("unknown application failure is sanitized and IDs ignore incoming headers", async (t) => {

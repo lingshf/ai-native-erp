@@ -18,16 +18,10 @@ jobs:
       fail-fast: false
       matrix:
         lane: [unit, browser]
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9]
-        # Unit uses 6 shards. Browser uses 9: each trade GUI part and the migration GUI file
-        # gets its own runner so one slow Chrome start cannot stack with another scenario.
-        exclude:
-          - lane: unit
-            shard: 7
-          - lane: unit
-            shard: 8
-          - lane: unit
-            shard: 9
+        shard: [1, 2, 3, 4, 5, 6]
+        # Unit and browser use 6 shards each. Browser: the two full keyboard trade GUI combinations
+        # (zh/red, en/green; two parts each), the four-combination page smoke and the migration GUI
+        # each get their own runner so one slow Chrome start cannot stack with another scenario.
     concurrency:
       group: full-${{ github.ref }}-${{ matrix.lane }}-${{ matrix.shard }}
       cancel-in-progress: true
@@ -97,7 +91,7 @@ jobs:
           set -o pipefail
           mkdir -p artifacts/ci
           if [ "${{ matrix.lane }}" = "browser" ]; then
-            npm run test:ci -- --project=infra-browser --maxWorkers=1 --shard=${{ matrix.shard }}/9 2>&1 | tee artifacts/ci/vitest.log
+            npm run test:ci -- --project=infra-browser --maxWorkers=1 --shard=${{ matrix.shard }}/6 2>&1 | tee artifacts/ci/vitest.log
           else
             npm run test:ci -- '--project=!infra-browser' --shard=${{ matrix.shard }}/6 2>&1 | tee artifacts/ci/vitest.log
           fi
@@ -119,8 +113,9 @@ jobs:
             artifacts/ci/gui-phases.json
           if-no-files-found: ignore
           retention-days: 14
+      # GUI traces are written only by failing tests; screenshots and traces are uploaded only then.
       - uses: actions/upload-artifact@v7
-        if: always() && steps.gate.outputs.run == 'true'
+        if: failure() && steps.gate.outputs.run == 'true'
         with:
           name: trade-gui-shard-${{ matrix.lane }}-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/ci/trade-e2e/
