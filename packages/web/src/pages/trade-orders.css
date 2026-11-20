@@ -1,0 +1,142 @@
+/*
+ * M1-R1a 采购 / 销售订单页：只作用于 .trade-orders 之内。
+ * 通用外观在 components.css（.page-header / .fasttab / .ui-form-grid / .grid / .kpis / .message-bar / .filter-bar）；
+ * 这里只定操作栏、行表格列宽、数字列对齐与事实区。
+ */
+.trade-orders .message-bar :is(p, ul) {
+  margin: 0;
+}
+.trade-orders .message-bar ul {
+  padding-left: var(--space-5);
+}
+.trade-orders .tord-entry,
+.trade-orders .tord-order {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* 操作栏：保存订单 / 放弃草稿；右侧说明金额在保存后由服务端给出 */
+.trade-orders .tord-command-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+.trade-orders .tord-status {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+.trade-orders .tord-saved:focus {
+  outline: none;
+}
+.trade-orders .tord-saved:focus-visible .message-bar {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.trade-orders .ui-form-grid > .ui-check {
+  align-self: center;
+}
+
+/* 订单行：宽表在自身 .grid-wrap 内横向滚动 */
+.trade-orders .tord-lines {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.trade-orders .tord-lines table {
+  min-width: 820px;
+}
+.trade-orders .tord-lines td {
+  padding: var(--space-1) var(--space-2);
+  vertical-align: top;
+}
+.trade-orders .tord-lines td:first-child {
+  width: 56px;
+  padding-left: var(--space-3);
+  line-height: var(--control-h);
+}
+.trade-orders .tord-lines td input {
+  width: 100%;
+  min-width: 80px;
+  height: var(--control-h);
+  padding: 0 var(--space-2);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+.trade-orders .tord-lines td input[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+.trade-orders .tord-lines td input:disabled {
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+}
+.trade-orders .tord-lines .ui-error-text {
+  margin: var(--space-1) 0 0;
+  color: var(--color-danger);
+  font-size: var(--text-xs);
+}
+/* 数量、单价、折扣（第 4–6 列） */
+.trade-orders .tord-lines td:nth-child(n + 4):nth-child(-n + 6) input,
+.trade-orders .tord-amounts :is(th, td):nth-child(n + 5),
+.trade-orders .tord-total td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.trade-orders .tord-amounts {
+  min-width: 760px;
+}
+.trade-orders .tord-total :is(th, td) {
+  position: static;
+  background: none;
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
+}
+
+.trade-orders .tord-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: var(--space-3) var(--space-6);
+  margin: 0;
+}
+.trade-orders .tord-facts > div {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.trade-orders .tord-facts dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+.trade-orders .tord-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.trade-orders .tord-lookup {
+  margin-bottom: var(--space-4);
+  box-shadow: none;
+  padding: 0;
+}
+.trade-orders .tord-lookup-result {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.trade-orders .tord-lookup-result h4 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
