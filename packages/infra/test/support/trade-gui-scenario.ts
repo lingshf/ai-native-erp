@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, expect, test } from "vitest";
+import { type ExpectStatic, afterAll, beforeAll, expect, test } from "vitest";
 import { chromium, type Browser, type BrowserContext, type Locator, type Page } from "playwright";
 import { build } from "vite";
 import { MasterDataService } from "@erp/core/application";
@@ -11,7 +11,7 @@ import { createSqliteStorage } from "../../src/storage/index.ts";
 import { createMasterDataStore } from "../../src/storage/master-data.ts";
 import { SqliteExecutor } from "../../src/workers/executor.ts";
 import { createApi, type LocalApi } from "../../src/http/index.ts";
-import { label } from "../../../web/src/ui/index.ts";
+import { label, resources } from "../../../web/src/ui/index.ts";
 
 const root = fileURLToPath(new URL("../../../../", import.meta.url));
 const artifacts = resolve(process.env.ERP_E2E_ARTIFACTS ?? join(root, "artifacts/ci/trade-e2e"));
@@ -75,8 +75,9 @@ async function type(page: Page, target: Locator, text: string) {
   await page.keyboard.insertText(text);
   await page.keyboard.press("Tab");
 }
-async function choose(page: Page, target: Locator, value: string) {
-  await expect
+// Concurrent tests pass their own `expect`: expect.poll needs the current test.
+async function choose(page: Page, target: Locator, value: string, check: ExpectStatic = expect) {
+  await check
     .poll(
       () =>
         target
@@ -92,7 +93,7 @@ async function choose(page: Page, target: Locator, value: string) {
         options.findIndex((option) => (option as HTMLOptionElement).value === value),
       value,
     );
-  expect(index).toBeGreaterThanOrEqual(0);
+  check(index).toBeGreaterThanOrEqual(0);
   await tabTo(page, target);
   await page.keyboard.press("Home");
   for (let i = 0; i < index; i++) await page.keyboard.press("ArrowDown");
@@ -372,143 +373,187 @@ async function seedPartOne(transport: Send, ids: GeneratedIds) {
   return { ap: { documentId: ids.documentId }, recorded };
 }
 
-export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", part: 1 | 2) {
-  let directory: string;
-  let webRoot: string;
-  let browser: Browser | undefined;
-  let launching: Promise<Browser>;
-  const phase = (name: string, started: number) =>
-    guiPhase(`${language}/${theme}/${part}`, name, started);
+type Phase = (name: string, started: number) => void;
+type Server = { executor: SqliteExecutor; api?: LocalApi };
+
+// One Vite build and one Chrome per file. Chrome starts while Vite builds and the test
+// provisions its database and API; all of it still runs inside the Vitest Duration.
+function guiHarness(phase: Phase) {
+  const harness = {
+    directory: "",
+    webRoot: "",
+    browser: undefined as Browser | undefined,
+    launching: undefined as unknown as Promise<Browser>,
+  };
   beforeAll(async () => {
-    directory = await mkdtemp(join(tmpdir(), "erp-trade-gui-"));
-    webRoot = join(directory, "web");
+    harness.directory = await mkdtemp(join(tmpdir(), "erp-trade-gui-"));
+    harness.webRoot = join(harness.directory, "web");
     await mkdir(artifacts, { recursive: true });
-    // Chrome starts while Vite builds and the test provisions its database and API; all of it
-    // still runs inside the Vitest Duration, it just no longer runs back to back.
     const launchStarted = performance.now();
-    launching = chromium
+    harness.launching = chromium
       .launch({ headless: true, channel: process.env.ERP_E2E_BROWSER_CHANNEL })
       .then((launched) => {
-        browser = launched;
+        harness.browser = launched;
         phase("browser", launchStarted);
         return launched;
       });
-    launching.catch(() => {});
+    harness.launching.catch(() => {});
     const started = performance.now();
     await build({
       root: join(root, "packages/web"),
       configFile: join(root, "packages/web/vite.config.ts"),
       logLevel: "error",
-      build: { outDir: webRoot },
+      build: { outDir: harness.webRoot },
     });
     phase("build", started);
   }, 60_000);
   afterAll(async () => {
     try {
-      await launching?.catch(() => undefined);
+      await harness.launching?.catch(() => undefined);
       const started = performance.now();
-      await browser?.close();
+      await harness.browser?.close();
       phase("browser-close", started);
     } finally {
-      if (directory) await rm(directory, { recursive: true, force: true });
+      if (harness.directory) await rm(harness.directory, { recursive: true, force: true });
     }
   });
+  return harness;
+}
+
+async function provisionServer(
+  harness: { directory: string; webRoot: string },
+  servers: Server[],
+  phase: Phase,
+  file: string,
+  prefix: string,
+) {
+  const filename = join(harness.directory, `${file}.sqlite`);
+  let started = performance.now();
+  const storage = createSqliteStorage({ filename });
+  try {
+    await storage.migrate();
+  } finally {
+    await storage.close();
+  }
+  const store = createMasterDataStore({ filename });
+  try {
+    const master = new MasterDataService(store);
+    await master.initialize(2026);
+    // Only prerequisite GL accounts are provisioned; trade configuration and all
+    // financial commands below go through the rendered application.
+    for (const [code, category, reportGroup, controlModule] of [
+      ["2100", "LIABILITY", "payables", "AP"],
+      ["1250", "ASSET", "prepayments", "AP"],
+      ["1300", "ASSET", "receivables", "AR"],
+      ["2300", "LIABILITY", "otherLiabilities", "AR"],
+      ["1400", "ASSET", "otherAssets", "TAX"],
+      ["2200", "LIABILITY", "taxLiabilities", "TAX"],
+    ] as const)
+      await master.saveAccount(
+        "DEFAULT",
+        {
+          code,
+          name: `Fictional ${code}`,
+          category,
+          reportGroup,
+          controlModule,
+          purpose: "control",
+          normalSide: category === "ASSET" ? "DEBIT" : "CREDIT",
+          contraOf: null,
+          active: true,
+          manualAllowed: false,
+        },
+        0,
+      );
+  } finally {
+    await store.close();
+  }
+  phase(`${prefix}database`, started);
+  started = performance.now();
+  const server: Server = { executor: await SqliteExecutor.create({ filename }) };
+  servers.push(server);
+  server.api = await createApi({
+    ...server.executor.services(),
+    webRoot: harness.webRoot,
+    allowPortZero: true,
+    environment: { ERP_PROFILE: "local", ERP_HOST: "127.0.0.1", ERP_PORT: "0" },
+  });
+  phase(`${prefix}api`, started);
+  return await server.api.listen();
+}
+
+async function closeAll(context: BrowserContext | undefined, servers: Server[]) {
+  // Explicit context close also disposes the Node request pool used by route.fetch().
+  const closed = [await Promise.allSettled([context?.close()])].flat();
+  closed.push(
+    ...(await Promise.allSettled(
+      servers.map(async ({ executor, api }) => {
+        try {
+          await api?.close();
+        } finally {
+          await executor.close();
+        }
+      }),
+    )),
+  );
+  for (const result of closed) if (result.status === "rejected") throw result.reason;
+}
+
+async function openTracedPage(
+  launching: Promise<Browser>,
+  phase: Phase,
+  created: (context: BrowserContext) => void,
+) {
+  const launched = await launching;
+  let started = performance.now();
+  const context = await launched.newContext({ viewport: { width: 1440, height: 1100 } });
+  created(context);
+  phase("context", started);
+  started = performance.now();
+  // Keystroke, network and source evidence without DOM snapshots; written only on failure.
+  await context.tracing.start({ screenshots: false, snapshots: false, sources: true });
+  phase("tracing", started);
+  started = performance.now();
+  const page = await context.newPage();
+  phase("page", started);
+  return { context, page };
+}
+
+// The trace is kept only for a failure (CI uploads artifacts only then). Main path screenshots
+// stay on success as the local UI evidence; smoke screens are written only on failure.
+async function finishTrace(
+  context: BrowserContext,
+  page: Page,
+  name: string,
+  failed: boolean,
+  screenshot = failed,
+) {
+  if (screenshot)
+    await page.screenshot({ path: join(artifacts, `${name}-last.png`), fullPage: true });
+  await context.tracing.stop(failed ? { path: join(artifacts, `${name}-trace.zip`) } : undefined);
+}
+
+export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", part: 1 | 2) {
+  const phase = (name: string, started: number) =>
+    guiPhase(`${language}/${theme}/${part}`, name, started);
+  const harness = guiHarness(phase);
 
   test(`real trade GUI: ${language}/${theme}, keyboard main path and safe confirmation branches (part ${part}/2: ${parts[part]})`, async ({
     onTestFinished,
   }) => {
     const name = `${language}-${theme}-part${part}`;
-    const servers: { executor: SqliteExecutor; api?: LocalApi }[] = [];
+    const servers: Server[] = [];
     let context: BrowserContext | undefined;
     onTestFinished(async () => {
       const started = performance.now();
-      // Explicit context close also disposes the Node request pool used by route.fetch().
-      const closed = [await Promise.allSettled([context?.close()])].flat();
-      closed.push(
-        ...(await Promise.allSettled(
-          servers.map(async ({ executor, api }) => {
-            try {
-              await api?.close();
-            } finally {
-              await executor.close();
-            }
-          }),
-        )),
-      );
-      for (const result of closed) if (result.status === "rejected") throw result.reason;
+      await closeAll(context, servers);
       phase("resources", started);
     });
-    const opening = (async () => {
-      const launched = await launching;
-      let started = performance.now();
-      context = await launched.newContext({ viewport: { width: 1440, height: 1100 } });
-      phase("context", started);
-      started = performance.now();
-      // Keep explicit PNGs and key/network/source evidence without a continuous screencast.
-      await context.tracing.start({ screenshots: false, snapshots: false, sources: true });
-      phase("tracing", started);
-      started = performance.now();
-      const page = await context.newPage();
-      phase("page", started);
-      return { context, page };
-    })();
-    async function provision(file: string, prefix: string) {
-      const filename = join(directory, `${file}.sqlite`);
-      let started = performance.now();
-      const storage = createSqliteStorage({ filename });
-      try {
-        await storage.migrate();
-      } finally {
-        await storage.close();
-      }
-      const store = createMasterDataStore({ filename });
-      try {
-        const master = new MasterDataService(store);
-        await master.initialize(2026);
-        // Only prerequisite GL accounts are provisioned; trade configuration and all
-        // financial commands below go through the rendered application.
-        for (const [code, category, reportGroup, controlModule] of [
-          ["2100", "LIABILITY", "payables", "AP"],
-          ["1250", "ASSET", "prepayments", "AP"],
-          ["1300", "ASSET", "receivables", "AR"],
-          ["2300", "LIABILITY", "otherLiabilities", "AR"],
-          ["1400", "ASSET", "otherAssets", "TAX"],
-          ["2200", "LIABILITY", "taxLiabilities", "TAX"],
-        ] as const)
-          await master.saveAccount(
-            "DEFAULT",
-            {
-              code,
-              name: `Fictional ${code}`,
-              category,
-              reportGroup,
-              controlModule,
-              purpose: "control",
-              normalSide: category === "ASSET" ? "DEBIT" : "CREDIT",
-              contraOf: null,
-              active: true,
-              manualAllowed: false,
-            },
-            0,
-          );
-      } finally {
-        await store.close();
-      }
-      phase(`${prefix}database`, started);
-      started = performance.now();
-      const server: (typeof servers)[number] = {
-        executor: await SqliteExecutor.create({ filename }),
-      };
-      servers.push(server);
-      server.api = await createApi({
-        ...server.executor.services(),
-        webRoot,
-        allowPortZero: true,
-        environment: { ERP_PROFILE: "local", ERP_HOST: "127.0.0.1", ERP_PORT: "0" },
-      });
-      phase(`${prefix}api`, started);
-      return await server.api.listen();
-    }
+    const opening = openTracedPage(harness.launching, phase, (created) => {
+      context = created;
+    });
+    const provision = (file: string, prefix: string) =>
+      provisionServer(harness, servers, phase, file, prefix);
     const serving = (async () => {
       const address = await provision(name, "");
       if (part === 1) return { address, seeded: undefined };
@@ -729,6 +774,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       }
       return await post("tadj.confirm", "/api/v1/trade/actions");
     }
+    let failed = true;
     try {
       await page.goto(address);
       await choose(page, page.locator("#workspace-language"), language);
@@ -738,9 +784,9 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       expect(await page.locator(".workspace").getAttribute("data-theme")).toBe(theme);
       expect(await page.locator("html").getAttribute("lang")).toBe(language);
       expect(failures).toEqual([]);
+      failed = false;
     } finally {
-      await page.screenshot({ path: join(artifacts, `${name}-last.png`), fullPage: true });
-      await traced.tracing.stop({ path: join(artifacts, `${name}-trace.zip`) });
+      await finishTrace(traced, page, name, failed, true);
       phase("interaction", interactionStarted);
     }
     async function setUp() {
@@ -893,8 +939,18 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
           response.request().method() === "POST",
       );
       await activate(page, button("tinv.preview"));
-      expect((await rejected).status()).toBe(400);
-      await page.getByRole("alert").waitFor();
+      // The cleared related revision is valid for an original AP invoice, so the only accepted
+      // reason is the applied-invoice rule on the source item, not a shape or revision check.
+      const rejection = await rejected;
+      expect(rejection.status()).toBe(400);
+      expect(await rejection.json()).toMatchObject({
+        code: "INVALID_REQUEST",
+        fieldErrors: [{ path: "itemId", messageKey: "api.error.tradeDocument.reference" }],
+      });
+      await page
+        .getByRole("alert")
+        .filter({ hasText: "itemId: api.error.tradeDocument.reference" })
+        .waitFor();
       await action("cancel", {
         "tadj.source": ar.documentId,
         "tadj.reason": "Fictional unused sale",
@@ -939,4 +995,242 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       });
     }
   }, 180_000);
+}
+
+// Each page's own list query (first load must succeed) and the seeded rows it renders from it.
+// Titles, lang and theme render even when the data request fails, so they prove nothing alone.
+type Label = (key: string) => string;
+const tradePages: readonly {
+  path: string;
+  title: string;
+  request: (url: URL) => boolean;
+  loaded: (t: Label) => string;
+  // Read-only keyboard step that makes the page show its loaded rows.
+  reveal?: (page: Page, check: ExpectStatic) => Promise<void>;
+}[] = [
+  {
+    path: "trade",
+    title: "trade.title",
+    request: (url) => url.pathname === "/api/v1/trade/tradeParty",
+    loaded: (t) => `main table[aria-label="${t("trade.tradeParty")}"] tbody tr`,
+  },
+  {
+    path: "trade-invoices",
+    title: "tinv.title",
+    request: (url) => url.pathname === "/api/v1/trade/invoices",
+    loaded: (t) => `main table[aria-label="${t("tinv.list")}"] tbody tr`,
+  },
+  {
+    path: "trade-settlements",
+    title: "tset.title",
+    request: (url) =>
+      url.pathname === "/api/v1/trade/open-items" && url.searchParams.get("status") === "open",
+    loaded: (t) => `main table[aria-label="${t("tset.select")}"] tbody tr`,
+  },
+  {
+    path: "trade-adjustments",
+    title: "tadj.title",
+    request: (url) =>
+      url.pathname === "/api/v1/trade/open-items" && !url.searchParams.has("status"),
+    loaded: () => `#tadj-sourceId option:not([value=""])`,
+    // The default action (advance) lists no items; cancel lists the open items read-only.
+    reveal: (page, check) => choose(page, page.locator("#tadj-kind"), "cancel", check),
+  },
+  {
+    path: "trade-reports",
+    title: "trpt.title",
+    request: (url) => url.pathname === "/api/v1/trade/reports/open-items",
+    loaded: () => "main table tbody tr",
+  },
+  {
+    path: "period-close",
+    title: "close.title",
+    request: (url) => url.pathname === "/api/v1/periods",
+    loaded: () => "#close-month option",
+  },
+];
+
+// Text the other language would show but this one must not: label values (and the literal
+// parts of templates) that differ between the two dictionaries.
+function foreignLabels(language: "zh" | "en") {
+  const own = resources[language] as Record<string, string>;
+  const other = resources[language === "zh" ? "en" : "zh"] as Record<string, string>;
+  const ownValues = new Set(Object.values(own));
+  const foreign = new Set<string>();
+  for (const [key, value] of Object.entries(other)) {
+    if (value === own[key]) continue;
+    for (const part of value.split(/\{[^{}]+\}/u)) {
+      const text = part.trim();
+      if (/\p{L}{2}/u.test(text) && !ownValues.has(text)) foreign.add(text);
+    }
+  }
+  return [...foreign];
+}
+
+// Page-level smoke for every language/theme combination: each trade page loads from the
+// real build and API with the selected `lang` and `data-theme`, shows its translated title and
+// renders no text that is hard-coded or leaked from the other language (in zh: no lowercase Latin
+// word the dictionary and data do not use). The keyboard main path
+// itself runs in full for zh/red and en/green only (trade-gui-<combo>-{1,2}.slow.test.ts).
+export function tradeGuiSmoke(combinations: readonly (readonly ["zh" | "en", "red" | "green"])[]) {
+  const phase = (name: string, started: number) => guiPhase("smoke", name, started);
+  const harness = guiHarness(phase);
+  const servers: Server[] = [];
+  let address = "";
+  let data: string[] = [];
+  beforeAll(async () => {
+    address = await provisionServer(harness, servers, phase, "smoke", "");
+    const started = performance.now();
+    // Read-only browsing over the same state part 1 creates, so lists and reports have rows.
+    await seedPartOne(httpSend(address), freshIds());
+    // User data is not UI text: the initialized company name is deliberately bilingual.
+    const companies = (await (await fetch(new URL("/api/v1/companies?limit=100", address))).json())
+      .items as { name: string }[];
+    // Seeded parties, items and memos are named `Fictional <code>`.
+    data = [...companies.map((company) => company.name), "Fictional"];
+    expect(data.length).toBeGreaterThan(0);
+    phase("seed", started);
+  }, 60_000);
+  afterAll(async () => {
+    await closeAll(undefined, servers);
+  });
+
+  // Combinations are independent (own context, read-only browsing), so they run concurrently.
+  for (const [language, theme] of combinations)
+    test.concurrent(`real trade GUI smoke: ${language}/${theme}, every trade page loads its data translated with lang and data-theme`, async ({
+      onTestFinished,
+      expect,
+    }) => {
+      const name = `smoke-${language}-${theme}`;
+      let context: BrowserContext | undefined;
+      onTestFinished(async () => {
+        await context?.close();
+      });
+      const { page } = await openTracedPage(harness.launching, phase, (created) => {
+        context = created;
+      });
+      const started = performance.now();
+      const failures: string[] = [];
+      page.on("pageerror", (error) => failures.push(error.message));
+      let pending = 0;
+      page.on("request", (request) => {
+        if (request.url().includes("/api/")) pending++;
+      });
+      const settled = (request: { url(): string }) => {
+        if (request.url().includes("/api/")) pending--;
+      };
+      page.on("requestfinished", settled);
+      page.on("requestfailed", settled);
+      // Any failed API call fails the smoke, even one the page would later retry successfully.
+      page.on("response", (response) => {
+        if (response.url().includes("/api/") && response.status() >= 400)
+          failures.push(`${response.status()} ${response.url()}`);
+      });
+      page.on("requestfailed", (request) => {
+        if (request.url().includes("/api/") && request.failure()?.errorText !== "net::ERR_ABORTED")
+          failures.push(`${request.failure()?.errorText} ${request.url()}`);
+      });
+      const t = (key: string) => label(language, key);
+      const foreign = foreignLabels(language);
+      let failed = true;
+      try {
+        await page.goto(address);
+        await choose(page, page.locator("#workspace-language"), language, expect);
+        await choose(page, page.locator("#workspace-theme"), theme, expect);
+        for (const { path, title, request, loaded, reveal } of tradePages) {
+          const listed = page.waitForResponse((response) => request(new URL(response.url())), {
+            timeout: 10_000,
+          });
+          await page.goto(`${address}#/${path}`);
+          await page.waitForURL((url) => url.hash === `#/${path}`);
+          expect((await listed).status(), `${path} list request`).toBe(200);
+          await expect
+            .poll(() => page.locator("main h2").first().textContent(), {
+              message: `${path} title`,
+              timeout: 10_000,
+              intervals: [20],
+            })
+            .toBe(t(title));
+          await reveal?.(page, expect);
+          await expect
+            .poll(() => page.locator(loaded(t)).count(), {
+              message: `${path} seeded rows loaded`,
+              timeout: 10_000,
+              intervals: [20],
+            })
+            .toBeGreaterThan(0);
+          await expect
+            .poll(() => pending, {
+              message: `${path} API requests settle`,
+              timeout: 10_000,
+              intervals: [20],
+            })
+            .toBe(0);
+          expect(await page.locator("html").getAttribute("lang"), path).toBe(language);
+          expect(await page.locator(".workspace").getAttribute("data-theme"), path).toBe(theme);
+          const alerts = await page
+            .locator("[role=alert], .message-bar.danger, .message-bar.warning")
+            .filter({ visible: true })
+            .allTextContents();
+          expect(alerts, `${path} error alerts`).toEqual([]);
+          expect(failures, `${path} API or page errors`).toEqual([]);
+          const leaked = await page.evaluate(
+            ({ foreign, english, own, latin }) => {
+              const texts: string[] = [];
+              const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+              for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+                const parent = node.parentElement;
+                if (!parent || parent.closest("script, style, [hidden]")) continue;
+                if (!parent.closest("option") && parent.getClientRects().length === 0) continue;
+                texts.push(node.textContent ?? "");
+              }
+              for (const element of document.body.querySelectorAll(
+                "[placeholder], [aria-label], [title], [alt]",
+              ))
+                for (const name of ["placeholder", "aria-label", "title", "alt"])
+                  texts.push(element.getAttribute(name) ?? "");
+              return [
+                ...new Set(
+                  texts
+                    .map((text) => text.trim())
+                    .filter(
+                      (text) =>
+                        text &&
+                        !own.includes(text) &&
+                        ((english && /\p{Script=Han}/u.test(text)) ||
+                          (!english &&
+                            (text.match(/[A-Za-z]{3,}/gu) ?? []).some(
+                              (word) => word !== word.toUpperCase() && !latin.includes(word),
+                            )) ||
+                          foreign.some(
+                            (value) =>
+                              text === value || (value.length >= 12 && text.includes(value)),
+                          )),
+                    ),
+                ),
+              ];
+            },
+            {
+              foreign,
+              english: language === "en",
+              own: [...Object.values(resources[language]), ...data],
+              // Latin words the zh dictionary or user data itself uses; all-caps words are codes.
+              latin: [
+                ...new Set(
+                  [...Object.values(resources[language]), ...data]
+                    .join(" ")
+                    .match(/[A-Za-z]{3,}/gu) ?? [],
+                ),
+              ],
+            },
+          );
+          expect(leaked, `${language} ${path}: hard-coded or other-language text`).toEqual([]);
+        }
+        expect(failures).toEqual([]);
+        failed = false;
+      } finally {
+        if (context) await finishTrace(context, page, name, failed);
+        phase(`${language}/${theme}`, started);
+      }
+    }, 60_000);
 }

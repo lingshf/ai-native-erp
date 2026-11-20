@@ -143,11 +143,11 @@ UI 任务不改迁移、领域和 infra 代码，与 `legacy-import`、`admin-cl
 5. **现有测试不删除、不削弱**：
    - 涉及范围：
      - `packages/web/test/*.test.{ts,tsx}`；
-     - 四个真实 Chrome 场景 `packages/infra/test/http/trade-gui-{zh-red,zh-green,en-red,en-green}-{1,2}.slow.test.ts`（每个场景分两段），及其共享场景 `packages/infra/test/support/trade-gui-scenario.ts`；
+     - 真实 Chrome 贸易场景：完整键盘主路径 `packages/infra/test/http/trade-gui-{zh-red,en-green}-{1,2}.slow.test.ts`（每个组合分两段）、四组合页面级冒烟 `trade-gui-smoke.slow.test.ts`，及其共享场景 `packages/infra/test/support/trade-gui-scenario.ts`；
      - `packages/infra/test/http/migration-gui.slow.test.ts`。
    - 不删用例、不放宽断言、不改选择器，只允许**新增**断言。
    - ID、按钮可访问名称、`nav a[href]`、`main h2`、`.workspace[data-theme]`、`html[lang]` 不变。
-   - **精确 head 的真实浏览器证据**：PR 快速 CI 不跑 `*.slow.test.ts`，Full 只在 main push 与定时任务上运行，所以每个实施 PR 都要在 PR 当前 head 上本地运行上述五个 slow 测试：
+   - **精确 head 的真实浏览器证据**：PR 快速 CI 不跑 `*.slow.test.ts`，Full 只在 main push 与定时任务上运行，所以每个实施 PR 都要在 PR 当前 head 上本地运行上述 slow 测试：
      ```
      ERP_E2E_BROWSER_CHANNEL=chrome npx vitest run trade-gui- migration-gui.slow
      # PowerShell：$env:ERP_E2E_BROWSER_CHANNEL="chrome"; npx vitest run trade-gui- migration-gui.slow

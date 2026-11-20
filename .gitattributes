@@ -1,2 +1,17 @@
+# Text files are stored and checked out with LF on every platform (Windows included).
+* text=auto eol=lf
 *.sql text eol=lf
 *.oracle text eol=lf
+
+# Binary fixtures and evidence: never convert or diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.zip binary
+*.sqlite binary
+*.db binary
+*.woff binary
+*.woff2 binary
