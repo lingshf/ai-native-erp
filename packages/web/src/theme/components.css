@@ -219,6 +219,13 @@
 .ui-check input {
   margin: 0;
 }
+/* 与全局 input[type="checkbox"] 同特异性（0,1,1），页面 20px 覆盖仍生效 */
+:where(.ui-check) input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--color-primary);
+}
 .ui-form-actions {
   display: flex;
   flex-wrap: wrap;
