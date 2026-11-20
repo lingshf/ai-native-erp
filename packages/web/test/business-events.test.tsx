@@ -292,6 +292,8 @@ it("keeps master settings locked while editing or saving and refocuses the first
   window.history.replaceState(null, "", "/#/events");
   const saves: unknown[] = [];
   let answer: ((value: Response) => void) | undefined;
+  // Called through a closure so the reset below does not narrow `answer` to undefined.
+  const reply = (value: Response) => answer?.(value);
   const service = {
     code: "S",
     name: "Consulting",
@@ -390,9 +392,71 @@ it("keeps master settings locked while editing or saving and refocuses the first
   fireEvent.click(save);
   await waitFor(() => expect(answer).toBeDefined());
   expect(locked()).toEqual([true, true, true]);
-  answer?.(response({ ...service, code: "S2", name: "Duplicate" }));
+  reply(response({ ...service, code: "S2", name: "Duplicate" }));
   await screen.findByText(label("zh", "business.saved"));
   expect(screen.queryByLabelText(label("zh", "business.code"))).toBeNull();
   expect(locked()).toEqual([false, false, false]);
   expect(saves).toHaveLength(2);
+});
+
+it("refocuses the first rule input as soon as a duplicate posting rule save fails", async () => {
+  window.history.replaceState(null, "", "/#/events");
+  let answer: ((value: Response) => void) | undefined;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn<typeof fetch>().mockImplementation(async (path, options) => {
+      const url = new URL(String(path), "http://localhost");
+      if (url.pathname === "/api/v1/companies")
+        return response({ items: [company], nextCursor: null });
+      if (url.pathname === "/api/v1/posting-rules" && options?.method === "POST")
+        return new Promise<Response>((resolve) => (answer = resolve));
+      if (options?.method && options.method !== "GET")
+        throw new Error(`Unexpected write ${url.pathname}`);
+      return response({ items: [], nextCursor: null });
+    }),
+  );
+  render(<App />);
+  fireEvent.click(await screen.findByRole("button", { name: label("zh", "business.settings") }));
+  fireEvent.click(screen.getByRole("button", { name: label("zh", "business.rules") }));
+  fireEvent.click(await screen.findByRole("button", { name: label("zh", "business.new") }));
+  const field = (key: Parameters<typeof label>[1]) =>
+    screen.getByLabelText<HTMLInputElement>(label("zh", key));
+  const code = field("business.code");
+  expect(document.activeElement).toBe(code);
+  for (const [key, value] of [
+    ["business.code", "CASH"],
+    ["business.objectCode", "S"],
+    ["journal.account", "1000"],
+  ] as const)
+    fireEvent.change(field(key), { target: { value } });
+  let focusedAtError: Element | null | undefined;
+  const observer = new MutationObserver(() => {
+    if (focusedAtError === undefined && document.querySelector('[role="alert"]'))
+      focusedAtError = document.activeElement;
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  const save = screen.getByRole<HTMLButtonElement>("button", {
+    name: label("zh", "business.save"),
+  });
+  save.focus();
+  fireEvent.click(save);
+  await waitFor(() => expect(answer).toBeDefined());
+  expect(save.matches(":disabled")).toBe(true);
+  answer?.(
+    new Response(
+      JSON.stringify({
+        code: "CONFLICT",
+        messageKey: "api.error.conflict",
+        params: {},
+        fieldErrors: [],
+        requestId: "5c0a8f0e-3f3b-4d8e-9a43-2f6f0f7f1b21",
+        retryable: false,
+      }),
+      { status: 409 },
+    ),
+  );
+  await screen.findByRole("alert");
+  observer.disconnect();
+  expect(focusedAtError).toBe(code);
+  expect(document.activeElement).toBe(code);
 });
