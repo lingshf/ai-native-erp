@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { appendFileSync, mkdirSync } from "node:fs";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -17,6 +18,106 @@ import { formatMinor } from "../../../web/src/reports-data.ts";
 
 const root = fileURLToPath(new URL("../../../../", import.meta.url));
 const artifacts = resolve(process.env.ERP_E2E_ARTIFACTS ?? join(root, "artifacts/ci/trade-e2e"));
+
+// FLAKE-02 diagnostics: one JSON event per line in `<artifacts>/flake02-<suite>.jsonl`, written
+// synchronously on passing and failing runs alike (Vitest drops a passing run's stdout).
+// Writing never throws into the test: a diagnostic must not change the outcome.
+export type Diagnostic = (event: string, data?: Record<string, unknown>) => void;
+export function diagnostics(suite: string, directory = artifacts): Diagnostic {
+  const file = join(directory, `flake02-${suite}.jsonl`);
+  let ready = false;
+  return (event, data = {}) => {
+    try {
+      if (!ready) mkdirSync(directory, { recursive: true });
+      ready = true;
+      appendFileSync(
+        file,
+        `${JSON.stringify({
+          at: new Date().toISOString(),
+          ms: Math.round(performance.now() * 10) / 10,
+          pid: process.pid,
+          suite,
+          event,
+          ...data,
+        })}\n`,
+      );
+    } catch {
+      // Diagnostics are best effort.
+    }
+  };
+}
+export async function timed<T>(
+  log: Diagnostic,
+  step: string,
+  run: () => Promise<T>,
+  data: Record<string, unknown> = {},
+) {
+  const started = performance.now();
+  log("step", { ...data, step, phase: "start" });
+  try {
+    const result = await run();
+    log("step", { ...data, step, phase: "end", duration: Math.round(performance.now() - started) });
+    return result;
+  } catch (error) {
+    log("step", {
+      ...data,
+      step,
+      phase: "error",
+      duration: Math.round(performance.now() - started),
+      error: String(error),
+    });
+    throw error;
+  }
+}
+// Page state that answers "which page is rendered and what does the select hold" in one round
+// trip; `selector` elements are reported with every option, `disabled` and `isConnected`.
+async function pageState(page: Page, selector?: string) {
+  try {
+    return await page.evaluate(
+      (selector) => ({
+        hash: location.hash,
+        h2: [...document.querySelectorAll("main h2")].map((element) => element.textContent),
+        status: [...document.querySelectorAll("main [role=status], [role=alert]")].map(
+          (element) => element.textContent,
+        ),
+        selects: selector
+          ? [...document.querySelectorAll<HTMLSelectElement>(selector)].map((element) => ({
+              disabled: element.disabled,
+              value: element.value,
+              options: [...element.options].map((option) => option.value),
+            }))
+          : undefined,
+      }),
+      selector,
+    );
+  } catch (error) {
+    return { stateError: String(error) };
+  }
+}
+// Requests the period-close select depends on: companies, then periods of the chosen company.
+function watchRequests(page: Page, log: Diagnostic, data: Record<string, unknown>) {
+  const watched = (url: string) =>
+    /^\/api\/v1\/(periods|companies)(\/|$)/u.test(new URL(url).pathname);
+  const describe = (request: { method(): string; url(): string }) => {
+    const url = new URL(request.url());
+    return { ...data, method: request.method(), path: url.pathname + url.search };
+  };
+  page.on("request", (request) => {
+    if (watched(request.url())) log("request", describe(request));
+  });
+  page.on("response", (response) => {
+    if (watched(response.url()))
+      log("response", { ...describe(response.request()), status: response.status() });
+  });
+  page.on("requestfinished", (request) => {
+    if (watched(request.url()))
+      log("requestfinished", { ...describe(request), timing: request.timing() });
+  });
+  page.on("requestfailed", (request) => {
+    if (watched(request.url()))
+      log("requestfailed", { ...describe(request), error: request.failure()?.errorText });
+  });
+}
 
 // All user interaction uses real Tab/Shift+Tab and keyboard events, never focus(), fill(),
 // selectOption() or click(). Inspecting the DOM only identifies the next keyboard stop.
@@ -78,13 +179,23 @@ async function type(page: Page, target: Locator, text: string) {
   await page.keyboard.press("Tab");
 }
 // Concurrent tests pass their own `expect`: expect.poll needs the current test.
-async function choose(page: Page, target: Locator, value: string, check: ExpectStatic = expect) {
+// `observe` only records each polled value list (diagnostics); it never changes the result.
+async function choose(
+  page: Page,
+  target: Locator,
+  value: string,
+  check: ExpectStatic = expect,
+  observe?: (values: string[]) => Promise<void>,
+) {
   await check
     .poll(
-      () =>
-        target
+      async () => {
+        const values = await target
           .locator("option")
-          .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value)),
+          .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value));
+        await observe?.(values);
+        return values;
+      },
       { message: `Missing keyboard-selectable option: ${value}`, timeout: 10_000 },
     )
     .toContain(value);
@@ -381,7 +492,7 @@ type Server = { executor: SqliteExecutor; api?: LocalApi };
 
 // One Vite build and one Chrome per file. Chrome starts while Vite builds and the test
 // provisions its database and API; all of it still runs inside the Vitest Duration.
-function guiHarness(phase: Phase) {
+function guiHarness(phase: Phase, log: Diagnostic) {
   const harness = {
     directory: "",
     webRoot: "",
@@ -393,31 +504,44 @@ function guiHarness(phase: Phase) {
     harness.webRoot = join(harness.directory, "web");
     await mkdir(artifacts, { recursive: true });
     const launchStarted = performance.now();
+    log("step", { step: "launch", phase: "start" });
     harness.launching = chromium
       .launch({ headless: true, channel: process.env.ERP_E2E_BROWSER_CHANNEL })
       .then((launched) => {
         harness.browser = launched;
+        log("step", { step: "launch", phase: "end" });
+        launched.on("disconnected", () => log("browser-disconnected"));
         phase("browser", launchStarted);
         return launched;
       });
-    harness.launching.catch(() => {});
+    harness.launching.catch((error) =>
+      log("step", { step: "launch", phase: "error", error: String(error) }),
+    );
     const started = performance.now();
-    await build({
-      root: join(root, "packages/web"),
-      configFile: join(root, "packages/web/vite.config.ts"),
-      logLevel: "error",
-      build: { outDir: harness.webRoot },
-    });
+    await timed(log, "build", () =>
+      build({
+        root: join(root, "packages/web"),
+        configFile: join(root, "packages/web/vite.config.ts"),
+        logLevel: "error",
+        build: { outDir: harness.webRoot },
+      }),
+    );
     phase("build", started);
   }, 60_000);
   afterAll(async () => {
     try {
-      await harness.launching?.catch(() => undefined);
+      await timed(log, "afterAll:launching", async () => {
+        await harness.launching?.catch(() => undefined);
+      });
       const started = performance.now();
-      await harness.browser?.close();
+      await timed(log, "afterAll:browser.close", async () => {
+        await harness.browser?.close();
+      });
       phase("browser-close", started);
     } finally {
-      if (harness.directory) await rm(harness.directory, { recursive: true, force: true });
+      await timed(log, "afterAll:rm", async () => {
+        if (harness.directory) await rm(harness.directory, { recursive: true, force: true });
+      });
     }
   });
   return harness;
@@ -506,6 +630,8 @@ async function openTracedPage(
   launching: Promise<Browser>,
   phase: Phase,
   created: (context: BrowserContext) => void,
+  log: Diagnostic,
+  name: string,
 ) {
   const launched = await launching;
   let started = performance.now();
@@ -518,6 +644,7 @@ async function openTracedPage(
   phase("tracing", started);
   started = performance.now();
   const page = await context.newPage();
+  watchRequests(page, log, { test: name });
   phase("page", started);
   return { context, page };
 }
@@ -539,7 +666,8 @@ async function finishTrace(
 export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", part: 1 | 2) {
   const phase = (name: string, started: number) =>
     guiPhase(`${language}/${theme}/${part}`, name, started);
-  const harness = guiHarness(phase);
+  const log = diagnostics(`${language}-${theme}-part${part}`);
+  const harness = guiHarness(phase, log);
 
   test(`real trade GUI: ${language}/${theme}, keyboard main path and safe confirmation branches (part ${part}/2: ${parts[part]})`, async ({
     onTestFinished,
@@ -547,14 +675,21 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
     const name = `${language}-${theme}-part${part}`;
     const servers: Server[] = [];
     let context: BrowserContext | undefined;
+    log("test", { test: name, phase: "start" });
     onTestFinished(async () => {
       const started = performance.now();
-      await closeAll(context, servers);
+      await timed(log, "onTestFinished:closeAll", () => closeAll(context, servers), { test: name });
       phase("resources", started);
     });
-    const opening = openTracedPage(harness.launching, phase, (created) => {
-      context = created;
-    });
+    const opening = openTracedPage(
+      harness.launching,
+      phase,
+      (created) => {
+        context = created;
+      },
+      log,
+      name,
+    );
     const provision = (file: string, prefix: string) =>
       provisionServer(harness, servers, phase, file, prefix);
     const serving = (async () => {
@@ -685,6 +820,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       await activate(page, page.locator(`nav a[href="#/${path}"]`));
       await page.waitForURL((url) => url.hash === `#/${path}`);
       await page.locator("main h2").waitFor();
+      log("navigated", { test: name, path, ...(await pageState(page)) });
     }
     async function config(kind: string, code: string, fields: Record<string, string>) {
       await choose(page, page.locator("#trade-kind"), kind);
@@ -836,11 +972,26 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       failed = false;
     } finally {
       await finishTrace(traced, page, name, failed, true);
+      log("test", { test: name, phase: "end", failed });
       phase("interaction", interactionStarted);
     }
     async function setUp() {
       await navigate("period-close");
-      await choose(page, page.locator("#close-month"), "2026-01");
+      let poll = 0;
+      await timed(
+        log,
+        "choose:#close-month",
+        () =>
+          choose(page, page.locator("#close-month"), "2026-01", expect, async (values) => {
+            log("poll", {
+              test: name,
+              poll: poll++,
+              values,
+              ...(await pageState(page, "#close-month")),
+            });
+          }),
+        { test: name },
+      );
       await checked(page, page.getByLabel(t("trpt.trade"), { exact: true }));
       await checked(page, page.getByLabel(t("trpt.taxModule"), { exact: true }));
       await type(page, page.locator("#trade-period-reason"), "Fictional GUI acceptance");
@@ -1093,7 +1244,8 @@ function foreignLabels(language: "zh" | "en") {
 // itself runs in full for zh/red and en/green only (trade-gui-<combo>-{1,2}.slow.test.ts).
 export function tradeGuiSmoke(combinations: readonly (readonly ["zh" | "en", "red" | "green"])[]) {
   const phase = (name: string, started: number) => guiPhase("smoke", name, started);
-  const harness = guiHarness(phase);
+  const log = diagnostics("smoke");
+  const harness = guiHarness(phase, log);
   const servers: Server[] = [];
   let address = "";
   let data: string[] = [];
@@ -1111,7 +1263,7 @@ export function tradeGuiSmoke(combinations: readonly (readonly ["zh" | "en", "re
     phase("seed", started);
   }, 60_000);
   afterAll(async () => {
-    await closeAll(undefined, servers);
+    await timed(log, "afterAll:closeAll", () => closeAll(undefined, servers));
   });
 
   // Combinations are independent (own context, read-only browsing), so they run concurrently.
@@ -1122,12 +1274,21 @@ export function tradeGuiSmoke(combinations: readonly (readonly ["zh" | "en", "re
     }) => {
       const name = `smoke-${language}-${theme}`;
       let context: BrowserContext | undefined;
+      log("test", { test: name, phase: "start" });
       onTestFinished(async () => {
-        await context?.close();
+        await timed(log, "onTestFinished:context.close", async () => context?.close(), {
+          test: name,
+        });
       });
-      const { page } = await openTracedPage(harness.launching, phase, (created) => {
-        context = created;
-      });
+      const { page } = await openTracedPage(
+        harness.launching,
+        phase,
+        (created) => {
+          context = created;
+        },
+        log,
+        name,
+      );
       const started = performance.now();
       const failures: string[] = [];
       page.on("pageerror", (error) => failures.push(error.message));
@@ -1249,6 +1410,7 @@ export function tradeGuiSmoke(combinations: readonly (readonly ["zh" | "en", "re
         failed = false;
       } finally {
         if (context) await finishTrace(context, page, name, failed);
+        log("test", { test: name, phase: "end", failed });
         phase(`${language}/${theme}`, started);
       }
     }, 60_000);

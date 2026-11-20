@@ -9,26 +9,36 @@ import { MigrationReader } from "../../src/workers/migration-reader.ts";
 import { executeLegacyImport } from "../../src/storage/legacy-import.ts";
 import { LegacyImportSnapshot, type ImportChoices } from "../../src/legacy/import-plan.ts";
 import { legacyFixture, openingItemsFile } from "../support/legacy-fixture.mjs";
-import { guiPhase, tabTo } from "../support/trade-gui-scenario.ts";
+import { diagnostics, guiPhase, tabTo, timed } from "../support/trade-gui-scenario.ts";
 
 let directory: string, browser: Browser;
 const artifacts = resolve(process.env.ERP_E2E_ARTIFACTS ?? "artifacts\\ci\\migration-e2e");
+const log = diagnostics("migration", artifacts);
 beforeAll(async () => {
   directory = await mkdtemp(join(tmpdir(), "erp-migration-gui-"));
   await mkdir(artifacts, { recursive: true });
-  await build({
-    root: resolve("packages", "web"),
-    configFile: resolve("packages", "web", "vite.config.ts"),
-    logLevel: "error",
-    build: { outDir: join(directory, "web") },
-  });
+  await timed(log, "build", () =>
+    build({
+      root: resolve("packages", "web"),
+      configFile: resolve("packages", "web", "vite.config.ts"),
+      logLevel: "error",
+      build: { outDir: join(directory, "web") },
+    }),
+  );
   const started = performance.now();
-  browser = await chromium.launch({ headless: true, channel: process.env.ERP_E2E_BROWSER_CHANNEL });
+  browser = await timed(log, "launch", () =>
+    chromium.launch({ headless: true, channel: process.env.ERP_E2E_BROWSER_CHANNEL }),
+  );
+  browser.on("disconnected", () => log("browser-disconnected"));
   guiPhase("migration", "browser", started);
 }, 60_000);
 afterAll(async () => {
-  await browser?.close();
-  if (directory) await rm(directory, { recursive: true, force: true });
+  await timed(log, "afterAll:browser.close", async () => {
+    await browser?.close();
+  });
+  await timed(log, "afterAll:rm", async () => {
+    if (directory) await rm(directory, { recursive: true, force: true });
+  });
 });
 for (const language of ["zh", "en"] as const)
   for (const theme of ["red", "green"] as const) {
@@ -95,9 +105,10 @@ for (const language of ["zh", "en"] as const)
           fullPage: true,
         });
       } finally {
-        await page.close();
-        await api.close();
-        await migration.close();
+        const data = { test: `${language}/${theme}` };
+        await timed(log, "finally:page.close", () => page.close(), data);
+        await timed(log, "finally:api.close", () => api.close(), data);
+        await timed(log, "finally:migration.close", () => migration.close(), data);
       }
     }, 30_000);
   }
@@ -108,7 +119,7 @@ test("chooses the short keyboard path after probing an unknown focus position", 
   const started = performance.now();
   const page = await browser.newPage();
   guiPhase("migration", "page", started);
-  onTestFinished(() => page.close());
+  onTestFinished(() => timed(log, "onTestFinished:page.close", () => page.close()));
   await page.setContent(
     Array.from(
       { length: 100 },
