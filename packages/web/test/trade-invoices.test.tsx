@@ -422,6 +422,8 @@ describe("trade invoices", () => {
     expect(add.getAttribute("aria-label")).toBeNull();
     expect(add.getAttribute("aria-keyshortcuts")).toBe("Alt+Shift+N");
     expect(add.querySelector("kbd")?.textContent).toBe("Alt+Shift+N");
+    expect(add.querySelector("kbd")?.closest("[aria-hidden='true']")).not.toBeNull();
+    expect(t("tinv.addLine")).not.toContain("Alt+Shift+N");
     fireEvent.click(add);
     expect(screen.getByLabelText(`${t("tinv.product")} L2`)).toBeTruthy();
   });

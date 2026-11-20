@@ -91,6 +91,7 @@ const lineFields = [
 
 // Drafts and an unresolved post envelope survive company switches, route changes and reloads in this tab.
 const sessionKey = (company: string) => `erp.tradeInvoices.v1.${company}`;
+const ADD_LINE_SHORTCUT = "Alt+Shift+N";
 function loadSaved(company: string): Saved | null {
   try {
     const raw = window.sessionStorage.getItem(sessionKey(company));
@@ -451,7 +452,6 @@ function InvoiceEntry({
     void post(request);
   };
 
-  const addLineLabel = t("tinv.addLine").match(/^(.*?[（(])(.+)([）)])$/);
   const generalSummary = [
     t(`trade.${draft.side}`),
     draft.party.trim(),
@@ -642,19 +642,14 @@ function InvoiceEntry({
             <button
               type="button"
               className="btn btn-secondary"
-              aria-keyshortcuts="Alt+Shift+N"
+              aria-keyshortcuts={ADD_LINE_SHORTCUT}
               disabled={draft.lines.length >= 100}
               onClick={addLine}
             >
-              {addLineLabel ? (
-                <span>
-                  {addLineLabel[1]}
-                  <kbd>{addLineLabel[2]}</kbd>
-                  {addLineLabel[3]}
-                </span>
-              ) : (
-                t("tinv.addLine")
-              )}
+              {t("tinv.addLine")}{" "}
+              <span aria-hidden="true">
+                <kbd>{t("tinv.addLineShortcut")}</kbd>
+              </span>
             </button>
             <label className="ui-check" htmlFor="tinv-exception">
               <input
