@@ -265,7 +265,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 ## S5：`styles.css` 全局元素规则收尾 + S4 回顾行动（建议 v0.5.0）
 
 **目标**：
-- 完成 D-7：各页不再依赖 `styles.css` 的全局元素规则，最后一次性删除（S5-a..g）；
+- 完成 D-7：各页不再依赖 `styles.css` 的全局元素规则，最后一次性删除（S5-a..g、S5-i）；
 - 调查并修复 S4 回顾记录的焦点断言偶发失败 D92（S5-h，原因待证实），落实其余回顾行动（路线图 §4 / §5 已由 S4 回顾 PR 写入；发布流程部分为 PROC-02）。
 
 版本号由协调者定。基线为 main `66d8e15`（v0.4.0 Demo #108 之后）。来源：UI-09g [#106](https://github.com/lingshf/ai-native-erp/pull/106)（head `f269d23`，合并为 main `662a763`）证据表的“保留”部分，摘要见 [UI-1.md §5.2](../reviews/UI-1.md#52-ui-09gstylescss-全局元素规则删除记录)；回顾见 [S4-retro.md](../reviews/S4-retro.md)。
@@ -277,18 +277,19 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- |
-| [S5-a](S5-a-journals-global-rules.md) | 凭证 / 业务事件：无类 `legend`、`select`、按钮、VirtualRows 表头、复选框改为类规则，补采编辑 / 清账 / 预览状态 | 页面 tsx + CSS | S5-b（C 线前序） | web-ui:journals | todo | — |
-| [S5-b](S5-b-migration-global-rules.md) | 迁移核对页：`dl` / `dt` / `dd` / `thead` 改为类规则；`.kv` 表进独立滚动区 | CSS（必要时 tsx） | — | web-ui:migration | todo | — |
-| [S5-c](S5-c-trade-global-rules.md) | 贸易页面：复选框、`.tinv-facts` / `.trpt-facts`、`cell-link` 圆角、`caption` | CSS | — | web-ui:trade | todo | — |
+| [S5-a](S5-a-journals-global-rules.md) | 凭证 / 业务事件：无类 `legend`、`select`（含 `max-width`、`jv-status`）、按钮、VirtualRows 表头、复选框改为类规则，补采编辑 / 清账 / 预览状态 | 页面 tsx + CSS | S5-b（C 线前序） | web-ui:journals | todo | — |
+| [S5-b](S5-b-migration-global-rules.md) | 迁移核对页：`dl` / `dt` / `dd` / `thead` 改为类规则；`.kv` 表进独立滚动区 | CSS（必要时 tsx） | — | web-ui:migration | in-review | [#112](https://github.com/lingshf/ai-native-erp/pull/112) |
+| [S5-c](S5-c-trade-global-rules.md) | 贸易页面：复选框、`.tinv-facts` / `.trpt-facts`、`cell-link` 圆角、`caption` | CSS | — | web-ui:trade | in-review | [#113](https://github.com/lingshf/ai-native-erp/pull/113) |
 | [S5-d](S5-d-trade-orders-global-rules.md) | 订单录入页：复选框、`.tord-facts` | CSS | S5-h（同冲突域） | web-ui:trade-orders | todo | — |
-| [S5-e](S5-e-ledger-period-master-global-rules.md) | 总账报表 / 期末 / 科目表：`caption`、明细 `th, td`、tfoot、科目表对齐 | CSS | S5-f（A 线前序） | web-ui:ledger, web-ui:period-close, web-ui:master | todo | — |
+| [S5-e](S5-e-ledger-period-master-global-rules.md) | 总账报表 / 期末 / 科目表：`caption`、明细 `th, td`（不含对齐，归 S5-i）、tfoot | CSS | S5-f（A 线前序） | web-ui:ledger, web-ui:period-close, web-ui:master | todo | — |
 | [S5-f](S5-f-shell-components-global-rules.md) | 外壳 / 共享组件：偏好区 `legend` / `select` / 复选框、概览 `dd`、`.field select`、VirtualRows tfoot | CSS | — | web-ui:shell（不含 `styles.css`）, web-ui:components | todo | — |
-| [S5-g](S5-g-delete-global-element-rules.md) | 删除 `styles.css` 剩余全局元素规则（D-7 收尾，含 44px 基线的两道检查；文件清空时删除 `main.tsx:5` 的 import） | CSS + 入口 import 一行 | S5-a..f 全部（外壳串行最后） | web-ui:shell | todo | — |
+| [S5-i](S5-i-grid-table-select-component-rules.md) | 共享表格与字段：`.grid` / `.journal-scroll` 的 `td` 对齐与 `thead` / `tfoot` 底色、`.ui-field select` 的 `max-width` 改为组件规则（#113 报告的缺口） | CSS | S5-f、S5-c（同改 `components.css`） | web-ui:components | todo | — |
+| [S5-g](S5-g-delete-global-element-rules.md) | 删除 `styles.css` 剩余全局元素规则（D-7 收尾，含 44px 基线的两道检查；文件清空时删除 `main.tsx:5` 的 import） | CSS + 入口 import 一行 | S5-a..f、S5-i 全部（外壳串行最后） | web-ui:shell | todo | — |
 | [S5-h](S5-h-trade-orders-focus-race.md) | 订单录入页保存后焦点断言偶发失败：先复现、核对真实 Chrome，再修复（D92，原因待证实） | 测试 / 页面 tsx | S5-c（B 线前序） | web-ui:trade-orders | todo | — |
-| [PROC-02](PROC-02-release-rc-and-demo-checks.md) | 发布流程：RC 断言范围与 API / GUI 分条；Demo 截图状态断言与进程归属（版本管理） | 文档 | — | docs/release | todo | — |
+| [PROC-02](PROC-02-release-rc-and-demo-checks.md) | 发布流程：RC 断言范围与 API / GUI 分条；Demo 截图状态断言与进程归属（版本管理） | 文档 | — | docs/release | done | [#111](https://github.com/lingshf/ai-native-erp/pull/111) |
 
-**S5 共同验收**（S5-a..g；S5-h、PROC-02 见各自文件）：
-1. 满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9，PG-05 口径同 S4（基线为 PR 实际 base 的 gzip 列）。S5-a..f 的 CSS 合计 gzip ≤ +0.3 kB（声明先复制到页面，S5-g 再删除全局规则）。
+**S5 共同验收**（S5-a..g、S5-i；S5-h、PROC-02 见各自文件）：
+1. 满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9，PG-05 口径同 S4（基线为 PR 实际 base 的 gzip 列）。S5-a..f、S5-i 的 CSS 合计 gzip ≤ +0.3 kB（声明先复制到页面，S5-g 再删除全局规则）。
 2. **只改本任务冲突域，不改 `styles.css`**（S5-g 除外）。在页面或组件 CSS 中用类规则给出与现值相同的声明，需要类名时再改 `.tsx`。
 3. **计算值证据**：复用 UI-09g 的 `rules-probe.mjs`（#106 证据 gist，作为临时文件使用，不提交）。在一个**只用于取证、不提交**的构建中删去本任务涉及的全局声明，证明本任务页面在全部采集点上计算值“变”为 0；采集点含本页导航路由、两主题、1440 / 390，以及任务文件列出的补采状态。证据表格式同 [UI-1.md §5.1](../reviews/UI-1.md)。
 4. 改前 / 改后截图像素差为 0（S5-b 的 `.kv` 滚动区除外，见其任务文件）。任何非 0 差异都说明值没有对齐，修正 CSS，不申请豁免。
@@ -299,12 +300,12 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | 线 | 顺序 | 冲突域 |
 | --- | --- | --- |
-| A：外壳与共享、报表 | S5-f → S5-e → S5-g | shell + components → ledger / period-close / master → shell（`styles.css` 与 `main.tsx:5`） |
+| A：外壳与共享、报表 | S5-f → S5-i → S5-e → S5-g | shell + components → components → ledger / period-close / master → shell（`styles.css` 与 `main.tsx:5`） |
 | B：贸易 | S5-c → S5-h → S5-d | trade → trade-orders → trade-orders |
 | C：迁移与凭证 | S5-b → S5-a | migration → journals |
 
 - **首批可同时开工**：S5-f（A）、S5-c（B）、S5-b（C）。
-- **跨线等待**：S5-g 等 S5-a..f 全部合并，并且按[路线图 §5 合并后](../roadmap.md#5-团队流程)看到覆盖最后一个合并提交的完整 main Full。S5-g 的证据覆盖全部页面，开工时不应有正在进行的页面 CSS 任务。
+- **跨线等待**：S5-i 还要等 B 线的 S5-c 合并（#113 在 `components.css` 新增一条规则）。S5-g 等 S5-a..f、S5-i 全部合并，并且按[路线图 §5 合并后](../roadmap.md#5-团队流程)看到覆盖最后一个合并提交的完整 main Full。S5-g 的证据覆盖全部页面，开工时不应有正在进行的页面 CSS 任务。
 - **外壳串行**：S5-f → S5-g，由表内依赖保证。
 - **对比度测试**：本 Sprint 预计不改 `contrast.test.ts`。需要新增配对的任务先报告设计角色加入依赖（`tests:contrast` 串行）。
 - **PROC-02** 由版本管理负责，不计入开发上限，随时可做，须在 v0.5.0 RC 开出前合并。

@@ -9,10 +9,11 @@
 
 依赖 `styles.css` 全局规则的声明，改为各页 CSS 中的类规则，值不变。**不改 `styles.css`**：
 - 报表与期末页的 `caption`：text-align / font-weight / padding；
-- 总账明细 `th, td`：vertical-align / min-width / text-align / border-bottom（#106 观察到仍生效）；
+- 总账明细 `th, td`：vertical-align / min-width / border-bottom（#106 观察到仍生效）；
 - 总账 tfoot `td { padding }`；
-- 期末 fieldset 内 `.journal-scroll` 的 `th, td { padding }`；
-- 科目表 `td { text-align }`：页面规则保留 `left`，不改为 `start`。`left` 与 `start` 在左到右文字下看起来一样，但 `getComputedStyle(td).textAlign` 分别是 `left` 和 `start`，不满足计算值零差异。改为逻辑属性不在本任务范围内。
+- 期末 fieldset 内 `.journal-scroll` 的 `th, td { padding }`。
+
+**不在范围**：总账明细与科目表 `td` 的 `text-align`、`.grid thead` 底色、`.ui-field select` 的 `max-width`。这些由 [S5-i](S5-i-grid-table-select-component-rules.md) 在组件层覆盖，保留 `left`，不改为 `start`，本任务不在页面 CSS 中重复写；取证构建也不删这三条。
 
 ## 验收标准
 

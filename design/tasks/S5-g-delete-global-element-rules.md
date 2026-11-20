@@ -1,6 +1,6 @@
 # S5-g 删除 `styles.css` 剩余全局元素规则（D-7 收尾）
 
-- Sprint：S5　依赖：S5-a、S5-b、S5-c、S5-d、S5-e、S5-f 全部合并（外壳串行最后）　建议分支：`s5-g-delete-global-rules`
+- Sprint：S5　依赖：S5-a、S5-b、S5-c、S5-d、S5-e、S5-f、S5-i 全部合并（外壳串行最后）　建议分支：`s5-g-delete-global-rules`
 - 冲突域：web-ui:shell（**只改 `src/styles.css`，以及 `src/main.tsx:5` 的 `import "./styles.css";` 这一行**）。证据覆盖全部页面，开工时不应有正在进行的页面 CSS 任务；rebase 后 main 上有新的页面 CSS 时，重新采集证据。
 - 类型：CSS，外加入口 import 一行。允许的 `.tsx` 改动**只有**：文件清空时删除 `src/main.tsx:5` 的 import。只改 CSS 的“JS 逻辑不变”证明相应改为：`git diff <base>..HEAD -- '*.ts' '*.tsx'` 只含测试文件与这一行删除
 - 来源：[UI-1.md §5.2](../reviews/UI-1.md#52-ui-09gstylescss-全局元素规则删除记录)、D-7
@@ -8,7 +8,7 @@
 ## 范围
 
 - 删除 `styles.css` 中剩余的全局元素规则（`button`、`select`、`legend`、`dl` / `dt` / `dd`、`thead`、`tfoot`、`th`、`td`、`caption`、复选框等）。
-- 方法、证据格式同 [UI-09g](UI-09g-global-element-rules.md)。如果某个声明删除后计算值仍然变化，说明 S5-a..f 漏了：**原样保留**，在证据表中列出归属冲突域，报告设计角色，不在本任务里改页面 CSS。
+- 方法、证据格式同 [UI-09g](UI-09g-global-element-rules.md)。如果某个声明删除后计算值仍然变化，说明 S5-a..f、S5-i 漏了：**原样保留**，在证据表中列出归属冲突域，报告设计角色，不在本任务里改页面 CSS。
 - main `66d8e15` 的 `styles.css` 只剩元素选择器（注释外第 8–80 行一带），没有文档级规则。全部删除后文件为空时，删除该文件，并删除 `src/main.tsx:5` 的 `import "./styles.css";`（同属 web-ui:shell，是本任务唯一允许的入口改动）。若仍有保留的声明，文件与 import 都保留。
 - **44px 基线**：`button, select { min-height: 44px }` 是 v0.4.0 发布说明与 `docs/user/ui-guide.md` 写明的“未被其他样式覆盖的 `button` / `select` 最小高度基线”。删除须通过两道检查（同 UI-09g）：
   1. **探针**：所有采集点上计算值“变”为 0；
