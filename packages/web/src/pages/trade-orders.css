@@ -120,6 +120,7 @@
 }
 .trade-orders .tord-facts dd {
   margin: 0;
+  font-weight: var(--weight-semibold);
   overflow-wrap: anywhere;
 }
 
