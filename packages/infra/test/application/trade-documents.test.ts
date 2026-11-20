@@ -30,6 +30,9 @@ import { schemaFingerprint } from "../../src/storage/schema.ts";
 import { sqliteBackend } from "../../src/storage/sqlite.ts";
 import { createApi } from "../../src/http/index.ts";
 import { SqliteExecutor } from "../../src/workers/executor.ts";
+import { tradeReportingRepository } from "../../src/storage/trade-reporting.ts";
+import type { Connection } from "../../src/storage/types.ts";
+import { compareWithLegacyReports } from "../support/trade-reporting-legacy.ts";
 
 const window = { name: "Fictional", from: "2026-01-01", to: "2026-12-31" };
 const base = { company: "DEFAULT", active: true, expectedRevision: 0 };
@@ -311,6 +314,20 @@ describe("trade invoices on real SQLite", () => {
     await store?.close();
     if (directory) await rm(directory, { recursive: true, force: true });
   });
+  // D51: the optimized report SQL must match the frozen pre-index SQL field by field.
+  async function expectLegacyReports() {
+    const raw = new Database(filename, { readonly: true });
+    try {
+      const db = {
+        async query(sql: string, values: readonly unknown[] = []) {
+          return raw.prepare(sql).all(...values) as Record<string, unknown>[];
+        },
+      } as unknown as Pick<Connection, "query">;
+      expect(await compareWithLegacyReports(db, tradeReportingRepository(db))).toBeGreaterThan(14);
+    } finally {
+      raw.close();
+    }
+  }
   const tables = [
     "trade_actions",
     "trade_item_sources",
@@ -541,6 +558,7 @@ describe("trade invoices on real SQLite", () => {
     expect((await service.report("DEFAULT", { month: "2026-01", limit: 100 })).totals).toEqual(
       january.totals,
     );
+    await expectLegacyReports();
   });
 
   it("puts the exact due date and 1/30/31/60/61/90/91 day edges in disjoint invoice buckets", async () => {
@@ -635,6 +653,7 @@ describe("trade invoices on real SQLite", () => {
       expect(
         (await service.reconciliation("DEFAULT", month)).rows.every((r) => r.differenceMinor === 0),
       ).toBe(true);
+    await expectLegacyReports();
   });
 
   it("keeps other-source GL and true trade differences visible on saved control accounts", async () => {
@@ -714,6 +733,7 @@ describe("trade invoices on real SQLite", () => {
     }
     // Historical/current reads derive from immutable facts, not a damaged mutable balance cache.
     expect((await service.report("DEFAULT", { limit: 100 })).totals.invoiceGrossMinor).toBe(11300);
+    await expectLegacyReports();
   });
 
   it("pins keyset pages to scope and facts while computing full unpaged totals and isolating companies/parties/sides", async () => {
@@ -763,6 +783,7 @@ describe("trade invoices on real SQLite", () => {
     ).rejects.toMatchObject({ code: "CONFLICT" });
     for (const bad of [{ month: "2026-13", limit: 10 }, { limit: 10, cursor: "bad" }, { limit: 0 }])
       await expect(service.report("DEFAULT", bad)).rejects.toMatchObject({ code: "INVALID_INPUT" });
+    await expectLegacyReports();
     const db = new Database(filename, { readonly: true });
     try {
       expect(
@@ -773,7 +794,7 @@ describe("trade invoices on real SQLite", () => {
             )
             .all("DEFAULT", ap.documentId, "2026-01-31"),
         ),
-      ).toContain("settlements_item");
+      ).toContain("COVERING INDEX settlements_report");
     } finally {
       db.close();
     }
