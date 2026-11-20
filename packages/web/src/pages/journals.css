@@ -10,7 +10,7 @@
   color: var(--color-text-muted);
 }
 .journals :is(.jv-status, .jv-lines) :is(select, input),
-.business-events .ui-field textarea {
+:is(.business-events .ui-field, .journals .ai-panel) textarea {
   width: 100%;
   min-width: 7rem;
   height: var(--control-h);
@@ -21,7 +21,7 @@
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
 }
-.business-events .ui-field textarea {
+:is(.business-events .ui-field, .journals .ai-panel) textarea {
   height: auto;
   min-height: 88px;
   padding: var(--space-2) var(--space-3);
@@ -124,4 +124,57 @@
 }
 :is(.journals, .business-events) .message-bar {
   margin-block: var(--space-2);
+}
+/* UI-07c AI 面板：卡片 + 候选结果卡片；margin / padding / border 覆盖 styles.css 旧 .ai-panel 外框（UI-08 清理）。 */
+.journals .ai-panel {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.journals .ai-panel .ai-form {
+  display: grid;
+  grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
+  gap: var(--space-4) var(--space-5);
+}
+@media (max-width: 599px) {
+  .journals .ai-panel .ai-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.journals .ai-panel textarea {
+  resize: vertical;
+}
+.journals .ai-panel .ai-result {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.journals .ai-panel .ai-result > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.journals .ai-panel :is(h4, ul, .message-bar) {
+  margin: 0;
+}
+.journals .ai-panel h4 {
+  font-size: var(--text-md);
+  overflow-wrap: anywhere;
+}
+.journals .ai-panel .message-bar ul {
+  margin-top: var(--space-1);
+  padding-left: var(--space-5);
+}
+.journals .ai-panel .empty-state {
+  padding: var(--space-4);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.journals .ai-panel .teaching-tip > p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }

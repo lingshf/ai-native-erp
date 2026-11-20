@@ -1,5 +1,10 @@
 export const aiEn = {
   "ai.title": "AI assistant",
+  "ai.boundary": "Candidates only; human confirmation required.",
+  "ai.empty": "Describe the transaction and send it; the AI result will appear here.",
+  "ai.candidateBadge": "Candidate · not saved",
+  "ai.invalidBadge": "Failed validation",
+  "ai.rationale": "AI rationale",
   "ai.disclosure":
     "Only your description and this company's chart, dimensions and selected period are sent to Copilot. Explanations also include a request-time financial snapshot, not draft contents. Do not enter secrets. AI can be wrong; it never saves, queues or posts.",
   "ai.prompt": "Business description",
@@ -29,6 +34,11 @@ export const aiEn = {
 } as const;
 export const aiZh: Record<keyof typeof aiEn, string> = {
   "ai.title": "AI 助手",
+  "ai.boundary": "仅为候选，需人工确认。",
+  "ai.empty": "填写业务描述并发送，AI 结果将显示在这里。",
+  "ai.candidateBadge": "候选 · 未保存",
+  "ai.invalidBadge": "未通过校验",
+  "ai.rationale": "AI 理由",
   "ai.disclosure":
     "仅将你的描述、本公司科目、维度和所选期间发送给 Copilot；讲解另含请求时财务快照，不含草稿内容。不要输入秘密。AI 可能出错，绝不保存、排队或过账。",
   "ai.prompt": "业务描述",

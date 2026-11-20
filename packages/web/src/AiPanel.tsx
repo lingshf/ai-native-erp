@@ -7,6 +7,7 @@ import {
 } from "@erp/core/contracts";
 import { label, resources, type LabelKey, type Language } from "./ui/index.ts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
+import { Badge, MessageBar, TeachingTip } from "./ui/components/index.tsx";
 export function AiPanel({
   company,
   month,
@@ -108,131 +109,181 @@ export function AiPanel({
       Object.entries(resources[language]).find(([name]) => name === mapped)?.[1] ?? t("ai.invalid")
     );
   }
+  const idle = !pending && !cancelled && error === undefined && !candidate && explanation === null;
   return (
-    <section className="ai-panel" aria-label={t("ai.title")}>
-      <h3>{t("ai.title")}</h3>
-      <p>{t("ai.disclosure")}</p>
-      <label>
-        {t("ai.mode")}
-        <select
-          disabled={pending || disabled}
-          value={mode}
-          onChange={(event) => {
-            setMode(event.target.value === "explain" ? "explain" : "draft");
-            setCandidate(null);
-            setExplanation(null);
-            setError(undefined);
-          }}
-        >
-          <option value="draft">{t("ai.draft")}</option>
-          {teaching && <option value="explain">{t("ai.explain")}</option>}
-        </select>
-      </label>
-      <label>
-        {t("ai.prompt")}
-        <textarea
-          maxLength={4000}
-          value={prompt}
-          disabled={pending || disabled}
-          onChange={(event) => setPrompt(event.target.value)}
-        />
-      </label>
-      {!/^\d{4}-\d\d$/u.test(month) && <p>{t("ai.month")}</p>}
-      <button
-        type="button"
-        disabled={pending || disabled || !prompt.trim() || !/^\d{4}-\d\d$/u.test(month)}
-        onClick={() => void send()}
-      >
-        {t("ai.send")}
-      </button>
-      {pending && (
-        <>
-          <p role="status">{t("ai.pending")}</p>
-          <button type="button" onClick={cancel}>
-            {t("ai.cancel")}
-          </button>
-        </>
-      )}
-      {cancelled && <p role="status">{t("ai.cancelled")}</p>}
-      {error !== undefined && <p role="alert">{t(errorKey ? `ai.${errorKey}` : "ai.error")}</p>}
-      {candidate && (
-        <div>
-          {candidate.status === "invalid" && (
-            <>
-              <p role="alert">{t("ai.invalid")}</p>
-              {candidate.issues.map((issue) => (
-                <p key={`${issue.path}:${issue.messageKey}`}>
-                  {issue.path}: {issueText(issue.messageKey)}
-                </p>
-              ))}
-            </>
-          )}
-          {candidate.draft && (
-            <>
-              <h4>
-                {candidate.draft.date} · {candidate.draft.memo}
-              </h4>
-              <table aria-label={t("ai.draft")}>
-                <thead>
-                  <tr>
-                    {(
-                      [
-                        "journal.account",
-                        "journal.debit",
-                        "journal.credit",
-                        "journal.dimensions",
-                      ] as const
-                    ).map((key) => (
-                      <th key={key} scope="col">
-                        {t(key)}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {candidate.draft.lines.map((line, index) => (
-                    <tr key={lineKeys.current[index]}>
-                      <td>{line.account}</td>
-                      <td>{line.debit}</td>
-                      <td>{line.credit}</td>
-                      <td>
-                        {Object.entries(line.dimensions)
-                          .map(([code, value]) => `${code}=${value}`)
-                          .join(", ")}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </>
-          )}
-          {teaching && <p className="explanation">{candidate.rationale}</p>}
-          <p>{t("ai.replace")}</p>
-          {candidate.status === "candidate" && (
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() => {
-                adopt(candidate.draft);
+    <section className="card ai-panel" aria-label={t("ai.title")}>
+      <header>
+        <h3>{t("ai.title")}</h3>
+      </header>
+      <div className="body">
+        <MessageBar tone="info">
+          <strong>{t("ai.boundary")}</strong> {t("ai.disclosure")}
+        </MessageBar>
+        <div className="ai-form">
+          <label className="ui-field">
+            <span className="label">{t("ai.mode")}</span>
+            <select
+              disabled={pending || disabled}
+              value={mode}
+              onChange={(event) => {
+                setMode(event.target.value === "explain" ? "explain" : "draft");
                 setCandidate(null);
+                setExplanation(null);
+                setError(undefined);
               }}
             >
-              {t("ai.adopt")}
+              <option value="draft">{t("ai.draft")}</option>
+              {teaching && <option value="explain">{t("ai.explain")}</option>}
+            </select>
+          </label>
+          <label className="ui-field">
+            <span className="label">{t("ai.prompt")}</span>
+            <textarea
+              maxLength={4000}
+              value={prompt}
+              disabled={pending || disabled}
+              onChange={(event) => setPrompt(event.target.value)}
+            />
+          </label>
+        </div>
+        {!/^\d{4}-\d\d$/u.test(month) && <p className="jv-hint">{t("ai.month")}</p>}
+        <div className="ui-form-actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={pending || disabled || !prompt.trim() || !/^\d{4}-\d\d$/u.test(month)}
+            onClick={() => void send()}
+          >
+            {t("ai.send")}
+          </button>
+          {pending && (
+            <button type="button" className="btn btn-subtle" onClick={cancel}>
+              {t("ai.cancel")}
             </button>
           )}
-          <button type="button" onClick={() => setCandidate(null)}>
-            {t("ai.discard")}
-          </button>
         </div>
-      )}
-      {teaching && explanation !== null && (
-        <div className="explanation">
-          {explanation}
-          <button type="button" onClick={() => setExplanation(null)}>
-            {t("ai.discard")}
-          </button>
-        </div>
-      )}
+        {pending && (
+          <MessageBar tone="info" role="status">
+            {t("ai.pending")}
+          </MessageBar>
+        )}
+        {cancelled && (
+          <MessageBar tone="info" role="status">
+            {t("ai.cancelled")}
+          </MessageBar>
+        )}
+        {error !== undefined && (
+          <MessageBar tone="danger" role="alert">
+            {t(errorKey ? `ai.${errorKey}` : "ai.error")}
+          </MessageBar>
+        )}
+        {idle && <p className="empty-state">{t("ai.empty")}</p>}
+        {candidate && (
+          <article className="ai-result">
+            <header>
+              {candidate.draft && (
+                <h4>
+                  {candidate.draft.date} · {candidate.draft.memo}
+                </h4>
+              )}
+              {candidate.status === "candidate" ? (
+                <Badge tone="info">{t("ai.candidateBadge")}</Badge>
+              ) : (
+                <Badge tone="danger">{t("ai.invalidBadge")}</Badge>
+              )}
+            </header>
+            {candidate.status === "invalid" && (
+              <MessageBar tone="danger" role="alert">
+                {t("ai.invalid")}
+                <ul>
+                  {candidate.issues.map((issue) => (
+                    <li key={`${issue.path}:${issue.messageKey}`}>
+                      {issue.path}: {issueText(issue.messageKey)}
+                    </li>
+                  ))}
+                </ul>
+              </MessageBar>
+            )}
+            {candidate.draft && (
+              <div className="grid-wrap">
+                <table className="grid" aria-label={t("ai.draft")}>
+                  <thead>
+                    <tr>
+                      {(
+                        [
+                          "journal.account",
+                          "journal.debit",
+                          "journal.credit",
+                          "journal.dimensions",
+                        ] as const
+                      ).map((key) => (
+                        <th
+                          key={key}
+                          scope="col"
+                          className={
+                            key === "journal.debit" || key === "journal.credit" ? "num" : undefined
+                          }
+                        >
+                          {t(key)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {candidate.draft.lines.map((line, index) => (
+                      <tr key={lineKeys.current[index]}>
+                        <td>{line.account}</td>
+                        <td className="num">{line.debit}</td>
+                        <td className="num">{line.credit}</td>
+                        <td>
+                          {Object.entries(line.dimensions)
+                            .map(([code, value]) => `${code}=${value}`)
+                            .join(", ")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <TeachingTip teaching={teaching} title={t("ai.rationale")}>
+              {candidate.rationale}
+            </TeachingTip>
+            <MessageBar tone="info">{t("ai.replace")}</MessageBar>
+            <div className="ui-form-actions">
+              {candidate.status === "candidate" && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={disabled}
+                  onClick={() => {
+                    adopt(candidate.draft);
+                    setCandidate(null);
+                  }}
+                >
+                  {t("ai.adopt")}
+                </button>
+              )}
+              <button type="button" className="btn btn-subtle" onClick={() => setCandidate(null)}>
+                {t("ai.discard")}
+              </button>
+            </div>
+          </article>
+        )}
+        {teaching && explanation !== null && (
+          <article className="ai-result">
+            <header>
+              <h4>{t("ai.explain")}</h4>
+            </header>
+            <div className="explanation">{explanation}</div>
+            <div className="ui-form-actions">
+              <button type="button" className="btn btn-subtle" onClick={() => setExplanation(null)}>
+                {t("ai.discard")}
+              </button>
+            </div>
+          </article>
+        )}
+      </div>
     </section>
   );
 }
