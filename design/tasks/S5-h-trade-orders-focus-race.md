@@ -36,3 +36,7 @@
 3. 无论哪种修法，都附 PR head 上真实 Chrome 中保存订单后焦点位置的证据（截图或录屏，含 `document.activeElement`）；`trade-gui-*.slow` 通过。
 4. 若未能复现，PR 描述写明“原因未证实”与所做的尝试，不写成“已确认是竞态”。
 5. 页面 chunk gzip 不变（≤ 0.02 kB）。
+
+## 相关任务
+
+- [FLAKE-02](FLAKE-02-trade-gui-period-option-poll.md)：真实 Chrome E2E 期末月份下拉轮询偶发为空。不合并、不互为依赖、文件不重叠；若调查发现共同原因（重新挂载、焦点与渲染时序），先完成的一方在 PR 中写明，由设计角色决定是否合并后续修复。验收 3 的 `trade-gui-*.slow` 若因 FLAKE-02 失败，同 head 重跑并引用 FLAKE-02。
