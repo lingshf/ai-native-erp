@@ -997,14 +997,58 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
   }, 180_000);
 }
 
-const tradePages = [
-  ["trade", "trade.title"],
-  ["trade-invoices", "tinv.title"],
-  ["trade-settlements", "tset.title"],
-  ["trade-adjustments", "tadj.title"],
-  ["trade-reports", "trpt.title"],
-  ["period-close", "close.title"],
-] as const;
+// Each page's own list query (first load must succeed) and the seeded rows it renders from it.
+// Titles, lang and theme render even when the data request fails, so they prove nothing alone.
+type Label = (key: string) => string;
+const tradePages: readonly {
+  path: string;
+  title: string;
+  request: (url: URL) => boolean;
+  loaded: (t: Label) => string;
+  // Read-only keyboard step that makes the page show its loaded rows.
+  reveal?: (page: Page, check: ExpectStatic) => Promise<void>;
+}[] = [
+  {
+    path: "trade",
+    title: "trade.title",
+    request: (url) => url.pathname === "/api/v1/trade/tradeParty",
+    loaded: (t) => `main table[aria-label="${t("trade.tradeParty")}"] tbody tr`,
+  },
+  {
+    path: "trade-invoices",
+    title: "tinv.title",
+    request: (url) => url.pathname === "/api/v1/trade/invoices",
+    loaded: (t) => `main table[aria-label="${t("tinv.list")}"] tbody tr`,
+  },
+  {
+    path: "trade-settlements",
+    title: "tset.title",
+    request: (url) =>
+      url.pathname === "/api/v1/trade/open-items" && url.searchParams.get("status") === "open",
+    loaded: (t) => `main table[aria-label="${t("tset.select")}"] tbody tr`,
+  },
+  {
+    path: "trade-adjustments",
+    title: "tadj.title",
+    request: (url) =>
+      url.pathname === "/api/v1/trade/open-items" && !url.searchParams.has("status"),
+    loaded: () => `#tadj-sourceId option:not([value=""])`,
+    // The default action (advance) lists no items; cancel lists the open items read-only.
+    reveal: (page, check) => choose(page, page.locator("#tadj-kind"), "cancel", check),
+  },
+  {
+    path: "trade-reports",
+    title: "trpt.title",
+    request: (url) => url.pathname === "/api/v1/trade/reports/open-items",
+    loaded: () => "main table tbody tr",
+  },
+  {
+    path: "period-close",
+    title: "close.title",
+    request: (url) => url.pathname === "/api/v1/periods",
+    loaded: () => "#close-month option",
+  },
+];
 
 // Text the other language would show but this one must not: label values (and the literal
 // parts of templates) that differ between the two dictionaries.
@@ -1053,7 +1097,7 @@ export function tradeGuiSmoke(combinations: readonly (readonly ["zh" | "en", "re
 
   // Combinations are independent (own context, read-only browsing), so they run concurrently.
   for (const [language, theme] of combinations)
-    test.concurrent(`real trade GUI smoke: ${language}/${theme}, every trade page loads translated with lang and data-theme`, async ({
+    test.concurrent(`real trade GUI smoke: ${language}/${theme}, every trade page loads its data translated with lang and data-theme`, async ({
       onTestFinished,
       expect,
     }) => {
@@ -1077,22 +1121,44 @@ export function tradeGuiSmoke(combinations: readonly (readonly ["zh" | "en", "re
       };
       page.on("requestfinished", settled);
       page.on("requestfailed", settled);
+      // Any failed API call fails the smoke, even one the page would later retry successfully.
+      page.on("response", (response) => {
+        if (response.url().includes("/api/") && response.status() >= 400)
+          failures.push(`${response.status()} ${response.url()}`);
+      });
+      page.on("requestfailed", (request) => {
+        if (request.url().includes("/api/") && request.failure()?.errorText !== "net::ERR_ABORTED")
+          failures.push(`${request.failure()?.errorText} ${request.url()}`);
+      });
+      const t = (key: string) => label(language, key);
       const foreign = foreignLabels(language);
       let failed = true;
       try {
         await page.goto(address);
         await choose(page, page.locator("#workspace-language"), language, expect);
         await choose(page, page.locator("#workspace-theme"), theme, expect);
-        for (const [path, title] of tradePages) {
+        for (const { path, title, request, loaded, reveal } of tradePages) {
+          const listed = page.waitForResponse((response) => request(new URL(response.url())), {
+            timeout: 10_000,
+          });
           await page.goto(`${address}#/${path}`);
           await page.waitForURL((url) => url.hash === `#/${path}`);
+          expect((await listed).status(), `${path} list request`).toBe(200);
           await expect
             .poll(() => page.locator("main h2").first().textContent(), {
               message: `${path} title`,
               timeout: 10_000,
               intervals: [20],
             })
-            .toBe(label(language, title));
+            .toBe(t(title));
+          await reveal?.(page, expect);
+          await expect
+            .poll(() => page.locator(loaded(t)).count(), {
+              message: `${path} seeded rows loaded`,
+              timeout: 10_000,
+              intervals: [20],
+            })
+            .toBeGreaterThan(0);
           await expect
             .poll(() => pending, {
               message: `${path} API requests settle`,
@@ -1102,6 +1168,12 @@ export function tradeGuiSmoke(combinations: readonly (readonly ["zh" | "en", "re
             .toBe(0);
           expect(await page.locator("html").getAttribute("lang"), path).toBe(language);
           expect(await page.locator(".workspace").getAttribute("data-theme"), path).toBe(theme);
+          const alerts = await page
+            .locator("[role=alert], .message-bar.danger, .message-bar.warning")
+            .filter({ visible: true })
+            .allTextContents();
+          expect(alerts, `${path} error alerts`).toEqual([]);
+          expect(failures, `${path} API or page errors`).toEqual([]);
           const leaked = await page.evaluate(
             ({ foreign, english, own, latin }) => {
               const texts: string[] = [];
