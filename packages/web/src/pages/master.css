@@ -1,12 +1,8 @@
 /*
  * UI-04 主数据页（财务维度、贸易主数据）：只作用于 .ui-master 之内。
- * 通用外观在 components.css；这里只定 44px 控件、滚动区列宽、命中区与编辑表单细节。
+ * 通用外观在 components.css；这里只定滚动区列宽、命中区与编辑表单细节。
+ * 控件高度沿用 --control-h（桌面 36px，窄屏或粗指针 44px，design/ui §7，F5）。
  */
-.ui-master {
-  /* 本页所有控件在桌面与窄屏都 ≥ 44px */
-  --control-h: 44px;
-}
-.ui-master .message-bar p,
 .ui-master .ui-hint,
 .ui-master-note {
   margin: 0;
@@ -63,13 +59,13 @@
 .ui-master-scroll .btn-sm {
   margin-left: calc(-1 * var(--space-2));
 }
-/* 只读启用复选框：label 撑开 44×44 实际点击区 */
+/* 只读启用复选框：label 撑开 --control-h 见方的点击区 */
 .ui-master-hit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: var(--control-h);
+  min-height: var(--control-h);
 }
 .ui-master-more {
   justify-self: center;
