@@ -23,7 +23,7 @@ import {
   type TradeActionCommand,
 } from "@erp/core/domain";
 import { createSqliteStorage } from "../../src/storage/index.ts";
-import { createMasterDataStore } from "../../src/storage/master-data.ts";
+import { createMasterDataStore, masterDataRepository } from "../../src/storage/master-data.ts";
 import { journalTools } from "../../src/storage/journals.ts";
 import { latestMigrationVersion, normalizeMigration } from "../../src/storage/migrations.ts";
 import { schemaFingerprint } from "../../src/storage/schema.ts";
@@ -3034,5 +3034,251 @@ describe("trade invoices on real SQLite", () => {
       taxCode: "EXEMPT",
       tax: 0,
     });
+  });
+
+  // TORD-03: order list.
+  async function seedOtherCompany() {
+    await master.createCompany({
+      code: "OTHER",
+      name: "Other fictional",
+      currency: "CNY",
+      scale: 2,
+      year: 2026,
+      closeMode: "annual",
+    });
+    await master.setPeriod("OTHER", "2026-01", 1, "open", "Enable fictional trade", true, [
+      "trade",
+      "tax",
+    ]);
+    for (const [code, category, reportGroup, controlModule] of [
+      ["2100", "LIABILITY", "payables", "AP"],
+      ["1250", "ASSET", "prepayments", "AP"],
+      ["1300", "ASSET", "receivables", "AR"],
+      ["2300", "LIABILITY", "otherLiabilities", "AR"],
+      ["1400", "ASSET", "otherAssets", "TAX"],
+      ["2200", "LIABILITY", "taxLiabilities", "TAX"],
+    ] as const)
+      await master.saveAccount(
+        "OTHER",
+        {
+          code,
+          name: `Control ${code}`,
+          category,
+          reportGroup,
+          controlModule,
+          purpose: "control",
+          normalSide: category === "ASSET" ? "DEBIT" : "CREDIT",
+          contraOf: null,
+          active: true,
+          manualAllowed: false,
+        },
+        0,
+      );
+    const trade = new TradeMasterService(store);
+    for (const command of configs) await trade.save({ ...command, company: "OTHER" });
+  }
+  const orderLine = (lineId: string, quantity: string, unitPrice: string) => ({
+    lineId,
+    product: "RENT",
+    taxCode: "VAT",
+    quantity,
+    unitPrice,
+    discountPercent: "0",
+    taxableCharge: "0",
+  });
+  async function threeOrders() {
+    return [
+      await service.createOrder(order({ orderId: "PO-B" })),
+      await service.createOrder(
+        order({
+          orderId: "PO-A",
+          rounding: "document",
+          priceIncludesTax: true,
+          lines: ["1", "2", "3"].map((n) => orderLine(`DL${n}`, "3", "3.333333")),
+        }),
+      ),
+      await service.createOrder(
+        order({
+          orderId: "PO-C",
+          side: "AR",
+          party: "C1",
+          lines: [{ ...orderLine("CL1", "1", "7.77"), product: "CONSULT" }],
+        }),
+      ),
+    ];
+  }
+  const summary = (created: Awaited<ReturnType<TradeDocumentService["createOrder"]>>) => {
+    const { commandHash: _, lines, ...header } = created;
+    return {
+      ...header,
+      lineCount: lines.length,
+      net: lines.reduce((sum, item) => sum + item.net, 0),
+      tax: lines.reduce((sum, item) => sum + item.tax, 0),
+      gross: lines.reduce((sum, item) => sum + item.gross, 0),
+    };
+  };
+  function userTableSnapshot(observer: Database.Database) {
+    const names = observer
+      .prepare(
+        "SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' ORDER BY name",
+      )
+      .pluck()
+      .all() as string[];
+    return {
+      counts: Object.fromEntries(
+        names.map((name) => [
+          name,
+          observer.prepare(`SELECT count(*) FROM "${name}"`).pluck().get(),
+        ]),
+      ),
+      orders: observer
+        .prepare("SELECT company_id,order_id FROM trade_orders ORDER BY company_id,order_id")
+        .all(),
+      lines: observer
+        .prepare(
+          "SELECT company_id,order_id,line_id FROM trade_order_lines ORDER BY company_id,order_id,line_id",
+        )
+        .all(),
+    };
+  }
+
+  it("TORD-03 lists order summaries over HTTP by orderId with stored totals, per company, read-only", async () => {
+    const executor = await SqliteExecutor.create({ filename, readers: 2 });
+    const api = await createApi({
+      environment: { ERP_PORT: "0" },
+      allowPortZero: true,
+      ...executor.services(),
+      logError: () => undefined,
+    });
+    const observer = new Database(filename, { readonly: true });
+    try {
+      const host = new URL(await api.listen()).host;
+      const get = (url: string) => api.app.inject({ method: "GET", url, headers: { host } });
+      const empty = await get("/api/v1/trade/orders?company=DEFAULT");
+      expect(empty.statusCode).toBe(200);
+      expect(empty.json()).toEqual({ items: [], nextCursor: null });
+      const created = await threeOrders();
+      await seedOtherCompany();
+      await service.createOrder(order({ company: "OTHER", orderId: "PO-A" }));
+      await service.createOrder(order({ company: "OTHER", orderId: "PO-0" }));
+      const [b, a, c] = created.map(summary);
+      expect(a).toMatchObject({ rounding: "document", lineCount: 3 });
+      const before = userTableSnapshot(observer);
+      const first = await get("/api/v1/trade/orders?company=DEFAULT&limit=2");
+      expect(first.statusCode).toBe(200);
+      expect(first.json()).toEqual({ items: [a, b], nextCursor: "PO-B" });
+      const second = await get("/api/v1/trade/orders?company=DEFAULT&limit=2&cursor=PO-B");
+      expect(second.json()).toEqual({ items: [c], nextCursor: null });
+      expect(userTableSnapshot(observer)).toEqual(before);
+      expect(before.orders.length).toBe(5);
+      expect((await get("/api/v1/trade/orders?company=DEFAULT")).json().items).toEqual([a, b, c]);
+      expect(
+        (await get("/api/v1/trade/orders?company=OTHER"))
+          .json()
+          .items.map((item: { orderId: string }) => item.orderId),
+      ).toEqual(["PO-0", "PO-A"]);
+      for (const query of [
+        "company=DEFAULT&limit=0",
+        "company=DEFAULT&limit=501",
+        "company=DEFAULT&party=V1",
+        "limit=2",
+        "company=DEFAULT&cursor=po-a",
+      ])
+        expect((await get(`/api/v1/trade/orders?${query}`)).statusCode).toBe(400);
+      expect((await get("/api/v1/trade/orders?company=MISSING")).statusCode).toBe(404);
+      expect(
+        (await api.app.inject({ method: "DELETE", url: "/api/v1/trade/orders", headers: { host } }))
+          .statusCode,
+      ).toBe(405);
+    } finally {
+      observer.close();
+      await api.close();
+      await executor.close();
+    }
+  });
+
+  it("TORD-03 listOrders opens exactly one read transaction and never writes", async () => {
+    await threeOrders();
+    const calls = { read: 0, write: 0 };
+    const spy = new TradeDocumentService(
+      {
+        read: (work) => {
+          calls.read++;
+          return store.read(work);
+        },
+        write: (work) => {
+          calls.write++;
+          return store.write(work);
+        },
+      },
+      journals,
+      journalTools,
+    );
+    expect((await spy.listOrders("DEFAULT", { limit: 2 })).nextCursor).toBe("PO-B");
+    expect(calls).toEqual({ read: 1, write: 0 });
+  });
+
+  it("TORD-03 PG-05: fixed statement count per page and primary-key plans on both tables", async () => {
+    await threeOrders();
+    for (let index = 0; index < 4; index++)
+      await service.createOrder(
+        order({
+          orderId: `PO-D${index}`,
+          lines: Array.from({ length: 1 + index * 6 }, (_, n) => orderLine(`X${n}`, "1", "1.00")),
+        }),
+      );
+    const backend = sqliteBackend({ filename });
+    const db = await backend.acquire(true, false);
+    const statements: { sql: string; values: readonly unknown[] }[] = [];
+    const counting = {
+      ...db,
+      query: (sql: string, values: Parameters<Connection["query"]>[1] = []) => {
+        statements.push({ sql, values });
+        return db.query(sql, values);
+      },
+    } as Connection;
+    const counted = new TradeDocumentService(
+      {
+        read: (work) => work(masterDataRepository(counting)),
+        write: () => Promise.reject(new Error("listOrders must not write")),
+      },
+      journals,
+      journalTools,
+    );
+    try {
+      const sizes = [];
+      for (const query of [
+        { limit: 2 },
+        { limit: 100 },
+        { limit: 2, cursor: "PO-B" },
+        { limit: 100, cursor: "PO-B" },
+      ]) {
+        statements.length = 0;
+        await counted.listOrders("DEFAULT", query);
+        sizes.push(statements.length);
+      }
+      expect(new Set(sizes)).toEqual(new Set([2]));
+      await counted.listOrders("DEFAULT", { limit: 2 });
+      const page = statements.find((item) => item.sql.includes("FROM trade_orders"));
+      if (!page) throw new Error("Missing order page statement");
+      const raw = new Database(filename, { readonly: true });
+      try {
+        for (const cursor of ["", "PO-B"]) {
+          const plan = raw
+            .prepare(`EXPLAIN QUERY PLAN ${page.sql}`)
+            .all("DEFAULT", cursor, 3)
+            .map((row) => (row as { detail: string }).detail);
+          expect(plan).toEqual([
+            "SEARCH o USING PRIMARY KEY (company_id=? AND order_id>?)",
+            "SEARCH l USING PRIMARY KEY (company_id=? AND order_id=?)",
+          ]);
+        }
+      } finally {
+        raw.close();
+      }
+    } finally {
+      await db.release();
+      await backend.close();
+    }
   });
 });

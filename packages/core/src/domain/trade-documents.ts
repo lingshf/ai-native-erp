@@ -72,6 +72,13 @@ export interface TradeOrder extends Omit<TradeOrderCommand, "company" | "lines">
   readonly recordedAt: string;
   readonly lines: readonly TradeOrderLine[];
 }
+/** TORD-03 list row: order header plus stored line totals; no lines. */
+export interface TradeOrderSummary extends Omit<TradeOrder, "commandHash" | "lines"> {
+  readonly lineCount: number;
+  readonly net: number;
+  readonly tax: number;
+  readonly gross: number;
+}
 export interface TradeInvoiceLineInput {
   readonly lineId: string;
   readonly product: string;

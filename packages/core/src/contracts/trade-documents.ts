@@ -473,6 +473,27 @@ export const openItemPageSchema = z.strictObject({
   items: z.array(openItemSchema).max(500),
   nextCursor: z.string().nullable(),
 });
+export const tradeOrderListQuerySchema = z.strictObject({
+  company: companyCodeSchema,
+  limit,
+  cursor: companyCodeSchema.optional(),
+});
+export const tradeOrderPageSchema = z.strictObject({
+  items: z
+    .array(
+      z.strictObject({
+        ...orderHeader,
+        recordedAt: z.iso.datetime({ precision: 3 }),
+        lineCount: z.number().int().min(1).max(100),
+        net: minor,
+        tax: minor,
+        gross: minor,
+      }),
+    )
+    .max(500),
+  nextCursor: companyCodeSchema.nullable(),
+});
+export type TradeOrderPageDto = z.infer<typeof tradeOrderPageSchema>;
 export type TradeInvoiceCommandDto = z.infer<typeof tradeInvoiceCommandSchema>;
 export type TradeInvoicePreviewDto = z.infer<typeof tradeInvoicePreviewSchema>;
 export type TradeInvoiceReceiptDto = z.infer<typeof tradeInvoiceReceiptSchema>;
@@ -569,6 +590,17 @@ export const tradeDocumentsOpenApi = {
       },
     },
     "/api/v1/trade/orders": {
+      get: {
+        operationId: "listTradeOrders",
+        parameters: query(tradeOrderListQuerySchema),
+        responses: {
+          200: {
+            description: "Order summaries with stored line totals, by orderId ascending.",
+            ...ref("TradeOrderPage"),
+          },
+          ...errors([400, 403, 404, 405, 500, 503]),
+        },
+      },
       post: {
         operationId: "createTradeOrder",
         requestBody: { required: true, ...ref("TradeOrderCommand") },
@@ -662,6 +694,7 @@ export const tradeDocumentsOpenApi = {
     TradeSettlementReceipt: z.toJSONSchema(tradeSettlementReceiptSchema),
     TradeOrderCommand: z.toJSONSchema(tradeOrderCommandSchema),
     TradeOrder: z.toJSONSchema(tradeOrderSchema),
+    TradeOrderPage: z.toJSONSchema(tradeOrderPageSchema),
     TradeInvoiceCommand: z.toJSONSchema(tradeInvoiceCommandSchema),
     TradeInvoiceConfirm: z.toJSONSchema(tradeInvoiceConfirmSchema),
     TradeInvoicePreview: z.toJSONSchema(tradeInvoicePreviewSchema),

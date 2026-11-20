@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { tradeOrderCommandSchema, type TradeDto } from "@erp/core/contracts";
 import { App } from "../src/App.tsx";
@@ -115,7 +115,8 @@ const field = (key: TradeOrderKey, lineId?: string) =>
   screen.getByLabelText<HTMLInputElement>(lineId ? `${t(key)} ${lineId}` : t(key));
 
 type Handler = (url: string, init?: RequestInit) => Response | Promise<Response>;
-function stubApi(onOrder: Handler) {
+const emptyList: Handler = () => response({ items: [], nextCursor: null });
+function stubApi(onOrder: Handler, onList: Handler = emptyList) {
   const calls: string[] = [];
   const posts: unknown[] = [];
   const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (path, init) => {
@@ -129,6 +130,8 @@ function stubApi(onOrder: Handler) {
       return response({ items: [product], nextCursor: null });
     if (url.startsWith("/api/v1/trade/taxCode?"))
       return response({ items: [tax], nextCursor: null });
+    if (url.startsWith("/api/v1/trade/orders?") && (init?.method ?? "GET") === "GET")
+      return onList(url, init);
     if (url.startsWith("/api/v1/trade/orders")) {
       if (init?.method === "POST") posts.push(JSON.parse(String(init.body)));
       return onOrder(url, init);
@@ -344,5 +347,174 @@ describe("trade orders", () => {
     });
     expect(result.querySelector(".tord-total")?.textContent).toContain(formatMinor(11300, "zh", 2));
     expect(result.querySelector("input")).toBeNull();
+  });
+
+  const summary = (orderId: string, gross: number, lineCount = 1) => ({
+    orderId,
+    side: "AP",
+    party: "VENDOR",
+    currency: "CNY",
+    orderDate: "2026-04-01",
+    priceIncludesTax: false,
+    rounding: "line",
+    recordedAt: "2026-04-01T08:00:00.000Z",
+    lineCount,
+    net: gross,
+    tax: 0,
+    gross,
+  });
+  const listTable = () => screen.findByRole("table", { name: t("tord.list") });
+
+  it("lists orders page by page and opens a listed order by keyboard through the lookup", async () => {
+    const lists: string[] = [];
+    const { calls } = stubApi(
+      (url) =>
+        url.startsWith("/api/v1/trade/orders/PO-1?company=DEFAULT")
+          ? response(savedOrder)
+          : failure(404, "NOT_FOUND", []),
+      (url) => {
+        lists.push(url);
+        return url.includes("cursor=")
+          ? response({ items: [summary("PO-3", 500)], nextCursor: null })
+          : response({
+              items: [summary("PO-1", 11300), summary("PO-2", 2000, 3)],
+              nextCursor: "PO-2",
+            });
+      },
+    );
+    render(<App />);
+    const table = await listTable();
+    const rows = () => within(table).getAllByRole("row").slice(1);
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    expect(
+      within(rows()[1] as HTMLElement)
+        .getAllByRole("cell")
+        .map((cell) => cell.textContent),
+    ).toEqual([
+      "PO-2",
+      label("zh", "trade.AP"),
+      "VENDOR",
+      "2026-04-01",
+      "CNY",
+      "3",
+      formatMinor(2000, "zh", 2),
+    ]);
+    const gross = within(rows()[0] as HTMLElement).getAllByRole("cell")[6] as HTMLElement;
+    expect(gross.className).toBe("num");
+    expect(lists[0]).toBe("/api/v1/trade/orders?company=DEFAULT&limit=100");
+
+    const more = screen.getByRole("button", { name: label("zh", "master.loadMore") });
+    // Native, enabled <button>s are in the Tab order and fire click on Enter; jsdom cannot press
+    // keys, so real Tab / Enter is checked in Chrome (PR evidence).
+    expect([more.tagName, more.getAttribute("type"), more.tabIndex]).toEqual([
+      "BUTTON",
+      "button",
+      0,
+    ]);
+    more.focus();
+    expect(document.activeElement).toBe(more);
+    fireEvent.click(more);
+    await waitFor(() => expect(rows()).toHaveLength(3));
+    expect(lists[1]).toBe("/api/v1/trade/orders?company=DEFAULT&limit=100&cursor=PO-2");
+    expect(screen.queryByRole("button", { name: label("zh", "master.loadMore") })).toBeNull();
+
+    const open = within(table).getByRole("button", { name: "PO-1" });
+    expect([open.tagName, open.getAttribute("type"), open.tabIndex]).toEqual([
+      "BUTTON",
+      "button",
+      0,
+    ]);
+    open.focus();
+    expect(document.activeElement).toBe(open);
+    fireEvent.click(open);
+    const result = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>(".tord-lookup-result");
+      if (!found) throw new Error("no result");
+      return found;
+    });
+    expect(document.activeElement).toBe(result);
+    expect(screen.getByLabelText<HTMLInputElement>(t("tord.lookupId")).value).toBe("PO-1");
+    expect(result.querySelector(".tord-total")?.textContent).toContain(formatMinor(11300, "zh", 2));
+    expect(calls.filter((call) => call === "GET /api/v1/trade/orders/PO-1")).toHaveLength(1);
+  });
+
+  it.each([
+    ["the earlier order answers first", ["PO-1", "PO-2"]],
+    ["the earlier order answers last", ["PO-2", "PO-1"]],
+  ] as const)("keeps the later list choice when %s", async (_case, answerOrder) => {
+    const pending = new Map<string, () => void>();
+    stubApi(
+      (url) =>
+        new Promise<Response>((resolve) => {
+          const id = url.includes("/PO-2?") ? "PO-2" : "PO-1";
+          pending.set(id, () => resolve(response({ ...savedOrder, orderId: id })));
+        }),
+      () => response({ items: [summary("PO-1", 11300), summary("PO-2", 11300)], nextCursor: null }),
+    );
+    render(<App />);
+    const table = await listTable();
+    fireEvent.click(await within(table).findByRole("button", { name: "PO-1" }));
+    await waitFor(() => expect(pending.has("PO-1")).toBe(true));
+    fireEvent.click(within(table).getByRole("button", { name: "PO-2" }));
+    await waitFor(() => expect(pending.has("PO-2")).toBe(true));
+    const input = screen.getByLabelText<HTMLInputElement>(t("tord.lookupId"));
+    const shown = () => document.querySelector(".tord-lookup-result .badge")?.textContent ?? null;
+
+    pending.get(answerOrder[0])?.();
+    await act(async () => {});
+    expect(input.value).toBe("PO-2");
+    if (answerOrder[0] === "PO-1") expect(shown()).toBeNull();
+    pending.get(answerOrder[1])?.();
+    await act(async () => {});
+    await waitFor(() => expect(shown()).toMatch(/PO-2$/));
+    expect(input.value).toBe("PO-2");
+    expect(document.activeElement?.className).toBe("tord-lookup-result");
+    expect(document.querySelector("#tord-lookup-body [role=status]")).toBeNull();
+  });
+
+  it("opens a listed order even when the lookup section is collapsed", async () => {
+    stubApi(
+      () => response(savedOrder),
+      () => response({ items: [summary("PO-1", 11300)], nextCursor: null }),
+    );
+    render(<App />);
+    const table = await listTable();
+    const toggle = await screen.findByRole("button", { name: t("tord.lookup") });
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(await within(table).findByRole("button", { name: "PO-1" }));
+    await waitFor(() => expect(document.activeElement?.className).toBe("tord-lookup-result"));
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("shows empty and error states and refreshes the first page after a save", async () => {
+    let fail = true;
+    let saved = false;
+    const lists: string[] = [];
+    stubApi(
+      () => {
+        saved = true;
+        return response(savedOrder, 201);
+      },
+      (url) => {
+        lists.push(url);
+        if (fail) return failure(500, "INTERNAL", []);
+        return response({ items: saved ? [summary("PO-1", 11300)] : [], nextCursor: null });
+      },
+    );
+    render(<App />);
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(label("zh", "master.error"));
+    fail = false;
+    fireEvent.click(within(alert).getByRole("button", { name: label("zh", "master.retry") }));
+    expect(await screen.findByText(t("tord.listEmpty"))).toBeTruthy();
+    expect(screen.queryByRole("button", { name: label("zh", "master.loadMore") })).toBeNull();
+    const before = lists.length;
+    await fillOrder();
+    save();
+    const table = await listTable();
+    expect(await within(table).findByRole("button", { name: "PO-1" })).toBeTruthy();
+    expect(lists.slice(before)).toEqual(["/api/v1/trade/orders?company=DEFAULT&limit=100"]);
+    expect(screen.queryByText(t("tord.listEmpty"))).toBeNull();
   });
 });
