@@ -96,6 +96,13 @@ const toCommand = (company: CompanyDto, draft: Draft): Command => ({
     taxableCharge: "0",
   })),
 });
+// Line errors arrive by array index ("lines.0.taxCode"); keep them on the submitted line's stable
+// lineId so removing a line can never move an error onto the line that shifts into its place.
+const stablePath = (path: string, lines: readonly { lineId: string }[]) => {
+  const match = /^lines\.(\d+)(\..+)?$/u.exec(path);
+  const line = match ? lines[Number(match[1])] : undefined;
+  return match && line ? `line:${line.lineId}${match[2] ?? ""}` : path;
+};
 const ruleKey = (messageKey: string): TradeOrderKey => {
   const rule = messageKey.split(".").at(-1);
   return rules.find((known) => known === rule)
@@ -285,6 +292,18 @@ function OrderWorkspace({
     while (used.has(`L${n}`)) n += 1;
     edit({ lines: [...draft.lines, blankLine(n)] });
   };
+  const removeLine = (lineId: string) => {
+    edit({ lines: draft.lines.filter((line) => line.lineId !== lineId) });
+    setFailure(
+      (current) =>
+        current && {
+          ...current,
+          issues: current.issues.filter(
+            (issue) => issue.path !== `line:${lineId}` && !issue.path.startsWith(`line:${lineId}.`),
+          ),
+        },
+    );
+  };
   const discard = () => {
     if (busy || !window.confirm(t("tord.discardConfirm"))) return;
     setDraft(blankDraft());
@@ -301,7 +320,7 @@ function OrderWorkspace({
       setFailure({
         message: t("tord.invalid"),
         issues: checked.error.issues.map((issue) => ({
-          path: issue.path.join("."),
+          path: stablePath(issue.path.join("."), command.lines),
           key: "tord.issue.shape",
         })),
         uncertain: false,
@@ -326,7 +345,10 @@ function OrderWorkspace({
         message: fields.length
           ? t("tord.invalid")
           : t(definite ? "tord.issue.other" : "tord.uncertain"),
-        issues: fields.map((field) => ({ path: field.path, key: ruleKey(field.messageKey) })),
+        issues: fields.map((field) => ({
+          path: stablePath(field.path, command.lines),
+          key: ruleKey(field.messageKey),
+        })),
         uncertain: !definite,
       });
     } finally {
@@ -335,11 +357,12 @@ function OrderWorkspace({
   };
 
   const fieldLabel = (path: string) => {
-    const [head, index, field] = path.split(".");
-    if (head === "lines" && index !== undefined && field) {
-      const line = draft.lines[Number(index)];
+    const line = /^line:(.+?)(?:\.([A-Za-z]+))?$/u.exec(path);
+    if (line) {
+      const [, lineId, field] = line;
+      if (!field) return `${t("tord.lineId")} ${lineId}`;
       const known = (lineFields as readonly string[]).includes(field);
-      return `${known ? t(`tord.${field}` as TradeOrderKey) : field} ${line?.lineId ?? index}`;
+      return `${known ? t(`tord.${field}` as TradeOrderKey) : field} ${lineId}`;
     }
     const header = ["orderId", "side", "party", "currency", "orderDate", "rounding", "lines"];
     return header.includes(path) ? t(`tord.${path}` as TradeOrderKey) : "";
@@ -349,14 +372,14 @@ function OrderWorkspace({
     return issue
       ? {
           "aria-invalid": true as const,
-          "aria-describedby": `tord-error-${path.replaceAll(".", "-")}`,
+          "aria-describedby": `tord-error-${path.replaceAll(/[.:]/gu, "-")}`,
         }
       : {};
   };
   const errorText = (path: string) => {
     const issue = issueAt(path);
     return issue ? (
-      <p className="ui-error-text" id={`tord-error-${path.replaceAll(".", "-")}`}>
+      <p className="ui-error-text" id={`tord-error-${path.replaceAll(/[.:]/gu, "-")}`}>
         {t(issue.key)}
       </p>
     ) : null;
@@ -546,7 +569,7 @@ function OrderWorkspace({
                     <tr key={line.lineId}>
                       <td>{line.lineId}</td>
                       {lineFields.map((field) => {
-                        const path = `lines.${index}.${field}`;
+                        const path = `line:${line.lineId}.${field}`;
                         return (
                           <td key={field}>
                             <input
@@ -575,7 +598,7 @@ function OrderWorkspace({
                           className="btn btn-subtle btn-sm"
                           aria-label={`${t("tord.removeLine")} ${line.lineId}`}
                           disabled={draft.lines.length === 1}
-                          onClick={() => edit({ lines: draft.lines.filter((_, i) => i !== index) })}
+                          onClick={() => removeLine(line.lineId)}
                         >
                           {t("tord.removeLine")}
                         </button>

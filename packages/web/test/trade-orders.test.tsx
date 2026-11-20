@@ -232,6 +232,7 @@ describe("trade orders", () => {
           ])
         : failure(400, "INVALID_REQUEST", [
             { path: "lines.0.taxCode", messageKey: "api.error.trade.reference" },
+            { path: "lines.1.quantity", messageKey: "api.error.trade.quantity" },
           ]);
     });
     render(<App />);
@@ -241,6 +242,11 @@ describe("trade orders", () => {
     expect(field("tord.orderId").getAttribute("aria-invalid")).toBe("true");
     expect(screen.getByRole("alert").textContent).toContain(t("tord.invalid"));
     fireEvent.change(field("tord.orderId"), { target: { value: "PO-2" } });
+    fireEvent.click(screen.getByRole("button", { name: t("tord.addLine") }));
+    fireEvent.change(field("tord.product", "L2"), { target: { value: "EXPENSE" } });
+    fireEvent.change(field("tord.taxCode", "L2"), { target: { value: "VAT" } });
+    fireEvent.change(field("tord.quantity", "L2"), { target: { value: "1" } });
+    fireEvent.change(field("tord.unitPrice", "L2"), { target: { value: "5" } });
     save();
     await waitFor(() =>
       expect(field("tord.taxCode", "L1").getAttribute("aria-invalid")).toBe("true"),
@@ -250,6 +256,15 @@ describe("trade orders", () => {
       t("tord.issue.reference"),
     );
     expect(field("tord.orderId").getAttribute("aria-invalid")).toBeNull();
+    expect(field("tord.quantity", "L2").getAttribute("aria-invalid")).toBe("true");
+    // Removing L1 shifts L2 to index 0: L1's error must leave with it and L2 keeps its own.
+    fireEvent.click(screen.getByRole("button", { name: `${t("tord.removeLine")} L1` }));
+    expect(screen.queryByLabelText(`${t("tord.taxCode")} L1`)).toBeNull();
+    expect(field("tord.taxCode", "L2").getAttribute("aria-invalid")).toBeNull();
+    expect(field("tord.quantity", "L2").getAttribute("aria-invalid")).toBe("true");
+    const summary = screen.getByRole("alert").textContent ?? "";
+    expect(summary).not.toContain(`${t("tord.taxCode")} L`);
+    expect(summary).toContain(`${t("tord.quantity")} L2: ${t("tord.issue.quantity")}`);
     expect(posts).toHaveLength(2);
     expect(document.querySelector(".tord-amounts")).toBeNull();
   });
