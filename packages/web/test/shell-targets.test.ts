@@ -31,6 +31,25 @@ function px(source: string, selector: string, property: string) {
   return values.at(-1);
 }
 
+function declarations(source: string, selector: string) {
+  return [...source.matchAll(/([^{}]+)\{([^{}]*)\}/gu)]
+    .filter((m) => (m[1] ?? "").split(",").some((s) => s.trim() === selector))
+    .map((m) => m[2] ?? "")
+    .join(";");
+}
+
+describe("narrow app bar brand (UI-09b)", () => {
+  test("the title is visually hidden at ≤760px but stays in the accessibility tree", () => {
+    const narrow = mediaBlock("(max-width: 760px)");
+    const h1 = declarations(narrow.slice(narrow.indexOf("{") + 1), ".appbar h1");
+    expect(h1).toMatch(/(?:^|[;\s])clip(?:-path)?:/u);
+    expect(h1).toMatch(/(?:^|[;\s])width:\s*1px/u);
+    expect(h1).toMatch(/(?:^|[;\s])height:\s*1px/u);
+    expect(h1).not.toMatch(/display:\s*none/u);
+    expect(h1).not.toMatch(/visibility:\s*hidden/u);
+  });
+});
+
 describe("app bar preference target sizes (design/ui §7)", () => {
   const base = css.slice(0, css.indexOf("@media"));
   const touch = mediaBlock("(max-width: 760px), (pointer: coarse)");
