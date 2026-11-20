@@ -12,6 +12,8 @@ import {
 } from "@erp/core/contracts";
 import { label, type LabelKey, type Preferences } from "./ui/index.ts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
+import { FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
+import "./pages/master.css";
 type T = (key: Exclude<LabelKey, "shell.httpError">) => string;
 type Kind = DimensionCommand["kind"];
 const kinds = ["dimension", "value", "structure", "defaults", "derivation", "balance"] as const;
@@ -42,12 +44,12 @@ function failure(error: unknown): Failure {
 }
 function Notice({ error, t, retry }: { error: unknown; t: T; retry: () => void }) {
   return (
-    <div role="alert">
+    <MessageBar tone="danger" role="alert">
       <p>{t(failure(error).key)}</p>
-      <button type="button" onClick={retry}>
+      <button type="button" className="btn btn-secondary" onClick={retry}>
         {t("master.retry")}
       </button>
-    </div>
+    </MessageBar>
   );
 }
 export function Dimensions({ preferences }: { preferences: Preferences }) {
@@ -68,38 +70,48 @@ export function Dimensions({ preferences }: { preferences: Preferences }) {
   const rows = companies.data?.pages.flatMap((page) => page.items) ?? [];
   const company = rows.find((item) => item.code === (selected || rows[0]?.code));
   return (
-    <section className="dimensions">
-      <h2>{t("dim.title")}</h2>
+    <section className="page ui-master dimensions">
+      <PageHeader
+        title={t("dim.title")}
+        context={
+          companies.data && (
+            <>
+              <div className="field">
+                <label htmlFor="dimension-company">{t("master.company")}</label>
+                <select
+                  id="dimension-company"
+                  value={company?.code ?? ""}
+                  onChange={(event) => setSelected(event.target.value)}
+                >
+                  {rows.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.code} · {item.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {companies.hasNextPage && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={companies.isFetchingNextPage}
+                  onClick={() => void companies.fetchNextPage()}
+                >
+                  {t("master.loadMore")}
+                </button>
+              )}
+            </>
+          )
+        }
+      />
+      <TeachingTip teaching={preferences.teaching} title={t("master.teachingTitle")}>
+        {t("dim.teaching")}
+      </TeachingTip>
       {companies.isPending && <p role="status">{t("master.loading")}</p>}
       {companies.isError && (
         <Notice error={companies.error} t={t} retry={() => void companies.refetch()} />
       )}
-      {companies.data && (
-        <>
-          <label htmlFor="dimension-company">{t("master.company")}</label>
-          <select
-            id="dimension-company"
-            value={company?.code ?? ""}
-            onChange={(event) => setSelected(event.target.value)}
-          >
-            {rows.map((item) => (
-              <option key={item.code} value={item.code}>
-                {item.code} · {item.name}
-              </option>
-            ))}
-          </select>
-          {companies.hasNextPage && (
-            <button
-              type="button"
-              disabled={companies.isFetchingNextPage}
-              onClick={() => void companies.fetchNextPage()}
-            >
-              {t("master.loadMore")}
-            </button>
-          )}
-          {company && <CompanyDimensions key={company.code} company={company} t={t} />}
-        </>
-      )}
+      {company && <CompanyDimensions key={company.code} company={company} t={t} />}
     </section>
   );
 }
@@ -124,53 +136,60 @@ function CompanyDimensions({ company, t }: { company: CompanyDto; t: T }) {
   const definitions = usePage(company.code, "dimension", "", kind === "value");
   return (
     <>
-      <label htmlFor="dimension-kind">{t("dim.kind")}</label>
-      <select
-        id="dimension-kind"
-        value={kind}
-        onChange={(event) => {
-          const next = kinds.find((value) => value === event.target.value);
-          if (next) setKind(next);
-        }}
-      >
-        {kinds.map((item) => (
-          <option key={item} value={item}>
-            {t(`dim.${item}`)}
-          </option>
-        ))}
-      </select>
-      {kind === "value" && (
-        <>
-          <label htmlFor="dimension-parent">{t("dim.parent")}</label>
+      <div className="filter-bar">
+        <div className="field">
+          <label htmlFor="dimension-kind">{t("dim.kind")}</label>
           <select
-            id="dimension-parent"
-            value={dimension}
-            onChange={(event) => setDimension(event.target.value)}
+            id="dimension-kind"
+            value={kind}
+            onChange={(event) => {
+              const next = kinds.find((value) => value === event.target.value);
+              if (next) setKind(next);
+            }}
           >
-            <option value="">{t("dim.choose")}</option>
-            {definitions.data?.pages
-              .flatMap((page) => page.items)
-              .map((item) => (
-                <option key={item.code} value={item.code}>
-                  {item.code}
-                </option>
-              ))}
+            {kinds.map((item) => (
+              <option key={item} value={item}>
+                {t(`dim.${item}`)}
+              </option>
+            ))}
           </select>
-          {definitions.isError && (
-            <Notice error={definitions.error} t={t} retry={() => void definitions.refetch()} />
-          )}
-          {definitions.hasNextPage && (
-            <button
-              type="button"
-              disabled={definitions.isFetchingNextPage}
-              onClick={() => void definitions.fetchNextPage()}
-            >
-              {t("master.loadMore")}
-            </button>
-          )}
-          {!dimension && <p>{t("dim.emptyParent")}</p>}
-        </>
+        </div>
+        {kind === "value" && (
+          <>
+            <div className="field">
+              <label htmlFor="dimension-parent">{t("dim.parent")}</label>
+              <select
+                id="dimension-parent"
+                value={dimension}
+                onChange={(event) => setDimension(event.target.value)}
+              >
+                <option value="">{t("dim.choose")}</option>
+                {definitions.data?.pages
+                  .flatMap((page) => page.items)
+                  .map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.code}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            {definitions.hasNextPage && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={definitions.isFetchingNextPage}
+                onClick={() => void definitions.fetchNextPage()}
+              >
+                {t("master.loadMore")}
+              </button>
+            )}
+          </>
+        )}
+      </div>
+      {kind === "value" && definitions.isError && (
+        <Notice error={definitions.error} t={t} retry={() => void definitions.refetch()} />
       )}
+      {kind === "value" && !dimension && <p className="ui-master-note">{t("dim.emptyParent")}</p>}
       {(kind !== "value" || dimension) && (
         <DimensionPane
           key={`${kind}:${dimension}`}
@@ -213,71 +232,85 @@ function DimensionPane({
     after = virtual ? virtualizer.getTotalSize() - (measured.at(-1)?.end ?? 0) : 0;
   return (
     <>
-      <button type="button" onClick={() => setEditing(null)}>
-        {t("dim.new")}
-      </button>
+      <div className="ui-master-actions">
+        <button
+          type="button"
+          className={`btn ${editing === undefined ? "btn-primary" : "btn-secondary"}`}
+          onClick={() => setEditing(null)}
+        >
+          {t("dim.new")}
+        </button>
+      </div>
       {page.isPending && <p role="status">{t("master.loading")}</p>}
       {page.isError && <Notice error={page.error} t={t} retry={() => void page.refetch()} />}
-      <section
-        className="accounts-scroll"
-        ref={scroll}
-        aria-label={t(`dim.${kind}`)}
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: Named virtual list must support keyboard scrolling.
-        tabIndex={0}
-      >
-        <table aria-label={t(`dim.${kind}`)} aria-rowcount={rows.length + 1}>
-          <thead>
-            <tr>
-              {(["dim.identifier", "dim.name", "master.active", "dim.edit"] as const).map((key) => (
-                <th key={key} scope="col">
-                  {t(key)}
-                </th>
+      <div className="card">
+        <section
+          className="grid-wrap ui-master-scroll"
+          ref={scroll}
+          aria-label={t(`dim.${kind}`)}
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: Named virtual list must support keyboard scrolling.
+          tabIndex={0}
+        >
+          <table className="grid" aria-label={t(`dim.${kind}`)} aria-rowcount={rows.length + 1}>
+            <thead>
+              <tr>
+                {(["dim.identifier", "dim.name", "master.active", "dim.edit"] as const).map(
+                  (key) => (
+                    <th key={key} scope="col">
+                      {t(key)}
+                    </th>
+                  ),
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {before > 0 && (
+                // biome-ignore lint/a11y/noAriaHiddenOnFocusable: Empty spacer row has no focusable content.
+                <tr aria-hidden="true">
+                  <td colSpan={4} style={{ height: before, padding: 0 }} />
+                </tr>
+              )}
+              {visible.map(({ row, index }) => (
+                <tr key={row.code} aria-rowindex={index + 2} style={{ height: 44 }}>
+                  <td>{row.code}</td>
+                  <td>{"name" in row ? row.name : t(`dim.${row.kind}`)}</td>
+                  <td>
+                    <label className="ui-master-hit">
+                      <input
+                        type="checkbox"
+                        checked={row.active}
+                        disabled
+                        aria-label={`${t("master.active")} ${row.code}`}
+                      />
+                    </label>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn btn-subtle btn-sm"
+                      aria-label={`${t("dim.edit")} ${row.code}`}
+                      onClick={() => setEditing(row)}
+                    >
+                      {t("dim.edit")}
+                    </button>
+                  </td>
+                </tr>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {before > 0 && (
-              // biome-ignore lint/a11y/noAriaHiddenOnFocusable: Empty spacer row has no focusable content.
-              <tr aria-hidden="true">
-                <td colSpan={4} style={{ height: before, padding: 0 }} />
-              </tr>
-            )}
-            {visible.map(({ row, index }) => (
-              <tr key={row.code} aria-rowindex={index + 2} style={{ height: 44 }}>
-                <td>{row.code}</td>
-                <td>{"name" in row ? row.name : t(`dim.${row.kind}`)}</td>
-                <td>
-                  <input
-                    type="checkbox"
-                    checked={row.active}
-                    disabled
-                    aria-label={`${t("master.active")} ${row.code}`}
-                  />
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    aria-label={`${t("dim.edit")} ${row.code}`}
-                    onClick={() => setEditing(row)}
-                  >
-                    {t("dim.edit")}
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {after > 0 && (
-              // biome-ignore lint/a11y/noAriaHiddenOnFocusable: Empty spacer row has no focusable content.
-              <tr aria-hidden="true">
-                <td colSpan={4} style={{ height: after, padding: 0 }} />
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </section>
-      {page.data && rows.length === 0 && <p>{t("dim.empty")}</p>}
+              {after > 0 && (
+                // biome-ignore lint/a11y/noAriaHiddenOnFocusable: Empty spacer row has no focusable content.
+                <tr aria-hidden="true">
+                  <td colSpan={4} style={{ height: after, padding: 0 }} />
+                </tr>
+              )}
+            </tbody>
+          </table>
+          {page.data && rows.length === 0 && <p className="empty-state">{t("dim.empty")}</p>}
+        </section>
+      </div>
       {page.hasNextPage && (
         <button
           type="button"
+          className="btn btn-secondary ui-master-more"
           disabled={page.isFetchingNextPage}
           onClick={() => void page.fetchNextPage()}
         >
@@ -417,88 +450,109 @@ function DimensionEditor({
   const fieldLabel = (field: (typeof fields)[number]): Exclude<LabelKey, "shell.httpError"> =>
     `dim.${field}`;
   return (
-    <form className="account-editor dimension-editor" onSubmit={(event) => void submit(event)}>
-      <h3>{t(initial ? "dim.edit" : "dim.new")}</h3>
-      <fieldset disabled={busy}>
-        {fields.map((field) => {
-          const options = field === "mode" ? (["fill", "replace"] as const) : null;
-          const invalid = error?.path.split(".")[0] === field;
-          const props = {
-            id: `dim-${field}`,
-            value: draft[field],
-            onChange: (event: { target: { value: string } }) =>
-              setDraft((value) => ({ ...value, [field]: event.target.value })),
-            "aria-invalid": invalid ? (true as const) : undefined,
-            "aria-describedby": invalid
-              ? `dim-${field}-error`
-              : field === "allowed"
-                ? "dim-allowed-hint"
-                : undefined,
-          };
-          return (
-            <div key={field}>
-              <label htmlFor={`dim-${field}`}>{t(fieldLabel(field))}</label>
-              {options ? (
-                <select {...props} required>
-                  <option value="">{t("dim.choose")}</option>
-                  {options.map((value) => (
-                    <option key={value} value={value}>
-                      {t(`dim.${value}`)}
-                    </option>
-                  ))}
-                </select>
-              ) : jsonFields.has(field) ? (
-                <textarea {...props} required rows={3} maxLength={64000} />
-              ) : (
-                <input
-                  {...props}
-                  type={field === "from" || field === "to" ? "date" : "text"}
-                  required={!arrays.has(field)}
-                  disabled={field === "code" && (initial !== null || kind === "balance")}
-                  maxLength={arrays.has(field) ? 1055 : field === "name" ? 80 : 128}
-                />
-              )}
-              {field === "allowed" && <p id="dim-allowed-hint">{t("dim.allowedHint")}</p>}
-              {invalid && (
-                <p id={`dim-${field}-error`} role="alert">
-                  {error.path}: {t(error.key)}
-                </p>
-              )}
-            </div>
-          );
-        })}
-        <label>
-          <input
-            type="checkbox"
-            checked={draft.active === "true"}
-            onChange={(event) =>
-              setDraft((value) => ({ ...value, active: String(event.target.checked) }))
-            }
-          />
-          {t("master.active")}
-        </label>
-        {fields.some((field) => jsonFields.has(field)) && <p>{t("dim.jsonHint")}</p>}
-        <button type="submit">{t(busy ? "master.saving" : "dim.save")}</button>
-      </fieldset>
-      <button type="button" onClick={close}>
-        {t("master.cancel")}
-      </button>
-      {error && !fields.some((field) => field === error.path.split(".")[0]) && (
-        <p role="alert">
-          {error.path}: {t(error.key)}
-        </p>
-      )}
-      {error?.conflict && (
-        <button
-          type="button"
-          onClick={() => {
-            void client.invalidateQueries({ queryKey: ["dimensions", company.code] });
-            close();
-          }}
-        >
-          {t("master.reload")}
-        </button>
-      )}
+    <form className="ui-master-editor" onSubmit={(event) => void submit(event)}>
+      <FastTab
+        id="dim-editor"
+        title={t("dim.editor")}
+        summary={initial ? `${t("dim.edit")} · ${initial.code}` : t("dim.new")}
+      >
+        <fieldset disabled={busy} className="ui-form-grid">
+          {fields.map((field) => {
+            const options = field === "mode" ? (["fill", "replace"] as const) : null;
+            const invalid = error?.path.split(".")[0] === field;
+            const props = {
+              id: `dim-${field}`,
+              value: draft[field],
+              onChange: (event: { target: { value: string } }) =>
+                setDraft((value) => ({ ...value, [field]: event.target.value })),
+              "aria-invalid": invalid ? (true as const) : undefined,
+              "aria-describedby": invalid
+                ? `dim-${field}-error`
+                : field === "allowed"
+                  ? "dim-allowed-hint"
+                  : undefined,
+            };
+            return (
+              <div
+                key={field}
+                className={`ui-field${jsonFields.has(field) ? " ui-master-wide" : ""}`}
+              >
+                <label htmlFor={`dim-${field}`}>{t(fieldLabel(field))}</label>
+                {options ? (
+                  <select {...props} required>
+                    <option value="">{t("dim.choose")}</option>
+                    {options.map((value) => (
+                      <option key={value} value={value}>
+                        {t(`dim.${value}`)}
+                      </option>
+                    ))}
+                  </select>
+                ) : jsonFields.has(field) ? (
+                  <textarea {...props} required rows={3} maxLength={64000} />
+                ) : (
+                  <input
+                    {...props}
+                    type={field === "from" || field === "to" ? "date" : "text"}
+                    required={!arrays.has(field)}
+                    disabled={field === "code" && (initial !== null || kind === "balance")}
+                    maxLength={arrays.has(field) ? 1055 : field === "name" ? 80 : 128}
+                  />
+                )}
+                {field === "allowed" && (
+                  <p id="dim-allowed-hint" className="ui-hint">
+                    {t("dim.allowedHint")}
+                  </p>
+                )}
+                {invalid && (
+                  <p id={`dim-${field}-error`} className="ui-master-error" role="alert">
+                    {error.path}: {t(error.key)}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+          <label className="ui-check">
+            <input
+              type="checkbox"
+              checked={draft.active === "true"}
+              onChange={(event) =>
+                setDraft((value) => ({ ...value, active: String(event.target.checked) }))
+              }
+            />
+            {t("master.active")}
+          </label>
+          {fields.some((field) => jsonFields.has(field)) && (
+            <p className="ui-hint ui-master-wide">{t("dim.jsonHint")}</p>
+          )}
+          <div className="ui-form-actions ui-master-wide">
+            <button type="submit" className="btn btn-primary">
+              {t(busy ? "master.saving" : "dim.save")}
+            </button>
+          </div>
+        </fieldset>
+        <div className="ui-form-actions">
+          <button type="button" className="btn btn-subtle" onClick={close}>
+            {t("master.cancel")}
+          </button>
+          {error?.conflict && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                void client.invalidateQueries({ queryKey: ["dimensions", company.code] });
+                close();
+              }}
+            >
+              {t("master.reload")}
+            </button>
+          )}
+        </div>
+        {error && !fields.some((field) => field === error.path.split(".")[0]) && (
+          <MessageBar tone="danger" role="alert">
+            {error.path}: {t(error.key)}
+          </MessageBar>
+        )}
+      </FastTab>
     </form>
   );
 }
