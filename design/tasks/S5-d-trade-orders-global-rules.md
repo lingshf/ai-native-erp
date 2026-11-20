@@ -11,6 +11,10 @@
 - 订单行复选框；
 - `.tord-facts` 的 `dl { display }`。先用探针确认它是否仍依赖全局规则；不依赖就在 PR 证据中写明，不加规则。
 
+**不在范围**：
+- 订单页的 `td { text-align }`、`.grid thead { background }` 由 [S5-i](S5-i-grid-table-component-rules.md)、`.ui-field select { max-width }` 由 S5-f（[#115](https://github.com/lingshf/ai-native-erp/pull/115)）在组件层覆盖，本任务不在页面 CSS 中重复写；取证构建也不删这三条。
+- 订单行复选框若已被 S5-c 的 `:where(.ui-check) input[type="checkbox"]` 组件规则覆盖（[#113](https://github.com/lingshf/ai-native-erp/pull/113) 合并后），用探针确认后在证据中写明，不再加规则。
+
 ## 验收标准
 
 1. 满足 [S5 共同验收](README.md#s5stylescss-全局元素规则收尾--s4-回顾行动建议-v050)。

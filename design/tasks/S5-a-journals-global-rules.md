@@ -9,9 +9,14 @@
 
 依赖 `styles.css` 全局规则的声明（main `66d8e15`）：
 - `BusinessEvents.tsx` 无类的 `legend`（font-weight、padding）；
-- `form > fieldset > label > select`（width / background / color / border / radius / padding / min-height）；
+- 凭证页的两个 `legend`：
+  - `Journals.tsx:585` 凭证草稿 `legend`：`journals.css:136` 的 `.journals .jv-editor > fieldset > legend` 只覆盖 padding / font-size / line-height，`font-weight` 仍取自全局规则；
+  - `Journals.tsx:806` 行内暂记户 `fieldset > legend`：不匹配 `journals.css:136` 的直属选择器，`padding` 和 `font-weight` 都取自全局规则；
+- `form > fieldset > label > select`（width / **max-width** / background / color / border / radius / padding / min-height），即 `BusinessEvents.tsx` 约 1570–1629 行；
+- `Journals.tsx:475` 的 `label.jv-status > select`：它不在 `.ui-field` 内，`journals.css` 的 `.journals :is(.jv-status, .jv-lines) :is(select, input)` 不设 `max-width`，所以 `max-width` 仍取自全局规则。`.ui-field select` 的 `max-width` 由 S5-f（[#115](https://github.com/lingshf/ai-native-erp/pull/115)）在组件层覆盖，本任务不重复写；
 - 无类按钮（约 1125、1183、1401/1402、1467、1701/1702 行）的 background / color / border / padding / cursor / font-weight，以及 hover / active / disabled 状态。`:407` 的分段按钮已由 `.segmented button` 覆盖，不在范围内；
 - VirtualRows 表头（约 860、1174 行）的 `th, td { padding }`；
+- 凭证预览合计行的 `min-width` 与 `border-bottom`：`Journals.tsx:1393–1400` 的 VirtualRows `footer`，包括两个 `td.num` 和 `colSpan` 空单元格。这些 `td` 不走 `.grid td` 或 `.card .journal-row td`，`journals.css:50–59` 的 `tfoot :is(th, td)` 也不设这两个属性，所以仍取自全局 `th, td`。#115 探针记录了删除这两条声明时 `journals td.num` 各有 10 处变值。行表头 `th` 已由 `.card > .journal-scroll th` 覆盖，用探针确认后在证据中写明；
 - 凭证页复选框。
 
 做法：给这些元素加类名（优先用已有共享类，如按钮用 `ui/components` 的按钮类），在页面 CSS 中给出与现值相同的声明。**不改 `styles.css`**。
@@ -19,6 +24,10 @@
 ## 验收标准
 
 1. 满足 [S5 共同验收](README.md#s5stylescss-全局元素规则收尾--s4-回顾行动建议-v050)。
-2. **补采状态**：UI-09g 没有采到的业务事件编辑、清账 / 预览对话框、禁用按钮、hover / active，都要在证据中出现（脚本驱动到该状态后采集）。
+2. **补采状态**：UI-09g 没有采到的以下状态都要在证据中出现（脚本驱动到该状态后采集）：
+   - 业务事件编辑、清账 / 预览对话框、禁用按钮、hover / active；
+   - 凭证草稿编辑器；
+   - 凭证行命中暂记户规则后显示的暂记户 fieldset（`Journals.tsx:805–806`）；
+   - 凭证预览弹窗中带合计行的 VirtualRows。可沿用 #115 的 `journals-preview` 做法：用 API 写入虚构草稿后，在 GUI 中打开并预览。取证构建删去 `th, td { min-width }` 与 `{ border-bottom }`，合计行计算值“变”为 0。
 3. 按钮的可访问名称、`role`、键盘顺序不变；现有 `business-events` / 凭证测试不删除、不削弱，只允许因加类名而新增断言。
 4. 页面 chunk gzip ≤ +0.1 kB。
