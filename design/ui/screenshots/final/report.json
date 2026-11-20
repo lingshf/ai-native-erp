@@ -1,0 +1,2141 @@
+{
+ "shots": [
+  {
+   "file": "overview-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "overview-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "overview-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "overview-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "migration-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1305
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "migration-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1546
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "migration-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1305
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "migration-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1546
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "accounts-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "accounts-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    907
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "accounts-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "accounts-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    927
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "dimensions-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "dimensions-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "dimensions-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "dimensions-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-master-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-master-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-master-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-master-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "journals-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "journals-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "journals-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "journals-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "journals-new-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1661
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "journals-new-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    2384
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "journals-new-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1661
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "journals-new-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    2580
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "journals-detail-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    907
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "journals-detail-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1060
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "journals-detail-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    907
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "journals-detail-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1136
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "events-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "events-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "events-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "events-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-invoices-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1040
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-invoices-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1781
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-invoices-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1060
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-invoices-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1873
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-settlements-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    963
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-settlements-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1578
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-settlements-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    963
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-settlements-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1658
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-adjustments-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-adjustments-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1325
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-adjustments-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-adjustments-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1417
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-reports-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-reports-zh-red-390.png",
+   "ok": true,
+   "diff": "4 in [28,1309,91,1353]",
+   "size": [
+    390,
+    1383
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-reports-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-reports-en-green-390.png",
+   "ok": true,
+   "diff": "4 in [28,1400,91,1444]",
+   "size": [
+    390,
+    1474
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-reports-detail-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1171
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-reports-detail-zh-red-390.png",
+   "ok": true,
+   "diff": "size 390x1932 vs 390x1952",
+   "size": [
+    390,
+    1952
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-reports-detail-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1189
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "trade-reports-detail-en-green-390.png",
+   "ok": true,
+   "diff": "size 390x2023 vs 390x2043",
+   "size": [
+    390,
+    2043
+   ],
+   "links": [],
+   "small": []
+  },
+  {
+   "file": "ledger-reports-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1640
+   ],
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "ledger-reports-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    2036
+   ],
+   "links": [
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "ledger-reports-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1640
+   ],
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "ledger-reports-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    2076
+   ],
+   "links": [
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "ledger-detail-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [
+    [
+     19,
+     44
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "ledger-detail-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1257
+   ],
+   "links": [
+    [
+     44,
+     44
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "ledger-detail-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [
+    [
+     19,
+     44
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "ledger-detail-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1375
+   ],
+   "links": [
+    [
+     44,
+     44
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "period-close-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1565
+   ],
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "period-close-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1856
+   ],
+   "links": [
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "period-close-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1605
+   ],
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "period-close-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    2010
+   ],
+   "links": [
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "reports-index-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "reports-index-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    905
+   ],
+   "links": [
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "reports-index-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "reports-index-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    945
+   ],
+   "links": [
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "reports-trial-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "reports-trial-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    905
+   ],
+   "links": [
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "reports-trial-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": []
+  },
+  {
+   "file": "reports-trial-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    945
+   ],
+   "links": [
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ]
+   ],
+   "small": []
+  }
+ ],
+ "selectors": {}
+}

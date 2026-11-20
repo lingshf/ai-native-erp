@@ -25,6 +25,8 @@ const [webRoot, outDir, baselineRoot] = process.argv.slice(2, 5).map((p) => p &&
 if (!webRoot || !outDir) throw new Error("usage: capture.mjs <webDist> <outDir> [baselineDist]");
 // 可选：SELECTORS 环境变量放 JSON 选择器列表，统计每个选择器在各页面上的最大命中数（有基线时按基线构建统计）。
 const selectors = process.env.SELECTORS ? JSON.parse(process.env.SELECTORS) : [];
+// 可选：INTENDED 环境变量放逗号分隔的截图文件名，这些截图允许与基线有差异（有意的视觉改动，逐张说明），其余必须为 0。
+const intended = new Set(process.env.INTENDED?.split(",") ?? []);
 
 function mainScroll() {
   const main = document.querySelector("main");
@@ -183,6 +185,15 @@ const pages = [
   ],
   ["trade-adjustments", "trade-adjustments", "main select"],
   ["trade-reports", "trade-reports", "main table"],
+  [
+    "trade-reports-detail",
+    `trade-reports?${scope}`,
+    "main .cell-link",
+    async (tab) => {
+      await tab.locator("main .cell-link").first().click();
+      await tab.locator("main .trpt-detail").waitFor();
+    },
+  ],
   ["ledger-reports", `ledger-reports?${scope}`, "main table"],
   ["ledger-detail", `ledger?${scope}&account=2100`, "main table"],
   [
@@ -445,6 +456,8 @@ async function shoot(base, name, path, ready, prepare, language, theme, width) {
     window.scrollTo(0, 0);
   });
   await tab.evaluate(() => document.fonts.ready);
+  // 等两帧，让失焦 / 滚动复位后的重绘落定（否则偶见顶栏下拉框底边 1–2px 栅格化差异）
+  await tab.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
   const facts = {
     overflow: await tab.evaluate(overflowReport),
     main: await tab.evaluate(mainScroll),
@@ -455,7 +468,15 @@ async function shoot(base, name, path, ready, prepare, language, theme, width) {
     hits: selectors.length ? await tab.evaluate(selectorHits, selectors) : {},
     size: await tab.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]),
   };
-  const png = await tab.screenshot({ fullPage: true, animations: "disabled" });
+  // 稳定帧：连续两次截图逐字节相同才采用（同 Playwright toHaveScreenshot 的做法），最多 5 次。
+  let png = await tab.screenshot({ fullPage: true, animations: "disabled" });
+  let stable = false;
+  for (let i = 0; i < 4 && !stable; i++) {
+    const next = await tab.screenshot({ fullPage: true, animations: "disabled" });
+    stable = next.equals(png);
+    png = next;
+  }
+  if (!stable) console.warn(`${name} ${language}/${theme}/${width}: no two identical consecutive frames`);
   await context.close();
   return { png, facts };
 }
@@ -477,10 +498,18 @@ async function pixelDiff(a, b) {
       const [p, q] = [await load(x), await load(y)];
       if (p.w !== q.w || p.h !== q.h) return `size ${p.w}x${p.h} vs ${q.w}x${q.h}`;
       let count = 0;
+      const box = [Infinity, Infinity, -1, -1];
       for (let i = 0; i < p.d.length; i += 4)
-        if (p.d[i] !== q.d[i] || p.d[i + 1] !== q.d[i + 1] || p.d[i + 2] !== q.d[i + 2] || p.d[i + 3] !== q.d[i + 3])
+        if (p.d[i] !== q.d[i] || p.d[i + 1] !== q.d[i + 1] || p.d[i + 2] !== q.d[i + 2] || p.d[i + 3] !== q.d[i + 3]) {
           count++;
-      return count;
+          const x = (i / 4) % p.w;
+          const y = Math.floor(i / 4 / p.w);
+          box[0] = Math.min(box[0], x);
+          box[1] = Math.min(box[1], y);
+          box[2] = Math.max(box[2], x);
+          box[3] = Math.max(box[3], y);
+        }
+      return count ? `${count} in [${box.join(",")}]` : 0;
     },
     [a.toString("base64"), b.toString("base64")],
   );
@@ -505,6 +534,10 @@ try {
       const loose = facts.tables.filter((table) => !table.own || (table.overflow && !table.scrolled));
       const navOk = !facts.nav || (facts.nav.scrollable && facts.nav.moved);
       const diff = result.baseline ? await pixelDiff(result.baseline.png, png) : null;
+      if (diff && process.env.DIFF_DIR) {
+        await mkdir(process.env.DIFF_DIR, { recursive: true });
+        await writeFile(join(process.env.DIFF_DIR, `baseline-${file}`), result.baseline.png);
+      }
       const ok =
         facts.overflow.vw === width &&
         facts.overflow.scrollWidth <= width &&
@@ -513,13 +546,13 @@ try {
         loose.length === 0 &&
         facts.small.length === 0 &&
         navOk &&
-        (diff === null || diff === 0);
+        (diff === null || diff === 0 || intended.has(file));
       if (!ok) failed++;
       const linkHeights = [...new Set(facts.links.map(([h, row]) => `${h}/${row}`))];
       console.log(
         `${ok ? "PASS" : "FAIL"} ${file} page ${facts.size.join("x")} main ${facts.main.join("/")} tables ${facts.tables.length}` +
           `${facts.nav ? ` nav ${facts.nav.scrollable && facts.nav.moved ? "scrolls" : `NOT scrollable ${JSON.stringify(facts.nav)}`}` : ""}` +
-          `${diff === null ? "" : ` diff ${diff}px`}` +
+          `${diff === null ? "" : ` diff ${diff}px${diff && intended.has(file) ? " (intended)" : ""}`}` +
           `${linkHeights.length ? ` table-inline links (not checked) ${facts.links.length} link/row h ${linkHeights.join(",")}` : ""}` +
           `${loose.length ? ` not in own scroller: ${loose.map((table) => table.name).join(", ")}` : ""}` +
           `${facts.overflow.escaped.length ? ` escaped: ${facts.overflow.escaped.join(", ")}` : ""}` +
