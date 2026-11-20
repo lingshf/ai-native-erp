@@ -91,12 +91,13 @@ S4（UI-1 后续 + M1 遗留，建议 v0.4.0）：UI-09 / UI-10 小步改进、�
     2. **任务表同步**：设计角色把 [tasks/README.md](tasks/README.md) 中该任务改为 `done` 并填入 PR 链接（任务表只由设计角色修改；可攒入当天的文档 PR）。同步前，该任务不算完成，发布 PR 不得引用它；
     3. **跟踪 main Full**，以第一个“覆盖 `M`”的完整结果解锁同冲突域的下一个任务：
        - “覆盖 `M`”指运行的 SHA 等于 `M`，或是 `M` 的后代（`git merge-base --is-ancestor M <sha>`）；
-       - “完整结果”指 `full.yml` 的 12 个 job（unit / browser 各 6 个分片）全部结束，没有任何 job 处于 cancelled 状态。
+       - “完整结果”指 `full.yml` 的 12 个 job（unit / browser 各 6 个分片）全部结束，没有任何 job 处于 cancelled 状态，并且**每个分片的测试步骤 “All tests including slow tests” 的结论都是 `success`**。job 绿不够：定时运行在 main 最新提交超过 24 小时时，由 `scripts/ci.ts gate` 跳过安装和全部测试（步骤结论为 `skipped`），12 个 job 仍然显示绿。核对命令：`gh run view <run-id> --json headSha,jobs --jq '.headSha, [.jobs[].steps[] | select(.name=="All tests including slow tests") | .conclusion]'`，要求 12 个值都是 `success`。
 - **Full 被取消时**：`full.yml` 的 `concurrency` 按 main ref + lane + 分片分组，并且 `cancel-in-progress`（`.github/workflows/full.yml:26–27`）。后续 push，包括补任务表的文档 PR，会取消 `M` 的 Full。处理方式：
   - **cancelled 不算红，也不算绿**，不解锁也不触发回退；
   - 改看覆盖 `M` 的更新 SHA 的 Full，取第一个完整结果：全绿则解锁；红则按失败用例归因，与本任务相关时由本任务修复或回退；
-  - 若连续合并使每次 Full 都被取消，协调者暂停 main 合并（文档 PR 同样暂停），直到 main 当前 SHA 得到一次完整结果；也可以等当天的定时运行（cron `17 3 * * *`）；
-  - 不手动重跑旧 SHA 来解锁：旧 SHA 不含之后合并的提交，它的结果不能代表当前 main。
+  - 若连续合并使每次 Full 都被取消，协调者暂停 main 合并（文档 PR 同样暂停），然后重跑 main **当前** SHA 的 push 运行：`gh run rerun <该 SHA 的 push run-id>`。push 运行不经过 24 小时门禁；
+  - 不以定时运行解锁，除非核对命令显示它确实执行了测试。门禁跳过的定时运行不算结果，处理方式同上：重跑当前 main SHA 的 push 运行；
+  - 不重跑已被后续提交取代的旧 SHA：旧 SHA 不含之后合并的提交，它的结果不能代表当前 main。
 - **运维可见变化**（日志字段或 `errorType`、错误码、端口、CLI 输出、配置项）：PR 描述必须写明旧值 → 新值的对照表（v0.3.0 回顾，#81）。
 - 里程碑评审：里程碑最后一个任务合并后，由设计角色做一次（代码是否按设计、设计原则、性能、测试审计），问题生成子任务（`M0-R1`…）。
 - 不再使用旧 G3/G5/G6 门禁、MODEL01 例外流程、逐阶段本地保护同步/新 clone 等重流程。
