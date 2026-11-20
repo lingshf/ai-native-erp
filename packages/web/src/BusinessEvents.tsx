@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -268,7 +268,8 @@ function CompanyEvents({
     lock(editing || busy);
     return () => lock(false);
   }, [editing, busy, lock]);
-  useEffect(() => {
+  // Layout phase: a passive effect after an async commit returns focus one task late.
+  useLayoutEffect(() => {
     if (!review && !withdraw && !busy) {
       const previous = returnFocus.current;
       if (previous?.isConnected) previous.focus();
