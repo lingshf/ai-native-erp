@@ -54,13 +54,17 @@
   gap: var(--space-3);
 }
 
-/* 共享组件 chunk 到达前：最终 DOM 已就位但透明且不可操作，只显示加载提示，到达后不再位移 */
+/* 共享组件 chunk 到达前：最终 DOM 已就位，但透明、inert、aria-hidden；只显示并播报加载提示，到达后不再位移 */
 .overview-page {
   position: relative;
 }
-.overview-pending > :not(.overview-pending-note) {
+.overview-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+.overview-pending .overview-content {
   opacity: 0;
-  pointer-events: none;
 }
 .overview-pending-note {
   position: absolute;

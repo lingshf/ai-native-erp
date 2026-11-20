@@ -1,40 +1,88 @@
-import { act, render, screen } from "@testing-library/react";
-import { expect, it, vi } from "vitest";
+import { act, render, screen, within } from "@testing-library/react";
+import { isInaccessible } from "@testing-library/dom";
+import { beforeEach, expect, it, vi } from "vitest";
 import { label } from "../src/ui/index.ts";
-import { App } from "../src/App.tsx";
 
-// The shared components chunk is held back and then fails, as when components-*.js/css is slow or blocked.
-const gate = vi.hoisted(() => {
+type SharedModule = typeof import("../src/ui/components/index.tsx");
+
+// The shared components chunk is held back per test, as when components-*.js/css is slow, then
+// either arrives or fails (blocked).
+const gate = vi.hoisted(() => ({
+  current: undefined as
+    | undefined
+    | {
+        promise: Promise<SharedModule>;
+        resolve: (module: SharedModule) => void;
+        reject: (error: Error) => void;
+      },
+}));
+
+beforeEach(() => {
+  let resolve!: (module: SharedModule) => void;
   let reject!: (error: Error) => void;
-  const promise = new Promise<never>((_resolve, rejectPromise) => {
+  const promise = new Promise<SharedModule>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
     reject = rejectPromise;
   });
-  return { promise, reject };
+  gate.current = { promise, resolve, reject };
+  vi.resetModules();
+  vi.doMock("../src/ui/components/index.tsx", () => promise);
 });
-vi.mock("../src/ui/components/index.tsx", () => gate.promise);
 
-it("keeps the status region and controls inert until the shared chunk settles, then degrades visibly", async () => {
-  vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockRejectedValue(new Error("offline")));
-  const { container } = render(<App />);
-  const status = screen.getByRole("status");
-  const loading = screen.getByText(label("zh", "shell.healthLoading"));
+async function renderPending() {
+  const { App } = await import("../src/App.tsx");
+  const view = render(<App />);
+  const page = view.container.querySelector<HTMLElement>(".overview-page")!;
+  const status = page.querySelector<HTMLElement>(".overview-status")!;
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
   });
-  // Health has failed already, but nothing is shown or operable before the final layout exists.
+  // Pending: the loading note is the only exposed (and only live) content; the transparent
+  // placeholder with heading, status and the not-yet-judged data warning is inert and hidden.
+  const exposed = within(page);
+  expect(exposed.getByRole("status").textContent).toBe(label("zh", "shell.uiLoading"));
+  expect(exposed.queryByRole("heading")).toBeNull();
+  expect(exposed.queryByRole("region")).toBeNull();
+  expect(exposed.queryByRole("button")).toBeNull();
+  expect(isInaccessible(status)).toBe(true);
+  expect(isInaccessible(screen.getByText(label("zh", "shell.dataWarning")))).toBe(true);
+  expect(page.querySelector(".overview-content")?.hasAttribute("inert")).toBe(true);
+  // Health has failed already, but it is not shown before the final layout exists.
   expect(screen.queryByText(label("zh", "shell.networkError"))).toBeNull();
-  expect(screen.queryByRole("button")).toBeNull();
-  expect(screen.getByText(label("zh", "shell.healthLoading"))).toBe(loading);
-  expect(container.querySelector(".overview-page")?.getAttribute("aria-busy")).toBe("true");
+  expect(status.textContent).toBe(label("zh", "shell.healthLoading"));
+  return { page, status };
+}
 
+it("exposes the final page with the same status region once the shared chunk arrives", async () => {
+  vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockRejectedValue(new Error("offline")));
+  const { page, status } = await renderPending();
+  const actual = await vi.importActual<SharedModule>("../src/ui/components/index.tsx");
   await act(async () => {
-    gate.reject(new Error("Unable to preload CSS"));
-    await gate.promise.catch(() => undefined);
+    gate.current!.resolve(actual);
+    await gate.current!.promise;
   });
-  expect(screen.getByRole("status")).toBe(status);
-  expect(screen.getByRole("alert").textContent).toContain(label("zh", "shell.uiFailed"));
-  expect(screen.getByRole("button", { name: label("zh", "shell.uiReload") })).toBeTruthy();
-  expect(screen.getByText(label("zh", "shell.networkError"))).toBeTruthy();
-  expect(screen.getByRole("button", { name: label("zh", "shell.retry") })).toBeTruthy();
-  expect(container.querySelector(".overview-page")?.hasAttribute("aria-busy")).toBe(false);
+  const exposed = within(page);
+  expect(exposed.getByRole("status")).toBe(status);
+  expect(status.textContent).toContain(label("zh", "shell.networkError"));
+  expect(exposed.getByRole("heading", { name: label("zh", "shell.overview") })).toBeTruthy();
+  expect(exposed.getByRole("region", { name: label("zh", "shell.data") })).toBeTruthy();
+  expect(exposed.getByRole("button", { name: label("zh", "shell.retry") })).toBeTruthy();
+  expect(exposed.queryByText(label("zh", "shell.uiLoading"))).toBeNull();
+  expect(page.querySelector(".overview-content")?.hasAttribute("inert")).toBe(false);
+});
+
+it("degrades visibly with the same status region when the shared chunk fails", async () => {
+  vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockRejectedValue(new Error("offline")));
+  const { page, status } = await renderPending();
+  await act(async () => {
+    gate.current!.reject(new Error("Unable to preload CSS"));
+    await gate.current!.promise.catch(() => undefined);
+  });
+  const exposed = within(page);
+  expect(exposed.getByRole("status")).toBe(status);
+  expect(exposed.getByRole("alert").textContent).toContain(label("zh", "shell.uiFailed"));
+  expect(exposed.getByRole("button", { name: label("zh", "shell.uiReload") })).toBeTruthy();
+  expect(status.textContent).toContain(label("zh", "shell.networkError"));
+  expect(exposed.getByRole("button", { name: label("zh", "shell.retry") })).toBeTruthy();
+  expect(exposed.getByRole("heading", { name: label("zh", "shell.overview") })).toBeTruthy();
 });

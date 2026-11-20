@@ -1,7 +1,8 @@
 // UI-07d 复审：共享组件 chunk 延迟 / 失败时的稳定性，真实 Chrome（channel=chrome）。
 // node design/ui/screenshots/UI-07d/stability.mjs <webDist> <outDir>
 // delay：components-*.js/css 延迟 1.5 s，health 网络错误。断言延迟期间 main 内无可见、可操作控件，
-//   role=status 节点不被替换、其子树只变化一次（加载中 → 结果），「重试连接」出现后聚焦，1 s 后位置与高度不变且 ≥ 44px。
+//   可访问树（ariaSnapshot）在延迟期间只有 role=status 的加载提示，无标题、无健康状态、无数据警告，且焦点进不去占位内容；
+//   加载后标题、状态、警告正常暴露。健康状态 role=status 节点不被替换、其子树只变化一次（加载中 → 结果），「重试连接」出现后聚焦，1 s 后位置与高度不变且 ≥ 44px。
 // fail-css / fail-js：阻断 components-*.css 或 .js。断言无未处理拒绝（pageerror / Uncaught），
 //   走 labels 的失败提示与「重新加载页面」可见，重试连接 ≥ 44px 且能成功取回状态。
 // 宽 390 / 1440 均以粗指针（hasTouch）运行。只用虚构 health 响应，不连 4173、不用 .bak。
@@ -32,7 +33,7 @@ const healthy = { service: "ai-native-erp", contractVersion: "1", profile: "loca
 function watchStatus() {
   window.__status = { node: null, batches: 0, replaced: false };
   const attach = () => {
-    const node = document.querySelector("main [role=status]");
+    const node = document.querySelector("main .overview-status");
     if (!node) return false;
     if (window.__status.node && window.__status.node !== node) window.__status.replaced = true;
     if (window.__status.node === node) return true;
@@ -47,7 +48,7 @@ function watchStatus() {
 const statusInfo = () => ({
   batches: window.__status.batches,
   replaced:
-    window.__status.replaced || window.__status.node !== document.querySelector("main [role=status]"),
+    window.__status.replaced || window.__status.node !== document.querySelector("main .overview-status"),
 });
 function operable() {
   return [...document.querySelectorAll("main button, main a[href], main input, main select")]
@@ -111,7 +112,28 @@ try {
         const early = await tab.evaluate(operable);
         const note = await tab.locator(".overview-pending-note").isVisible();
         check(early.length === 0 && note, `${name} pending: note visible, operable in main = [${early}]`);
+        const loading = language === "zh" ? "正在加载界面组件…" : "Loading interface components…";
+        const title = language === "zh" ? "运行状态" : "Runtime status";
+        const pendingTree = await tab.locator("main").ariaSnapshot();
+        const pendingLines = pendingTree.split("\n").filter((line) => line.trim() && line.trim() !== "- main:");
+        await tab.keyboard.press("Tab");
+        await tab.keyboard.press("Tab");
+        const focusInContent = await tab.evaluate(() => !!document.activeElement?.closest(".overview-content"));
+        check(
+          pendingLines.length === 1 &&
+            pendingLines[0].includes(`status: ${loading}`) &&
+            !focusInContent,
+          `${name} pending a11y tree = ${JSON.stringify(pendingLines)} focusInContent=${focusInContent}`,
+        );
         await retry.waitFor({ timeout: 10_000 });
+        const readyTree = await tab.locator("main").ariaSnapshot();
+        check(
+          readyTree.includes(`heading "${title}"`) &&
+            /status:/.test(readyTree) &&
+            /region "/.test(readyTree) &&
+            !readyTree.includes(loading),
+          `${name} ready a11y tree exposes heading/status/warning region:\n${readyTree}`,
+        );
         await retry.focus();
         const first = await retry.boundingBox();
         await tab.waitForLoadState("networkidle");
