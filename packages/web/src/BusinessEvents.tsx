@@ -26,7 +26,8 @@ import {
 } from "@erp/core/contracts";
 import { label, type LabelKey, type Language, type Preferences } from "./ui/index.ts";
 import { MasterDataFailure, masterRequest } from "./master-data-client.ts";
-import { DimensionFields, JournalError, LinePlan, Modal, VirtualRows } from "./Journals.tsx";
+import { DimensionFields, Facts, JournalError, LinePlan, Modal, VirtualRows } from "./Journals.tsx";
+import { MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import { formatMinor } from "./reports-data.ts";
 type T = (key: Exclude<LabelKey, "shell.httpError">) => string;
 const companyQuery = (company: string) => `company=${encodeURIComponent(company)}`;
@@ -67,7 +68,7 @@ function PageControls({ page, t }: { page: Listing<unknown>; t: T }) {
       {page.isError && (
         <>
           <BusinessError error={page.error} t={t} />
-          <button type="button" onClick={() => void page.refetch()}>
+          <button type="button" className="btn btn-secondary" onClick={() => void page.refetch()}>
             {t("master.retry")}
           </button>
         </>
@@ -75,6 +76,7 @@ function PageControls({ page, t }: { page: Listing<unknown>; t: T }) {
       {page.hasNextPage && (
         <button
           type="button"
+          className="btn btn-secondary"
           disabled={page.isFetchingNextPage}
           onClick={() => void page.fetchNextPage()}
         >
@@ -100,8 +102,12 @@ function PageTable<Item>({
   const items = page.data?.pages.flatMap((p) => p.items) ?? [];
   return (
     <>
-      <VirtualRows items={items} title={title} header={header} render={render} />
-      {!page.isPending && !page.isError && !items.length && <p>{t("business.empty")}</p>}
+      <div className="card">
+        <VirtualRows items={items} title={title} header={header} render={render} />
+        {!page.isPending && !page.isError && !items.length && (
+          <p className="empty-state">{t("business.empty")}</p>
+        )}
+      </div>
       <PageControls page={page} t={t} />
     </>
   );
@@ -135,12 +141,16 @@ export function BusinessError({
     : undefined;
   if (!uncertain && rule)
     return (
-      <p role="alert">
+      <MessageBar tone="danger" role="alert">
         {t(`business.rule.${rule}`)} · {issue?.path}
-      </p>
+      </MessageBar>
     );
   if (!uncertain && error instanceof MasterDataFailure && error.status === 404)
-    return <p role="alert">{t("business.rule.reference")}</p>;
+    return (
+      <MessageBar tone="danger" role="alert">
+        {t("business.rule.reference")}
+      </MessageBar>
+    );
   return <JournalError error={error} t={t} uncertain={uncertain} />;
 }
 export function BusinessEvents({ preferences }: { preferences: Preferences }) {
@@ -164,22 +174,31 @@ export function BusinessEvents({ preferences }: { preferences: Preferences }) {
   const items = companies.data?.pages.flatMap((p) => p.items) ?? [],
     company = items.find((item) => item.code === (selected ?? items[0]?.code));
   return (
-    <section>
-      <h2>{t("business.title")}</h2>
+    <section className="page business-events">
+      <PageHeader
+        title={t("business.title")}
+        context={
+          <div className="field">
+            <label htmlFor="business-company">{t("master.company")}</label>
+            <select
+              id="business-company"
+              disabled={locked}
+              value={company?.code ?? ""}
+              onChange={(event) => setSelected(event.target.value)}
+            >
+              {items.map((item) => (
+                <option key={item.code} value={item.code}>
+                  {item.code} · {item.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        }
+      />
+      <TeachingTip teaching={preferences.teaching} title={t("business.teachingTitle")}>
+        {t("business.teaching")}
+      </TeachingTip>
       <PageControls page={companies} t={t} />
-      <label htmlFor="business-company">{t("master.company")}</label>
-      <select
-        id="business-company"
-        disabled={locked}
-        value={company?.code ?? ""}
-        onChange={(event) => setSelected(event.target.value)}
-      >
-        {items.map((item) => (
-          <option key={item.code} value={item.code}>
-            {item.code} · {item.name}
-          </option>
-        ))}
-      </select>
       {company && (
         <CompanyEvents
           key={company.code}
@@ -190,7 +209,6 @@ export function BusinessEvents({ preferences }: { preferences: Preferences }) {
           initialQueue={params.get("view") === "queue"}
         />
       )}
-      {preferences.teaching && <p className="teaching">{t("business.teaching")}</p>}
     </section>
   );
 }
@@ -383,21 +401,23 @@ function CompanyEvents({
     });
   return (
     <>
-      <div className="journal-actions">
-        {(["events", "settings", "queue"] as const).map((item) => (
-          <button
-            key={item}
-            type="button"
-            disabled={editing || busy}
-            aria-pressed={view === item}
-            onClick={() => {
-              setView(item);
-              setError(undefined);
-            }}
-          >
-            {t(item === "events" ? "business.title" : `business.${item}`)}
-          </button>
-        ))}
+      <div className="toolbar-row">
+        <div className="segmented">
+          {(["events", "settings", "queue"] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              disabled={editing || busy}
+              aria-pressed={view === item}
+              onClick={() => {
+                setView(item);
+                setError(undefined);
+              }}
+            >
+              {t(item === "events" ? "business.title" : `business.${item}`)}
+            </button>
+          ))}
+        </div>
       </div>
       {error !== undefined && !review && !withdraw && <BusinessError error={error} t={t} />}
       {busy && <p role="status">{t("journal.pending")}</p>}
@@ -411,10 +431,11 @@ function CompanyEvents({
       )}
       {view === "events" && (
         <>
-          <div className="journal-actions">
+          <div className="toolbar-row">
             {(["cash_service", "statistics", "clearing.match"] as const).map((operation) => (
               <button
                 type="button"
+                className="btn btn-secondary"
                 key={operation}
                 disabled={editing || busy}
                 onClick={() => fresh(operation)}
@@ -438,6 +459,7 @@ function CompanyEvents({
                 <td>
                   <button
                     type="button"
+                    className="btn btn-subtle btn-sm"
                     disabled={editing || busy}
                     onClick={() =>
                       void run(async () => {
@@ -478,8 +500,8 @@ function CompanyEvents({
       )}
       {view === "queue" && (
         <>
-          <label>
-            {t("business.queue")}
+          <label className="ui-field jv-status">
+            <span className="label">{t("business.queue")}</span>
             <select
               disabled={editing || busy}
               value={status}
@@ -518,6 +540,7 @@ function CompanyEvents({
                 <td>
                   <button
                     type="button"
+                    className="btn btn-subtle btn-sm"
                     disabled={editing || busy}
                     onClick={() =>
                       void run(async () => {
@@ -538,6 +561,7 @@ function CompanyEvents({
                     <>
                       <button
                         type="button"
+                        className="btn btn-subtle btn-sm"
                         disabled={editing || busy}
                         onClick={() =>
                           void run(async () => {
@@ -554,6 +578,7 @@ function CompanyEvents({
                       </button>
                       <button
                         type="button"
+                        className="btn btn-subtle btn-sm"
                         disabled={editing || busy}
                         onClick={() => {
                           returnFocus.current =
@@ -575,93 +600,104 @@ function CompanyEvents({
         </>
       )}
       {detail && (
-        <section>
-          <h3>
-            {detail.event.sourceRef} · {t(`business.${detail.status}`)}
-          </h3>
-          <p role="status">{t("business.done")}</p>
-          <p>
-            {t("business.receipt")}: {detail.receipt.idempotencyKey} · {detail.receipt.postedAt} ·{" "}
-            {detail.receipt.fingerprint}
-          </p>
-          <BusinessPlan preview={detail.preview} company={company} language={language} t={t} />
-          {detail.queue?.plan && (
-            <>
-              <h4>{t("business.currentPlan")}</h4>
-              {detail.queue.plan.journals.map((journal) => (
-                <LinePlan
-                  key={journal.role}
-                  lines={journal.lines}
-                  company={company}
-                  language={language}
-                  t={t}
-                />
-              ))}
-            </>
-          )}
-          {detail.event.operation === "cash_service.cancel" && (
+        <section className="card jv-detail">
+          <header>
+            <h3>
+              {detail.event.sourceRef} · {t(`business.${detail.status}`)}
+            </h3>
+          </header>
+          <div className="body">
+            <MessageBar tone="info" role="status">
+              {t("business.done")}
+            </MessageBar>
             <p>
-              {t("business.original")}:{" "}
-              <button
-                type="button"
-                disabled={editing || busy}
-                onClick={() => {
-                  const event = detail.event;
-                  if (event.operation === "cash_service.cancel")
+              {t("business.receipt")}: {detail.receipt.idempotencyKey} · {detail.receipt.postedAt} ·{" "}
+              {detail.receipt.fingerprint}
+            </p>
+            <BusinessPlan preview={detail.preview} company={company} language={language} t={t} />
+            {detail.queue?.plan && (
+              <>
+                <h4>{t("business.currentPlan")}</h4>
+                {detail.queue.plan.journals.map((journal) => (
+                  <LinePlan
+                    key={journal.role}
+                    lines={journal.lines}
+                    company={company}
+                    language={language}
+                    t={t}
+                  />
+                ))}
+              </>
+            )}
+            {detail.event.operation === "cash_service.cancel" && (
+              <p>
+                {t("business.original")}:{" "}
+                <button
+                  type="button"
+                  className="btn btn-subtle btn-sm"
+                  disabled={editing || busy}
+                  onClick={() => {
+                    const event = detail.event;
+                    if (event.operation === "cash_service.cancel")
+                      void run(async () => {
+                        const result = await masterRequest(
+                          `/api/v1/events/${event.originalId}?${companyQuery(company.code)}`,
+                          businessResultSchema,
+                        );
+                        if (alive.current) setDetail(result);
+                      });
+                  }}
+                >
+                  {detail.event.originalId}
+                </button>
+              </p>
+            )}
+            <div className="ui-form-actions">
+              {detail.event.operation === "cash_service" && detail.status === "posted" && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={editing || busy}
+                  onClick={() => fresh("cash_service", detail.event.id)}
+                >
+                  {t("business.cash_service.cancel")}
+                </button>
+              )}
+              {detail.journalIds.map((id) => (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  key={id}
+                  disabled={editing || busy}
+                  onClick={() =>
                     void run(async () => {
                       const result = await masterRequest(
-                        `/api/v1/events/${event.originalId}?${companyQuery(company.code)}`,
-                        businessResultSchema,
+                        `/api/v1/journals/${id}?${companyQuery(company.code)}`,
+                        journalDetailSchema,
                       );
-                      if (alive.current) setDetail(result);
-                    });
-                }}
-              >
-                {detail.event.originalId}
-              </button>
-            </p>
-          )}
-          {detail.event.operation === "cash_service" && detail.status === "posted" && (
-            <button
-              type="button"
-              disabled={editing || busy}
-              onClick={() => fresh("cash_service", detail.event.id)}
-            >
-              {t("business.cash_service.cancel")}
-            </button>
-          )}
-          {detail.journalIds.map((id) => (
-            <button
-              type="button"
-              key={id}
-              disabled={editing || busy}
-              onClick={() =>
-                void run(async () => {
-                  const result = await masterRequest(
-                    `/api/v1/journals/${id}?${companyQuery(company.code)}`,
-                    journalDetailSchema,
-                  );
-                  if (alive.current) setEntry(result);
-                })
-              }
-            >
-              {t("journal.view")} {id}
-            </button>
-          ))}
-          {entry && (
-            <section>
-              <h4>
-                {entry.entry.sourceRef} · {entry.entry.id}
-              </h4>
-              <LinePlan lines={entry.entry.lines} company={company} language={language} t={t} />
-              <h4>{t("journal.chain")}</h4>
-              {entry.chain.map((edge) => (
-                <p key={edge.outputId}>
-                  {edge.date} · {edge.originalId} → {edge.outputId}
-                </p>
+                      if (alive.current) setEntry(result);
+                    })
+                  }
+                >
+                  {t("journal.view")} {id}
+                </button>
               ))}
-            </section>
-          )}
+            </div>
+            {entry && (
+              <section className="jv-entry">
+                <h4>
+                  {entry.entry.sourceRef} · {entry.entry.id}
+                </h4>
+                <LinePlan lines={entry.entry.lines} company={company} language={language} t={t} />
+                <h4>{t("journal.chain")}</h4>
+                {entry.chain.map((edge) => (
+                  <p key={edge.outputId}>
+                    {edge.date} · {edge.originalId} → {edge.outputId}
+                  </p>
+                ))}
+              </section>
+            )}
+          </div>
         </section>
       )}
       {review && (
@@ -672,12 +708,24 @@ function CompanyEvents({
         >
           <BusinessPlan preview={review.preview} company={company} language={language} t={t} />
           {error !== undefined && <BusinessError error={error} t={t} uncertain={uncertain} />}
-          <button type="button" disabled={busy} onClick={() => void confirm()}>
-            {t("event" in review ? "business.confirm" : "business.transfer")}
-          </button>
-          <button type="button" disabled={busy || uncertain} onClick={() => setReview(null)}>
-            {t("journal.back")}
-          </button>
+          <div className="ui-form-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => void confirm()}
+            >
+              {t("event" in review ? "business.confirm" : "business.transfer")}
+            </button>
+            <button
+              type="button"
+              className="btn btn-subtle"
+              disabled={busy || uncertain}
+              onClick={() => setReview(null)}
+            >
+              {t("journal.back")}
+            </button>
+          </div>
         </Modal>
       )}
       {withdraw && (
@@ -686,8 +734,8 @@ function CompanyEvents({
           busy={busy || uncertain}
           close={() => setWithdraw(null)}
         >
-          <label>
-            {t("business.reason")}
+          <label className="ui-field">
+            <span className="label">{t("business.reason")}</span>
             <textarea
               required
               maxLength={200}
@@ -697,38 +745,46 @@ function CompanyEvents({
             />
           </label>
           {error !== undefined && <BusinessError error={error} t={t} uncertain={uncertain} />}
-          <button
-            type="button"
-            disabled={busy || !withdraw.reason.trim()}
-            onClick={() =>
-              void run(async () => {
-                try {
-                  complete(
-                    await masterRequest(
-                      `/api/v1/transfer-queue/${withdraw.id}/withdraw`,
-                      businessResultSchema,
-                      {
-                        method: "POST",
-                        body: {
-                          company: company.code,
-                          reason: withdraw.reason,
-                          confirmation: "WITHDRAW",
+          <div className="ui-form-actions">
+            <button
+              type="button"
+              className="btn btn-danger"
+              disabled={busy || !withdraw.reason.trim()}
+              onClick={() =>
+                void run(async () => {
+                  try {
+                    complete(
+                      await masterRequest(
+                        `/api/v1/transfer-queue/${withdraw.id}/withdraw`,
+                        businessResultSchema,
+                        {
+                          method: "POST",
+                          body: {
+                            company: company.code,
+                            reason: withdraw.reason,
+                            confirmation: "WITHDRAW",
+                          },
                         },
-                      },
-                    ),
-                  );
-                } catch (cause) {
-                  rejected(cause);
-                  throw cause;
-                }
-              })
-            }
-          >
-            {t("business.withdrawConfirm")}
-          </button>
-          <button type="button" disabled={busy || uncertain} onClick={() => setWithdraw(null)}>
-            {t("journal.back")}
-          </button>
+                      ),
+                    );
+                  } catch (cause) {
+                    rejected(cause);
+                    throw cause;
+                  }
+                })
+              }
+            >
+              {t("business.withdrawConfirm")}
+            </button>
+            <button
+              type="button"
+              className="btn btn-subtle"
+              disabled={busy || uncertain}
+              onClick={() => setWithdraw(null)}
+            >
+              {t("journal.back")}
+            </button>
+          </div>
         </Modal>
       )}
       <PageControls page={dimensions} t={t} />
@@ -748,10 +804,14 @@ function BusinessPlan({
 }) {
   return (
     <>
-      <p>
-        {preview.plan.sourceRef} · {preview.plan.date} · {preview.plan.currency}
-      </p>
-      <p>{preview.plan.memo}</p>
+      <Facts
+        items={[
+          [t("journal.sourceRef"), preview.plan.sourceRef],
+          [t("journal.date"), preview.plan.date],
+          [t("journal.currency"), preview.plan.currency],
+          [t("journal.memo"), preview.plan.memo],
+        ]}
+      />
       {preview.matches.map((match) => (
         <section key={match.meaning}>
           <h4>
@@ -773,11 +833,13 @@ function BusinessPlan({
       {preview.plan.journals.map((journal) => (
         <section key={journal.role}>
           <h4>{t(journal.role === "reversal" ? "journal.historical" : "journal.business")}</h4>
-          <LinePlan lines={journal.lines} company={company} language={language} t={t} />
-          <p>
-            {t("journal.debit")}: {formatMinor(journal.debit, language, company.scale)} /{" "}
-            {t("journal.credit")}: {formatMinor(journal.credit, language, company.scale)}
-          </p>
+          <LinePlan
+            lines={journal.lines}
+            company={company}
+            language={language}
+            t={t}
+            total={journal}
+          />
         </section>
       ))}
       {preview.statistics && (
@@ -863,10 +925,10 @@ function EventEditor({
         }
       }}
     >
-      <fieldset disabled={busy}>
+      <fieldset className="ui-form-grid jv-event" disabled={busy}>
         <legend>{t(`business.${event.operation}`)}</legend>
-        <label>
-          {t("journal.sourceRef")}
+        <label className="ui-field">
+          <span className="label">{t("journal.sourceRef")}</span>
           <input
             required
             maxLength={100}
@@ -874,8 +936,8 @@ function EventEditor({
             onChange={(e) => change({ ...event, sourceRef: e.target.value })}
           />
         </label>
-        <label>
-          {t("journal.date")}
+        <label className="ui-field">
+          <span className="label">{t("journal.date")}</span>
           <input
             required
             type="date"
@@ -883,8 +945,8 @@ function EventEditor({
             onChange={(e) => change({ ...event, date: e.target.value })}
           />
         </label>
-        <label>
-          {t("journal.memo")}
+        <label className="ui-field">
+          <span className="label">{t("journal.memo")}</span>
           <input
             required
             maxLength={200}
@@ -894,8 +956,8 @@ function EventEditor({
         </label>
         {event.operation === "cash_service" && (
           <>
-            <label>
-              {t("business.direction")}
+            <label className="ui-field">
+              <span className="label">{t("business.direction")}</span>
               <select
                 value={event.direction}
                 onChange={(e) => {
@@ -907,8 +969,8 @@ function EventEditor({
                 <option value="pay">{t("business.pay")}</option>
               </select>
             </label>
-            <label>
-              {t("business.service")}
+            <label className="ui-field">
+              <span className="label">{t("business.service")}</span>
               <input
                 required
                 list="business-services"
@@ -926,8 +988,8 @@ function EventEditor({
                 ))}
             </datalist>
             <PageControls page={services} t={t} />
-            <label>
-              {t("business.party")}
+            <label className="ui-field">
+              <span className="label">{t("business.party")}</span>
               <input
                 list="business-parties"
                 value={event.party ?? ""}
@@ -944,8 +1006,10 @@ function EventEditor({
                 ))}
             </datalist>
             <PageControls page={parties} t={t} />
-            <label>
-              {t("business.amount")} · {company.currency}
+            <label className="ui-field">
+              <span className="label">
+                {t("business.amount")} · {company.currency}
+              </span>
               <input
                 required
                 inputMode="decimal"
@@ -958,16 +1022,16 @@ function EventEditor({
         )}
         {event.operation === "statistics" && (
           <>
-            <label>
-              {t("business.code")}
+            <label className="ui-field">
+              <span className="label">{t("business.code")}</span>
               <input
                 required
                 value={event.code}
                 onChange={(e) => change({ ...event, code: e.target.value })}
               />
             </label>
-            <label>
-              {t("business.quantity")}
+            <label className="ui-field">
+              <span className="label">{t("business.quantity")}</span>
               <input
                 required
                 inputMode="decimal"
@@ -976,8 +1040,8 @@ function EventEditor({
                 onChange={(e) => change({ ...event, quantity: e.target.value })}
               />
             </label>
-            <label>
-              {t("business.unit")}
+            <label className="ui-field">
+              <span className="label">{t("business.unit")}</span>
               <input
                 required
                 maxLength={40}
@@ -989,7 +1053,7 @@ function EventEditor({
         )}
         {(event.operation === "cash_service" || event.operation === "statistics") && (
           <>
-            <p>{t("journal.dimensionHelp")}</p>
+            <p className="jv-hint">{t("journal.dimensionHelp")}</p>
             <DimensionFields
               title={t("journal.dimensions")}
               keys={[...new Set([...dimensionKeys, ...Object.keys(event.dimensions)])]}
@@ -1012,10 +1076,14 @@ function EventEditor({
             change={change}
           />
         )}
-        <button type="submit">{t("journal.preview")}</button>
-        <button type="button" onClick={close}>
-          {t("journal.cancel")}
-        </button>
+        <div className="ui-form-actions">
+          <button type="submit" className="btn btn-primary">
+            {t("journal.preview")}
+          </button>
+          <button type="button" className="btn btn-subtle" onClick={close}>
+            {t("journal.cancel")}
+          </button>
+        </div>
       </fieldset>
     </form>
   );
