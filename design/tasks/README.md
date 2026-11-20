@@ -277,15 +277,15 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- |
-| [S5-a](S5-a-journals-global-rules.md) | 凭证 / 业务事件：无类 `legend`（含凭证草稿与暂记户）、凭证预览合计行 `td` 的 `min-width` / `border-bottom`、`select`（含 `max-width`、`jv-status`）、按钮、VirtualRows 表头、复选框改为类规则，补采编辑 / 清账 / 预览状态 | 页面 tsx + CSS | S5-b（C 线前序） | web-ui:journals | in-progress | — |
+| [S5-a](S5-a-journals-global-rules.md) | 凭证 / 业务事件：无类 `legend`（含凭证草稿与暂记户）、凭证预览合计行 `td` 的 `min-width` / `border-bottom`、`select`（含 `max-width`、`jv-status`）、按钮、VirtualRows 表头、复选框改为类规则，补采编辑 / 清账 / 预览状态 | 页面 tsx + CSS | S5-b（C 线前序） | web-ui:journals | in-review | [#118](https://github.com/lingshf/ai-native-erp/pull/118) |
 | [S5-b](S5-b-migration-global-rules.md) | 迁移核对页：`dl` / `dt` / `dd` / `thead` 改为类规则；`.kv` 表进独立滚动区 | CSS（必要时 tsx） | — | web-ui:migration | done | [#112](https://github.com/lingshf/ai-native-erp/pull/112) |
 | [S5-c](S5-c-trade-global-rules.md) | 贸易页面：复选框、`.tinv-facts` / `.trpt-facts`、`cell-link` 圆角、`caption` | CSS | — | web-ui:trade | done | [#113](https://github.com/lingshf/ai-native-erp/pull/113) |
 | [S5-d](S5-d-trade-orders-global-rules.md) | 订单录入页：复选框、`.tord-facts` | CSS | S5-h（同冲突域） | web-ui:trade-orders | todo | — |
 | [S5-e](S5-e-ledger-period-master-global-rules.md) | 总账报表 / 期末 / 科目表：`caption`、明细 `th, td`（不含对齐，归 S5-i）、tfoot | CSS | S5-i（A 线前序） | web-ui:ledger, web-ui:period-close, web-ui:master | todo | — |
 | [S5-f](S5-f-shell-components-global-rules.md) | 外壳 / 共享组件：偏好区 `legend` / `select` / 复选框、概览 `dd`、`.ui-field` 与 `.field` 的 `select`、VirtualRows tfoot | CSS | S5-c（同改 `components.css`） | web-ui:shell（不含 `styles.css`）, web-ui:components | in-review | [#115](https://github.com/lingshf/ai-native-erp/pull/115) |
-| [S5-i](S5-i-grid-table-component-rules.md) | 共享表格：`.grid` / `.journal-scroll` 的 `td` 对齐、`thead` 底色与 `.grid tfoot` 底色改为组件规则（#113 报告的缺口；`select` 的 `max-width` 已由 #115 覆盖） | CSS | S5-f、S5-c（同改 `components.css`） | web-ui:components | todo | — |
+| [S5-i](S5-i-grid-table-component-rules.md) | 共享表格：`.grid` / `.journal-scroll` 的 `td` 对齐、`thead` 底色与 `.grid tfoot` 底色改为组件规则（#113 报告的缺口；`select` 的 `max-width` 已由 #115 覆盖）；`.fasttab-toggle:disabled` 的 opacity / cursor（D116） | CSS | S5-f、S5-c（同改 `components.css`） | web-ui:components | todo | — |
 | [S5-g](S5-g-delete-global-element-rules.md) | 删除 `styles.css` 剩余全局元素规则（D-7 收尾，含 44px 基线的两道检查；文件清空时删除 `main.tsx:5` 的 import） | CSS + 入口 import 一行 | S5-a..f、S5-i 全部（外壳串行最后） | web-ui:shell | todo | — |
-| [S5-h](S5-h-trade-orders-focus-race.md) | 订单录入页保存后焦点断言偶发失败：先复现、核对真实 Chrome，再修复（D92，原因待证实） | 测试 / 页面 tsx | S5-c（B 线前序） | web-ui:trade-orders | in-review | [#117](https://github.com/lingshf/ai-native-erp/pull/117) |
+| [S5-h](S5-h-trade-orders-focus-race.md) | 订单录入页保存后焦点断言偶发失败：先复现、核对真实 Chrome，再修复（D92，原因待证实） | 测试 / 页面 tsx | S5-c（B 线前序） | web-ui:trade-orders | done | [#117](https://github.com/lingshf/ai-native-erp/pull/117) |
 | [FLAKE-02](FLAKE-02-trade-gui-period-option-poll.md) | 贸易 GUI E2E：期末月份下拉选项轮询偶发为空；afterAll teardown 超时（两项分别记录，原因均未知）；先查 trace、定向诊断（排队，不计入 S5 目标） | 调查 / 测试 | —（与 S5-h 无文件重叠，可并行；共同原因则由设计角色决定合并） | tests:e2e | todo | — |
 | [FOCUS-01](FOCUS-01-journals-events-passive-focus.md) | 凭证 / 业务事件：7 处在被动 effect 中设置焦点，可能晚一帧；逐处先复现（jsdom 停顿 + 真实 Chrome 第 0 帧），只修已复现的（排队，不计入 S5 目标） | 调查 / 页面 tsx / 测试 | **S5-a 合并后**（同冲突域，不能并行）；参考 S5-h #117 | web-ui:journals | todo | — |
 | [PROC-02](PROC-02-release-rc-and-demo-checks.md) | 发布流程：RC 断言范围与 API / GUI 分条；Demo 截图状态断言与进程归属（版本管理） | 文档 | — | docs/release | done | [#111](https://github.com/lingshf/ai-native-erp/pull/111) |
