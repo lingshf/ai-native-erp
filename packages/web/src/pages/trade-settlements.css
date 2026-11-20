@@ -74,6 +74,8 @@
 :is(.trade-settlements, .trade-adjustments) :is(.tset-entry, .tadj-entry) input[type="checkbox"] {
   width: 20px;
   height: 20px;
+  flex-shrink: 0;
+  accent-color: var(--color-primary);
 }
 /* 分配表复选框：label 撑开 --control-h 见方的点击区（行高仍 48） */
 .trade-settlements .accounts-scroll label {

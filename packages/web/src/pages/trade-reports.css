@@ -13,6 +13,7 @@
 }
 .trade-reports .journal-row .cell-link {
   height: auto;
+  border-radius: var(--radius-sm);
 }
 /* 数字列表头右对齐：未结项 4–6、8 列，对账 2–7 列 */
 .trade-reports .trpt-items th:nth-child(n + 4):nth-child(-n + 6),
@@ -42,6 +43,7 @@
 
 /* 详情 */
 .trade-reports .trpt-facts {
+  display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
   gap: var(--space-3) var(--space-6);
   margin: 0;
@@ -58,6 +60,7 @@
 }
 .trade-reports .trpt-facts dd {
   margin: 0;
+  font-weight: var(--weight-semibold);
   overflow-wrap: anywhere;
 }
 .trade-reports .trpt-detail h4 {
