@@ -1,0 +1,127 @@
+/*
+ * UI-05 凭证与业务事件页：只作用于 .journals / .business-events 之内。
+ * 通用外观在 components.css（.card / .grid / .ui-field / .fasttab / .message-bar）；这里只定列宽、分录行与事实区。
+ */
+:is(.journals, .business-events) .jv-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+  color: var(--color-text-muted);
+}
+.journals :is(.jv-status, .jv-lines) :is(select, input),
+.business-events .ui-field textarea {
+  width: 100%;
+  min-width: 7rem;
+  height: var(--control-h);
+  min-height: 0;
+  padding: 0 var(--space-3);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+.business-events .ui-field textarea {
+  height: auto;
+  min-height: 88px;
+  padding: var(--space-2) var(--space-3);
+}
+.journals .jv-lines table {
+  min-width: 720px;
+}
+:is(.journals, .business-events) .card > .journal-scroll table {
+  min-width: 560px;
+}
+:is(.journals, .business-events) .journal-scroll th:nth-child(-n + 2) {
+  width: 22%;
+}
+.journals .jv-plan th:nth-child(3) {
+  width: 22%;
+}
+:is(.journals, .business-events) .journal-scroll th:last-child {
+  width: 9rem;
+}
+:is(.journals, .business-events) .journal-row .btn-sm {
+  height: var(--control-h);
+}
+.journals .jv-lines td {
+  padding: var(--space-1) var(--space-2);
+}
+:is(.journals, .business-events) tfoot :is(th, td) {
+  height: 40px;
+  padding: 0 var(--space-3);
+  vertical-align: middle;
+  text-align: left;
+  font-weight: var(--weight-semibold);
+  background: var(--color-surface-alt);
+  border-top: 1px solid var(--color-border-strong);
+}
+:is(.journals, .business-events) tfoot .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.journals .jv-editor,
+.journals .jv-editor fieldset,
+.business-events form {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  margin-block: var(--space-4);
+}
+.journals .jv-editor fieldset {
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+:is(.journals, .business-events) .jv-detail {
+  margin-block: var(--space-4);
+}
+:is(.journals, .business-events) .jv-hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+:is(.journals, .business-events) .journal-dimensions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
+  gap: var(--space-3) var(--space-5);
+}
+.business-events .jv-event > :not(.ui-field) {
+  grid-column: 1 / -1;
+}
+.journals .jv-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding-block: var(--space-3);
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+}
+:is(.journals, .business-events) .jv-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr));
+  gap: var(--space-3) var(--space-5);
+  margin: 0;
+}
+:is(.journals, .business-events) .jv-facts dt {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+:is(.journals, .business-events) .jv-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+:is(.journals, .business-events) :is(.jv-detail, dialog) :is(h4, p) {
+  margin: 0;
+}
+:is(.journals, .business-events) dialog > * + * {
+  margin-top: var(--space-4);
+}
+.journals :is(.jv-more, .jv-add) {
+  justify-self: start;
+  margin-top: var(--space-2);
+}
+:is(.journals, .business-events) .message-bar {
+  margin-block: var(--space-2);
+}
