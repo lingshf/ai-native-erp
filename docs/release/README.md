@@ -1,6 +1,6 @@
 # 发布流程
 
-版本管理（Release Manager）维护本流程。规则来源：路线图中的 D20（Sprint 与版本号）、D21（tag 目标），见 [路线图](../../design/roadmap.md)，此处不重复全文。
+版本管理（Release Manager）维护本流程。版本与 tag 规则来自协调者的决定 D20（按里程碑划分 Sprint；SemVer，tag 写作 `vX.Y.Z`，修复用 Z 位）与 D21（tag 打在发布 PR 合并后的 squash 提交）。**这两条目前没有收录在[路线图 §6 决定记录](../../design/roadmap.md#6-决定记录)**（该表无 D20/D21），实际落实记录见 [CHANGELOG](../../CHANGELOG.md) 各版本说明和 `docs/release/v*-release-notes.md`（“按 D21，tag … 打在本发布 PR 合并后的 squash 提交上”）。待协调者把 D20/D21 补进 §6 后，这里改为链接到该表。
 
 ## 顺序
 
@@ -26,7 +26,7 @@
 | --- | --- | --- |
 | “自 v0.2.0（`037b3ce`）以来合并 25 个提交” | 命令 `git rev-list --count 037b3ce..c7e5783` 输出 `25` | 一致 |
 | “现为 6 个 browser + 6 个 unit 作业” | `.github/workflows/full.yml`：`matrix.shard: [1..6]`，注释“Unit and browser use 6 shards each”，lane 为 unit 与 browser | 一致 |
-| “窄屏与粗指针下按钮等控件 ≥ 44 px” | `design/reviews/UI-1.md` 检查项 2：390 宽下可见控件 ≥ 44px，**表格内禁用的复选框不计**（D-6）；明细见该文 §4 的 44px 修复 | 有来源，但“等控件”过宽，应写出例外（禁用的只读指示不计） |
+| “窄屏与粗指针下按钮等控件 ≥ 44 px” | `design/reviews/UI-1.md` 检查项 2：**仅覆盖 390 px 宽**下可见控件 ≥ 44px，表格内禁用的复选框不计（D-6）；明细见该文 §4。**粗指针（pointer: coarse）条件不在此证据内** | 部分有来源：390 px 成立；粗指针未覆盖，应删去或补证据；“等控件”也应写出例外 |
 
 ## 运维可见变化给出对照
 

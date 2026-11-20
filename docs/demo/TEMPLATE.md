@@ -1,6 +1,6 @@
 # Demo 模板
 
-复制到 `docs/demo/vX.Y.Z/README.md` 使用，并按 [发布流程](../release/README.md)执行。
+复制到 `docs/demo/vX.Y.Z/README.md` 使用，并按发布流程 `docs/release/README.md` 执行。本文件不放相对链接，避免复制后指错目录；版本 README 中写链接时，从 `docs/demo/vX.Y.Z/` 出发应为 `../../release/README.md`，写完请点开确认可达。
 
 ## 硬性要求
 
