@@ -104,9 +104,29 @@ test("migration details show key-value tables with non-color mismatch marks, raw
                 expected: { tradeDifferenceMinor: "0" },
                 actual: { tradeDifferenceMinor: "150" },
               },
+              {
+                section: "draft-lines",
+                key: "teaching:DEMO-L-1",
+                expected: { company: "DEMO", account: "1100", debit: "100" },
+                actual: { company: "DEMO", account: "1200", debit: "150" },
+              },
             ],
             knownDifferences: [],
-            checks: [{ section: "counts", expected: [row], actual: [row] }],
+            checks: [
+              { section: "counts", expected: [row], actual: [row] },
+              // Same length, different business keys: must not be paired by position.
+              {
+                section: "trial-balance",
+                expected: [
+                  { account: "1100", balanceMinor: "500" },
+                  { account: "1200", balanceMinor: "700" },
+                ],
+                actual: [
+                  { account: "1200", balanceMinor: "700" },
+                  { account: "1300", balanceMinor: "900" },
+                ],
+              },
+            ],
           },
         },
       }),
@@ -121,7 +141,7 @@ test("migration details show key-value tables with non-color mismatch marks, raw
   expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("迁移核对");
   expect(screen.queryAllByRole("button")).toHaveLength(0);
 
-  const [counts, trade, check] = [
+  const [counts, trade, draft, check, balance] = [
     ...document.querySelectorAll<HTMLDetailsElement>("main details"),
   ].filter((details) => !details.parentElement?.closest("details"));
   const table = counts?.querySelector("table.kv");
@@ -143,10 +163,34 @@ test("migration details show key-value tables with non-color mismatch marks, raw
   ]);
   expect(cells(trade)).toEqual([["tradeDifferenceMinor 不符", "0", "150", "+150", true]]);
   expect(counts?.querySelector("strong.mismatch")?.textContent).toBe("不符");
-  expect(cells(check).every((cells) => cells.at(-1) === false && cells[0] !== "")).toBe(true);
-  expect(check?.querySelectorAll("strong.mismatch")).toHaveLength(0);
+  // Identifiers never get a 差额, even when they are integer strings that differ.
+  expect(cells(draft)).toEqual([
+    ["company ", "DEMO", "DEMO", "—", false],
+    ["account 不符", "1100", "1200", "—", true],
+    ["debit 不符", "100", "150", "+50", true],
+  ]);
+  // Check rows carry no business key: each side is listed on its own, unmarked, without 差额.
+  expect(cells(check)).toEqual([
+    ["source ", "teaching", "—", "—", false],
+    ["object ", "journals", "—", "—", false],
+    ["count ", "12", "—", "—", false],
+    ["source ", "—", "teaching", "—", false],
+    ["object ", "—", "journals", "—", false],
+    ["count ", "—", "12", "—", false],
+  ]);
+  expect(cells(balance)).toEqual([
+    ["account ", "1100", "—", "—", false],
+    ["balanceMinor ", "500", "—", "—", false],
+    ["account ", "1200", "—", "—", false],
+    ["balanceMinor ", "700", "—", "—", false],
+    ["account ", "—", "1200", "—", false],
+    ["balanceMinor ", "—", "700", "—", false],
+    ["account ", "—", "1300", "—", false],
+    ["balanceMinor ", "—", "900", "—", false],
+  ]);
+  expect(balance?.querySelectorAll("strong.mismatch")).toHaveLength(0);
 
-  for (const details of [counts, trade, check]) {
+  for (const details of [counts, trade, draft, check, balance]) {
     const raw = details?.querySelector("details");
     expect(raw?.querySelector(":scope > summary")?.textContent).toBe("原始 JSON");
     expect(raw?.open).toBe(false);

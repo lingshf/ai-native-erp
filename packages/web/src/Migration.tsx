@@ -10,22 +10,24 @@ import "./pages/migration.css";
 type Row = Readonly<Record<string, string | number | null>>;
 // null: the report says the row is absent; undefined: a check row shown without a counterpart.
 type Pair = readonly [Row | null | undefined, Row | null | undefined];
+// Only amount / quantity fields get a 差额; identifiers such as account codes keep "—".
+const measure = /Minor$|_minor$|^(count|debit|credit)$/;
 const integer = /^-?\d+$/;
-const delta = (a: unknown, b: unknown) =>
-  typeof a === "number" && typeof b === "number"
-    ? b - a
-    : typeof a === "string" && typeof b === "string" && integer.test(a) && integer.test(b)
-      ? BigInt(b) - BigInt(a)
-      : undefined;
+const delta = (field: string, a: unknown, b: unknown) =>
+  !measure.test(field)
+    ? undefined
+    : typeof a === "number" && typeof b === "number"
+      ? b - a
+      : typeof a === "string" && typeof b === "string" && integer.test(a) && integer.test(b)
+        ? BigInt(b) - BigInt(a)
+        : undefined;
 const show = (value: unknown) => (value === undefined ? "—" : String(value));
-// Check rows are paired by position only when both sides have the same length (the report sorts both).
-const pairChecks = (expected: Row[], actual: Row[]): Pair[] =>
-  expected.length === actual.length
-    ? expected.map((row, index) => [row, actual[index]])
-    : [
-        ...expected.map((row) => [row, undefined] as const),
-        ...actual.map((row) => [undefined, row] as const),
-      ];
+// The response carries no business keys for check rows, so the two sides are listed one by one,
+// never paired by position; only server-reported differences (same key) are compared.
+const listChecks = (expected: Row[], actual: Row[]): Pair[] => [
+  ...expected.map((row) => [row, undefined] as const),
+  ...actual.map((row) => [undefined, row] as const),
+];
 
 export function Migration({ preferences }: { preferences: Preferences }) {
   const t = (key: Exclude<Parameters<typeof label>[1], "shell.httpError">) =>
@@ -56,7 +58,7 @@ export function Migration({ preferences }: { preferences: Preferences }) {
                 (field) => {
                   const a = left?.[field],
                     b = right?.[field],
-                    change = delta(a, b),
+                    change = delta(field, a, b),
                     off = a !== b && left !== undefined && right !== undefined;
                   return (
                     <tr key={field} data-mismatch={off || undefined}>
@@ -169,7 +171,7 @@ export function Migration({ preferences }: { preferences: Preferences }) {
                     {compare(
                       check.expected,
                       check.actual,
-                      pairChecks(check.expected, check.actual),
+                      listChecks(check.expected, check.actual),
                     )}
                   </details>
                 ))}
