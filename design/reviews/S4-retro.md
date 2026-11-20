@@ -24,30 +24,35 @@
 
 ### 2. D92：trade-orders 焦点断言偶发失败
 
-- **发生了什么**：UI-10b（[#101](https://github.com/lingshf/ai-native-erp/pull/101)）分支的 PR CI 运行 [44761991208](https://github.com/lingshf/ai-native-erp/actions/runs/44761991208)（head `18870fe`）中，与本 PR 无关的 `packages/web/test/trade-orders.test.tsx` 用例 “shows no amounts before save, posts once and then shows the server's amounts” 失败：`expect(document.activeElement).toBe(notice.closest(".tord-saved"))`，实际焦点在 `body`。重跑后通过。
-- **根因**：`TradeOrders.tsx:273–275` 在被动 `useEffect` 中把焦点移到保存提示；测试在 `findByText` 找到提示文字后**同步**断言焦点（`trade-orders.test.tsx:185–186`）。保存由异步请求触发，React 不保证被动 effect 在文字出现时已执行，负载高时就会先断言后聚焦。这是测试与实现之间的时序竞态，不是产品缺陷：用户看到提示时焦点稍后到位。
+- **发生了什么**：UI-10b（[#101](https://github.com/lingshf/ai-native-erp/pull/101)）分支的 PR CI 运行 [44761991208](https://github.com/lingshf/ai-native-erp/actions/runs/44761991208)（head `18870fe`）中，与本 PR 无关的 `packages/web/test/trade-orders.test.tsx` 用例 “shows no amounts before save, posts once and then shows the server's amounts” 失败：`expect(document.activeElement).toBe(notice.closest(".tord-saved"))`，实际焦点在 `body`。该 run 只有 attempt 1，没有在 `18870fe` 上重跑；之后通过的 CI 是 rebase 后的新 head `4f89a0d`（运行 [44762941903](https://github.com/lingshf/ai-native-erp/actions/runs/44762941903)），不是同一 head 的重跑。
+- **根因：未证实**。区分如下：
+  - **观察**：上面一次失败；同一测试在其他 head 上通过；尚未稳定复现。
+  - **推断（待验证）**：`TradeOrders.tsx:273–275` 在被动 `useEffect` 中把焦点移到保存提示，测试在 `findByText` 找到提示文字后**同步**断言焦点（`trade-orders.test.tsx:185–186`）。保存由异步请求触发，被动 effect 可能晚于文字出现执行，这可以解释这次失败。
+  - **未排除**：真实浏览器中保存后焦点没有到位的产品问题。在 S5-h 复现并核对真实 Chrome 之前，不把它定性为“只是测试竞态”。
 - **改进动作**：
-  - 修复任务 [S5-h](../tasks/S5-h-trade-orders-focus-race.md)（负责人：开发，冲突域 web-ui:trade-orders，排在 S5-d 之前）。
+  - 调查与修复任务 [S5-h](../tasks/S5-h-trade-orders-focus-race.md)（负责人：开发，冲突域 web-ui:trade-orders，排在 S5-d 之前）：先复现、核对真实 Chrome，再按证实的原因修复。
   - 规则（负责人：评审角色、协调者；落到[路线图 §5 偶发失败](../roadmap.md#5-团队流程)）：PR CI 中出现与本 PR 无关的失败，可以重跑一次，但必须在 PR 描述记录失败的 run 链接、用例名和失败断言，并报告设计角色登记修复任务。不能只重跑不记录。
 
 ### 3. 一次性失败没有保留日志（#106 首轮的 2 个失败）
 
-- **发生了什么**：UI-09g（[#106](https://github.com/lingshf/ai-native-erp/pull/106)）在本机第一次跑 `npm test -w packages/web` 时有 2 个文件 / 2 个用例失败，当时本机正在并行采集 100 张截图；输出没有保存。之后在同一 head 上重跑两次都通过，只保存了通过的日志。评审无法确认那 2 个失败是负载导致还是像 D92 一样的竞态。
+- **发生了什么**：UI-09g（[#106](https://github.com/lingshf/ai-native-erp/pull/106)）在本机第一次跑 `npm test -w packages/web` 时有 2 个文件 / 2 个用例失败，当时本机正在并行采集 100 张截图；输出没有保存。之后在同一 head 上重跑两次都通过，只保存了通过的日志。原因**未知**：没有失败日志，连失败的用例名都无法核对，既不能说是负载导致，也不能说是像 D92 那样的竞态。
 - **根因**：没有“证据性测试运行一律保存完整输出”的规则；开发习惯只保存最后一次通过的日志。失败的那次恰恰最有信息量。
 - **改进动作**（负责人：开发执行，评审角色核对；落到[路线图 §5 偶发失败](../roadmap.md#5-团队流程)）：
   - 作为 PR 证据的本机测试运行，一律用 `2>&1 | Tee-Object <log>` 保存完整输出，**失败的运行也保存**，和通过的日志一起放进 PR 的证据 gist。
-  - 失败日志里必须能看到失败用例名和断言；没有日志的失败，不能以“本机负载”结案，按议题 2 的规则报告。
+  - 失败日志里必须能看到失败用例名和断言；没有日志的失败，原因记为“未知”，按议题 2 的规则报告。
 
 ### 4. 本机负载与 D13 阈值的判定
 
 - **发生了什么**：#106 引用 D13，把两类现象都归为“本机负载”：
   - 本机 4 个 GUI 用例的单例总时长 26.8–31.0s，超过 25s；
   - 上面议题 3 的 2 个失败。
-  前者合理：D13 / D15 的阈值本来就只在 Linux main Full 的每个分片上验收。后者不合理：D13 只是耗时口径，不能用来豁免断言失败。
+  两者都不能由 D13 证明是负载导致：
+  - 本机用例时长不属于 D13 / D15 的验收口径（只在 Linux main Full 的每个分片上验收），所以超出 25s 不阻塞；但这只说明“不计入”，不说明原因已证实是负载；
+  - D13 只是耗时口径，不能用来豁免或解释断言失败。
 - **根因**：D13 / D15 的口径写在 [M0-R2 任务文件](../tasks/M0-R2-test-speedup.md)里，路线图 §4 没有写“本机数字的地位”。开发因此把 D13 当成了笼统的“本机不算”。
 - **改进动作**（负责人：设计角色写规则，评审角色执行；落到[路线图 §4](../roadmap.md#4-ci-与测试策略设计角色牵头)）：
   - **耗时**：阈值只按合并后 Linux main Full 每个分片的 Vitest `Duration` 验收（D13 / D15），不用 step 时长。本机耗时只作参考，超出不阻塞，也不能当作达标证据。
-  - **失败**：D13 不豁免任何断言失败。本机失败要归因于负载，须同时满足：有失败日志（议题 3）；同一 head 重跑通过并有日志；该 head 的 PR CI 中同一文件通过。缺一条就按偶发失败报告（议题 2）。
+  - **失败**：D13 不豁免任何断言失败。失败日志、同一 head 重跑通过、该 head 的 PR CI 通过，只能说明“未稳定复现”，不能确立负载根因。原因未证实时记为“未知”，按偶发失败报告（议题 2）；只有在受控负载下复现，并找到机制，才能归因于负载。
 
 ### 5. 任务表没在合并当天同步（设计角色提出）
 
@@ -92,10 +97,10 @@
 | # | 行动 | 负责人 | 落到 | 状态 |
 | --- | --- | --- | --- | --- |
 | 1 | worktree 中禁止 `git stash`（含 `--autostash`），改用 WIP 提交或 patch 文件 | 协调者转告，全体执行 | [路线图 §5 工作区隔离](../roadmap.md#5-团队流程) | 本 PR 写入 |
-| 2 | 修复 trade-orders 焦点竞态 | 开发 | [S5-h](../tasks/S5-h-trade-orders-focus-race.md) | S5 |
+| 2 | 复现并修复 trade-orders 焦点失败（原因待证实） | 开发 | [S5-h](../tasks/S5-h-trade-orders-focus-race.md) | S5 |
 | 3 | 无关失败重跑须记录 run、用例、断言，并报告设计角色登记 | 评审角色、协调者 | [路线图 §5 偶发失败](../roadmap.md#5-团队流程) | 本 PR 写入 |
 | 4 | 证据性测试运行保存完整输出，失败的也保存 | 开发执行，评审核对 | [路线图 §5 偶发失败](../roadmap.md#5-团队流程) | 本 PR 写入 |
-| 5 | 耗时只按 main Full 分片 Vitest Duration 验收；D13 不豁免断言失败 | 设计角色、评审角色 | [路线图 §4](../roadmap.md#4-ci-与测试策略设计角色牵头) | 本 PR 写入 |
+| 5 | 耗时只按 main Full 分片 Vitest Duration 验收；D13 不豁免断言失败；记录时区分观察、推断与归因，未证实的原因记为“未知” | 设计角色、评审角色 | [路线图 §4](../roadmap.md#4-ci-与测试策略设计角色牵头) | 本 PR 写入 |
 | 6 | 设计角色每天按 main 日志主动同步任务表，不等通知 | 设计角色 | [路线图 §5 合并后](../roadmap.md#5-团队流程) | 本 PR 写入 |
 | 7 | RC 断言写明范围与例外；API 与 GUI 变化分条 | 版本管理 | [PROC-02](../tasks/PROC-02-release-rc-and-demo-checks.md) → `docs/release/README.md` | S5 |
 | 8 | 截图前断言实际状态与滚动位置；复跑命令自带端口与进程归属检查 | 版本管理 | [PROC-02](../tasks/PROC-02-release-rc-and-demo-checks.md) → `docs/demo/TEMPLATE.md` | S5 |

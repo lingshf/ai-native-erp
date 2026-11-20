@@ -266,7 +266,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 **目标**：
 - 完成 D-7：各页不再依赖 `styles.css` 的全局元素规则，最后一次性删除（S5-a..g）；
-- 修复 S4 回顾发现的测试竞态 D92（S5-h），落实其余回顾行动（路线图 §4 / §5 已由 S4 回顾 PR 写入；发布流程部分为 PROC-02）。
+- 调查并修复 S4 回顾记录的焦点断言偶发失败 D92（S5-h，原因待证实），落实其余回顾行动（路线图 §4 / §5 已由 S4 回顾 PR 写入；发布流程部分为 PROC-02）。
 
 版本号由协调者定。基线为 main `66d8e15`（v0.4.0 Demo #108 之后）。来源：UI-09g [#106](https://github.com/lingshf/ai-native-erp/pull/106)（head `f269d23`，合并为 main `662a763`）证据表的“保留”部分，摘要见 [UI-1.md §5.2](../reviews/UI-1.md#52-ui-09gstylescss-全局元素规则删除记录)；回顾见 [S4-retro.md](../reviews/S4-retro.md)。
 
@@ -283,8 +283,8 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [S5-d](S5-d-trade-orders-global-rules.md) | 订单录入页：复选框、`.tord-facts` | CSS | S5-h（同冲突域） | web-ui:trade-orders | todo | — |
 | [S5-e](S5-e-ledger-period-master-global-rules.md) | 总账报表 / 期末 / 科目表：`caption`、明细 `th, td`、tfoot、科目表对齐 | CSS | S5-f（A 线前序） | web-ui:ledger, web-ui:period-close, web-ui:master | todo | — |
 | [S5-f](S5-f-shell-components-global-rules.md) | 外壳 / 共享组件：偏好区 `legend` / `select` / 复选框、概览 `dd`、`.field select`、VirtualRows tfoot | CSS | — | web-ui:shell（不含 `styles.css`）, web-ui:components | todo | — |
-| [S5-g](S5-g-delete-global-element-rules.md) | 删除 `styles.css` 剩余全局元素规则（D-7 收尾，含 44px 基线的处理） | CSS | S5-a..f 全部（外壳串行最后） | web-ui:shell | todo | — |
-| [S5-h](S5-h-trade-orders-focus-race.md) | 订单录入页保存后焦点断言的时序竞态（D92） | 测试 / 页面 tsx | S5-c（B 线前序） | web-ui:trade-orders | todo | — |
+| [S5-g](S5-g-delete-global-element-rules.md) | 删除 `styles.css` 剩余全局元素规则（D-7 收尾，含 44px 基线的两道检查；文件清空时删除 `main.tsx:5` 的 import） | CSS + 入口 import 一行 | S5-a..f 全部（外壳串行最后） | web-ui:shell | todo | — |
+| [S5-h](S5-h-trade-orders-focus-race.md) | 订单录入页保存后焦点断言偶发失败：先复现、核对真实 Chrome，再修复（D92，原因待证实） | 测试 / 页面 tsx | S5-c（B 线前序） | web-ui:trade-orders | todo | — |
 | [PROC-02](PROC-02-release-rc-and-demo-checks.md) | 发布流程：RC 断言范围与 API / GUI 分条；Demo 截图状态断言与进程归属（版本管理） | 文档 | — | docs/release | todo | — |
 
 **S5 共同验收**（S5-a..g；S5-h、PROC-02 见各自文件）：
@@ -299,7 +299,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | 线 | 顺序 | 冲突域 |
 | --- | --- | --- |
-| A：外壳与共享、报表 | S5-f → S5-e → S5-g | shell + components → ledger / period-close / master → shell（`styles.css`） |
+| A：外壳与共享、报表 | S5-f → S5-e → S5-g | shell + components → ledger / period-close / master → shell（`styles.css` 与 `main.tsx:5`） |
 | B：贸易 | S5-c → S5-h → S5-d | trade → trade-orders → trade-orders |
 | C：迁移与凭证 | S5-b → S5-a | migration → journals |
 

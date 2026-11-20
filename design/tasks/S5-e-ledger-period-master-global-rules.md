@@ -12,7 +12,7 @@
 - 总账明细 `th, td`：vertical-align / min-width / text-align / border-bottom（#106 观察到仍生效）；
 - 总账 tfoot `td { padding }`；
 - 期末 fieldset 内 `.journal-scroll` 的 `th, td { padding }`；
-- 科目表 `td { text-align }`：全局值为 `left`，页面 CSS 改写为 `start`。中文与英文都是左到右，计算值相同，在证据中写明。
+- 科目表 `td { text-align }`：页面规则保留 `left`，不改为 `start`。`left` 与 `start` 在左到右文字下看起来一样，但 `getComputedStyle(td).textAlign` 分别是 `left` 和 `start`，不满足计算值零差异。改为逻辑属性不在本任务范围内。
 
 ## 验收标准
 
