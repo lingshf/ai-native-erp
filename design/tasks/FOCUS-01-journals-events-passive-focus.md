@@ -41,6 +41,7 @@
 ## 取证中发现的其他缺陷（不在本任务范围）
 
 - 业务事件“待转队列”操作列按钮被截成“…”，`<td>` 拦截点击，3 条交互路径点不到；base `045fa59` 上已存在，本任务不改样式。另立 [UI-11a](UI-11a-business-queue-actions-column.md)（S5 收尾后 backlog）。本任务取证若要经过这些按钮，可改用键盘触发，并在证据中注明。
+- B3 的同一 effect 依赖 `busy`：服务保存失败（409）、忙碌结束时再次执行，base 上焦点也晚一帧。这个 effect 与 `lock` 共用，不是本任务定义的“进入编辑”路径，本任务不改。另立 [FOCUS-02](FOCUS-02-business-master-save-failure-focus.md)（S5 收尾后 backlog）。
 
 ## 验收标准
 
