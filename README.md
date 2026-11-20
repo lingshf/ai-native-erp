@@ -125,7 +125,7 @@ GL 核对固定为本公司**全部伙伴及 AP/AR**、从账首至同一截止�
 
 ### 贸易 GUI 主路径验收（M1-07）
 
-文档与演示：[用户文档](docs/user/README.md) · [界面流程图](docs/flows/README.md) · [v0.3.0 Demo 脚本（含截图、端口 4193）](docs/demo/v0.3.0/README.md) · [v0.2.0 Demo](docs/demo/v0.2.0/README.md) · [CHANGELOG](CHANGELOG.md)。
+文档与演示：[用户文档](docs/user/README.md) · [界面流程图](docs/flows/README.md) · [v0.3.0 Demo 脚本（含截图、端口 4193）](docs/demo/v0.3.0/README.md) · [v0.2.0 Demo](docs/demo/v0.2.0/README.md) · [发布流程](docs/release/README.md) · [Demo 模板](docs/demo/TEMPLATE.md) · [CHANGELOG](CHANGELOG.md)。
 
 只使用全新的临时教学账套，不打开 4173、原账、`.bak` 或已有账套。先 `npm run build`，再在 PowerShell 启动独立实例：
 
