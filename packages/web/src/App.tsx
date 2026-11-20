@@ -29,6 +29,9 @@ const TradeSettlements = lazy(() =>
 const TradeInvoices = lazy(() =>
   import("./TradeInvoices.tsx").then((module) => ({ default: module.TradeInvoices })),
 );
+const TradeOrders = lazy(() =>
+  import("./TradeOrders.tsx").then((module) => ({ default: module.TradeOrders })),
+);
 const TradeMaster = lazy(() =>
   import("./TradeMaster.tsx").then((module) => ({ default: module.TradeMaster })),
 );
@@ -206,6 +209,7 @@ function Workspace() {
               <span>{t("journal.group")}</span>
               <NavLink to="/journals">{t("journal.title")}</NavLink>
               <NavLink to="/events">{t("business.title")}</NavLink>
+              <NavLink to="/trade-orders">{t("shell.tradeOrders")}</NavLink>
               <NavLink to="/trade-invoices">{t("tinv.title")}</NavLink>
               <NavLink to="/trade-settlements">{t("tset.title")}</NavLink>
               <NavLink to="/trade-adjustments">{t("tadj.title")}</NavLink>
@@ -267,6 +271,14 @@ function Workspace() {
                 element={
                   <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
                     <TradeReports preferences={preferences} />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/trade-orders"
+                element={
+                  <Suspense fallback={<p role="status">{t("master.loading")}</p>}>
+                    <TradeOrders preferences={preferences} />
                   </Suspense>
                 }
               />
