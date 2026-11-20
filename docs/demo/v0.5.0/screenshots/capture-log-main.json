@@ -1,0 +1,200 @@
+[
+ {
+  "page": "orders-focus",
+  "tag": "zh-red-1440",
+  "order": "PO-S5-A",
+  "status": 201,
+  "active": {
+   "tag": "DIV",
+   "id": null,
+   "role": null,
+   "text": "✓订单 PO-S5-A 已保存。可在发票页按订单行匹配开票。 前往发票页"
+  },
+  "noticeFocused": true
+ },
+ {
+  "name": "trade-orders-saved-focus-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders",
+  "errors": [
+   "Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:4196/#/trade-orders"
+  ]
+ },
+ {
+  "page": "journal-view-focus",
+  "tag": "zh-red-1440",
+  "clicked": "查看 TRADE-AP-INV:3d7137a5-0cac-4c1a-ba8a-dadb28132793",
+  "activeAriaLabel": "查看 TRADE-AP-INV:3d7137a5-0cac-4c1a-ba8a-dadb28132793",
+  "returnedToButton": true
+ },
+ {
+  "name": "journals-view-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "journal-new-focus",
+  "tag": "zh-red-1440",
+  "active": {
+   "tag": "INPUT",
+   "insideForm": true,
+   "label": ""
+  }
+ },
+ {
+  "name": "journals-new-draft-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "journals",
+  "errors": []
+ },
+ {
+  "page": "orders-focus",
+  "tag": "zh-red-390",
+  "order": "PO-S5-B",
+  "status": 201,
+  "active": {
+   "tag": "DIV",
+   "id": null,
+   "role": null,
+   "text": "✓订单 PO-S5-B 已保存。可在发票页按订单行匹配开票。 前往发票页"
+  },
+  "noticeFocused": true
+ },
+ {
+  "name": "trade-orders-saved-focus-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders",
+  "errors": []
+ },
+ {
+  "page": "journal-view-focus",
+  "tag": "zh-red-390",
+  "clicked": "查看 TRADE-AP-INV:3d7137a5-0cac-4c1a-ba8a-dadb28132793",
+  "activeAriaLabel": "查看 TRADE-AP-INV:3d7137a5-0cac-4c1a-ba8a-dadb28132793",
+  "returnedToButton": true
+ },
+ {
+  "name": "journals-view-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "journal-new-focus",
+  "tag": "zh-red-390",
+  "active": {
+   "tag": "INPUT",
+   "insideForm": true,
+   "label": ""
+  }
+ },
+ {
+  "name": "journals-new-draft-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "journals",
+  "errors": []
+ },
+ {
+  "page": "orders-focus",
+  "tag": "en-green-1440",
+  "order": "PO-S5-C",
+  "status": 201,
+  "active": {
+   "tag": "DIV",
+   "id": null,
+   "role": null,
+   "text": "✓Order PO-S5-C saved. You can now invoic"
+  },
+  "noticeFocused": true
+ },
+ {
+  "name": "trade-orders-saved-focus-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders",
+  "errors": []
+ },
+ {
+  "page": "journal-view-focus",
+  "tag": "en-green-1440",
+  "clicked": "View TRADE-AP-INV:3d7137a5-0cac-4c1a-ba8a-dadb28132793",
+  "activeAriaLabel": "View TRADE-AP-INV:3d7137a5-0cac-4c1a-ba8a-dadb28132793",
+  "returnedToButton": true
+ },
+ {
+  "name": "journals-view-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "journal-new-focus",
+  "tag": "en-green-1440",
+  "active": {
+   "tag": "INPUT",
+   "insideForm": true,
+   "label": ""
+  }
+ },
+ {
+  "name": "journals-new-draft-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "journals",
+  "errors": []
+ },
+ {
+  "page": "orders-focus",
+  "tag": "en-green-390",
+  "order": "PO-S5-D",
+  "status": 201,
+  "active": {
+   "tag": "DIV",
+   "id": null,
+   "role": null,
+   "text": "✓Order PO-S5-D saved. You can now invoic"
+  },
+  "noticeFocused": true
+ },
+ {
+  "name": "trade-orders-saved-focus-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders",
+  "errors": []
+ },
+ {
+  "page": "journal-view-focus",
+  "tag": "en-green-390",
+  "clicked": "View TRADE-AP-INV:3d7137a5-0cac-4c1a-ba8a-dadb28132793",
+  "activeAriaLabel": "View TRADE-AP-INV:3d7137a5-0cac-4c1a-ba8a-dadb28132793",
+  "returnedToButton": true
+ },
+ {
+  "name": "journals-view-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "journal-new-focus",
+  "tag": "en-green-390",
+  "active": {
+   "tag": "INPUT",
+   "insideForm": true,
+   "label": ""
+  }
+ },
+ {
+  "name": "journals-new-draft-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "journals",
+  "errors": []
+ }
+]

@@ -1,0 +1,168 @@
+[
+ {
+  "page": "migration-kv",
+  "tag": "zh-red-1440",
+  "visibleKvTables": 5,
+  "wraps": [
+   {
+    "clientWidth": 1072,
+    "scrollWidth": 1072,
+    "rightOverDetails": -8
+   },
+   {
+    "clientWidth": 1072,
+    "scrollWidth": 1072,
+    "rightOverDetails": -8
+   },
+   {
+    "clientWidth": 1072,
+    "scrollWidth": 1072,
+    "rightOverDetails": -8
+   },
+   {
+    "clientWidth": 1072,
+    "scrollWidth": 1072,
+    "rightOverDetails": -8
+   },
+   {
+    "clientWidth": 1072,
+    "scrollWidth": 1072,
+    "rightOverDetails": -8
+   }
+  ],
+  "pageOverflowPx": 0
+ },
+ {
+  "name": "migration-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "migration",
+  "errors": [
+   "Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:4196/#/migration"
+  ]
+ },
+ {
+  "page": "migration-kv",
+  "tag": "zh-red-390",
+  "visibleKvTables": 5,
+  "wraps": [
+   {
+    "clientWidth": 310,
+    "scrollWidth": 310,
+    "rightOverDetails": -8
+   },
+   {
+    "clientWidth": 310,
+    "scrollWidth": 310,
+    "rightOverDetails": -8
+   },
+   {
+    "clientWidth": 310,
+    "scrollWidth": 310,
+    "rightOverDetails": -8
+   },
+   {
+    "clientWidth": 310,
+    "scrollWidth": 310,
+    "rightOverDetails": -8
+   },
+   {
+    "clientWidth": 310,
+    "scrollWidth": 310,
+    "rightOverDetails": -8
+   }
+  ],
+  "pageOverflowPx": 0
+ },
+ {
+  "name": "migration-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "migration",
+  "errors": []
+ },
+ {
+  "page": "migration-kv",
+  "tag": "en-green-1440",
+  "visibleKvTables": 5,
+  "wraps": [
+   {
+    "clientWidth": 1072,
+    "scrollWidth": 1072,
+    "rightOverDetails": -8
+   },
+   {
+    "clientWidth": 1072,
+    "scrollWidth": 1072,
+    "rightOverDetails": -8
+   },
+   {
+    "clientWidth": 1072,
+    "scrollWidth": 1072,
+    "rightOverDetails": -8
+   },
+   {
+    "clientWidth": 1072,
+    "scrollWidth": 1072,
+    "rightOverDetails": -8
+   },
+   {
+    "clientWidth": 1072,
+    "scrollWidth": 1072,
+    "rightOverDetails": -8
+   }
+  ],
+  "pageOverflowPx": 0
+ },
+ {
+  "name": "migration-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "migration",
+  "errors": []
+ },
+ {
+  "page": "migration-kv",
+  "tag": "en-green-390",
+  "visibleKvTables": 5,
+  "wraps": [
+   {
+    "clientWidth": 310,
+    "scrollWidth": 310,
+    "rightOverDetails": -8
+   },
+   {
+    "clientWidth": 310,
+    "scrollWidth": 310,
+    "rightOverDetails": -8
+   },
+   {
+    "clientWidth": 310,
+    "scrollWidth": 310,
+    "rightOverDetails": -8
+   },
+   {
+    "clientWidth": 310,
+    "scrollWidth": 310,
+    "rightOverDetails": -8
+   },
+   {
+    "clientWidth": 310,
+    "scrollWidth": 310,
+    "rightOverDetails": -8
+   }
+  ],
+  "pageOverflowPx": 0
+ },
+ {
+  "name": "migration-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "migration",
+  "errors": []
+ }
+]
