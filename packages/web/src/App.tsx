@@ -9,7 +9,8 @@ import {
   type Preferences,
   type PreferenceIssue,
 } from "./ui/index.ts";
-import type { Badge, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
+import type { Badge, PageHeader, TeachingTip } from "./ui/components/index.tsx";
+import { MessageBar } from "./ui/components/message-bar.tsx";
 import { useHealth } from "./health.ts";
 import "./pages/overview.css";
 
@@ -228,17 +229,14 @@ function Workspace() {
         </aside>
         <div className="shell-body">
           {issues.length > 0 && (
-            <section className="warning" role="alert" aria-labelledby="preference-warning">
-              <h2 id="preference-warning">
-                <span aria-hidden="true">⚠ </span>
-                {t("shell.preferenceErrors")}
-              </h2>
+            <MessageBar tone="warning" role="alert" labelledBy="preference-warning">
+              <h2 id="preference-warning">{t("shell.preferenceErrors")}</h2>
               <ul>
                 {issues.map((issue) => (
                   <li key={issue}>{t(issueLabels[issue])}</li>
                 ))}
               </ul>
-            </section>
+            </MessageBar>
           )}
           <main id="workspace-main" tabIndex={-1}>
             <Routes>

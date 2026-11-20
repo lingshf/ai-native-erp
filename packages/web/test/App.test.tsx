@@ -283,6 +283,38 @@ describe("M01 preferences and state protection", () => {
     expect(await screen.findByText(label("zh", "shell.connected"))).toBeTruthy();
   });
 
+  it("shows preference warnings in a shared warning MessageBar with unchanged text, teaching on or off", async () => {
+    mockFetch().mockResolvedValue(response(healthy));
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("private-path");
+    });
+    render(<App />);
+    expect(teachingCheckbox().checked).toBe(false);
+    const alert = screen.getByRole("alert", { name: label("zh", "shell.preferenceErrors") });
+    expect(alert.className).toBe("message-bar warning");
+    expect(alert.parentElement?.className).toBe("shell-body");
+    expect(alert.querySelector(":scope > .icon[aria-hidden='true']")?.textContent).toBe("!");
+    const heading = screen.getByRole("heading", {
+      level: 2,
+      name: label("zh", "shell.preferenceErrors"),
+    });
+    expect(heading.textContent).toBe(label("zh", "shell.preferenceErrors"));
+    expect(alert.querySelector(".text")?.contains(heading)).toBe(true);
+    expect([...alert.querySelectorAll("li")].map((item) => item.textContent)).toEqual([
+      label("zh", "shell.storageRead"),
+    ]);
+    expect(
+      document.querySelector("section.warning, .shell-body > .warning:not(.message-bar)"),
+    ).toBeNull();
+    fireEvent.click(teachingCheckbox());
+    expect(teachingCheckbox().checked).toBe(true);
+    expect(screen.getByRole("alert", { name: label("zh", "shell.preferenceErrors") })).toBe(alert);
+    fireEvent.click(teachingCheckbox());
+    expect(teachingCheckbox().checked).toBe(false);
+    expect(alert.isConnected).toBe(true);
+    expect(await screen.findByText(label("zh", "shell.connected"))).toBeTruthy();
+  });
+
   it("retains a previously accepted value on later save failure and can recover by explicit change", async () => {
     mockFetch().mockResolvedValue(response(healthy));
     render(<App />);
