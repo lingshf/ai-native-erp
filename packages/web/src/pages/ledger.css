@@ -1,6 +1,6 @@
 /*
  * UI-07a 总账报表页（/ledger-reports 与 /reports/*）：只作用于 .ledger-page 之内。
- * 卡片、表格、KPI、消息条沿用 components.css；这里只补布局、行表头与窄屏触控尺寸。
+ * 卡片、表格、KPI、消息条沿用 components.css；这里只补布局、行表头与窄屏触控尺寸（表格内链接 F4 在 components.css）。
  */
 .ledger-stack {
   display: grid;

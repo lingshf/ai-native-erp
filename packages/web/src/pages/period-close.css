@@ -1,14 +1,8 @@
 /*
  * UI-07b 期末结账与贸易期间准入：只作用于 .period-close 之内。
  * 通用外观在 components.css；这里只定操作栏、准入表单、期间列表（warning / success 消息条已提升到 components.css）。
+ * 控件高度沿用 --control-h（桌面 36px，窄屏或粗指针 44px，design/ui §7，F5）。
  */
-.period-close {
-  /* 本页所有控件在桌面与窄屏都 ≥ 44px */
-  --control-h: 44px;
-}
-.period-close .message-bar p {
-  margin: 0;
-}
 .period-close > fieldset,
 .period-close #trade-period-admission-body > fieldset {
   display: grid;
@@ -44,10 +38,13 @@
   color: var(--color-text-muted);
   font-size: var(--text-sm);
 }
-/* 复选框：label 撑开 ≥ 44px 的实际点击区 */
+/* 复选框：label 撑开 --control-h 的实际点击区；F6：相邻复选框之间只留 --space-2（抵消 fieldset 的 --space-4 行距） */
 .period-close #trade-period-admission-body > fieldset .ui-check {
-  min-width: 44px;
+  min-width: var(--control-h);
   cursor: pointer;
+}
+.period-close #trade-period-admission-body > fieldset .ui-check + .ui-check {
+  margin-top: calc(var(--space-2) - var(--space-4));
 }
 .period-close #trade-period-admission-body > fieldset .ui-check input {
   width: 20px;
@@ -78,12 +75,22 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-/* 净额 KPI 的下钻链接在窄屏也保持 ≥ 44px 的点击区 */
+/* F6：分录表“科目”行表头不吸顶、不灰底，与数据行同字号，只加粗；悬停行与 td 同底 */
+.period-close .card .journal-row th {
+  position: static;
+  background: none;
+  color: var(--color-text);
+  font-size: inherit;
+}
+.period-close .card .journal-row:hover th {
+  background: var(--color-surface-alt);
+}
+/* 净额 KPI 的下钻链接保持 --control-h 见方的点击区 */
 .period-close .kpi .value a {
   display: inline-flex;
   align-items: center;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: var(--control-h);
+  min-height: var(--control-h);
 }
 
 @media (max-width: 760px), (pointer: coarse) {

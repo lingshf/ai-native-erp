@@ -86,6 +86,10 @@ const pairs: ReadonlyArray<readonly [string, string, number, string]> = [
   ["color-surface", "color-teach", 4.5, "教学提示标记"],
   ["color-text", "color-teach-bg", 4.5, "教学提示正文"],
   ["color-primary", "color-surface-alt", 4.5, "表格行内链接 / 悬停行"],
+  // UI-09d F4: ledger / period-close table links darken on hover and keyboard focus.
+  ["color-primary-hover", "color-surface", 4.5, "表格内链接悬停 / 焦点"],
+  ["color-primary-hover", "color-surface-alt", 4.5, "表格内链接悬停 / 焦点 / 悬停行"],
+  ["color-primary-hover", "color-primary-soft", 4.5, "表格内链接悬停 / 焦点 / 选中行"],
 ];
 
 function failures(css: string) {
@@ -107,6 +111,28 @@ function withToken(name: string, value: string) {
   expect(tokens.match(pattern)?.length).toBeGreaterThan(0);
   return tokens.replace(pattern, `$1${value}`);
 }
+
+// Declarations a stylesheet gives to an exact selector (comments stripped, selectors whitespace-normalised,
+// list commas inside :is() kept).
+function declarationsIn(file: string) {
+  const css = readFileSync(resolve(import.meta.dirname, "../src", file), "utf8").replace(
+    /\/\*[\s\S]*?\*\//gu,
+    "",
+  );
+  return (selector: string) => {
+    const found: Record<string, string> = {};
+    for (const [, selectors, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/gu))
+      if (
+        selectors.split(/,(?![^()]*\))/u).some((s) => s.replace(/\s+/gu, " ").trim() === selector)
+      )
+        for (const [, prop, value] of body.matchAll(/([\w-]+)\s*:\s*([^;]+);/gu))
+          found[prop] = value.trim();
+    return found;
+  };
+}
+const token = (value = "") => /var\(--([\w-]+)\)/u.exec(value)?.[1];
+const checked = (fg: string | undefined, bg: string | undefined, min: number) =>
+  pairs.some(([f, b, m]) => f === fg && b === bg && m >= min);
 
 describe("design token contrast", () => {
   test("covers every check-contrast.mjs pair and all pairs pass in both themes", () => {
@@ -142,21 +168,7 @@ describe("design token contrast", () => {
 
   // Pairs only protect what components.css actually paints: bind the UI-09a declarations to checked pairs.
   test("UI-09a segmented selected states and disabled subtle button paint only checked pairs", () => {
-    const components = readFileSync(
-      resolve(import.meta.dirname, "../src/theme/components.css"),
-      "utf8",
-    ).replace(/\/\*[\s\S]*?\*\//gu, "");
-    const declarations = (selector: string) => {
-      const found: Record<string, string> = {};
-      for (const [, selectors, body] of components.matchAll(/([^{}]+)\{([^{}]*)\}/gu))
-        if (selectors.split(",").some((s) => s.replace(/\s+/gu, " ").trim() === selector))
-          for (const [, prop, value] of body.matchAll(/([\w-]+)\s*:\s*([^;]+);/gu))
-            found[prop] = value.trim();
-      return found;
-    };
-    const token = (value = "") => /var\(--([\w-]+)\)/u.exec(value)?.[1];
-    const checked = (fg: string | undefined, bg: string | undefined, min: number) =>
-      pairs.some(([f, b, m]) => f === fg && b === bg && m >= min);
+    const declarations = declarationsIn("theme/components.css");
 
     const selected = '.segmented button[aria-pressed="true"]';
     for (const state of ["", ":hover:not(:disabled)", ":active:not(:disabled)"]) {
@@ -169,5 +181,38 @@ describe("design token contrast", () => {
 
     const subtle = declarations(".btn-subtle:disabled");
     expect([subtle.background, subtle["border-color"]]).toEqual(["transparent", "transparent"]);
+  });
+
+  // F4: table links keep an underline in every state (WCAG 1.4.1) and every state's text colour is a checked
+  // pair on each row background a link can sit on (card, hovered row, selected row); focus ring likewise.
+  // D85: one shared rule in components.css; the two page stylesheets keep no copy.
+  test("UI-09d ledger / period-close table links paint only checked pairs and stay underlined", () => {
+    const page = declarationsIn("theme/components.css");
+    for (const file of ["pages/ledger.css", "pages/period-close.css"])
+      expect(readFileSync(resolve(import.meta.dirname, "../src", file), "utf8"), file).not.toMatch(
+        /text-decoration|--color-primary-hover/u,
+      );
+    const base = declarationsIn("theme/base.css");
+    const rows = ["color-surface", "color-surface-alt", "color-primary-soft"];
+    const link = ":is(.ledger-page, .period-close) :is(td, th) a";
+    const rest = page(link);
+    // Rest keeps the UA link underline (base a never removes it) and only thins it to dotted.
+    expect(rest["text-decoration-style"]).toBe("dotted");
+    expect(Object.keys(base("a")).filter((prop) => prop.startsWith("text-decoration"))).toEqual([]);
+    expect(rest.color, "rest colour comes from base a").toBeUndefined();
+    const restColor = token(base("a").color);
+    expect(restColor).toBe("color-primary");
+    const active = page(`${link}:is(:hover, :focus-visible)`);
+    // Shorthand without a style keyword resets it to solid.
+    expect(active["text-decoration"]).toBe("underline 2px");
+    const activeColor = token(active.color);
+    expect(activeColor).toBe("color-primary-hover");
+    const focus = token(base(":focus-visible").outline);
+    expect(focus).toBe("color-focus");
+    for (const bg of rows) {
+      expect(checked(restColor, bg, 4.5), `rest on ${bg}`).toBe(true);
+      expect(checked(activeColor, bg, 4.5), `hover/focus on ${bg}`).toBe(true);
+      expect(checked(focus, bg, 3), `focus ring on ${bg}`).toBe(true);
+    }
   });
 });
