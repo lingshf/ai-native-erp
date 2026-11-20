@@ -200,3 +200,101 @@ it("drills preview amounts at the same compound pin and retries unknown close/ne
   await waitFor(() => expect(screen.getByLabelText("期间")).toHaveProperty("value", "2027-01"));
   await screen.findByRole("table", { name: "报表类别" });
 });
+it("shows period status badges, keeps derived numbers hidden until preview, and surfaces blockers as alerts", async () => {
+  window.history.replaceState(null, "", "/#/period-close?company=DEFAULT&month=2026-02");
+  const company = {
+    code: "DEFAULT",
+    name: "Synthetic",
+    currency: "CNY",
+    scale: 2,
+    year: 2026,
+    closeMode: "annual" as const,
+    revision: 1,
+  };
+  const reply = (value: unknown) => new Response(JSON.stringify(value));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn<typeof fetch>().mockImplementation(async (path, options) => {
+      const url = new URL(String(path), "http://localhost");
+      const body = options?.body ? JSON.parse(String(options.body)) : undefined;
+      if (url.pathname === "/api/v1/companies")
+        return reply({ items: [company], nextCursor: null });
+      if (url.pathname === "/api/v1/periods")
+        return reply({
+          items: [
+            { month: "2026-01", status: "frozen", revision: 2, modules: ["trade"] },
+            { month: "2026-02", status: "open", revision: 1, modules: [] },
+          ],
+          nextCursor: null,
+        });
+      if (url.pathname.endsWith("/close-preview"))
+        return reply({
+          ...body,
+          month: "2026-02",
+          fingerprint: "b".repeat(64),
+          action: "freeze",
+          snapshot: { watermark: 1, accountRevision: 8 },
+          date: "2026-02-28",
+          netProfit: 0,
+          blockers: ["priorPeriods"],
+          lines: [],
+        });
+      throw new Error(`Unexpected ${url}`);
+    }),
+  );
+  render(<App />);
+  const list = await screen.findByRole("table", { name: "期间列表" });
+  const current = within(list).getByRole("row", { current: true });
+  expect(within(current).getByText("2026-02")).toBeTruthy();
+  expect(within(current).getByText("开放").closest(".badge")?.className).toBe("badge info");
+  expect(within(list).getByText("冻结").closest(".badge")?.className).toBe("badge warning");
+  expect(screen.getByText("trade", { selector: ".badge" }).className).toBe("badge warning");
+  expect(screen.getByRole("group", { name: "期末结账" })).toBeTruthy();
+  expect(screen.getByRole("group", { name: "期间贸易模块准入" })).toBeTruthy();
+  expect(screen.queryByText("本次结转净额")).toBeNull();
+  const previewButton = screen.getByRole("button", { name: "预览结账" });
+  expect(previewButton.className).toBe("btn btn-secondary");
+  fireEvent.click(previewButton);
+  const blocker = await screen.findByRole("alert");
+  expect(blocker.textContent).toContain("请先处理前面的期间。");
+  const confirm = screen.getByRole("button", { name: "确认结账" });
+  expect(confirm.className).toBe("btn btn-primary");
+  expect(confirm).toHaveProperty("disabled", true);
+  expect(screen.getByText("本次结转净额")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "打开下一期间" })).toBeNull();
+});
+it("keeps open-next a secondary action on a closed period without offering a new preview", async () => {
+  window.history.replaceState(null, "", "/#/period-close?company=DEFAULT&month=2026-12");
+  const company = {
+    code: "DEFAULT",
+    name: "Synthetic",
+    currency: "CNY",
+    scale: 2,
+    year: 2026,
+    closeMode: "annual" as const,
+    revision: 1,
+  };
+  const reply = (value: unknown) => new Response(JSON.stringify(value));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn<typeof fetch>().mockImplementation(async (path) => {
+      const url = new URL(String(path), "http://localhost");
+      if (url.pathname === "/api/v1/companies")
+        return reply({ items: [company], nextCursor: null });
+      if (url.pathname === "/api/v1/periods")
+        return reply({
+          items: [{ month: "2026-12", status: "closed", revision: 2, modules: [] }],
+          nextCursor: null,
+        });
+      throw new Error(`Unexpected ${url}`);
+    }),
+  );
+  render(<App />);
+  const next = await screen.findByRole("button", { name: "打开下一期间" });
+  expect(next.className).toBe("btn btn-secondary");
+  expect(next).toHaveProperty("disabled", false);
+  expect(screen.getByText("冻结或关闭期间不可再过账。").closest(".message-bar")?.className).toBe(
+    "message-bar info",
+  );
+  expect(screen.queryByRole("button", { name: "预览结账" })).toBeNull();
+});
