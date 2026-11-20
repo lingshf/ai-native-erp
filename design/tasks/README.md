@@ -282,8 +282,8 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [S5-c](S5-c-trade-global-rules.md) | 贸易页面：复选框、`.tinv-facts` / `.trpt-facts`、`cell-link` 圆角、`caption` | CSS | — | web-ui:trade | in-review | [#113](https://github.com/lingshf/ai-native-erp/pull/113) |
 | [S5-d](S5-d-trade-orders-global-rules.md) | 订单录入页：复选框、`.tord-facts` | CSS | S5-h（同冲突域） | web-ui:trade-orders | todo | — |
 | [S5-e](S5-e-ledger-period-master-global-rules.md) | 总账报表 / 期末 / 科目表：`caption`、明细 `th, td`（不含对齐，归 S5-i）、tfoot | CSS | S5-i（A 线前序） | web-ui:ledger, web-ui:period-close, web-ui:master | todo | — |
-| [S5-f](S5-f-shell-components-global-rules.md) | 外壳 / 共享组件：偏好区 `legend` / `select` / 复选框、概览 `dd`、`.field select`、VirtualRows tfoot | CSS | S5-c（同改 `components.css`） | web-ui:shell（不含 `styles.css`）, web-ui:components | todo | — |
-| [S5-i](S5-i-grid-table-select-component-rules.md) | 共享表格与字段：`.grid` / `.journal-scroll` 的 `td` 对齐与 `thead` / `tfoot` 底色、`.ui-field select` 的 `max-width` 改为组件规则（#113 报告的缺口） | CSS | S5-f、S5-c（同改 `components.css`） | web-ui:components | todo | — |
+| [S5-f](S5-f-shell-components-global-rules.md) | 外壳 / 共享组件：偏好区 `legend` / `select` / 复选框、概览 `dd`、`.ui-field` 与 `.field` 的 `select`、VirtualRows tfoot | CSS | S5-c（同改 `components.css`） | web-ui:shell（不含 `styles.css`）, web-ui:components | in-review | [#115](https://github.com/lingshf/ai-native-erp/pull/115) |
+| [S5-i](S5-i-grid-table-component-rules.md) | 共享表格：`.grid` / `.journal-scroll` 的 `td` 对齐、`thead` 底色与 `.grid tfoot` 底色改为组件规则（#113 报告的缺口；`select` 的 `max-width` 已由 #115 覆盖） | CSS | S5-f、S5-c（同改 `components.css`） | web-ui:components | todo | — |
 | [S5-g](S5-g-delete-global-element-rules.md) | 删除 `styles.css` 剩余全局元素规则（D-7 收尾，含 44px 基线的两道检查；文件清空时删除 `main.tsx:5` 的 import） | CSS + 入口 import 一行 | S5-a..f、S5-i 全部（外壳串行最后） | web-ui:shell | todo | — |
 | [S5-h](S5-h-trade-orders-focus-race.md) | 订单录入页保存后焦点断言偶发失败：先复现、核对真实 Chrome，再修复（D92，原因待证实） | 测试 / 页面 tsx | S5-c（B 线前序） | web-ui:trade-orders | todo | — |
 | [PROC-02](PROC-02-release-rc-and-demo-checks.md) | 发布流程：RC 断言范围与 API / GUI 分条；Demo 截图状态断言与进程归属（版本管理） | 文档 | — | docs/release | done | [#111](https://github.com/lingshf/ai-native-erp/pull/111) |

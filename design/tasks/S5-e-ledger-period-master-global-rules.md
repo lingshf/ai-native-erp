@@ -13,7 +13,7 @@
 - 总账 tfoot `td { padding }`；
 - 期末 fieldset 内 `.journal-scroll` 的 `th, td { padding }`。
 
-**不在范围**：总账明细与科目表 `td` 的 `text-align`、`.grid thead` 底色、`.ui-field select` 的 `max-width`。这些由 [S5-i](S5-i-grid-table-select-component-rules.md) 在组件层覆盖，保留 `left`，不改为 `start`，本任务不在页面 CSS 中重复写；取证构建也不删这三条。
+**不在范围**：总账明细与科目表 `td` 的 `text-align`、`.grid thead` 底色由 [S5-i](S5-i-grid-table-component-rules.md) 在组件层覆盖（保留 `left`，不改为 `start`）；`.ui-field select` 的 `max-width` 由 S5-f（[#115](https://github.com/lingshf/ai-native-erp/pull/115)）覆盖。本任务不在页面 CSS 中重复写；取证构建也不删这三条。
 
 ## 验收标准
 
