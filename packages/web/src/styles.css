@@ -1,51 +1,23 @@
 /*
- * 全局元素基线（UI-08 清理后）：只剩元素选择器。类规则已删除（无引用）或迁到 theme/shell.css、
- * theme/components.css 与 src/pages/*.css。各页尚未全部以组件类覆盖这些元素（见 design/reviews/UI-1.md），
- * 按 UI-08 清理边界保留；顺序与原兼容层一致，入口 CSS 中仍排在 shell.css 之后。
- * UI-09g 只删了计算值经逐页取证不变、且每处用法都有类规则覆盖的声明（dl 的列 / 间距 / 外边距、table 整条）；
- * 其余声明仍决定某处的计算值，留待各页迁移到组件类后再删。
+ * 全局元素基线（S5-g 后）：只剩第二道源码检查仍找不到类规则覆盖的声明，原样保留，交回对应泳道补齐后再删：
+ * - button 的 background / color / border / border-radius / cursor 与 :hover：概览加载失败的重试按钮（App.tsx，web-ui:shell）；
+ * - button:active 的 background：.btn-primary 无 :active 规则（web-ui:components），以及上面的重试按钮；
+ * - input[type="checkbox"]：财务维度命中列 label.ui-master-hit 内的复选框（Dimensions.tsx，web-ui:master）；
+ * - th, td 的 border-bottom / vertical-align / min-width：VirtualRows 超过 100 行时的占位行单元格
+ *   （Journals.tsx 组件；调用页 web-ui:business-events、web-ui:journals、web-ui:trade）。
  */
-button,
-select {
-  min-height: 44px;
-}
-legend {
-  padding: 0 var(--space-2);
-  font-weight: var(--weight-semibold);
-}
-select {
-  width: 100%;
-  max-width: 100%;
-  background: var(--color-surface);
-  color: inherit;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2);
-}
 input[type="checkbox"] {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
   accent-color: var(--color-primary);
 }
-dl {
-  display: grid;
-}
-dt {
-  color: var(--color-text-muted);
-}
-dd {
-  margin: 0;
-  font-weight: var(--weight-semibold);
-}
 button {
   background: var(--color-primary);
   color: var(--color-on-primary);
   border: 0;
   border-radius: var(--radius-sm);
-  padding: var(--space-3) var(--space-4);
   cursor: pointer;
-  font-weight: var(--weight-semibold);
 }
 button:hover:not(:disabled) {
   background: var(--color-primary-hover);
@@ -53,29 +25,9 @@ button:hover:not(:disabled) {
 button:active:not(:disabled) {
   background: var(--color-primary-active);
 }
-button:disabled {
-  opacity: 0.65;
-  cursor: wait;
-}
-caption {
-  text-align: left;
-  font-weight: var(--weight-semibold);
-  padding: var(--space-3);
-}
 th,
 td {
-  padding: var(--space-3);
   border-bottom: 1px solid var(--color-border);
-  text-align: left;
   vertical-align: top;
   min-width: 96px;
-}
-thead,
-tfoot {
-  background: var(--color-primary-soft);
-}
-@media (max-width: 680px) {
-  dd {
-    margin-bottom: var(--space-3);
-  }
 }
