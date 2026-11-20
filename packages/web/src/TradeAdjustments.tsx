@@ -16,6 +16,10 @@ import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
 import { label, type Preferences } from "./ui/index.ts";
 import { useInvoiceLeaveGuard } from "./TradeInvoices.tsx";
+import { FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
+import "./pages/trade-settlements.css";
+
+type Key = Exclude<Parameters<typeof label>[1], "shell.httpError">;
 
 type Pending = ReturnType<typeof tradeActionConfirmSchema.parse>;
 type Draft = {
@@ -134,28 +138,45 @@ export function TradeAdjustments({ preferences }: { preferences: Preferences }) 
   const rows = companies.data?.pages.flatMap((page) => page.items) ?? [];
   const company = rows.find((row) => row.code === (selected || rows[0]?.code));
   return (
-    <section>
-      <h2>{t("tadj.title")}</h2>
-      <p>{t("tadj.boundary")}</p>
-      <label htmlFor="tadj-company">{t("master.company")}</label>
-      <select
-        id="tadj-company"
-        value={company?.code ?? ""}
-        disabled={guard.busy || guard.unsaved}
-        onChange={(e) => setSelected(e.target.value)}
-      >
-        {rows.map((row) => (
-          <option key={row.code} value={row.code}>
-            {row.code} · {row.name}
-          </option>
-        ))}
-      </select>
-      {companies.hasNextPage && (
-        <button type="button" onClick={() => void companies.fetchNextPage()}>
-          {t("master.loadMore")}
-        </button>
+    <section className="page trade-adjustments">
+      <PageHeader
+        title={t("tadj.title")}
+        description={t("tadj.description")}
+        context={
+          <>
+            <div className="field">
+              <label htmlFor="tadj-company">{t("master.company")}</label>
+              <select
+                id="tadj-company"
+                value={company?.code ?? ""}
+                disabled={guard.busy || guard.unsaved}
+                onChange={(e) => setSelected(e.target.value)}
+              >
+                {rows.map((row) => (
+                  <option key={row.code} value={row.code}>
+                    {row.code} · {row.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {companies.hasNextPage && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => void companies.fetchNextPage()}
+              >
+                {t("master.loadMore")}
+              </button>
+            )}
+          </>
+        }
+      />
+      <MessageBar tone="info">{t("tadj.boundary")}</MessageBar>
+      {companies.isError && (
+        <MessageBar tone="danger" role="alert">
+          {t("master.error")}
+        </MessageBar>
       )}
-      {companies.isError && <p role="alert">{t("master.error")}</p>}
       {company && (
         <ActionEntry
           key={company.code}
@@ -179,6 +200,15 @@ function ActionEntry({
   const t = (key: Exclude<Parameters<typeof label>[1], "shell.httpError">) =>
     label(preferences.language, key);
   const money = (minor: number) => formatMinor(minor, preferences.language, company.scale);
+  const head = (keys: Key[]) => (
+    <thead>
+      <tr>
+        {keys.map((key) => (
+          <th key={key}>{t(key)}</th>
+        ))}
+      </tr>
+    </thead>
+  );
   const [loaded] = useState(() => restore(company.code));
   const [saved, setSaved] = useState(loaded.saved);
   const [storageFailed, setStorageFailed] = useState(loaded.failed);
@@ -373,10 +403,12 @@ function ActionEntry({
     [preview],
   );
   const itemSelect = (field: "sourceId" | "targetId") => (
-    <label>
-      {t(field === "sourceId" ? "tadj.source" : "tadj.target")}
+    <div className="ui-field">
+      <label htmlFor={`tadj-${field}`}>
+        {t(field === "sourceId" ? "tadj.source" : "tadj.target")}
+      </label>
       <select
-        aria-label={t(field === "sourceId" ? "tadj.source" : "tadj.target")}
+        id={`tadj-${field}`}
         value={draft[field]}
         onChange={(e) => change({ [field]: e.target.value })}
       >
@@ -396,195 +428,32 @@ function ActionEntry({
             </option>
           ))}
       </select>
-    </label>
+    </div>
   );
+  const irreversible = draft.kind === "cancel" || draft.kind === "reverse";
   return (
-    <>
-      {storageFailed && <p role="alert">{t("tinv.storageFailed")}</p>}
-      <fieldset disabled={locked}>
-        <label>
-          {t("tadj.kind")}
-          <select
-            value={draft.kind}
-            onChange={(e) => {
-              const kind = (["advance", "credit", "apply", "cancel", "reverse"] as const).find(
-                (kind) => kind === e.target.value,
-              );
-              if (kind) change({ kind, actionId: crypto.randomUUID(), sourceId: "", targetId: "" });
-            }}
-          >
-            {(["advance", "credit", "apply", "cancel", "reverse"] as const).map((kind) => (
-              <option key={kind} value={kind}>
-                {t(`tadj.${kind}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-        {(["accountingDate", "documentDate", "taxDate"] as const).map((field) => (
-          <label key={field}>
-            {t(`tinv.${field}`)}
-            <input
-              type="date"
-              value={draft[field]}
-              onChange={(e) => change({ [field]: e.target.value })}
-            />
-          </label>
-        ))}
-        {draft.kind === "advance" && (
-          <>
-            <label>
-              {t("trade.side")}
-              <select
-                value={draft.side}
-                onChange={(e) => change({ side: e.target.value === "AR" ? "AR" : "AP" })}
-              >
-                <option value="AP">{t("trade.AP")}</option>
-                <option value="AR">{t("trade.AR")}</option>
-              </select>
-            </label>
-            <label>
-              {t("tinv.party")}
-              <input value={draft.party} onChange={(e) => change({ party: e.target.value })} />
-            </label>
-          </>
-        )}
-        {draft.kind !== "advance" && draft.kind !== "reverse" && itemSelect("sourceId")}
-        {draft.kind === "apply" && itemSelect("targetId")}
-        {(draft.kind === "advance" || draft.kind === "apply") && (
-          <label>
-            {t("tadj.gross")}
-            <input
-              type="number"
-              min="1"
-              step="1"
-              value={draft.gross}
-              onChange={(e) => change({ gross: e.target.value })}
-            />
-          </label>
-        )}
-        {draft.kind === "credit" && (
-          <>
-            <p>{t("tadj.creditHint")}</p>
-            {draft.lines.map((line, index) => (
-              <div key={line.id}>
-                <label>
-                  {t("tadj.sourceLine")}
-                  <input
-                    value={line.sourceLineId}
-                    onChange={(e) =>
-                      change({
-                        lines: draft.lines.map((line, i) =>
-                          i === index ? { ...line, sourceLineId: e.target.value } : line,
-                        ),
-                      })
-                    }
-                  />
-                </label>
-                <label>
-                  {t("tinv.quantity")}
-                  <input
-                    inputMode="decimal"
-                    value={line.quantity}
-                    onChange={(e) =>
-                      change({
-                        lines: draft.lines.map((line, i) =>
-                          i === index ? { ...line, quantity: e.target.value } : line,
-                        ),
-                      })
-                    }
-                  />
-                </label>
-                <button
-                  type="button"
-                  disabled={draft.lines.length === 1}
-                  onClick={() => change({ lines: draft.lines.filter((_, i) => i !== index) })}
-                >
-                  {t("tinv.removeLine")}
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              disabled={draft.lines.length >= 100}
-              onClick={() =>
-                change({
-                  lines: [
-                    ...draft.lines,
-                    { id: crypto.randomUUID(), sourceLineId: "", quantity: "" },
-                  ],
-                })
-              }
-            >
-              {t("tadj.addLine")}
-            </button>
-          </>
-        )}
-        {draft.kind === "cancel" && (
-          <label>
-            {t("tadj.relatedRevision")}
-            <input
-              type="number"
-              min="1"
-              step="1"
-              value={draft.relatedRevision}
-              onChange={(e) => change({ relatedRevision: e.target.value })}
-            />
-          </label>
-        )}
-        {draft.kind === "reverse" && (
-          <>
-            <label>
-              {t("tadj.settlementId")}
-              <input
-                value={draft.settlementId}
-                onChange={(e) => change({ settlementId: e.target.value })}
-              />
-            </label>
-            <p>{t("tadj.reverseHint")}</p>
-            {rows
-              .filter((row) => row.status !== "cancelled")
-              .map((row) => (
-                <label key={row.itemId}>
-                  <input
-                    type="checkbox"
-                    checked={draft.items.includes(row.itemId)}
-                    disabled={!draft.items.includes(row.itemId) && draft.items.length >= 100}
-                    onChange={(e) =>
-                      change({
-                        items: e.target.checked
-                          ? [...draft.items, row.itemId]
-                          : draft.items.filter((id) => id !== row.itemId),
-                      })
-                    }
-                  />
-                  {row.externalNo} · {row.itemId} · v{row.revision}
-                </label>
-              ))}
-          </>
-        )}
-        {(draft.kind === "cancel" || draft.kind === "reverse") && (
-          <label>
-            {t("tadj.reason")}
-            <input
-              maxLength={160}
-              value={draft.reason}
-              onChange={(e) => change({ reason: e.target.value })}
-            />
-          </label>
-        )}
-        {page.hasNextPage && (
-          <button type="button" onClick={() => void page.fetchNextPage()}>
-            {t("master.loadMore")}
-          </button>
-        )}
-        <button type="button" onClick={() => void run(false)}>
+    <div className="tadj-entry">
+      <div className="tadj-command-bar">
+        <button
+          type="button"
+          className="btn btn-secondary"
+          disabled={locked}
+          onClick={() => void run(false)}
+        >
           {t("tinv.preview")}
         </button>
-        <button type="button" disabled={!preview} onClick={() => void run(true)}>
+        <button
+          type="button"
+          className={irreversible ? "btn btn-danger" : "btn btn-primary"}
+          disabled={locked || !preview}
+          onClick={() => void run(true)}
+        >
           {t("tadj.confirm")}
         </button>
         <button
           type="button"
+          className="btn btn-subtle"
+          disabled={locked}
           onClick={() => {
             sequence.current++;
             setSaved({ draft: empty(), pending: null });
@@ -594,79 +463,329 @@ function ActionEntry({
         >
           {t("tadj.clear")}
         </button>
-      </fieldset>
-      {page.isError && <p role="alert">{t("master.error")}</p>}
-      {error && <p role="alert">{error}</p>}
+      </div>
+      {[storageFailed && t("tinv.storageFailed"), page.isError && t("master.error"), error].map(
+        (text) =>
+          text && (
+            <MessageBar key={text} tone="danger" role="alert">
+              {text}
+            </MessageBar>
+          ),
+      )}
       {saved.pending && (
-        <div role="alert">
-          {t("tinv.uncertain")}
-          <button type="button" disabled={busy || storageFailed} onClick={() => void run(true)}>
+        <MessageBar tone="warning" role="alert">
+          <p>{t("tinv.uncertain")}</p>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={busy || storageFailed}
+            onClick={() => void run(true)}
+          >
             {t("tinv.retryConfirm")}
           </button>
-        </div>
+        </MessageBar>
       )}
-      {result && (
-        <section aria-label={t("tadj.result")}>
-          <h3>{t("tadj.result")}</h3>
-          <p>
-            {t(`tadj.${result.kind}`)} · {money(result.gross)}
-          </p>
-          {result.changes.map(({ after }) => (
-            <p key={after.itemId}>
-              {after.itemId} · {t(`tadj.${after.kind}`)} · {t("tset.remaining")}:{" "}
-              {money(after.remainingGross)} ·{t("tinv.net")}: {money(after.remainingNet)} ·{" "}
-              {t("tinv.tax")}: {money(after.remainingTax)} · v{after.revision} ·{" "}
-              {t(`tadj.${after.status}`)}
-            </p>
+      {receipt && (
+        <MessageBar tone="success" role="status">
+          {t("tadj.posted")} {receipt.sourceRef} · {receipt.journalIds.join(", ")}
+        </MessageBar>
+      )}
+      <TeachingTip teaching={preferences.teaching} title={t("master.teachingTitle")}>
+        {t("tadj.teaching")}
+      </TeachingTip>
+      <FastTab id="tadj-general" title={t("master.general")}>
+        <fieldset disabled={locked} className="ui-form-grid">
+          <div className="ui-field">
+            <label htmlFor="tadj-kind">{t("tadj.kind")}</label>
+            <select
+              id="tadj-kind"
+              value={draft.kind}
+              onChange={(e) => {
+                const kind = (["advance", "credit", "apply", "cancel", "reverse"] as const).find(
+                  (kind) => kind === e.target.value,
+                );
+                if (kind)
+                  change({ kind, actionId: crypto.randomUUID(), sourceId: "", targetId: "" });
+              }}
+            >
+              {(["advance", "credit", "apply", "cancel", "reverse"] as const).map((kind) => (
+                <option key={kind} value={kind}>
+                  {t(`tadj.${kind}`)}
+                </option>
+              ))}
+            </select>
+          </div>
+          {(["accountingDate", "documentDate", "taxDate"] as const).map((field) => (
+            <div key={field} className="ui-field">
+              <label htmlFor={`tadj-${field}`}>{t(`tinv.${field}`)}</label>
+              <input
+                id={`tadj-${field}`}
+                type="date"
+                value={draft[field]}
+                onChange={(e) => change({ [field]: e.target.value })}
+              />
+            </div>
           ))}
-          {result.creditLines.map((line) => (
-            <p key={line.sourceLineId}>
-              {line.sourceLineId} · {line.quantity} ·{t("tinv.net")}: {money(line.net)} ·{" "}
-              {t("tinv.tax")}: {money(line.tax)}
-            </p>
-          ))}
-          {preview && (
-            <table aria-label={t("tinv.previewTitle")}>
-              <thead>
-                <tr>
-                  {(
-                    [
-                      "journal.account",
-                      "journal.debit",
-                      "journal.credit",
-                      "journal.dimensions",
-                    ] as const
-                  ).map((key) => (
-                    <th key={key}>{t(key)}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {previewLines.map(({ id, line }) => (
-                  <tr key={id}>
-                    <td>{line.account}</td>
-                    <td>{money(line.debit)}</td>
-                    <td>{money(line.credit)}</td>
-                    <td>
-                      {Object.entries(line.dimensions)
-                        .map(([key, value]) => `${key}=${value}`)
-                        .join(", ")}
-                    </td>
-                  </tr>
+          {draft.kind === "advance" && (
+            <>
+              <div className="ui-field">
+                <label htmlFor="tadj-side">{t("trade.side")}</label>
+                <select
+                  id="tadj-side"
+                  value={draft.side}
+                  onChange={(e) => change({ side: e.target.value === "AR" ? "AR" : "AP" })}
+                >
+                  <option value="AP">{t("trade.AP")}</option>
+                  <option value="AR">{t("trade.AR")}</option>
+                </select>
+              </div>
+              <div className="ui-field">
+                <label htmlFor="tadj-party">{t("tinv.party")}</label>
+                <input
+                  id="tadj-party"
+                  value={draft.party}
+                  onChange={(e) => change({ party: e.target.value })}
+                />
+              </div>
+            </>
+          )}
+        </fieldset>
+      </FastTab>
+      <FastTab id="tadj-allocation" title={t("tadj.allocation")}>
+        <fieldset disabled={locked} className="tadj-allocation">
+          {draft.kind === "credit" && <p className="tadj-hint">{t("tadj.creditHint")}</p>}
+          {draft.kind === "reverse" && <p className="tadj-hint">{t("tadj.reverseHint")}</p>}
+          <div className="ui-form-grid">
+            {draft.kind !== "advance" && draft.kind !== "reverse" && itemSelect("sourceId")}
+            {draft.kind === "apply" && itemSelect("targetId")}
+            {(draft.kind === "advance" || draft.kind === "apply") && (
+              <div className="ui-field">
+                <label htmlFor="tadj-gross">{t("tadj.gross")}</label>
+                <input
+                  id="tadj-gross"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={draft.gross}
+                  onChange={(e) => change({ gross: e.target.value })}
+                />
+              </div>
+            )}
+            {draft.kind === "cancel" && (
+              <div className="ui-field">
+                <label htmlFor="tadj-relatedRevision">{t("tadj.relatedRevision")}</label>
+                <input
+                  id="tadj-relatedRevision"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={draft.relatedRevision}
+                  onChange={(e) => change({ relatedRevision: e.target.value })}
+                />
+              </div>
+            )}
+            {draft.kind === "reverse" && (
+              <div className="ui-field">
+                <label htmlFor="tadj-settlementId">{t("tadj.settlementId")}</label>
+                <input
+                  id="tadj-settlementId"
+                  value={draft.settlementId}
+                  onChange={(e) => change({ settlementId: e.target.value })}
+                />
+              </div>
+            )}
+          </div>
+          {draft.kind === "credit" && (
+            <div className="tadj-lines">
+              {draft.lines.map((line, index) => (
+                <div key={line.id} className="tadj-line">
+                  <div className="ui-field">
+                    <label htmlFor={`tadj-line-${line.id}`}>{t("tadj.sourceLine")}</label>
+                    <input
+                      id={`tadj-line-${line.id}`}
+                      value={line.sourceLineId}
+                      onChange={(e) =>
+                        change({
+                          lines: draft.lines.map((line, i) =>
+                            i === index ? { ...line, sourceLineId: e.target.value } : line,
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="ui-field">
+                    <label htmlFor={`tadj-quantity-${line.id}`}>{t("tinv.quantity")}</label>
+                    <input
+                      id={`tadj-quantity-${line.id}`}
+                      inputMode="decimal"
+                      value={line.quantity}
+                      onChange={(e) =>
+                        change({
+                          lines: draft.lines.map((line, i) =>
+                            i === index ? { ...line, quantity: e.target.value } : line,
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-subtle"
+                    disabled={draft.lines.length === 1}
+                    onClick={() => change({ lines: draft.lines.filter((_, i) => i !== index) })}
+                  >
+                    {t("tinv.removeLine")}
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={draft.lines.length >= 100}
+                onClick={() =>
+                  change({
+                    lines: [
+                      ...draft.lines,
+                      { id: crypto.randomUUID(), sourceLineId: "", quantity: "" },
+                    ],
+                  })
+                }
+              >
+                {t("tadj.addLine")}
+              </button>
+            </div>
+          )}
+          {draft.kind === "reverse" && (
+            <div className="tadj-items">
+              {rows
+                .filter((row) => row.status !== "cancelled")
+                .map((row) => (
+                  <label key={row.itemId} className="ui-check">
+                    <input
+                      type="checkbox"
+                      checked={draft.items.includes(row.itemId)}
+                      disabled={!draft.items.includes(row.itemId) && draft.items.length >= 100}
+                      onChange={(e) =>
+                        change({
+                          items: e.target.checked
+                            ? [...draft.items, row.itemId]
+                            : draft.items.filter((id) => id !== row.itemId),
+                        })
+                      }
+                    />
+                    <span>
+                      {row.externalNo} · {row.itemId} · v{row.revision}
+                    </span>
+                  </label>
                 ))}
-              </tbody>
-            </table>
+            </div>
           )}
-          <p>
-            {t("tadj.links")}: {result.links.join(", ")}
-          </p>
-          {receipt && (
-            <p role="status">
-              {t("tadj.posted")} {receipt.sourceRef} · {receipt.journalIds.join(", ")}
+          {irreversible && (
+            <div className="ui-field">
+              <label htmlFor="tadj-reason">{t("tadj.reason")}</label>
+              <input
+                id="tadj-reason"
+                maxLength={160}
+                value={draft.reason}
+                onChange={(e) => change({ reason: e.target.value })}
+              />
+            </div>
+          )}
+          {page.hasNextPage && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => void page.fetchNextPage()}
+            >
+              {t("master.loadMore")}
+            </button>
+          )}
+        </fieldset>
+      </FastTab>
+      {result && (
+        <FastTab id="tadj-result" title={t("tadj.result")}>
+          <section className="tadj-result" aria-label={t("tadj.result")}>
+            <dl className="kpis">
+              <div className="kpi emphasis">
+                <dt className="label">{t(`tadj.${result.kind}`)}</dt>
+                <dd className="value">{money(result.gross)}</dd>
+              </div>
+            </dl>
+            <div className="grid-wrap">
+              <table className="grid tadj-changes">
+                {head([
+                  "tset.item",
+                  "trpt.kind",
+                  "tset.remaining",
+                  "tinv.net",
+                  "tinv.tax",
+                  "tadj.revision",
+                  "tadj.status",
+                ])}
+                <tbody>
+                  {result.changes.map(({ after }) => (
+                    <tr key={after.itemId}>
+                      <td>{after.itemId}</td>
+                      <td>{t(`tadj.${after.kind}`)}</td>
+                      <td>{money(after.remainingGross)}</td>
+                      <td>{money(after.remainingNet)}</td>
+                      <td>{money(after.remainingTax)}</td>
+                      <td>v{after.revision}</td>
+                      <td>{t(`tadj.${after.status}`)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {result.creditLines.length > 0 && (
+              <div className="grid-wrap">
+                <table className="grid tadj-credit">
+                  {head(["tadj.sourceLine", "tinv.quantity", "tinv.net", "tinv.tax"])}
+                  <tbody>
+                    {result.creditLines.map((line) => (
+                      <tr key={line.sourceLineId}>
+                        <td>{line.sourceLineId}</td>
+                        <td>{line.quantity}</td>
+                        <td>{money(line.net)}</td>
+                        <td>{money(line.tax)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {preview && (
+              <div className="grid-wrap">
+                <table className="grid tadj-journal" aria-label={t("tinv.previewTitle")}>
+                  {head([
+                    "journal.account",
+                    "journal.debit",
+                    "journal.credit",
+                    "journal.dimensions",
+                  ])}
+                  <tbody>
+                    {previewLines.map(({ id, line }) => (
+                      <tr key={id}>
+                        <td>{line.account}</td>
+                        <td>{money(line.debit)}</td>
+                        <td>{money(line.credit)}</td>
+                        <td>
+                          {Object.entries(line.dimensions)
+                            .map(([key, value]) => `${key}=${value}`)
+                            .join(", ")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <p className="tadj-links">
+              {t("tadj.links")}: {result.links.join(", ")}
             </p>
-          )}
-        </section>
+          </section>
+        </FastTab>
       )}
-    </>
+    </div>
   );
 }

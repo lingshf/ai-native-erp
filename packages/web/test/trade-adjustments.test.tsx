@@ -230,6 +230,21 @@ describe("typed trade adjustments", () => {
     expect(posts[0].command).toMatchObject({ gross: 1235 });
     expect(screen.getByText(t("tadj.boundary"))).not.toBeNull();
   });
+  it("styles only the irreversible cancel and reverse confirmations as dangerous", async () => {
+    mockApi();
+    await open();
+    const confirm = () => screen.getByRole("button", { name: t("tadj.confirm") });
+    for (const [kind, danger] of [
+      ["advance", false],
+      ["credit", false],
+      ["apply", false],
+      ["cancel", true],
+      ["reverse", true],
+    ] as const) {
+      fireEvent.change(screen.getByLabelText(t("tadj.kind")), { target: { value: kind } });
+      expect(confirm().classList.contains("btn-danger")).toBe(danger);
+    }
+  });
   it.each(["credit", "apply", "cancel", "reverse"] as const)(
     "builds a strict %s command from typed fields and current item revisions",
     async (kind) => {

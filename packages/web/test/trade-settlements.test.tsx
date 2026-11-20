@@ -274,4 +274,31 @@ describe("trade payments and receipts", () => {
     expect(posts).toHaveLength(2);
     expect(posts[1]).toEqual(posts[0]);
   });
+  it("does not derive due or remaining from a refreshed draft before its open items load", async () => {
+    mockApi();
+    const first = render(<App />);
+    await selectPartial();
+    first.unmount();
+    const stub = vi.mocked(fetch);
+    const real = stub.getMockImplementation();
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    stub.mockImplementation(async (path, init) => {
+      if (String(path).startsWith("/api/v1/trade/open-items")) await gate;
+      return real?.(path, init) as Promise<Response>;
+    });
+    render(<App />);
+    const kpis = await screen.findByText(t("tset.allocated"));
+    const card = () => kpis.closest("dl")?.textContent ?? "";
+    await waitFor(() => expect(card()).toContain("56.50"));
+    expect(card().split(t("tset.unloaded")).length).toBe(3);
+    expect(card()).not.toContain("-56.50");
+    expect(card()).not.toContain("−56.50");
+    release();
+    await screen.findByText("INV-1");
+    await waitFor(() => expect(card()).toContain("113.00"));
+    expect(card()).not.toContain(t("tset.unloaded"));
+  });
 });

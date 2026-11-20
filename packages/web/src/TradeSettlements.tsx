@@ -17,6 +17,10 @@ import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
 import { label, type Preferences } from "./ui/index.ts";
 import { useInvoiceLeaveGuard } from "./TradeInvoices.tsx";
+import { FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
+import "./pages/trade-settlements.css";
+
+type Key = Exclude<Parameters<typeof label>[1], "shell.httpError">;
 
 type Pending = ReturnType<typeof tradeSettlementConfirmSchema.parse>;
 type Saved = { command: TradeSettlementCommandDto; pending: Pending | null };
@@ -104,27 +108,44 @@ export function TradeSettlements({ preferences }: { preferences: Preferences }) 
   const rows = companies.data?.pages.flatMap((page) => page.items) ?? [];
   const company = rows.find((row) => row.code === (selected || rows[0]?.code));
   return (
-    <section>
-      <h2>{t("tset.title")}</h2>
-      <p>{t("tset.boundary")}</p>
-      {companies.isError && <p role="alert">{t("master.error")}</p>}
-      <label htmlFor="tset-company">{t("master.company")}</label>
-      <select
-        id="tset-company"
-        disabled={guard.busy}
-        value={company?.code ?? ""}
-        onChange={(event) => setSelected(event.target.value)}
-      >
-        {rows.map((row) => (
-          <option key={row.code} value={row.code}>
-            {row.code} · {row.name}
-          </option>
-        ))}
-      </select>
-      {companies.hasNextPage && (
-        <button type="button" onClick={() => void companies.fetchNextPage()}>
-          {t("master.loadMore")}
-        </button>
+    <section className="page trade-settlements">
+      <PageHeader
+        title={t("tset.title")}
+        description={t("tset.description")}
+        context={
+          <>
+            <div className="field">
+              <label htmlFor="tset-company">{t("master.company")}</label>
+              <select
+                id="tset-company"
+                disabled={guard.busy}
+                value={company?.code ?? ""}
+                onChange={(event) => setSelected(event.target.value)}
+              >
+                {rows.map((row) => (
+                  <option key={row.code} value={row.code}>
+                    {row.code} · {row.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {companies.hasNextPage && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => void companies.fetchNextPage()}
+              >
+                {t("master.loadMore")}
+              </button>
+            )}
+          </>
+        }
+      />
+      <MessageBar tone="info">{t("tset.boundary")}</MessageBar>
+      {companies.isError && (
+        <MessageBar tone="danger" role="alert">
+          {t("master.error")}
+        </MessageBar>
       )}
       {company && (
         <SettlementEntry
@@ -150,6 +171,25 @@ function SettlementEntry({
   const t = (key: Exclude<Parameters<typeof label>[1], "shell.httpError">) =>
     label(preferences.language, key);
   const money = (minor: number) => formatMinor(minor, preferences.language, company.scale);
+  const head = (keys: Key[]) => (
+    <thead>
+      <tr>
+        {keys.map((key) => (
+          <th key={key}>{t(key)}</th>
+        ))}
+      </tr>
+    </thead>
+  );
+  const kpis = (entries: [Key, number][]) => (
+    <dl className="kpis">
+      {entries.map(([key, value], index) => (
+        <div key={key} className={index === 1 ? "kpi emphasis" : "kpi"}>
+          <dt className="label">{t(key)}</dt>
+          <dd className="value">{Number.isNaN(value) ? t("tset.unloaded") : money(value)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
   const [loaded] = useState(() => initial(company));
   const [saved, setSaved] = useState(loaded.saved);
   const [storageFailed, setStorageFailed] = useState(loaded.failed);
@@ -301,234 +341,285 @@ function SettlementEntry({
       if (sequence.current === version) setBusy(false);
     }
   }
+  // 已选未结项尚未加载时余额未知：NaN 使应付/应收与剩余显示“待加载”，不按 0 推算。
+  const due = command.items.reduce(
+    (sum, item) => sum + (rows.find((row) => row.itemId === item.itemId)?.remainingGross ?? NaN),
+    0,
+  );
+  const allocated = command.items.reduce((sum, item) => sum + item.gross, 0);
   return (
-    <>
-      {storageFailed && <p role="alert">{t("tinv.storageFailed")}</p>}
-      <fieldset disabled={locked}>
-        <label htmlFor="tset-side">{t("trade.side")}</label>
-        <select
-          id="tset-side"
-          value={command.side}
-          onChange={(e) =>
-            change({ ...command, side: e.target.value === "AR" ? "AR" : "AP", items: [] })
-          }
-        >
-          <option value="AP">{t("trade.AP")}</option>
-          <option value="AR">{t("trade.AR")}</option>
-        </select>
-        <label htmlFor="tset-party">{t("tinv.party")}</label>
-        <input
-          id="tset-party"
-          value={command.party}
-          onChange={(e) => change({ ...command, party: e.target.value, items: [] })}
-        />
-        {(["accountingDate", "documentDate", "taxDate"] as const).map((field) => (
-          <label key={field}>
-            {t(`tinv.${field}`)}
-            <input
-              type="date"
-              value={command[field]}
-              onChange={(e) => change({ ...command, [field]: e.target.value })}
-            />
-          </label>
-        ))}
-        <p>{t("tset.minorHint")}</p>
-        <div className="accounts-scroll" ref={scroll}>
-          <table aria-label={t("tset.select")}>
-            <thead>
-              <tr>
-                {(
-                  [
-                    "tset.select",
-                    "tinv.party",
-                    "tinv.externalInvoice",
-                    "tset.remaining",
-                    "tset.amount",
-                    "tset.discount",
-                  ] as const
-                ).map((key) => (
-                  <th key={key}>{t(key)}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {virtual && measured[0]?.start ? (
-                <tr>
-                  <td colSpan={6} style={{ height: measured[0].start, padding: 0 }} />
-                </tr>
-              ) : null}
-              {visible.map(({ row, index }) => {
-                if (!row) return null;
-                const selected = command.items.find((item) => item.itemId === row.itemId);
-                const available =
-                  row.kind === "invoice" &&
-                  command.accountingDate >= row.documentDate &&
-                  command.accountingDate <= row.discountDate &&
-                  Number(row.discountPercent) > 0 &&
-                  (row.allowPartialDiscount ||
-                    (row.remainingGross === row.gross &&
-                      (selected?.gross ?? row.remainingGross) === row.gross));
-                const eligible =
-                  row.side === command.side &&
-                  row.party === command.party &&
-                  row.currency === company.currency &&
-                  (!firstSelected ||
-                    (firstSelected.kind === "invoice") === (row.kind === "invoice"));
-                return (
-                  <tr key={row.itemId} aria-rowindex={index + 2} style={{ height: 48 }}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        aria-label={`${t("tset.select")} ${row.externalNo}`}
-                        checked={!!selected}
-                        disabled={!eligible || (!selected && command.items.length >= 100)}
-                        onChange={(e) =>
-                          change({
-                            ...command,
-                            items: e.target.checked
-                              ? [
-                                  ...command.items,
-                                  {
-                                    itemId: row.itemId,
-                                    revision: row.revision,
-                                    gross: row.remainingGross,
-                                    takeDiscount: false,
-                                  },
-                                ]
-                              : command.items.filter((item) => item.itemId !== row.itemId),
-                          })
-                        }
-                      />
-                    </td>
-                    <td>
-                      {row.party} · {row.side}
-                    </td>
-                    <td>
-                      <span>{row.externalNo}</span> · {t(`tadj.${row.kind}`)}
-                    </td>
-                    <td>{money(row.remainingGross)}</td>
-                    <td>
-                      {selected && (
-                        <input
-                          type="number"
-                          min={1}
-                          max={row.remainingGross}
-                          step={1}
-                          aria-label={`${t("tset.amount")} ${row.externalNo}`}
-                          value={selected.gross}
-                          onChange={(e) =>
-                            change({
-                              ...command,
-                              items: command.items.map((item) =>
-                                item.itemId === row.itemId
-                                  ? {
-                                      ...item,
-                                      gross:
-                                        Number.isSafeInteger(Number(e.target.value)) &&
-                                        Number(e.target.value) > 0
-                                          ? Number(e.target.value)
-                                          : item.gross,
-                                      takeDiscount: false,
-                                    }
-                                  : item,
-                              ),
-                            })
-                          }
-                        />
-                      )}
-                    </td>
-                    <td>
-                      <span>
-                        {row.discountPercent}% · {row.discountDate} ·{" "}
-                        {t(available ? "tset.available" : "tset.unavailable")}
-                      </span>
-                      {selected && (
-                        <input
-                          type="checkbox"
-                          aria-label={`${t("tset.discount")} ${row.externalNo}`}
-                          checked={selected.takeDiscount}
-                          disabled={!available && !selected.takeDiscount}
-                          onChange={(e) =>
-                            change({
-                              ...command,
-                              items: command.items.map((item) =>
-                                item.itemId === row.itemId
-                                  ? { ...item, takeDiscount: e.target.checked }
-                                  : item,
-                              ),
-                            })
-                          }
-                        />
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-              {virtual && measured.length > 0 && (
-                <tr>
-                  <td
-                    colSpan={6}
-                    style={{
-                      height: virtualizer.getTotalSize() - (measured.at(-1)?.end ?? 0),
-                      padding: 0,
-                    }}
-                  />
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        {page.hasNextPage && (
-          <button
-            type="button"
-            disabled={page.isFetchingNextPage}
-            onClick={() => void page.fetchNextPage()}
-          >
-            {t("master.loadMore")}
-          </button>
-        )}
+    <div className="tset-entry">
+      <div className="tset-command-bar">
         <button
           type="button"
-          disabled={command.items.length === 0}
+          className="btn btn-secondary"
+          disabled={locked || command.items.length === 0}
           onClick={() => void runPreview()}
         >
           {t("tinv.preview")}
         </button>
-        <button type="button" disabled={!preview} onClick={() => void confirm()}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={locked || !preview}
+          onClick={() => void confirm()}
+        >
           {t("tset.confirm")}
         </button>
-      </fieldset>
-      {page.isError && <p role="alert">{t("master.error")}</p>}
-      {error && <p role="alert">{error}</p>}
+      </div>
+      {[storageFailed && t("tinv.storageFailed"), page.isError && t("master.error"), error].map(
+        (text) =>
+          text && (
+            <MessageBar key={text} tone="danger" role="alert">
+              {text}
+            </MessageBar>
+          ),
+      )}
       {saved.pending && (
-        <div role="alert">
-          {t("tinv.uncertain")}
-          <button type="button" disabled={busy || storageFailed} onClick={() => void confirm()}>
+        <MessageBar tone="warning" role="alert">
+          <p>{t("tinv.uncertain")}</p>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={busy || storageFailed}
+            onClick={() => void confirm()}
+          >
             {t("tinv.retryConfirm")}
           </button>
-        </div>
+        </MessageBar>
       )}
-      {result && (
-        <section aria-label={t("tset.result")}>
-          <h3>{t("tset.result")}</h3>
-          <p>
-            {t("tset.amount")}: {money(result.gross)} · {t("tset.cash")}: {money(result.cash)} ·{" "}
-            {t("tset.discount")}: {money(result.discount)}
-          </p>
-          {result.allocations.map((a) => (
-            <p key={a.itemId}>
-              {a.itemId} · {t("tinv.net")}: {money(a.net)} · {t("tinv.tax")}: {money(a.tax)} ·{" "}
-              {t("tset.settled")}: {money(a.settledGross)} · {t("tset.remaining")}:{" "}
-              {money(a.remainingGross)}
-            </p>
+      {receipt && (
+        <MessageBar tone="success" role="status">
+          {t("tset.posted")} {receipt.sourceRef} · {receipt.journalIds.join(", ")}
+        </MessageBar>
+      )}
+      <TeachingTip teaching={preferences.teaching} title={t("master.teachingTitle")}>
+        {t("tset.teaching")}
+      </TeachingTip>
+      <FastTab id="tset-general" title={t("master.general")}>
+        <fieldset disabled={locked} className="ui-form-grid">
+          <div className="ui-field">
+            <label htmlFor="tset-side">{t("trade.side")}</label>
+            <select
+              id="tset-side"
+              value={command.side}
+              onChange={(e) =>
+                change({ ...command, side: e.target.value === "AR" ? "AR" : "AP", items: [] })
+              }
+            >
+              <option value="AP">{t("trade.AP")}</option>
+              <option value="AR">{t("trade.AR")}</option>
+            </select>
+          </div>
+          <div className="ui-field">
+            <label htmlFor="tset-party">{t("tinv.party")}</label>
+            <input
+              id="tset-party"
+              value={command.party}
+              onChange={(e) => change({ ...command, party: e.target.value, items: [] })}
+            />
+          </div>
+          {(["accountingDate", "documentDate", "taxDate"] as const).map((field) => (
+            <div key={field} className="ui-field">
+              <label htmlFor={`tset-${field}`}>{t(`tinv.${field}`)}</label>
+              <input
+                id={`tset-${field}`}
+                type="date"
+                value={command[field]}
+                onChange={(e) => change({ ...command, [field]: e.target.value })}
+              />
+            </div>
           ))}
-          {receipt && (
-            <p role="status">
-              {t("tset.posted")} {receipt.sourceRef} · {receipt.journalIds.join(", ")}
-            </p>
+        </fieldset>
+      </FastTab>
+      <FastTab id="tset-allocation" title={t("tset.allocation")}>
+        <fieldset disabled={locked} className="tset-allocation">
+          <p className="tset-hint">{t("tset.minorHint")}</p>
+          {kpis([
+            [`trade.${command.side}`, due],
+            ["tset.allocated", allocated],
+            ["tset.remaining", due - allocated],
+          ])}
+          <div className="grid-wrap accounts-scroll" ref={scroll}>
+            <table className="grid" aria-label={t("tset.select")}>
+              {head([
+                "tset.select",
+                "tinv.party",
+                "tinv.externalInvoice",
+                "tset.remaining",
+                "tset.amount",
+                "tset.discount",
+              ])}
+              <tbody>
+                {virtual && measured[0]?.start ? (
+                  <tr>
+                    <td colSpan={6} style={{ height: measured[0].start, padding: 0 }} />
+                  </tr>
+                ) : null}
+                {visible.map(({ row, index }) => {
+                  if (!row) return null;
+                  const selected = command.items.find((item) => item.itemId === row.itemId);
+                  const available =
+                    row.kind === "invoice" &&
+                    command.accountingDate >= row.documentDate &&
+                    command.accountingDate <= row.discountDate &&
+                    Number(row.discountPercent) > 0 &&
+                    (row.allowPartialDiscount ||
+                      (row.remainingGross === row.gross &&
+                        (selected?.gross ?? row.remainingGross) === row.gross));
+                  const eligible =
+                    row.side === command.side &&
+                    row.party === command.party &&
+                    row.currency === company.currency &&
+                    (!firstSelected ||
+                      (firstSelected.kind === "invoice") === (row.kind === "invoice"));
+                  return (
+                    <tr key={row.itemId} aria-rowindex={index + 2} style={{ height: 48 }}>
+                      <td>
+                        <label>
+                          <input
+                            type="checkbox"
+                            aria-label={`${t("tset.select")} ${row.externalNo}`}
+                            checked={!!selected}
+                            disabled={!eligible || (!selected && command.items.length >= 100)}
+                            onChange={(e) =>
+                              change({
+                                ...command,
+                                items: e.target.checked
+                                  ? [
+                                      ...command.items,
+                                      {
+                                        itemId: row.itemId,
+                                        revision: row.revision,
+                                        gross: row.remainingGross,
+                                        takeDiscount: false,
+                                      },
+                                    ]
+                                  : command.items.filter((item) => item.itemId !== row.itemId),
+                              })
+                            }
+                          />
+                        </label>
+                      </td>
+                      <td>
+                        {row.party} · {row.side}
+                      </td>
+                      <td>
+                        <span>{row.externalNo}</span> · {t(`tadj.${row.kind}`)}
+                      </td>
+                      <td>{money(row.remainingGross)}</td>
+                      <td>
+                        {selected && (
+                          <input
+                            type="number"
+                            min={1}
+                            max={row.remainingGross}
+                            step={1}
+                            aria-label={`${t("tset.amount")} ${row.externalNo}`}
+                            value={selected.gross}
+                            onChange={(e) =>
+                              change({
+                                ...command,
+                                items: command.items.map((item) =>
+                                  item.itemId === row.itemId
+                                    ? {
+                                        ...item,
+                                        gross:
+                                          Number.isSafeInteger(Number(e.target.value)) &&
+                                          Number(e.target.value) > 0
+                                            ? Number(e.target.value)
+                                            : item.gross,
+                                        takeDiscount: false,
+                                      }
+                                    : item,
+                                ),
+                              })
+                            }
+                          />
+                        )}
+                      </td>
+                      <td>
+                        <span className="tset-discount">
+                          {row.discountPercent}% · {row.discountDate} ·{" "}
+                          {t(available ? "tset.available" : "tset.unavailable")}
+                          {selected && (
+                            <label>
+                              <input
+                                type="checkbox"
+                                aria-label={`${t("tset.discount")} ${row.externalNo}`}
+                                checked={selected.takeDiscount}
+                                disabled={!available && !selected.takeDiscount}
+                                onChange={(e) =>
+                                  change({
+                                    ...command,
+                                    items: command.items.map((item) =>
+                                      item.itemId === row.itemId
+                                        ? { ...item, takeDiscount: e.target.checked }
+                                        : item,
+                                    ),
+                                  })
+                                }
+                              />
+                            </label>
+                          )}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {virtual && measured.length > 0 && (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      style={{
+                        height: virtualizer.getTotalSize() - (measured.at(-1)?.end ?? 0),
+                        padding: 0,
+                      }}
+                    />
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {page.hasNextPage && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={page.isFetchingNextPage}
+              onClick={() => void page.fetchNextPage()}
+            >
+              {t("master.loadMore")}
+            </button>
           )}
-        </section>
+        </fieldset>
+      </FastTab>
+      {result && (
+        <FastTab id="tset-result" title={t("tset.result")}>
+          <section className="tset-result" aria-label={t("tset.result")}>
+            {kpis([
+              ["tset.amount", result.gross],
+              ["tset.cash", result.cash],
+              ["tset.discountAmount", result.discount],
+            ])}
+            <div className="grid-wrap">
+              <table className="grid">
+                {head(["tset.item", "tinv.net", "tinv.tax", "tset.settled", "tset.remaining"])}
+                <tbody>
+                  {result.allocations.map((a) => (
+                    <tr key={a.itemId}>
+                      <td>{a.itemId}</td>
+                      <td>{money(a.net)}</td>
+                      <td>{money(a.tax)}</td>
+                      <td>{money(a.settledGross)}</td>
+                      <td>{money(a.remainingGross)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </FastTab>
       )}
-    </>
+    </div>
   );
 }
