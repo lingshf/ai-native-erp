@@ -274,7 +274,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | 暂定 ID | 冲突域 | 依赖全局规则的声明（UI-09g 证据） | 类型 |
 | --- | --- | --- | --- |
-| S5-a | web-ui:journals | BusinessEvents.tsx 无类的 `legend`（font-weight、padding）、`form > fieldset > label > select`（width / background / color / border / radius / padding / min-height）、无类按钮（:407 `.segmented`、1125、1183、1401/1402、1467、1701/1702 的 background / color / border / padding / cursor / font-weight / hover / active / disabled）、VirtualRows 表头 :860、1174 的 `th, td { padding }`；凭证页复选框 | 页面 tsx + CSS |
+| S5-a | web-ui:journals | BusinessEvents.tsx 无类的 `legend`（font-weight、padding）、`form > fieldset > label > select`（width / background / color / border / radius / padding / min-height）、无类按钮（1125、1183、1401/1402、1467、1701/1702 的 background / color / border / padding / cursor / font-weight / hover / active / disabled）、VirtualRows 表头 :860、1174 的 `th, td { padding }`；凭证页复选框 | 页面 tsx + CSS |
 | S5-b | web-ui:migration | `dl { display }`、`dt { color }`、`dd { margin }`、`@media 680 dd { margin-bottom }`、`thead { background }`；另含已有问题：`.kv` 表不在独立滚动区（UI-10e 引入，版式检查报 `not in own scroller`） | CSS（必要时 tsx） |
 | S5-c | web-ui:trade | 发票 / 结算复选框（width / height / flex-shrink / accent-color）、`.tinv-facts` / `.trpt-facts` 的 `dl { display }`、贸易报表 `button.cell-link { border-radius }`、发票过账预览 / PO 匹配 `caption` | CSS |
 | S5-d | web-ui:trade-orders | 订单页复选框、`.tord-facts` 的 `dl { display }`（若仍依赖） | CSS |
