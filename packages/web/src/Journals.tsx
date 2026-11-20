@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent,
@@ -231,14 +232,16 @@ function CompanyJournals({
       focusLine.current = null;
     }
   }, [lineCount]);
-  useEffect(() => {
+  // Layout phase: a passive effect after an async commit returns focus one task late.
+  useLayoutEffect(() => {
     if (!busy && !plan && !deleting && document.activeElement === document.body) {
       const previous = returnFocus.current;
       if (previous?.isConnected) previous.focus();
       else if (previous) document.getElementById("journal-company")?.focus();
     }
   }, [busy, plan, deleting]);
-  useEffect(() => {
+  // Layout phase: a draft loaded over HTTP otherwise leaves focus on body for one task.
+  useLayoutEffect(() => {
     if (draft?.id) form.current?.querySelector<HTMLInputElement>("input")?.focus();
   }, [draft?.id]);
   const listing = useInfiniteQuery({
