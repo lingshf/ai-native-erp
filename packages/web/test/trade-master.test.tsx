@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import { App } from "../src/App.tsx";
 import { label } from "../src/ui/index.ts";
@@ -30,9 +30,117 @@ const terms: TradeDto = {
   },
 };
 const response = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+function tradeRow(code: string) {
+  const row = screen
+    .getAllByRole("row")
+    .find((candidate) => within(candidate).queryAllByRole("cell")[0]?.textContent === code);
+  if (!row) throw new Error(`missing trade row ${code}`);
+  return row;
+}
+// The read-only active column: the row keeps no checkbox, only one badge whose visible text names the state.
+function activeBadge(code: string) {
+  const row = tradeRow(code);
+  expect(within(row).queryByRole("checkbox")).toBeNull();
+  const badges = row.querySelectorAll<HTMLElement>(".badge");
+  expect(badges).toHaveLength(1);
+  const badge = badges[0];
+  expect(badge.hasAttribute("tabindex")).toBe(false);
+  expect(badge.querySelector("[tabindex], a, button, input")).toBeNull();
+  const symbol = badge.querySelector('[aria-hidden="true"]')?.textContent ?? "";
+  return { text: (badge.textContent ?? "").slice(symbol.length), tone: badge.className };
+}
 beforeEach(() => window.history.replaceState(null, "", "/#/trade"));
 afterEach(() => window.history.replaceState(null, "", "/"));
 describe("trade master maintenance", () => {
+  it("shows the read-only active state of every kind as unfocusable badges", async () => {
+    const period = { name: "Fixture", from: "2026-01-01", to: "2026-12-31" };
+    const fixtures: { [K in TradeDto["kind"]]: Extract<TradeDto, { kind: K }>["data"] } = {
+      tradeParty: {
+        ...period,
+        role: "vendor",
+        apProfile: "AP",
+        arProfile: null,
+        terms: "NET30",
+        allowedTaxCodes: [],
+        defaultDimensions: {},
+      },
+      tradeProduct: {
+        ...period,
+        type: "expense",
+        expenseAccount: "5000",
+        revenueAccount: null,
+        allowedTaxCodes: [],
+        defaultDimensions: {},
+      },
+      tradeProfile: {
+        ...period,
+        side: "AP",
+        controlAccount: "2100",
+        advanceAccount: "1250",
+        cashAccount: "1000",
+        discountAccount: "4000",
+      },
+      tradeTerms: terms.data as Extract<TradeDto, { kind: "tradeTerms" }>["data"],
+      taxCode: {
+        ...period,
+        mode: "ordinary",
+        rates: [{ id: "R", from: "2026-01-01", to: "2026-12-31", ratePercent: "13" }],
+        deductiblePercent: "100",
+        inputAccount: "1400",
+        outputAccount: "2200",
+      },
+    };
+    const kinds = Object.keys(fixtures) as TradeDto["kind"][];
+    const code = (kind: string, state: string) => `${kind.toUpperCase()}-${state}`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockImplementation(async (path) => {
+        if (String(path).startsWith("/api/v1/companies"))
+          return response({ items: [company], nextCursor: null });
+        const kind = new URL(String(path), "http://localhost").pathname
+          .split("/")
+          .at(-1) as TradeDto["kind"];
+        const row = { kind, active: true, revision: 1, data: fixtures[kind] };
+        return response({
+          items: [
+            { ...row, code: code(kind, "ON") },
+            { ...row, code: code(kind, "OFF"), active: false },
+          ],
+          nextCursor: null,
+        });
+      }),
+    );
+    render(<App />);
+    await screen.findByRole("button", { name: label("zh", "trade.new") });
+    let current: "zh" | "en" = "zh";
+    for (const [index, kind] of kinds.entries()) {
+      const language = index % 2 ? "en" : "zh";
+      fireEvent.change(screen.getByLabelText(label(current, "shell.language")), {
+        target: { value: language },
+      });
+      current = language;
+      fireEvent.change(screen.getByLabelText(label(language, "trade.kind")), {
+        target: { value: kind },
+      });
+      await screen.findByRole("button", {
+        name: `${label(language, "trade.edit")} ${code(kind, "OFF")}`,
+      });
+      expect(activeBadge(code(kind, "ON"))).toEqual({
+        text: label(language, "master.active"),
+        tone: "badge success",
+      });
+      expect(tradeRow(code(kind, "ON")).querySelector(".badge")?.textContent).toBe(
+        `✓${label(language, "master.active")}`,
+      );
+      expect(activeBadge(code(kind, "OFF"))).toEqual({
+        text: label(language, "master.inactive"),
+        tone: "badge",
+      });
+      const list = screen.getByRole("region", { name: label(language, `trade.${kind}`) });
+      expect(list.querySelectorAll(".badge")).toHaveLength(2);
+      expect(within(list).queryAllByRole("checkbox")).toHaveLength(0);
+    }
+  });
   it("preserves dirty drafts by locking object switches and confirming explicit cancellation or navigation", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     vi.stubGlobal(

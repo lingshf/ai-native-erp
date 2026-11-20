@@ -14,7 +14,7 @@ import {
 import { label, type LabelKey, type Preferences } from "./ui/index.ts";
 import { masterTeaching } from "./ui/trade-master-teaching.ts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
-import { FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
+import { Badge, FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import "./pages/master.css";
 
 type T = (key: Exclude<LabelKey, "shell.httpError">) => string;
@@ -292,14 +292,11 @@ function TradePane({
                   <td>{row.code}</td>
                   <td>{row.data.name}</td>
                   <td>
-                    <label className="ui-master-hit">
-                      <input
-                        type="checkbox"
-                        checked={row.active}
-                        disabled
-                        aria-label={`${t("master.active")} ${row.code}`}
-                      />
-                    </label>
+                    {row.active ? (
+                      <Badge tone="success">{t("master.active")}</Badge>
+                    ) : (
+                      <span className="badge">{t("master.inactive")}</span>
+                    )}
                   </td>
                   <td>
                     <button
