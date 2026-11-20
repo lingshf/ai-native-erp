@@ -22,7 +22,7 @@
   border-left-color: var(--color-success);
 }
 .period-close > fieldset,
-.period-close .admission {
+.period-close #trade-period-admission-body > fieldset {
   display: grid;
   gap: var(--space-4);
   min-width: 0;
@@ -51,24 +51,24 @@
   display: inline-flex;
   gap: var(--space-2);
 }
-.period-close .admission > p {
+.period-close #trade-period-admission-body > fieldset > p {
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
 }
 /* 复选框：label 撑开 ≥ 44px 的实际点击区 */
-.period-close .admission .ui-check {
+.period-close #trade-period-admission-body > fieldset .ui-check {
   min-width: 44px;
   cursor: pointer;
 }
-.period-close .admission .ui-check input {
+.period-close #trade-period-admission-body > fieldset .ui-check input {
   width: 20px;
   height: 20px;
 }
-.period-close .admission > .ui-field {
+.period-close #trade-period-admission-body > fieldset > .ui-field {
   max-width: 480px;
 }
-.period-close .admission > .btn {
+.period-close #trade-period-admission-body > fieldset > .btn {
   justify-self: start;
 }
 .period-close > fieldset .card > .journal-scroll {
