@@ -277,7 +277,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- |
-| [S5-a](S5-a-journals-global-rules.md) | 凭证 / 业务事件：无类 `legend`（含凭证草稿与暂记户）、`select`（含 `max-width`、`jv-status`）、按钮、VirtualRows 表头、复选框改为类规则，补采编辑 / 清账 / 预览状态 | 页面 tsx + CSS | S5-b（C 线前序） | web-ui:journals | todo | — |
+| [S5-a](S5-a-journals-global-rules.md) | 凭证 / 业务事件：无类 `legend`（含凭证草稿与暂记户）、凭证预览合计行 `td` 的 `min-width` / `border-bottom`、`select`（含 `max-width`、`jv-status`）、按钮、VirtualRows 表头、复选框改为类规则，补采编辑 / 清账 / 预览状态 | 页面 tsx + CSS | S5-b（C 线前序） | web-ui:journals | todo | — |
 | [S5-b](S5-b-migration-global-rules.md) | 迁移核对页：`dl` / `dt` / `dd` / `thead` 改为类规则；`.kv` 表进独立滚动区 | CSS（必要时 tsx） | — | web-ui:migration | done | [#112](https://github.com/lingshf/ai-native-erp/pull/112) |
 | [S5-c](S5-c-trade-global-rules.md) | 贸易页面：复选框、`.tinv-facts` / `.trpt-facts`、`cell-link` 圆角、`caption` | CSS | — | web-ui:trade | in-review | [#113](https://github.com/lingshf/ai-native-erp/pull/113) |
 | [S5-d](S5-d-trade-orders-global-rules.md) | 订单录入页：复选框、`.tord-facts` | CSS | S5-h（同冲突域） | web-ui:trade-orders | todo | — |

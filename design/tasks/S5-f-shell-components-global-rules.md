@@ -1,17 +1,21 @@
 # S5-f 外壳 / 共享组件：不再依赖全局元素规则
 
 - Sprint：S5　依赖：S5-c（[#113](https://github.com/lingshf/ai-native-erp/pull/113) 也改 `theme/components.css`，合并后再开工；A 线首个，外壳串行 S5-f → S5-g）　建议分支：`s5-f-shell-rules`
-- 冲突域：web-ui:shell（**不含 `styles.css`**：只改 `theme/shell.css` 与 `App.tsx`）、web-ui:components（`theme/components.css`、`ui/components/`）
+- 冲突域：web-ui:shell（**不含 `styles.css`**：只改 `theme/shell.css`、`App.tsx` 与运行状态页的 `pages/overview.css`）、web-ui:components（`theme/components.css`、`ui/components/`）
 - 类型：CSS（需要类名时改 `App.tsx` 或组件 tsx）
 - 来源：UI-09g [#106](https://github.com/lingshf/ai-native-erp/pull/106) 证据表“保留”
 
 ## 范围
 
-依赖 `styles.css` 全局规则的声明，改为 `shell.css` / `components.css` 中的类规则，值不变。**不改 `styles.css`**：
+依赖 `styles.css` 全局规则的声明，改为 `shell.css` / `components.css` / `pages/overview.css` 中的类规则，值不变。**不改 `styles.css`**：
 - 外壳偏好区：`legend { font-weight }`、`select { max-width }`、复选框；
-- 运行状态页（`Overview`）：`dd { font-weight }`；
-- `.field` 下的 `select { max-width }`；
-- VirtualRows：`tfoot { background }`。
+- 运行状态页（`Overview`）：`dd { font-weight }`，写在 `pages/overview.css`；
+- `select { max-width }`（**D110：由本任务独占**）：
+  - `.ui-field select`；
+  - `.filter-bar .field > select` 与 `.page-header .field > select`；
+- VirtualRows：`.journal-scroll tfoot { background }`（**D110：由本任务独占**）。
+
+上述 `select` 与 `tfoot` 两项不在 [S5-i](S5-i-grid-table-component-rules.md) 范围内。两处不在 `.ui-field` 内的无类 `select` 归 [S5-a](S5-a-journals-global-rules.md)。
 
 ## 验收标准
 
