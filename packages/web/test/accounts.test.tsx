@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AccountCommand, AccountDto } from "@erp/core/contracts";
 import { App } from "../src/App.tsx";
@@ -61,7 +61,63 @@ function install(initial: AccountDto[] = [], save?: (command: AccountCommand) =>
   vi.stubGlobal("fetch", fetcher);
   return fetcher;
 }
+function accountRow(code: string) {
+  const row = screen
+    .getAllByRole("row")
+    .find((candidate) => within(candidate).queryAllByRole("cell")[0]?.textContent === code);
+  if (!row) throw new Error(`missing account row ${code}`);
+  return row;
+}
+// The read-only active column: the row keeps no checkbox, only one badge whose visible text names the state.
+function activeBadge(code: string) {
+  const row = accountRow(code);
+  expect(within(row).queryByRole("checkbox")).toBeNull();
+  const badges = row.querySelectorAll<HTMLElement>(".badge");
+  expect(badges).toHaveLength(1);
+  const badge = badges[0];
+  const symbol = badge.querySelector('[aria-hidden="true"]')?.textContent ?? "";
+  return {
+    text: (badge.textContent ?? "").slice(symbol.length),
+    tone: badge.className,
+  };
+}
 describe("account editing", () => {
+  it("shows the read-only active state as unfocusable badges without changing the Tab sequence", async () => {
+    install([account, { ...account, code: "2200", name: "Retired", active: false }]);
+    render(<App />);
+    await screen.findByRole("button", { name: "编辑 1500" });
+    expect(activeBadge("1500")).toEqual({
+      text: label("zh", "master.active"),
+      tone: "badge success",
+    });
+    expect(accountRow("1500").querySelector(".badge")?.textContent).toBe(
+      `✓${label("zh", "master.active")}`,
+    );
+    expect(activeBadge("2200")).toEqual({ text: label("zh", "master.inactive"), tone: "badge" });
+    const region = screen.getByRole("region", { name: label("zh", "master.title") });
+    const badges = [...region.querySelectorAll<HTMLElement>(".badge")];
+    expect(badges).toHaveLength(2);
+    for (const badge of badges) {
+      expect(badge.hasAttribute("tabindex")).toBe(false);
+      expect(badge.querySelector("[tabindex], a, button, input")).toBeNull();
+    }
+    // jsdom has no native Tab: walk the region's tabbable elements in DOM order, as the browser would.
+    const tabbable = [
+      region,
+      ...region.querySelectorAll<HTMLElement>(
+        "a[href], button, input, select, textarea, [tabindex]",
+      ),
+    ].filter((element) => element.tabIndex >= 0 && !(element as HTMLButtonElement).disabled);
+    const visited = tabbable.map((element) => {
+      element.focus();
+      const focused = document.activeElement as HTMLElement;
+      expect(badges.some((badge) => badge.contains(focused))).toBe(false);
+      return focused === region
+        ? "region"
+        : (focused.getAttribute("aria-label") ?? focused.textContent);
+    });
+    expect(visited).toEqual(["region", "编辑 1500", "编辑 2200"]);
+  });
   it("requires an explicit control module and creates/deactivates without losing drafts on preference changes", async () => {
     const fetcher = install();
     render(<App />);
@@ -93,13 +149,16 @@ describe("account editing", () => {
     expect(name.value).toBe("Retained draft");
     expect(fetcher.mock.calls).toHaveLength(requests);
     fireEvent.click(screen.getByRole("button", { name: label("en", "master.save") }));
-    fireEvent.click(await screen.findByRole("button", { name: "Edit 1500" }));
+    await screen.findByRole("button", { name: "Edit 1500" });
+    expect(activeBadge("1500")).toEqual({
+      text: label("en", "master.active"),
+      tone: "badge success",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Edit 1500" }));
     fireEvent.click(screen.getByLabelText(label("en", "master.active")));
     fireEvent.click(screen.getByRole("button", { name: label("en", "master.save") }));
     await waitFor(() => expect(screen.queryByLabelText(label("en", "master.name"))).toBeNull());
-    expect(screen.getByRole<HTMLInputElement>("checkbox", { name: "Active 1500" }).checked).toBe(
-      false,
-    );
+    expect(activeBadge("1500")).toEqual({ text: label("en", "master.inactive"), tone: "badge" });
     expect(
       fetcher.mock.calls
         .filter(([, init]) => init?.method)
