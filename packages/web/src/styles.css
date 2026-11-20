@@ -2,6 +2,8 @@
  * 全局元素基线（UI-08 清理后）：只剩元素选择器。类规则已删除（无引用）或迁到 theme/shell.css、
  * theme/components.css 与 src/pages/*.css。各页尚未全部以组件类覆盖这些元素（见 design/reviews/UI-1.md），
  * 按 UI-08 清理边界保留；顺序与原兼容层一致，入口 CSS 中仍排在 shell.css 之后。
+ * UI-09g 只删了计算值经逐页取证不变、且每处用法都有类规则覆盖的声明（dl 的列 / 间距 / 外边距、table 整条）；
+ * 其余声明仍决定某处的计算值，留待各页迁移到组件类后再删。
  */
 button,
 select {
@@ -28,9 +30,6 @@ input[type="checkbox"] {
 }
 dl {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-  gap: var(--space-3) var(--space-4);
-  margin-bottom: 0;
 }
 dt {
   color: var(--color-text-muted);
@@ -58,11 +57,6 @@ button:disabled {
   opacity: 0.65;
   cursor: wait;
 }
-table {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: var(--text-md);
-}
 caption {
   text-align: left;
   font-weight: var(--weight-semibold);
@@ -81,10 +75,6 @@ tfoot {
   background: var(--color-primary-soft);
 }
 @media (max-width: 680px) {
-  dl {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-1);
-  }
   dd {
     margin-bottom: var(--space-3);
   }
