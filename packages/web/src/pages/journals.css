@@ -216,12 +216,13 @@
   z-index: 20;
 }
 
-/* S5-a：替代 styles.css 全局元素规则的同值类规则；:where() 特异性为 0，原有覆盖照旧生效 */
+/* S5-a：替代 styles.css 全局元素规则的同值类规则；:where() 特异性为 0，原有覆盖照旧生效。\n   按钮字重须胜过 base.css 的 button { font: inherit }，故保留元素特异性。 */
 :where(.jv-btn, .jv-select) {
   min-height: 44px;
   border-radius: var(--radius-sm);
 }
-:where(.jv-legend, .jv-btn, .jv-facts dd) {
+:where(.jv-legend, .jv-facts dd),
+button:where(.jv-btn) {
   font-weight: var(--weight-semibold);
 }
 :where(.jv-legend) {
