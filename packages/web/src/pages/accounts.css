@@ -7,16 +7,9 @@
   flex-wrap: wrap;
   gap: var(--space-2);
 }
-/* 虚拟化滚动区：高度有界，表头粘顶（.grid th），行高保持 44（estimateSize 44）。
-   F2：右缘滚动阴影与 .journal-scroll 相同（components.css）；底色保留 surface（.grid-wrap 原值），卡片圆角像素不变。 */
+/* 虚拟化滚动区：高度有界，表头粘顶（.grid th），行高保持 44（estimateSize 44）；F2 右缘滚动阴影在 components.css。 */
 .accounts .acct-scroll {
   max-height: 480px;
-  background:
-    linear-gradient(to left, var(--color-surface) 50%, transparent) right center / 24px
-    calc(100% - 2 * var(--radius-md)) no-repeat local,
-    linear-gradient(to left, color-mix(in srgb, var(--color-text) 18%, transparent), transparent)
-    right center / 12px calc(100% - 2 * var(--radius-md)) no-repeat scroll,
-    var(--color-surface);
 }
 .accounts .acct-scroll table {
   min-width: 560px;
