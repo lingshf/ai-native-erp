@@ -7,6 +7,8 @@
 
 ## 核对结果与分工
 
+**D110（协调者代定）**：`.ui-field select { max-width }` 与 VirtualRows `tfoot` 底色由 S5-f（#115）独占，S5-i 不重复写。
+
 #113 报告了三条声明。`select { max-width }` 已由 #115（S5-f）全部覆盖，**不在本任务**：
 - `.ui-field select`；
 - `.filter-bar .field > select`、`.page-header .field > select`；
@@ -27,7 +29,7 @@
 
 在 `theme/components.css` 中用类规则给出与现值相同的声明。**不改 `styles.css`**：
 1. `.grid` 与 `.journal-scroll` 内 `th` / `td` 的 `text-align: left`。保留 `left`，不改为 `start`：两者在左到右文字下看起来一样，但计算值不同，不满足计算值零差异。改为逻辑属性不在本任务范围内。
-2. `.grid` 内 `thead`、`tfoot` 的 `background: var(--color-primary-soft)`；`.journal-scroll` 内 `thead` 同值。`.journal-scroll tfoot` 已由 #115 覆盖，不重复写。
+2. `.grid` 内 `thead`、`tfoot` 的 `background: var(--color-primary-soft)`；`.journal-scroll` 内 `thead` 同值。`.journal-scroll tfoot` 由 #115 独占（D110），不重复写。
 
 **特异性**：与 S5-c 相同，用 `:where(...)` 包住类选择器，使特异性与被替代的全局元素规则一致，例如 `:where(.grid, .journal-scroll) :is(th, td)`、`:where(.grid, .journal-scroll) thead`、`:where(.grid) tfoot`，都是 (0,0,1)。这些属性有页面级覆盖（`none`、`right`），不能提高特异性。具体写法由开发决定，以探针计算值为准。
 
