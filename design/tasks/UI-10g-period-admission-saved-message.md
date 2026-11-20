@@ -13,6 +13,9 @@
 
 ## 验收标准
 
-1. 满足 [UI-1 通用验收标准](README.md#ui-1界面逐步改进) 1–9。PG-05：全部不变。
+1. 满足 [UI-1 通用验收标准](README.md#ui-1界面逐步改进) 1–9，PG-05 度量口径见 [README S4“通用验收”](README.md#s4ui-1-后续--m1-遗留建议-v040)。labels 打包在入口 JS 中，所以本任务一定会改入口 JS：
+   - 入口 JS（gzip）≤ +0.1 kB。新文案比旧文案短，预期会减少；
+   - CSS 合计、各路由 chunk 不变（差 ≤ 0.02 kB）；
+   - `git diff` 只改 `trade-report-labels.ts` 中 `trpt.saved` 的两个值，不改逻辑；请求次数不变。
 2. 截图：期末结账页保存准入后的提示，改前 / 改后，中文 + 红、English + 绿。
 3. `trade-period-admission.test.tsx:127,151` 和 `trade-gui-scenario.ts:807` 都通过 `t("trpt.saved")` 定位，不需要修改。PR 中写明旧文案 → 新文案。

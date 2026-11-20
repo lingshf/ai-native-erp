@@ -1,7 +1,7 @@
 # UI-09a 组件样式：禁用 subtle、segmented 选中态、窄表滚动提示、MessageBar 段落
 
 - Sprint：S4（UI-1 后续 + M1 遗留）　依赖：—　建议分支：`ui-09a-components-css`
-- 冲突域：web-ui:components（只改 `src/theme/components.css`，以及 `contrast.test.ts` 中新增的配对）
+- 冲突域：web-ui:components（只改 `src/theme/components.css`）、tests:contrast（`contrast.test.ts` 中新增配对；之后 UI-09d、UI-10c 依次修改此文件）
 - 类型：**只改 CSS**，不改 `.tsx`、labels
 - 来源：[UI-1 审查](../reviews/UI-1.md) §8 F3、F10、F2（组件部分），§6 D-8（全局规则部分）
 
@@ -18,7 +18,7 @@
 
 ## 验收标准
 
-1. 满足 [UI-1 通用验收标准](README.md#ui-1界面逐步改进) 1–9。PG-05 预算按 README 中的 S4 行：入口 JS 不变，CSS 合计 ≤ +0.3 kB（gzip），路由 chunk 不变。
+1. 满足 [UI-1 通用验收标准](README.md#ui-1界面逐步改进) 1–9，PG-05 度量口径见 [README S4“通用验收”](README.md#s4ui-1-后续--m1-遗留建议-v040)。预算：入口 JS 不变，CSS 合计 ≤ +0.3 kB（gzip），路由 chunk 不变。
 2. **改前 / 改后截图**：
    - F3：科目表内置科目“编辑”、发票“删除行”、凭证“删除行”的禁用态；
    - F10：往来报表 390 两主题；

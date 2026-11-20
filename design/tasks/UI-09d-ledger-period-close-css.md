@@ -1,7 +1,7 @@
 # UI-09d 总账报表与期末结账样式：金额链接、行表头、复选框间距、36px
 
-- Sprint：S4　依赖：[UI-09a](UI-09a-components-css.md)　建议分支：`ui-09d-ledger-period-close-css`
-- 冲突域：web-ui:ledger、web-ui:period-close（只改 `src/pages/ledger.css`、`src/pages/period-close.css`）
+- Sprint：S4　依赖：[UI-09c](UI-09c-master-css.md)（A 线前序，间接含 UI-09a）　建议分支：`ui-09d-ledger-period-close-css`
+- 冲突域：web-ui:ledger、web-ui:period-close（只改 `src/pages/ledger.css`、`src/pages/period-close.css`）、tests:contrast（`contrast.test.ts`；UI-09a 之后、[UI-10c](UI-10c-accounts-enabled-badge.md) 之前修改）
 - 类型：**只改 CSS**
 - 来源：[UI-1 审查](../reviews/UI-1.md) §8 F4、F6、F5（期末结账部分），§6 D-8（页面副本）
 

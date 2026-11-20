@@ -118,7 +118,7 @@ UI-1 的 13 项已全部合并，随 v0.3.0 发布。设计一致性审查 [desi
 | `AiPanel.tsx` | UI-07c |
 | `Migration.tsx` | UI-07e |
 | `TradeOrders.tsx`（S4 新增） | M1-R1a |
-| `styles.css` 兼容层清理 | UI-08（边界见任务文件）；全局元素规则删除归 UI-09g |
+| `styles.css` 兼容层清理 | UI-08（边界见任务文件）；全局元素规则删除归 UI-09g（只删已证实可删的属性；仍生效的保留，下一 Sprint 按页迁移） |
 
 今后新增页面时，在同一 PR 中把它加入本表。新页面直接使用 token 与组件类，不写入 `styles.css`。
 
@@ -157,7 +157,7 @@ UI 任务不改迁移、领域和 infra 代码，与 `legacy-import`、`admin-cl
      ```
      必须用真实 Chrome，不用 headless shell 或 Edge 替代。在 PR 中贴出 head SHA、命令、通过摘要和 `ERP_E2E_ARTIFACTS` 截图。head 每变一次（含 rebase），重新运行并更新证据；SHA 不符的证据无效。
    - 不把 slow 测试加入 PR 快速 CI，不改 workflow。
-   - **合并后跟踪 main Full**：合并者记录合并提交，并跟踪该提交的 main Full 运行。在它变绿之前，不派发同冲突域的下一个 UI 任务。若变红且与本任务相关，由同一任务修复或回退，不靠修改断言过关。
+   - **合并后跟踪 main Full**：合并者记录合并提交，并跟踪覆盖该提交的 main Full 运行；被后续 push 取消时，按[路线图 §5](../roadmap.md#5-团队流程)的解锁规则处理。在它变绿之前，不派发同冲突域的下一个 UI 任务。若变红且与本任务相关，由同一任务修复或回退，不靠修改断言过关。
 6. **键盘**：Tab 顺序与视觉一致；焦点框可见；E2E 键盘路径在 220 次 Tab 上限内不改即通过；快捷键不变。
 7. **教学模式**：开 / 关两态截图；关闭后不隐藏边界说明、风险、必填信息、错误与警告。
 8. **业务不变**：不改接口调用、字段、校验、按钮顺序语义与禁用逻辑；虚拟列表行高 44 / 48 不变。
@@ -198,16 +198,16 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- |
-| [UI-09a](UI-09a-components-css.md) | 组件样式：禁用 subtle（F3）、segmented 选中态（F10）、窄表滚动提示（F2 组件部分）、`.message-bar p` 全局规则（D-8） | CSS | — | web-ui:components | todo | |
-| [UI-09b](UI-09b-shell-brand-css.md) | 外壳窄屏品牌名（F1） | CSS | 外壳串行 | web-ui:shell | todo | |
+| [UI-09a](UI-09a-components-css.md) | 组件样式：禁用 subtle（F3）、segmented 选中态（F10）、窄表滚动提示（F2 组件部分）、`.message-bar p` 全局规则（D-8） | CSS | — | web-ui:components, tests:contrast | todo | |
+| [UI-09b](UI-09b-shell-brand-css.md) | 外壳窄屏品牌名（F1） | CSS | M1-R1a（外壳串行）、UI-09e（A 线前序） | web-ui:shell | todo | |
 | [UI-09c](UI-09c-master-css.md) | 科目表 / 主数据：桌面 36px（F5）、滚动提示（F2）、删除 D-8 副本 | CSS | UI-09a | web-ui:master | todo | |
-| [UI-09d](UI-09d-ledger-period-close-css.md) | 总账报表 / 期末结账：金额链接（F4）、行表头与复选框（F6）、36px（F5）、删除 D-8 副本 | CSS | UI-09a | web-ui:ledger, web-ui:period-close | todo | |
+| [UI-09d](UI-09d-ledger-period-close-css.md) | 总账报表 / 期末结账：金额链接（F4）、行表头与复选框（F6）、36px（F5）、删除 D-8 副本 | CSS | UI-09c（A 线前序，含 UI-09a） | web-ui:ledger, web-ui:period-close, tests:contrast | todo | |
 | [UI-09e](UI-09e-journals-css.md) | 凭证新建去掉框中框（F7） | CSS | — | web-ui:journals | todo | |
 | [UI-09f](UI-09f-trade-css.md) | 发票 / 付款：桌面 36px（F5）、删除 D-8 副本 | CSS | UI-09a | web-ui:trade | todo | |
-| [UI-09g](UI-09g-global-element-rules.md) | 删除 `styles.css` 全局元素规则（D-7，属性级证据） | CSS | UI-09a..f；外壳串行最后 | web-ui:shell | todo | |
+| [UI-09g](UI-09g-global-element-rules.md) | 删除 `styles.css` 全局元素规则（D-7，属性级证据） | CSS | UI-09a..f、UI-10a（外壳串行最后） | web-ui:shell | todo | |
 | [UI-10a](UI-10a-shell-preference-messagebar.md) | 外壳偏好警告改用 MessageBar（D-1） | 页面 tsx | UI-09b | web-ui:shell | todo | |
 | [UI-10b](UI-10b-journals-action-column.md) | 凭证列表操作列表头与“查看”列宽（F8） | 页面 tsx | UI-09e | web-ui:journals | todo | |
-| [UI-10c](UI-10c-accounts-enabled-badge.md) | 科目表只读“启用”改徽标（D-6） | 页面 tsx | UI-09c | web-ui:master | todo | |
+| [UI-10c](UI-10c-accounts-enabled-badge.md) | 科目表只读“启用”改徽标（D-6） | 页面 tsx | UI-09c、UI-09d（共用 `contrast.test.ts`） | web-ui:master, tests:contrast | todo | |
 | [UI-10d](UI-10d-trade-master-enabled-badge.md) | 贸易主数据只读“启用”改徽标（D-6） | 页面 tsx | UI-09c, UI-10c | web-ui:master, web-ui:trade | todo | |
 | [UI-10e](UI-10e-migration-header-and-details.md) | 迁移核对页：PageHeader、教学提示（D-3）、键值明细（F9） | 页面 tsx | — | web-ui:migration | todo | |
 | [UI-10f](UI-10f-invoice-add-line-label.md) | 发票“新增行”快捷键显示（F11） | 页面 tsx | — | web-ui:trade | todo | |
@@ -227,31 +227,39 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 - **P1**：F5 统一为桌面 36px，窄屏（≤ 760）和粗指针 44px，依据 [design/ui/README.md](../ui/README.md) §7，回应 v0.3.0 Sprint 评审问题 2。发布文档中的点击区说法按 PROC-01 改为分端说明。
 - **P2**：M1-R1 按现有 API 收窄范围：无订单列表、无保存前金额预览，只显示服务端返回的金额。见 [M1-R1a](M1-R1a-trade-order-entry-page.md)。
-- **P3**：D-6 改徽标后，`accounts.test.tsx:100` 的只读复选框断言以同等强度替换。本 Sprint 只有这一条已有断言允许替换，见 [UI-10c](UI-10c-accounts-enabled-badge.md)。
+- **P3**：D-6 改徽标后，`accounts.test.tsx:100` 的只读复选框断言以同等强度替换。本 Sprint 只有这一条已有断言允许替换，见 [UI-10c](UI-10c-accounts-enabled-badge.md)。贸易主数据目前没有断言行内只读复选框的测试（main `2a23025` 已核对），所以 [UI-10d](UI-10d-trade-master-enabled-badge.md) 只新增徽标断言，不替换任何断言；若实施时发现这类断言，停下报告设计角色，不自行替换。
 - **P4**：F11 的“新增行”按钮可访问名称去掉括号中的快捷键，改由 `aria-keyshortcuts` 提供；测试都通过 `t()` 定位，不需要修改。见 [UI-10f](UI-10f-invoice-add-line-label.md)。
 - **P5**：纠错页未结项是原生 `select`，属于 E2E 契约，不改为虚拟滚动，改为服务端按伙伴筛选。见 [M1-R2b](M1-R2b-trade-adjust-picker-filter.md)。
 
-**通用验收**：所有 UI 任务都满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9。各任务的 PG-05 预算写在任务文件中，包体积对照的基线改为每个 PR 的实际 base（不再用 `f35aa54`）。
+**通用验收**：所有 UI 任务都满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9。各任务的 PG-05 预算写在任务文件中，按以下口径度量（取代上面基线 `f35aa54`）：
+
+- **基线**：PR 的实际 base，即 `git merge-base origin/main HEAD`。base 与 head 各在干净工作区运行 `npm run build -w packages/web`，贴出 Vite 输出中每个文件的 gzip 列。rebase 后重新对照。
+- **“不变”**：该文件 gzip 差 ≤ 0.02 kB。文件名 hash 变化不算变化：只改 CSS 时，JS chunk 中引用的 CSS 文件名会变，hash 随之改变。只改 CSS 的任务另须证明 `git diff --stat <base>..HEAD -- '*.ts' '*.tsx'` 只含测试文件，即 JS 逻辑不变。
+- **“不增 / ≤ +x kB”**：以 gzip 列计，CSS 合计 = 全部 `.css` 文件之和；“本任务路由 chunk”指该页面 `lazy()` 产生的 chunk。
+- **文案任务**：labels 打包在入口 JS 中，改文案必然改入口。此类任务的预算写成入口 JS 的 gzip 上限，另要求请求次数与逻辑不变（见 [UI-10g](UI-10g-period-admission-saved-message.md)）。
 
 **三名开发的并行安排**（同一行内串行；不同行同时进行时冲突域不相交）：
 
 | 线 | 顺序 | 冲突域 |
 | --- | --- | --- |
-| A：CSS | UI-09a → UI-09c → UI-09d → UI-09e → UI-09b → UI-09g | components → master → ledger / period-close → journals → shell |
+| A：CSS | UI-09a → UI-09c → UI-09d → UI-09e → UI-09b → UI-09g | components + contrast → master → ledger / period-close + contrast → journals → shell |
 | B：贸易（web-ui:trade 串行） | M1-R2a → M1-R2b → UI-10f → UI-10g → UI-09f → UI-10d | trade（UI-10d 另含 master） |
-| C：其他页面与新页 | UI-10e → M1-R1a → M1-R1b → UI-10b → UI-10c → UI-10a | migration → trade-orders + shell → tests:trade-e2e → journals → master → shell |
+| C：其他页面与新页 | UI-10e → M1-R1a → M1-R1b → UI-10b → UI-10c → UI-10a | migration → trade-orders + shell → tests:trade-e2e → journals → master + contrast → shell |
 
 - **首批可同时开工**：UI-09a（A）、M1-R2a（B）、UI-10e（C）。
-- **跨线等待**（依赖已写在表中）：
+- **跨线等待**（都已写在表的“依赖”列；按表派发即可，不靠本段散文）：
+  - UI-09b 等 M1-R1a（外壳）；
+  - UI-09g 等 UI-10a（外壳）；
   - UI-10b 等 UI-09e；
-  - UI-10c 等 UI-09c；
+  - UI-10c 等 UI-09c，并等 UI-09d：两者都改 `contrast.test.ts`（`tests:contrast`），而 C 线到 UI-10c 时 A 线可能正在做 UI-09d；
   - UI-10d 等 UI-09c 与 UI-10c；
   - UI-09f 等 UI-09a。
-- **外壳串行**：M1-R1a → UI-09b → UI-10a → UI-09g。这四个任务同一时间只开一个；A 线到 UI-09b 时，若 M1-R1a 未合并就先等。
+- **外壳串行**：M1-R1a → UI-09b → UI-10a → UI-09g，由上述表内依赖保证。这四个任务同一时间只开一个。
+- **对比度测试串行**：UI-09a → UI-09d → UI-10c 依次修改 `contrast.test.ts`。其他任务若需要新增配对，先报告设计角色加入依赖，不并行修改。
 - **UI-09g** 的证据覆盖全部页面。开工时若有改页面 CSS 的任务在进行，等其合并；rebase 后 main 上有新的页面 CSS，就重新采集证据。
 - **M1-R1b** 改共享 E2E 场景，与它同时进行的贸易任务合并后要 rebase 并重跑真实 Chrome 场景。若需调整 Full 分片，同一时间只开一个改 workflow 的任务。
 - **PROC-01** 由版本管理负责，不计入开发上限，随时可做。
-- 每个任务合并后，按通用验收 5 跟踪 main Full。变绿前不派发同一冲突域的下一个任务。
+- 每个任务合并后，按[路线图 §5 合并后动作](../roadmap.md#5-团队流程)跟踪 main Full，含 Full 被后续 push 取消时的解锁规则。变绿前不派发同一冲突域的下一个任务。
 
 ## 派发顺序
 
@@ -282,6 +290,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
      - `web-ui:trade-orders`（S4 新增）：`TradeOrders.tsx`、`trade-order-labels.ts`、`pages/trade-orders.css` 及其测试。
      - `tests:trade-e2e`：`packages/infra/test/support/trade-gui-scenario.ts` 与 `trade-gui-*.slow.test.ts`。只运行这些测试不算占用，修改才算。
      - `docs/release`：`docs/release/`、`docs/demo/` 下的流程文档与模板（版本管理）。
+     - `tests:contrast`（S4 新增）：`packages/web/test/contrast.test.ts`。多个页面任务都会向它追加配对，修改它的任务互相串行，即使页面冲突域不相交。
    - **迁移的串行集成**（带迁移的任务可以并行开发，但集成必须串行）：
      - 运行器按 `migrations.ts` 中 manifest 数组的**位置**写入版本号（`index + 1`），并校验每个版本的 checksum（`migrations.ts:83-91,163-168,177-188`），不看文件名。已进入 main 的迁移前缀、顺序和 checksum 都不能改。
      - 编号由设计角色在本表预留（main 已到 013；M2-03 预留 014，必须在 013 之后，不参与下面的互换规则）。带迁移的 PR 必须按预留编号顺序合并。

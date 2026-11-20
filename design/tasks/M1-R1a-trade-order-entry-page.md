@@ -1,6 +1,6 @@
 # M1-R1a 非库存订单录入页
 
-- Sprint：S4　依赖：—　建议分支：`trade-order-entry`
+- Sprint：S4　依赖：—（外壳串行第一个：M1-R1a → [UI-09b](UI-09b-shell-brand-css.md) → [UI-10a](UI-10a-shell-preference-messagebar.md) → [UI-09g](UI-09g-global-element-rules.md)，后三者在表中依赖前一个）　建议分支：`trade-order-entry`
 - 冲突域：
   - **web-ui:trade-orders**（新增）：`src/TradeOrders.tsx`、`src/ui/trade-order-labels.ts`、`src/pages/trade-orders.css`、`test/trade-orders.test.tsx`；
   - **web-ui:shell**：只在 `App.tsx` 追加一个 `lazy()` 路由和一个导航入口，以及对应的 `shell.*` 导航 label。
