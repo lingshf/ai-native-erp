@@ -294,7 +294,10 @@ describe("trade orders", () => {
     const invoices = screen.getByRole("link", { name: label("zh", "tinv.title") });
     fireEvent.click(invoices);
     expect(confirm).not.toHaveBeenCalled();
-    window.history.replaceState(null, "", "/#/trade-orders");
+    // Navigate back through the router and wait for each route to settle; a raw replaceState
+    // would race the router's pending navigation.
+    await waitFor(() => expect(screen.queryByRole("form", { name: t("tord.entry") })).toBeNull());
+    fireEvent.click(screen.getByRole("link", { name: label("zh", "shell.tradeOrders") }));
     await screen.findByRole("form", { name: t("tord.entry") });
     fireEvent.change(field("tord.orderId"), { target: { value: "PO-1" } });
     fireEvent.click(screen.getByRole("link", { name: label("zh", "tinv.title") }));
