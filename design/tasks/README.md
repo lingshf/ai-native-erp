@@ -278,7 +278,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | S5-b | web-ui:migration | `dl { display }`、`dt { color }`、`dd { margin }`、`@media 680 dd { margin-bottom }`、`thead { background }`；另含已有问题：`.kv` 表不在独立滚动区（UI-10e 引入，版式检查报 `not in own scroller`） | CSS（必要时 tsx） |
 | S5-c | web-ui:trade | 发票 / 结算复选框（width / height / flex-shrink / accent-color）、`.tinv-facts` / `.trpt-facts` 的 `dl { display }`、贸易报表 `button.cell-link { border-radius }`、发票过账预览 / PO 匹配 `caption` | CSS |
 | S5-d | web-ui:trade-orders | 订单页复选框、`.tord-facts` 的 `dl { display }`（若仍依赖） | CSS |
-| S5-e | web-ui:ledger、web-ui:period-close、web-ui:master | 报表 / 期末 `caption`（text-align / font-weight / padding）；总账明细 `th, td`（vertical-align / min-width / text-align）、总账 tfoot `td { padding }`；期末 fieldset 内 `.journal-scroll` 的 `th, td { padding }`；科目表 `td { text-align }`（left → start） | CSS |
+| S5-e | web-ui:ledger、web-ui:period-close、web-ui:master | 报表 / 期末 `caption`（text-align / font-weight / padding）；总账明细 `th, td`（vertical-align / min-width / text-align / border-bottom，#106 观察到仍生效）、总账 tfoot `td { padding }`；期末 fieldset 内 `.journal-scroll` 的 `th, td { padding }`；科目表 `td { text-align }`（left → start） | CSS |
 | S5-f | web-ui:shell、web-ui:components | 外壳偏好 `legend { font-weight }`、`select { max-width }`、复选框；概览 `dd { font-weight }`；`.field` 下 `select { max-width }`；VirtualRows `tfoot { background }` | CSS |
 | S5-g | web-ui:shell | 依赖 S5-a..f：删除 `styles.css` 中剩余全局元素规则，方法与证据同 UI-09g，全部采集点“变”为 0、像素差 0 | CSS |
 
