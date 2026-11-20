@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
   companiesPageSchema,
@@ -270,7 +270,8 @@ function OrderWorkspace({
   const taxes = useOptions(company.code, "taxCode");
   useEffect(() => onGuard({ busy, unsaved: dirty }), [onGuard, busy, dirty]);
   useEffect(() => () => onGuard(idleGuard), [onGuard]);
-  useEffect(() => {
+  // Layout effect: focus moves inside the commit, so the notice never appears with focus elsewhere (D92).
+  useLayoutEffect(() => {
     if (saved) savedNotice.current?.focus();
   }, [saved]);
   const money = (value: number) => formatMinor(value, language, company.scale);
