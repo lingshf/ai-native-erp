@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FocusEvent,
+  type ReactNode,
+} from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -86,24 +93,35 @@ function PageControls({ page, t }: { page: Listing<unknown>; t: T }) {
     </>
   );
 }
+// 待转队列操作列：窄屏表格横向滚动时，浏览器聚焦只滚到按钮“部分可见”就停；让焦点按钮完整进入可见区，焦点环不被裁切
+const revealFocused = (event: FocusEvent<HTMLButtonElement>) =>
+  event.currentTarget.scrollIntoView?.({ block: "nearest", inline: "nearest" });
 function PageTable<Item>({
   page,
   title,
   header,
   render,
   t,
+  className,
 }: {
   page: Listing<Item>;
   title: string;
   header: readonly string[];
   render: (item: Item, index: number) => ReactNode;
   t: T;
+  className?: string;
 }) {
   const items = page.data?.pages.flatMap((p) => p.items) ?? [];
   return (
     <>
       <div className="card">
-        <VirtualRows items={items} title={title} header={header} render={render} />
+        <VirtualRows
+          items={items}
+          title={title}
+          header={header}
+          render={render}
+          className={className}
+        />
         {!page.isPending && !page.isError && !items.length && (
           <p className="empty-state">{t("business.empty")}</p>
         )}
@@ -528,6 +546,7 @@ function CompanyEvents({
             page={queue}
             t={t}
             title={t("business.queue")}
+            className="be-queue"
             header={[t("journal.sourceRef"), t("journal.date"), t("business.queue"), ""]}
             render={(item) => (
               <>
@@ -539,61 +558,66 @@ function CompanyEvents({
                   {item.reason && <> · {item.reason}</>}
                 </td>
                 <td>
-                  <button
-                    type="button"
-                    className="btn btn-subtle btn-sm"
-                    disabled={editing || busy}
-                    onClick={() =>
-                      void run(async () => {
-                        const result = await masterRequest(
-                          `/api/v1/events/${item.id}?${companyQuery(company.code)}`,
-                          businessResultSchema,
-                        );
-                        if (alive.current) {
-                          setDetail(result);
-                          setEntry(null);
-                        }
-                      })
-                    }
-                  >
-                    {t("journal.view")}
-                  </button>
-                  {(item.status === "pending" || item.status === "failed") && (
-                    <>
-                      <button
-                        type="button"
-                        className="btn btn-subtle btn-sm"
-                        disabled={editing || busy}
-                        onClick={() =>
-                          void run(async () => {
-                            const result = await masterRequest(
-                              `/api/v1/transfer-queue/${item.id}/preview`,
-                              businessPreviewSchema,
-                              { method: "POST", body: { company: company.code } },
-                            );
-                            if (alive.current) setReview({ preview: result, queueId: item.id });
-                          })
-                        }
-                      >
-                        {t("journal.preview")}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-subtle btn-sm"
-                        disabled={editing || busy}
-                        onClick={() => {
-                          returnFocus.current =
-                            document.activeElement instanceof HTMLElement
-                              ? document.activeElement
-                              : null;
-                          setError(undefined);
-                          setWithdraw({ id: item.id, reason: "" });
-                        }}
-                      >
-                        {t("business.withdraw")}
-                      </button>
-                    </>
-                  )}
+                  <div className="be-queue-actions">
+                    <button
+                      type="button"
+                      className="btn btn-subtle btn-sm"
+                      onFocus={revealFocused}
+                      disabled={editing || busy}
+                      onClick={() =>
+                        void run(async () => {
+                          const result = await masterRequest(
+                            `/api/v1/events/${item.id}?${companyQuery(company.code)}`,
+                            businessResultSchema,
+                          );
+                          if (alive.current) {
+                            setDetail(result);
+                            setEntry(null);
+                          }
+                        })
+                      }
+                    >
+                      {t("journal.view")}
+                    </button>
+                    {(item.status === "pending" || item.status === "failed") && (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn-subtle btn-sm"
+                          onFocus={revealFocused}
+                          disabled={editing || busy}
+                          onClick={() =>
+                            void run(async () => {
+                              const result = await masterRequest(
+                                `/api/v1/transfer-queue/${item.id}/preview`,
+                                businessPreviewSchema,
+                                { method: "POST", body: { company: company.code } },
+                              );
+                              if (alive.current) setReview({ preview: result, queueId: item.id });
+                            })
+                          }
+                        >
+                          {t("journal.preview")}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-subtle btn-sm"
+                          onFocus={revealFocused}
+                          disabled={editing || busy}
+                          onClick={() => {
+                            returnFocus.current =
+                              document.activeElement instanceof HTMLElement
+                                ? document.activeElement
+                                : null;
+                            setError(undefined);
+                            setWithdraw({ id: item.id, reason: "" });
+                          }}
+                        >
+                          {t("business.withdraw")}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </td>
               </>
             )}

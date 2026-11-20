@@ -274,6 +274,9 @@ it("previews current cash input without saving, preserves preferences and retrie
       .disabled,
   ).toBe(true);
   expect(
+    screen.getByRole<HTMLButtonElement>("button", { name: label("en", "journal.view") }).disabled,
+  ).toBe(true);
+  expect(
     screen.getByRole<HTMLButtonElement>("button", { name: label("en", "journal.preview") })
       .disabled,
   ).toBe(true);
