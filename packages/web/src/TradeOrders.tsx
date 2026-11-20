@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   companiesPageSchema,
   tradeOrderCommandSchema,
+  tradeOrderPageSchema,
   tradeOrderSchema,
   tradePageSchema,
   type CompanyDto,
@@ -264,6 +265,8 @@ function OrderWorkspace({
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [saved, setSaved] = useState<Order | null>(null);
+  const [opened, setOpened] = useState<{ orderId: string } | null>(null);
+  const client = useQueryClient();
   const savedNotice = useRef<HTMLDivElement>(null);
   const parties = useOptions(company.code, "tradeParty");
   const products = useOptions(company.code, "tradeProduct");
@@ -338,6 +341,7 @@ function OrderWorkspace({
       setSaved(order);
       setDraft(blankDraft());
       setDirty(false);
+      void client.resetQueries({ queryKey: ["trade-orders", company.code] });
     } catch (error) {
       const fields = error instanceof MasterDataFailure ? (error.detail?.fieldErrors ?? []) : [];
       const definite =
@@ -649,8 +653,107 @@ function OrderWorkspace({
           <OrderView order={saved} language={language} money={money} t={t} />
         </FastTab>
       )}
-      <OrderLookup company={company} language={language} money={money} t={t} />
+      <OrderList
+        company={company}
+        language={language}
+        money={money}
+        t={t}
+        onOpen={(orderId) => setOpened({ orderId })}
+      />
+      <OrderLookup company={company} language={language} money={money} t={t} request={opened} />
     </>
+  );
+}
+
+function OrderList({
+  company,
+  language,
+  money,
+  t,
+  onOpen,
+}: {
+  company: CompanyDto;
+  language: Preferences["language"];
+  money: (value: number) => string;
+  t: T;
+  onOpen: (orderId: string) => void;
+}) {
+  const page = useInfiniteQuery({
+    queryKey: ["trade-orders", company.code],
+    initialPageParam: "",
+    refetchOnMount: true,
+    queryFn: ({ pageParam, signal }) =>
+      masterRequest(
+        `/api/v1/trade/orders?company=${encodeURIComponent(company.code)}&limit=100${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`,
+        tradeOrderPageSchema,
+        { signal },
+      ),
+    getNextPageParam: (value) => value.nextCursor ?? undefined,
+  });
+  const rows = page.data?.pages.flatMap((value) => value.items) ?? [];
+  return (
+    <FastTab id="tord-list" title={t("tord.list")}>
+      {page.isPending && <p role="status">{label(language, "master.loading")}</p>}
+      {page.isError && (
+        <MessageBar tone="danger" role="alert">
+          <p>{label(language, "master.error")}</p>
+          <button type="button" className="btn btn-secondary" onClick={() => void page.refetch()}>
+            {label(language, "master.retry")}
+          </button>
+        </MessageBar>
+      )}
+      {page.isSuccess && rows.length === 0 && <p className="empty-state">{t("tord.listEmpty")}</p>}
+      {rows.length > 0 && (
+        <div className="grid-wrap">
+          <table className="grid tord-list" aria-label={t("tord.list")}>
+            <thead>
+              <tr>
+                <th scope="col">{t("tord.orderId")}</th>
+                <th scope="col">{t("tord.side")}</th>
+                <th scope="col">{t("tord.party")}</th>
+                <th scope="col">{t("tord.orderDate")}</th>
+                <th scope="col">{t("tord.currency")}</th>
+                <th scope="col" className="num">
+                  {t("tord.lineCountColumn")}
+                </th>
+                <th scope="col" className="num">
+                  {t("tord.gross")}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.orderId}>
+                  <td>
+                    <button type="button" className="cell-link" onClick={() => onOpen(row.orderId)}>
+                      {row.orderId}
+                    </button>
+                  </td>
+                  <td>{label(language, `trade.${row.side}`)}</td>
+                  <td>{row.party}</td>
+                  <td>{row.orderDate}</td>
+                  <td>{row.currency}</td>
+                  <td className="num">{row.lineCount}</td>
+                  <td className="num">{money(row.gross)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {page.hasNextPage && (
+        <div className="ui-form-actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={page.isFetchingNextPage}
+            onClick={() => void page.fetchNextPage()}
+          >
+            {label(language, "master.loadMore")}
+          </button>
+        </div>
+      )}
+    </FastTab>
   );
 }
 
@@ -659,19 +762,44 @@ function OrderLookup({
   language,
   money,
   t,
+  request,
 }: {
   company: CompanyDto;
   language: Preferences["language"];
   money: (value: number) => string;
   t: T;
+  request: { orderId: string } | null;
 }) {
   const [orderId, setOrderId] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Order | null>(null);
   const [error, setError] = useState<TradeOrderKey | "master.error" | null>(null);
+  const [focusResult, setFocusResult] = useState(false);
+  const resultRef = useRef<HTMLElement>(null);
+  // An order number chosen in the list runs the same lookup as the form (TORD-03).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once per list click, not per keystroke.
+  useEffect(() => {
+    if (!request) return;
+    setOrderId(request.orderId);
+    const toggle = document.querySelector<HTMLButtonElement>(
+      '[aria-controls="tord-lookup-body"][aria-expanded="false"]',
+    );
+    toggle?.click();
+    setFocusResult(true);
+    void run(request.orderId);
+  }, [request]);
+  useLayoutEffect(() => {
+    if (focusResult && result) {
+      resultRef.current?.focus();
+      setFocusResult(false);
+    }
+  }, [focusResult, result]);
   const lookup = async (event: FormEvent) => {
     event.preventDefault();
-    const id = orderId.trim();
+    setFocusResult(false);
+    await run(orderId.trim());
+  };
+  const run = async (id: string) => {
     if (busy || !id) return;
     setResult(null);
     if (!tradeOrderCommandSchema.shape.orderId.safeParse(id).success) {
@@ -723,7 +851,12 @@ function OrderLookup({
         </MessageBar>
       )}
       {result && (
-        <section className="tord-lookup-result" aria-label={t("tord.lookupTitle")}>
+        <section
+          className="tord-lookup-result"
+          aria-label={t("tord.lookupTitle")}
+          ref={resultRef}
+          tabIndex={-1}
+        >
           <h4>
             {t("tord.lookupTitle")} <Badge tone="info">{result.orderId}</Badge>
           </h4>

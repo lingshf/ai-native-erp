@@ -42,6 +42,7 @@ import {
   type TradeLineMatch,
   type TradeOrder,
   type TradeOrderCommand,
+  type TradeOrderSummary,
   type TradeSide,
   type TradeSettlementCommand,
   type TradeSettlementAllocation,
@@ -91,6 +92,8 @@ export interface TradeDocumentRepository {
   tradeOrder(company: string, orderId: string): Promise<TradeOrder | null>;
   tradeOrderLatestDate(company: string, orderId: string): Promise<string>;
   insertTradeOrder(company: string, order: TradeOrder): Promise<void>;
+  /** One statement per page: keyset on the primary key, line totals grouped in storage. */
+  tradeOrderPage(company: string, query: PageQuery): Promise<Page<TradeOrderSummary>>;
   /** Exact invoiced quantity in micros per requested order line, aggregated in storage. */
   tradeOrderInvoiced(
     company: string,
@@ -1192,6 +1195,15 @@ export class TradeDocumentService {
     checkedCode(company);
     checkedCode(orderId);
     return this.store.read(async (repo) => required(await repo.tradeOrder(company, orderId)));
+  }
+  async listOrders(company: string, query: PageQuery): Promise<Page<TradeOrderSummary>> {
+    checkedCode(company);
+    checkedPage(query);
+    if (query.cursor !== undefined) checkedCode(query.cursor);
+    return this.store.read(async (repo) => {
+      required(await repo.company(company));
+      return repo.tradeOrderPage(company, query);
+    });
   }
   async openItems(company: string, query: OpenItemQuery): Promise<Page<OpenItem>> {
     checkedCode(company);

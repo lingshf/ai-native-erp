@@ -8,6 +8,7 @@ import type {
   TradeDocumentSummary,
   TradeConfig,
   TradeOrder,
+  TradeOrderSummary,
   TradeActionRecord,
   TradeCreditLine,
   TradeControlSegment,
@@ -108,6 +109,10 @@ function openItemRow(row: Row, segments: readonly TradeControlSegment[]): OpenIt
 }
 const openItemSelect =
   "SELECT o.*,d.kind,d.external_no,t.discount_percent,t.allow_partial_discount FROM open_items o JOIN trade_item_sources d ON d.company_id=o.company_id AND d.item_id=o.item_id JOIN trade_invoice_terms t ON t.company_id=o.company_id AND t.item_id=o.item_id";
+// TORD-03: one statement per order-list page; parameters are (company, cursor or "", limit + 1).
+// Orders always have 1–100 lines, so the inner join keeps every order; both tables use their primary keys.
+export const tradeOrderPageSql =
+  "SELECT o.order_id,o.side,o.party_id,o.order_date,o.currency,o.price_includes_tax,o.rounding_mode,o.recorded_at,count(*) AS line_count,sum(l.net_minor) AS net_minor,sum(l.tax_minor) AS tax_minor,sum(l.gross_minor) AS gross_minor FROM trade_orders o JOIN trade_order_lines l ON l.company_id=o.company_id AND l.order_id=o.order_id WHERE o.company_id=? AND o.order_id>? GROUP BY o.order_id ORDER BY o.order_id LIMIT ?";
 
 export function tradeDocumentRepository(db: Connection): TradeDocumentRepository {
   async function segments(company: string, ids: readonly string[]) {
@@ -488,6 +493,31 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
             line.gross,
           ],
         );
+    },
+    async tradeOrderPage(company, query) {
+      const rows = await db.query(tradeOrderPageSql, [
+        company,
+        query.cursor ?? "",
+        query.limit + 1,
+      ]);
+      const items: TradeOrderSummary[] = rows.slice(0, query.limit).map((row) => ({
+        orderId: str(row.order_id),
+        side: str(row.side) as TradeOrderSummary["side"],
+        party: str(row.party_id),
+        orderDate: str(row.order_date),
+        currency: str(row.currency),
+        priceIncludesTax: int(row.price_includes_tax) === 1,
+        rounding: str(row.rounding_mode) as TradeOrderSummary["rounding"],
+        recordedAt: str(row.recorded_at),
+        lineCount: int(row.line_count),
+        net: int(row.net_minor),
+        tax: int(row.tax_minor),
+        gross: int(row.gross_minor),
+      }));
+      return {
+        items,
+        nextCursor: rows.length > query.limit ? items[items.length - 1].orderId : null,
+      };
     },
     async tradeOrderInvoiced(company, orderId, orderLineIds) {
       if (!orderLineIds.length) return [];
