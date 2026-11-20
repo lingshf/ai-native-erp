@@ -1,0 +1,178 @@
+/*
+ * UI-03 采购与销售发票页：只作用于 .trade-invoices 之内。
+ * 通用外观在 components.css（.page-header / .fasttab / .ui-form-grid / .grid / .kpis / .card / .message-bar）；
+ * 这里只定操作栏、行表格列宽、事实区与并排表格，以及 components.css 尚未提供的 warning / success 消息条（待 UI-08 提升）。
+ */
+.trade-invoices {
+  /* 本页所有控件在桌面与窄屏都 ≥ 44px */
+  --control-h: 44px;
+}
+.trade-invoices thead {
+  background: none;
+}
+.trade-invoices .message-bar p {
+  margin: 0;
+}
+.trade-invoices .message-bar.warning {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning-border);
+  border-left-color: var(--color-warning);
+}
+.trade-invoices .message-bar.success {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  border-left-color: var(--color-success);
+}
+
+.trade-invoices .tinv-entry {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* 操作栏：按钮顺序保持 预览 / 确认过账 / 放弃草稿 */
+.trade-invoices .tinv-command-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+.trade-invoices .tinv-divider {
+  align-self: stretch;
+  width: 1px;
+  margin: var(--space-1);
+  background: var(--color-border);
+}
+.trade-invoices .tinv-status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* 发票录入 */
+.trade-invoices .ui-form-grid > .ui-check {
+  align-self: end;
+}
+
+/* 发票行：宽表在自身 .grid-wrap 内横向滚动 */
+.trade-invoices .tinv-lines {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.trade-invoices .tinv-lines table {
+  min-width: 1080px;
+}
+.trade-invoices .tinv-lines td {
+  padding: var(--space-1) var(--space-2);
+}
+.trade-invoices .tinv-lines td:first-child {
+  width: 48px;
+  padding-left: var(--space-3);
+}
+.trade-invoices .tinv-lines td input {
+  width: 100%;
+  min-width: 72px;
+  height: var(--control-h);
+  padding: 0 var(--space-2);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+.trade-invoices .tinv-lines td input:disabled {
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+}
+.trade-invoices .tinv-lines :is(th, td):nth-child(n + 4):nth-child(-n + 7),
+.trade-invoices .tinv-lines td:nth-child(n + 4):nth-child(-n + 7) input {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.trade-invoices .tinv-lines kbd {
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  font: inherit;
+  font-size: var(--text-xs);
+}
+.trade-invoices .tinv-reason {
+  max-width: 480px;
+}
+
+/* 计算明细：KPI + 事实区 + 行金额 + 过账预览与订单匹配并排 */
+.trade-invoices .tinv-preview {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.trade-invoices .tinv-facts {
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: var(--space-3) var(--space-6);
+  margin: 0;
+}
+.trade-invoices .tinv-facts > div {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.trade-invoices .tinv-facts dt {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.trade-invoices .tinv-facts dd {
+  margin: 0;
+}
+.trade-invoices .tinv-total :is(th, td) {
+  position: static;
+  background: none;
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
+}
+.trade-invoices .tinv-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+.trade-invoices .tinv-split caption {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+}
+/* 数字列右对齐：行金额 3–7 列（合计行全部）、过账预览 2–3 列、订单匹配 3–6 列、已过账发票第 7 列 */
+.trade-invoices .tinv-preview > .grid-wrap :is(th, td):nth-child(n + 3),
+.trade-invoices .tinv-total td,
+.trade-invoices .tinv-split > :first-child :is(th, td):nth-child(n + 2),
+.trade-invoices .tinv-split > :nth-child(2) :is(th, td):nth-child(n + 3),
+.trade-invoices .tinv-list :is(th, td):nth-child(7) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 已过账发票 */
+.trade-invoices .tinv-list > :is(p, .message-bar) {
+  margin: var(--space-3) var(--space-5);
+}
+.trade-invoices .tinv-list-scroll {
+  max-height: 480px;
+}
+.trade-invoices .tinv-more {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}

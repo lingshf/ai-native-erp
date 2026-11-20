@@ -3,7 +3,7 @@
 // 用系统 Chrome（channel=chrome）截图。DPR = 1，整页，PNG 宽 = 视口宽。
 // 每张断言：scrollWidth ≤ 视口宽、溢出元素只在自身滚动容器内；并检查偏好三个控件可见、可用 Tab 到达。
 // 另断言偏好控件点击区域（桌面 36px，窄屏或粗指针 44px，粗指针用 hasTouch 模拟），
-// 以及 main 自身不横向滚动（UI-03 发票页例外，仅记录）。
+// 以及 main 自身不横向滚动（无例外：UI-03 已让发票行表格在自身容器内滚动）。
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -31,9 +31,6 @@ const extra = [
   ["overview", "", "zh", "red", 1440, true, false],
   ["overview", "", "zh", "red", 1440, false, true],
 ];
-// UI-03 例外：发票行表格尚无自身滚动容器，暂由 main 横向滚动（见 design/tasks/UI-03-trade-invoices.md）。
-const mainScrollException = new Set(["trade-invoices"]);
-
 function hitAreas() {
   const box = (el) => {
     const r = el.getBoundingClientRect();
@@ -123,7 +120,7 @@ try {
     const smallTargets = ["workspace-language", "workspace-theme", "workspace-teaching"].filter(
       (id) => hits[id][1] < minTarget || (id === "workspace-teaching" && hits[id][0] < minTarget),
     );
-    const mainOk = scroll.main[0] <= scroll.main[1] || mainScrollException.has(name);
+    const mainOk = scroll.main[0] <= scroll.main[1];
     // Preferences must be visible and reachable by real Tab presses from the document start.
     const reach = {};
     for (const id of ["workspace-language", "workspace-theme", "workspace-teaching"]) {

@@ -16,6 +16,8 @@ import { label, type LabelKey, type Preferences } from "./ui/index.ts";
 import { tradeEn } from "./ui/trade-labels.ts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
+import { Badge, FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
+import "./pages/trade-invoices.css";
 
 type Key = Exclude<LabelKey, "shell.httpError">;
 type T = (key: Key) => string;
@@ -248,31 +250,41 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
   const rows = companies.data?.pages.flatMap((page) => page.items) ?? [];
   const company = rows.find((row) => row.code === (selected || rows[0]?.code));
   return (
-    <section>
-      <h2>{t("tinv.title")}</h2>
-      {preferences.teaching && <p className="teaching">{t("tinv.teaching")}</p>}
+    <section className="page trade-invoices">
+      <PageHeader
+        title={t("tinv.title")}
+        description={t("tinv.description")}
+        context={
+          <div className="field">
+            <label htmlFor="tinv-company">{t("master.company")}</label>
+            <select
+              id="tinv-company"
+              value={company?.code ?? ""}
+              disabled={guard.busy}
+              onChange={(event) => setSelected(event.target.value)}
+            >
+              {rows.map((row) => (
+                <option key={row.code} value={row.code}>
+                  {row.code} · {row.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        }
+      />
       {companies.isPending && <p role="status">{t("master.loading")}</p>}
       {companies.isError && (
-        <div role="alert">
+        <MessageBar tone="danger" role="alert">
           <p>{t(failure(companies.error).key)}</p>
-          <button type="button" onClick={() => void companies.refetch()}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => void companies.refetch()}
+          >
             {t("master.retry")}
           </button>
-        </div>
+        </MessageBar>
       )}
-      <label htmlFor="tinv-company">{t("master.company")}</label>
-      <select
-        id="tinv-company"
-        value={company?.code ?? ""}
-        disabled={guard.busy}
-        onChange={(event) => setSelected(event.target.value)}
-      >
-        {rows.map((row) => (
-          <option key={row.code} value={row.code}>
-            {row.code} · {row.name}
-          </option>
-        ))}
-      </select>
       {company && (
         <>
           <InvoiceEntry
@@ -435,160 +447,243 @@ function InvoiceEntry({
     void post(request);
   };
 
+  const addLineLabel = t("tinv.addLine").match(/^(.*?[（(])(.+)([）)])$/);
+  const generalSummary = [
+    t(`trade.${draft.side}`),
+    draft.party.trim(),
+    draft.externalInvoice.trim(),
+    draft.accountingDate,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
-    <form aria-label={t("tinv.entry")} onSubmit={(event) => void runPreview(event)}>
-      <h3>{t("tinv.entry")}</h3>
-      <fieldset disabled={locked} className="form-grid">
-        <label htmlFor="tinv-side">{t("tinv.side")}</label>
-        <select
-          id="tinv-side"
-          ref={firstField}
-          value={draft.side}
-          onChange={(event) => edit({ side: event.target.value === "AR" ? "AR" : "AP" })}
-        >
-          <option value="AP">{t("trade.AP")}</option>
-          <option value="AR">{t("trade.AR")}</option>
-        </select>
-        {(
-          [
-            ["party", 40, "text"],
-            ["externalInvoice", 100, "text"],
-            ["accountingDate", 10, "date"],
-            ["documentDate", 10, "date"],
-            ["taxDate", 10, "date"],
-            ["orderId", 40, "text"],
-          ] as const
-        ).map(([field, max, type]) => (
-          <span key={field} className="form-field">
-            <label htmlFor={`tinv-${field}`}>{t(`tinv.${field}`)}</label>
-            <input
-              id={`tinv-${field}`}
-              type={type}
-              maxLength={max}
-              value={draft[field]}
-              onChange={(event) => edit({ [field]: event.target.value })}
-            />
-          </span>
-        ))}
-        <label className="checkbox-label" htmlFor="tinv-priceIncludesTax">
-          <input
-            id="tinv-priceIncludesTax"
-            type="checkbox"
-            checked={draft.priceIncludesTax}
-            onChange={(event) => edit({ priceIncludesTax: event.target.checked })}
-          />
-          {t("tinv.priceIncludesTax")}
-        </label>
-        <label htmlFor="tinv-rounding">{t("tinv.rounding")}</label>
-        <select
-          id="tinv-rounding"
-          value={draft.rounding}
-          onChange={(event) =>
-            edit({ rounding: event.target.value === "document" ? "document" : "line" })
-          }
-        >
-          <option value="line">{t("tinv.roundingLine")}</option>
-          <option value="document">{t("tinv.roundingDocument")}</option>
-        </select>
-        <table aria-label={t("tinv.lines")}>
-          <thead>
-            <tr>
-              <th scope="col">#</th>
-              {lineFields.map((field) => (
-                <th key={field} scope="col">
-                  {t(`tinv.${field}`)}
-                </th>
-              ))}
-              <th scope="col">{t("tinv.removeLine")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {draft.lines.map((line, index) => (
-              <tr key={line.lineId}>
-                <td>{line.lineId}</td>
-                {lineFields.map((field) => (
-                  <td key={field}>
-                    <input
-                      aria-label={`${t(`tinv.${field}`)} ${line.lineId}`}
-                      inputMode={
-                        field === "product" || field === "taxCode" || field === "orderLineId"
-                          ? "text"
-                          : "decimal"
-                      }
-                      maxLength={60}
-                      value={line[field]}
-                      onChange={(event) => editLine(index, field, event.target.value)}
-                    />
-                  </td>
-                ))}
-                <td>
-                  <button
-                    type="button"
-                    aria-label={`${t("tinv.removeLine")} ${line.lineId}`}
-                    disabled={draft.lines.length === 1}
-                    onClick={() => edit({ lines: draft.lines.filter((_, i) => i !== index) })}
-                  >
-                    {t("tinv.removeLine")}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <button type="button" disabled={draft.lines.length >= 100} onClick={addLine}>
-          {t("tinv.addLine")}
+    <form
+      className="tinv-entry"
+      aria-label={t("tinv.entry")}
+      onSubmit={(event) => void runPreview(event)}
+    >
+      <div className="tinv-command-bar">
+        <button type="submit" className="btn btn-secondary" disabled={locked}>
+          {t("tinv.preview")}
         </button>
-        <label className="checkbox-label" htmlFor="tinv-exception">
-          <input
-            id="tinv-exception"
-            type="checkbox"
-            checked={draft.exception}
-            onChange={(event) => edit({ exception: event.target.checked })}
-          />
-          {t("tinv.exceptionConfirmed")}
-        </label>
-        {draft.exception && (
-          <>
-            <label htmlFor="tinv-reason">{t("tinv.exceptionReason")}</label>
-            <input
-              id="tinv-reason"
-              maxLength={160}
-              value={draft.reason}
-              onChange={(event) => edit({ reason: event.target.value })}
-            />
-          </>
-        )}
-      </fieldset>
-      <button type="submit" disabled={locked}>
-        {t("tinv.preview")}
-      </button>
-      <button type="button" disabled={!preview || stale || locked} onClick={confirm}>
-        {t("tinv.confirm")}
-      </button>
-      <button type="button" disabled={!dirty || locked} onClick={discard}>
-        {t("tinv.discard")}
-      </button>
-      {busy && <p role="status">{t("master.loading")}</p>}
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={!preview || stale || locked}
+          onClick={confirm}
+        >
+          {t("tinv.confirm")}
+        </button>
+        <span className="tinv-divider" aria-hidden="true" />
+        <button
+          type="button"
+          className="btn btn-subtle"
+          disabled={!dirty || locked}
+          onClick={discard}
+        >
+          {t("tinv.discard")}
+        </button>
+        <span className="tinv-status">
+          {busy && <span role="status">{t("master.loading")}</span>}
+          {preview &&
+            (stale ? (
+              <Badge tone="warning">{t("tinv.previewStale")}</Badge>
+            ) : (
+              <Badge tone="success">{t("tinv.previewCurrent")}</Badge>
+            ))}
+        </span>
+      </div>
       {error && (
-        <div role="alert">
+        <MessageBar tone={error.key === "tinv.uncertain" ? "warning" : "danger"} role="alert">
           <p>
             {t(error.key)}
             {error.path ? ` (${error.path})` : ""}
           </p>
           {retry && pending && (
-            <button type="button" disabled={busy} onClick={() => void post(pending)}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={busy}
+              onClick={() => void post(pending)}
+            >
               {t("tinv.retryConfirm")}
             </button>
           )}
-        </div>
+        </MessageBar>
       )}
       {receipt && (
-        <p role="status">
+        <MessageBar tone="success" role="status">
           {t("tinv.posted")} {receipt.journalIds.join(", ")} · {money(receipt.gross)}
-        </p>
+        </MessageBar>
       )}
-      {stale && <p role="alert">{t("tinv.stale")}</p>}
-      {preview && <PreviewPanel preview={preview.value} money={money} t={t} />}
+      {stale && (
+        <MessageBar tone="warning" role="alert">
+          {t("tinv.stale")}
+        </MessageBar>
+      )}
+      <TeachingTip teaching={preferences.teaching} title={t("master.teachingTitle")}>
+        {t("tinv.teaching")}
+      </TeachingTip>
+      <FastTab id="tinv-general" title={t("tinv.entry")} summary={generalSummary}>
+        <fieldset disabled={locked} className="ui-form-grid">
+          <div className="ui-field">
+            <label htmlFor="tinv-side">{t("tinv.side")}</label>
+            <select
+              id="tinv-side"
+              ref={firstField}
+              value={draft.side}
+              onChange={(event) => edit({ side: event.target.value === "AR" ? "AR" : "AP" })}
+            >
+              <option value="AP">{t("trade.AP")}</option>
+              <option value="AR">{t("trade.AR")}</option>
+            </select>
+          </div>
+          {(
+            [
+              ["party", 40, "text"],
+              ["externalInvoice", 100, "text"],
+              ["accountingDate", 10, "date"],
+              ["documentDate", 10, "date"],
+              ["taxDate", 10, "date"],
+              ["orderId", 40, "text"],
+            ] as const
+          ).map(([field, max, type]) => (
+            <div key={field} className="ui-field">
+              <label htmlFor={`tinv-${field}`}>{t(`tinv.${field}`)}</label>
+              <input
+                id={`tinv-${field}`}
+                type={type}
+                maxLength={max}
+                value={draft[field]}
+                onChange={(event) => edit({ [field]: event.target.value })}
+              />
+            </div>
+          ))}
+          <label className="ui-check" htmlFor="tinv-priceIncludesTax">
+            <input
+              id="tinv-priceIncludesTax"
+              type="checkbox"
+              checked={draft.priceIncludesTax}
+              onChange={(event) => edit({ priceIncludesTax: event.target.checked })}
+            />
+            {t("tinv.priceIncludesTax")}
+          </label>
+          <div className="ui-field">
+            <label htmlFor="tinv-rounding">{t("tinv.rounding")}</label>
+            <select
+              id="tinv-rounding"
+              value={draft.rounding}
+              onChange={(event) =>
+                edit({ rounding: event.target.value === "document" ? "document" : "line" })
+              }
+            >
+              <option value="line">{t("tinv.roundingLine")}</option>
+              <option value="document">{t("tinv.roundingDocument")}</option>
+            </select>
+          </div>
+        </fieldset>
+      </FastTab>
+      <FastTab id="tinv-lines" title={t("tinv.lines")}>
+        <fieldset disabled={locked} className="tinv-lines">
+          <div className="grid-wrap">
+            <table className="grid" aria-label={t("tinv.lines")}>
+              <thead>
+                <tr>
+                  <th scope="col">#</th>
+                  {lineFields.map((field) => (
+                    <th key={field} scope="col">
+                      {t(`tinv.${field}`)}
+                    </th>
+                  ))}
+                  <th scope="col">{t("tinv.removeLine")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {draft.lines.map((line, index) => (
+                  <tr key={line.lineId}>
+                    <td>{line.lineId}</td>
+                    {lineFields.map((field) => (
+                      <td key={field}>
+                        <input
+                          aria-label={`${t(`tinv.${field}`)} ${line.lineId}`}
+                          inputMode={
+                            field === "product" || field === "taxCode" || field === "orderLineId"
+                              ? "text"
+                              : "decimal"
+                          }
+                          maxLength={60}
+                          value={line[field]}
+                          onChange={(event) => editLine(index, field, event.target.value)}
+                        />
+                      </td>
+                    ))}
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-subtle btn-sm"
+                        aria-label={`${t("tinv.removeLine")} ${line.lineId}`}
+                        disabled={draft.lines.length === 1}
+                        onClick={() => edit({ lines: draft.lines.filter((_, i) => i !== index) })}
+                      >
+                        {t("tinv.removeLine")}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="ui-form-actions">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              aria-keyshortcuts="Alt+Shift+N"
+              disabled={draft.lines.length >= 100}
+              onClick={addLine}
+            >
+              {addLineLabel ? (
+                <span>
+                  {addLineLabel[1]}
+                  <kbd>{addLineLabel[2]}</kbd>
+                  {addLineLabel[3]}
+                </span>
+              ) : (
+                t("tinv.addLine")
+              )}
+            </button>
+            <label className="ui-check" htmlFor="tinv-exception">
+              <input
+                id="tinv-exception"
+                type="checkbox"
+                checked={draft.exception}
+                onChange={(event) => edit({ exception: event.target.checked })}
+              />
+              {t("tinv.exceptionConfirmed")}
+            </label>
+          </div>
+          {draft.exception && (
+            <div className="ui-field tinv-reason">
+              <label htmlFor="tinv-reason">{t("tinv.exceptionReason")}</label>
+              <input
+                id="tinv-reason"
+                maxLength={160}
+                value={draft.reason}
+                onChange={(event) => edit({ reason: event.target.value })}
+              />
+            </div>
+          )}
+        </fieldset>
+      </FastTab>
+      {preview && (
+        <FastTab
+          id="tinv-preview"
+          title={t("tinv.previewTitle")}
+          summary={t("tinv.previewSummary")}
+        >
+          <PreviewPanel preview={preview.value} money={money} t={t} />
+        </FastTab>
+      )}
     </form>
   );
 }
@@ -604,102 +699,130 @@ function PreviewPanel({
 }) {
   const calc = preview.calculation;
   const amountKeys = ["net", "tax", "gross", "deductibleTax", "expense"] as const;
+  const tone = { matched: "success", exception: "warning", notApplicable: "info" } as const;
   return (
-    <section aria-label={t("tinv.previewTitle")}>
-      <h3>{t("tinv.previewTitle")}</h3>
-      <table aria-label={t("tinv.previewTitle")}>
-        <thead>
-          <tr>
-            <th scope="col">#</th>
-            <th scope="col">{t("tinv.taxCode")}</th>
-            {amountKeys.map((key) => (
-              <th key={key} scope="col">
-                {t(`tinv.${key}`)}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {calc.lines.map((line) => (
-            <tr key={line.id}>
-              <td>{line.id}</td>
-              <td>{line.taxCode}</td>
-              {amountKeys.map((key) => (
-                <td key={key}>{money(line[key])}</td>
-              ))}
-            </tr>
-          ))}
-          <tr>
-            <th scope="row" colSpan={2}>
-              Σ
-            </th>
-            {amountKeys.map((key) => (
-              <td key={key}>{money(calc[key])}</td>
-            ))}
-          </tr>
-        </tbody>
-      </table>
-      <dl>
-        <dt>{t("tinv.dueDate")}</dt>
-        <dd>{preview.dueDate}</dd>
-        <dt>{t("tinv.discountDate")}</dt>
-        <dd>{preview.discountDate}</dd>
-        <dt>{t("tinv.controlAccount")}</dt>
-        <dd>{preview.controlAccount}</dd>
-        <dt>{t("tinv.poMatch")}</dt>
-        <dd>{t(`tinv.${preview.poMatch}`)}</dd>
+    <section className="tinv-preview" aria-label={t("tinv.previewTitle")}>
+      <dl className="kpis">
+        {(["net", "tax", "gross", "deductibleTax"] as const).map((key) => (
+          <div key={key} className={key === "gross" ? "kpi emphasis" : "kpi"}>
+            <dt className="label">{t(`tinv.${key}`)}</dt>
+            <dd className="value">{money(calc[key])}</dd>
+          </div>
+        ))}
       </dl>
-      {preview.matches.length > 0 && (
-        <table aria-label={t("tinv.poMatch")}>
+      <dl className="tinv-facts">
+        <div>
+          <dt>{t("tinv.dueDate")}</dt>
+          <dd>{preview.dueDate}</dd>
+        </div>
+        <div>
+          <dt>{t("tinv.discountDate")}</dt>
+          <dd>{preview.discountDate}</dd>
+        </div>
+        <div>
+          <dt>{t("tinv.controlAccount")}</dt>
+          <dd>{preview.controlAccount}</dd>
+        </div>
+        <div>
+          <dt>{t("tinv.poMatch")}</dt>
+          <dd>
+            <Badge tone={tone[preview.poMatch]}>{t(`tinv.${preview.poMatch}`)}</Badge>
+          </dd>
+        </div>
+      </dl>
+      <div className="grid-wrap">
+        <table className="grid" aria-label={t("tinv.previewTitle")}>
           <thead>
             <tr>
               <th scope="col">#</th>
-              <th scope="col">{t("tinv.orderLineId")}</th>
-              <th scope="col">{t("tinv.quantity")}</th>
-              <th scope="col">{t("tinv.expectedNet")}</th>
-              <th scope="col">{t("tinv.net")}</th>
-              <th scope="col">{t("tinv.variance")}</th>
+              <th scope="col">{t("tinv.taxCode")}</th>
+              {amountKeys.map((key) => (
+                <th key={key} scope="col">
+                  {t(`tinv.${key}`)}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {preview.matches.map((match) => (
-              <tr key={match.lineId}>
-                <td>{match.lineId}</td>
-                <td>{match.orderLineId}</td>
-                <td>{match.quantity}</td>
-                <td>{money(match.expectedNet)}</td>
-                <td>{money(match.invoiceNet)}</td>
-                <td>
-                  {match.variance < 0 ? "-" : ""}
-                  {money(Math.abs(match.variance))}
-                  {match.withinTolerance ? "" : " ⚠"}
-                </td>
+            {calc.lines.map((line) => (
+              <tr key={line.id}>
+                <td>{line.id}</td>
+                <td>{line.taxCode}</td>
+                {amountKeys.map((key) => (
+                  <td key={key}>{money(line[key])}</td>
+                ))}
               </tr>
             ))}
+            <tr className="tinv-total">
+              <th scope="row" colSpan={2}>
+                Σ
+              </th>
+              {amountKeys.map((key) => (
+                <td key={key}>{money(calc[key])}</td>
+              ))}
+            </tr>
           </tbody>
         </table>
-      )}
-      <table aria-label="GL">
-        <thead>
-          <tr>
-            <th scope="col">{t("tinv.account")}</th>
-            <th scope="col">{t("tinv.debit")}</th>
-            <th scope="col">{t("tinv.credit")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {preview.journal.journals.flatMap((journal, j) =>
-            journal.lines.map((line, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: Plan lines have no identity beyond position.
-              <tr key={`${j}:${i}`}>
-                <td>{line.account}</td>
-                <td>{line.debit ? money(line.debit) : ""}</td>
-                <td>{line.credit ? money(line.credit) : ""}</td>
+      </div>
+      <div className="tinv-split">
+        <div className="grid-wrap">
+          <table className="grid" aria-label="GL">
+            <caption>{t("tinv.postingPreview")}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{t("tinv.account")}</th>
+                <th scope="col">{t("tinv.debit")}</th>
+                <th scope="col">{t("tinv.credit")}</th>
               </tr>
-            )),
-          )}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {preview.journal.journals.flatMap((journal, j) =>
+                journal.lines.map((line, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: Plan lines have no identity beyond position.
+                  <tr key={`${j}:${i}`}>
+                    <td>{line.account}</td>
+                    <td>{line.debit ? money(line.debit) : ""}</td>
+                    <td>{line.credit ? money(line.credit) : ""}</td>
+                  </tr>
+                )),
+              )}
+            </tbody>
+          </table>
+        </div>
+        {preview.matches.length > 0 && (
+          <div className="grid-wrap">
+            <table className="grid" aria-label={t("tinv.poMatch")}>
+              <caption>{t("tinv.poMatch")}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">#</th>
+                  <th scope="col">{t("tinv.orderLineId")}</th>
+                  <th scope="col">{t("tinv.quantity")}</th>
+                  <th scope="col">{t("tinv.expectedNet")}</th>
+                  <th scope="col">{t("tinv.net")}</th>
+                  <th scope="col">{t("tinv.variance")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {preview.matches.map((match) => (
+                  <tr key={match.lineId}>
+                    <td>{match.lineId}</td>
+                    <td>{match.orderLineId}</td>
+                    <td>{match.quantity}</td>
+                    <td>{money(match.expectedNet)}</td>
+                    <td>{money(match.invoiceNet)}</td>
+                    <td>
+                      {match.variance < 0 ? "-" : ""}
+                      {money(Math.abs(match.variance))}
+                      {match.withinTolerance ? "" : " ⚠"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -750,25 +873,27 @@ function InvoiceList({
     "tinv.gross",
   ] as const;
   return (
-    <>
-      <h3>{t("tinv.list")}</h3>
+    <div className="card tinv-list">
+      <header>
+        <h3>{t("tinv.list")}</h3>
+      </header>
       {page.isPending && <p role="status">{t("master.loading")}</p>}
       {page.isError && (
-        <div role="alert">
+        <MessageBar tone="danger" role="alert">
           <p>{t(failure(page.error).key)}</p>
-          <button type="button" onClick={() => void page.refetch()}>
+          <button type="button" className="btn btn-secondary" onClick={() => void page.refetch()}>
             {t("master.retry")}
           </button>
-        </div>
+        </MessageBar>
       )}
       <section
-        className="accounts-scroll"
+        className="grid-wrap tinv-list-scroll"
         ref={scroll}
         aria-label={t("tinv.list")}
         // biome-ignore lint/a11y/noNoninteractiveTabindex: Named virtual list supports keyboard scrolling.
         tabIndex={0}
       >
-        <table aria-label={t("tinv.list")} aria-rowcount={rows.length + 1}>
+        <table className="grid" aria-label={t("tinv.list")} aria-rowcount={rows.length + 1}>
           <thead>
             <tr>
               {headers.map((key) => (
@@ -804,16 +929,20 @@ function InvoiceList({
             )}
           </tbody>
         </table>
+        {page.isSuccess && rows.length === 0 && <p className="empty-state">{t("tinv.empty")}</p>}
       </section>
       {page.hasNextPage && (
-        <button
-          type="button"
-          disabled={page.isFetchingNextPage}
-          onClick={() => void page.fetchNextPage()}
-        >
-          {t("master.loadMore")}
-        </button>
+        <div className="tinv-more">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={page.isFetchingNextPage}
+            onClick={() => void page.fetchNextPage()}
+          >
+            {t("master.loadMore")}
+          </button>
+        </div>
       )}
-    </>
+    </div>
   );
 }
