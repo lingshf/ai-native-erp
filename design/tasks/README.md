@@ -198,25 +198,25 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- |
-| [UI-09a](UI-09a-components-css.md) | 组件样式：禁用 subtle（F3）、segmented 选中态（F10）、窄表滚动提示（F2 组件部分）、`.message-bar p` 全局规则（D-8） | CSS | — | web-ui:components, tests:contrast | todo | |
-| [UI-09b](UI-09b-shell-brand-css.md) | 外壳窄屏品牌名（F1） | CSS | M1-R1a（外壳串行）、UI-09e（A 线前序） | web-ui:shell | todo | |
-| [UI-09c](UI-09c-master-css.md) | 科目表 / 主数据：桌面 36px（F5）、滚动提示（F2）、删除 D-8 副本 | CSS | UI-09a | web-ui:master | todo | |
-| [UI-09d](UI-09d-ledger-period-close-css.md) | 总账报表 / 期末结账：金额链接（F4）、行表头与复选框（F6）、36px（F5）、删除 D-8 副本 | CSS | UI-09c（A 线前序，含 UI-09a） | web-ui:ledger, web-ui:period-close, tests:contrast | todo | |
-| [UI-09e](UI-09e-journals-css.md) | 凭证新建去掉框中框（F7） | CSS | — | web-ui:journals | todo | |
-| [UI-09f](UI-09f-trade-css.md) | 发票 / 付款：桌面 36px（F5）、删除 D-8 副本 | CSS | UI-09a | web-ui:trade | todo | |
-| [UI-09g](UI-09g-global-element-rules.md) | 删除 `styles.css` 全局元素规则（D-7，属性级证据） | CSS | UI-09a..f、UI-10a（外壳串行最后） | web-ui:shell | todo | |
-| [UI-10a](UI-10a-shell-preference-messagebar.md) | 外壳偏好警告改用 MessageBar（D-1） | 页面 tsx | UI-09b | web-ui:shell | todo | |
-| [UI-10b](UI-10b-journals-action-column.md) | 凭证列表操作列表头与“查看”列宽（F8） | 页面 tsx | UI-09e | web-ui:journals | todo | |
-| [UI-10c](UI-10c-accounts-enabled-badge.md) | 科目表只读“启用”改徽标（D-6） | 页面 tsx | UI-09c、UI-09d（共用 `contrast.test.ts`） | web-ui:master, tests:contrast | todo | |
-| [UI-10d](UI-10d-trade-master-enabled-badge.md) | 贸易主数据只读“启用”改徽标（D-6） | 页面 tsx | UI-09c, UI-10c | web-ui:master, web-ui:trade | todo | |
-| [UI-10e](UI-10e-migration-header-and-details.md) | 迁移核对页：PageHeader、教学提示（D-3）、键值明细（F9） | 页面 tsx | — | web-ui:migration | todo | |
-| [UI-10f](UI-10f-invoice-add-line-label.md) | 发票“新增行”快捷键显示（F11） | 页面 tsx | — | web-ui:trade | todo | |
-| [UI-10g](UI-10g-period-admission-saved-message.md) | 期间准入保存提示措辞（Sprint 评审遗留） | labels | — | web-ui:trade | todo | |
-| [M1-R1a](M1-R1a-trade-order-entry-page.md) | 非库存订单录入页（新页面，懒加载） | 新页面 + shell | — | web-ui:trade-orders, web-ui:shell | todo | |
-| [M1-R1b](M1-R1b-trade-order-gui-e2e.md) | E2E 主路径改用 GUI 建订单 | 测试 | M1-R1a | tests:trade-e2e（可能 bench/CI） | todo | |
-| [M1-R2a](M1-R2a-trade-teaching-tests.md) | 贸易页教学提示补齐与开 / 关测试 | 贸易 | — | web-ui:trade | todo | |
-| [M1-R2b](M1-R2b-trade-adjust-picker-filter.md) | 纠错页未结项选择按伙伴筛选（替代虚拟滚动） | 贸易 | M1-R2a | web-ui:trade | todo | |
-| [PROC-01](PROC-01-release-claims-and-demo.md) | 发布流程：断言来源、Demo 实跑模板（版本管理） | 文档 | — | docs/release | todo | |
+| [UI-09a](UI-09a-components-css.md) | 组件样式：禁用 subtle（F3）、segmented 选中态（F10）、窄表滚动提示（F2 组件部分）、`.message-bar p` 全局规则（D-8） | CSS | — | web-ui:components, tests:contrast | done | [#89](https://github.com/lingshf/ai-native-erp/pull/89) |
+| [UI-09b](UI-09b-shell-brand-css.md) | 外壳窄屏品牌名（F1） | CSS | M1-R1a（外壳串行）、UI-09e（A 线前序） | web-ui:shell | done | [#102](https://github.com/lingshf/ai-native-erp/pull/102) |
+| [UI-09c](UI-09c-master-css.md) | 科目表 / 主数据：桌面 36px（F5）、滚动提示（F2）、删除 D-8 副本 | CSS | UI-09a | web-ui:master | done | [#92](https://github.com/lingshf/ai-native-erp/pull/92) |
+| [UI-09d](UI-09d-ledger-period-close-css.md) | 总账报表 / 期末结账：金额链接（F4）、行表头与复选框（F6）、36px（F5）、删除 D-8 副本 | CSS | UI-09c（A 线前序，含 UI-09a） | web-ui:ledger, web-ui:period-close, tests:contrast | done | [#98](https://github.com/lingshf/ai-native-erp/pull/98) |
+| [UI-09e](UI-09e-journals-css.md) | 凭证新建去掉框中框（F7） | CSS | — | web-ui:journals | done | [#99](https://github.com/lingshf/ai-native-erp/pull/99) |
+| [UI-09f](UI-09f-trade-css.md) | 发票 / 付款：桌面 36px（F5）、删除 D-8 副本 | CSS | UI-09a | web-ui:trade | done | [#97](https://github.com/lingshf/ai-native-erp/pull/97) |
+| [UI-09g](UI-09g-global-element-rules.md) | 删除 `styles.css` 全局元素规则（D-7，属性级证据） | CSS | UI-09a..f、UI-10a（外壳串行最后） | web-ui:shell | done | [#106](https://github.com/lingshf/ai-native-erp/pull/106) |
+| [UI-10a](UI-10a-shell-preference-messagebar.md) | 外壳偏好警告改用 MessageBar（D-1） | 页面 tsx | UI-09b | web-ui:shell | done | [#104](https://github.com/lingshf/ai-native-erp/pull/104) |
+| [UI-10b](UI-10b-journals-action-column.md) | 凭证列表操作列表头与“查看”列宽（F8） | 页面 tsx | UI-09e | web-ui:journals | done | [#101](https://github.com/lingshf/ai-native-erp/pull/101) |
+| [UI-10c](UI-10c-accounts-enabled-badge.md) | 科目表只读“启用”改徽标（D-6） | 页面 tsx | UI-09c、UI-09d（共用 `contrast.test.ts`） | web-ui:master, tests:contrast | done | [#100](https://github.com/lingshf/ai-native-erp/pull/100) |
+| [UI-10d](UI-10d-trade-master-enabled-badge.md) | 贸易主数据只读“启用”改徽标（D-6） | 页面 tsx | UI-09c, UI-10c | web-ui:master, web-ui:trade | done | [#103](https://github.com/lingshf/ai-native-erp/pull/103) |
+| [UI-10e](UI-10e-migration-header-and-details.md) | 迁移核对页：PageHeader、教学提示（D-3）、键值明细（F9） | 页面 tsx | — | web-ui:migration | done | [#87](https://github.com/lingshf/ai-native-erp/pull/87) |
+| [UI-10f](UI-10f-invoice-add-line-label.md) | 发票“新增行”快捷键显示（F11） | 页面 tsx | — | web-ui:trade | done | [#93](https://github.com/lingshf/ai-native-erp/pull/93) |
+| [UI-10g](UI-10g-period-admission-saved-message.md) | 期间准入保存提示措辞（Sprint 评审遗留） | labels | — | web-ui:trade | done | [#94](https://github.com/lingshf/ai-native-erp/pull/94) |
+| [M1-R1a](M1-R1a-trade-order-entry-page.md) | 非库存订单录入页（新页面，懒加载） | 新页面 + shell | — | web-ui:trade-orders, web-ui:shell | done | [#91](https://github.com/lingshf/ai-native-erp/pull/91) |
+| [M1-R1b](M1-R1b-trade-order-gui-e2e.md) | E2E 主路径改用 GUI 建订单 | 测试 | M1-R1a | tests:trade-e2e（可能 bench/CI） | done | [#95](https://github.com/lingshf/ai-native-erp/pull/95) |
+| [M1-R2a](M1-R2a-trade-teaching-tests.md) | 贸易页教学提示补齐与开 / 关测试 | 贸易 | — | web-ui:trade | done | [#88](https://github.com/lingshf/ai-native-erp/pull/88) |
+| [M1-R2b](M1-R2b-trade-adjust-picker-filter.md) | 纠错页未结项选择按伙伴筛选（替代虚拟滚动） | 贸易 | M1-R2a | web-ui:trade | done | [#90](https://github.com/lingshf/ai-native-erp/pull/90) |
+| [PROC-01](PROC-01-release-claims-and-demo.md) | 发布流程：断言来源、Demo 实跑模板（版本管理） | 文档 | — | docs/release | done | [#86](https://github.com/lingshf/ai-native-erp/pull/86) |
 
 回顾的另外两项由本 PR 直接落地：
 - “合并检查清单加入任务表同步”与“运维可见变化写明旧值 → 新值”，写入[路线图 §5](../roadmap.md#5-团队流程)；
@@ -260,6 +260,27 @@ M1-R3（#78）、M1-R4（#81）已完成。
 - **M1-R1b** 改共享 E2E 场景，与它同时进行的贸易任务合并后要 rebase 并重跑真实 Chrome 场景。若需调整 Full 分片，同一时间只开一个改 workflow 的任务。
 - **PROC-01** 由版本管理负责，不计入开发上限，随时可做。
 - 每个任务合并后，按[路线图 §5 合并后动作](../roadmap.md#5-团队流程)跟踪 main Full，含 Full 被后续 push 取消时的解锁规则。变绿前不派发同一冲突域的下一个任务。
+- S4 验收对照（Sprint 评审用）：[design/reviews/S4.md](../reviews/S4.md)。
+
+## S5 待办：`styles.css` 剩余全局元素规则（候选，未排期）
+
+来源：UI-09g [#106](https://github.com/lingshf/ai-native-erp/pull/106)（head `f269d23`，合并为 main `662a763`）的属性级证据表“保留”部分，摘要见 [UI-1.md §5.2](../reviews/UI-1.md#52-ui-09gstylescss-全局元素规则删除记录)。这些声明在 UI-09g 中原样保留，因为删除后计算值会改变，或者仍有采集状态覆盖不到的依赖。S5 立项时由设计角色拆成任务文件，以下是按冲突域的候选范围，ID 暂定。
+
+共同方法与验收：
+- 在各页（组件）CSS 中用类规则给出同等的值，需要类名时再改 `.tsx`。
+- 用 UI-09g 的 `rules-probe.mjs` 证明该页命中的全局声明删除后计算值不变（“变”为 0），并补采原先覆盖不到的状态，如 BusinessEvents 的各个表单。
+- 每个任务只改自己的冲突域，**不改 `styles.css`**。全局规则的最终删除只在 S5-g 做一次。
+- 满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9，PG-05 口径同 S4。
+
+| 暂定 ID | 冲突域 | 依赖全局规则的声明（UI-09g 证据） | 类型 |
+| --- | --- | --- | --- |
+| S5-a | web-ui:journals | BusinessEvents.tsx 无类的 `legend`（font-weight、padding）、`form > fieldset > label > select`（width / background / color / border / radius / padding / min-height）、无类按钮（1125、1183、1401/1402、1467、1701/1702 的 background / color / border / padding / cursor / font-weight / hover / active / disabled）、VirtualRows 表头 :860、1174 的 `th, td { padding }`；凭证页复选框 | 页面 tsx + CSS |
+| S5-b | web-ui:migration | `dl { display }`、`dt { color }`、`dd { margin }`、`@media 680 dd { margin-bottom }`、`thead { background }`；另含已有问题：`.kv` 表不在独立滚动区（UI-10e 引入，版式检查报 `not in own scroller`） | CSS（必要时 tsx） |
+| S5-c | web-ui:trade | 发票 / 结算复选框（width / height / flex-shrink / accent-color）、`.tinv-facts` / `.trpt-facts` 的 `dl { display }`、贸易报表 `button.cell-link { border-radius }`、发票过账预览 / PO 匹配 `caption` | CSS |
+| S5-d | web-ui:trade-orders | 订单页复选框、`.tord-facts` 的 `dl { display }`（若仍依赖） | CSS |
+| S5-e | web-ui:ledger、web-ui:period-close、web-ui:master | 报表 / 期末 `caption`（text-align / font-weight / padding）；总账明细 `th, td`（vertical-align / min-width / text-align / border-bottom，#106 观察到仍生效）、总账 tfoot `td { padding }`；期末 fieldset 内 `.journal-scroll` 的 `th, td { padding }`；科目表 `td { text-align }`（left → start） | CSS |
+| S5-f | web-ui:shell、web-ui:components | 外壳偏好 `legend { font-weight }`、`select { max-width }`、复选框；概览 `dd { font-weight }`；`.field` 下 `select { max-width }`；VirtualRows `tfoot { background }` | CSS |
+| S5-g | web-ui:shell | 依赖 S5-a..f：删除 `styles.css` 中剩余全局元素规则，方法与证据同 UI-09g，全部采集点“变”为 0、像素差 0 | CSS |
 
 ## 派发顺序
 

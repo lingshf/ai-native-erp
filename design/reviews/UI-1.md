@@ -177,6 +177,33 @@
 - `.teaching`（现为 `.teaching-tip`）、`.account-editor*`、`.journal-editor*`；
 - `.reports > label`、`.dimensions > label`。
 
+### 5.2 UI-09g：`styles.css` 全局元素规则删除记录
+
+来源：UI-09g [#106](https://github.com/lingshf/ai-native-erp/pull/106)，head `f269d23`（评审通过的 head），base `02ede86`，合并为 main `662a763`。完整证据表与产物见 PR 正文和 [gist](https://gist.github.com/lingshf/bff06726d3a329b9fd39b5fbf9194df3)（`capture.mjs`、`rules-probe.mjs`、逐声明 JSON）。本节只记摘要。
+
+**方法**：
+- `rules-probe.mjs` 在打包后的入口 CSS 中逐条声明“删除 → 测量所有 longhand 与外框 → 恢复”。覆盖来源用 CDP `CSS.getMatchedStylesForNode` 查询，`:hover` / `:active` 用 `CSS.forcePseudoState` 强制。
+- 采集 100 个点：20 页（含运行状态页），zh + 红 / en + 绿 × 1440 / 390，另加 zh + 红 1440 教学关闭。
+- 可删的两个条件：(a) 所有采集点删除前后计算值逐项相等；(b) 采集覆盖不到的源码用法，经静态逐处检查也有类规则覆盖。只满足 (a) 的一律保留。
+
+**删除**（diff 只有 `styles.css` +2 / −12）：
+
+| 声明 | 命中 / 变 | 覆盖来源 |
+| --- | --- | --- |
+| `dl { grid-template-columns; gap; margin-bottom }` | 各 45 / 0 | `.overview-facts`、`.jv-facts`、`.kpis`、`.tinv-facts` / `.tord-facts` / `.trpt-facts`、`.migration-page .card > dl` |
+| `@media (max-width: 680px) dl { grid-template-columns; gap }`（整条） | 各 18 / 0 | 同上类规则（类选择器优先级更高） |
+| `table { border-collapse; width }` | 各 125 / 0 | `.grid`、`.journal-scroll table`、`.migration-page .kv` |
+| `table { font-size }` | 125 / 0 | 无覆盖；与继承值 `--text-md` 相同，表格祖先中没有改字号的规则 |
+
+**结果**：
+- 100 张截图 base → head 像素差全部为 0；计算值快照 0 处不同。
+- PG-05：入口 CSS gzip 3.11 → 3.07 kB（−0.04），入口 JS −0.01（视为不变），其余 chunk 不变。
+- 真实 Chrome `trade-gui-` + `migration-gui.slow` 在 head 上 6 个文件 / 13 个用例通过；合并后 main Full [44772479885](https://github.com/lingshf/ai-native-erp/actions/runs/44772479885) 12 个分片的测试步骤全部为 `success`。
+
+**保留**：仍在生效或有未采集依赖的声明，涉及 `legend`、`select`、`button`、`input[type=checkbox]`、`dl { display }`、`dt`、`dd`、`caption`、`th, td`、`thead, tfoot`。按冲突域登记为 [S5 待办](../tasks/README.md#s5-待办stylescss-剩余全局元素规则候选未排期) S5-a..g。D-7 至此部分完成：`dl` 布局与 `table` 已删除，其余规则移到 S5。
+
+**已有问题**（与 #106 无关）：迁移页 `.kv` 表不在独立滚动区，版式检查报 `not in own scroller`，base 上已存在，由 UI-10e 引入，登记为 S5-b。
+
 
 ## 6. 偏差与裁定
 
