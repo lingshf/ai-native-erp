@@ -111,7 +111,75 @@ job `trade-http` (5 min 19 s wall clock). Environment: Linux 4 vCPU AMD EPYC 776
 All three CI runs passed with no D18 warnings. The highest value is the
 reconciliation at 472.83 ms, 59% of the read budget.
 
-**Local** three-run results: pending. The shared host was saturated by unrelated load-test processes at measurement time; numbers taken then are not valid evidence (control scenarios degraded several-fold).
+**Local** — `node packages\infra\bench\trade-http.ts`, 2026-11-20
+04:09:35–04:20:04 UTC, source `10936ba`, exit 0, 631 s wall clock. Raw evidence
+is [trade-bench.json](trade-bench.json). Environment: the same Windows Cloud PC
+as M1-07 (16 logical CPUs, AMD EPYC 7763, Node v26.13.0, SQLite 3.53.4).
+`*` marks a D18 warning, where p95 exceeds 80% of the budget.
+
+| Scenario | Run 1 | Run 2 | Run 3 | p95 budget |
+|---|---:|---:|---:|---:|
+| Open-item first page (100) | 36.51 | 26.93 | 34.95 | ≤1,000 |
+| Current aging report | 866.36\* | 719.68 | 786.71 | ≤1,000 |
+| Historical balances, 2026-06 | 588.69 | 521.45 | 529.91 | ≤1,000 |
+| GL reconciliation | 972.99\* | 907.05\* | 836.32\* | ≤1,000 |
+| Concurrent: current aging | 843.17\* | 887.86\* | 844.89\* | ≤1,000 |
+| Concurrent: historical 2026-06 | 625.72 | 615.58 | 633.18 | ≤1,000 |
+| Concurrent: party P0015 current | 732.14 | 748.75 | 748.13 | ≤1,000 |
+| Concurrent: slowest of 3 per round | 843.18\* | 887.88\* | 844.90\* | ≤1,000 |
+| AP invoice preview (100 lines) | 91.89 | 127.35 | 84.53 | ≤2,000 |
+| AP invoice confirm (100 lines) | 665.64 | 530.37 | 555.60 | ≤2,000 |
+| AR invoice preview (100 lines) | 87.91 | 76.77 | 197.12 | ≤2,000 |
+| AR invoice confirm (100 lines) | 539.67 | 539.23 | 584.67 | ≤2,000 |
+
+**All three local runs are within budget, but D18 warnings remain on this host.**
+
+- The GL reconciliation exceeds 800 ms in every run, reaching 972.99 ms (97% of
+  the budget).
+- Concurrent current aging exceeds 800 ms in every run.
+- Serial current aging exceeds 800 ms in run 1.
+
+These samples are close to the budget and are recorded as such. They are not
+attributed to noise.
+
+Host CPU was sampled every 8 s throughout. During the measured repetitions,
+about 04:16–04:20 UTC, background load was steady at about 3 of 16 cores
+(`devenv`, `epmservice`, `sensece`), with one Defender spike at 04:19:42.
+Higher peaks fell inside fixture generation.
+
+An earlier local attempt on the same source (03:41–03:52 UTC) had no load
+sampling and exited 1:
+
+| Run | Result | Highest read p95 |
+|---|---|---:|
+| 1 | Exceeded the budget | Reconciliation 1,102.43 ms; concurrent aging 1,553.16 ms |
+| 2 | Exceeded the budget | Reconciliation 1,703.69 ms; serial aging 1,593.33 ms |
+| 3 | Passed | 821.13 ms, concurrent |
+
+In runs 1 and 2 the unchanged write scenarios were also 1.3–2.5× slower than in
+the run above. Without load samples that attempt cannot be classified, so it is
+reported here rather than discarded.
+
+The local Windows host is about 1.7–2× slower than the CI runner on the report
+scenarios. In-process measurements on the generated fixture show why:
+
+- **Current totals:** about 477 ms with a 128 MB page cache, about 625 ms with
+  the production default of about 2 MB.
+- **Breakdown:** the settlement sums are about 140 ms and the action-change
+  sums about 190 ms. The action-change cost splits into about 80 ms of
+  per-item probes and about 100 ms of JSON.
+- **Rejected forms:**
+  - Pre-aggregating either sum into a materialized CTE, whether through a
+    LEFT JOIN or a correlated lookup, was slower.
+  - Precomputing `julianday(ageingDate)` changed nothing.
+  - A 64 MB page cache did not fit the working set. Only 128 MB helped, about
+    384 MB across three readers, and that would stop helping as data grows.
+    It was not adopted.
+
+The remaining headroom on this host would need either a structural change or a
+replay cache, which the roadmap does not allow. Examples of a structural change
+are persisted per-item running balances maintained on the write path, or
+separating the totals from paging.
 
 ### M1-R3 limitations
 
@@ -120,8 +188,10 @@ reconciliation at 472.83 ms, 59% of the read budget.
 - Concurrency is three report clients. It does not cover reports running
   together with writes.
 - The party-scoped report alone takes tens of ms. Under concurrency it reaches
-  about 340 ms because it waits behind the all-party reports on the read
-  workers.
+  about 340 ms on CI and 750 ms locally. The production executor runs at most
+  `readers - 1` (2) heavy jobs at once and reserves one reader for light
+  requests, so the third report waits for one of the others. This scheduling is
+  existing production behaviour and is unchanged.
 - Each report still aggregates all items per request. Its cost grows linearly
   with item and settlement counts.
 
@@ -271,7 +341,7 @@ the existing benchmarks. Real timing gates are not run in PR tests.
 
 ### Raw evidence
 
-Persistent, complete three-run local evidence: [trade-bench.json](trade-bench.json).
+Persistent, complete three-run local evidence: [trade-bench.json](trade-bench.json). Since M1-R3 it holds the M1-R3 local run above; the M1-07 version remains in git history (for example main `efd5d6b`).
 It is a copy of the aggregate output, retaining all original raw timing
 values and metadata, with no local absolute fixture paths.
 
