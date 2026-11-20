@@ -51,19 +51,20 @@
 
 （端口 4195 仅为示例，按本版实际选用。每轮开头先清空 `$server`、`$demo`、`$db`、`$port`，同一会话复跑时，端口检查先中止也不会让收尾块碰上一轮残留的对象；本轮已创建的临时目录和已启动的 `$server` 仍按下面的收尾清理。）
 
-**seed 与截图前必须再检查一次**，不能依赖上面启动块是否中止过。把下面这段放在每个写入数据的脚本（seed、截图）之前，自己校验：
+**每个写入数据的脚本（seed、截图）都放进下面这种“校验 + 执行”同一个块里**，校验失败时 `throw` 会中止整块，写入不会执行；不要把校验和写入分成两次粘贴。不依赖启动块是否中止过：
 
 ```powershell
 . {
+  $script = "docs/demo/v0.4.0/scripts/seed-trade.mjs"   # 换成本版要运行的脚本
   if (-not $server -or -not $port) { throw "本轮没有已启动的 `$server，先运行启动块" }
   if ($server.HasExited) { throw "本轮服务进程已退出，中止，不要写入数据" }
   $owner = @((Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue).OwningProcess)
   if ($owner.Count -ne 1 -or $owner[0] -ne $server.Id) {
     throw "端口 $port 的监听进程 ($($owner -join ',')) 不是本轮启动的 $($server.Id)，中止，不要写入数据"
   }
-  "seed 前检查通过：port=$port pid=$($server.Id)"
+  node $script
+  if ($LASTEXITCODE -ne 0) { throw "$script 失败，退出码 $LASTEXITCODE" }
 }
-# 之后才运行本版的 seed 与截图脚本
 ```
 
 ## 收尾
