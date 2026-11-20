@@ -48,8 +48,13 @@ export const zh = {
   "shell.unconfigured": "目标业务账套未配置",
   "shell.dataWarning":
     "尚未连接目标业务账套。若已启动经校验的快照，可在只读报表查看；此处不提供财务写入。",
+  "shell.teachingTitle": "教学说明",
   "shell.teachingNote":
-    "教学说明：状态由同源的只读 health 接口实时返回。连接成功并不代表目标业务账套已配置。",
+    "状态由同源的只读 health 接口实时返回。连接成功并不代表目标业务账套已配置。",
+  "shell.compatible": "兼容",
+  "shell.uiLoading": "正在加载组件…",
+  "shell.uiFailed": "界面组件加载失败，已简化显示。",
+  "shell.uiReload": "重新加载页面",
   "shell.networkError": "无法连接本地 API。请检查服务后重试。",
   "shell.invalidResponse": "本地 API 返回了不符合契约的响应。未确认连接状态。",
   "shell.httpError": "本地 API 请求失败（HTTP {status}）。请检查服务后重试。",
@@ -102,8 +107,13 @@ export const en = {
   "shell.unconfigured": "Target business ledger unconfigured",
   "shell.dataWarning":
     "The target business ledger is not connected. Verified snapshots, when started, are available under Read-only reports. Financial writes are not available.",
+  "shell.teachingTitle": "Teaching note",
   "shell.teachingNote":
-    "Teaching note: status is returned live by the same-origin, read-only health endpoint. A successful connection does not mean the target business ledger is configured.",
+    "Status is returned live by the same-origin, read-only health endpoint. A successful connection does not mean the target business ledger is configured.",
+  "shell.compatible": "Compatible",
+  "shell.uiLoading": "Loading components…",
+  "shell.uiFailed": "Interface components failed to load; showing a simplified view.",
+  "shell.uiReload": "Reload page",
   "shell.networkError": "Cannot connect to the local API. Check the service and retry.",
   "shell.invalidResponse":
     "The local API returned a response that does not match the contract. Connection status is unconfirmed.",

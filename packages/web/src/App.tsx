@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, type ReactNode, Suspense, useEffect, useRef, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import {
@@ -9,7 +9,9 @@ import {
   type Preferences,
   type PreferenceIssue,
 } from "./ui/index.ts";
+import type { Badge, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import { useHealth } from "./health.ts";
+import "./pages/overview.css";
 
 const storage = () => window.localStorage;
 const Migration = lazy(() =>
@@ -369,65 +371,133 @@ function Workspace() {
   );
 }
 
+type SharedUi = {
+  Badge: typeof Badge;
+  MessageBar: typeof MessageBar;
+  PageHeader: typeof PageHeader;
+  TeachingTip: typeof TeachingTip;
+};
+// The shared components stay in their own chunk (D39): a static import here would fold them and
+// components.css into the entry. Until that chunk arrives Overview keeps its final DOM in place
+// but transparent, inert and aria-hidden (the status region inside is never replaced); only the
+// loading note is visible and exposed. Nothing becomes operable before the final layout. If the
+// chunk fails, the same content is shown with these plain stand-ins and a visible reload notice.
+const Plain = ({ children }: { children?: ReactNode }) => <>{children}</>;
+const plainUi: SharedUi = {
+  Badge: Plain,
+  MessageBar: Plain,
+  PageHeader: ({ title }) => <h2>{title}</h2>,
+  TeachingTip: ({ teaching, children }) => (teaching ? <p>{children}</p> : null),
+};
+
+type SharedUiState = "pending" | "ready" | "failed";
+let loadedUi: SharedUi | undefined;
+
 function Overview({ preferences }: { preferences: Preferences }) {
   const [attempt, setAttempt] = useState(0);
-  const health = useHealth(attempt);
+  const loaded = useHealth(attempt);
+  const [uiState, setUiState] = useState<SharedUiState>(loadedUi ? "ready" : "pending");
+  useEffect(() => {
+    if (loadedUi) return;
+    // Awaited as a whole: Vite wraps this import() with a CSS preload whose failure would
+    // otherwise escape a .then() chained onto the bare import().
+    (async () => {
+      try {
+        loadedUi = await import("./ui/components/index.tsx");
+        setUiState("ready");
+      } catch {
+        setUiState("failed");
+      }
+    })();
+  }, []);
+  const { Badge, MessageBar, PageHeader, TeachingTip } = loadedUi ?? plainUi;
+  const pending = uiState === "pending";
+  const health: typeof loaded = pending ? { kind: "loading" } : loaded;
   const language = preferences.language;
   const t = (key: Exclude<LabelKey, "shell.httpError">) => label(language, key);
+  const configured = health.kind === "ready" && health.health.data === "configured";
+  const unhealthy = health.kind !== "loading" && health.kind !== "ready";
   return (
-    <>
-      <p className="intro">{t("shell.intro")}</p>
-      <section className="status-card" aria-labelledby="health-heading">
-        <h2 id="health-heading">{t("shell.healthHeading")}</h2>
-        <div role="status" aria-live="polite" aria-atomic="true">
-          {health.kind === "loading" && <p>{t("shell.healthLoading")}</p>}
-          {health.kind === "ready" && (
-            <>
-              <p className="connected">{t("shell.connected")}</p>
-              <dl>
-                <dt>{t("shell.service")}</dt>
-                <dd>{health.health.service}</dd>
-                <dt>{t("shell.contract")}</dt>
-                <dd>{health.health.contractVersion}</dd>
-                <dt>{t("shell.profile")}</dt>
-                <dd>{t("shell.local")}</dd>
-                <dt>{t("shell.data")}</dt>
-                <dd>
-                  {t(
-                    health.health.data === "configured" ? "shell.configured" : "shell.unconfigured",
-                  )}
-                </dd>
-              </dl>
-            </>
-          )}
-          {(health.kind === "networkError" || health.kind === "invalidResponse") && (
-            <p className="error">
-              <span aria-hidden="true">⚠ </span>
-              {t(`shell.${health.kind}`)}
-            </p>
-          )}
-          {health.kind === "httpError" && (
-            <p className="error">
-              <span aria-hidden="true">⚠ </span>
-              {label(language, "shell.httpError", { status: health.status })}
-            </p>
-          )}
-        </div>
-        {health.kind !== "loading" && health.kind !== "ready" && (
-          <button type="button" onClick={() => setAttempt((previous) => previous + 1)}>
-            {t("shell.retry")}
+    <div className={`page overview-page overview-${uiState}`}>
+      {pending && <p role="status">{t("shell.uiLoading")}</p>}
+      {uiState === "failed" && (
+        <div className="overview-ui-error" role="alert">
+          <p>{t("shell.uiFailed")}</p>
+          <button type="button" onClick={() => location.reload()}>
+            {t("shell.uiReload")}
           </button>
-        )}
-      </section>
-      {!(health.kind === "ready" && health.health.data === "configured") && (
-        <section className="warning data-warning" aria-label={t("shell.data")}>
-          <p>
-            <span aria-hidden="true">⚠ </span>
-            {t("shell.dataWarning")}
-          </p>
-        </section>
+        </div>
       )}
-      {preferences.teaching && <p className="teaching">{t("shell.teachingNote")}</p>}
-    </>
+      {/* Always present so the status region below is never replaced; only a placeholder while pending. */}
+      <div className="overview-content" inert={pending} aria-hidden={pending || undefined}>
+        <PageHeader title={t("shell.overview")} description={t("shell.intro")} />
+        <TeachingTip teaching={preferences.teaching} title={t("shell.teachingTitle")}>
+          {t("shell.teachingNote")}
+        </TeachingTip>
+        <section className="card" aria-labelledby="health-heading">
+          <header>
+            <h3 id="health-heading">{t("shell.healthHeading")}</h3>
+          </header>
+          <div className="body">
+            <div className="overview-status" role="status" aria-live="polite" aria-atomic="true">
+              {health.kind === "loading" && <p>{t("shell.healthLoading")}</p>}
+              {health.kind === "ready" && (
+                <>
+                  <p>
+                    <Badge tone="success">{t("shell.connected")}</Badge>
+                  </p>
+                  <dl className="overview-facts">
+                    <div>
+                      <dt>{t("shell.service")}</dt>
+                      <dd>{health.health.service}</dd>
+                    </div>
+                    <div>
+                      <dt>{t("shell.contract")}</dt>
+                      <dd>
+                        <span>{health.health.contractVersion}</span>
+                        <Badge tone="success">{t("shell.compatible")}</Badge>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>{t("shell.profile")}</dt>
+                      <dd>{t("shell.local")}</dd>
+                    </div>
+                    <div>
+                      <dt>{t("shell.data")}</dt>
+                      <dd>
+                        <Badge tone={configured ? "success" : "warning"}>
+                          {t(configured ? "shell.configured" : "shell.unconfigured")}
+                        </Badge>
+                      </dd>
+                    </div>
+                  </dl>
+                </>
+              )}
+              {unhealthy && (
+                <MessageBar tone="danger">
+                  {health.kind === "httpError"
+                    ? label(language, "shell.httpError", { status: health.status })
+                    : t(`shell.${health.kind}`)}
+                </MessageBar>
+              )}
+            </div>
+            {unhealthy && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setAttempt((previous) => previous + 1)}
+              >
+                {t("shell.retry")}
+              </button>
+            )}
+          </div>
+        </section>
+        {!configured && (
+          <section aria-label={t("shell.data")}>
+            <MessageBar tone="warning">{t("shell.dataWarning")}</MessageBar>
+          </section>
+        )}
+      </div>
+    </div>
   );
 }
