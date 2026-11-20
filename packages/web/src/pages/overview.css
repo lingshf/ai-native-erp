@@ -91,4 +91,15 @@
   min-height: var(--control-h);
   padding: 0 var(--space-4);
   font: inherit;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.overview-failed button:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+.overview-failed button:active:not(:disabled) {
+  background: var(--color-primary-active);
 }

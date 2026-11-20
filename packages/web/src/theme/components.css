@@ -83,6 +83,10 @@
   background: var(--color-primary);
   color: var(--color-on-primary);
 }
+/* 与 hover 同为 (0,3,0)，写在 hover 之前：同时按下且悬停时仍用 hover 底色。:where(button) 不计特异度，只为不改 <Link class="btn-primary"> */
+.btn-primary:where(button):active:not(:disabled) {
+  background: var(--color-primary-active);
+}
 .btn-primary:hover:not(:disabled) {
   background: var(--color-primary-hover);
 }
