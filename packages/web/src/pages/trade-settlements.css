@@ -1,0 +1,122 @@
+/*
+ * UI-06 结算与调整页：只作用于 .trade-settlements / .trade-adjustments 之内。
+ * 通用外观在 components.css；这里只定操作栏、分配表、贷项行、反向勾选与 warning / success 消息条（待 UI-08 提升）。
+ */
+:is(.trade-settlements, .trade-adjustments) {
+  /* 本页所有控件在桌面与窄屏都 ≥ 44px */
+  --control-h: 44px;
+}
+:is(.trade-settlements, .trade-adjustments) .message-bar p {
+  margin: 0;
+}
+:is(.trade-settlements, .trade-adjustments) .message-bar.warning {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning-border);
+  border-left-color: var(--color-warning);
+}
+:is(.trade-settlements, .trade-adjustments) .message-bar.success {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  border-left-color: var(--color-success);
+}
+:is(.trade-settlements, .trade-adjustments)
+  :is(.tset-entry, .tadj-entry, .tset-result, .tadj-result, .tadj-lines) {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+:is(.trade-settlements, .trade-adjustments) :is(.tset-allocation, .tadj-allocation) {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+:is(.trade-settlements, .trade-adjustments) :is(.tset-allocation, .tadj-allocation) .kpis {
+  margin: 0;
+}
+:is(.trade-settlements, .trade-adjustments) :is(.tset-hint, .tadj-hint, .tadj-links) {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* 操作栏：预览 / 确认（不可逆操作为危险样式）/ 清空 */
+:is(.trade-settlements, .trade-adjustments) :is(.tset-command-bar, .tadj-command-bar) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+.trade-adjustments .tadj-command-bar .btn-subtle {
+  margin-left: var(--space-4);
+}
+/* 未结项分配表：在自身滚动容器内（虚拟滚动行高 48 不变） */
+.trade-settlements .accounts-scroll {
+  margin: 0;
+}
+.trade-settlements .accounts-scroll table {
+  min-width: 760px;
+}
+.trade-settlements .accounts-scroll td input[type="number"] {
+  width: 140px;
+  height: var(--control-h);
+  padding: 0 var(--space-2);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+:is(.trade-settlements, .trade-adjustments) .tset-discount {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+:is(.trade-settlements, .trade-adjustments) :is(.tset-entry, .tadj-entry) input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+}
+
+/* 贷项行与反向勾选 */
+:is(.trade-settlements, .trade-adjustments) .tadj-line {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  gap: var(--space-3);
+  align-items: end;
+}
+:is(.trade-settlements, .trade-adjustments) .tadj-items {
+  display: grid;
+  gap: var(--space-1);
+}
+:is(.trade-settlements, .trade-adjustments) .tadj-items .ui-check span {
+  overflow-wrap: anywhere;
+}
+:is(.trade-settlements, .trade-adjustments)
+  .tadj-allocation
+  input:is([type="number"], [inputmode]) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.trade-adjustments .tadj-allocation > .ui-field {
+  max-width: 480px;
+}
+/* 数字列右对齐：分配表 4–5 列、核销结果 2–5 列、变动 3–6 列、贷项 2–4 列、凭证 2–3 列 */
+.trade-settlements .accounts-scroll :is(th, td):is(:nth-child(4), :nth-child(5)),
+.trade-settlements .tset-result :is(th, td):nth-child(n + 2),
+.trade-adjustments .tadj-changes :is(th, td):nth-child(n + 3):nth-child(-n + 6),
+.trade-adjustments .tadj-credit :is(th, td):nth-child(n + 2),
+.trade-adjustments .tadj-journal :is(th, td):is(:nth-child(2), :nth-child(3)) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.trade-adjustments :is(.tadj-allocation, .tadj-lines) > .btn {
+  justify-self: start;
+}
