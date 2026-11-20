@@ -33,12 +33,9 @@ beforeAll(async () => {
   guiPhase("migration", "browser", started);
 }, 60_000);
 afterAll(async () => {
-  await timed(log, "afterAll:browser.close", async () => {
-    await browser?.close();
-  });
-  await timed(log, "afterAll:rm", async () => {
-    if (directory) await rm(directory, { recursive: true, force: true });
-  });
+  await timed(log, "afterAll:browser.close", () => browser?.close());
+  if (directory)
+    await timed(log, "afterAll:rm", () => rm(directory, { recursive: true, force: true }));
 });
 for (const language of ["zh", "en"] as const)
   for (const theme of ["red", "green"] as const) {

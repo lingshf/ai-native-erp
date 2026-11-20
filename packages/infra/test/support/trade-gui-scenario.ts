@@ -49,13 +49,21 @@ export function diagnostics(suite: string, directory = artifacts): Diagnostic | 
     }
   };
 }
-export async function timed<T>(
+// Off: returns run()'s own value, so the caller awaits exactly what main awaited.
+export function timed<T>(
   log: Diagnostic | undefined,
   step: string,
-  run: () => Promise<T>,
+  run: () => T,
   data: Record<string, unknown> = {},
+): T | Promise<Awaited<T>> {
+  return log ? logged(log, step, run, data) : run();
+}
+async function logged<T>(
+  log: Diagnostic,
+  step: string,
+  run: () => T,
+  data: Record<string, unknown>,
 ) {
-  if (!log) return await run();
   const started = performance.now();
   log("step", { ...data, step, phase: "start" });
   try {
@@ -191,15 +199,19 @@ async function choose(
   check: ExpectStatic = expect,
   observe?: (values: string[]) => Promise<void>,
 ) {
+  const read = () =>
+    target
+      .locator("option")
+      .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value));
   await check
     .poll(
-      async () => {
-        const values = await target
-          .locator("option")
-          .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value));
-        if (observe) await observe(values);
-        return values;
-      },
+      observe
+        ? async () => {
+            const values = await read();
+            await observe(values);
+            return values;
+          }
+        : read,
       { message: `Missing keyboard-selectable option: ${value}`, timeout: 10_000 },
     )
     .toContain(value);
@@ -518,8 +530,10 @@ function guiHarness(phase: Phase, log: Diagnostic | undefined) {
         phase("browser", launchStarted);
         return launched;
       });
-    harness.launching.catch((error) =>
-      log?.("step", { step: "launch", phase: "error", error: String(error) }),
+    harness.launching.catch(
+      log
+        ? (error) => log("step", { step: "launch", phase: "error", error: String(error) })
+        : () => {},
     );
     const started = performance.now();
     await timed(log, "build", () =>
@@ -534,18 +548,15 @@ function guiHarness(phase: Phase, log: Diagnostic | undefined) {
   }, 60_000);
   afterAll(async () => {
     try {
-      await timed(log, "afterAll:launching", async () => {
-        await harness.launching?.catch(() => undefined);
-      });
+      await timed(log, "afterAll:launching", () => harness.launching?.catch(() => undefined));
       const started = performance.now();
-      await timed(log, "afterAll:browser.close", async () => {
-        await harness.browser?.close();
-      });
+      await timed(log, "afterAll:browser.close", () => harness.browser?.close());
       phase("browser-close", started);
     } finally {
-      await timed(log, "afterAll:rm", async () => {
-        if (harness.directory) await rm(harness.directory, { recursive: true, force: true });
-      });
+      if (harness.directory)
+        await timed(log, "afterAll:rm", () =>
+          rm(harness.directory, { recursive: true, force: true }),
+        );
     }
   });
   return harness;
@@ -1287,9 +1298,7 @@ export function tradeGuiSmoke(combinations: readonly (readonly ["zh" | "en", "re
       let context: BrowserContext | undefined;
       log?.("test", { test: name, phase: "start" });
       onTestFinished(async () => {
-        await timed(log, "onTestFinished:context.close", async () => context?.close(), {
-          test: name,
-        });
+        await timed(log, "onTestFinished:context.close", () => context?.close(), { test: name });
       });
       const { page } = await openTracedPage(
         harness.launching,
