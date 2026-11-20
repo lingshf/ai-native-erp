@@ -19,7 +19,7 @@
    "priceIncludesTax": false,
    "rounding": "line",
    "commandHash": "5e6233238448772511cfa7407b6a85a96d42d0550267e2b20a9a56066cc1709f",
-   "recordedAt": "2026-11-20T16:41:22.974Z",
+   "recordedAt": "2026-11-20T16:48:34.202Z",
    "lines": [
     {
      "lineId": "L1",
@@ -48,6 +48,14 @@
  {
   "name": "trade-adjustments-all-zh-red-1440",
   "overflowPx": 0
+ },
+ {
+  "page": "adjustments-focus",
+  "tag": "zh-red-1440",
+  "scrollY": 0,
+  "inputTop": 670,
+  "inputBottom": 706,
+  "headerBottom": 48
  },
  {
   "name": "trade-adjustments-filtered-zh-red-1440",
@@ -117,7 +125,7 @@
    "priceIncludesTax": false,
    "rounding": "line",
    "commandHash": "2adbf6d82129b1a457b927a1c9ecb4dec061c28e0379a0a9388a5ec28b3dd811",
-   "recordedAt": "2026-11-20T16:41:37.668Z",
+   "recordedAt": "2026-11-20T16:48:49.002Z",
    "lines": [
     {
      "lineId": "L1",
@@ -146,6 +154,14 @@
  {
   "name": "trade-adjustments-all-zh-red-390",
   "overflowPx": 0
+ },
+ {
+  "page": "adjustments-focus",
+  "tag": "zh-red-390",
+  "scrollY": 349,
+  "inputTop": 868,
+  "inputBottom": 912,
+  "headerBottom": 48
  },
  {
   "name": "trade-adjustments-filtered-zh-red-390",
@@ -215,7 +231,7 @@
    "priceIncludesTax": false,
    "rounding": "line",
    "commandHash": "6843c88875756bbdc27d45795cc79c9c962f1ab927f1b352b8a2f4e2ef793054",
-   "recordedAt": "2026-11-20T16:41:52.183Z",
+   "recordedAt": "2026-11-20T16:49:03.537Z",
    "lines": [
     {
      "lineId": "L1",
@@ -244,6 +260,14 @@
  {
   "name": "trade-adjustments-all-en-green-1440",
   "overflowPx": 0
+ },
+ {
+  "page": "adjustments-focus",
+  "tag": "en-green-1440",
+  "scrollY": 0,
+  "inputTop": 690,
+  "inputBottom": 726,
+  "headerBottom": 48
  },
  {
   "name": "trade-adjustments-filtered-en-green-1440",
@@ -313,7 +337,7 @@
    "priceIncludesTax": false,
    "rounding": "line",
    "commandHash": "93884fee1ce8b6c5117760bf49f46c1f3e4e458bae5862bae5e0d840a1d8fc27",
-   "recordedAt": "2026-11-20T16:42:06.665Z",
+   "recordedAt": "2026-11-20T16:49:18.132Z",
    "lines": [
     {
      "lineId": "L1",
@@ -342,6 +366,14 @@
  {
   "name": "trade-adjustments-all-en-green-390",
   "overflowPx": 0
+ },
+ {
+  "page": "adjustments-focus",
+  "tag": "en-green-390",
+  "scrollY": 541,
+  "inputTop": 868,
+  "inputBottom": 912,
+  "headerBottom": 48
  },
  {
   "name": "trade-adjustments-filtered-en-green-390",
@@ -392,11 +424,11 @@
   "errors": []
  },
  {
-  "name": "preference-warning-zh-red-1440",
+  "name": "preference-read-failed-fallback-zh-red-1440",
   "overflowPx": 0
  },
  {
-  "name": "preference-warning-en-green-390",
+  "name": "preference-read-failed-fallback-zh-red-390",
   "overflowPx": 0
  }
 ]

@@ -34,7 +34,10 @@ async function open(context, path, ready = "main h2") {
 }
 async function shot(page, name, width) {
   await page.mouse.move(0, 0);
-  await page.evaluate(() => document.activeElement?.blur());
+  await page.evaluate(() => {
+    document.activeElement?.blur();
+    window.scrollTo(0, 0);
+  });
   await page.waitForTimeout(300);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   await page.screenshot({ path: join(out, `${name}.png`), fullPage: true });
@@ -78,7 +81,18 @@ for (const [lang, theme, width, orderId] of combos) {
   await shot(page, `trade-adjustments-all-${tag}`, width);
   const filter = page.getByLabel(t.filter, { exact: true });
   await filter.fill("PARTY2");
+  await filter.focus();
   await filter.press("Enter");
+  // 记录真实视口里，聚焦后的输入框是否被粘性顶栏遮住（正常使用的遮挡属于产品问题，不在截图里掩盖）
+  log.push({
+    page: "adjustments-focus",
+    tag,
+    ...(await page.evaluate(() => {
+      const input = document.querySelector("#tadj-partyFilter").getBoundingClientRect();
+      const bar = document.querySelector(".appbar").getBoundingClientRect();
+      return { scrollY: window.scrollY, inputTop: Math.round(input.top), inputBottom: Math.round(input.bottom), headerBottom: Math.round(bar.bottom) };
+    })),
+  });
   await page.waitForLoadState("networkidle");
   await page.waitForTimeout(500);
   await shot(page, `trade-adjustments-filtered-${tag}`, width);
@@ -102,8 +116,9 @@ for (const [lang, theme, width, orderId] of combos) {
   await context.close();
 }
 
-// 偏好存储失败：只对本页让 localStorage.getItem 抛错（模拟存储不可用）
-for (const [lang, theme, width] of [["zh", "red", 1440], ["en", "green", 390]]) {
+// 偏好读取失败（模拟）：让 localStorage.getItem 抛错，应用必然回退默认 zh / 专业红 / 教学说明关闭，
+// 所以两个宽度都如实命名为 zh-red；这不是 en/绿 的偏好保存失败分支。
+for (const width of [1440, 390]) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: 1 });
   await context.addInitScript(() => {
     Storage.prototype.getItem = () => {
@@ -111,10 +126,9 @@ for (const [lang, theme, width] of [["zh", "red", 1440], ["en", "green", 390]]) 
     };
   });
   const page = await open(context, "", "main h2");
-  await shot(page, `preference-warning-${lang}-${theme}-${width}`, width);
+  await shot(page, `preference-read-failed-fallback-zh-red-${width}`, width);
   await context.close();
 }
-
 if (migrationBase) {
   for (const [lang, theme, width] of [["zh", "red", 1440], ["en", "green", 390]]) {
     const context = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: 1 });

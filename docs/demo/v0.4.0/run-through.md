@@ -2,23 +2,47 @@
 
 ## 对象与环境
 
-- 基线：main `fda79b7`（#105 合并提交，main Full 12/12 绿由协调者提供）；工作分支基于该提交，仅新增 `docs/demo/v0.4.0/`。
+- 基线：main `fda79b7`（#105 合并提交，main Full 12/12 绿由协调者提供）。
 - 账套：`%TEMP%` 下新建的 GUID 目录中的 `demo.sqlite`，迁移后由 `prepare.mjs` 初始化；演示端口 4194；不使用 4173、不接触真实旧账、不产生 `.bak`。
 - 浏览器：Playwright + 系统 Chrome（headless，DPR 1，整页截图），Node 26。
-- 账套共重建三次：前两次因截图脚本的选择器问题（凭证页状态选择、预付页操作选择）中止或重跑，最后一次从空账套完整执行，下表与 `screenshots/` 均来自最后一次。
+- 本记录对应评审后的最终一次采集（2026-11-20）：从空账套完整执行，`screenshots/` 的 42 张均来自这一次。此前的采集（含 #108 初版）已被取代。
+
+## 源码与构建记录（本次采集前，同一 PowerShell 终端）
+
+| 项 | 输出 |
+|---|---|
+| 时间 | 2026-11-20T08:48:12-08:00 |
+| `git rev-parse HEAD`（分支，docs 提交） | `aea0cd5aed52e3e668fa4c97bd64b7d82dadc41a` |
+| `git rev-parse origin/main`（产品代码基线） | `fda79b7dd6562f30f2a2a0685f56a604efaa3b0b` |
+| `git diff --stat origin/main -- packages` | 空（产品代码与 `fda79b7` 相同；本分支只改 docs） |
+| `npm run build` | 退出码 0，约 3 s，输出末行 `✓ built in 637ms`（含 chunk 大小警告，非错误） |
+| 启动 | `Start-Process node -ArgumentList "packages/infra/src/main.ts"`，环境变量见 README §2；本次进程号 72244，启动前确认 4194 空闲，就绪后 `GET /` 200 |
+| 数据日期 | `$day` = 2026-11-20（当天），`$year` = 2026 |
 
 ## 实际执行
 
 | 步骤 | 结果 |
 |---|---|
 | `storage:admin migrate`、`prepare.mjs`、启动服务、`seed-trade.mjs` | 成功；`GET /` 200；两张采购发票各 11300 过账 |
-| `capture.mjs`（4 个组合） | 42 张截图；退出码 0；无页面错误；无页面级横向溢出 |
+| `capture.mjs`（4 个组合 + 偏好读取失败 2 张） | 42 张截图；退出码 0；无页面错误；无页面级横向溢出 |
 | 订单页 GUI 录入（4 张订单） | 4 次 POST `/api/v1/trade/orders` 均 201；每张 净额 100.00 / 税额 13.00 / 价税合计 113.00 |
-| 预付、贷项与专用纠错：选「非库存贷项」，伙伴筛选 `PARTY2` 回车 | 完成，截取筛选前后 |
+| 预付、贷项与专用纠错：选「非库存贷项」，伙伴筛选 `PARTY2` 回车 | 完成，截取筛选前后；截图前先滚回页首，避免全页截图里粘性顶栏压住正文 |
 | 凭证页选「已过账」 | 列表有两张采购发票凭证，操作列可见 |
-| 收尾：`Stop-Process -Id 9036`、`Remove-Item -Recurse -Force $dir` | 4194 端口已无监听；临时目录已删除；仓库内无 `.bak` 与 `.legacy-fixture-*` |
-| 偏好警告 | 用脚本让 `localStorage.getItem` 抛错**模拟**，截取 zh/红/1440 与 en/绿/390 |
+| 偏好读取失败（模拟） | `getItem` 抛错，应用回退默认 zh / 专业红 / 教学关闭；两个宽度都如实命名为 `preference-read-failed-fallback-zh-red-*`（此前 en/绿 390 的命名有误，已更正）。这是读取失败分支，没有采集 en/绿 的保存失败分支 |
+| 收尾 | 执行前确认 72244 的命令行是 `node ... packages/infra/src/main.ts` 且是 4194 的监听者，再 `Stop-Process -Id 72244`（因 `$server` 对象在该终端外，本次按已核实的进程号停止）、`Remove-Item -Recurse -Force $dir`；4194 无监听，临时目录已删，仓库内无 `.bak` 与 `.legacy-fixture-*` |
 
+## 粘性顶栏是否遮挡（评审第 2 点）
+
+初版 390 筛选图里顶栏压住正文，是全页截图在页面已滚动时把粘性顶栏画在页面中间的截图产物。为判断正常使用是否也被遮挡，采集时在真实 900 px 高视口里、聚焦伙伴筛选输入框后量了位置（`capture-log.json` 的 `adjustments-focus`）：
+
+| 组合 | scrollY | 输入框 top / bottom | 顶栏 bottom |
+|---|---|---|---|
+| zh 红 1440 | 0 | 670 / 706 | 48 |
+| zh 红 390 | 349 | 868 / 912 | 48 |
+| en 绿 1440 | 0 | 690 / 726 | 48 |
+| en 绿 390 | 541 | 868 / 912 | 48 |
+
+输入框 top 均大于顶栏 bottom（48），没有被顶栏遮住；390 下输入框底部（912）略超出 900 的视口，属于在视口下沿，不是被顶栏遮挡。此结论只针对这一个输入框，没有逐页检查所有页面的聚焦滚动。
 ## 未执行 / 未覆盖
 
 - 迁移核对页（#87）：未走真实流程（未建旧账快照、未运行 `legacy-import`），因此没有该页截图；其真实流程命令见 [v0.3.0 Demo §4](../v0.3.0/README.md)。

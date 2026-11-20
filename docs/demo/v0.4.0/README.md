@@ -9,29 +9,32 @@
 - 截图由 `scripts/capture.mjs` 用系统 Chrome 驱动真实页面产生（DPR 1、整页）；组合为 zh/专业红、en/专业绿 × 宽 1440、390。截图在 `screenshots/`，文件名 `<页面>-<语言>-<主题>-<宽度>.png`。
 - 订单页每个组合录入一张不同编号的订单（`PO-DEMO`、`PO-DEMO-B`、`-C`、`-D`），服务端返回 201，金额均为 净额 100.00 / 税额 13.00 / 价税合计 113.00（见 `screenshots/capture-log.json`）。
 
-## 2. 准备
+## 2. 准备（同一个 PowerShell 终端，从仓库根目录执行）
+
+这些命令按顺序在同一终端执行过（本次执行见 [run-through.md](run-through.md)）。服务用 `Start-Process` 后台启动，返回的进程对象保存在 `$server`，收尾只停这个对象；先确认 4194 空闲、服务就绪后才写入数据，避免误写入占用该端口的其他服务。
 
 ```powershell
+$day = Get-Date -Format yyyy-MM-dd
+$year = (Get-Date).Year
+if (Get-NetTCPConnection -LocalPort 4194 -State Listen -ErrorAction SilentlyContinue) { throw "4194 已被占用，请换端口或先确认占用者归属，不要直接停止别人的进程" }
+npm run build
 $dir = Join-Path $env:TEMP ("erp-demo-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory $dir | Out-Null
 $db = Join-Path $dir "demo.sqlite"
-npm run build
 npm run storage:admin -- migrate --provider sqlite --file $db
-node docs\demo\v0.4.0\scripts\prepare.mjs $db 2026
+node docs\demo\v0.4.0\scripts\prepare.mjs $db $year
 $env:ERP_SQLITE_FILE = $db; $env:ERP_PORT = "4194"; $env:ERP_HOST = "127.0.0.1"; $env:ERP_PROFILE = "local"
-npm run start:local
-```
-
-最后一条会占用当前终端；另开终端后依次执行：
-
-```powershell
-node docs\demo\v0.4.0\scripts\seed-trade.mjs http://127.0.0.1:4194 2026-11-20
-$shots = "docs\demo\v0.4.0\screenshots"
+$server = Start-Process node -ArgumentList "packages/infra/src/main.ts" -PassThru -WindowStyle Hidden
+$ready = $false
+1..20 | ForEach-Object { if (-not $ready) { try { $ready = (Invoke-WebRequest http://127.0.0.1:4194/ -UseBasicParsing).StatusCode -eq 200 } catch { Start-Sleep 1 } } }
+if (-not $ready -or $server.HasExited) { throw "演示服务未就绪，不要继续写入" }
+node docs\demo\v0.4.0\scripts\seed-trade.mjs http://127.0.0.1:4194 $day
+$shots = Join-Path $env:TEMP "demo-shots"
 node docs\demo\v0.4.0\scripts\capture.mjs http://127.0.0.1:4194 $shots
 ```
 
-（记录中实际以 `Start-Process node -ArgumentList "packages/infra/src/main.ts"` 后台启动，等价于 `start:local`。）
-
+- `$day` 取当天，使预置数据的日期与订单页默认订单日期（当天）落在同一年、同一期间；`$year` 同理。
+- 截图输出到 `$shots`；提交到仓库前再复制到 `docs\demo\v0.4.0\screenshots\`。
 ## 3. 演示脚本
 
 | # | 页面与操作 | 要点（来源 PR） | 截图（zh 红 1440；其余组合同名替换） |
@@ -43,7 +46,7 @@ node docs\demo\v0.4.0\scripts\capture.mjs http://127.0.0.1:4194 $shots
 | 5 | 凭证：状态选「已过账」 | 操作列表头为「操作 / Actions」，按钮为「查看 / 编辑」（#101） | `journals-*` |
 | 6 | 采购与销售发票 | 「新增行」按钮带 `Alt+Shift+N` 提示（#93） | `trade-invoices-*` |
 | 7 | 期末结账 | 页面截图；表格链接样式见 #98 | `period-close-*` |
-| 8 | 偏好存储不可用（模拟） | 偏好无法读取时显示 MessageBar 警告并使用默认设置（#104）；用脚本让 `localStorage.getItem` 抛错模拟，非真实故障 | `preference-warning-zh-red-1440.png`、`preference-warning-en-green-390.png` |
+| 8 | 偏好读取失败（模拟） | 偏好无法读取时显示 MessageBar 警告，并回退默认设置（zh / 专业红 / 教学说明关闭）（#104）。脚本让 `localStorage.getItem` 抛错模拟，非真实故障；因必然回退默认，两张图都是 zh 红，不是 en 绿的保存失败分支 | `preference-read-failed-fallback-zh-red-1440.png`、`preference-read-failed-fallback-zh-red-390.png` |
 
 ## 4. 讲解提示
 
@@ -53,11 +56,11 @@ node docs\demo\v0.4.0\scripts\capture.mjs http://127.0.0.1:4194 $shots
 
 ## 5. 收尾
 
-先用 `Get-Process node` 找到演示服务的进程号（本次记录为 9036），再停止服务并删除本 Demo 的临时目录：
+只停止本次启动的服务（`$server`），再删除本次的临时目录；不按历史进程号或进程名停进程。
 
 ```powershell
-Stop-Process -Id 9036
+if ($server -and -not $server.HasExited) { Stop-Process -Id $server.Id }
 Remove-Item -Recurse -Force $dir
 ```
 
-进程号每次不同，请换成自己查到的数字。只删除本 Demo 的临时目录，不碰其他账套。
+完成后可再检查 4194 已无监听，且仓库内没有 `.bak`。
