@@ -473,6 +473,7 @@ function CompanyJournals({
         <label className="jv-status">
           {t("journal.title")}{" "}
           <select
+            className="jv-select"
             aria-label={t("journal.title")}
             disabled={busy}
             value={status}
@@ -582,7 +583,7 @@ function CompanyJournals({
           }}
         >
           <fieldset disabled={busy || Boolean(plan) || deleting}>
-            <legend>
+            <legend className="jv-legend">
               {t(`journal.${draft.operation === "journal" ? "editor" : draft.operation}`)}
             </legend>
             {draft.originalId && (
@@ -803,7 +804,9 @@ function CompanyJournals({
                               />
                               {suspense && (
                                 <fieldset>
-                                  <legend>{t("journal.rule.suspense")}</legend>
+                                  <legend className="jv-legend">
+                                    {t("journal.rule.suspense")}
+                                  </legend>
                                   {(["owner", "reason", "reviewDate"] as const).map((field) => (
                                     <label key={field}>
                                       {t(`journal.${field}`)}
@@ -1381,6 +1384,7 @@ export function LinePlan({
     <>
       <div className="card jv-plan">
         <VirtualRows
+          className="jv-rows"
           items={lines}
           title={t("journal.previewTitle")}
           header={[
@@ -1461,6 +1465,7 @@ export function VirtualRows<T>({
   render,
   footer,
   forceVirtual = false,
+  className,
 }: {
   items: readonly T[];
   title: string;
@@ -1468,6 +1473,7 @@ export function VirtualRows<T>({
   render: (item: T, index: number) => ReactNode;
   footer?: ReactNode;
   forceVirtual?: boolean;
+  className?: string;
 }) {
   const scroll = useRef<HTMLElement>(null),
     virtual = forceVirtual || items.length > 100;
@@ -1484,7 +1490,7 @@ export function VirtualRows<T>({
     : items.map((_, index) => ({ index, start: index * 44, end: (index + 1) * 44 }));
   return (
     <section
-      className="journal-scroll"
+      className={className ? `journal-scroll ${className}` : "journal-scroll"}
       aria-label={title}
       ref={scroll}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: Named virtual tables are keyboard scroll regions.

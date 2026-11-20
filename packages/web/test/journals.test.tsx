@@ -123,9 +123,9 @@ it.each([
       fireEvent.change(document.querySelector("#workspace-language")!, { target: { value: "en" } });
     await screen.findByText(empty);
     expect(screen.queryByText(label(language, "master.empty"))).toBeNull();
-    fireEvent.change(screen.getByRole("combobox", { name: label(language, "journal.title") }), {
-      target: { value: "posted" },
-    });
+    const status = screen.getByRole("combobox", { name: label(language, "journal.title") });
+    expect(status.classList.contains("jv-select")).toBe(true);
+    fireEvent.change(status, { target: { value: "posted" } });
     await screen.findByText(empty);
     expect(screen.queryByText(label(language, "master.empty"))).toBeNull();
   },

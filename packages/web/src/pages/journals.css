@@ -215,3 +215,52 @@
   overflow: auto;
   z-index: 20;
 }
+
+/* S5-a：替代 styles.css 全局元素规则的同值类规则；:where() 特异性为 0，原有覆盖照旧生效 */
+:where(.jv-btn, .jv-select) {
+  min-height: 44px;
+  border-radius: var(--radius-sm);
+}
+:where(.jv-legend, .jv-btn, .jv-facts dd) {
+  font-weight: var(--weight-semibold);
+}
+:where(.jv-legend) {
+  padding: 0 var(--space-2);
+}
+:where(.jv-select) {
+  width: 100%;
+  max-width: 100%;
+  background: var(--color-surface);
+  color: inherit;
+  border: 1px solid var(--color-border-strong);
+  padding: var(--space-2);
+}
+:where(.jv-check) {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--color-primary);
+}
+:where(.jv-btn) {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border: 0;
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+}
+:where(.jv-btn:hover:not(:disabled)) {
+  background: var(--color-primary-hover);
+}
+:where(.jv-btn:active:not(:disabled)) {
+  background: var(--color-primary-active);
+}
+:where(.jv-btn:disabled) {
+  opacity: 0.65;
+  cursor: wait;
+}
+:where(.jv-rows :is(th, td)) {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+  min-width: 96px;
+}
