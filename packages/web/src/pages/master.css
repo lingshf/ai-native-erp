@@ -1,0 +1,109 @@
+/*
+ * UI-04 主数据页（财务维度、贸易主数据）：只作用于 .ui-master 之内。
+ * 通用外观在 components.css；这里只定 44px 控件、滚动区列宽、命中区与编辑表单细节。
+ */
+.ui-master {
+  /* 本页所有控件在桌面与窄屏都 ≥ 44px */
+  --control-h: 44px;
+}
+.ui-master .message-bar p,
+.ui-master .ui-hint,
+.ui-master-note {
+  margin: 0;
+}
+.ui-master .ui-hint,
+.ui-master-note {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+.ui-master .message-bar .text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.ui-master-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.ui-master .filter-bar .btn {
+  align-self: flex-end;
+}
+@media (min-width: 600px) {
+  .ui-master .ui-master-search {
+    flex-basis: 320px;
+  }
+}
+/* 虚拟化滚动区：高度有界，行高保持 44（estimateSize 44） */
+.ui-master-scroll {
+  max-height: 480px;
+}
+.ui-master-scroll table {
+  min-width: 340px;
+}
+.ui-master-scroll td {
+  border-bottom: 0;
+  box-shadow: inset 0 -1px var(--color-border);
+}
+.ui-master-scroll th:first-child {
+  width: 28%;
+}
+.ui-master-scroll :is(th, td):nth-child(3) {
+  width: 72px;
+  text-align: center;
+}
+.ui-master-scroll th:nth-child(4) {
+  width: 96px;
+}
+.ui-master-scroll td:first-child {
+  font-weight: var(--weight-semibold);
+  overflow-wrap: anywhere;
+}
+.ui-master-scroll .btn-sm {
+  margin-left: calc(-1 * var(--space-2));
+}
+/* 只读启用复选框：label 撑开 44×44 实际点击区 */
+.ui-master-hit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+}
+.ui-master-more {
+  justify-self: center;
+}
+.ui-master-editor .fasttab .body:not([hidden]) {
+  display: grid;
+  gap: var(--space-4);
+}
+.ui-master .ui-form-grid {
+  border: 0;
+}
+.ui-master .ui-master-wide {
+  grid-column: 1 / -1;
+}
+.ui-master .ui-check input {
+  width: 20px;
+  height: 20px;
+}
+.ui-master textarea {
+  width: 100%;
+  min-height: 88px;
+  padding: var(--space-2) var(--space-3);
+  font: var(--text-sm) / 1.5 var(--font-mono);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  resize: vertical;
+}
+.ui-master textarea[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+.ui-master-error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}

@@ -63,6 +63,9 @@ export const tradeEn = {
     "Save outcome is unknown. The draft is locked; retry the same revision and verify the stored result before leaving.",
   "trade.reconcile": "Retry safely and verify save",
   "trade.title": "Trade master data",
+  "trade.editor": "Configuration details",
+  "trade.teaching":
+    "Codes cannot change after creation. Saves compare revisions and never overwrite conflicts.",
   "trade.kind": "Configuration type",
   "trade.tradeParty": "Trading partners",
   "trade.tradeProduct": "Non-stock products",
@@ -274,6 +277,8 @@ export const tradeZh: Record<keyof typeof tradeEn, string> = {
     "保存结果尚未确定。草稿已锁定；请以相同版本安全重试并核对保存结果，再离开页面。",
   "trade.reconcile": "安全重试并核对保存",
   "trade.title": "贸易主数据",
+  "trade.editor": "配置详情",
+  "trade.teaching": "编码创建后不可修改；保存使用版本比较，冲突时不自动覆盖。",
   "trade.kind": "配置类型",
   "trade.tradeParty": "贸易伙伴",
   "trade.tradeProduct": "非库存商品",

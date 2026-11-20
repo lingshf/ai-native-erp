@@ -1,5 +1,7 @@
 export const dimensionZh = {
   "dim.title": "财务维度",
+  "dim.editor": "配置详情",
+  "dim.teaching": "维度配置按生效日期区间生效；保存使用版本比较，冲突时不自动覆盖。",
   "dim.kind": "配置类型",
   "dim.dimension": "维度",
   "dim.value": "维度值",
@@ -47,6 +49,9 @@ export const dimensionZh = {
 } as const;
 export const dimensionEn = {
   "dim.title": "Financial dimensions",
+  "dim.editor": "Configuration details",
+  "dim.teaching":
+    "Dimension configurations apply within their effective date range. Saves compare revisions and never overwrite conflicts.",
   "dim.kind": "Configuration type",
   "dim.dimension": "Dimension",
   "dim.value": "Dimension value",
