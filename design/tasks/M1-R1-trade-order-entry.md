@@ -4,6 +4,8 @@
 - 冲突域：web-ui:trade
 - **阻塞 v0.2.0：否**
 
+> **S4 已拆分**：[M1-R1a](M1-R1a-trade-order-entry-page.md)（订单录入页）与 [M1-R1b](M1-R1b-trade-order-gui-e2e.md)（E2E 改用 GUI 建订单）。按现有 API 收窄（无订单列表、无保存前预览，决定 P2）。本文件保留为原始需求，以子任务为准。
+
 ## 背景
 
 M1-03 的采购/销售订单只有 API。E2E（`packages/infra/test/http/trade-gui.slow.test.ts`）和 README 主路径都用 API 建 PO，用户在 GUI 中无法录入订单，订单匹配只能靠外部调用。见 [M1 评审 §6](../reviews/M1.md)。

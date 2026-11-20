@@ -45,10 +45,10 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 | [M1-06](M1-06-trade-open-items-ageing.md) | 未结项、账龄、历史余额与 GL 核对 | M1-05 | — | done | [#49](https://github.com/lingshf/ai-native-erp/pull/49) |
 | [M1-07](M1-07-trade-e2e-bench.md) | GUI 端到端验收与性能基准 | M1-06 | bench/CI, web-ui:trade | done | [#54](https://github.com/lingshf/ai-native-erp/pull/54)、[#56](https://github.com/lingshf/ai-native-erp/pull/56) |
 | [M1-R](M1-R-milestone-review.md) | M1 里程碑评审 + 测试审计（设计角色） | M1-07 | — | done（随 #57 合并落地，不是基线 `336c0cd` 中已合并的内容） | [#57](https://github.com/lingshf/ai-native-erp/pull/57)，报告见 [design/reviews/M1.md](../reviews/M1.md) |
-| [M1-R1](M1-R1-trade-order-entry.md) | 非库存订单录入 GUI（不阻塞 v0.2.0） | M1-R | web-ui:trade | todo | |
-| [M1-R2](M1-R2-trade-teaching-and-lists.md) | 贸易页教学提示补齐 + 调整页列表虚拟滚动（不阻塞 v0.2.0） | M1-R | web-ui:trade | todo | |
-| [M1-R3](M1-R3-trade-report-capacity.md) | 账龄/余额容量：带历史与并发的基准（不阻塞 v0.2.0） | M1-R | bench/CI, storage | todo | |
-| [M1-R4](M1-R4-trade-test-trim.md) | 贸易 E2E 精简、断言、400 日志分类、LF 行尾（不阻塞 v0.2.0） | M1-R | bench/CI, http | todo | |
+| [M1-R1](M1-R1-trade-order-entry.md) | 非库存订单录入 GUI（不阻塞 v0.2.0） | M1-R | — | 已拆分：M1-R1a、M1-R1b，见 [S4](#s4ui-1-后续--m1-遗留建议-v040) | |
+| [M1-R2](M1-R2-trade-teaching-and-lists.md) | 贸易页教学提示补齐 + 调整页列表虚拟滚动（不阻塞 v0.2.0） | M1-R | — | 已拆分：M1-R2a、M1-R2b，见 [S4](#s4ui-1-后续--m1-遗留建议-v040) | |
+| [M1-R3](M1-R3-trade-report-capacity.md) | 账龄/余额容量：带历史与并发的基准（不阻塞 v0.2.0） | M1-R | — | done | [#78](https://github.com/lingshf/ai-native-erp/pull/78) |
+| [M1-R4](M1-R4-trade-test-trim.md) | 贸易 E2E 精简、断言、400 日志分类、LF 行尾（不阻塞 v0.2.0） | M1-R | — | done | [#81](https://github.com/lingshf/ai-native-erp/pull/81) |
 
 ## M2：账套迁移/切换（草案，需用户授权）
 
@@ -60,8 +60,8 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 | [M2-02](M2-02-legacy-import-mapping.md) | 旧账→目标库映射与 dry-run | M0-R4, M0-R5 | — | done | [#43](https://github.com/lingshf/ai-native-erp/pull/43) |
 | [M2-03](M2-03-legacy-import-execute.md) | 导入执行（写入新的目标库） | M2-02, M0-R1 | migrations(014)+migrations.ts, domain-posting, storage, admin-cli | done | [#47](https://github.com/lingshf/ai-native-erp/pull/47) |
 | [M2-03b](M2-03b-legacy-opening-open-items.md) | 旧账 AP/AR 期初未结项导入与核对口径（D25） | M2-03, M1-06 | legacy-import, domain-posting, storage, admin-cli, web-ui:trade | done | [#63](https://github.com/lingshf/ai-native-erp/pull/63) |
-| [M2-04](M2-04-legacy-reconciliation.md) | 迁移核对报告（首批，现行 `tradeReconciliation` + 期初门禁 fail-closed，D26） | M2-03 | legacy-import, admin-cli, web-ui:migration | todo | |
-| [M2-04b](M2-04-legacy-reconciliation.md#跟进-m2-04bd25d26) | M2-04 跟进：贸易子账按 P 公式核对、期初负例（D25/D26） | M2-04, M2-03b | legacy-import, admin-cli, web-ui:trade, web-ui:migration | in-review | [#70](https://github.com/lingshf/ai-native-erp/pull/70) |
+| [M2-04](M2-04-legacy-reconciliation.md) | 迁移核对报告（首批，现行 `tradeReconciliation` + 期初门禁 fail-closed，D26） | M2-03 | — | done | [#59](https://github.com/lingshf/ai-native-erp/pull/59) |
+| [M2-04b](M2-04-legacy-reconciliation.md#跟进-m2-04bd25d26) | M2-04 跟进：贸易子账按 P 公式核对、期初负例（D25/D26） | M2-04, M2-03b | — | done | [#70](https://github.com/lingshf/ai-native-erp/pull/70) |
 | [M2-05](M2-05-migration-rehearsal.md) | 隔离试迁移演练与操作手册 | M2-01, M2-04b（D25 全部完成） | bench/CI, docs/runbook | todo | |
 | [M2-06](M2-06-controlled-cutover.md) | 受控切换与回退 | M2-05 | admin-cli, docs/runbook | todo | |
 | [M2-R](M2-R-milestone-review.md) | M2 里程碑评审 + 测试审计（设计角色） | M2-06 | — | todo | |
@@ -99,7 +99,7 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 | [UI-07e](UI-07e-migration.md) | 迁移核对页（#59 带入的 `Migration.tsx`） | UI-02a | web-ui:migration | done | [#74](https://github.com/lingshf/ai-native-erp/pull/74) |
 | [UI-08](UI-08-polish-and-audit.md) | 收尾：删除兼容样式、组件提升、一致性审查（不重做页面） | UI-01 … UI-07e | web-ui:shell, web-ui:components | done | [#82](https://github.com/lingshf/ai-native-erp/pull/82) |
 
-UI-1 的 13 项已全部合并。设计一致性审查 [design/reviews/UI-1.md](../reviews/UI-1.md) 的后续项（D-7、D-8、F3、F5、F10 等）归入待新开的 **UI-09**（只改 CSS，尚未立项，见该文 §6、§8）。
+UI-1 的 13 项已全部合并，随 v0.3.0 发布。设计一致性审查 [design/reviews/UI-1.md](../reviews/UI-1.md) §6、§8 的后续项已立项为 UI-09a..g（只改 CSS）与 UI-10a..g（需改 `.tsx`），见下文 [S4](#s4ui-1-后续--m1-遗留建议-v040)。
 
 **页面归属**（每个页面文件只有一个负责任务；UI-08 不接手任何页面）：
 
@@ -117,7 +117,8 @@ UI-1 的 13 项已全部合并。设计一致性审查 [design/reviews/UI-1.md](
 | `PeriodClose.tsx`、`TradePeriodAdmission.tsx` | UI-07b |
 | `AiPanel.tsx` | UI-07c |
 | `Migration.tsx` | UI-07e |
-| `styles.css` 兼容层清理 | UI-08（边界见任务文件） |
+| `TradeOrders.tsx`（S4 新增） | M1-R1a |
+| `styles.css` 兼容层清理 | UI-08（边界见任务文件）；全局元素规则删除归 UI-09g |
 
 今后新增页面时，在同一 PR 中把它加入本表。新页面直接使用 token 与组件类，不写入 `styles.css`。
 
@@ -179,6 +180,79 @@ UI 任务不改迁移、领域和 infra 代码，与 `legacy-import`、`admin-cl
    - **首载与路由加载**：由上表的入口 / 路由 chunk 对照代表；不另设计时基准。
    - **不适用**：热读 p95、预览 / 确认 p95、100 万行 GL 基准均不适用，因为 UI 任务不改接口、查询和事务。PR 中注明“不适用（无接口变化）”。
 
+## S4：UI-1 后续 + M1 遗留（建议 v0.4.0）
+
+**目标**：在不改后端规则和迁移的前提下，做三件事：
+- 收尾 UI-1 审查留下的小步改进；
+- 补上 M1 遗留的订单录入 GUI 与贸易页教学、列表；
+- 落实 v0.3.0 回顾的行动项。
+
+版本号由协调者定。基线为 main `2a23025`（v0.3.0 之后）。
+
+**不在本 Sprint**：
+- M2-05 / M2-06：需要用户授权决定 A / B，见上文 M2 节；
+- 订单列表：需要新增列表 API，见 M1-R1a 决定 P2；
+- 任何新迁移。
+
+M1-R3（#78）、M1-R4（#81）已完成。
+
+| ID | 标题 | 类型 | 依赖 | 冲突域 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- |
+| [UI-09a](UI-09a-components-css.md) | 组件样式：禁用 subtle（F3）、segmented 选中态（F10）、窄表滚动提示（F2 组件部分）、`.message-bar p` 全局规则（D-8） | CSS | — | web-ui:components | todo | |
+| [UI-09b](UI-09b-shell-brand-css.md) | 外壳窄屏品牌名（F1） | CSS | 外壳串行 | web-ui:shell | todo | |
+| [UI-09c](UI-09c-master-css.md) | 科目表 / 主数据：桌面 36px（F5）、滚动提示（F2）、删除 D-8 副本 | CSS | UI-09a | web-ui:master | todo | |
+| [UI-09d](UI-09d-ledger-period-close-css.md) | 总账报表 / 期末结账：金额链接（F4）、行表头与复选框（F6）、36px（F5）、删除 D-8 副本 | CSS | UI-09a | web-ui:ledger, web-ui:period-close | todo | |
+| [UI-09e](UI-09e-journals-css.md) | 凭证新建去掉框中框（F7） | CSS | — | web-ui:journals | todo | |
+| [UI-09f](UI-09f-trade-css.md) | 发票 / 付款：桌面 36px（F5）、删除 D-8 副本 | CSS | UI-09a | web-ui:trade | todo | |
+| [UI-09g](UI-09g-global-element-rules.md) | 删除 `styles.css` 全局元素规则（D-7，属性级证据） | CSS | UI-09a..f；外壳串行最后 | web-ui:shell | todo | |
+| [UI-10a](UI-10a-shell-preference-messagebar.md) | 外壳偏好警告改用 MessageBar（D-1） | 页面 tsx | UI-09b | web-ui:shell | todo | |
+| [UI-10b](UI-10b-journals-action-column.md) | 凭证列表操作列表头与“查看”列宽（F8） | 页面 tsx | UI-09e | web-ui:journals | todo | |
+| [UI-10c](UI-10c-accounts-enabled-badge.md) | 科目表只读“启用”改徽标（D-6） | 页面 tsx | UI-09c | web-ui:master | todo | |
+| [UI-10d](UI-10d-trade-master-enabled-badge.md) | 贸易主数据只读“启用”改徽标（D-6） | 页面 tsx | UI-09c, UI-10c | web-ui:master, web-ui:trade | todo | |
+| [UI-10e](UI-10e-migration-header-and-details.md) | 迁移核对页：PageHeader、教学提示（D-3）、键值明细（F9） | 页面 tsx | — | web-ui:migration | todo | |
+| [UI-10f](UI-10f-invoice-add-line-label.md) | 发票“新增行”快捷键显示（F11） | 页面 tsx | — | web-ui:trade | todo | |
+| [UI-10g](UI-10g-period-admission-saved-message.md) | 期间准入保存提示措辞（Sprint 评审遗留） | labels | — | web-ui:trade | todo | |
+| [M1-R1a](M1-R1a-trade-order-entry-page.md) | 非库存订单录入页（新页面，懒加载） | 新页面 + shell | — | web-ui:trade-orders, web-ui:shell | todo | |
+| [M1-R1b](M1-R1b-trade-order-gui-e2e.md) | E2E 主路径改用 GUI 建订单 | 测试 | M1-R1a | tests:trade-e2e（可能 bench/CI） | todo | |
+| [M1-R2a](M1-R2a-trade-teaching-tests.md) | 贸易页教学提示补齐与开 / 关测试 | 贸易 | — | web-ui:trade | todo | |
+| [M1-R2b](M1-R2b-trade-adjust-picker-filter.md) | 纠错页未结项选择按伙伴筛选（替代虚拟滚动） | 贸易 | M1-R2a | web-ui:trade | todo | |
+| [PROC-01](PROC-01-release-claims-and-demo.md) | 发布流程：断言来源、Demo 实跑模板（版本管理） | 文档 | — | docs/release | todo | |
+
+回顾的另外两项由本 PR 直接落地：
+- “合并检查清单加入任务表同步”与“运维可见变化写明旧值 → 新值”，写入[路线图 §5](../roadmap.md#5-团队流程)；
+- “调整 Full 分片前先剖析 runner 冷启动”，写入[路线图 §4](../roadmap.md#4-ci-与测试策略设计角色牵头)；
+- “UI-09 立项与排期”即本节。
+
+**产品负责人决定**（协调者可推翻；推翻时由设计角色同步任务文件）：
+
+- **P1**：F5 统一为桌面 36px，窄屏（≤ 760）和粗指针 44px，依据 [design/ui/README.md](../ui/README.md) §7，回应 v0.3.0 Sprint 评审问题 2。发布文档中的点击区说法按 PROC-01 改为分端说明。
+- **P2**：M1-R1 按现有 API 收窄范围：无订单列表、无保存前金额预览，只显示服务端返回的金额。见 [M1-R1a](M1-R1a-trade-order-entry-page.md)。
+- **P3**：D-6 改徽标后，`accounts.test.tsx:100` 的只读复选框断言以同等强度替换。本 Sprint 只有这一条已有断言允许替换，见 [UI-10c](UI-10c-accounts-enabled-badge.md)。
+- **P4**：F11 的“新增行”按钮可访问名称去掉括号中的快捷键，改由 `aria-keyshortcuts` 提供；测试都通过 `t()` 定位，不需要修改。见 [UI-10f](UI-10f-invoice-add-line-label.md)。
+- **P5**：纠错页未结项是原生 `select`，属于 E2E 契约，不改为虚拟滚动，改为服务端按伙伴筛选。见 [M1-R2b](M1-R2b-trade-adjust-picker-filter.md)。
+
+**通用验收**：所有 UI 任务都满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9。各任务的 PG-05 预算写在任务文件中，包体积对照的基线改为每个 PR 的实际 base（不再用 `f35aa54`）。
+
+**三名开发的并行安排**（同一行内串行；不同行同时进行时冲突域不相交）：
+
+| 线 | 顺序 | 冲突域 |
+| --- | --- | --- |
+| A：CSS | UI-09a → UI-09c → UI-09d → UI-09e → UI-09b → UI-09g | components → master → ledger / period-close → journals → shell |
+| B：贸易（web-ui:trade 串行） | M1-R2a → M1-R2b → UI-10f → UI-10g → UI-09f → UI-10d | trade（UI-10d 另含 master） |
+| C：其他页面与新页 | UI-10e → M1-R1a → M1-R1b → UI-10b → UI-10c → UI-10a | migration → trade-orders + shell → tests:trade-e2e → journals → master → shell |
+
+- **首批可同时开工**：UI-09a（A）、M1-R2a（B）、UI-10e（C）。
+- **跨线等待**（依赖已写在表中）：
+  - UI-10b 等 UI-09e；
+  - UI-10c 等 UI-09c；
+  - UI-10d 等 UI-09c 与 UI-10c；
+  - UI-09f 等 UI-09a。
+- **外壳串行**：M1-R1a → UI-09b → UI-10a → UI-09g。这四个任务同一时间只开一个；A 线到 UI-09b 时，若 M1-R1a 未合并就先等。
+- **UI-09g** 的证据覆盖全部页面。开工时若有改页面 CSS 的任务在进行，等其合并；rebase 后 main 上有新的页面 CSS，就重新采集证据。
+- **M1-R1b** 改共享 E2E 场景，与它同时进行的贸易任务合并后要 rebase 并重跑真实 Chrome 场景。若需调整 Full 分片，同一时间只开一个改 workflow 的任务。
+- **PROC-01** 由版本管理负责，不计入开发上限，随时可做。
+- 每个任务合并后，按通用验收 5 跟踪 main Full。变绿前不派发同一冲突域的下一个任务。
+
 ## 派发顺序
 
 1. 第一批（按顺序，同时只开一个以避免 `package.json`/lock 冲突）：M0-01 → M0-02 → M0-03 → M0-04 → M0-05 → M0-06→ M0-07。M0-02 与 M0-03 可并行，后合并者重新生成 lock。
@@ -204,6 +278,10 @@ UI 任务不改迁移、领域和 infra 代码，与 `legacy-import`、`admin-cl
      - `web-ui:shell`：`packages/web/src/App.tsx`（外壳与 `Overview` 运行状态页）、`main.tsx`、`src/theme/{tokens,base,shell}.css`、`styles.css`、`labels.ts` 中 `shell.*`。
      - `web-ui:components`：`src/theme/components.css` 与 `src/ui/components/`（UI-1 共享组件）；页面任务需要新通用样式时先放页面 CSS，由 UI-08 统一提升。
      - `web-ui:period-close`：`PeriodClose.tsx` 及其 labels；`web-ui:migration`：`Migration.tsx` 及其 labels（M2-04 与 UI-07e 共用）。
+     - 页面 CSS `src/pages/<页面>.css` 属于对应页面的冲突域，例如 `trade-invoices.css` 属于 web-ui:trade，`accounts.css` 属于 web-ui:master。只改 CSS 的任务也按此计算。
+     - `web-ui:trade-orders`（S4 新增）：`TradeOrders.tsx`、`trade-order-labels.ts`、`pages/trade-orders.css` 及其测试。
+     - `tests:trade-e2e`：`packages/infra/test/support/trade-gui-scenario.ts` 与 `trade-gui-*.slow.test.ts`。只运行这些测试不算占用，修改才算。
+     - `docs/release`：`docs/release/`、`docs/demo/` 下的流程文档与模板（版本管理）。
    - **迁移的串行集成**（带迁移的任务可以并行开发，但集成必须串行）：
      - 运行器按 `migrations.ts` 中 manifest 数组的**位置**写入版本号（`index + 1`），并校验每个版本的 checksum（`migrations.ts:83-91,163-168,177-188`），不看文件名。已进入 main 的迁移前缀、顺序和 checksum 都不能改。
      - 编号由设计角色在本表预留（main 已到 013；M2-03 预留 014，必须在 013 之后，不参与下面的互换规则）。带迁移的 PR 必须按预留编号顺序合并。
@@ -211,7 +289,7 @@ UI 任务不改迁移、领域和 infra 代码，与 `legacy-import`、`admin-cl
      - 集成由准备合并的那个任务的开发者串行完成：rebase 到最新 main，同步改迁移文件名、manifest 顺序和 schema/对象检查，跑包含从旧版本升级的 CI，评审角色按新 head 重新评审后才能合并。同一时间只做一个迁移集成。
      - 改同一张表的两个任务不能并行开发。
    - 公共文件（`package.json`/lockfile、`web/src/App.tsx` 路由与导航、`ui/index.ts`、contracts 汇总导出）：只做追加式小改动，由后合并者 rebase 解决。改 `package.json`/lockfile 的任务同时只开一个。
-   - 当前前置状态：基线 main `336c0cd` 已含 M0 全部、M1-01..07（#54、#56）、M2-01..03（#47）；M1-R 随 #57 合并落地（结论通过，见 [design/reviews/M1.md](../reviews/M1.md)）。以上历史派发顺序不代表仍在开发。M1-R1..R4 不阻塞 v0.2.0，可与 M2-03b 按冲突域穿插派发；main 迁移已到 014。
+   - 当前前置状态：基线 main `336c0cd` 已含 M0 全部、M1-01..07（#54、#56）、M2-01..03（#47）；M1-R 随 #57 合并落地（结论通过，见 [design/reviews/M1.md](../reviews/M1.md)）。以上历史派发顺序不代表仍在开发。M1-R1..R4 不阻塞 v0.2.0，可与 M2-03b 按冲突域穿插派发。截至 main `2a23025`（v0.3.0 之后），迁移已到 016；S4 不新增迁移。
 5. M2（草案）：M0-R4、M0-R5 都合并后，M2-01 与 M2-02 可并行（冲突域不重叠）。M2-03 需要 M2-02 和 M0-R1；迁移 014 必须在 M1 的 013 合并之后集成（M2-03 先就绪就等待，不互换编号）；M2-03 与 M1-03、M1-06 同属 `domain-posting`，不能同时开发，这条不因迁移串行集成规则而豁免。M2-01、M2-03、M2-04、M2-06 都改 `admin-cli`，不能同时进行。之后为 M2-04（首批）→ M2-03b → M2-04b → M2-05 → M2-06 → M2-R（D26）；M2-04、M2-03b、M2-04b 都改 `admin-cli`、`legacy-import`，串行。真实操作看决定 A/B/C；D25 已决（导入期初未结项），M2-03b 与 M2-04b 合并前不做真实导入演练。
 
 ## 决定记录
