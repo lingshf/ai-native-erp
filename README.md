@@ -207,7 +207,7 @@ npx vitest run trade-gui-
 node packages\infra\bench\trade-http.ts
 ```
 
-如果本机已安装 Edge 且 Chromium 下载受限，可在运行慢测前显式设 `$env:ERP_E2E_BROWSER_CHANNEL="msedge"`；CI 使用固定 Playwright Chromium。截图输出到 `artifacts/ci/trade-e2e`，浏览器 trace 只在失败时写入；Full main/每晚层只在失败时上传；PR 受影响测试仍排除 `*.slow.test.ts`，不安装浏览器、不设墙钟门槛。百万 GL 行 + 1000 伙伴 + 10 万未结项的三次 loopback HTTP p95 只在 Bench 层衡量，口径、原始采样和结果见[贸易性能证据](docs/performance/trade-e2e-bench.md)。
+如果本机已安装 Edge 且 Chromium 下载受限，可在运行慢测前显式设 `$env:ERP_E2E_BROWSER_CHANNEL="msedge"`；CI 使用 hosted Chrome。截图输出到 `artifacts/ci/trade-e2e`，浏览器 trace 只在失败时写入；Full main/每晚层只在失败时上传；PR 受影响测试仍排除 `*.slow.test.ts`，不安装浏览器、不设墙钟门槛。百万 GL 行 + 1000 伙伴 + 10 万未结项的三次 loopback HTTP p95 只在 Bench 层衡量，口径、原始采样和结果见[贸易性能证据](docs/performance/trade-e2e-bench.md)。
 
 ### 贸易计算器（M1-02）
 

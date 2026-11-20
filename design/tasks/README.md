@@ -85,19 +85,21 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 
 | ID | 标题 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- |
-| [UI-01](UI-01-tokens-and-shell.md) | 设计 token + 布局外壳（顶栏偏好、分组导航、对比度测试） | — | web-ui:shell | todo | |
-| [UI-02a](UI-02a-report-components-and-trade-reports.md) | 报表组件 + 往来未结项与账龄页（样板页，影响限本页） | UI-01 | web-ui:components, web-ui:trade | todo | |
-| [UI-02b](UI-02b-form-components-and-accounts.md) | 表单组件（Field / FormGrid / FastTab）+ 科目表页 | UI-02a | web-ui:components, web-ui:master | todo | |
-| [UI-03](UI-03-trade-invoices.md) | 采购与销售发票页 | UI-02b | web-ui:trade | todo | |
-| [UI-04](UI-04-master-data.md) | 主数据页：财务维度、贸易主数据 | UI-02b | web-ui:master, web-ui:trade | todo | |
-| [UI-05](UI-05-journals-and-events.md) | 凭证与业务事件页 | UI-02b | web-ui:journals | todo | |
-| [UI-06](UI-06-trade-settlements-and-adjustments.md) | 付款与收款、预付 / 贷项 / 专用纠错页 | UI-03 | web-ui:trade | todo | |
-| [UI-07a](UI-07a-ledger-reports.md) | 总账报表、快照报表、报表索引 | UI-02a | web-ui:ledger | todo | |
-| [UI-07b](UI-07b-period-close.md) | 期末结账 + 贸易期间准入 | UI-02b | web-ui:period-close, web-ui:trade | todo | |
-| [UI-07c](UI-07c-ai-panel.md) | AI 面板 | UI-05 | web-ui:journals | todo | |
-| [UI-07d](UI-07d-overview.md) | 运行状态页（`App.tsx` 中的 `Overview`） | UI-02a | web-ui:shell | todo | |
-| [UI-07e](UI-07e-migration.md) | 迁移核对页（#59 带入的 `Migration.tsx`） | UI-02a | web-ui:migration | todo | |
-| [UI-08](UI-08-polish-and-audit.md) | 收尾：删除兼容样式、组件提升、一致性审查（不重做页面） | UI-01 … UI-07e | web-ui:shell, web-ui:components | todo | |
+| [UI-01](UI-01-tokens-and-shell.md) | 设计 token + 布局外壳（顶栏偏好、分组导航、对比度测试） | — | web-ui:shell | done | [#62](https://github.com/lingshf/ai-native-erp/pull/62) |
+| [UI-02a](UI-02a-report-components-and-trade-reports.md) | 报表组件 + 往来未结项与账龄页（样板页，影响限本页） | UI-01 | web-ui:components, web-ui:trade | done | [#65](https://github.com/lingshf/ai-native-erp/pull/65) |
+| [UI-02b](UI-02b-form-components-and-accounts.md) | 表单组件（Field / FormGrid / FastTab）+ 科目表页 | UI-02a | web-ui:components, web-ui:master | done | [#67](https://github.com/lingshf/ai-native-erp/pull/67) |
+| [UI-03](UI-03-trade-invoices.md) | 采购与销售发票页 | UI-02b | web-ui:trade | done | [#75](https://github.com/lingshf/ai-native-erp/pull/75) |
+| [UI-04](UI-04-master-data.md) | 主数据页：财务维度、贸易主数据 | UI-02b | web-ui:master, web-ui:trade | done | [#77](https://github.com/lingshf/ai-native-erp/pull/77) |
+| [UI-05](UI-05-journals-and-events.md) | 凭证与业务事件页 | UI-02b | web-ui:journals | done | [#69](https://github.com/lingshf/ai-native-erp/pull/69) |
+| [UI-06](UI-06-trade-settlements-and-adjustments.md) | 付款与收款、预付 / 贷项 / 专用纠错页 | UI-03 | web-ui:trade | done | [#76](https://github.com/lingshf/ai-native-erp/pull/76) |
+| [UI-07a](UI-07a-ledger-reports.md) | 总账报表、快照报表、报表索引 | UI-02a | web-ui:ledger | done | [#68](https://github.com/lingshf/ai-native-erp/pull/68) |
+| [UI-07b](UI-07b-period-close.md) | 期末结账 + 贸易期间准入 | UI-02b | web-ui:period-close, web-ui:trade | done | [#80](https://github.com/lingshf/ai-native-erp/pull/80) |
+| [UI-07c](UI-07c-ai-panel.md) | AI 面板 | UI-05 | web-ui:journals | done | [#72](https://github.com/lingshf/ai-native-erp/pull/72) |
+| [UI-07d](UI-07d-overview.md) | 运行状态页（`App.tsx` 中的 `Overview`） | UI-02a | web-ui:shell | done | [#71](https://github.com/lingshf/ai-native-erp/pull/71) |
+| [UI-07e](UI-07e-migration.md) | 迁移核对页（#59 带入的 `Migration.tsx`） | UI-02a | web-ui:migration | done | [#74](https://github.com/lingshf/ai-native-erp/pull/74) |
+| [UI-08](UI-08-polish-and-audit.md) | 收尾：删除兼容样式、组件提升、一致性审查（不重做页面） | UI-01 … UI-07e | web-ui:shell, web-ui:components | done | [#82](https://github.com/lingshf/ai-native-erp/pull/82) |
+
+UI-1 的 13 项已全部合并。设计一致性审查 [design/reviews/UI-1.md](../reviews/UI-1.md) 的后续项（D-7、D-8、F3、F5、F10 等）归入待新开的 **UI-09**（只改 CSS，尚未立项，见该文 §6、§8）。
 
 **页面归属**（每个页面文件只有一个负责任务；UI-08 不接手任何页面）：
 
