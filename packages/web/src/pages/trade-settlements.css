@@ -1,14 +1,8 @@
 /*
  * UI-06 结算与调整页：只作用于 .trade-settlements / .trade-adjustments 之内。
  * 通用外观在 components.css；这里只定操作栏、分配表、贷项行、反向勾选（warning / success 消息条已提升到 components.css）。
+ * 控件高度沿用 --control-h（桌面 36px，窄屏或粗指针 44px，design/ui §7，F5）。
  */
-:is(.trade-settlements, .trade-adjustments) {
-  /* 本页所有控件在桌面与窄屏都 ≥ 44px */
-  --control-h: 44px;
-}
-:is(.trade-settlements, .trade-adjustments) .message-bar p {
-  margin: 0;
-}
 :is(.trade-settlements, .trade-adjustments)
   :is(.tset-entry, .tadj-entry, .tset-result, .tadj-result, .tadj-lines) {
   display: grid;
@@ -81,13 +75,13 @@
   width: 20px;
   height: 20px;
 }
-/* 分配表复选框：label 撑开 44×44 实际点击区（行高仍 48） */
+/* 分配表复选框：label 撑开 --control-h 见方的点击区（行高仍 48） */
 .trade-settlements .accounts-scroll label {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: var(--control-h);
+  min-height: var(--control-h);
   cursor: pointer;
 }
 
