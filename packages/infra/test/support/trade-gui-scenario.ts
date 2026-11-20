@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -117,16 +118,283 @@ export function guiPhase(scenario: string, name: string, started: number) {
   );
 }
 
-export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green") {
+// `path` keeps the query string; `preview` is the server's full preview response.
+type Recorded = { method: string; path: string; body: unknown; preview?: unknown };
+const parts = {
+  1: "period admission, trade configuration, matched AP invoice and payment",
+  2: "advance, AR credit and cancellations, open-item reports",
+} as const;
+
+// The only values the GUI generates itself (crypto.randomUUID) in the part 1 writes. The replay
+// reuses them instead of normalizing anything, so every other field, every ID reference and
+// every server-computed preview fingerprint must match the GUI requests exactly.
+type GeneratedIds = {
+  documentId: string;
+  paymentId: string;
+  invoiceKey: string;
+  settlementKey: string;
+};
+function generatedIds(recorded: Recorded[]): GeneratedIds {
+  const body = (path: string) => {
+    const matches = recorded.filter((entry) => entry.method === "POST" && entry.path === path);
+    if (matches.length !== 1)
+      throw new Error(`Expected one GUI POST ${path}, got ${matches.length}`);
+    return matches[0].body as { command: Record<string, unknown>; idempotencyKey: unknown };
+  };
+  const invoice = body("/api/v1/trade/invoices");
+  const settlement = body("/api/v1/trade/settlements");
+  const ids = {
+    documentId: invoice.command.documentId,
+    paymentId: settlement.command.paymentId,
+    invoiceKey: invoice.idempotencyKey,
+    settlementKey: settlement.idempotencyKey,
+  };
+  for (const [field, value] of Object.entries(ids))
+    if (typeof value !== "string") throw new Error(`GUI request lacks generated ${field}`);
+  return ids as GeneratedIds;
+}
+const freshIds = (): GeneratedIds => ({
+  documentId: randomUUID(),
+  paymentId: randomUUID(),
+  invoiceKey: randomUUID(),
+  settlementKey: randomUUID(),
+});
+// The one server value that cannot repeat: preview fingerprints hash the order's server-side
+// `recordedAt` wall-clock time. Each fingerprint must be the one its own preview returned and
+// the confirmation right after it must carry exactly that value; only then are the two fields
+// (`preview.fingerprint`, `body.fingerprint` of that confirmation) replaced by a shared token.
+// Everything else in the preview response is compared as returned.
+function linkFingerprints(recorded: Recorded[]) {
+  return recorded.map((entry, index) => {
+    if (!entry.path.endsWith("/preview")) {
+      const previous = recorded[index - 1];
+      if (!previous?.path.endsWith("/preview")) return entry;
+      const body = entry.body as Record<string, unknown>;
+      const fingerprint = (previous.preview as Record<string, unknown> | undefined)?.fingerprint;
+      if (
+        entry.path !== previous.path.slice(0, -"/preview".length) ||
+        body.fingerprint !== fingerprint
+      )
+        throw new Error(`${entry.path} does not confirm the preceding preview fingerprint`);
+      return { ...entry, body: { ...body, fingerprint: `<preview ${index - 1}>` } };
+    }
+    const preview = entry.preview as Record<string, unknown> | undefined;
+    if (typeof preview?.fingerprint !== "string" || !/^[0-9a-f]{64}$/u.test(preview.fingerprint))
+      throw new Error(`${entry.path} returned no fingerprint`);
+    return { ...entry, preview: { ...preview, fingerprint: `<preview ${index}>` } };
+  });
+}
+
+const year = { from: "2026-01-01", to: "2026-12-31" };
+const trade = (kind: string, code: string, data: Record<string, unknown>): Recorded => ({
+  method: "POST",
+  path: `/api/v1/trade/${kind}`,
+  body: {
+    company: "DEFAULT",
+    code,
+    active: true,
+    expectedRevision: 0,
+    kind,
+    data: { name: `Fictional ${code}`, ...year, ...data },
+  },
+});
+const day = "2026-01-20";
+const dates = { currency: "CNY", accountingDate: day, documentDate: day, taxDate: day };
+const seedWrites: Recorded[] = [
+  {
+    method: "PUT",
+    path: "/api/v1/periods",
+    body: {
+      company: "DEFAULT",
+      month: "2026-01",
+      revision: 1,
+      status: "open",
+      reason: "Fictional GUI acceptance",
+      confirmed: true,
+      modules: ["trade", "tax"],
+    },
+  },
+  trade("tradeTerms", "N30", {
+    dueDays: 30,
+    discountDays: 7,
+    discountPercent: "1.5",
+    allowPartialDiscount: true,
+  }),
+  trade("taxCode", "VAT", {
+    mode: "ordinary",
+    rates: [{ id: "STANDARD", ...year, ratePercent: "13" }],
+    deductiblePercent: "100",
+    inputAccount: "1400",
+    outputAccount: "2200",
+  }),
+  ...(
+    [
+      ["PAY", "AP", "2100", "1250"],
+      ["REC", "AR", "1300", "2300"],
+    ] as const
+  ).map(([code, side, controlAccount, advanceAccount]) =>
+    trade("tradeProfile", code, {
+      side,
+      controlAccount,
+      advanceAccount,
+      cashAccount: "1000",
+      discountAccount: "4000",
+    }),
+  ),
+  trade("tradeParty", "PARTY", {
+    role: "both",
+    apProfile: "PAY",
+    arProfile: "REC",
+    terms: "N30",
+    allowedTaxCodes: ["VAT"],
+    defaultDimensions: {},
+  }),
+  ...(
+    [
+      ["EXPENSE", "expense", "5000", null],
+      ["SERVICE", "service", null, "4000"],
+    ] as const
+  ).map(([code, type, expenseAccount, revenueAccount]) =>
+    trade("tradeProduct", code, {
+      type,
+      expenseAccount,
+      revenueAccount,
+      allowedTaxCodes: ["VAT"],
+      defaultDimensions: {},
+    }),
+  ),
+  {
+    method: "POST",
+    path: "/api/v1/trade/orders",
+    body: {
+      company: "DEFAULT",
+      orderId: "PO-DEMO",
+      side: "AP",
+      party: "PARTY",
+      currency: "CNY",
+      orderDate: day,
+      priceIncludesTax: false,
+      rounding: "line",
+      lines: [
+        {
+          lineId: "OL1",
+          product: "EXPENSE",
+          taxCode: "VAT",
+          quantity: "10",
+          unitPrice: "10",
+          discountPercent: "0",
+          taxableCharge: "0",
+        },
+      ],
+    },
+  },
+];
+const seedInvoice = (documentId: string) => ({
+  company: "DEFAULT",
+  documentId,
+  side: "AP",
+  party: "PARTY",
+  externalInvoice: "AP-DEMO",
+  ...dates,
+  orderId: "PO-DEMO",
+  priceIncludesTax: false,
+  rounding: "line",
+  headerDimensions: {},
+  matchingException: null,
+  lines: [
+    {
+      lineId: "L1",
+      product: "EXPENSE",
+      taxCode: "VAT",
+      quantity: "10",
+      unitPrice: "10",
+      discountPercent: "0",
+      taxableCharge: "0",
+      orderLineId: "OL1",
+      dimensions: {},
+    },
+  ],
+});
+const seedSettlement = (paymentId: string, itemId: string) => ({
+  company: "DEFAULT",
+  paymentId,
+  side: "AP",
+  party: "PARTY",
+  ...dates,
+  items: [{ itemId, revision: 1, gross: 5650, takeDiscount: true }],
+});
+type Send = (method: string, path: string, body: unknown) => Promise<Record<string, unknown>>;
+function httpSend(address: string): Send {
+  return async (method, path, body) => {
+    const response = await fetch(new URL(path, address), {
+      method,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(`Seed ${method} ${path}: ${response.status} ${JSON.stringify(result)}`);
+    return result;
+  };
+}
+// Part 2 starts from the exact state part 1 creates through the GUI. The same commands are
+// replayed through the real HTTP API (preview, then explicit confirmation with the fingerprint
+// that preview returned). Part 1 replays them against a second fresh server with the GUI's own
+// generated IDs and asserts the requests and preview fingerprints equal the GUI's exactly.
+async function seedPartOne(transport: Send, ids: GeneratedIds) {
+  const recorded: Recorded[] = [];
+  async function send(method: string, path: string, body: unknown) {
+    const entry: Recorded = { method, path, body };
+    recorded.push(entry);
+    const result = await transport(method, path, body);
+    if (path.endsWith("/preview")) entry.preview = result;
+    return result;
+  }
+  async function confirm(path: string, command: unknown, idempotencyKey: string) {
+    const preview = await send("POST", `${path}/preview`, command);
+    if (typeof preview.fingerprint !== "string") throw new Error(`No preview fingerprint: ${path}`);
+    const receipt = await send("POST", path, {
+      command,
+      fingerprint: preview.fingerprint,
+      idempotencyKey,
+      confirmation: "POST",
+    });
+    if (receipt.fingerprint !== preview.fingerprint)
+      throw new Error(`Replay ${path} confirmed ${String(receipt.fingerprint)}`);
+  }
+  for (const write of seedWrites) await send(write.method, write.path, write.body);
+  await confirm("/api/v1/trade/invoices", seedInvoice(ids.documentId), ids.invoiceKey);
+  await confirm(
+    "/api/v1/trade/settlements",
+    seedSettlement(ids.paymentId, ids.documentId),
+    ids.settlementKey,
+  );
+  return { ap: { documentId: ids.documentId }, recorded };
+}
+
+export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", part: 1 | 2) {
   let directory: string;
   let webRoot: string;
-  let browser: Browser;
-  const phase = (name: string, started: number) => guiPhase(`${language}/${theme}`, name, started);
+  let browser: Browser | undefined;
+  let launching: Promise<Browser>;
+  const phase = (name: string, started: number) =>
+    guiPhase(`${language}/${theme}/${part}`, name, started);
   beforeAll(async () => {
-    let started = performance.now();
     directory = await mkdtemp(join(tmpdir(), "erp-trade-gui-"));
     webRoot = join(directory, "web");
     await mkdir(artifacts, { recursive: true });
+    // Chrome starts while Vite builds and the test provisions its database and API; all of it
+    // still runs inside the Vitest Duration, it just no longer runs back to back.
+    const launchStarted = performance.now();
+    launching = chromium
+      .launch({ headless: true, channel: process.env.ERP_E2E_BROWSER_CHANNEL })
+      .then((launched) => {
+        browser = launched;
+        phase("browser", launchStarted);
+        return launched;
+      });
+    launching.catch(() => {});
+    const started = performance.now();
     await build({
       root: join(root, "packages/web"),
       configFile: join(root, "packages/web/vite.config.ts"),
@@ -134,16 +402,11 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green") 
       build: { outDir: webRoot },
     });
     phase("build", started);
-    started = performance.now();
-    browser = await chromium.launch({
-      headless: true,
-      channel: process.env.ERP_E2E_BROWSER_CHANNEL,
-    });
-    phase("browser", started);
   }, 60_000);
   afterAll(async () => {
-    const started = performance.now();
     try {
+      await launching?.catch(() => undefined);
+      const started = performance.now();
       await browser?.close();
       phase("browser-close", started);
     } finally {
@@ -151,94 +414,125 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green") 
     }
   });
 
-  test(`real trade GUI: ${language}/${theme}, keyboard main path and safe confirmation branches`, async ({
+  test(`real trade GUI: ${language}/${theme}, keyboard main path and safe confirmation branches (part ${part}/2: ${parts[part]})`, async ({
     onTestFinished,
   }) => {
-    let started = performance.now();
-    const name = `${language}-${theme}`;
-    const filename = join(directory, `${name}.sqlite`);
-    const storage = createSqliteStorage({ filename });
-    try {
-      await storage.migrate();
-    } finally {
-      await storage.close();
-    }
-    const store = createMasterDataStore({ filename });
-    try {
-      const master = new MasterDataService(store);
-      await master.initialize(2026);
-      // Only prerequisite GL accounts are provisioned; trade configuration and all
-      // financial commands below go through the rendered application.
-      for (const [code, category, reportGroup, controlModule] of [
-        ["2100", "LIABILITY", "payables", "AP"],
-        ["1250", "ASSET", "prepayments", "AP"],
-        ["1300", "ASSET", "receivables", "AR"],
-        ["2300", "LIABILITY", "otherLiabilities", "AR"],
-        ["1400", "ASSET", "otherAssets", "TAX"],
-        ["2200", "LIABILITY", "taxLiabilities", "TAX"],
-      ] as const)
-        await master.saveAccount(
-          "DEFAULT",
-          {
-            code,
-            name: `Fictional ${code}`,
-            category,
-            reportGroup,
-            controlModule,
-            purpose: "control",
-            normalSide: category === "ASSET" ? "DEBIT" : "CREDIT",
-            contraOf: null,
-            active: true,
-            manualAllowed: false,
-          },
-          0,
-        );
-    } finally {
-      await store.close();
-    }
-    phase("database", started);
-    let executor: SqliteExecutor | undefined;
-    let api: LocalApi | undefined;
+    const name = `${language}-${theme}-part${part}`;
+    const servers: { executor: SqliteExecutor; api?: LocalApi }[] = [];
     let context: BrowserContext | undefined;
     onTestFinished(async () => {
       const started = performance.now();
-      try {
-        // Explicit context close also disposes the Node request pool used by route.fetch().
-        await context?.close();
-      } finally {
-        try {
-          await api?.close();
-        } finally {
-          await executor?.close();
-        }
-      }
+      // Explicit context close also disposes the Node request pool used by route.fetch().
+      const closed = [await Promise.allSettled([context?.close()])].flat();
+      closed.push(
+        ...(await Promise.allSettled(
+          servers.map(async ({ executor, api }) => {
+            try {
+              await api?.close();
+            } finally {
+              await executor.close();
+            }
+          }),
+        )),
+      );
+      for (const result of closed) if (result.status === "rejected") throw result.reason;
       phase("resources", started);
     });
-    started = performance.now();
-    executor = await SqliteExecutor.create({ filename });
-    api = await createApi({
-      ...executor.services(),
-      webRoot,
-      allowPortZero: true,
-      environment: { ERP_PROFILE: "local", ERP_HOST: "127.0.0.1", ERP_PORT: "0" },
-    });
-    phase("api", started);
-    started = performance.now();
-    context = await browser.newContext({ viewport: { width: 1440, height: 1100 } });
-    phase("context", started);
-    started = performance.now();
-    // Keep explicit PNGs and key/network/source evidence without a continuous screencast.
-    await context.tracing.start({ screenshots: false, snapshots: false, sources: true });
-    phase("tracing", started);
-    started = performance.now();
-    const page = await context.newPage();
-    phase("page", started);
+    const opening = (async () => {
+      const launched = await launching;
+      let started = performance.now();
+      context = await launched.newContext({ viewport: { width: 1440, height: 1100 } });
+      phase("context", started);
+      started = performance.now();
+      // Keep explicit PNGs and key/network/source evidence without a continuous screencast.
+      await context.tracing.start({ screenshots: false, snapshots: false, sources: true });
+      phase("tracing", started);
+      started = performance.now();
+      const page = await context.newPage();
+      phase("page", started);
+      return { context, page };
+    })();
+    async function provision(file: string, prefix: string) {
+      const filename = join(directory, `${file}.sqlite`);
+      let started = performance.now();
+      const storage = createSqliteStorage({ filename });
+      try {
+        await storage.migrate();
+      } finally {
+        await storage.close();
+      }
+      const store = createMasterDataStore({ filename });
+      try {
+        const master = new MasterDataService(store);
+        await master.initialize(2026);
+        // Only prerequisite GL accounts are provisioned; trade configuration and all
+        // financial commands below go through the rendered application.
+        for (const [code, category, reportGroup, controlModule] of [
+          ["2100", "LIABILITY", "payables", "AP"],
+          ["1250", "ASSET", "prepayments", "AP"],
+          ["1300", "ASSET", "receivables", "AR"],
+          ["2300", "LIABILITY", "otherLiabilities", "AR"],
+          ["1400", "ASSET", "otherAssets", "TAX"],
+          ["2200", "LIABILITY", "taxLiabilities", "TAX"],
+        ] as const)
+          await master.saveAccount(
+            "DEFAULT",
+            {
+              code,
+              name: `Fictional ${code}`,
+              category,
+              reportGroup,
+              controlModule,
+              purpose: "control",
+              normalSide: category === "ASSET" ? "DEBIT" : "CREDIT",
+              contraOf: null,
+              active: true,
+              manualAllowed: false,
+            },
+            0,
+          );
+      } finally {
+        await store.close();
+      }
+      phase(`${prefix}database`, started);
+      started = performance.now();
+      const server: (typeof servers)[number] = {
+        executor: await SqliteExecutor.create({ filename }),
+      };
+      servers.push(server);
+      server.api = await createApi({
+        ...server.executor.services(),
+        webRoot,
+        allowPortZero: true,
+        environment: { ERP_PROFILE: "local", ERP_HOST: "127.0.0.1", ERP_PORT: "0" },
+      });
+      phase(`${prefix}api`, started);
+      return await server.api.listen();
+    }
+    const serving = (async () => {
+      const address = await provision(name, "");
+      if (part === 1) return { address, seeded: undefined };
+      const started = performance.now();
+      const seeded = await seedPartOne(httpSend(address), freshIds());
+      phase("seed", started);
+      return { address, seeded };
+    })();
+    // Part 1's replay target: a second, untouched server built the same way, ready by the time
+    // the GUI path finishes.
+    const replaying = part === 1 ? provision(`${name}-replay`, "replay-") : Promise.resolve("");
+    // Wait for all sides so a failure on one never leaves another creating resources.
+    const [opened, served, replayed] = await Promise.allSettled([opening, serving, replaying]);
+    if (opened.status === "rejected") throw opened.reason;
+    if (served.status === "rejected") throw served.reason;
+    if (replayed.status === "rejected") throw replayed.reason;
+    const { page, context: traced } = opened.value;
+    const { address, seeded } = served.value;
+    const replayAddress = replayed.value;
     const interactionStarted = performance.now();
     const t = (key: Exclude<Parameters<typeof label>[1], "shell.httpError">) =>
       label(language, key);
     const button = (key: Parameters<typeof t>[0]) =>
       page.getByRole("button", { name: t(key), exact: true });
-    const address = await api.listen();
     const failures: string[] = [];
     page.on("pageerror", (error) => failures.push(error.message));
     await page.clock.setFixedTime(new Date("2026-01-20T12:00:00Z"));
@@ -264,10 +558,24 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green") 
       };
     });
     const envelopes: string[] = [];
+    const recorded: Recorded[] = [];
     let loseNextResult = false;
     await page.route("**/api/v1/**", async (route) => {
       const request = route.request();
-      const path = new URL(request.url()).pathname;
+      const url = new URL(request.url());
+      const path = url.pathname;
+      const entry: Recorded | undefined =
+        request.method() === "GET"
+          ? undefined
+          : { method: request.method(), path: path + url.search, body: request.postDataJSON() };
+      if (entry) recorded.push(entry);
+      if (entry && request.method() === "POST" && path.endsWith("/preview")) {
+        // Pass the real server response through unchanged, keeping it for the comparison.
+        const response = await route.fetch();
+        entry.preview = response.ok() ? await response.json() : response.status();
+        await route.fulfill({ response });
+        return;
+      }
       if (
         request.method() === "POST" &&
         ["/api/v1/trade/invoices", "/api/v1/trade/settlements", "/api/v1/trade/actions"].includes(
@@ -425,6 +733,17 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green") 
       await page.goto(address);
       await choose(page, page.locator("#workspace-language"), language);
       await choose(page, page.locator("#workspace-theme"), theme);
+      if (part === 1) await setUp();
+      else await followUp();
+      expect(await page.locator(".workspace").getAttribute("data-theme")).toBe(theme);
+      expect(await page.locator("html").getAttribute("lang")).toBe(language);
+      expect(failures).toEqual([]);
+    } finally {
+      await page.screenshot({ path: join(artifacts, `${name}-last.png`), fullPage: true });
+      await traced.tracing.stop({ path: join(artifacts, `${name}-trace.zip`) });
+      phase("interaction", interactionStarted);
+    }
+    async function setUp() {
       await navigate("period-close");
       await choose(page, page.locator("#close-month"), "2026-01");
       await checked(page, page.getByLabel(t("trpt.trade"), { exact: true }));
@@ -507,7 +826,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green") 
         return { status: response.status, body: await response.json() };
       });
       expect(orderResponse.status, JSON.stringify(orderResponse.body)).toBe(201);
-      const ap = await invoice("AP", "AP-DEMO", true);
+      await invoice("AP", "AP-DEMO", true);
       await navigate("trade-settlements");
       await type(page, page.locator("#tset-party"), "PARTY");
       await checked(
@@ -528,6 +847,13 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green") 
       expect(payment.cash).toBe(5575);
       expect(payment.allocations[0].remainingGross).toBe(5650);
       await post("tset.confirm", "/api/v1/trade/settlements");
+      const replay = await seedPartOne(httpSend(replayAddress), generatedIds(recorded));
+      expect(linkFingerprints(recorded)).toEqual(linkFingerprints(replay.recorded));
+    }
+    async function followUp() {
+      if (!seeded) throw new Error("Part 2 requires the replayed part 1 state");
+      linkFingerprints(seeded.recorded);
+      const { ap } = seeded;
       await navigate("trade-adjustments");
       const advance = await action("advance", { "tinv.party": "PARTY", "tadj.gross": "2000" });
       await action("apply", {
@@ -611,13 +937,6 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green") 
         path: join(artifacts, `${name}-reconciliation.png`),
         fullPage: true,
       });
-      expect(await page.locator(".workspace").getAttribute("data-theme")).toBe(theme);
-      expect(await page.locator("html").getAttribute("lang")).toBe(language);
-      expect(failures).toEqual([]);
-    } finally {
-      await page.screenshot({ path: join(artifacts, `${name}-last.png`), fullPage: true });
-      await context.tracing.stop({ path: join(artifacts, `${name}-trace.zip`) });
-      phase("interaction", interactionStarted);
     }
   }, 180_000);
 }

@@ -1,3 +1,3 @@
 import { tradeGuiScenario } from "../support/trade-gui-scenario.ts";
 
-tradeGuiScenario("en", "green");
+tradeGuiScenario("en", "red", 1);

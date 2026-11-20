@@ -18,10 +18,16 @@ jobs:
       fail-fast: false
       matrix:
         lane: [unit, browser]
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        # Unit uses 6 shards. Browser uses 9: each trade GUI part and the migration GUI file
+        # gets its own runner so one slow Chrome start cannot stack with another scenario.
         exclude:
-          - lane: browser
-            shard: 6
+          - lane: unit
+            shard: 7
+          - lane: unit
+            shard: 8
+          - lane: unit
+            shard: 9
     concurrency:
       group: full-${{ github.ref }}-${{ matrix.lane }}-${{ matrix.shard }}
       cancel-in-progress: true
@@ -34,6 +40,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 1
+      # Hosted runner disks are hydrated lazily; a cold Chrome install made single launches
+      # take 8-16s. Reading the files into the page cache overlaps with setup-node and npm ci.
+      - name: Prewarm Chrome disk cache in background
+        if: matrix.lane == 'browser'
+        continue-on-error: true
+        run: nohup timeout 60 bash scripts/ci-prewarm-chrome.sh /tmp/chrome-prewarm.txt >/tmp/chrome-prewarm.log 2>&1 &
       - uses: actions/setup-node@v7
         with:
           node-version: "26.x"
@@ -50,6 +62,25 @@ jobs:
       - name: Biome
         if: steps.gate.outputs.run == 'true' && matrix.lane == 'unit' && matrix.shard == 1
         run: npm run check
+      # Best effort only: the prewarm is never a gate. A failure (the script always writes a
+      # status marker, even when killed) or a 20s wait limit is logged as a warning and the
+      # tests run unchanged, with the complete Duration still reported.
+      - name: Wait for Chrome disk prewarm (best effort, at most 20s)
+        if: steps.gate.outputs.run == 'true' && matrix.lane == 'browser'
+        continue-on-error: true
+        run: |
+          start=$(date +%s%N)
+          timeout 20 bash -c 'until [ -s /tmp/chrome-prewarm.txt ]; do sleep 0.2; done' || true
+          waited="waited_ms=$((($(date +%s%N) - start) / 1000000))"
+          result=$(cat /tmp/chrome-prewarm.txt 2>/dev/null || echo "status=timeout")
+          echo "Chrome prewarm $result $waited"
+          case "$result" in
+            status=ok*) ;;
+            *)
+              echo "::warning title=Chrome prewarm::$result $waited; continuing with the tests"
+              cat /tmp/chrome-prewarm.log 2>/dev/null || true
+              ;;
+          esac
       - name: Verify runner Chrome for real-browser slow tests
         if: steps.gate.outputs.run == 'true'
         run: google-chrome --version
@@ -66,7 +97,7 @@ jobs:
           set -o pipefail
           mkdir -p artifacts/ci
           if [ "${{ matrix.lane }}" = "browser" ]; then
-            npm run test:ci -- --project=infra-browser --maxWorkers=1 --shard=${{ matrix.shard }}/5 2>&1 | tee artifacts/ci/vitest.log
+            npm run test:ci -- --project=infra-browser --maxWorkers=1 --shard=${{ matrix.shard }}/9 2>&1 | tee artifacts/ci/vitest.log
           else
             npm run test:ci -- '--project=!infra-browser' --shard=${{ matrix.shard }}/6 2>&1 | tee artifacts/ci/vitest.log
           fi
