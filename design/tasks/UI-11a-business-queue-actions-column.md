@@ -1,6 +1,6 @@
 # UI-11a 业务事件“待转队列”操作列按钮截断、无法点击
 
-- Sprint：S5 收尾后的 backlog（不计入 S5 目标，版本由协调者定）　依赖：[FOCUS-01](FOCUS-01-journals-events-passive-focus.md)（同冲突域串行；已合并，[#123](https://github.com/lingshf/ai-native-erp/pull/123)，main `2aaa610`）、[S5-g](S5-g-delete-global-element-rules.md)（S5-g 取证覆盖全部页面，开工时不应有正在进行的页面 CSS 任务）　建议分支：`ui-11a-business-queue-actions`
+- Sprint：S6（[计划](README.md#s6订单列表与保存前预览--s5-遗留收尾建议-v060)；S5 收尾后登记的 backlog，不计入 S5 目标）　依赖：[FOCUS-01](FOCUS-01-journals-events-passive-focus.md)（同冲突域串行；已合并，[#123](https://github.com/lingshf/ai-native-erp/pull/123)，main `2aaa610`）、[S5-g](S5-g-delete-global-element-rules.md)（S5-g 取证覆盖全部页面，开工时不应有正在进行的页面 CSS 任务）　建议分支：`ui-11a-business-queue-actions`
 - 冲突域：web-ui:journals（`BusinessEvents.tsx`、业务事件 labels、`src/pages/journals.css`）。如必须改 `theme/components.css`（web-ui:components），先报告设计角色加依赖。
 - 类型：页面 CSS（必要时 tsx）
 - 来源：FOCUS-01 在真实 Chrome 取证时发现；现存布局缺陷，base `045fa59` 上已存在，FOCUS-01 未改样式。

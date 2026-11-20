@@ -288,11 +288,11 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [S5-h](S5-h-trade-orders-focus-race.md) | 订单录入页保存后焦点断言偶发失败：先复现、核对真实 Chrome，再修复（D92，原因待证实） | 测试 / 页面 tsx | S5-c（B 线前序） | web-ui:trade-orders | done | [#117](https://github.com/lingshf/ai-native-erp/pull/117) |
 | [FLAKE-02](FLAKE-02-trade-gui-period-option-poll.md) | 贸易 GUI E2E：期末月份下拉选项轮询偶发为空；afterAll teardown 超时（两项分别记录，原因均未知）；已有 trace 只含旧标题与空读取，其余由定向诊断采集（排队，不计入 S5 目标） | 调查 / 测试 | —（与 S5-h 无文件重叠，可并行；共同原因则由设计角色决定合并） | tests:e2e | done | [#121](https://github.com/lingshf/ai-native-erp/pull/121)；合并后 [main Full 44817623175](https://github.com/lingshf/ai-native-erp/actions/runs/44817623175)（`7a142a3`，12/12 分片测试步骤通过） |
 | [FOCUS-01](FOCUS-01-journals-events-passive-focus.md) | 凭证 / 业务事件：7 处在被动 effect 中设置焦点，可能晚一帧；逐处以同一真实交互的真实 Chrome base / head 证据判定（jsdom 注入仅作辅助），只修已复现的（排队，不计入 S5 目标） | 调查 / 页面 tsx / 测试 | **S5-a 合并后**（同冲突域，不能并行）；参考 S5-h #117 | web-ui:journals | done | [#123](https://github.com/lingshf/ai-native-erp/pull/123) |
-| [UI-11a](UI-11a-business-queue-actions-column.md) | 业务事件“待转队列”操作列按钮截成“…”、`<td>` 拦截点击（FOCUS-01 取证发现，base `045fa59` 已存在）；1440 / 390 完整显示、可点击、这三个按钮命中区 ≥ 44 × 44（S5 收尾后 backlog，不计入 S5 目标） | 页面 CSS（必要时 tsx） | FOCUS-01（已合并，[#123](https://github.com/lingshf/ai-native-erp/pull/123)）、S5-g | web-ui:journals | todo | — |
-| [FOCUS-02](FOCUS-02-business-master-save-failure-focus.md) | 业务事件主数据（B3）：保存失败（409）、忙碌结束时同一 effect 再次执行，焦点晚一帧（#123 辅助发现，base `045fa59` 已存在）；把聚焦与 `lock` 拆开，`lock` 行为不变；真实 Chrome base / head 判定（S5 收尾后 backlog，不计入 S5 目标） | 调查 / 页面 tsx / 测试 | FOCUS-01（已合并，[#123](https://github.com/lingshf/ai-native-erp/pull/123)）；与 UI-11a 同冲突域串行 | web-ui:journals | todo | — |
-| [UI-11b](UI-11b-s5g-leftover-button-checkbox.md) | S5-g 第二道检查遗留：`.btn-primary` 缺 `:active`（components）；概览失败态重试按钮依赖全局 `button`（shell）；维度 `label.ui-master-hit` 复选框依赖全局复选框规则（master）（S5 收尾后 backlog） | CSS（必要时 tsx） | S5-g；与 UI-11c 同改 `components.css` 串行 | web-ui:components, web-ui:shell, web-ui:master | todo | — |
-| [UI-11c](UI-11c-virtualrows-spacer-cells.md) | S5-g 第二道检查遗留：VirtualRows 占位行 `td`（> 100 行时出现）缺 `border-bottom` / `vertical-align` / `min-width`，影响业务事件、凭证、贸易（S5 收尾后 backlog） | CSS（必要时 tsx） | S5-g；与 UI-11a、FOCUS-02（journals）及 UI-11b（components）串行 | web-ui:journals, web-ui:components | todo | — |
-| [UI-11d](UI-11d-delete-styles-css-remaining.md) | 删除 `styles.css` 保留的全局声明，D-7 完成（文件清空时删 `main.tsx` 的 import） | CSS + 入口 import 一行 | UI-11b、UI-11c（外壳串行最后） | web-ui:shell | todo | — |
+| [UI-11a](UI-11a-business-queue-actions-column.md) | 业务事件“待转队列”操作列按钮截成“…”、`<td>` 拦截点击（FOCUS-01 取证发现，base `045fa59` 已存在）；1440 / 390 完整显示、可点击、这三个按钮命中区 ≥ 44 × 44（S5 收尾后 backlog，不计入 S5 目标） | 页面 CSS（必要时 tsx） | FOCUS-01（已合并，[#123](https://github.com/lingshf/ai-native-erp/pull/123)）、S5-g | web-ui:journals | 转入 S6 | — |
+| [FOCUS-02](FOCUS-02-business-master-save-failure-focus.md) | 业务事件主数据（B3）：保存失败（409）、忙碌结束时同一 effect 再次执行，焦点晚一帧（#123 辅助发现，base `045fa59` 已存在）；把聚焦与 `lock` 拆开，`lock` 行为不变；真实 Chrome base / head 判定（S5 收尾后 backlog，不计入 S5 目标） | 调查 / 页面 tsx / 测试 | FOCUS-01（已合并，[#123](https://github.com/lingshf/ai-native-erp/pull/123)）；与 UI-11a 同冲突域串行 | web-ui:journals | 转入 S6 | — |
+| [UI-11b](UI-11b-s5g-leftover-button-checkbox.md) | S5-g 第二道检查遗留：`.btn-primary` 缺 `:active`（components）；概览失败态重试按钮依赖全局 `button`（shell）；维度 `label.ui-master-hit` 复选框依赖全局复选框规则（master）（S5 收尾后 backlog） | CSS（必要时 tsx） | S5-g；与 UI-11c 同改 `components.css` 串行 | web-ui:components, web-ui:shell, web-ui:master | 转入 S6 | — |
+| [UI-11c](UI-11c-virtualrows-spacer-cells.md) | S5-g 第二道检查遗留：VirtualRows 占位行 `td`（> 100 行时出现）缺 `border-bottom` / `vertical-align` / `min-width`，影响业务事件、凭证、贸易（S5 收尾后 backlog） | CSS（必要时 tsx） | S5-g；与 UI-11a、FOCUS-02（journals）及 UI-11b（components）串行 | web-ui:journals, web-ui:components | 转入 S6 | — |
+| [UI-11d](UI-11d-delete-styles-css-remaining.md) | 删除 `styles.css` 保留的全局声明，D-7 完成（文件清空时删 `main.tsx` 的 import） | CSS + 入口 import 一行 | UI-11b、UI-11c（外壳串行最后） | web-ui:shell | 转入 S6 | — |
 | [PROC-02](PROC-02-release-rc-and-demo-checks.md) | 发布流程：RC 断言范围与 API / GUI 分条；Demo 截图状态断言与进程归属（版本管理） | 文档 | — | docs/release | done | [#111](https://github.com/lingshf/ai-native-erp/pull/111) |
 
 **S5 共同验收**（S5-a..g、S5-i；S5-h、PROC-02、FLAKE-02、FOCUS-01、UI-11a、FOCUS-02、UI-11b..d 见各自文件）：
@@ -300,7 +300,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
    - **D133（修订 D131）**，S5-g 的 PG-05 有两个条件：(a) 相对 PR 的 merge-base，CSS 合计 gzip **减少**；(b) 以 S5 起点 main `28f9de8` 为基线，S5 累计 CSS gzip 增量扣除 D112 允许的 `Journals.css` +222 B 后 ≤ +0.3 kB。口径同 PG-05：zlib gzip level 9，去掉 hash 后按文件名配对，CSS 合计为全部 `.css` 资产的 gzip 之和。
    - 理由：全局元素规则改为页面 / 组件类规则时，同一声明要写在多个限定选择器下，选择器必然重复，删除全局规则收回的字节抵不上。D131 要求的“S5 累计净减少”在 #126 的全删构建中仍不满足：删掉整个 `styles.css`，合计仍为 13,587 B，高于起点 13,259 B。这只说明这一实验达不到，不证明其他瘦身方案不可能。
    - 累计增量（#126 实测 +413 B，扣除 D112 后 +191 B）的来源以及是否瘦身，交 S5 Sprint 评审讨论，不阻塞 S5-g。
-   - UI-11b..d 不计入 S5 累计；各自预算见任务文件。
+   - UI-11b..d 不计入 S5 累计；各自预算见任务文件。UI-11a..d、FOCUS-02 已转入 [S6](#s6订单列表与保存前预览--s5-遗留收尾建议-v060)，状态以 S6 表为准。
 2. **只改本任务冲突域，不改 `styles.css`**（S5-g 除外）。在页面或组件 CSS 中用类规则给出与现值相同的声明，需要类名时再改 `.tsx`。
 3. **计算值证据**：复用 UI-09g 的 `rules-probe.mjs`（#106 证据 gist，作为临时文件使用，不提交）。在一个**只用于取证、不提交**的构建中删去本任务涉及的全局声明，证明本任务页面在全部采集点上计算值“变”为 0；采集点含本页导航路由、两主题、1440 / 390，以及任务文件列出的补采状态。证据表格式同 [UI-1.md §5.1](../reviews/UI-1.md)。
 4. 改前 / 改后截图像素差为 0（S5-b 的 `.kv` 滚动区除外，见其任务文件）。任何非 0 差异都说明值没有对齐，修正 CSS，不申请豁免。
@@ -322,6 +322,61 @@ M1-R3（#78）、M1-R4（#81）已完成。
 - **对比度测试**：本 Sprint 预计不改 `contrast.test.ts`。需要新增配对的任务先报告设计角色加入依赖（`tests:contrast` 串行）。
 - **PROC-02** 由版本管理负责，不计入开发上限，随时可做，须在 v0.5.0 RC 开出前合并。
 - 每个任务合并后，按[路线图 §5 合并后动作](../roadmap.md#5-团队流程)跟踪 main Full；设计角色按 §5 合并后第 2 条主动同步任务表，不等通知。worktree 中禁止 `git stash`（[路线图 §5 工作区隔离](../roadmap.md#5-团队流程)）。
+- S5 Sprint 评审与回顾：[design/reviews/S5.md](../reviews/S5.md)。
+
+## S6：订单列表与保存前预览 + S5 遗留收尾（建议 v0.6.0）
+
+**目标**：
+- **产品**：补齐订单页的两个缺口（S4 决定 P2 收窄的部分）：订单列表（TORD-03）与保存前预览（TORD-04），使订单页与发票页体验一致。不需要迁移。
+- **D-7 完成**：UI-11b、UI-11c 补齐 S5-g 遗留的类规则后，UI-11d 删除 `styles.css` 保留的全局声明。
+- **S5 遗留缺陷**：业务事件“待转队列”按钮截断（UI-11a）、主数据保存失败后焦点晚一帧（FOCUS-02）；v0.5.0 Demo（[#129](https://github.com/lingshf/ai-native-erp/pull/129)）的两项观察（UI-12、UI-13）。
+- **S5 回顾行动**：`navigate()` 等待目标页就绪（FLAKE-03）、并发 E2E 干扰调查（E2E-01），见 [S5 回顾](../reviews/S5.md#行动项汇总)。
+
+版本号由协调者定。基线为 v0.5.0 tag 所在的 main（S5 Sprint 评审后由版本管理打）。**S6 开发任务在 v0.5.0 tag 打出后才派发**；本节由设计 PR 提前写入，不受此限。
+
+**不在本 Sprint**：
+- M2-05 / M2-06：需要用户授权决定 A / B，见上文 M2 节；
+- 订单筛选（伙伴 / 日期 / 方向）：需要新索引即为迁移，单独立项（见 TORD-03）；
+- “S5 累计 CSS +413 B 的瘦身”：协调者已决定不立任务（D140），理由见 [S5 回顾议题 1](../reviews/S5.md#议题-1d131-改为-d133s5-累计-css-413-b)；
+- `package.json` / lock 变化；本 Sprint 计划内没有迁移任务。
+
+| ID | 标题 | 类型 | 依赖 | 冲突域 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- |
+| [UI-11a](UI-11a-business-queue-actions-column.md) | 业务事件“待转队列”操作列按钮截断、`<td>` 拦截点击；1440 / 390 完整显示、可点击、命中区 ≥ 44 × 44 | 页面 CSS（必要时 tsx） | FOCUS-01（已合并，[#123](https://github.com/lingshf/ai-native-erp/pull/123)）、S5-g（已合并） | web-ui:journals | todo | — |
+| [FOCUS-02](FOCUS-02-business-master-save-failure-focus.md) | 业务事件主数据保存失败（409）后焦点晚一帧；聚焦与 `lock` 拆开 | 调查 / 页面 tsx / 测试 | UI-11a（同冲突域串行） | web-ui:journals | todo | — |
+| [UI-11b](UI-11b-s5g-leftover-button-checkbox.md) | S5-g 遗留：`.btn-primary:active`、概览重试按钮、维度命中列复选框 | CSS（必要时 tsx） | S5-g（已合并） | web-ui:components, web-ui:shell（不含 `styles.css`）, web-ui:master | todo | — |
+| [UI-11c](UI-11c-virtualrows-spacer-cells.md) | S5-g 遗留：VirtualRows 占位行 `td` 的边框、对齐与最小宽度 | CSS（必要时 tsx） | FOCUS-02（journals 串行）、UI-11b（components 串行） | web-ui:journals, web-ui:components | todo | — |
+| [UI-11d](UI-11d-delete-styles-css-remaining.md) | 删除 `styles.css` 保留的全局声明，D-7 完成 | CSS + 入口 import 一行 | UI-11b、UI-11c；从开工到合并期间无进行中的页面 CSS 任务（含 C 线） | web-ui:shell（`styles.css`、`main.tsx` import） | todo | — |
+| [TORD-03](TORD-03-trade-order-list.md) | 订单列表：`GET /api/v1/trade/orders` keyset 分页（走主键，无迁移）+ 订单页列表 | 后端 API + 页面 | — | trade-docs, contracts, web-ui:trade-orders | todo | — |
+| [TORD-04](TORD-04-trade-order-preview.md) | 订单保存前预览：`POST /api/v1/trade/orders/preview`，与保存金额同源 | 后端 API + 页面 | TORD-03（同冲突域串行） | trade-docs, contracts, web-ui:trade-orders | todo | — |
+| [UI-12](UI-12-migration-kv-narrow-wrap.md) | 迁移核对页 390 宽 `.kv` 英文词内断行（Demo #129 观察） | 页面 CSS | TORD-04（C 线排序，无文件依赖） | web-ui:migration | todo | — |
+| [UI-13](UI-13-favicon-404.md) | 首页每次加载一条 404，先抓包证实是否为 favicon，再修（Demo #129 观察） | 调查 + 静态资源 | UI-11b（B 线排序，无文件依赖） | web:entry（`index.html`、`public/`） | todo | — |
+| [FLAKE-03](FLAKE-03-navigate-target-page-ready.md) | 贸易 GUI E2E：`navigate()` 等待目标页标志（已证实的提前返回；不宣称修复 FLAKE-02） | 测试 | UI-13（B 线排序） | tests:e2e | todo | — |
+| [E2E-01](E2E-01-concurrent-e2e-interference.md) | 并发真实 Chrome E2E 是否互相干扰：静态核对 + 受控实验；结论交协调者决定独占时段 | 调查 | FLAKE-03（同冲突域）；需要整台机器 | tests:e2e | todo | — |
+
+**S6 共同验收**：
+1. UI 任务满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9，PG-05 口径同 S5（基线为 PR 实际 base 的 gzip 列）。**不设 Sprint 累计 CSS 门槛**（[路线图 §4 累计预算](../roadmap.md#4-ci-与测试策略设计角色牵头)）：各任务的预算见任务文件；设计角色同步任务表时按 [S5 回顾议题 1](../reviews/S5.md#议题-1d131-改为-d133s5-累计-css-413-b) 的口径记录累计值，只作观察。
+2. 真实 Chrome 证据按[路线图 §5 UI PR 证据清单](../roadmap.md#5-团队流程)，请求评审前逐项勾选写入 PR 正文。
+3. 现有测试与 E2E 不删除、不削弱（D11）。作为证据的本机运行保存完整日志，失败的也保存。
+4. 开发者不改 `design/`；合并后由设计角色同步任务表；UI-11d 合并后把摘要追加到 UI-1.md §5。
+
+**泳道**（同时在岗的开发不超过 3 个；同一行内串行；不同行同时进行时冲突域不相交）：
+
+| 线 | 顺序 | 冲突域 |
+| --- | --- | --- |
+| A：凭证 / 业务事件与 D-7 | UI-11a → FOCUS-02 → UI-11c → UI-11d | journals → journals → journals + components → shell |
+| B：共享组件与 E2E | UI-11b → UI-13 → FLAKE-03 → E2E-01 | components + shell + master → web:entry → tests:e2e → tests:e2e（整机） |
+| C：订单 | TORD-03 → TORD-04 → UI-12 | trade-docs + contracts + trade-orders → 同 → migration |
+
+- **首批**（v0.5.0 tag 后）：UI-11a（A）、UI-11b（B）、TORD-03（C）同时开工，冲突域两两不相交。
+- **跨线等待**：
+  - UI-11c 等 A 线的 FOCUS-02 和 B 线的 UI-11b 都合并（journals 与 components 都串行）；
+  - UI-11d 等 UI-11b、UI-11c 合并，并看到覆盖最后一个合并提交的完整 main Full；它的证据覆盖全部页面，要求全页零差的基线在取证期间不变：**从 UI-11d 开工、取证、评审直到合并，C 线不得有进行中的 TORD-03 / TORD-04 / UI-12 等页面 CSS 任务，也不得启动新的**。协调者在 C 线某个任务合并之后、下一个开工之前派发 UI-11d，C 线下一个任务等 UI-11d 合并后再开工；
+  - UI-11b 与 UI-11d 都占 web-ui:shell，由 A 线的依赖保证串行。
+- **迁移规则**：本 Sprint 计划内没有迁移任务。若 TORD-03 / TORD-04 发现必须加索引，停下报告设计角色，另立迁移任务；**两个要加迁移的任务不能并行**（共用 `migrations.ts` 与编号）。
+- **E2E 时段**：在 E2E-01 有结论之前，仍按 D115 / D118 的独占时段（[路线图 §5 工作区隔离](../roadmap.md#5-团队流程)）。三条线需要真实 Chrome 的阶段尽量错开；**E2E-01 需要整台机器**，安排在其他两条线都处于编辑 / 评审阶段、没有 E2E 需求的时段，由协调者定时间。
+- **对比度测试**：本 Sprint 预计不改 `contrast.test.ts`；需要新增配对的任务先报告设计角色（`tests:contrast` 串行）。
+- 每个任务合并后，按[路线图 §5 合并后动作](../roadmap.md#5-团队流程)跟踪 main Full，变绿前不派发同一冲突域的下一个任务。
 
 ## 派发顺序
 

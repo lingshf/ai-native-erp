@@ -1,6 +1,6 @@
 # UI-11b S5-g 遗留：`.btn-primary:active`、概览重试按钮、维度命中列复选框
 
-- Sprint：S5 收尾后的 backlog（不计入 S5 目标，版本由协调者定）　依赖：S5-g [#126](https://github.com/lingshf/ai-native-erp/pull/126) 合并（基于其保留后的 `styles.css` 取证）；与 [UI-11c](UI-11c-virtualrows-spacer-cells.md) 同改 `theme/components.css`，**串行**　建议分支：`ui-11b-s5g-leftover-controls`
+- Sprint：S6（[计划](README.md#s6订单列表与保存前预览--s5-遗留收尾建议-v060)；S5 收尾后登记的 backlog，不计入 S5 目标）　依赖：S5-g [#126](https://github.com/lingshf/ai-native-erp/pull/126) 合并（基于其保留后的 `styles.css` 取证）；与 [UI-11c](UI-11c-virtualrows-spacer-cells.md) 同改 `theme/components.css`，**串行**　建议分支：`ui-11b-s5g-leftover-controls`
 - 冲突域：web-ui:components（`theme/components.css`）、web-ui:shell（`App.tsx` 概览、`pages/overview.css`，**不含 `styles.css`**）、web-ui:master（`Dimensions.tsx`、`pages/master.css`）。三项互不依赖，可以一个 PR，也可以按冲突域拆成三个 PR；拆开时各自只占自己的冲突域。
 - 类型：CSS（必要时 tsx 加类名）
 - 来源：S5-g #126（head `a456f33`）第二道检查（未采集状态的源码检查），证据 [gist](https://gist.github.com/lingshf/a5d44f3ae2f4eb51cdf4cfaff7533084)。这三项使 `styles.css` 中的 `button`、`button:hover`、`button:active` 与 `input[type="checkbox"]` 声明仍须保留。
