@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { tradeOrderCommandSchema, type TradeDto } from "@erp/core/contracts";
 import { App } from "../src/App.tsx";
@@ -436,6 +436,40 @@ describe("trade orders", () => {
     expect(screen.getByLabelText<HTMLInputElement>(t("tord.lookupId")).value).toBe("PO-1");
     expect(result.querySelector(".tord-total")?.textContent).toContain(formatMinor(11300, "zh", 2));
     expect(calls.filter((call) => call === "GET /api/v1/trade/orders/PO-1")).toHaveLength(1);
+  });
+
+  it.each([
+    ["the earlier order answers first", ["PO-1", "PO-2"]],
+    ["the earlier order answers last", ["PO-2", "PO-1"]],
+  ] as const)("keeps the later list choice when %s", async (_case, answerOrder) => {
+    const pending = new Map<string, () => void>();
+    stubApi(
+      (url) =>
+        new Promise<Response>((resolve) => {
+          const id = url.includes("/PO-2?") ? "PO-2" : "PO-1";
+          pending.set(id, () => resolve(response({ ...savedOrder, orderId: id })));
+        }),
+      () => response({ items: [summary("PO-1", 11300), summary("PO-2", 11300)], nextCursor: null }),
+    );
+    render(<App />);
+    const table = await listTable();
+    fireEvent.click(await within(table).findByRole("button", { name: "PO-1" }));
+    await waitFor(() => expect(pending.has("PO-1")).toBe(true));
+    fireEvent.click(within(table).getByRole("button", { name: "PO-2" }));
+    await waitFor(() => expect(pending.has("PO-2")).toBe(true));
+    const input = screen.getByLabelText<HTMLInputElement>(t("tord.lookupId"));
+    const shown = () => document.querySelector(".tord-lookup-result .badge")?.textContent ?? null;
+
+    pending.get(answerOrder[0])?.();
+    await act(async () => {});
+    expect(input.value).toBe("PO-2");
+    if (answerOrder[0] === "PO-1") expect(shown()).toBeNull();
+    pending.get(answerOrder[1])?.();
+    await act(async () => {});
+    await waitFor(() => expect(shown()).toMatch(/PO-2$/));
+    expect(input.value).toBe("PO-2");
+    expect(document.activeElement?.className).toBe("tord-lookup-result");
+    expect(document.querySelector("#tord-lookup-body [role=status]")).toBeNull();
   });
 
   it("opens a listed order even when the lookup section is collapsed", async () => {

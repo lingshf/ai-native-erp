@@ -776,6 +776,7 @@ function OrderLookup({
   const [error, setError] = useState<TradeOrderKey | "master.error" | null>(null);
   const [focusResult, setFocusResult] = useState(false);
   const resultRef = useRef<HTMLElement>(null);
+  const latest = useRef(0);
   // An order number chosen in the list runs the same lookup as the form (TORD-03).
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs once per list click, not per keystroke.
   useEffect(() => {
@@ -796,33 +797,38 @@ function OrderLookup({
   }, [focusResult, result]);
   const lookup = async (event: FormEvent) => {
     event.preventDefault();
+    if (busy) return;
     setFocusResult(false);
     await run(orderId.trim());
   };
+  // The latest selection owns the detail: a list click during a pending lookup supersedes it, and
+  // a superseded response is dropped so it can never show beside the newer order number.
   const run = async (id: string) => {
-    if (busy || !id) return;
+    if (!id) return;
+    const ticket = ++latest.current;
     setResult(null);
+    setError(null);
     if (!tradeOrderCommandSchema.shape.orderId.safeParse(id).success) {
+      setBusy(false);
       setError("tord.issue.shape");
       return;
     }
     setBusy(true);
-    setError(null);
     try {
-      setResult(
-        await masterRequest(
-          `/api/v1/trade/orders/${encodeURIComponent(id)}?company=${encodeURIComponent(company.code)}`,
-          tradeOrderSchema,
-        ),
+      const order = await masterRequest(
+        `/api/v1/trade/orders/${encodeURIComponent(id)}?company=${encodeURIComponent(company.code)}`,
+        tradeOrderSchema,
       );
+      if (ticket === latest.current) setResult(order);
     } catch (issue) {
-      setError(
-        issue instanceof MasterDataFailure && issue.status === 404
-          ? "tord.notFound"
-          : "master.error",
-      );
+      if (ticket === latest.current)
+        setError(
+          issue instanceof MasterDataFailure && issue.status === 404
+            ? "tord.notFound"
+            : "master.error",
+        );
     } finally {
-      setBusy(false);
+      if (ticket === latest.current) setBusy(false);
     }
   };
   return (
