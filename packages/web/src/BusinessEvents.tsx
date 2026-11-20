@@ -858,6 +858,7 @@ function BusinessPlan({
       )}
       {preview.clearing.length > 0 && (
         <VirtualRows
+          className="jv-rows"
           items={preview.clearing}
           title={t("business.selected")}
           header={[t("journal.original"), t("journal.line")]}
@@ -926,7 +927,7 @@ function EventEditor({
       }}
     >
       <fieldset className="ui-form-grid jv-event" disabled={busy}>
-        <legend>{t(`business.${event.operation}`)}</legend>
+        <legend className="jv-legend">{t(`business.${event.operation}`)}</legend>
         <label className="ui-field">
           <span className="label">{t("journal.sourceRef")}</span>
           <input
@@ -1123,6 +1124,7 @@ function ClearingEditor({
       </label>
       <p>{t("business.clearHelp")}</p>
       <button
+        className="jv-btn"
         type="button"
         disabled={!valid}
         onClick={() => {
@@ -1150,6 +1152,7 @@ function ClearingEditor({
                   {t("business.select")}
                   <input
                     type="checkbox"
+                    className="jv-check"
                     checked={event.lines.some(
                       (item) => item.entryId === line.entryId && item.lineNo === line.lineNo,
                     )}
@@ -1172,6 +1175,7 @@ function ClearingEditor({
         />
       )}
       <VirtualRows
+        className="jv-rows"
         items={event.lines}
         title={t("business.selected")}
         header={[t("journal.original"), t("journal.line"), ""]}
@@ -1181,6 +1185,7 @@ function ClearingEditor({
             <td>{line.lineNo}</td>
             <td>
               <button
+                className="jv-btn"
                 type="button"
                 onClick={() =>
                   change({
@@ -1223,6 +1228,7 @@ function BusinessSettings({
       <div className="journal-actions">
         {(["services", "parties", "rules"] as const).map((item) => (
           <button
+            className="jv-btn"
             key={item}
             type="button"
             aria-pressed={kind === item}
@@ -1285,6 +1291,7 @@ function MasterSettings({
   return (
     <>
       <button
+        className="jv-btn"
         type="button"
         disabled={editing || busy}
         onClick={() => {
@@ -1309,6 +1316,7 @@ function MasterSettings({
             </td>
             <td>
               <button
+                className="jv-btn"
                 type="button"
                 disabled={editing || busy}
                 onClick={() => {
@@ -1357,7 +1365,7 @@ function MasterSettings({
           }}
         >
           <fieldset disabled={busy}>
-            <legend>{t(`business.${kind}`)}</legend>
+            <legend className="jv-legend">{t(`business.${kind}`)}</legend>
             <label>
               {t("business.code")}
               <input
@@ -1388,6 +1396,7 @@ function MasterSettings({
               {t("business.active")}
               <input
                 type="checkbox"
+                className="jv-check"
                 checked={value.active}
                 onChange={(e) => setValue({ ...value, active: e.target.checked })}
               />
@@ -1398,8 +1407,11 @@ function MasterSettings({
               value={value.dimensions}
               change={(dimensions) => setValue({ ...value, dimensions })}
             />
-            <button type="submit">{t("business.save")}</button>
+            <button type="submit" className="jv-btn">
+              {t("business.save")}
+            </button>
             <button
+              className="jv-btn"
               type="button"
               onClick={() => {
                 setValue(null);
@@ -1465,6 +1477,7 @@ function RuleSettings({
   return (
     <>
       <button
+        className="jv-btn"
         type="button"
         disabled={editing || busy}
         onClick={() => {
@@ -1497,6 +1510,7 @@ function RuleSettings({
             <td>{item.account}</td>
             <td>
               <button
+                className="jv-btn"
                 type="button"
                 disabled={editing || busy}
                 onClick={() => {
@@ -1547,7 +1561,7 @@ function RuleSettings({
           }}
         >
           <fieldset disabled={busy}>
-            <legend>{t("business.rules")}</legend>
+            <legend className="jv-legend">{t("business.rules")}</legend>
             <label>
               {t("business.code")}
               <input
@@ -1561,6 +1575,7 @@ function RuleSettings({
               {t("business.active")}
               <input
                 type="checkbox"
+                className="jv-check"
                 checked={value.active}
                 onChange={(e) => setValue({ ...value, active: e.target.checked })}
               />
@@ -1568,6 +1583,7 @@ function RuleSettings({
             <label>
               {t("business.direction")}
               <select
+                className="jv-select"
                 value={value.direction}
                 onChange={(e) => {
                   if (e.target.value === "receive" || e.target.value === "pay")
@@ -1584,6 +1600,7 @@ function RuleSettings({
             <label>
               {t("business.meaning")}
               <select
+                className="jv-select"
                 value={value.meaning}
                 onChange={(e) => {
                   if (e.target.value === "cash" || e.target.value === "offset")
@@ -1597,6 +1614,7 @@ function RuleSettings({
             <label>
               {t("business.objectScope")}
               <select
+                className="jv-select"
                 value={value.objectScope}
                 onChange={(e) => {
                   const scope = e.target.value;
@@ -1627,6 +1645,7 @@ function RuleSettings({
             <label>
               {t("business.partyScope")}
               <select
+                className="jv-select"
                 value={value.partyScope}
                 onChange={(e) => {
                   const scope = e.target.value;
@@ -1698,8 +1717,11 @@ function RuleSettings({
               value={value.dimensions}
               change={(dimensions) => setValue({ ...value, dimensions })}
             />
-            <button type="submit">{t("business.save")}</button>
+            <button type="submit" className="jv-btn">
+              {t("business.save")}
+            </button>
             <button
+              className="jv-btn"
               type="button"
               onClick={() => {
                 setValue(null);

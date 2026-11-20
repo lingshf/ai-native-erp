@@ -219,6 +219,7 @@ it("previews current cash input without saving, preserves preferences and retrie
   render(<App />);
   const newCash = `${label("zh", "business.new")} · ${label("zh", "business.cash_service")}`;
   fireEvent.click(await screen.findByRole("button", { name: newCash }));
+  expect(document.querySelector(".jv-event > legend")?.classList.contains("jv-legend")).toBe(true);
   for (const [key, value] of [
     ["sourceRef", "CASH-UI"],
     ["date", "2026-01-15"],
@@ -245,6 +246,7 @@ it("previews current cash input without saving, preserves preferences and retrie
     ctrlKey: true,
   });
   let dialog = await screen.findByRole("dialog", { name: label("en", "journal.previewTitle") });
+  expect(dialog.querySelector(".journal-scroll")?.classList.contains("jv-rows")).toBe(true);
   expect(confirmations).toHaveLength(0);
   expect(event?.memo).toBe("Keep cash input");
   fireEvent.click(within(dialog).getByRole("button", { name: label("en", "business.confirm") }));
