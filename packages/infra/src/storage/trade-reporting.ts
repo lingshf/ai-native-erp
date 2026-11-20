@@ -37,50 +37,74 @@ function item(row: Row): TradeReportItem {
   };
 }
 // Immutable action before/after differences are aggregated, never replayed into current state.
-function projection(company: string, scope: TradeReportScope, cutoff: string, ageingDate: string) {
-  return {
-    sql: `WITH base AS (
-      SELECT o.*,s.kind,s.external_no,s.journal_id,j.source_ref
-      FROM open_items o JOIN trade_item_sources s USING(company_id,item_id)
-      JOIN journal_entries j ON j.company_id=s.company_id AND j.id=s.journal_id
-      WHERE o.company_id=? AND o.accounting_date<=?
-      ${scope.party ? "AND o.party_id=?" : ""} ${scope.side ? "AND o.side=?" : ""}
-    ), paid AS (
-      SELECT s.item_id,sum(s.applied_gross_minor) gross,sum(s.applied_net_minor) net,
-        sum(s.applied_tax_minor) tax,count(*) revisions
-      FROM base b JOIN settlements s ON s.company_id=b.company_id AND s.item_id=b.item_id
-      WHERE s.accounting_date<=? GROUP BY s.item_id
-    ), changed AS (
-      SELECT i.item_id,
-        sum(json_extract(c.value,'$.before.remainingGross')-json_extract(c.value,'$.after.remainingGross')) gross,
-        sum(json_extract(c.value,'$.before.remainingNet')-json_extract(c.value,'$.after.remainingNet')) net,
-        sum(json_extract(c.value,'$.before.remainingTax')-json_extract(c.value,'$.after.remainingTax')) tax,
-        count(*) revisions
-      FROM base b JOIN trade_action_items i ON i.company_id=b.company_id AND i.item_id=b.item_id
-      JOIN trade_actions a ON a.company_id=i.company_id AND a.action_id=i.action_id,
-        json_each(a.record,'$.receipt.changes') c
-      WHERE a.accounting_date<=? AND json_extract(c.value,'$.before.itemId')=i.item_id
-      GROUP BY i.item_id
-    ), balances AS (
-      SELECT b.*,b.gross_minor-coalesce(p.gross,0)-coalesce(c.gross,0) balance_gross,
-        b.net_minor-coalesce(p.net,0)-coalesce(c.net,0) balance_net,
-        b.tax_minor-coalesce(p.tax,0)-coalesce(c.tax,0) balance_tax,
-        1+coalesce(p.revisions,0)+coalesce(c.revisions,0) historical_revision,
-        CAST(julianday(?)-julianday(b.due_date) AS INTEGER) days
-      FROM base b LEFT JOIN paid p USING(item_id) LEFT JOIN changed c USING(item_id)
-    ), aged AS (
-      SELECT *,CASE WHEN kind<>'invoice' THEN NULL WHEN days<=0 THEN 'notDue'
-        WHEN days<=30 THEN 'overdue1_30' WHEN days<=60 THEN 'overdue31_60'
-        WHEN days<=90 THEN 'overdue61_90' ELSE 'overdue91Plus' END bucket FROM balances
+// Each item's settlements and action changes up to the cutoff are summed by correlated index
+// lookups, so a page stops after LIMIT open rows and totals touch only the columns they need.
+const paidSum = (column: string) =>
+  `(SELECT sum(p.${column}) FROM settlements p WHERE p.company_id=b.company_id
+    AND p.item_id=b.item_id AND p.accounting_date<=?)`;
+// Change fields are read from the record by full path, so SQLite reuses one cached parse of the
+// record instead of re-parsing every extracted change value.
+const changedFrom = `FROM trade_action_items i JOIN trade_actions a
+    ON a.company_id=i.company_id AND a.action_id=i.action_id,json_each(a.record,'$.receipt.changes') c
+    WHERE i.company_id=b.company_id AND i.item_id=b.item_id AND a.accounting_date<=?
+    AND json_extract(a.record,c.fullkey||'.before.itemId')=i.item_id`;
+const changedSum = (field: string) =>
+  `(SELECT sum(json_extract(a.record,c.fullkey||'.before.${field}')-json_extract(a.record,c.fullkey||'.after.${field}')) ${changedFrom})`;
+const bucket = `CASE WHEN kind<>'invoice' THEN NULL WHEN days<=0 THEN 'notDue'
+  WHEN days<=30 THEN 'overdue1_30' WHEN days<=60 THEN 'overdue31_60'
+  WHEN days<=90 THEN 'overdue61_90' ELSE 'overdue91Plus' END bucket`;
+function projection(
+  company: string,
+  scope: TradeReportScope,
+  cutoff: string,
+  ageingDate: string,
+  shape: { detail: boolean; where?: string; whereValues?: readonly string[] },
+) {
+  const scoped = `WHERE o.company_id=? AND o.accounting_date<=?
+      ${scope.party ? "AND o.party_id=?" : ""} ${scope.side ? "AND o.side=?" : ""} ${shape.where ?? ""}`;
+  const scopeValues = [
+    company,
+    cutoff,
+    ...(scope.party ? [scope.party] : []),
+    ...(scope.side ? [scope.side] : []),
+    ...(shape.whereValues ?? []),
+  ];
+  // Aggregates omit the source-journal join: enforced foreign keys guarantee it always matches.
+  if (!shape.detail)
+    return {
+      sql: `WITH aged AS (
+      SELECT b.side,b.control_account,b.kind,
+        b.gross_minor-coalesce(${paidSum("applied_gross_minor")},0)-coalesce(${changedSum("remainingGross")},0) balance_gross,
+        ${bucket}
+      FROM (SELECT o.company_id,o.item_id,o.side,o.control_account,o.gross_minor,s.kind,
+          CAST(julianday(?)-julianday(o.due_date) AS INTEGER) days
+        FROM open_items o JOIN trade_item_sources s USING(company_id,item_id) ${scoped}) b
     )`,
+      values: [cutoff, cutoff, ageingDate, ...scopeValues],
+    };
+  return {
+    sql: `WITH balances AS (
+      SELECT b.*,b.gross_minor-coalesce(${paidSum("applied_gross_minor")},0)-coalesce(${changedSum("remainingGross")},0) balance_gross,
+        b.net_minor-coalesce(${paidSum("applied_net_minor")},0)-coalesce(${changedSum("remainingNet")},0) balance_net,
+        b.tax_minor-coalesce(${paidSum("applied_tax_minor")},0)-coalesce(${changedSum("remainingTax")},0) balance_tax,
+        1+(SELECT count(*) FROM settlements p WHERE p.company_id=b.company_id AND p.item_id=b.item_id
+          AND p.accounting_date<=?)+(SELECT count(*) ${changedFrom}) historical_revision,
+        CAST(julianday(?)-julianday(b.due_date) AS INTEGER) days
+      FROM (SELECT o.*,s.kind,s.external_no,s.journal_id,j.source_ref
+        FROM open_items o CROSS JOIN trade_item_sources s USING(company_id,item_id)
+        JOIN journal_entries j ON j.company_id=s.company_id AND j.id=s.journal_id ${scoped}) b
+    ), aged AS (SELECT *,${bucket} FROM balances)`,
     values: [
-      company,
       cutoff,
-      ...(scope.party ? [scope.party] : []),
-      ...(scope.side ? [scope.side] : []),
+      cutoff,
+      cutoff,
+      cutoff,
+      cutoff,
+      cutoff,
       cutoff,
       cutoff,
       ageingDate,
+      ...scopeValues,
     ],
   };
 }
@@ -99,11 +123,16 @@ export function tradeReportingRepository(db: Pick<Connection, "query">): TradeRe
       return [row.journals, row.actions, row.settlements].map(integer).join(":");
     },
     async tradeReport(company, scope, cutoff, ageingDate, query) {
-      const p = projection(company, scope, cutoff, ageingDate);
+      const page = projection(company, scope, cutoff, ageingDate, {
+        detail: true,
+        where: "AND o.item_id>?",
+        whereValues: [query.cursor ?? ""],
+      });
       const rows = await db.query(
-        `${p.sql} SELECT * FROM aged WHERE balance_gross>0 AND item_id>? ORDER BY item_id LIMIT ?`,
-        [...p.values, query.cursor ?? "", query.limit + 1],
+        `${page.sql} SELECT * FROM aged WHERE balance_gross>0 ORDER BY item_id LIMIT ?`,
+        [...page.values, query.limit + 1],
       );
+      const p = projection(company, scope, cutoff, ageingDate, { detail: false });
       const totals = (
         await db.query(
           `${p.sql} SELECT
@@ -115,7 +144,7 @@ export function tradeReportingRepository(db: Pick<Connection, "query">): TradeRe
         coalesce(sum(CASE WHEN bucket='overdue91Plus' THEN balance_gross ELSE 0 END),0) overdue91Plus,
         coalesce(sum(CASE WHEN kind='credit' THEN balance_gross ELSE 0 END),0) creditGrossMinor,
         coalesce(sum(CASE WHEN kind='advance' THEN balance_gross ELSE 0 END),0) advanceGrossMinor
-        FROM aged`,
+        FROM (SELECT kind,bucket,sum(balance_gross) balance_gross FROM aged GROUP BY kind,bucket)`,
           p.values,
         )
       )[0];
@@ -136,22 +165,24 @@ export function tradeReportingRepository(db: Pick<Connection, "query">): TradeRe
       };
     },
     async tradeReportItem(company, id, cutoff, ageingDate) {
-      const p = projection(company, {}, cutoff, ageingDate);
-      const row = (
-        await db.query(`${p.sql} SELECT * FROM aged WHERE item_id=?`, [...p.values, id])
-      )[0];
+      const p = projection(company, {}, cutoff, ageingDate, {
+        detail: true,
+        where: "AND o.item_id=?",
+        whereValues: [id],
+      });
+      const row = (await db.query(`${p.sql} SELECT * FROM aged`, p.values))[0];
       return row ? item(row) : null;
     },
     async tradeReconciliation(company, cutoff) {
-      const p = projection(company, {}, cutoff, cutoff);
+      const p = projection(company, {}, cutoff, cutoff, { detail: false });
       const rows = await db.query(
-        `${p.sql}, accounts_in_scope AS (
-        SELECT control_account account FROM base UNION
-        SELECT code FROM accounts WHERE company_id=? AND purpose='control' AND control_module IN('AP','AR')
-      ), subledger AS (
+        `${p.sql}, subledger AS MATERIALIZED (
         SELECT control_account account,
           sum(balance_gross * CASE WHEN (side='AR' AND kind='invoice') OR (side='AP' AND kind<>'invoice') THEN 1 ELSE -1 END) balance
         FROM aged GROUP BY control_account
+      ), accounts_in_scope AS MATERIALIZED (
+        SELECT account FROM subledger UNION
+        SELECT code FROM accounts WHERE company_id=? AND purpose='control' AND control_module IN('AP','AR')
       ), opening AS (
         SELECT o.control_account account,
           sum(o.gross_minor * CASE WHEN (o.side='AR' AND s.kind='invoice') OR (o.side='AP' AND s.kind<>'invoice') THEN 1 ELSE -1 END) balance
@@ -160,18 +191,46 @@ export function tradeReportingRepository(db: Pick<Connection, "query">): TradeRe
         WHERE r.source IN('teaching','enterprise') AND r.object_type='opening_items'
           AND o.accounting_date<=?
         GROUP BY o.control_account
-      ), gl AS (
-        SELECT l.account_code account,sum(l.debit_minor-l.credit_minor) balance,
-          sum(CASE WHEN json_extract(r.result,'$.module')='TRADE' THEN l.debit_minor-l.credit_minor ELSE 0 END) trade
-        FROM journal_lines l JOIN journal_entries j ON j.company_id=l.company_id AND j.id=l.entry_id
+      ), other_entries AS MATERIALIZED (
+        SELECT j.id FROM journal_entries j
         LEFT JOIN receipts r ON r.company_id=j.company_id AND r.idempotency_key=j.receipt_key
-        WHERE l.company_id=? AND j.accounting_date<=?
-        AND l.account_code IN(SELECT account FROM accounts_in_scope) GROUP BY l.account_code
+        WHERE j.company_id=? AND j.accounting_date<=? AND json_extract(r.result,'$.module') IS NOT 'TRADE'
+      ), gl_parts AS (
+        SELECT account_code account,sum(debit_minor-credit_minor) amount,0 other FROM journal_lines
+        WHERE company_id=? AND account_code IN(SELECT account FROM accounts_in_scope)
+          AND period<substr(?,1,7) GROUP BY account_code
+        UNION ALL
+        SELECT l.account_code,sum(l.debit_minor-l.credit_minor),0 FROM journal_lines l
+        JOIN journal_entries j ON j.company_id=l.company_id AND j.id=l.entry_id
+        WHERE l.company_id=? AND l.account_code IN(SELECT account FROM accounts_in_scope)
+          AND l.period=substr(?,1,7) AND j.accounting_date<=? GROUP BY l.account_code
+        UNION ALL
+        SELECT account_code,0,sum(debit_minor-credit_minor) FROM journal_lines
+        WHERE company_id=? AND account_code IN(SELECT account FROM accounts_in_scope)
+          AND entry_id IN(SELECT id FROM other_entries) GROUP BY account_code
+      ), gl AS (
+        -- A line's period is its entry's month, so whole earlier periods are summed from the
+        -- covering index and only the cutoff month checks entry dates. Trade GL is everything
+        -- except lines of entries whose receipt module is not TRADE.
+        SELECT account,sum(amount) balance,sum(amount)-sum(other) trade FROM gl_parts GROUP BY account
       ) SELECT a.account,coalesce(s.balance,0) subledger,coalesce(g.balance,0) gl,
         coalesce(g.trade,0) trade,coalesce(o.balance,0) opening FROM accounts_in_scope a
         LEFT JOIN subledger s USING(account) LEFT JOIN gl g USING(account)
         LEFT JOIN opening o USING(account) ORDER BY a.account`,
-        [...p.values, company, company, cutoff, company, cutoff],
+        [
+          ...p.values,
+          company,
+          company,
+          cutoff,
+          company,
+          cutoff,
+          company,
+          cutoff,
+          company,
+          cutoff,
+          cutoff,
+          company,
+        ],
       );
       return rows.map((row) => {
         const subledgerMinor = integer(row.subledger),

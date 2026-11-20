@@ -12,16 +12,33 @@ export const tradeLoad = Object.freeze({
   openItems: 100_000,
   invoiceLines: 100,
 });
-const window = { name: "Synthetic capacity fixture", from: "2025-01-01", to: "2026-12-31" };
+const window = {
+  name: "Synthetic capacity fixture",
+  from: "2025-01-01",
+  to: "2026-12-31",
+};
 const base = { company: "DEFAULT", active: true, expectedRevision: 0 };
 export const partyCode = (index: number) => `P${String(index).padStart(4, "0")}`;
 export const siteCode = (index: number) => `S${String(index).padStart(3, "0")}`;
 
-export function assertTradeFixture(filename: string, addedInvoices = 0, addedGlLines = 0) {
+/** Rows the M1-R3 history layer adds on top of the M1-07 capacity shape (zero when absent). */
+export interface TradeHistoryShape {
+  readonly advances: number;
+  readonly glLines: number;
+  readonly closed: number;
+}
+const noHistory: TradeHistoryShape = { advances: 0, glLines: 0, closed: 0 };
+export function assertTradeFixture(
+  filename: string,
+  addedInvoices = 0,
+  addedGlLines = 0,
+  history: TradeHistoryShape = noHistory,
+) {
   const db = new Database(filename, { readonly: true });
   try {
     const shape = db
-      .prepare(`SELECT
+      .prepare(
+        `SELECT
       (SELECT count(*) FROM journal_lines) glLines,
       (SELECT count(*) FROM trade_parties) parties,
       (SELECT count(*) FROM open_items) openItems,
@@ -48,21 +65,25 @@ export function assertTradeFixture(filename: string, addedInvoices = 0, addedGlL
       (SELECT count(*) FROM open_items o JOIN trade_item_sources s USING(company_id,item_id)
         JOIN journal_entries j ON j.company_id=s.company_id AND j.id=s.journal_id
         WHERE o.item_id LIKE '10000000-%' AND o.accounting_date<>j.accounting_date) badDates
-    `)
+    `,
+      )
       .get() as Record<string, number>;
-    assert.equal(shape.glLines, tradeLoad.glLines + addedGlLines);
+    assert.equal(shape.glLines, tradeLoad.glLines + addedGlLines + history.glLines);
     assert.equal(shape.parties, tradeLoad.parties);
     assert.equal(shape.partyHistory, tradeLoad.parties);
     assert.equal(shape.vendors, tradeLoad.parties / 2);
     assert.equal(shape.customers, tradeLoad.parties / 2);
-    assert.equal(shape.openItems, tradeLoad.openItems + addedInvoices);
-    assert.equal(shape.ap, tradeLoad.openItems / 2 + addedInvoices / 2);
-    assert.equal(shape.ar, tradeLoad.openItems / 2 + addedInvoices / 2);
-    assert.equal(shape.active, shape.openItems);
+    assert.equal(shape.openItems, tradeLoad.openItems + addedInvoices + history.advances);
+    assert.equal(shape.ap, (tradeLoad.openItems + addedInvoices + history.advances) / 2);
+    assert.equal(shape.ar, (tradeLoad.openItems + addedInvoices + history.advances) / 2);
+    assert.equal(shape.active, shape.openItems - history.closed);
     assert.equal(shape.sources, shape.openItems);
     assert.equal(shape.terms, shape.openItems);
-    // Capacity items have one segment; measured invoices deliberately have 100.
-    assert.equal(shape.segments, tradeLoad.openItems + addedInvoices * tradeLoad.invoiceLines);
+    // Capacity and advance items have one segment; measured invoices deliberately have 100.
+    assert.equal(
+      shape.segments,
+      tradeLoad.openItems + history.advances + addedInvoices * tradeLoad.invoiceLines,
+    );
     for (const key of ["imbalance", "unevenParties", "badSegments", "badDates"])
       assert.equal(shape[key], 0, key);
     assert.deepEqual(db.pragma("foreign_key_check"), []);

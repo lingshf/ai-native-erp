@@ -17,7 +17,7 @@ import {
   tradeReconciliationSchema,
   tradeReportSchema,
 } from "@erp/core/contracts";
-import type { TradeInvoiceCommand, TradeOrderCommand } from "@erp/core/domain";
+import type { TradeInvoiceCommand, TradeOrderCommand, TradeReport } from "@erp/core/domain";
 import {
   assertTradeFixture,
   generateTradeFixture,
@@ -25,10 +25,17 @@ import {
   siteCode,
   tradeLoad,
 } from "./trade-fixture.ts";
+import {
+  addTradeHistory,
+  assertTradeHistory,
+  tradeHistoryLoad,
+  type TradeHistoryExpected,
+} from "./trade-history.ts";
 
 const warmups = 4;
 const samples = 24;
 const repeats = 3;
+const concurrentReports = 3;
 const output = resolve("artifacts", "ci", "trade");
 const root = fileURLToPath(new URL("../../..", import.meta.url));
 
@@ -138,7 +145,17 @@ async function startProduction(filename: string) {
     log = `${log}${String(chunk)}`.slice(-16_384);
   });
   const agent = new Agent({ keepAlive: true, maxSockets: 1 });
-  async function http<T>(path: string, contract: { parse(value: unknown): T }, body?: unknown) {
+  // Concurrent report clients each get their own keep-alive connection.
+  const concurrent = new Agent({
+    keepAlive: true,
+    maxSockets: concurrentReports,
+  });
+  async function http<T>(
+    path: string,
+    contract: { parse(value: unknown): T },
+    body?: unknown,
+    via: Agent = agent,
+  ) {
     const text = body === undefined ? undefined : JSON.stringify(body);
     return measureTradeResponse(
       () =>
@@ -147,7 +164,7 @@ async function startProduction(filename: string) {
             `${origin}${path}`,
             {
               method: body === undefined ? "GET" : "POST",
-              agent,
+              agent: via,
               headers: {
                 origin,
                 ...(text === undefined
@@ -198,15 +215,18 @@ async function startProduction(filename: string) {
     }
     return {
       http,
+      concurrent,
       port,
       pid: child.pid,
       close: async () => {
         agent.destroy();
+        concurrent.destroy();
         await stopChild(child);
       },
     };
   } catch (error) {
     agent.destroy();
+    concurrent.destroy();
     await stopChild(child);
     throw error;
   }
@@ -237,14 +257,36 @@ function invoice(side: "AP" | "AR", orderId: string): TradeInvoiceCommand {
       discountPercent: "2",
       taxableCharge: "0.03",
       orderLineId: side === "AP" ? `L${index}` : null,
-      dimensions: { DEPT: index % 2 ? "A" : "B", COST: "A", SITE: siteCode(index) },
+      dimensions: {
+        DEPT: index % 2 ? "A" : "B",
+        COST: "A",
+        SITE: siteCode(index),
+      },
     })),
   };
 }
 
-async function runOnce(filename: string, run: number) {
+function assertReport(
+  report: TradeReport,
+  basis: TradeReport["basis"],
+  expected: { invoiceGrossMinor: number; advanceGrossMinor: number },
+) {
+  assert.equal(report.items.length, 100);
+  assert.ok(report.nextCursor);
+  assert.equal(report.basis, basis);
+  const aged = report.totals;
+  assert.equal(aged.invoiceGrossMinor, expected.invoiceGrossMinor);
+  assert.equal(aged.advanceGrossMinor, expected.advanceGrossMinor);
+  assert.equal(aged.creditGrossMinor, 0);
+  assert.equal(
+    aged.notDue + aged.overdue1_30 + aged.overdue31_60 + aged.overdue61_90 + aged.overdue91Plus,
+    aged.invoiceGrossMinor,
+  );
+}
+
+async function runOnce(filename: string, run: number, history: TradeHistoryExpected) {
   const before = machine();
-  const initialShape = assertTradeFixture(filename);
+  const initialShape = assertTradeFixture(filename, 0, 0, history.fixtureShape);
   const server = await startProduction(filename);
   const scenarios: Array<
     ReturnType<typeof summarizeTradeSamples> & {
@@ -306,23 +348,10 @@ async function runOnce(filename: string, run: number) {
           assert.equal(page.items.length, 100);
           assert.ok(page.nextCursor);
         } else {
-          const report = result.value;
-          assert.equal(report.items.length, 100);
-          assert.equal(report.basis, scenario.name.startsWith("aging") ? "current" : "monthEnd");
-          assert.equal(
-            report.totals.invoiceGrossMinor,
-            scenario.name.startsWith("aging")
-              ? tradeLoad.openItems * 11_300
-              : initialShape.historicalGross,
-          );
-          const aged = report.totals;
-          assert.equal(
-            aged.notDue +
-              aged.overdue1_30 +
-              aged.overdue31_60 +
-              aged.overdue61_90 +
-              aged.overdue91Plus,
-            aged.invoiceGrossMinor,
+          assertReport(
+            result.value,
+            scenario.name.startsWith("aging") ? "current" : "monthEnd",
+            scenario.name.startsWith("aging") ? history.current : history.historical,
           );
         }
         if (index >= warmups) {
@@ -330,9 +359,17 @@ async function runOnce(filename: string, run: number) {
           responseBytes.push(result.bytes);
         }
       }
-      scenarios.push({ ...scenario, ...summarizeTradeSamples(raw, 1_000), responseBytes });
+      scenarios.push({
+        ...scenario,
+        ...summarizeTradeSamples(raw, 1_000),
+        responseBytes,
+      });
       console.info(
-        JSON.stringify({ run, name: scenario.name, ...summarizeTradeSamples(raw, 1_000) }),
+        JSON.stringify({
+          run,
+          name: scenario.name,
+          ...summarizeTradeSamples(raw, 1_000),
+        }),
       );
     }
     {
@@ -358,10 +395,81 @@ async function runOnce(filename: string, run: number) {
           responseBytes.push(result.bytes);
         }
       }
-      scenarios.push({ ...scenario, ...summarizeTradeSamples(raw, 1_000), responseBytes });
+      scenarios.push({
+        ...scenario,
+        ...summarizeTradeSamples(raw, 1_000),
+        responseBytes,
+      });
       console.info(
-        JSON.stringify({ run, name: scenario.name, ...summarizeTradeSamples(raw, 1_000) }),
+        JSON.stringify({
+          run,
+          name: scenario.name,
+          ...summarizeTradeSamples(raw, 1_000),
+        }),
       );
+    }
+    {
+      // M1-R3: three report clients on separate connections fire together each round.
+      const mix = [
+        {
+          name: "concurrent-aging-current-100",
+          path: "/api/v1/trade/reports/open-items?company=DEFAULT&limit=100",
+          basis: "current" as const,
+          totals: history.current,
+        },
+        {
+          name: "concurrent-historical-balances-2026-06",
+          path: "/api/v1/trade/reports/open-items?company=DEFAULT&month=2026-06&limit=100",
+          basis: "monthEnd" as const,
+          totals: history.historical,
+        },
+        {
+          name: `concurrent-party-${history.party}-aging-current-100`,
+          path: `/api/v1/trade/reports/open-items?company=DEFAULT&party=${history.party}&limit=100`,
+          basis: "current" as const,
+          totals: history.partyCurrent,
+        },
+      ];
+      assert.equal(mix.length, concurrentReports);
+      const raw = mix.map(() => [] as number[]),
+        bytes = mix.map(() => [] as number[]),
+        wall: number[] = [];
+      for (let index = 0; index < warmups + samples; index++) {
+        const started = performance.now();
+        const results = await Promise.all(
+          mix.map((scenario) =>
+            server.http(scenario.path, tradeReportSchema, undefined, server.concurrent),
+          ),
+        );
+        const elapsed = performance.now() - started;
+        results.forEach((result, slot) => {
+          assertReport(result.value, mix[slot].basis, mix[slot].totals);
+          if (index >= warmups) {
+            raw[slot].push(result.ms);
+            bytes[slot].push(result.bytes);
+          }
+        });
+        if (index >= warmups) wall.push(elapsed);
+      }
+      mix.forEach((scenario, slot) => {
+        const summary = summarizeTradeSamples(raw[slot], 1_000);
+        scenarios.push({
+          name: scenario.name,
+          path: scenario.path,
+          ...summary,
+          responseBytes: bytes[slot],
+        });
+        console.info(JSON.stringify({ run, name: scenario.name, ...summary }));
+      });
+      // A round ends with its slowest response; it is held to the same per-request budget.
+      const summary = summarizeTradeSamples(wall, 1_000);
+      scenarios.push({
+        name: "concurrent-3-reports-round",
+        path: mix.map((scenario) => scenario.path).join(" | "),
+        ...summary,
+        responseBytes: wall.map((_, sample) => bytes.reduce((n, values) => n + values[sample], 0)),
+      });
+      console.info(JSON.stringify({ run, name: "concurrent-3-reports-round", ...summary }));
     }
     for (const side of ["AP", "AR"] as const) {
       for (const operation of ["preview", "confirm"] as const) {
@@ -419,7 +527,12 @@ async function runOnce(filename: string, run: number) {
   } finally {
     await server.close();
   }
-  const finalShape = assertTradeFixture(filename, 2 * (warmups + samples), postedGlLines);
+  const finalShape = assertTradeFixture(
+    filename,
+    2 * (warmups + samples),
+    postedGlLines,
+    history.fixtureShape,
+  );
   return {
     run,
     startedEnvironment: before,
@@ -432,7 +545,7 @@ async function runOnce(filename: string, run: number) {
       pid: server.pid,
       readWorkers: Math.max(2, Math.min(3, availableParallelism() - 1)),
       writerWorkers: 1,
-      concurrency: 1,
+      concurrency: { serial: 1, concurrentReports },
       elapsedIncludes:
         "loopback request, production worker dispatch, SQL, complete response serialization/transfer, client JSON decoding and shared response-contract parsing",
       confirmationExcludes:
@@ -454,14 +567,27 @@ export async function runTradeBenchmark() {
   const runs: Awaited<ReturnType<typeof runOnce>>[] = [];
   const startedAt = new Date().toISOString();
   let fixture: Awaited<ReturnType<typeof generateTradeFixture>> | undefined;
+  let history: ReturnType<typeof addTradeHistory> | undefined;
   try {
     fixture = await generateTradeFixture(template);
-    console.info("M1-07: verified exact fixture shape; starting three production HTTP repetitions");
+    console.info("M1-R3: adding deterministic settlement/adjustment history");
+    const loadStarted = performance.now();
+    history = addTradeHistory(template);
+    const historyShape = assertTradeHistory(template, history.expected);
+    const historyLoadMs = performance.now() - loadStarted;
+    assertTradeFixture(template, 0, 0, history.expected.fixtureShape);
+    console.info("M1-R3: verified exact fixture shape; starting three production HTTP repetitions");
     await writeFile(
       `${output}-fixture.json`,
       JSON.stringify(
         {
           ...fixture,
+          history: {
+            ...history,
+            load: tradeHistoryLoad,
+            shape: historyShape,
+            historyLoadMs,
+          },
           bytes: (await stat(template)).size,
         },
         null,
@@ -471,7 +597,7 @@ export async function runTradeBenchmark() {
     for (let run = 1; run <= repeats; run++) {
       const filename = join(directory, `run-${run}.sqlite`);
       await copyFile(template, filename);
-      const result = await runOnce(filename, run);
+      const result = await runOnce(filename, run, history.expected);
       runs.push(result);
       await writeFile(`${output}-run-${run}.json`, JSON.stringify(result, null, 2));
       await rm(filename);
@@ -481,27 +607,33 @@ export async function runTradeBenchmark() {
       `${output}.json`,
       JSON.stringify(
         {
-          benchmark: "M1-07 production HTTP trade",
-          measurementVersion: "http-contract-v2",
+          benchmark: "M1-07/M1-R3 production HTTP trade with settlement history",
+          measurementVersion: "http-contract-v3-history-concurrency",
           startedAt,
           endedAt: new Date().toISOString(),
           environment: machine(),
           load: tradeLoad,
+          historyLoad: tradeHistoryLoad,
           repeats,
           warmups,
           samples,
-          fixture,
+          fixture: fixture && { ...fixture, history },
           runs,
           pass: runs.length === repeats && runs.every((run) => run.pass),
           d18: runs.flatMap((run) => run.d18.map((name) => ({ run: run.run, name }))),
           scope:
-            "Hot serial reads before measured writes; reports include all-party aggregation, not only page SQL. AP PO-matched/AR invoices each have 100 VAT lines and 100 distinct dimension segments. Fresh copy of identical synthetic fixture and a new production child per repeat.",
+            "Hot serial reads, then 3 concurrent report clients (separate keep-alive connections, fired together per round), before measured writes. The capacity fixture carries 200,000 settlements (average 2 per invoice item, 20% fully settled) plus 2,500 cancellations and 2,500 advance+apply adjustments (5% of invoices adjusted), loaded directly with triggers and foreign keys enabled. Reports include all-party aggregation, not only page SQL. AP PO-matched/AR invoices each have 100 VAT lines and 100 distinct dimension segments. Fresh copy of identical synthetic fixture and a new production child per repeat.",
         },
         null,
         2,
       ),
     );
-    await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    await rm(directory, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 200,
+    });
   }
   if (runs.some((run) => !run.pass)) process.exitCode = 1;
 }
