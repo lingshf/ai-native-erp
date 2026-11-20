@@ -287,3 +287,112 @@ it("previews current cash input without saving, preserves preferences and retrie
   expect(withdrawals).toHaveLength(2);
   expect(withdrawals[0]).toEqual(withdrawals[1]);
 });
+
+it("keeps master settings locked while editing or saving and refocuses the first input when a duplicate save fails", async () => {
+  window.history.replaceState(null, "", "/#/events");
+  const saves: unknown[] = [];
+  let answer: ((value: Response) => void) | undefined;
+  const service = {
+    code: "S",
+    name: "Consulting",
+    group: "G",
+    active: true,
+    revision: 1,
+    dimensions: {},
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn<typeof fetch>().mockImplementation(async (path, options) => {
+      const url = new URL(String(path), "http://localhost");
+      if (url.pathname === "/api/v1/companies")
+        return response({ items: [company], nextCursor: null });
+      if (url.pathname === "/api/v1/services" && options?.method === "POST") {
+        saves.push(JSON.parse(String(options.body)));
+        return new Promise<Response>((resolve) => (answer = resolve));
+      }
+      if (url.pathname === "/api/v1/services")
+        return response({ items: [service], nextCursor: null });
+      if (options?.method && options.method !== "GET")
+        throw new Error(`Unexpected write ${url.pathname}`);
+      return response({ items: [], nextCursor: null });
+    }),
+  );
+  render(<App />);
+  fireEvent.click(await screen.findByRole("button", { name: label("zh", "business.settings") }));
+  const kinds = (["services", "parties", "rules"] as const).map((kind) =>
+    screen.getByRole<HTMLButtonElement>("button", { name: label("zh", `business.${kind}`) }),
+  );
+  const locked = () => kinds.map((kind) => kind.disabled);
+  const field = (key: "code" | "name" | "group") =>
+    screen.getByLabelText<HTMLInputElement>(label("zh", `business.${key}`));
+  const cancel = () =>
+    fireEvent.click(screen.getByRole("button", { name: label("zh", "journal.cancel") }));
+  const edit = await screen.findByRole("button", { name: label("zh", "business.edit") });
+  expect(locked()).toEqual([false, false, false]);
+
+  fireEvent.click(screen.getByRole("button", { name: label("zh", "business.new") }));
+  expect(locked()).toEqual([true, true, true]);
+  expect(document.activeElement).toBe(field("code"));
+  cancel();
+  expect(locked()).toEqual([false, false, false]);
+
+  fireEvent.click(edit);
+  expect(locked()).toEqual([true, true, true]);
+  expect(document.activeElement).toBe(field("name"));
+  cancel();
+  expect(locked()).toEqual([false, false, false]);
+
+  fireEvent.click(screen.getByRole("button", { name: label("zh", "business.new") }));
+  const code = field("code");
+  for (const [key, value] of [
+    ["code", "S"],
+    ["name", "Duplicate"],
+    ["group", "G"],
+  ] as const)
+    fireEvent.change(field(key), { target: { value } });
+  // Focus when the error is inserted, before a later task (e.g. passive effects) can move it.
+  let focusedAtError: Element | null | undefined;
+  const observer = new MutationObserver(() => {
+    if (focusedAtError === undefined && document.querySelector('[role="alert"]'))
+      focusedAtError = document.activeElement;
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  const save = screen.getByRole<HTMLButtonElement>("button", {
+    name: label("zh", "business.save"),
+  });
+  save.focus();
+  fireEvent.click(save);
+  await waitFor(() => expect(answer).toBeDefined());
+  expect(save.matches(":disabled")).toBe(true);
+  expect(locked()).toEqual([true, true, true]);
+  answer?.(
+    new Response(
+      JSON.stringify({
+        code: "CONFLICT",
+        messageKey: "api.error.conflict",
+        params: {},
+        fieldErrors: [],
+        requestId: "4bf203b5-e54f-434c-9100-969da1cd7e73",
+        retryable: false,
+      }),
+      { status: 409 },
+    ),
+  );
+  await screen.findByRole("alert");
+  observer.disconnect();
+  expect(focusedAtError).toBe(code);
+  expect(document.activeElement).toBe(code);
+  expect(save.matches(":disabled")).toBe(false);
+  expect(locked()).toEqual([true, true, true]);
+
+  answer = undefined;
+  fireEvent.change(code, { target: { value: "S2" } });
+  fireEvent.click(save);
+  await waitFor(() => expect(answer).toBeDefined());
+  expect(locked()).toEqual([true, true, true]);
+  answer?.(response({ ...service, code: "S2", name: "Duplicate" }));
+  await screen.findByText(label("zh", "business.saved"));
+  expect(screen.queryByLabelText(label("zh", "business.code"))).toBeNull();
+  expect(locked()).toEqual([false, false, false]);
+  expect(saves).toHaveLength(2);
+});

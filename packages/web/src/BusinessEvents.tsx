@@ -1310,9 +1310,13 @@ function MasterSettings({
   }, []);
   useEffect(() => {
     lock(editing || busy);
-    if (editing) form.current?.querySelector<HTMLInputElement>("input:not(:disabled)")?.focus();
     return () => lock(false);
   }, [editing, busy, lock]);
+  // Entering edit, or a failed save (busy ends while still editing); layout phase so focus is not a task late.
+  useLayoutEffect(() => {
+    if (editing && !busy)
+      form.current?.querySelector<HTMLInputElement>("input:not(:disabled)")?.focus();
+  }, [editing, busy]);
   return (
     <>
       <button
