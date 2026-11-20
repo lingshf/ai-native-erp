@@ -2,19 +2,38 @@
 
 - 范围：[UI-08](../tasks/UI-08-polish-and-audit.md) 收尾，对照 [设计规范](../ui/README.md) 与 [UI-1 通用验收标准](../tasks/README.md#ui-1界面逐步改进)
 - 基线：main `99d55de`（UI-07b 合并，页面归属表 UI-01 … UI-07e 全部合并）
-- 起草：开发 39（UI-08 实施者），只列审查项与偏差待办
-- 结论：**待设计角色审阅后填写**（通过 / 有条件通过 / 不通过）
+- 起草：开发 39（UI-08 实施者）；审阅：设计 / 产品负责人（[审阅评论](https://github.com/lingshf/ai-native-erp/pull/82#issuecomment-7031592326)，head `33f0e5e`）
+- 结论：**有条件通过**。合并前条件 C1–C5 已在 UI-08（#82）内完成，结果见 §7；D 项裁定见 §6，后续待办见 §8
 
 ## 1. 证据
 
-- 截图：[`design/ui/screenshots/final/`](../ui/screenshots/final/)，19 个页面状态 × 4 组（中文 + 专业红、English + 专业绿；宽 1440 与 390；DPR 1；整页）= 76 张。教学开启。
-- 采集脚本：[`capture.mjs`](../ui/screenshots/final/capture.mjs)。它用虚构夹具，在临时目录启动独立服务，不连 4173，也不读真实账套或 `.bak`。每张截图自动断言以下几点：
-  1. PNG 宽 = 视口宽；`main` 的 `scrollWidth` ≤ `clientWidth`（表格容器内滚动除外）；
-  2. 可见控件（按钮、输入、选择、复选框实际点击区、表格外链接）在 390 宽下 ≥ 44px。表格内禁用的复选框是只读状态指示，不参与检查，见待办 D-6；
-  3. 390 宽下导航可横向滚动（`scrollWidth > clientWidth`，且 `scrollLeft` 可改变）。
-- 清理前后对比：同一夹具、同一脚本分别截取 `99d55de` 构建与本分支构建，逐像素比较。方法与结果见 PR 正文。
-  - 删除和移动规则造成的差异为 0px；
-  - 只有第 4 节列出的 44px 点击区修复有意改变视觉（共 4 张截图）。
+- 截图：[`design/ui/screenshots/final/`](../ui/screenshots/final/)，19 个页面状态 × 5 组 = 95 张（DPR 1，整页）：
+  - 教学开启 4 组：中文 + 专业红、English + 专业绿，宽 1440 与 390；
+  - 教学关闭 1 组：中文 + 专业红，宽 1440，文件名后缀 `-teaching-off`（C3）。
+- 采集脚本：[`capture.mjs`](../ui/screenshots/final/capture.mjs)。它用虚构夹具，在临时目录启动独立服务，不连 4173，也不读真实账套或 `.bak`。每张截图自动断言以下几点，结果写入 [`report.json`](../ui/screenshots/final/report.json)：
+  1. PNG 自身尺寸（读 IHDR）宽 = 视口宽、高 = 文档高；`main` 的 `scrollWidth` ≤ `clientWidth`（表格容器内滚动除外）；
+  2. 可见控件（按钮、输入、选择、复选框实际点击区、表格外链接）在 390 宽下 ≥ 44px。表格内禁用的复选框是只读状态指示，不参与检查（D-6 裁定：不可交互的指示不计入 44px）；
+  3. 390 宽下导航可横向滚动（`scrollWidth > clientWidth`，且 `scrollLeft` 可改变）；
+  4. 教学关闭态：`TeachingTip` 数量为 0；边界说明、warning、danger、alert 类 MessageBar 数量与同页教学开启（中文 + 红 + 1440）时相同。
+- 清理前后对比：同一夹具、同一脚本分别截取 `99d55de` 构建与本分支构建，逐像素比较；除 `INTENDED` 中逐张说明的有意改动外，差异必须为 0。
+  - 同态等待（审阅 [5988138449](https://github.com/lingshf/ai-native-erp/pull/82#pullrequestreview-5988138449) 后加入，两个构建完全相同，不重试）：ready 选择器出现 → `networkidle` → 页面与外壳无 `aria-busy`、无“加载中”文字 → 失焦、回顶、鼠标移到视口外角 → `document.fonts.ready` → DOM 无变动且布局签名连续 10 帧不变 → 连续两次整页截图逐字节相同才采用（最多 5 次，不稳定判失败）。
+  - 业务状态指纹（`body` 文本哈希、`main` 行数、控件与 MessageBar 计数）：两个构建必须相同，否则判失败。
+  - 审阅复跑中的 5 张不明差异：
+    - 总账中文 390 高 1874→2036：真实的状态差异。总账报表首张表先出、其余分区稍后才到，旧脚本只等 ready 选择器；加“无加载中文字”等待后为 0。
+    - 往来 / 总账明细 1440 的 5px、试算顶栏的 12–14px：差异框都落在原生 `<select>` 的圆角或左边框上（`#ledger-month` 为 [301,284,303,285]，`#business-company` 为 [1122,91,1125,125]，以及顶栏语言 / 主题选择框），差 1–2 个灰阶。
+      - 两个构建中该元素的盒模型相同，全部计算样式按属性逐一比较也相同，业务指纹相同。旧版样式哈希曾显示“不同”，原因是计算样式中自定义属性的枚举顺序随样式文件顺序变化，改为按属性名排序后相同。
+      - 同一构建对比自身（A/A）也会出现，且时有时无，说明不是 CSS 差异，而是栅格化差异。
+    - 根因：Chrome 默认做局部栅格化（partial raster）。数据异步到达的先后决定哪些分块被局部重绘，原生控件圆角的抗锯齿随之变化。
+      - 实验：`events` 与 `ledger-detail` 定向连跑 4 次，默认参数下出现 5 张差异；加 `--disable-partial-raster` 后 4 次均为 0。`--disable-gpu` 反而更多，不采用。
+      - 处理：`capture.mjs` 固定带 `--disable-partial-raster`。它是确定性设置，不是重试，也不放宽阈值或白名单。
+      - 脚本仍对非 0 差异自动标注来源（哪个原生下拉框、两次构建的盒与样式是否相同），只作证据，判定照样失败。
+    - 最终两次完整采集（各 95 张，都对比 `99d55de`）：两次都是 95/95 通过，81 张差异为 0，14 张为下方的有意差异，没有不明差异。PNG 尺寸、稳定帧、业务指纹全部通过。
+    - 跨次复现：两次本分支截图中，业务指纹相同的 70 张逐字节相同。其余 25 张的指纹不同，因为每次夹具都新生成 UUID 和单据号（凭证、总账明细、往来报表、付款），这些不是同一状态，不做跨次比较。改前 / 改后对比始终在同一次运行、同一夹具内进行。
+  - 有意差异（共 14 张），其余 81 张差异为 0：
+    - 44px 点击区修复（第 1 轮，§4）：`trade-reports-*-390`（4px）、`trade-reports-detail-*-390`（高 +20）；
+    - C1：`journals-detail-*` 5 张，差异只在“查看”按钮列；
+    - C2：`trade-settlements-*` 5 张，差异只在分配表行间分隔线。
+  - 删除和移动规则造成的差异为 0px。
 
 ## 2. 外壳（UI-01）
 
@@ -22,7 +41,7 @@
 | --- | --- | --- | --- |
 | 顶栏 | §4.1 品牌块 + h1“ERP 工作区”，偏好始终可见 | 符合；两主题顶栏只换主色 | — |
 | 导航 | 分组标题 12px，链接 36px，当前页浅主色底 + 3px 指示条 | 符合 | — |
-| 窄屏导航 | ≤760 横向滚动、粘顶、控件 44 | 76 张截图断言通过 | — |
+| 窄屏导航 | ≤760 横向滚动、粘顶、控件 44 | 95 张截图断言通过 | F1 |
 | `main` 溢出 | 页面不横向溢出 | `main { overflow-x: auto }` 原为“临时例外”。UI-03 起发票表格已有自己的滚动容器，脚本断言每页 `main` 都不溢出，所以此规则改为兜底保护，注释已改写。保留它是为了避免以后新增宽内容时撑破外壳 | — |
 | 偏好警告 `.warning` | MessageBar warning | `App.tsx` 仍用 `section.warning`。规则从 `styles.css` 原样移到 `shell.css`，外观不变 | 待办 D-1 |
 
@@ -32,21 +51,21 @@
 
 | 页面（任务） | 页头 | 主次 | 结构 | 金额 | 教学 | 消息 | 390 断言 | 备注 / 偏差 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 运行状态（UI-07d） | ✓ | ✓ | 状态卡 + 徽标 | 不适用 | ✓ | ✓ | 通过 | `overview.css` 保留一份 `.message-bar.warning`，见 D-2 |
-| 迁移核对（UI-07e） | ✗ 未用 `PageHeader` | 无按钮（契约） | card + kpi + `details` | 不适用 | ✗ 无 | ✓ | 通过 | D-3 |
-| 科目表（UI-02b） | ✓ | ✓ 新建与编辑互斥切换 | FastTab + 虚拟表 44 | 不适用 | ✓ | ✓ | 通过 | “启用”列禁用复选框为 18px 指示，见 D-6 |
+| 运行状态（UI-07d） | ✓ | ✓ | 状态卡 + 徽标 | 不适用 | ✓ | ✓ | 通过 | `overview.css` 保留一份 `.message-bar.warning`，D-2 接受（注释写明两处同步） |
+| 迁移核对（UI-07e） | ✗ 未用 `PageHeader` | 无按钮（契约） | card + kpi + `details` | 不适用 | ✗ 无 | ✓ | 通过 | D-3、F9 |
+| 科目表（UI-02b） | ✓ | ✓ 新建与编辑互斥切换 | FastTab + 虚拟表 44 | 不适用 | ✓ | ✓ | 通过 | “启用”列禁用复选框为 18px 指示，D-6；F2、F3 |
 | 财务维度（UI-04） | ✓ | ✓ | filter-bar + FastTab | 不适用 | ✓ | ✓ | 通过 | — |
 | 贸易主数据（UI-04） | ✓ | ✓ | filter-bar + FastTab | 不适用 | ✓ | ✓ | 通过 | — |
-| 凭证列表 / 新建 / 详情（UI-05） | ✓ | 页面 1 个；预览对话框内另有 1 个“确认过账” | FastTab + 虚拟表 44 | ✓ | ✓ | ✓ | 通过 | 对话框内主按钮是否算“同屏”，请设计确认，见 D-4 |
+| 凭证列表 / 新建 / 详情（UI-05） | ✓ | 页面 1 个；预览对话框内另有 1 个“确认过账” | FastTab + 虚拟表 44 | ✓ | ✓ | ✓ | 通过 | 模态对话框单独计数，背后“预览”已禁用，D-4 接受；“查看”按钮截断已修（C1）；F2、F7、F8 |
 | AI 面板（UI-07c） | 卡片内 h3 | ✓ | card + ui-field | ✓ | ✓ | ✓ | 通过（随凭证页） | — |
-| 业务事件（UI-05） | ✓ | 同凭证（对话框内主按钮） | segmented + grid | 不适用 | ✓ | ✓ | 通过 | D-4 |
-| 采购与销售发票（UI-03） | ✓ | ✓ | command-bar + FastTab×3 + kpi | ✓ | ✓ | ✓ | 通过 | 表格内无链接 |
-| 付款与收款（UI-06） | ✓ | ✓ | command-bar + FastTab + 虚拟表 48 | ✓ | ✓ | ✓ | 通过 | 表格内无链接；可能有双分隔线，见 D-5 |
+| 业务事件（UI-05） | ✓ | 同凭证（对话框内主按钮） | segmented + grid | 不适用 | ✓ | ✓ | 通过 | D-4 接受 |
+| 采购与销售发票（UI-03） | ✓ | ✓ | command-bar + FastTab×3 + kpi | ✓ | ✓ | ✓ | 通过 | 表格内无链接；F5、F11 |
+| 付款与收款（UI-06） | ✓ | ✓ | command-bar + FastTab + 虚拟表 48 | ✓ | ✓ | ✓ | 通过 | 表格内无链接；双分隔线已修（D-5 / C2）；F5 |
 | 预付 / 贷项 / 纠错（UI-06） | ✓ | ✓ 不可逆时改为 `btn-danger` | command-bar + FastTab×3 | ✓ | ✓ | ✓ | 通过 | — |
-| 往来未结项与账龄（UI-02a） | ✓ | ✓ | filter-bar + segmented + kpi | ✓ | ✓ | ✓ | 修复后通过 | 表格内 `.cell-link` 和明细链接已修为 44px，见 §4 |
-| 总账报表 / 明细账（UI-07a） | ✓ | ✓ | filter-bar + kpi + grid | ✓ | ✓ | ✓ | 通过 | 表格内链接在 UI-07a 已是 44px |
-| 报表索引 / 试算（UI-07a） | ✓ | ✓ | 卡片入口 + kpi | ✓ | ✓ | ✓ | 通过 | — |
-| 期末结账 + 期间准入（UI-07b） | ✓ | ✓ | FastTab + kpi + 分录表 | ✓ | ✓ | ✓ | 修复后通过 | 表格内金额链接已修为 44px，见 §4 |
+| 往来未结项与账龄（UI-02a） | ✓ | ✓ | filter-bar + segmented + kpi | ✓ | ✓ | ✓ | 修复后通过 | 表格内 `.cell-link` 和明细链接已修为 44px，见 §4；F10 |
+| 总账报表 / 明细账（UI-07a） | ✓ | ✓ | filter-bar + kpi + grid | ✓ | ✓ | ✓ | 通过 | 表格内链接在 UI-07a 已是 44px；F4 |
+| 报表索引 / 试算（UI-07a） | ✓ | ✓ | 卡片入口 + kpi | ✓ | ✓ | ✓ | 通过 | F4 |
+| 期末结账 + 期间准入（UI-07b） | ✓ | ✓ | FastTab + kpi + 分录表 | ✓ | ✓ | ✓ | 修复后通过 | 表格内金额链接已修为 44px，见 §4；F4、F5、F6 |
 
 **未改版页面**：无。页面归属表中每个页面都已由各自任务改版，没有按例外规则保留的 `styles.css` 规则。
 
@@ -76,20 +95,127 @@
   - 付款表 `.accounts-scroll` 的生效声明移到 `trade-settlements.css`。
 - 删除：
   - 在 `packages/web/src` 中已无引用的选择器，如 `.status-card`、`.intro`、`.report-card`、`.report-totals`、`.teaching`、`.data-warning`、`.connected`、`.account-editor`、`.journal-editor` 等；
-  - 声明已被同元素更高优先级规则全部覆盖的旧规则，如 `.ai-panel` 底色由 `.card` 提供、其余由 `.journals .ai-panel` 覆盖。这类删除以像素差 0 为证据，请设计确认可以接受。
+  - 以“完全覆盖”为由删除的旧规则：`.ai-panel`、`.ai-panel textarea` 和 `.accounts-scroll` 一组。逐属性证据见下方 C4 对照表；唯一找不到覆盖来源的 `td { text-align: left }` 已恢复到 `trade-settlements.css`。
 - 组件提升：`.message-bar.warning` 和 `.message-bar.success` 原本在期末、发票、付款、总账等页面 CSS 中重复，原样提升到 `components.css`，各页副本已删除。
 - 裸色值：`rg "#[0-9a-fA-F]{3,6}" packages/web/src --glob '!theme/tokens.css'` 结果为空；`contrast.test.ts` 通过。
 
-## 6. 偏差待办
+### 5.1 C4：“完全覆盖”删除的属性级证据
 
-| # | 页面 / 范围 | 偏差 | 建议归属 |
+方法（设计审阅问题 1）：两层都成立，再加像素差 0，才算完全覆盖。
+
+1. 选择器级：被删规则命中的元素也一定被覆盖规则命中，且覆盖规则特异度更高，或特异度相同但在层叠中更靠后。
+2. 属性级：被删规则的每个属性（含伪类和 `@media` 分支）在覆盖规则中都有同名属性。
+
+公共前提：
+
+- 原规则都在入口 `index-*.css`（`styles.css`）。`components-*.css` 与页面 CSS 是按需插入的 `<link>`，排在入口样式之后：`dist/index.html` 只有 `index-*.css` 一条 stylesheet。所以特异度相同时，组件 / 页面规则胜出。
+- 原 `styles.css` 里这些规则没有伪类变体（`.accounts-scroll button:disabled` 除外，见下）。唯一的 `@media (max-width: 680px)` 分支只含 `.status-card` / `dl` / `dd`，不涉及这些选择器。
+- 覆盖规则本身无条件生效（不在 `@media` 或伪类里）。`.grid td` 的 `--row-h` 在窄屏 / 粗指针下变为 44，仍是同名属性覆盖。
+- 选择器命中数：`SELECTORS` 传入原 `styles.css` 的全部 51 个类选择器，在 95 个页面状态的基线构建（`99d55de`）中统计最大命中数，写入 `report.json` 的 `selectors` 字段。
+
+#### `.ai-panel`
+
+选择器级 grep：
+- 全仓 `.tsx` 中只有 `AiPanel.tsx:114` `<section className="card ai-panel">` 一处。
+- `<AiPanel` 只在 `Journals.tsx:923`（`CompanyJournals`）渲染，位于 `Journals.tsx:95` 的 `<section className="page journals">` 内。
+- 该元素因此必然同时命中 `.card` 与 `.journals .ai-panel`。基线命中数为 1。
+
+| 被删属性 | 原值 | 覆盖来源 | 覆盖方式 |
 | --- | --- | --- | --- |
-| D-1 | 外壳 `App.tsx` | 偏好警告用 `section.warning`，不是 MessageBar（缺左侧 4px 实色条和符号）。改需动 `.tsx` 类名，超出 UI-08 边界 | UI-01 / UI-07d 后续 |
-| D-2 | 运行状态 | `overview.css` 保留一份 `.message-bar.warning`，用于组件 chunk 加载失败时的 plainUi 退化，属有意重复 | 设计确认是否接受 |
-| D-3 | 迁移核对 | 未用 `PageHeader`，h2 与说明由 `migration.css` 自绘，无边界说明区和教学提示；外观与其他页接近但不共用组件 | UI-07e 后续 |
-| D-4 | 凭证、业务事件 | 预览对话框内“确认过账 / 确认”是第二个实心主按钮，背后页面上仍有“预览”主按钮 | 设计确认规则是否按对话框单独计 |
-| D-5 | 付款与收款 | `.accounts-scroll td` 的 `inset box-shadow` 与 `.grid td` 底边可能叠成双分隔线。为保持像素一致而原样保留 | UI-06 后续 |
-| D-6 | 科目表等 | 表格内禁用复选框（只读状态）为 18px 视觉尺寸，不可交互，脚本不检查；若视为控件应改成徽标（需改 `.tsx`） | UI-02b 后续 |
-| D-7 | 全局 | `styles.css` 的全局元素规则未删：无法证明每页每个 `button/select/table` 都已被组件类覆盖（如对话框、details 内表格） | 后续逐页确认后删除 |
-| D-8 | 科目表、主数据、期末、发票、付款 / 纠错 | `.message-bar p { margin: 0 }` 在 5 个页面 CSS（accounts、master、period-close、trade-invoices、trade-settlements）中按页作用域重复；提升到组件会影响其他页的 MessageBar 段落间距，未提升 | 设计确认后提升 |
-| D-9 | 全部 | 本套截图只有教学开启态；开 / 关两态由各页面任务提供 | — |
+| `margin-block` | `var(--space-4)` | `journals.css` `.journals .ai-panel { margin: 0 }` | 特异度 (0,2,0) > (0,1,0) |
+| `padding` | `var(--space-4)` | 同上 `padding: 0` | 同上 |
+| `border` | `1px solid var(--color-border)` | 同上 `border: 0` | 同上 |
+| `background` | `var(--color-surface)` | `components.css:421` `.card { background: var(--color-surface) }` | 特异度相同 (0,1,0)，组件样式在后；值相同 |
+
+#### `.ai-panel textarea`
+
+选择器级：命中元素是上述 `section.card.ai-panel` 内的 textarea，同时命中以下两条：
+- `:is(.business-events .ui-field, .journals .ai-panel) textarea`（`journals.css:13`、`:24`），特异度取列表最大值，为 (0,2,1)；
+- `.journals .ai-panel textarea`（`journals.css:152`）。
+
+| 被删属性 | 原值 | 覆盖来源 | 覆盖方式 |
+| --- | --- | --- | --- |
+| `display` | `block` | `.journals .ai-panel textarea { display: block }` | (0,2,1) > (0,1,1)；值相同 |
+| `width` | `min(100%, 768px)` | `journals.css:13` `width: 100%` | (0,2,1) > (0,1,1)。原值本来就不生效 |
+| `min-height` | `96px` | `journals.css:24` `min-height: 88px` | 同上 |
+| `resize` | `vertical` | `.journals .ai-panel textarea { resize: vertical }` | (0,2,1) > (0,1,1)；值相同 |
+
+#### `.accounts-scroll` 一组
+
+选择器级 grep：
+- 全仓 `.tsx` 中只有 `TradeSettlements.tsx:443` `<div className="grid-wrap accounts-scroll">` 一处。
+- 其内表格是 `TradeSettlements.tsx:444` `<table className="grid">`，所以每个 `.accounts-scroll th/td` 同时是 `.grid th/td`。
+- 页面根为 `section.page.trade-settlements`。
+- 基线命中数：容器 1、table 1、th 6、td 12。`button` 与 `button:disabled` 为 0。
+
+| 被删规则 | 被删属性 | 原值 | 覆盖来源 | 覆盖方式 |
+| --- | --- | --- | --- | --- |
+| `.accounts-scroll` | `max-height` | `480px` | `trade-settlements.css` `.trade-settlements .accounts-scroll` | 迁入原值，(0,2,0) |
+| | `overflow` | `auto` | `components.css:454` `.grid-wrap { overflow: auto }` | (0,1,0) 相同，组件在后；值相同 |
+| | `margin` | `var(--space-4) 0` | `.trade-settlements .accounts-scroll { margin: 0 }` | (0,2,0) > (0,1,0)。原值本来就不生效 |
+| | `background` | `var(--color-surface)` | `.grid-wrap { background: var(--color-surface) }` | (0,1,0) 相同，组件在后；值相同 |
+| `.accounts-scroll table` | `border-collapse` | `separate` | `components.css:465` `.grid` | 原 (0,1,1) 高于 `.grid` (0,1,0)，但值相同，计算值不变 |
+| | `border-spacing` | `0` | 同上 | 同上 |
+| | `width` | `100%` | 同上 | 同上 |
+| `.accounts-scroll th` | `position` / `top` / `z-index` | `sticky` / `0` / `1` | `components.css:479` `.grid th` | (0,1,1) 相同，组件在后；值相同 |
+| | `background` | `var(--color-primary-soft)` | `.grid th { background: var(--color-surface-alt) }` | (0,1,1) 相同，组件在后。原值本来就不生效（基线截图表头即为灰底） |
+| `.accounts-scroll td, th` | `white-space` | `nowrap` | `.grid td`（`:470`）/ `.grid th` | (0,1,1) 相同，组件在后；值相同 |
+| | `height` | `44px` | `.grid td { height: var(--row-h) }`、`.grid th { height: 40px }` | 同上。原值本来就不生效 |
+| | `padding` | `0 var(--space-2)` | `.grid td/th { padding: 0 var(--space-3) }` | 同上。原值本来就不生效 |
+| | `text-align`（th） | `left` | `.grid th { text-align: left }` | (0,1,1) 相同，组件在后；值相同 |
+| | **`text-align`（td）** | `left` | **无**：`.grid td` 不设 `text-align` | **已恢复**：`trade-settlements.css` `:where(.trade-settlements) .accounts-scroll td { text-align: left }`，特异度 (0,1,1) 与原规则相同。第 4、5 列的右对齐规则 (0,3,1) 仍胜出。像素差 0（td 默认 `start` 在 LTR 下即 left），恢复只为让声明有来源 |
+| `.accounts-scroll td` | `border-bottom` | `0` | `.grid td { border-bottom: 1px solid var(--color-border) }` | (0,1,1) 相同，组件在后。原值本来就不生效 |
+| | `box-shadow` | `inset 0 -1px var(--color-border)` | — | 与 `.grid td` 底边叠成双线，D-5 裁定删除（C2），属有意视觉改动 |
+| `.accounts-scroll button` | `height` / `padding` | `44px` / `var(--space-2) var(--space-3)` | — | 无引用：表内只有复选框、数字输入和文字（`TradeSettlements.tsx:443–573`），95 个状态的命中数为 0 |
+| `.accounts-scroll button:disabled` | `cursor` | `not-allowed` | — | 同上，伪类分支命中数 0 |
+
+#### 无引用删除
+
+以下选择器在 `packages/web/src` 的 `.tsx` 中已无对应类名，且 95 个页面状态的基线命中数为 0：
+- `.intro`、`.status-card`、`.connected`、`.error`、`.data-warning`；
+- `.report-card`（含 `> select`）、`.report-boundary`、`.report-scroll`、`.report-totals`（含 `dd`）；
+- `.teaching`（现为 `.teaching-tip`）、`.account-editor*`、`.journal-editor*`；
+- `.reports > label`、`.dimensions > label`。
+
+
+## 6. 偏差与裁定
+
+裁定来自设计审阅评论。
+
+| # | 页面 / 范围 | 偏差 | 裁定 | 归属 / 处理 |
+| --- | --- | --- | --- | --- |
+| D-1 | 外壳 `App.tsx` | 偏好警告用 `section.warning`，不是 MessageBar（缺左侧 4px 实色条和符号）。改需动 `.tsx` 类名，超出 UI-08 边界 | 转待办；本里程碑接受现状（外观未退化，文字未被隐藏） | **UI-01 后续** |
+| D-2 | 运行状态 | `overview.css` 保留一份 `.message-bar.warning`，用于组件 chunk 加载失败时的 plainUi 退化，属有意重复 | 本里程碑接受 | 已在 `overview.css` 头注释写明“与 components.css 同源，修改时两处同步” |
+| D-3 | 迁移核对 | 未用 `PageHeader`，h2 与说明由 `migration.css` 自绘，无教学提示 | 转待办；页面已有边界说明，且契约要求零按钮，本里程碑接受 | **UI-07e 后续**：改用 `PageHeader`，补教学提示（如“核对通过 ≠ 批准切换”），需改 `.tsx`；与 F9 一起做 |
+| D-4 | 凭证、业务事件 | 预览对话框内“确认过账 / 确认”是第二个实心主按钮 | 本里程碑接受：模态对话框单独计数，背后“预览”已禁用 | 规则已写入 [README §5](../ui/README.md#5-核心组件) |
+| D-5 | 付款与收款 | `.accounts-scroll td` 的 `inset box-shadow` 与 `.grid td` 底边叠成双分隔线 | 必须在 UI-08 修复 | 已修（C2） |
+| D-6 | 科目表、贸易主数据 | 表格内禁用复选框（只读状态）为 18px，不可交互 | 转待办；不可交互的指示不计入 44px 目标尺寸，本里程碑接受 | **UI-02b 后续**（UI-04 同理）：改为徽标（✓ 启用 / 停用），需改 `.tsx` |
+| D-7 | 全局 | `styles.css` 的全局元素规则未删 | 本里程碑接受，转待办 | **UI-09**（新开，只改 CSS）：按 §5.1 的属性级方法逐页列出 `button/select/table` 覆盖情况后再删除 |
+| D-8 | 科目表、主数据、期末、发票、付款 / 纠错 | `.message-bar p { margin: 0 }` 在 5 个页面 CSS 中按页作用域重复 | 本里程碑接受，转待办；会改变其他页段落间距，不能在像素差 0 的清理中顺带做 | **UI-09**（只改 CSS）：提升为 `.message-bar p { margin: 0 }`，逐页截图对比 |
+| D-9 | 全部 | 截图只有教学开启态 | 必须在 UI-08 补证据 | 已补（C3） |
+
+## 7. 合并前条件 C1–C5 结果
+
+| # | 条件 | 处理 | 证据 |
+| --- | --- | --- | --- |
+| C1 | 凭证已过账列表“查看 TRADE-…:<uuid>”按钮文字被截成中间一段 | `journals.css`：`.journals .jv-list .journal-row .btn { display: inline-block; max-width: 100%; line-height: calc(var(--control-h) - 2px); text-align: start; vertical-align: middle; }`。文字从行首显示，以省略号结尾。按钮高度、无障碍名称和 `.tsx` 均不变 | `journals-detail-*` 5 张（1440 与 390 都有）的差异框只在按钮所在列：1440 为 x 1295–1394，390 为 x 261–360。改前 / 改后裁剪图见 PR 正文 |
+| C2 | 付款与收款表格双分隔线 | 删除 `.trade-settlements .accounts-scroll td` 的 `inset box-shadow`，只保留 `.grid td` 的 1px 底边 | `trade-settlements-*` 5 张的差异只在分配表行区域，整页高度不变，行高仍为 48。改前 / 改后（含 4× 放大）见 PR 正文 |
+| C3 | 教学关闭态终态证据 | `capture.mjs` 新增 19 张 `*-zh-red-1440-teaching-off.png` | `report.json`：19 张教学关闭截图的 `teaching.tips` 均为 0。`boundary/warning/danger/alert` 计数与同页教学开启时相同（`hidden` 为空） |
+| C4 | “完全覆盖”删除的属性级证据 | 见 §5.1。唯一无覆盖来源的 `.accounts-scroll td { text-align: left }` 已恢复 | §5.1 对照表与 grep 行号；`report.json` `selectors` 命中数 |
+| C5 | 报告定稿与 README | 本文件：结论、D 裁定、C1–C4、§8 待办。README §5 Button 行补充模态对话框计数规则 | 文档 diff |
+
+## 8. 后续待办（不阻塞，以设计评论为准）
+
+| # | 位置 | 问题 | 建议 | 归属 |
+| --- | --- | --- | --- | --- |
+| F1 | 外壳 390，英文 | 品牌名被截成 “E…”，语言、主题选择框占满顶栏 | ≤760 时只显示 logo 并保留无障碍名称，或缩短主题选项的显示宽度（只改 CSS） | UI-01 后续 |
+| F2 | 科目表、凭证 390 | 表格右侧列（启用、编辑、摘要、操作）被裁掉，看不出可以横向滚动 | 滚动容器右缘加渐隐提示，或在窄屏把关键列固定在左侧 | UI-02b、UI-05 后续 |
+| F3 | 科目表“编辑”（内置科目）、发票和凭证的“删除行” | 禁用态的 subtle 按钮显示为灰色方框，可用态却是纯文字，两者不一致 | `.btn-subtle:disabled` 保持无框，只降低文字对比度（仍须达到禁用态要求） | UI-09（components.css） |
+| F4 | 总账报表、试算、期末结账 | 所有金额（包括 0.00）都带实线下划线，表格显得嘈杂 | 链接改为低调的虚线或细下划线，hover / focus 时加深。保留非颜色提示（WCAG 1.4.1） | UI-07a / 07b 后续 |
+| F5 | 主数据、期末结账、发票、付款与收款 | 这几页桌面端控件也用 44px，其他页是 36px，表单密度不统一 | 按 §7 桌面统一 36px，窄屏和粗指针 44px | UI-09（各页 CSS） |
+| F6 | 期末结账 | 分录表“科目”列整列灰底（行表头样式），像是渲染错误；准入复选框上下间距过大 | 行表头去掉底色，只加粗；复选框之间用 `--space-2` | UI-07b 后续 |
+| F7 | 凭证新建 | `fieldset` “凭证草稿” 外框里又套 FastTab 卡片，框中有框 | 去掉 `fieldset` 外框，只保留 legend 作为节标题 | UI-05 后续 |
+| F8 | 凭证列表 | 操作列表头为空 | 表头补“操作 / Actions”，需改 `.tsx`。按钮名称不变 | UI-05 后续 |
+| F9 | 迁移核对 | 核对明细直接展示原始 JSON，对教学不友好 | 改为键值表并高亮差异字段，原始 JSON 折叠，需改 `.tsx` | UI-07e 后续（与 D-3 一起） |
+| F10 | 往来报表 390 | segmented 选中态是实心主色，与“应用筛选”主按钮在同一屏，出现两块实心主色 | segmented 选中态改为浅主色底加主色字 | UI-09（components.css） |
+| F11 | 发票 | “新增行（Alt+Shift+N）”中括号包着 kbd 徽标，显得杂乱 | 去掉括号，只保留 kbd 徽标，需改文案和 `.tsx` | UI-03 后续 |

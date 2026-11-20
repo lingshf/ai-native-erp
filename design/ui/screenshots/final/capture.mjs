@@ -9,7 +9,20 @@
 //     复选框按实际点击区（包裹的 label 或自身）宽高都 ≥ 44px，链接宽高都 ≥ 44px；
 //     表格内联金额链接属于行内文字，单独记录高度，不计入也不声称通过；
 //   - 390 宽：导航条 overflow-x 可滚动，且能实际横向滚动。
-// 给出 baselineDist 时，同一夹具、同一浏览器状态下再用 baselineDist 截一次，逐像素比较（不同像素数须为 0）。
+// 另截一套教学关闭态（中文 + 专业红、1440，文件名后缀 -teaching-off），断言（PG-04）：
+//   - 教学提示 TeachingTip（aside.teaching-tip）数量为 0；
+//   - 边界说明（页头 .titles > p）、风险 / 错误类 MessageBar（warning、danger）与 role="alert" 的数量与教学开启时相同。
+// 取景前等待同一业务与布局状态（不重试）：ready 选择器 → 网络空闲 → 无“加载中”提示与 aria-busy →
+//   失焦、回顶、鼠标停在视口角 → 字体就绪 → DOM 无变更且布局签名连续 10 帧不变；随后才截图，
+//   会改动滚动位置的探测（表格 / 导航横向滚动）放在截图之后。连续两帧逐字节相同才算稳定，否则判失败。
+// 每张还断言 PNG 自身尺寸（读 IHDR）：宽 = 视口宽，高 = 文档高。
+// 给出 baselineDist 时，同一夹具、同一浏览器状态下再用 baselineDist 截一次：
+//   - 两次的业务状态指纹（可见文字哈希、行数、控件数、消息条数）必须相同；
+//   - 逐像素比较，不同像素数须为 0（INTENDED 中逐张说明的有意改动除外）。
+//   非 0 时标注差异来源（落在哪个原生下拉框的边框、两次构建中它的盒与计算样式是否相同），只作证据，不放行。
+// Chrome 固定带 --disable-partial-raster（见 launch 处说明）；CHROME_ARGS 可追加参数。
+// 其他可选环境变量：ONLY（逗号分隔页面名）、CAPTURE_REPORT（report.json 路径）、DIFF_DIR（存差异图的基线版本）、
+//   PROBE="x,y"（打印该点元素链在两次构建中的计算样式差异）、SCROLLED_SHOT（滚动容器选择器，滚到最右后单独截取）。
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -116,6 +129,106 @@ function navScroll() {
     moved,
   };
 }
+// 教学相关计数：教学提示、边界说明、各色 MessageBar、role="alert"
+function teachingFacts() {
+  const count = (selector) => document.querySelectorAll(selector).length;
+  return {
+    tips: count("aside.teaching-tip"),
+    boundary: count(".page-header .titles > p"),
+    warning: count(".message-bar.warning"),
+    danger: count(".message-bar.danger"),
+    alert: count('[role="alert"]'),
+    info: count(".message-bar.info"),
+    success: count(".message-bar.success"),
+  };
+}
+const kept = ["boundary", "warning", "danger", "alert"];
+// 可选：PROBE="x,y" 时记录该点元素及祖先的盒模型相关计算样式，用于定位像素差来源
+function probe([x, y]) {
+  const keys = ["border-top-left-radius", "border-top-color", "border-top-width", "border-left-color", "background-color", "box-shadow", "outline-style", "padding-top", "height", "width", "line-height", "font-size", "color"];
+  const out = [];
+  for (let el = document.elementFromPoint(x, y); el && el !== document.body; el = el.parentElement) {
+    const style = getComputedStyle(el);
+    const box = el.getBoundingClientRect();
+    out.push({
+      el: `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}${el.className && typeof el.className === "string" ? `.${el.className.trim().split(/\s+/).join(".")}` : ""}`,
+      box: [box.x, box.y, box.width, box.height].map((v) => Math.round(v * 100) / 100),
+      ...Object.fromEntries(keys.map((key) => [key, style.getPropertyValue(key)])),
+    });
+  }
+  return out;
+}
+// 原生下拉框：[id, 边框盒, 计算样式摘要]。像素差落在下拉框边框环上且两次样式相同 → 记为“原生下拉框边缘栅格化差异”证据（仍判失败，不放行）
+function selectBoxes() {
+  const hash = (text) => {
+    let h = 0;
+    for (let i = 0; i < text.length; i++) h = (Math.imul(h, 31) + text.charCodeAt(i)) | 0;
+    return `${text.length}:${(h >>> 0).toString(16)}`;
+  };
+  return [...document.querySelectorAll("select")].map((el) => {
+    const box = el.getBoundingClientRect();
+    const style = getComputedStyle(el);
+    return [
+      el.id || el.name || "select",
+      [box.left + window.scrollX, box.top + window.scrollY, box.right + window.scrollX, box.bottom + window.scrollY],
+      hash([...style].sort().map((key) => `${key}:${style.getPropertyValue(key)}`).join(";")),
+      Object.fromEntries([...style].map((key) => [key, style.getPropertyValue(key)])),
+    ];
+  });
+}
+// DOM 静止且布局签名连续 10 帧不变才返回；600 帧内未静止则抛错（不重试）
+function settled() {
+  return new Promise((done, fail) => {
+    const signature = () => {
+      const main = document.querySelector("main");
+      const box = main.getBoundingClientRect();
+      return [
+        document.documentElement.scrollWidth,
+        document.documentElement.scrollHeight,
+        main.scrollWidth,
+        main.scrollHeight,
+        box.width,
+        box.height,
+        document.querySelectorAll("main tr").length,
+      ].join();
+    };
+    let mutated = false;
+    const observer = new MutationObserver(() => {
+      mutated = true;
+    });
+    observer.observe(document.documentElement, { subtree: true, childList: true, attributes: true, characterData: true });
+    let last = signature();
+    let quiet = 0;
+    let frames = 0;
+    const tick = () => {
+      const next = signature();
+      quiet = next === last && !mutated ? quiet + 1 : 0;
+      last = next;
+      mutated = false;
+      if (quiet >= 10) {
+        observer.disconnect();
+        done();
+      } else if (++frames > 600) {
+        observer.disconnect();
+        fail(new Error(`layout not settled: ${next}`));
+      } else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+// 业务状态指纹：外壳与 main 的可见文字、行数、控件数。基线与候选必须相同，证明两次取景是同一业务状态
+function stateFingerprint() {
+  const text = document.body.innerText.replace(/\s+/g, " ");
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) hash = (Math.imul(hash, 31) + text.charCodeAt(i)) | 0;
+  const count = (selector) => document.querySelectorAll(selector).length;
+  return [
+    `text:${text.length}:${(hash >>> 0).toString(16)}`,
+    `tr:${count("main tr")}`,
+    `controls:${count("main :is(button, input, select, textarea, a[href])")}`,
+    `message:${count(".message-bar")}`,
+  ].join(" ");
+}
 function selectorHits(list) {
   return Object.fromEntries(
     list.map((selector) => {
@@ -129,10 +242,11 @@ function selectorHits(list) {
 }
 
 const variants = [
-  ["zh", "red", 1440],
-  ["zh", "red", 390],
-  ["en", "green", 1440],
-  ["en", "green", 390],
+  ["zh", "red", 1440, true],
+  ["zh", "red", 390, true],
+  ["en", "green", 1440, true],
+  ["en", "green", 390, true],
+  ["zh", "red", 1440, false],
 ];
 const day = "2026-01-20";
 const scope = "company=DEFAULT&month=2026-01";
@@ -422,17 +536,23 @@ async function confirmed(path, command) {
 }
 
 const json = (route, body) => route.fulfill({ contentType: "application/json", body: JSON.stringify(body) });
-const browser = await chromium.launch({ channel: "chrome" });
+// 可选：CHROME_ARGS 环境变量放空格分隔的 Chrome 启动参数
+// --disable-partial-raster：每次重绘都整块重新栅格化。否则数据异步到达的先后决定哪些分块被局部重绘，
+// 原生 <select> 圆角 / 边框的抗锯齿会差 1–2 个灰阶（同一构建对比自身也出现，样式与盒模型完全相同）。这是确定性设置，不是重试
+const browser = await chromium.launch({
+  channel: "chrome",
+  args: ["--disable-partial-raster", ...(process.env.CHROME_ARGS?.split(" ").filter(Boolean) ?? [])],
+});
 await mkdir(outDir, { recursive: true });
 const report = { shots: [], selectors: {} };
 let failed = 0;
 
-async function shoot(base, name, path, ready, prepare, language, theme, width) {
+async function shoot(base, name, path, ready, prepare, language, theme, width, teaching) {
   const t = (key) => label(language, key);
   const context = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: 1 });
   await context.addInitScript((value) => {
     window.localStorage.setItem("erp.workspace.preferences.v1", value);
-  }, JSON.stringify({ language, theme, teaching: true }));
+  }, JSON.stringify({ language, theme, teaching }));
   await context.route("**/api/v1/legacy/**", (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith("/context")) return json(route, legacy.context);
@@ -451,24 +571,26 @@ async function shoot(base, name, path, ready, prepare, language, theme, width) {
     });
   if (prepare) await prepare(tab, t);
   await tab.waitForLoadState("networkidle");
+  // 业务状态：页面与外壳不再有任何“加载中”提示、无 aria-busy（总账报表首张表先出、其余分区稍后才到，只等 ready 选择器不够）
+  await tab.waitForFunction(
+    (texts) =>
+      !document.querySelector('[aria-busy="true"]') &&
+      ![...document.body.querySelectorAll("*")].some(
+        (el) => el.childElementCount === 0 && texts.some((text) => el.textContent?.includes(text)),
+      ),
+    [t("master.loading"), t("reports.loading"), t("shell.healthLoading")],
+    { timeout: 15_000 },
+  );
+  // 固定交互状态：失焦、回到顶部、鼠标停在视口外侧角（不悬停任何控件）
   await tab.evaluate(() => {
     document.activeElement?.blur?.();
     window.scrollTo(0, 0);
   });
+  await tab.mouse.move(width - 1, 899);
   await tab.evaluate(() => document.fonts.ready);
-  // 等两帧，让失焦 / 滚动复位后的重绘落定（否则偶见顶栏下拉框底边 1–2px 栅格化差异）
-  await tab.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
-  const facts = {
-    overflow: await tab.evaluate(overflowReport),
-    main: await tab.evaluate(mainScroll),
-    tables: await tab.evaluate(tableScroll),
-    small: width <= 760 ? await tab.evaluate(smallTargets) : [],
-    links: await tab.evaluate(tableLinks),
-    nav: width <= 760 ? await tab.evaluate(navScroll) : null,
-    hits: selectors.length ? await tab.evaluate(selectorHits, selectors) : {},
-    size: await tab.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]),
-  };
-  // 稳定帧：连续两次截图逐字节相同才采用（同 Playwright toHaveScreenshot 的做法），最多 5 次。
+  await tab.evaluate(settled);
+  // 截图在会改动滚动位置的探测（表格 / 导航横向滚动）之前，两次构建取景时都从未被滚动过
+  // 稳定帧：连续两次截图逐字节相同才采用（同 Playwright toHaveScreenshot 的做法），最多 5 次；仍不稳定则判失败。
   let png = await tab.screenshot({ fullPage: true, animations: "disabled" });
   let stable = false;
   for (let i = 0; i < 4 && !stable; i++) {
@@ -476,9 +598,40 @@ async function shoot(base, name, path, ready, prepare, language, theme, width) {
     stable = next.equals(png);
     png = next;
   }
-  if (!stable) console.warn(`${name} ${language}/${theme}/${width}: no two identical consecutive frames`);
+  const facts = {
+    stable,
+    state: await tab.evaluate(stateFingerprint),
+    selects: await tab.evaluate(selectBoxes),
+    probe: process.env.PROBE ? await tab.evaluate(probe, process.env.PROBE.split(",").map(Number)) : null,
+    overflow: await tab.evaluate(overflowReport),
+    main: await tab.evaluate(mainScroll),
+    small: width <= 760 ? await tab.evaluate(smallTargets) : [],
+    links: await tab.evaluate(tableLinks),
+    teaching: await tab.evaluate(teachingFacts),
+    hits: selectors.length ? await tab.evaluate(selectorHits, selectors) : {},
+    size: await tab.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]),
+    tables: await tab.evaluate(tableScroll),
+    nav: width <= 760 ? await tab.evaluate(navScroll) : null,
+  };
+  // 可选：SCROLLED_SHOT 为滚动容器选择器，把它滚到最右后单独截取该容器（窄屏下被裁到右侧的列的改前 / 改后证据）
+  let scrolledPng = null;
+  const scroller = process.env.SCROLLED_SHOT && tab.locator(process.env.SCROLLED_SHOT).first();
+  if (scroller && (await scroller.count())) {
+    await scroller.evaluate((el) => {
+      el.scrollLeft = el.scrollWidth;
+    });
+    await tab.evaluate(settled);
+    scrolledPng = await scroller.screenshot({ animations: "disabled" });
+  }
   await context.close();
-  return { png, facts };
+  return { png, facts, scrolledPng };
+}
+
+// PNG 自身尺寸（读 IHDR，不依赖 DOM / 视口）
+function pngSize(png) {
+  const signature = png.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  if (!signature || png.toString("latin1", 12, 16) !== "IHDR") return null;
+  return [png.readUInt32BE(16), png.readUInt32BE(20)];
 }
 
 async function pixelDiff(a, b) {
@@ -524,21 +677,70 @@ try {
   const only = process.env.ONLY?.split(",");
   for (const [name, path, ready, prepare] of pages) {
     if (only && !only.includes(name)) continue;
-    for (const [language, theme, width] of variants) {
-      const file = `${name}-${language}-${theme}-${width}.png`;
+    let teachingOn;
+    for (const [language, theme, width, teaching] of variants) {
+      const file = `${name}-${language}-${theme}-${width}${teaching ? "" : "-teaching-off"}.png`;
       const result = {};
       for (const [kind, build] of builds)
-        result[kind] = await shoot(build.origin, name, path, ready, prepare, language, theme, width);
+        result[kind] = await shoot(build.origin, name, path, ready, prepare, language, theme, width, teaching);
       const { png, facts } = result.after;
       await writeFile(join(outDir, file), png);
       const loose = facts.tables.filter((table) => !table.own || (table.overflow && !table.scrolled));
       const navOk = !facts.nav || (facts.nav.scrollable && facts.nav.moved);
+      if (teaching && language === "zh" && width === 1440) teachingOn = facts.teaching;
+      const hidden = teaching
+        ? []
+        : [
+            ...(facts.teaching.tips ? [`teaching tips ${facts.teaching.tips}`] : []),
+            ...kept
+              .filter((key) => facts.teaching[key] !== teachingOn?.[key])
+              .map((key) => `${key} ${teachingOn?.[key]}→${facts.teaching[key]}`),
+          ];
+      if (facts.probe && result.baseline)
+        for (const [i, after] of facts.probe.entries()) {
+          const before = result.baseline.facts.probe[i] ?? {};
+          const changed = Object.keys(after).filter((key) => JSON.stringify(after[key]) !== JSON.stringify(before[key]));
+          console.log(`  probe ${after.el}: ${changed.length ? changed.map((key) => `${key} ${JSON.stringify(before[key])}→${JSON.stringify(after[key])}`).join("; ") : "same"}`);
+        }
+      const png_ = pngSize(png);
+      const pngOk = png_?.[0] === width && png_[1] === facts.size[1];
+      const sameState = !result.baseline || result.baseline.facts.state === facts.state;
       const diff = result.baseline ? await pixelDiff(result.baseline.png, png) : null;
+      // 差异来源：差异框完全落在某个原生下拉框的边框环（边缘内外 3px）上，且该下拉框在两次构建中位置与样式相同
+      let source = null;
+      const box = typeof diff === "string" && diff.match(/in \[(\d+),(\d+),(\d+),(\d+)\]/)?.slice(1).map(Number);
+      if (box) {
+        const ring = facts.selects.find(([id, [l, t, r, b], style]) => {
+          const same = result.baseline.facts.selects.find(([other]) => other === id);
+          const inside = box[0] >= l - 3 && box[1] >= t - 3 && box[2] <= r + 3 && box[3] <= b + 3;
+          const onEdge = box[0] <= l + 3 || box[2] >= r - 3 || box[1] <= t + 3 || box[3] >= b - 3;
+          const inner = box[0] > l + 3 && box[2] < r - 3 && box[1] > t + 3 && box[3] < b - 3;
+          return same && JSON.stringify(same.slice(0, 3)) === JSON.stringify([id, [l, t, r, b], style]) && inside && onEdge && !inner;
+        });
+        const near = facts.selects
+          .filter(([, [l, t, r, b]]) => box[0] <= r + 3 && box[2] >= l - 3 && box[1] <= b + 3 && box[3] >= t - 3)
+          .map(([id, rect, style, full]) => {
+            const before = result.baseline.facts.selects.find(([other]) => other === id);
+            const changed = [...new Set([...Object.keys(full), ...Object.keys(before?.[3] ?? {})])].filter((key) => before?.[3]?.[key] !== full[key]);
+            return `#${id} ${JSON.stringify(rect)} box ${JSON.stringify(before?.[1]) === JSON.stringify(rect) ? "same" : `was ${JSON.stringify(before?.[1])}`} style ${before?.[2] === style ? "same" : `differs: ${changed.map((key) => `${key} ${before?.[3]?.[key]}→${full[key]}`).join("; ")}`}`;
+          });
+        source = ring
+          ? `native select #${ring[0]} border edge, same box/style in both builds`
+          : `unexplained${near.length ? `; near ${near.join(", ")}` : ""}`;
+      }
+      if (result.after.scrolledPng && process.env.DIFF_DIR) {
+        await mkdir(process.env.DIFF_DIR, { recursive: true });
+        for (const [kind, shot] of Object.entries(result))
+          if (shot.scrolledPng) await writeFile(join(process.env.DIFF_DIR, `scrolled-${kind}-${file}`), shot.scrolledPng);
+      }
       if (diff && process.env.DIFF_DIR) {
         await mkdir(process.env.DIFF_DIR, { recursive: true });
         await writeFile(join(process.env.DIFF_DIR, `baseline-${file}`), result.baseline.png);
       }
       const ok =
+        pngOk &&
+        facts.stable &&
+        sameState &&
         facts.overflow.vw === width &&
         facts.overflow.scrollWidth <= width &&
         facts.overflow.escaped.length === 0 &&
@@ -546,19 +748,37 @@ try {
         loose.length === 0 &&
         facts.small.length === 0 &&
         navOk &&
+        hidden.length === 0 &&
         (diff === null || diff === 0 || intended.has(file));
       if (!ok) failed++;
       const linkHeights = [...new Set(facts.links.map(([h, row]) => `${h}/${row}`))];
       console.log(
-        `${ok ? "PASS" : "FAIL"} ${file} page ${facts.size.join("x")} main ${facts.main.join("/")} tables ${facts.tables.length}` +
+        `${ok ? "PASS" : "FAIL"} ${file} png ${png_?.join("x")}${pngOk ? "" : " WRONG-SIZE"}${facts.stable ? "" : " UNSTABLE"}` +
+          `${sameState ? "" : ` STATE ${result.baseline.facts.state} vs ${facts.state}`} page ${facts.size.join("x")} main ${facts.main.join("/")} tables ${facts.tables.length}` +
           `${facts.nav ? ` nav ${facts.nav.scrollable && facts.nav.moved ? "scrolls" : `NOT scrollable ${JSON.stringify(facts.nav)}`}` : ""}` +
-          `${diff === null ? "" : ` diff ${diff}px${diff && intended.has(file) ? " (intended)" : ""}`}` +
+          `${diff === null ? "" : ` diff ${diff}px${diff && intended.has(file) ? " (intended)" : source ? ` (${source})` : ""}`}` +
           `${linkHeights.length ? ` table-inline links (not checked) ${facts.links.length} link/row h ${linkHeights.join(",")}` : ""}` +
           `${loose.length ? ` not in own scroller: ${loose.map((table) => table.name).join(", ")}` : ""}` +
           `${facts.overflow.escaped.length ? ` escaped: ${facts.overflow.escaped.join(", ")}` : ""}` +
-          `${facts.small.length ? ` <44px: ${facts.small.join(", ")}` : ""}`,
+          `${facts.small.length ? ` <44px: ${facts.small.join(", ")}` : ""}` +
+          `${teaching ? "" : ` teaching-off ${JSON.stringify(facts.teaching)} vs on ${JSON.stringify(teachingOn)}`}` +
+          `${hidden.length ? ` hidden when teaching off: ${hidden.join(", ")}` : ""}`,
       );
-      report.shots.push({ file, ok, diff, size: facts.size, links: facts.links, small: facts.small });
+      report.shots.push({
+        file,
+        ok,
+        diff,
+        size: facts.size,
+        png: png_,
+        ...(source ? { source } : {}),
+        stable: facts.stable,
+        state: facts.state,
+        ...(result.baseline ? { baselineState: result.baseline.facts.state } : {}),
+        links: facts.links,
+        small: facts.small,
+        teaching: facts.teaching,
+        ...(teaching ? {} : { teachingOn, hidden }),
+      });
       for (const [selector, count] of Object.entries((result.baseline ?? result.after).facts.hits))
         report.selectors[selector] = Math.max(report.selectors[selector] ?? 0, count);
     }

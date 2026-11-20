@@ -47,16 +47,21 @@
   margin-left: var(--space-4);
 }
 /* 未结项分配表：在自身滚动容器内（虚拟滚动行高 48 不变） */
-/* 原 styles.css .accounts-scroll 中仍生效的两条（其余被 .grid / .grid-wrap 覆盖），UI-08 迁入 */
+/*
+ * 原 styles.css .accounts-scroll 中仍生效的声明，UI-08 迁入；其余被 .grid / .grid-wrap 覆盖。
+ * 原 td 的 inset box-shadow 与 .grid td 的 1px 底边叠成 2px 双线（UI-1 D-5），UI-08 删除，只留 .grid 的一条线。
+ */
 .trade-settlements .accounts-scroll {
   max-height: 480px;
   margin: 0;
 }
-.trade-settlements .accounts-scroll td {
-  box-shadow: inset 0 -1px var(--color-border);
-}
 .trade-settlements .accounts-scroll table {
   min-width: 760px;
+}
+/* 原 styles.css「.accounts-scroll td, .accounts-scroll th」的 text-align: left，td 没有同名覆盖来源（.grid td 不设 text-align），
+   UI-1 C4 按原特异度 (0,1,1) 恢复；数字列的右对齐规则特异度更高，仍生效 */
+:where(.trade-settlements) .accounts-scroll td {
+  text-align: left;
 }
 .trade-settlements .accounts-scroll td input[type="number"] {
   width: 140px;
