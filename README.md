@@ -22,7 +22,7 @@ npm run start:local
 
 `verify`依次检查 Biome、严格类型、目录导入边界、完整 Vitest，最后构建 Web。测试与启动直接执行 TS 源码，不需要中间 JS 构建。API 默认监听 `http://127.0.0.1:4180` 并托管 Web 构建产物；未构建前端时明确返回 503，不回退旧页面。开发时在第二终端运行 `npm run dev --workspace @erp/web`，Vite 固定 5173/strictPort，代理到 4180。
 
-`start:local`不自动加载`.env`，示例环境项见`.env.example`；只向当前进程显式提供新目标库的绝对路径。启动仅校验最新 schema，不自动迁移；旧目标库须先显式 migrate 升级到 014，已发布迁移与 checksum 不变。未提供 `ERP_SQLITE_FILE` 时只启动未配置壳，health 标记`data:unconfigured`，财务请求明确 503，不创建账簿。
+`start:local`不自动加载`.env`，示例环境项见`.env.example`；只向当前进程显式提供新目标库的绝对路径。启动仅校验最新 schema，不自动迁移；旧目标库须先显式 migrate 升级到 016，已发布迁移与 checksum 不变。未提供 `ERP_SQLITE_FILE` 时只启动未配置壳，health 标记`data:unconfigured`，财务请求明确 503，不创建账簿。
 
 首次连接有效的新目标库时建立固定 LOCAL tenant/book 下的 DEFAULT 月度教学公司（CNY、精度 2、当前财年）、八个内置科目和 12 个开放期间；**不创建示例凭证**。重复启动不覆盖已有主数据。不要把原账或快照选为目标库；不会隐式导入旧账，也不会改动其他副本的凭证或草稿。
 
@@ -125,7 +125,7 @@ GL 核对固定为本公司**全部伙伴及 AP/AR**、从账首至同一截止�
 
 ### 贸易 GUI 主路径验收（M1-07）
 
-文档与演示：[用户文档](docs/user/README.md) · [界面流程图](docs/flows/README.md) · [v0.2.0 Demo 脚本（含截图、端口 4191）](docs/demo/v0.2.0/README.md) · [CHANGELOG](CHANGELOG.md)。
+文档与演示：[用户文档](docs/user/README.md) · [界面流程图](docs/flows/README.md) · [v0.3.0 Demo 脚本（含截图、端口 4193）](docs/demo/v0.3.0/README.md) · [v0.2.0 Demo](docs/demo/v0.2.0/README.md) · [CHANGELOG](CHANGELOG.md)。
 
 只使用全新的临时教学账套，不打开 4173、原账、`.bak` 或已有账套。先 `npm run build`，再在 PowerShell 启动独立实例：
 
@@ -207,7 +207,7 @@ npx vitest run trade-gui-
 node packages\infra\bench\trade-http.ts
 ```
 
-如果本机已安装 Edge 且 Chromium 下载受限，可在运行慢测前显式设 `$env:ERP_E2E_BROWSER_CHANNEL="msedge"`；CI 使用固定 Playwright Chromium。截图输出到 `artifacts/ci/trade-e2e`，浏览器 trace 只在失败时写入；Full main/每晚层只在失败时上传；PR 受影响测试仍排除 `*.slow.test.ts`，不安装浏览器、不设墙钟门槛。百万 GL 行 + 1000 伙伴 + 10 万未结项的三次 loopback HTTP p95 只在 Bench 层衡量，口径、原始采样和结果见[贸易性能证据](docs/performance/trade-e2e-bench.md)。
+如果本机已安装 Edge 且 Chromium 下载受限，可在运行慢测前显式设 `$env:ERP_E2E_BROWSER_CHANNEL="msedge"`；CI 使用 hosted Chrome。截图输出到 `artifacts/ci/trade-e2e`，浏览器 trace 只在失败时写入；Full main/每晚层只在失败时上传；PR 受影响测试仍排除 `*.slow.test.ts`，不安装浏览器、不设墙钟门槛。百万 GL 行 + 1000 伙伴 + 10 万未结项的三次 loopback HTTP p95 只在 Bench 层衡量，口径、原始采样和结果见[贸易性能证据](docs/performance/trade-e2e-bench.md)。
 
 ### 贸易计算器（M1-02）
 
