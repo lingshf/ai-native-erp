@@ -39,4 +39,5 @@
 
 ## 相关任务
 
+- [FOCUS-01](FOCUS-01-journals-events-passive-focus.md)：#117 作者报告的凭证 / 业务事件中同类的被动 effect 聚焦，排在 S5-a 之后，按本任务的方法逐处复现。
 - [FLAKE-02](FLAKE-02-trade-gui-period-option-poll.md)：真实 Chrome E2E 期末月份下拉轮询偶发为空。不合并、不互为依赖、文件不重叠；若调查发现共同原因（重新挂载、焦点与渲染时序），先完成的一方在 PR 中写明，由设计角色决定是否合并后续修复。验收 3 的 `trade-gui-*.slow` 若因 FLAKE-02 失败，同 head 重跑并引用 FLAKE-02。
