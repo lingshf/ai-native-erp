@@ -1,0 +1,4449 @@
+{
+ "shots": [
+  {
+   "file": "overview-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:346:801933ba tr:0 controls:0 message:0",
+   "baselineState": "text:346:801933ba tr:0 controls:0 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "overview-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "png": [
+    390,
+    900
+   ],
+   "stable": true,
+   "state": "text:333:12ccaf88 tr:0 controls:0 message:0",
+   "baselineState": "text:333:12ccaf88 tr:0 controls:0 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "overview-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:1019:18c97e0 tr:0 controls:0 message:0",
+   "baselineState": "text:1019:18c97e0 tr:0 controls:0 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "overview-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "png": [
+    390,
+    900
+   ],
+   "stable": true,
+   "state": "text:974:a5d5dc3b tr:0 controls:0 message:0",
+   "baselineState": "text:974:a5d5dc3b tr:0 controls:0 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "overview-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:297:76cbd977 tr:0 controls:0 message:0",
+   "baselineState": "text:297:76cbd977 tr:0 controls:0 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "migration-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1305
+   ],
+   "png": [
+    1440,
+    1305
+   ],
+   "stable": true,
+   "state": "text:965:ad184f25 tr:0 controls:0 message:0",
+   "baselineState": "text:965:ad184f25 tr:0 controls:0 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "migration-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1546
+   ],
+   "png": [
+    390,
+    1546
+   ],
+   "stable": true,
+   "state": "text:952:3209ae97 tr:0 controls:0 message:0",
+   "baselineState": "text:952:3209ae97 tr:0 controls:0 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "migration-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1305
+   ],
+   "png": [
+    1440,
+    1305
+   ],
+   "stable": true,
+   "state": "text:1498:dc756c07 tr:0 controls:0 message:0",
+   "baselineState": "text:1498:dc756c07 tr:0 controls:0 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "migration-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1546
+   ],
+   "png": [
+    390,
+    1546
+   ],
+   "stable": true,
+   "state": "text:1453:ef29c44c tr:0 controls:0 message:0",
+   "baselineState": "text:1453:ef29c44c tr:0 controls:0 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "migration-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1305
+   ],
+   "png": [
+    1440,
+    1305
+   ],
+   "stable": true,
+   "state": "text:965:ad184f25 tr:0 controls:0 message:0",
+   "baselineState": "text:965:ad184f25 tr:0 controls:0 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 0,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "accounts-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:714:cc5f26a7 tr:15 controls:30 message:0",
+   "baselineState": "text:714:cc5f26a7 tr:15 controls:30 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "accounts-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    907
+   ],
+   "png": [
+    390,
+    907
+   ],
+   "stable": true,
+   "state": "text:701:748f5e75 tr:15 controls:30 message:0",
+   "baselineState": "text:701:748f5e75 tr:15 controls:30 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "accounts-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:1325:1f3943d7 tr:15 controls:30 message:0",
+   "baselineState": "text:1325:1f3943d7 tr:15 controls:30 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "accounts-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    927
+   ],
+   "png": [
+    390,
+    927
+   ],
+   "stable": true,
+   "state": "text:1280:50f3bb72 tr:15 controls:30 message:0",
+   "baselineState": "text:1280:50f3bb72 tr:15 controls:30 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "accounts-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:673:e3a47ae3 tr:15 controls:30 message:0",
+   "baselineState": "text:673:e3a47ae3 tr:15 controls:30 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "dimensions-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:294:9effa036 tr:1 controls:3 message:0",
+   "baselineState": "text:294:9effa036 tr:1 controls:3 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "dimensions-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "png": [
+    390,
+    900
+   ],
+   "stable": true,
+   "state": "text:281:5edf4704 tr:1 controls:3 message:0",
+   "baselineState": "text:281:5edf4704 tr:1 controls:3 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "dimensions-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:868:9bb9bc99 tr:1 controls:3 message:0",
+   "baselineState": "text:868:9bb9bc99 tr:1 controls:3 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "dimensions-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "png": [
+    390,
+    900
+   ],
+   "stable": true,
+   "state": "text:823:71bed29e tr:1 controls:3 message:0",
+   "baselineState": "text:823:71bed29e tr:1 controls:3 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "dimensions-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:254:e463d5ac tr:1 controls:3 message:0",
+   "baselineState": "text:254:e463d5ac tr:1 controls:3 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "trade-master-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:319:9970b154 tr:2 controls:6 message:0",
+   "baselineState": "text:319:9970b154 tr:2 controls:6 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-master-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "png": [
+    390,
+    900
+   ],
+   "stable": true,
+   "state": "text:306:8b38ae46 tr:2 controls:6 message:0",
+   "baselineState": "text:306:8b38ae46 tr:2 controls:6 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-master-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:861:6546da79 tr:2 controls:6 message:0",
+   "baselineState": "text:861:6546da79 tr:2 controls:6 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-master-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "png": [
+    390,
+    900
+   ],
+   "stable": true,
+   "state": "text:816:66ba5014 tr:2 controls:6 message:0",
+   "baselineState": "text:816:66ba5014 tr:2 controls:6 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-master-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:283:cd7072ff tr:2 controls:6 message:0",
+   "baselineState": "text:283:cd7072ff tr:2 controls:6 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "journals-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:281:a2e680fd tr:1 controls:4 message:0",
+   "baselineState": "text:281:a2e680fd tr:1 controls:4 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "journals-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "png": [
+    390,
+    900
+   ],
+   "stable": true,
+   "state": "text:268:81d9e36f tr:1 controls:4 message:0",
+   "baselineState": "text:268:81d9e36f tr:1 controls:4 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "journals-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:792:27326d5f tr:1 controls:4 message:0",
+   "baselineState": "text:792:27326d5f tr:1 controls:4 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "journals-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "png": [
+    390,
+    900
+   ],
+   "stable": true,
+   "state": "text:747:9abb4ae4 tr:1 controls:4 message:0",
+   "baselineState": "text:747:9abb4ae4 tr:1 controls:4 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "journals-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:229:d74b43d5 tr:1 controls:4 message:0",
+   "baselineState": "text:229:d74b43d5 tr:1 controls:4 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "journals-new-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1661
+   ],
+   "png": [
+    1440,
+    1661
+   ],
+   "stable": true,
+   "state": "text:603:2d4bb29a tr:5 controls:27 message:1",
+   "baselineState": "text:603:2d4bb29a tr:5 controls:27 message:1",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "journals-new-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    2384
+   ],
+   "png": [
+    390,
+    2384
+   ],
+   "stable": true,
+   "state": "text:590:be65708c tr:5 controls:27 message:1",
+   "baselineState": "text:590:be65708c tr:5 controls:27 message:1",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "journals-new-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1661
+   ],
+   "png": [
+    1440,
+    1661
+   ],
+   "stable": true,
+   "state": "text:1632:1f46e709 tr:5 controls:27 message:1",
+   "baselineState": "text:1632:1f46e709 tr:5 controls:27 message:1",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "journals-new-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    2580
+   ],
+   "png": [
+    390,
+    2580
+   ],
+   "stable": true,
+   "state": "text:1587:be99e78e tr:5 controls:27 message:1",
+   "baselineState": "text:1587:be99e78e tr:5 controls:27 message:1",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "journals-new-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1577
+   ],
+   "png": [
+    1440,
+    1577
+   ],
+   "stable": true,
+   "state": "text:546:24f98406 tr:5 controls:27 message:1",
+   "baselineState": "text:546:24f98406 tr:5 controls:27 message:1",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "journals-detail-zh-red-1440.png",
+   "ok": true,
+   "diff": "1607 in [1295,334,1394,389]",
+   "size": [
+    1440,
+    907
+   ],
+   "png": [
+    1440,
+    907
+   ],
+   "source": "unexplained",
+   "stable": true,
+   "state": "text:775:4abb9920 tr:7 controls:9 message:0",
+   "baselineState": "text:775:4abb9920 tr:7 controls:9 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "journals-detail-zh-red-390.png",
+   "ok": true,
+   "diff": "1607 in [261,487,360,542]",
+   "size": [
+    390,
+    1060
+   ],
+   "png": [
+    390,
+    1060
+   ],
+   "source": "unexplained",
+   "stable": true,
+   "state": "text:762:44c49412 tr:7 controls:9 message:0",
+   "baselineState": "text:762:44c49412 tr:7 controls:9 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "journals-detail-en-green-1440.png",
+   "ok": true,
+   "diff": "1532 in [1295,335,1394,388]",
+   "size": [
+    1440,
+    907
+   ],
+   "png": [
+    1440,
+    907
+   ],
+   "source": "unexplained",
+   "stable": true,
+   "state": "text:1387:27a4f06f tr:7 controls:9 message:0",
+   "baselineState": "text:1387:27a4f06f tr:7 controls:9 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "journals-detail-en-green-390.png",
+   "ok": true,
+   "diff": "1532 in [261,564,360,617]",
+   "size": [
+    390,
+    1136
+   ],
+   "png": [
+    390,
+    1136
+   ],
+   "source": "unexplained",
+   "stable": true,
+   "state": "text:1342:de3e3aca tr:7 controls:9 message:0",
+   "baselineState": "text:1342:de3e3aca tr:7 controls:9 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "journals-detail-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": "1607 in [1295,250,1394,305]",
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "source": "unexplained",
+   "stable": true,
+   "state": "text:723:4f49e1f8 tr:7 controls:9 message:0",
+   "baselineState": "text:723:4f49e1f8 tr:7 controls:9 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "events-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:330:d0f61dd3 tr:1 controls:7 message:0",
+   "baselineState": "text:330:d0f61dd3 tr:1 controls:7 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "events-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "png": [
+    390,
+    900
+   ],
+   "stable": true,
+   "state": "text:317:f186f5a1 tr:1 controls:7 message:0",
+   "baselineState": "text:317:f186f5a1 tr:1 controls:7 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "events-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:945:62c3ee32 tr:1 controls:7 message:0",
+   "baselineState": "text:945:62c3ee32 tr:1 controls:7 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "events-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    900
+   ],
+   "png": [
+    390,
+    900
+   ],
+   "stable": true,
+   "state": "text:900:7ee9304d tr:1 controls:7 message:0",
+   "baselineState": "text:900:7ee9304d tr:1 controls:7 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "events-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:262:4056c0e0 tr:1 controls:7 message:0",
+   "baselineState": "text:262:4056c0e0 tr:1 controls:7 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "trade-invoices-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1040
+   ],
+   "png": [
+    1440,
+    1040
+   ],
+   "stable": true,
+   "state": "text:633:a9551b0e tr:5 controls:25 message:0",
+   "baselineState": "text:633:a9551b0e tr:5 controls:25 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-invoices-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1781
+   ],
+   "png": [
+    390,
+    1781
+   ],
+   "stable": true,
+   "state": "text:620:a8936580 tr:5 controls:25 message:0",
+   "baselineState": "text:620:a8936580 tr:5 controls:25 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-invoices-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1060
+   ],
+   "png": [
+    1440,
+    1060
+   ],
+   "stable": true,
+   "state": "text:1619:f81a6995 tr:5 controls:25 message:0",
+   "baselineState": "text:1619:f81a6995 tr:5 controls:25 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-invoices-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1873
+   ],
+   "png": [
+    390,
+    1873
+   ],
+   "stable": true,
+   "state": "text:1574:a637f4f0 tr:5 controls:25 message:0",
+   "baselineState": "text:1574:a637f4f0 tr:5 controls:25 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-invoices-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    956
+   ],
+   "png": [
+    1440,
+    956
+   ],
+   "stable": true,
+   "state": "text:562:c3ff8f09 tr:5 controls:25 message:0",
+   "baselineState": "text:562:c3ff8f09 tr:5 controls:25 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "trade-settlements-zh-red-1440.png",
+   "ok": true,
+   "diff": "2172 in [301,852,1386,900]",
+   "size": [
+    1440,
+    963
+   ],
+   "png": [
+    1440,
+    963
+   ],
+   "source": "unexplained",
+   "stable": true,
+   "state": "text:613:25ccf9d9 tr:3 controls:12 message:1",
+   "baselineState": "text:613:25ccf9d9 tr:3 controls:12 message:1",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-settlements-zh-red-390.png",
+   "ok": true,
+   "diff": "632 in [37,1491,352,1539]",
+   "size": [
+    390,
+    1578
+   ],
+   "png": [
+    390,
+    1578
+   ],
+   "source": "unexplained",
+   "stable": true,
+   "state": "text:600:83cf714b tr:3 controls:12 message:1",
+   "baselineState": "text:600:83cf714b tr:3 controls:12 message:1",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-settlements-en-green-1440.png",
+   "ok": true,
+   "diff": "2172 in [301,852,1386,900]",
+   "size": [
+    1440,
+    963
+   ],
+   "png": [
+    1440,
+    963
+   ],
+   "source": "unexplained",
+   "stable": true,
+   "state": "text:1639:b2c9afc8 tr:3 controls:12 message:1",
+   "baselineState": "text:1639:b2c9afc8 tr:3 controls:12 message:1",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-settlements-en-green-390.png",
+   "ok": true,
+   "diff": "632 in [37,1571,352,1619]",
+   "size": [
+    390,
+    1658
+   ],
+   "png": [
+    390,
+    1658
+   ],
+   "source": "unexplained",
+   "stable": true,
+   "state": "text:1594:b812ffa3 tr:3 controls:12 message:1",
+   "baselineState": "text:1594:b812ffa3 tr:3 controls:12 message:1",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-settlements-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": "2172 in [301,768,1386,816]",
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "source": "unexplained",
+   "stable": true,
+   "state": "text:583:a27cb595 tr:3 controls:12 message:1",
+   "baselineState": "text:583:a27cb595 tr:3 controls:12 message:1",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "trade-adjustments-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:461:92079e2a tr:0 controls:13 message:1",
+   "baselineState": "text:461:92079e2a tr:0 controls:13 message:1",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-adjustments-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1325
+   ],
+   "png": [
+    390,
+    1325
+   ],
+   "stable": true,
+   "state": "text:448:70c7eb9c tr:0 controls:13 message:1",
+   "baselineState": "text:448:70c7eb9c tr:0 controls:13 message:1",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-adjustments-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:1311:847d1fa8 tr:0 controls:13 message:1",
+   "baselineState": "text:1311:847d1fa8 tr:0 controls:13 message:1",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-adjustments-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1417
+   ],
+   "png": [
+    390,
+    1417
+   ],
+   "stable": true,
+   "state": "text:1266:1a8b3283 tr:0 controls:13 message:1",
+   "baselineState": "text:1266:1a8b3283 tr:0 controls:13 message:1",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-adjustments-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:432:bb5a92ff tr:0 controls:13 message:1",
+   "baselineState": "text:432:bb5a92ff tr:0 controls:13 message:1",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "trade-reports-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:692:786e31c4 tr:3 controls:12 message:0",
+   "baselineState": "text:692:786e31c4 tr:3 controls:12 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-reports-zh-red-390.png",
+   "ok": true,
+   "diff": "4 in [28,1309,91,1353]",
+   "size": [
+    390,
+    1383
+   ],
+   "png": [
+    390,
+    1383
+   ],
+   "source": "unexplained",
+   "stable": true,
+   "state": "text:679:20ea3812 tr:3 controls:12 message:0",
+   "baselineState": "text:679:20ea3812 tr:3 controls:12 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-reports-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:1567:7dcf5635 tr:3 controls:12 message:0",
+   "baselineState": "text:1567:7dcf5635 tr:3 controls:12 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-reports-en-green-390.png",
+   "ok": true,
+   "diff": "4 in [28,1400,91,1444]",
+   "size": [
+    390,
+    1474
+   ],
+   "png": [
+    390,
+    1474
+   ],
+   "source": "unexplained",
+   "stable": true,
+   "state": "text:1522:114c0910 tr:3 controls:12 message:0",
+   "baselineState": "text:1522:114c0910 tr:3 controls:12 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-reports-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:641:2e43aead tr:3 controls:12 message:0",
+   "baselineState": "text:641:2e43aead tr:3 controls:12 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "trade-reports-detail-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1191
+   ],
+   "png": [
+    1440,
+    1191
+   ],
+   "stable": true,
+   "state": "text:940:a52f4033 tr:5 controls:13 message:0",
+   "baselineState": "text:940:a52f4033 tr:5 controls:13 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-reports-detail-zh-red-390.png",
+   "ok": true,
+   "diff": "size 390x1932 vs 390x1952",
+   "size": [
+    390,
+    1952
+   ],
+   "png": [
+    390,
+    1952
+   ],
+   "stable": true,
+   "state": "text:927:581fb481 tr:5 controls:13 message:0",
+   "baselineState": "text:927:581fb481 tr:5 controls:13 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-reports-detail-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1209
+   ],
+   "png": [
+    1440,
+    1209
+   ],
+   "stable": true,
+   "state": "text:1945:3d62beaf tr:5 controls:13 message:0",
+   "baselineState": "text:1945:3d62beaf tr:5 controls:13 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-reports-detail-en-green-390.png",
+   "ok": true,
+   "diff": "size 390x2023 vs 390x2043",
+   "size": [
+    390,
+    2043
+   ],
+   "png": [
+    390,
+    2043
+   ],
+   "stable": true,
+   "state": "text:1900:f38361ca tr:5 controls:13 message:0",
+   "baselineState": "text:1900:f38361ca tr:5 controls:13 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "trade-reports-detail-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1107
+   ],
+   "png": [
+    1440,
+    1107
+   ],
+   "stable": true,
+   "state": "text:889:84f1961c tr:5 controls:13 message:0",
+   "baselineState": "text:889:84f1961c tr:5 controls:13 message:0",
+   "links": [],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "ledger-reports-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1640
+   ],
+   "png": [
+    1440,
+    1640
+   ],
+   "stable": true,
+   "state": "text:1336:683cdee9 tr:27 controls:72 message:0",
+   "baselineState": "text:1336:683cdee9 tr:27 controls:72 message:0",
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "ledger-reports-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    2036
+   ],
+   "png": [
+    390,
+    2036
+   ],
+   "stable": true,
+   "state": "text:1323:52c2ae37 tr:27 controls:72 message:0",
+   "baselineState": "text:1323:52c2ae37 tr:27 controls:72 message:0",
+   "links": [
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "ledger-reports-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1640
+   ],
+   "png": [
+    1440,
+    1640
+   ],
+   "stable": true,
+   "state": "text:2249:9944a751 tr:27 controls:72 message:0",
+   "baselineState": "text:2249:9944a751 tr:27 controls:72 message:0",
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "ledger-reports-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    2076
+   ],
+   "png": [
+    390,
+    2076
+   ],
+   "stable": true,
+   "state": "text:2204:271d286c tr:27 controls:72 message:0",
+   "baselineState": "text:2204:271d286c tr:27 controls:72 message:0",
+   "links": [
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "ledger-reports-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1536
+   ],
+   "png": [
+    1440,
+    1536
+   ],
+   "stable": true,
+   "state": "text:1236:84b62224 tr:27 controls:72 message:0",
+   "baselineState": "text:1236:84b62224 tr:27 controls:72 message:0",
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "ledger-detail-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:690:39da1c0f tr:4 controls:8 message:1",
+   "baselineState": "text:690:39da1c0f tr:4 controls:8 message:1",
+   "links": [
+    [
+     19,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "ledger-detail-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1257
+   ],
+   "png": [
+    390,
+    1257
+   ],
+   "stable": true,
+   "state": "text:677:fe9f5ddd tr:4 controls:8 message:1",
+   "baselineState": "text:677:fe9f5ddd tr:4 controls:8 message:1",
+   "links": [
+    [
+     44,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "ledger-detail-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:1624:144d6e15 tr:4 controls:8 message:1",
+   "baselineState": "text:1624:144d6e15 tr:4 controls:8 message:1",
+   "links": [
+    [
+     19,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "ledger-detail-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1375
+   ],
+   "png": [
+    390,
+    1375
+   ],
+   "stable": true,
+   "state": "text:1579:7d37c39a tr:4 controls:8 message:1",
+   "baselineState": "text:1579:7d37c39a tr:4 controls:8 message:1",
+   "links": [
+    [
+     44,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "ledger-detail-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:590:f46a660a tr:4 controls:8 message:1",
+   "baselineState": "text:590:f46a660a tr:4 controls:8 message:1",
+   "links": [
+    [
+     19,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "period-close-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1565
+   ],
+   "png": [
+    1440,
+    1565
+   ],
+   "stable": true,
+   "state": "text:840:f4917a60 tr:17 controls:17 message:1",
+   "baselineState": "text:840:f4917a60 tr:17 controls:17 message:1",
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "period-close-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    1856
+   ],
+   "png": [
+    390,
+    1856
+   ],
+   "stable": true,
+   "state": "text:827:47666dae tr:17 controls:17 message:1",
+   "baselineState": "text:827:47666dae tr:17 controls:17 message:1",
+   "links": [
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "period-close-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1605
+   ],
+   "png": [
+    1440,
+    1605
+   ],
+   "stable": true,
+   "state": "text:1870:37369715 tr:17 controls:17 message:1",
+   "baselineState": "text:1870:37369715 tr:17 controls:17 message:1",
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "period-close-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    2010
+   ],
+   "png": [
+    390,
+    2010
+   ],
+   "stable": true,
+   "state": "text:1825:2b1d7eda tr:17 controls:17 message:1",
+   "baselineState": "text:1825:2b1d7eda tr:17 controls:17 message:1",
+   "links": [
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ],
+    [
+     44,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   }
+  },
+  {
+   "file": "period-close-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    1481
+   ],
+   "png": [
+    1440,
+    1481
+   ],
+   "stable": true,
+   "state": "text:776:17d50381 tr:17 controls:17 message:1",
+   "baselineState": "text:776:17d50381 tr:17 controls:17 message:1",
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 0,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 1,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "reports-index-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:497:87d30407 tr:5 controls:5 message:0",
+   "baselineState": "text:497:87d30407 tr:5 controls:5 message:0",
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "reports-index-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    905
+   ],
+   "png": [
+    390,
+    905
+   ],
+   "stable": true,
+   "state": "text:484:41ed0079 tr:5 controls:5 message:0",
+   "baselineState": "text:484:41ed0079 tr:5 controls:5 message:0",
+   "links": [
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "reports-index-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:1201:ddc0963e tr:5 controls:5 message:0",
+   "baselineState": "text:1201:ddc0963e tr:5 controls:5 message:0",
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "reports-index-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    945
+   ],
+   "png": [
+    390,
+    945
+   ],
+   "stable": true,
+   "state": "text:1156:52ec7859 tr:5 controls:5 message:0",
+   "baselineState": "text:1156:52ec7859 tr:5 controls:5 message:0",
+   "links": [
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "reports-index-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:452:bdf58e68 tr:5 controls:5 message:0",
+   "baselineState": "text:452:bdf58e68 tr:5 controls:5 message:0",
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "hidden": []
+  },
+  {
+   "file": "reports-trial-zh-red-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:497:87d30407 tr:5 controls:5 message:0",
+   "baselineState": "text:497:87d30407 tr:5 controls:5 message:0",
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "reports-trial-zh-red-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    905
+   ],
+   "png": [
+    390,
+    905
+   ],
+   "stable": true,
+   "state": "text:484:41ed0079 tr:5 controls:5 message:0",
+   "baselineState": "text:484:41ed0079 tr:5 controls:5 message:0",
+   "links": [
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "reports-trial-en-green-1440.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:1201:ddc0963e tr:5 controls:5 message:0",
+   "baselineState": "text:1201:ddc0963e tr:5 controls:5 message:0",
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "reports-trial-en-green-390.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    390,
+    945
+   ],
+   "png": [
+    390,
+    945
+   ],
+   "stable": true,
+   "state": "text:1156:52ec7859 tr:5 controls:5 message:0",
+   "baselineState": "text:1156:52ec7859 tr:5 controls:5 message:0",
+   "links": [
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ],
+    [
+     44,
+     45
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   }
+  },
+  {
+   "file": "reports-trial-zh-red-1440-teaching-off.png",
+   "ok": true,
+   "diff": 0,
+   "size": [
+    1440,
+    900
+   ],
+   "png": [
+    1440,
+    900
+   ],
+   "stable": true,
+   "state": "text:452:bdf58e68 tr:5 controls:5 message:0",
+   "baselineState": "text:452:bdf58e68 tr:5 controls:5 message:0",
+   "links": [
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ],
+    [
+     19,
+     44
+    ]
+   ],
+   "small": [],
+   "teaching": {
+    "tips": 0,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "teachingOn": {
+    "tips": 1,
+    "boundary": 1,
+    "warning": 0,
+    "danger": 0,
+    "alert": 0,
+    "info": 0,
+    "success": 0
+   },
+   "hidden": []
+  }
+ ],
+ "selectors": {
+  ".ai-panel": 1,
+  ".ai-panel textarea": 1,
+  ".ai-panel .explanation": 0,
+  ".checkbox-label": 1,
+  ".intro": 0,
+  ".status-card": 0,
+  ".connected": 0,
+  ".warning": 0,
+  ".error": 0,
+  ".warning h2": 0,
+  ".warning ul": 0,
+  ".warning p": 0,
+  ".data-warning": 0,
+  ".reports > label": 0,
+  ".snapshot-boundary": 0,
+  ".snapshot-identity": 1,
+  ".snapshot-identity code": 1,
+  ".report-card": 0,
+  ".report-card > select": 0,
+  ".report-boundary": 0,
+  ".report-scroll": 0,
+  ".report-totals": 0,
+  ".report-totals dd": 0,
+  ".teaching": 0,
+  ".accounts-scroll": 1,
+  ".accounts-scroll table": 1,
+  ".accounts-scroll th": 6,
+  ".accounts-scroll td": 12,
+  ".accounts-scroll button": 0,
+  ".accounts-scroll button:disabled": 0,
+  ".account-editor": 0,
+  ".account-editor fieldset": 0,
+  ".account-editor input:not([type=\"checkbox\"])": 0,
+  ".dimensions > label": 0,
+  ".dimension-editor fieldset > div": 0,
+  ".dimension-editor textarea": 0,
+  ".journal-actions": 0,
+  ".journal-header": 0,
+  ".journal-editor fieldset": 0,
+  ".journal-editor input": 0,
+  ".journal-header label": 0,
+  ".journal-dimensions label": 0,
+  ".journal-dimensions": 3,
+  ".journal-scroll": 2,
+  ".journal-scroll table": 2,
+  ".journal-row": 14,
+  ".journal-row td": 56,
+  ".journal-row button": 5,
+  ".journal-editor-scroll": 0,
+  ".journal-editor-scroll input": 0,
+  ".journal-dialog": 0
+ }
+}

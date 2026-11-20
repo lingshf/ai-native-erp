@@ -78,3 +78,23 @@
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--color-border);
 }
+
+@media (max-width: 760px), (pointer: coarse) {
+  /* 明细卡片里的“凭证”下钻链接 */
+  .trade-reports .trpt-detail a {
+    display: inline-flex;
+    align-items: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  /* 表格内单号按钮与下钻链接：点击区撑到 44px 高（VirtualRows 行高 44px、上下内边距 0，行高不变） */
+  .trade-reports .journal-row .cell-link {
+    min-height: 44px;
+  }
+  .trade-reports .journal-row td a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    vertical-align: middle;
+  }
+}

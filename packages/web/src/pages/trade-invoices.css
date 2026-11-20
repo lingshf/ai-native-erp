@@ -1,7 +1,7 @@
 /*
  * UI-03 采购与销售发票页：只作用于 .trade-invoices 之内。
  * 通用外观在 components.css（.page-header / .fasttab / .ui-form-grid / .grid / .kpis / .card / .message-bar）；
- * 这里只定操作栏、行表格列宽、事实区与并排表格，以及 components.css 尚未提供的 warning / success 消息条（待 UI-08 提升）。
+ * 这里只定操作栏、行表格列宽、事实区与并排表格（warning / success 消息条已提升到 components.css）。
  */
 .trade-invoices {
   /* 本页所有控件在桌面与窄屏都 ≥ 44px */
@@ -12,18 +12,6 @@
 }
 .trade-invoices .message-bar p {
   margin: 0;
-}
-.trade-invoices .message-bar.warning {
-  color: var(--color-warning);
-  background: var(--color-warning-bg);
-  border-color: var(--color-warning-border);
-  border-left-color: var(--color-warning);
-}
-.trade-invoices .message-bar.success {
-  color: var(--color-success);
-  background: var(--color-success-bg);
-  border-color: var(--color-success-border);
-  border-left-color: var(--color-success);
 }
 
 .trade-invoices .tinv-entry {

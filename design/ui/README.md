@@ -141,7 +141,7 @@
 
 | 组件 | 规则 | 对应现状 |
 | --- | --- | --- |
-| Button | `primary`（每屏 ≤ 1 个）、`secondary`（描边）、`subtle`（文字）、`danger`（描边红，边框用 `--color-danger`；仅不可逆操作的确认）、`sm` 28px 用于行内。禁用态灰底灰字，不只降透明度。变体只经类名启用，页面任务逐页套用，不改全局 `button` 元素默认样式 | 现 138 个 `<button>` 全部实心 |
+| Button | `primary`（每屏 ≤ 1 个；模态对话框（`role="dialog"` + `aria-modal`）单独计数，对话框内主按钮也 ≤ 1，打开期间背后页面的按钮需禁用或 inert，不得与对话框主按钮同时可用；非模态面板、抽屉、FastTab 与页面合并计数）、`secondary`（描边）、`subtle`（文字）、`danger`（描边红，边框用 `--color-danger`；仅不可逆操作的确认）、`sm` 28px 用于行内。禁用态灰底灰字，不只降透明度。变体只经类名启用，页面任务逐页套用，不改全局 `button` 元素默认样式 | 现 138 个 `<button>` 全部实心 |
 | Field | 标签在上（13px 次要色），输入框 36px、4px 圆角、`border-strong`；`hint` 12px；错误时边框变红 + 下方 `error-text` + 字段 `aria-invalid`/`aria-describedby`（已有的保持） | 行内 label |
 | FormGrid | `auto-fill, minmax(200px, 1fr)`：1440 宽约 5 列，平板 2–3 列，窄屏 1 列；长字段 `span-2` | 无 |
 | FastTab | 卡片 + 标题栏（`h3 > button[aria-expanded][aria-controls]`）+ 右侧摘要；默认展开；**含错误时自动展开且不能折叠隐藏错误**（PG-04） | 无 |

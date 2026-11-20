@@ -43,11 +43,14 @@
   background: var(--color-primary-soft);
   font-weight: var(--weight-semibold);
 }
-.message-bar.warning {
-  color: var(--color-warning);
-  background: var(--color-warning-bg);
-  border-color: var(--color-warning-border);
-  border-left-color: var(--color-warning);
+/* UI-08 由 styles.css 迁入：报表页快照身份（Reports.tsx details.snapshot-identity） */
+.snapshot-identity {
+  margin-bottom: var(--space-4);
+}
+.snapshot-identity code {
+  display: block;
+  overflow-wrap: anywhere;
+  margin-top: var(--space-2);
 }
 .ledger-page .snapshot-identity code {
   overflow-wrap: anywhere;
