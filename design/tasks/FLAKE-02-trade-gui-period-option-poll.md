@@ -21,11 +21,11 @@
    - `#close-month` 的选项来自 `PeriodClose.tsx:123–125` 的 `periodOptions`（分页查询；`<option>` 没有 `value` 属性，值取文本）。
 2. **afterAll teardown 超时**（两轮都有）：第 1 轮没有任何 `choose` 或用例失败，也出现了 3 个 suite 超时。因此 teardown 超时**不是** option 失败的伴随现象。具体卡在哪一步（`harness.launching`、`browser.close()`、删除临时目录），日志没有给出。
 3. 尚未在其他 head 或 CI 上见到这两种失败。
-4. **第 3 轮 trace（待验证的观察，不是结论）**：来源 [gist 修订 b81ded7](https://gist.github.com/lingshf/0f2258dbc1805c681fd297e2ca90c117/b81ded7d26659c2fd8e8222410fc0e2898190e93) 的 `r3-trace-timeline.txt`。
+4. **第 2 轮失败 trace 的回读（待验证的观察，不是结论）**：这不是一次新的失败运行，而是 #115 作者在第 3 轮回读了第 2 轮失败时保存的 trace。来源 [gist 修订 b81ded7](https://gist.github.com/lingshf/0f2258dbc1805c681fd297e2ca90c117/b81ded7d26659c2fd8e8222410fc0e2898190e93) 的 `r3-trace-timeline.txt`。
    - `navigate("period-close")` 的最后一步 `page.locator("main h2").waitFor()` 在约 25.70 s 解析，命中的是 `<h2>Runtime status</h2>`。这是 `shell.overview`（`labels.ts:88`），即跳转前那一页的标题，不是期末页的标题。
    - 此后 `#close-month` 的 option 被读取了很多次（timeline 中可见 95 次，协调者转报约 120 次），每次都是空数组，直到失败截图。
    - trace 的 network 部分为 0 字节，看不到 `/periods` 请求的发出与响应时间。
-   - 这些只说明该轮 `navigate()` 可能在期末页渲染前就返回了。为何此后 10 s 内选项一直为空、是否与本轮之前的现象同因，均未验证。
+   - 这些只说明该轮 `navigate()` 可能在期末页渲染前就返回了。为何此后 10 s 内选项一直为空，未验证。
 
 ## 推断（均待验证，不作为结论）
 
@@ -39,7 +39,7 @@
 
 ## 范围
 
-1. **先查已有证据**：失败的用例在 artifacts 中已有 `*-last.png` 和 `*-trace.zip`（`trade-gui-scenario.ts:535–536`，仅失败时保存）。先从第 2 轮的 trace 中查 `#close-month` 在轮询期间的 DOM 变化与 periods 请求时间，再决定要加哪些诊断。teardown 超时没有 trace，需要定向诊断。
+1. **已有证据的边界**：失败的用例会保存 `*-last.png` 和 `*-trace.zip`（`trade-gui-scenario.ts:535–536`，仅失败时保存；tracing 以 `screenshots: false, snapshots: false` 启动，见 `:517`）。第 2 轮的 trace 已经回读（观察 4），它只支持两点：`navigate()` 命中旧页标题，以及 `#close-month` 的 95 次空读取。trace 没有 DOM 快照，network 为空，**不能**从中得到轮询期间的 DOM 变化或 periods 请求时间。这些数据由第 2 项的定向诊断采集。teardown 超时没有 trace，同样由定向诊断采集。
 2. **定向诊断**（只在失败或超时时输出，不改断言和超时）：
    - option：轮询每一次读到的选项列表，`#close-month` 的元素数量与 `disabled` 状态，`main h2` 的文本；periods 查询的请求与响应时间（trace 的 network 为空，需用 `page.on("request" / "response")` 之类的方式另行记录）；
    - teardown：`afterAll` 中每一步的开始与结束时间，以定位卡住的那一步。
