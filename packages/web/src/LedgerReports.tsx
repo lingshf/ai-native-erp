@@ -15,6 +15,8 @@ import { label, type LabelKey, type Preferences } from "./ui/index.ts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
 import { VirtualRows } from "./Journals.tsx";
+import { Badge, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
+import "./pages/ledger.css";
 type T = (key: Exclude<LabelKey, "shell.httpError">) => string;
 const views = ["trial", "income", "balance-sheet", "reconciliation"] as const;
 type View = (typeof views)[number];
@@ -47,33 +49,50 @@ export function LedgerReports({ preferences }: { preferences: Preferences }) {
     [scope],
   );
   return (
-    <section>
-      <h2>{t(location.pathname === "/ledger" ? "ledger.detail" : "ledger.title")}</h2>
-      <p>{t("ledger.live")}</p>
-      <label htmlFor="ledger-company">{t("master.company")}</label>
-      <select
-        id="ledger-company"
-        disabled={conflict !== null}
-        value={company?.code ?? ""}
-        onChange={(event) => setParams({ company: event.target.value })}
-      >
-        {items.map((item) => (
-          <option key={item.code} value={item.code}>
-            {item.code} · {item.name}
-          </option>
-        ))}
-      </select>
-      {companies.hasNextPage && (
-        <button type="button" onClick={() => void companies.fetchNextPage()}>
-          {t("master.loadMore")}
-        </button>
-      )}
+    <section className="page ledger-page">
+      <PageHeader
+        title={t(location.pathname === "/ledger" ? "ledger.detail" : "ledger.title")}
+        description={t("ledger.live")}
+        context={
+          <>
+            <div className="field">
+              <label htmlFor="ledger-company">{t("master.company")}</label>
+              <select
+                id="ledger-company"
+                disabled={conflict !== null}
+                value={company?.code ?? ""}
+                onChange={(event) => setParams({ company: event.target.value })}
+              >
+                {items.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.code} · {item.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {companies.hasNextPage && (
+              <button
+                type="button"
+                className="btn btn-subtle"
+                onClick={() => void companies.fetchNextPage()}
+              >
+                {t("master.loadMore")}
+              </button>
+            )}
+          </>
+        }
+      />
+      <TeachingTip teaching={preferences.teaching} title={t("ledger.teachingTitle")}>
+        {t("ledger.teaching")}
+      </TeachingTip>
       {companies.isPending && <p role="status">{t("master.loading")}</p>}
       {companies.isError && (
         <ErrorBox error={companies.error} retry={() => void companies.refetch()} t={t} />
       )}
       {code && !company && !companies.isPending && !companies.hasNextPage && (
-        <p role="alert">{t("ledger.invalid")}</p>
+        <MessageBar tone="danger" role="alert">
+          {t("ledger.invalid")}
+        </MessageBar>
       )}
       {company && (
         <CompanyReports
@@ -84,13 +103,12 @@ export function LedgerReports({ preferences }: { preferences: Preferences }) {
           setConflict={setConflict}
         />
       )}
-      {preferences.teaching && <p className="teaching">{t("ledger.teaching")}</p>}
     </section>
   );
 }
 function ErrorBox({ error, retry, t }: { error: unknown; retry: () => void; t: T }) {
   return (
-    <p role="alert">
+    <MessageBar tone="danger" role="alert">
       {t("ledger.error")}{" "}
       {error instanceof MasterDataFailure &&
         error.detail?.code === "CONFLICT" &&
@@ -105,10 +123,10 @@ function ErrorBox({ error, retry, t }: { error: unknown; retry: () => void; t: T
             HTTP {error.status} · {error.detail?.code} · {error.detail?.requestId}
           </code>
         ))}{" "}
-      <button type="button" onClick={retry}>
+      <button type="button" className="btn btn-secondary btn-sm" onClick={retry}>
         {t("master.retry")}
       </button>
-    </p>
+    </MessageBar>
   );
 }
 function CompanyReports({
@@ -194,74 +212,93 @@ function CompanyReports({
   const ledger = location.pathname === "/ledger";
   return (
     <>
-      <label htmlFor="ledger-month">{t("ledger.period")}</label>
-      <select
-        id="ledger-month"
-        disabled={ledger && conflict !== null}
-        value={month ?? ""}
-        onChange={(event) => change({ month: event.target.value })}
-      >
-        {months.map((item) => (
-          <option key={item.month}>{item.month}</option>
-        ))}
-      </select>
-      {periods.hasNextPage && (
-        <button type="button" onClick={() => void periods.fetchNextPage()}>
-          {t("master.loadMore")}
-        </button>
-      )}
+      <div className="filter-bar">
+        <div className="field">
+          <label htmlFor="ledger-month">{t("ledger.period")}</label>
+          <select
+            id="ledger-month"
+            disabled={ledger && conflict !== null}
+            value={month ?? ""}
+            onChange={(event) => change({ month: event.target.value })}
+          >
+            {months.map((item) => (
+              <option key={item.month}>{item.month}</option>
+            ))}
+          </select>
+        </div>
+        {periods.hasNextPage && (
+          <button
+            type="button"
+            className="btn btn-subtle"
+            onClick={() => void periods.fetchNextPage()}
+          >
+            {t("master.loadMore")}
+          </button>
+        )}
+        {!ledger && (
+          <>
+            <div className="field">
+              <label htmlFor="ledger-view">{t("ledger.view")}</label>
+              <select
+                id="ledger-view"
+                value={view}
+                onChange={(event) => change({ view: event.target.value, group: "" })}
+              >
+                {views.map((item) => (
+                  <option key={item} value={item}>
+                    {t(`ledger.${item}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="ledger-stage">{t("ledger.stage")}</label>
+              <select
+                id="ledger-stage"
+                value={stage}
+                onChange={(event) => change({ stage: event.target.value })}
+              >
+                {(["unadjusted", "adjusted", "postClosing"] as const).map((item) => (
+                  <option key={item} value={item}>
+                    {t(`ledger.${item}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
+        <div className="actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => {
+              setConflict(null);
+              void client.resetQueries({ queryKey: ["ledger-live", company.code] });
+              void client.invalidateQueries({ queryKey: ["ledger-periods", company.code] });
+              const next = new URLSearchParams(params);
+              next.delete("watermark");
+              next.delete("accountRevision");
+              setParams(next);
+            }}
+          >
+            {t("ledger.refresh")}
+          </button>
+        </div>
+      </div>
       {periods.isError && (
         <ErrorBox error={periods.error} retry={() => void periods.refetch()} t={t} />
       )}
-      {!ledger && (
-        <>
-          <label htmlFor="ledger-view">{t("ledger.view")}</label>
-          <select
-            id="ledger-view"
-            value={view}
-            onChange={(event) => change({ view: event.target.value, group: "" })}
-          >
-            {views.map((item) => (
-              <option key={item} value={item}>
-                {t(`ledger.${item}`)}
-              </option>
-            ))}
-          </select>
-          <label htmlFor="ledger-stage">{t("ledger.stage")}</label>
-          <select
-            id="ledger-stage"
-            value={stage}
-            onChange={(event) => change({ stage: event.target.value })}
-          >
-            {(["unadjusted", "adjusted", "postClosing"] as const).map((item) => (
-              <option key={item} value={item}>
-                {t(`ledger.${item}`)}
-              </option>
-            ))}
-          </select>
-        </>
-      )}
-      <button
-        type="button"
-        onClick={() => {
-          setConflict(null);
-          void client.resetQueries({ queryKey: ["ledger-live", company.code] });
-          void client.invalidateQueries({ queryKey: ["ledger-periods", company.code] });
-          const next = new URLSearchParams(params);
-          next.delete("watermark");
-          next.delete("accountRevision");
-          setParams(next);
-        }}
-      >
-        {t("ledger.refresh")}
-      </button>
       {!periods.isPending && !periods.isFetching && !valid && (
-        <p role="alert">
+        <MessageBar tone="danger" role="alert">
           {t("ledger.invalid")}{" "}
-          <button type="button" onClick={() => setParams({ company: company.code })}>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => setParams({ company: company.code })}
+          >
             {t("reports.reload")}
           </button>
-        </p>
+        </MessageBar>
       )}
       {valid &&
         month &&
@@ -373,132 +410,169 @@ function FinancialReport({
     view === "income" ? row.activity : row.closing;
   const incomeGroup =
     view === "income" ? report.groups.find((row) => row.reportGroup === group) : undefined;
+  const kpis: [string, number, boolean?][] =
+    view === "income"
+      ? [
+          [t("ledger.revenue"), report.income.month.revenue],
+          [t("ledger.expense"), report.income.month.expense],
+          [t("ledger.profit"), report.income.month.profit, true],
+          [`${t("ledger.profit")} · ${t("ledger.year")}`, report.income.ytd.profit],
+        ]
+      : view === "balance-sheet"
+        ? [
+            [t("ledger.assets"), report.balanceSheet.assets, true],
+            [t("ledger.liabilities"), report.balanceSheet.liabilities],
+            [t("ledger.equity"), report.balanceSheet.equity],
+          ]
+        : [
+            [t("journal.debit"), report.trial.debit],
+            [t("journal.credit"), report.trial.credit],
+          ];
+  const summary = `${month} · ${company.currency}`;
+  const accountsTitle = t(view === "income" ? "ledger.incomeAccounts" : "ledger.trial");
   return (
-    <section aria-label={t(`ledger.${view}`)}>
-      <p>
+    <section className="ledger-stack" aria-label={t(`ledger.${view}`)}>
+      <p className="ledger-meta">
         {t("ledger.watermark")}: {report.watermark}
         {" · "}
         {t("ledger.accountRevision")}: {report.accountRevision}
       </p>
-      {view === "reconciliation" && (
-        <p className="report-boundary">{t("ledger.reconciliationScope")}</p>
-      )}
       {view === "reconciliation" ? (
-        <table>
-          <thead>
-            <tr>
-              <th>{t("ledger.reconciliation")}</th>
-              <th>{t("ledger.left")}</th>
-              <th>{t("ledger.right")}</th>
-              <th>{t("ledger.difference")}</th>
-              <th>{t("ledger.result")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {report.reconciliation.checks.map((check) => (
-              <tr key={check.id}>
-                <th>{t(`ledger.check.${check.id}`)}</th>
-                <td>{fmt(check.left)}</td>
-                <td>{fmt(check.right)}</td>
-                <td>{fmt(check.difference)}</td>
-                <td>{t(check.pass ? "ledger.pass" : "ledger.fail")}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <>
+          <MessageBar tone="info">{t("ledger.reconciliationScope")}</MessageBar>
+          <div className="card">
+            <header>
+              <h3>{t("ledger.reconciliation")}</h3>
+              <span className="summary">{summary}</span>
+            </header>
+            <div className="grid-wrap">
+              <table className="grid">
+                <thead>
+                  <tr>
+                    <th>{t("ledger.reconciliation")}</th>
+                    <th className="num">{t("ledger.left")}</th>
+                    <th className="num">{t("ledger.right")}</th>
+                    <th className="num">{t("ledger.difference")}</th>
+                    <th>{t("ledger.result")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.reconciliation.checks.map((check) => (
+                    <tr key={check.id}>
+                      <th scope="row">{t(`ledger.check.${check.id}`)}</th>
+                      <td className="num">{fmt(check.left)}</td>
+                      <td className="num">{fmt(check.right)}</td>
+                      <td className="num">{fmt(check.difference)}</td>
+                      <td>
+                        <Badge tone={check.pass ? "success" : "danger"}>
+                          {t(check.pass ? "ledger.pass" : "ledger.fail")}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       ) : (
         <>
-          {view === "income" && (
-            <p>
-              {t("ledger.revenue")}: {fmt(report.income.month.revenue)} / {t("ledger.expense")}:{" "}
-              {fmt(report.income.month.expense)} / {t("ledger.profit")}:{" "}
-              {fmt(report.income.month.profit)} · {t("ledger.year")}:{" "}
-              {fmt(report.income.ytd.profit)}
-            </p>
-          )}
-          {view === "balance-sheet" && (
-            <p>
-              {t("ledger.assets")}: {fmt(report.balanceSheet.assets)} / {t("ledger.liabilities")}:{" "}
-              {fmt(report.balanceSheet.liabilities)} / {t("ledger.equity")}:{" "}
-              {fmt(report.balanceSheet.equity)}
-            </p>
-          )}
-          {view === "trial" && (
-            <p>
-              {t("journal.debit")}: {fmt(report.trial.debit)} / {t("journal.credit")}:{" "}
-              {fmt(report.trial.credit)}
-            </p>
-          )}
-          <table aria-label={t("ledger.group")}>
-            <thead>
-              <tr>
-                <th>{t("ledger.group")}</th>
-                <th>{t(view === "income" ? "ledger.activity" : "ledger.closing")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.groups
-                .filter((row) =>
-                  view === "income"
-                    ? ["REVENUE", "EXPENSE"].includes(row.category)
-                    : view === "balance-sheet"
-                      ? ["ASSET", "LIABILITY", "EQUITY"].includes(row.category)
-                      : true,
-                )
-                .map((row) => (
-                  <tr key={row.reportGroup}>
-                    <th>{t(`master.report.${row.reportGroup}`)}</th>
-                    <td>
-                      <Link
-                        onClick={() => {
-                          if (group === row.reportGroup) void query.refetch();
-                        }}
-                        to={`/ledger-reports?${pinnedSearch}&view=${view}&group=${row.reportGroup}`}
+          <dl className="kpis">
+            {kpis.map(([name, value, emphasis]) => (
+              <div key={name} className={emphasis ? "kpi emphasis" : "kpi"}>
+                <dt className="label">{name}</dt>
+                <dd className="value">{fmt(value)}</dd>
+              </div>
+            ))}
+          </dl>
+          <div className="card">
+            <header>
+              <h3>{t("ledger.group")}</h3>
+              <span className="summary">{summary}</span>
+            </header>
+            <div className="grid-wrap">
+              <table className="grid" aria-label={t("ledger.group")}>
+                <thead>
+                  <tr>
+                    <th>{t("ledger.group")}</th>
+                    <th className="num">
+                      {t(view === "income" ? "ledger.activity" : "ledger.closing")}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.groups
+                    .filter((row) =>
+                      view === "income"
+                        ? ["REVENUE", "EXPENSE"].includes(row.category)
+                        : view === "balance-sheet"
+                          ? ["ASSET", "LIABILITY", "EQUITY"].includes(row.category)
+                          : true,
+                    )
+                    .map((row) => (
+                      <tr
+                        key={row.reportGroup}
+                        className={row.reportGroup === group ? "selected" : undefined}
                       >
-                        {fmt(groupValue(row))}
+                        <th scope="row">{t(`master.report.${row.reportGroup}`)}</th>
+                        <td className="num">
+                          <Link
+                            onClick={() => {
+                              if (group === row.reportGroup) void query.refetch();
+                            }}
+                            to={`/ledger-reports?${pinnedSearch}&view=${view}&group=${row.reportGroup}`}
+                          >
+                            {fmt(groupValue(row))}
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="card ledger-accounts">
+            <header>
+              <h3>{accountsTitle}</h3>
+              {incomeGroup && (
+                <span className="summary">
+                  {t("ledger.reportActivity")}: {fmt(incomeGroup.activity)}
+                </span>
+              )}
+            </header>
+            <VirtualRows
+              items={selected}
+              title={accountsTitle}
+              header={[
+                t("ledger.account"),
+                ...(view === "income" ? [t("ledger.reportActivity")] : []),
+                t("ledger.opening"),
+                t("ledger.debit"),
+                t("ledger.credit"),
+                t("ledger.closing"),
+              ]}
+              render={(row) => (
+                <>
+                  <th scope="row">
+                    {row.code} · {row.name}
+                    {row.abnormal && ` · ${t("ledger.abnormal")}`}
+                  </th>
+                  {view === "income" && (
+                    <td className="num">
+                      <Link to={toLedger(row.code, true)}>
+                        {fmt(row.category === "REVENUE" ? -row.incomeNet : row.incomeNet)}
                       </Link>
                     </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-          {incomeGroup && (
-            <p>
-              {t("ledger.reportActivity")}: {fmt(incomeGroup.activity)}
-            </p>
-          )}
-          <VirtualRows
-            items={selected}
-            title={t(view === "income" ? "ledger.incomeAccounts" : "ledger.trial")}
-            header={[
-              t("ledger.account"),
-              ...(view === "income" ? [t("ledger.reportActivity")] : []),
-              t("ledger.opening"),
-              t("ledger.debit"),
-              t("ledger.credit"),
-              t("ledger.closing"),
-            ]}
-            render={(row) => (
-              <>
-                <th scope="row">
-                  {row.code} · {row.name}
-                  {row.abnormal && ` · ${t("ledger.abnormal")}`}
-                </th>
-                {view === "income" && (
-                  <td className="amount">
-                    <Link to={toLedger(row.code, true)}>
-                      {fmt(row.category === "REVENUE" ? -row.incomeNet : row.incomeNet)}
-                    </Link>
-                  </td>
-                )}
-                {[row.opening, row.debit, row.credit, row.closing].map((n, index) => (
-                  <td key={["opening", "debit", "credit", "closing"][index]} className="amount">
-                    <Link to={toLedger(row.code)}>{fmt(n)}</Link>
-                  </td>
-                ))}
-              </>
-            )}
-          />
+                  )}
+                  {[row.opening, row.debit, row.credit, row.closing].map((n, index) => (
+                    <td key={["opening", "debit", "credit", "closing"][index]} className="num">
+                      <Link to={toLedger(row.code)}>{fmt(n)}</Link>
+                    </td>
+                  ))}
+                </>
+              )}
+            />
+          </div>
         </>
       )}
     </section>
@@ -573,7 +647,12 @@ function LedgerSnapshot({
     client.setQueryData(ledgerKey(next), { pages: [query.data], pageParams: [""] });
     setParams(next, { replace: true });
   }, [query.data, query.isError, query.isFetching, conflict, scope, client, setParams]);
-  if (conflict) return <p role="alert">{t("ledger.snapshotUnavailable")}</p>;
+  if (conflict)
+    return (
+      <MessageBar tone="danger" role="alert">
+        {t("ledger.snapshotUnavailable")}
+      </MessageBar>
+    );
   if (query.isError)
     return <ErrorBox error={query.error} retry={() => void query.refetch()} t={t} />;
   return <p role="status">{t("master.loading")}</p>;
@@ -632,8 +711,9 @@ function LedgerGrid({
     first = data?.pages[0],
     fmt = (n: number) => formatMinor(n, preferences.language, company.scale);
   return (
-    <>
+    <div className="ledger-stack">
       <form
+        className="filter-bar"
         onSubmit={(event) => {
           event.preventDefault();
           if (conflict) return;
@@ -654,36 +734,50 @@ function LedgerGrid({
           });
         }}
       >
-        <label htmlFor="ledger-account">{t("ledger.account")}</label>
-        <input
-          id="ledger-account"
-          disabled={conflict !== null}
-          value={code}
-          onChange={(event) => setCode(event.target.value)}
-        />
-        <label htmlFor="ledger-dimension">{t("ledger.dimension")}</label>
-        <input
-          id="ledger-dimension"
-          disabled={conflict !== null}
-          value={dimension}
-          onChange={(event) => setDimension(event.target.value)}
-        />
-        <label htmlFor="ledger-value">{t("ledger.value")}</label>
-        <input
-          id="ledger-value"
-          disabled={conflict !== null}
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-        />
-        <button type="submit" disabled={conflict !== null}>
-          {t("ledger.apply")}
-        </button>
+        <div className="field">
+          <label htmlFor="ledger-account">{t("ledger.account")}</label>
+          <input
+            id="ledger-account"
+            disabled={conflict !== null}
+            value={code}
+            onChange={(event) => setCode(event.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="ledger-dimension">{t("ledger.dimension")}</label>
+          <input
+            id="ledger-dimension"
+            disabled={conflict !== null}
+            value={dimension}
+            onChange={(event) => setDimension(event.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="ledger-value">{t("ledger.value")}</label>
+          <input
+            id="ledger-value"
+            disabled={conflict !== null}
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+          />
+        </div>
+        <div className="actions">
+          <button className="btn btn-primary" type="submit" disabled={conflict !== null}>
+            {t("ledger.apply")}
+          </button>
+        </div>
       </form>
-      <p>{t("ledger.snapshot")}</p>
+      <MessageBar tone="info">{t("ledger.snapshot")}</MessageBar>
       {!conflict && (query.isPending || query.isRefetching) && (
-        <p role="status">{t("master.loading")}</p>
+        <p className="ledger-meta" role="status">
+          {t("master.loading")}
+        </p>
       )}
-      {conflict && <p role="alert">{t("ledger.snapshotUnavailable")}</p>}
+      {conflict && (
+        <MessageBar tone="danger" role="alert">
+          {t("ledger.snapshotUnavailable")}
+        </MessageBar>
+      )}
       {!conflict && query.isError && (
         <ErrorBox
           error={query.error}
@@ -692,19 +786,33 @@ function LedgerGrid({
         />
       )}
       {first && (
-        <p>
-          {t("ledger.watermark")}: {first.watermark} · {t("ledger.opening")}: {fmt(first.opening)} /{" "}
-          {t("ledger.debit")}: {fmt(first.debit)} / {t("ledger.credit")}: {fmt(first.credit)} /{" "}
-          {t("ledger.closing")}: {fmt(first.closing)} · {t("ledger.total")}: {first.total}
-        </p>
+        <ul className="ledger-totals">
+          <li>
+            {t("ledger.opening")}: {fmt(first.opening)}
+          </li>
+          <li>
+            {t("ledger.debit")}: {fmt(first.debit)}
+          </li>
+          <li>
+            {t("ledger.credit")}: {fmt(first.credit)}
+          </li>
+          <li className="emphasis">
+            {t("ledger.closing")}: {fmt(first.closing)}
+          </li>
+          <li>
+            {t("ledger.total")}: {first.total}
+          </li>
+          <li>
+            {t("ledger.watermark")}: {first.watermark}
+          </li>
+          <li>
+            {t("ledger.accountRevision")}: {first.accountRevision}
+          </li>
+        </ul>
       )}
-      {first && (
-        <p>
-          {t("ledger.accountRevision")}: {first.accountRevision}
-        </p>
-      )}
-      {first && !rows.length && <p>{t("ledger.empty")}</p>}
+      {first && !rows.length && <p className="empty-state">{t("ledger.empty")}</p>}
       <div
+        className="card ledger-detail"
         onScrollCapture={(event) => {
           const target = event.target;
           if (
@@ -740,9 +848,9 @@ function LedgerGrid({
                   {row.sourceRef} / {row.lineNo}
                 </Link>
               </td>
-              <td className="amount">{fmt(row.debit)}</td>
-              <td className="amount">{fmt(row.credit)}</td>
-              <td className="amount">{fmt(row.balance)}</td>
+              <td className="num">{fmt(row.debit)}</td>
+              <td className="num">{fmt(row.credit)}</td>
+              <td className="num">{fmt(row.balance)}</td>
               <td>
                 {Object.entries(row.dimensions)
                   .map(([key, value]) => `${key}=${value ?? "~"}`)
@@ -753,14 +861,17 @@ function LedgerGrid({
         />
       </div>
       {query.hasNextPage && !query.isError && !conflict && (
-        <button
-          type="button"
-          disabled={query.isFetchingNextPage}
-          onClick={() => void query.fetchNextPage()}
-        >
-          {t("master.loadMore")}
-        </button>
+        <div>
+          <button
+            className="btn btn-secondary"
+            type="button"
+            disabled={query.isFetchingNextPage}
+            onClick={() => void query.fetchNextPage()}
+          >
+            {t("master.loadMore")}
+          </button>
+        </div>
       )}
-    </>
+    </div>
   );
 }

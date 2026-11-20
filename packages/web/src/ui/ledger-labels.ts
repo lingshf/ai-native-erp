@@ -58,6 +58,7 @@ export const ledgerZh = {
   "ledger.refresh": "刷新为最新账簿",
   "ledger.total": "本期行数",
   "ledger.abnormal": "反常余额",
+  "ledger.teachingTitle": "如何阅读总账报表",
   "ledger.teaching":
     "金额为公司本位币；余额借正贷负。按当前科目配置归类，停用不隐藏历史。利润表为本期及日历年累计；资产负债表保留全部历史未结转损益。点击类别金额 → 科目 → 总账行 → 原凭证。",
   "ledger.snapshot":
@@ -125,6 +126,7 @@ export const ledgerEn = {
   "ledger.refresh": "Refresh to latest ledger",
   "ledger.total": "Period rows",
   "ledger.abnormal": "Abnormal balance",
+  "ledger.teachingTitle": "Reading ledger reports",
   "ledger.teaching":
     "Company currency; debit-positive signed balances. Current account configuration classifies all history, including inactive accounts. Income is period and calendar YTD; the balance sheet retains all unclosed historical earnings. Select group amount → account → ledger line → original journal.",
   "ledger.snapshot":
