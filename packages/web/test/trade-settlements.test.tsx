@@ -9,6 +9,7 @@ import {
 import { App } from "../src/App.tsx";
 import { TradeSettlements } from "../src/TradeSettlements.tsx";
 import { label, type LabelKey } from "../src/ui/index.ts";
+import { settlementTeaching } from "../src/ui/trade-settlement-teaching.ts";
 
 const itemId = "00000000-0000-4000-8000-000000000001";
 const company = {
@@ -300,5 +301,25 @@ describe("trade payments and receipts", () => {
     await screen.findByText("INV-1");
     await waitFor(() => expect(card()).toContain("113.00"));
     expect(card()).not.toContain(t("tset.unloaded"));
+  });
+  it("renders the settlement teaching tip only while teaching is on and keeps the boundary visible", async () => {
+    mockApi();
+    render(<App />);
+    await screen.findByText("INV-1");
+    const tip = (language: "zh" | "en") =>
+      screen.queryByText(settlementTeaching(language, label(language, "tset.teaching")));
+    expect(tip("zh")).toBeNull();
+    expect(screen.getByText(t("tset.boundary"))).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(t("shell.showTeachingExplanations")));
+    expect(tip("zh")?.closest("aside")?.getAttribute("aria-label")).toBe(t("master.teachingTitle"));
+    fireEvent.change(screen.getByLabelText(t("shell.language")), { target: { value: "en" } });
+    expect(tip("zh")).toBeNull();
+    expect(tip("en")?.closest("aside")?.getAttribute("aria-label")).toBe(
+      label("en", "master.teachingTitle"),
+    );
+    fireEvent.click(screen.getByLabelText(label("en", "shell.showTeachingExplanations")));
+    expect(tip("en")).toBeNull();
+    expect(screen.getByText(label("en", "tset.boundary"))).toBeTruthy();
+    expect(screen.getByText("INV-1")).toBeTruthy();
   });
 });

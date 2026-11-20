@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { periodCommandSchema, type PeriodDto } from "@erp/core/contracts";
 import { App } from "../src/App.tsx";
 import { label, type LabelKey } from "../src/ui/index.ts";
+import { admissionTeaching } from "../src/ui/trade-admission-teaching.ts";
 const t = (key: Exclude<LabelKey, "shell.httpError">) => label("zh", key);
 const key = "erp.tradePeriod.v1.DEFAULT.2026-01";
 const reply = (value: unknown) => new Response(JSON.stringify(value));
@@ -91,6 +92,22 @@ async function enter() {
     target: { value: "Fictional explicit admission" },
   });
 }
+it("renders the admission teaching tip only while teaching is on and keeps the admission rule visible", async () => {
+  mockApi();
+  render(<App />);
+  await screen.findByLabelText(t("trpt.trade"));
+  const tip = (language: "zh" | "en") => screen.queryByText(admissionTeaching[language].text);
+  expect(tip("zh")).toBeNull();
+  expect(screen.getByText(t("trpt.admissionNote"))).toBeTruthy();
+  fireEvent.click(screen.getByLabelText(t("shell.showTeachingExplanations")));
+  expect(tip("zh")?.closest("aside")?.getAttribute("aria-label")).toBe(admissionTeaching.zh.title);
+  fireEvent.change(screen.getByLabelText(t("shell.language")), { target: { value: "en" } });
+  expect(tip("zh")).toBeNull();
+  expect(tip("en")?.closest("aside")?.getAttribute("aria-label")).toBe(admissionTeaching.en.title);
+  fireEvent.click(screen.getByLabelText(label("en", "shell.showTeachingExplanations")));
+  expect(tip("en")).toBeNull();
+  expect(screen.getByText(label("en", "trpt.admissionNote"))).toBeTruthy();
+});
 it("defaults both new modules off and persists/readbacks the exact explicit confirmation before saving", async () => {
   const { puts } = mockApi();
   render(<App />);

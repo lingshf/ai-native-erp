@@ -12,6 +12,7 @@ import {
   type CompanyDto,
 } from "@erp/core/contracts";
 import { label, type LabelKey, type Preferences } from "./ui/index.ts";
+import { masterTeaching } from "./ui/trade-master-teaching.ts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import "./pages/master.css";
@@ -154,7 +155,7 @@ export function TradeMaster({ preferences }: { preferences: Preferences }) {
         }
       />
       <TeachingTip teaching={preferences.teaching} title={t("master.teachingTitle")}>
-        {t("trade.teaching")}
+        {masterTeaching(preferences.language, t("trade.teaching"))}
       </TeachingTip>
       {companies.isPending && <p role="status">{t("master.loading")}</p>}
       {companies.isError && (
