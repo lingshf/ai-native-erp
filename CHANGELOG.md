@@ -8,9 +8,9 @@
 
 （暂无）
 
-## [0.5.0] - 待定（发布日在发布 PR 中填写）
+## [0.5.0] - 2026-11-20
 
-> 发布候选草稿，未获打 tag 授权。产品代码基线为 `main` 6c8724b（S5 全部合并：#112、#113、#115、#117、#118、#120–#123、#125、#126）；自 v0.4.0（tag 所指提交 b3b3fb7）起共 17 个提交，其余为文档与设计提交（#110、#111、#114、#116、#119、#124）。`packages/` 的变化只在 `packages/web/src`（样式、两处焦点修复、迁移核对页的表格容器）和测试。按 D21，tag `v0.5.0` 打在发布 PR 合并后的 squash 提交上。
+> 产品代码基线为 `main` 6c8724b（S5 全部合并：#112、#113、#115、#117、#118、#120–#123、#125、#126）；自 v0.4.0（tag 所指提交 b3b3fb7）起共 17 个提交，其余为文档与设计提交（#110、#111、#114、#116、#119、#124）。`packages/` 的变化只在 `packages/web/src`（样式、两处焦点修复、迁移核对页的表格容器）和测试。按 D21，tag `v0.5.0` 打在发布 PR 合并后的 squash 提交上。
 
 S5 Sprint：把 `styles.css` 里的全局元素规则逐页改成页面类 / 组件规则，并删除其中已被覆盖的部分；修复订单、凭证、业务事件页的焦点落点时序；为一个偶发的 E2E 失败加诊断。**无新增迁移**（最新仍为 016），无后端 / API / CLI / 日志 / 端口变化，无依赖变化；已升到 v0.4.0 的账套升级无需额外步骤。版本号按 SemVer 取 minor：有少量用户可见改进，无不兼容变化。
 
@@ -234,7 +234,8 @@ M1 贸易里程碑完成（M1-01..07，M1-R 评审通过，无阻塞项）。产
 - 旧快照未配置提示、凭证空列表文案和根 README 迁移版本说明已在 v0.2.0 修复（见 `[0.2.0]`）；v0.1.0 原发布基线不包含这些修复。
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
-[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/lingshf/ai-native-erp/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/lingshf/ai-native-erp/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/lingshf/ai-native-erp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/lingshf/ai-native-erp/compare/v0.1.0...v0.2.0
