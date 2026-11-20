@@ -30,6 +30,15 @@
   table-layout: fixed;
   width: 100%;
 }
+/* S5-i：.grid / VirtualRows 表格的对齐与表头 / 表尾底色，原由 styles.css 全局 th, td / thead, tfoot 提供（值不变）；
+   :where 保持 (0,0,1)，页面与下方组件覆盖（right、none）仍优先。放在 .journal-scroll tfoot 之前，特异度升序 */
+:where(.grid, .journal-scroll) :is(th, td) {
+  text-align: left;
+}
+:where(.grid, .journal-scroll) thead,
+:where(.grid) tfoot {
+  background: var(--color-primary-soft);
+}
 /* S5-f：VirtualRows 合计行底色，原由 styles.css 全局 tfoot 提供（值不变） */
 .journal-scroll tfoot {
   background: var(--color-primary-soft);
@@ -337,6 +346,11 @@
 }
 .fasttab-toggle:hover:not(:disabled) {
   background: var(--color-surface-alt);
+}
+/* S5-i（D116）：原由 styles.css 全局 button:disabled 提供（值不变），(0,2,0) 以盖过上面的 cursor: pointer */
+.fasttab-toggle:disabled {
+  opacity: 0.65;
+  cursor: wait;
 }
 .fasttab-toggle::before {
   content: "";
