@@ -2,30 +2,95 @@ import { useQuery } from "@tanstack/react-query";
 import { migrationStatusSchema } from "@erp/core/contracts";
 import { masterRequest } from "./master-data-client.ts";
 import { label, type Preferences } from "./ui/index.ts";
+import { PageHeader, TeachingTip } from "./ui/components/index.tsx";
+import { migrationDetail } from "./ui/migration-detail-labels.ts";
 import "./theme/components.css";
 import "./pages/migration.css";
+
+type Row = Readonly<Record<string, string | number | null>>;
+// null: the report says the row is absent; undefined: a check row shown without a counterpart.
+type Pair = readonly [Row | null | undefined, Row | null | undefined];
+const integer = /^-?\d+$/;
+const delta = (a: unknown, b: unknown) =>
+  typeof a === "number" && typeof b === "number"
+    ? b - a
+    : typeof a === "string" && typeof b === "string" && integer.test(a) && integer.test(b)
+      ? BigInt(b) - BigInt(a)
+      : undefined;
+const show = (value: unknown) => (value === undefined ? "—" : String(value));
+// Check rows are paired by position only when both sides have the same length (the report sorts both).
+const pairChecks = (expected: Row[], actual: Row[]): Pair[] =>
+  expected.length === actual.length
+    ? expected.map((row, index) => [row, actual[index]])
+    : [
+        ...expected.map((row) => [row, undefined] as const),
+        ...actual.map((row) => [undefined, row] as const),
+      ];
 
 export function Migration({ preferences }: { preferences: Preferences }) {
   const t = (key: Exclude<Parameters<typeof label>[1], "shell.httpError">) =>
     label(preferences.language, key);
+  const d = migrationDetail[preferences.language];
   const query = useQuery({
     queryKey: ["migration"],
     queryFn: ({ signal }) => masterRequest("/api/v1/migration", migrationStatusSchema, { signal }),
   });
   const run = query.data?.run;
   const report = run?.report;
-  const compare = (expected: unknown, actual: unknown) => (
+  const compare = (expected: unknown, actual: unknown, pairs: Pair[]) => (
     <>
-      <h4>{t("migration.expected")}</h4>
-      <pre>{JSON.stringify(expected, null, 2)}</pre>
-      <h4>{t("migration.actual")}</h4>
-      <pre>{JSON.stringify(actual, null, 2)}</pre>
+      {pairs.length > 0 && (
+        <table className="kv">
+          <thead>
+            <tr>
+              <th>{d.field}</th>
+              <th>{t("migration.expected")}</th>
+              <th>{t("migration.actual")}</th>
+              <th>{t("ledger.difference")}</th>
+            </tr>
+          </thead>
+          {pairs.map(([left, right], index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: rows of one immutable report, never reordered
+            <tbody key={index}>
+              {[...new Set([...Object.keys(left ?? {}), ...Object.keys(right ?? {})])].map(
+                (field) => {
+                  const a = left?.[field],
+                    b = right?.[field],
+                    change = delta(a, b),
+                    off = a !== b && left !== undefined && right !== undefined;
+                  return (
+                    <tr key={field} data-mismatch={off || undefined}>
+                      <th scope="row">
+                        {field} {off && <strong className="mismatch">{d.mismatch}</strong>}
+                      </th>
+                      <td>{show(a)}</td>
+                      <td>{show(b)}</td>
+                      <td>
+                        {change === undefined ? "—" : change > 0 ? `+${change}` : `${change}`}
+                      </td>
+                    </tr>
+                  );
+                },
+              )}
+            </tbody>
+          ))}
+        </table>
+      )}
+      <details>
+        <summary>{d.raw}</summary>
+        <h4>{t("migration.expected")}</h4>
+        <pre>{JSON.stringify(expected, null, 2)}</pre>
+        <h4>{t("migration.actual")}</h4>
+        <pre>{JSON.stringify(actual, null, 2)}</pre>
+      </details>
     </>
   );
   return (
-    <section aria-labelledby="migration-title" className="migration-page">
-      <h2 id="migration-title">{t("migration.title")}</h2>
-      <p>{t("migration.readonly")}</p>
+    <section aria-label={t("migration.title")} className="migration-page">
+      <PageHeader title={t("migration.title")} description={t("migration.readonly")} />
+      <TeachingTip teaching={preferences.teaching} title={t("shell.teachingTitle")}>
+        {d.teaching}
+      </TeachingTip>
       {query.isPending && <p role="status">{t("master.loading")}</p>}
       {query.isError && (
         <p role="alert" className="message-bar danger">
@@ -73,7 +138,9 @@ export function Migration({ preferences }: { preferences: Preferences }) {
                   <summary>
                     {t("migration.difference")} · {difference.section} · {difference.key}
                   </summary>
-                  {compare(difference.expected, difference.actual)}
+                  {compare(difference.expected, difference.actual, [
+                    [difference.expected, difference.actual],
+                  ])}
                 </details>
               ))}
               <div className="card">
@@ -99,7 +166,11 @@ export function Migration({ preferences }: { preferences: Preferences }) {
                 {report.checks.map((check) => (
                   <details key={check.section}>
                     <summary>{check.section}</summary>
-                    {compare(check.expected, check.actual)}
+                    {compare(
+                      check.expected,
+                      check.actual,
+                      pairChecks(check.expected, check.actual),
+                    )}
                   </details>
                 ))}
               </div>
