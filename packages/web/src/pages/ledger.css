@@ -56,6 +56,20 @@
   overflow-wrap: anywhere;
 }
 
+/* S5-e：替代 styles.css 全局 caption、th, td 的同值类规则（text-align 归 S5-i 组件规则）；
+   :where() 特异性为 0，.grid / VirtualRows 与本页的覆盖照旧生效。
+   实际取值的是试算与明细账的 visually-hidden caption，以及明细 VirtualRows 的占位行 td。 */
+:where(.ledger-page caption) {
+  text-align: left;
+  font-weight: var(--weight-semibold);
+  padding: var(--space-3);
+}
+:where(.ledger-page :is(th, td)) {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+  min-width: 96px;
+}
 .ledger-page thead,
 .ledger-page tfoot {
   background: none;

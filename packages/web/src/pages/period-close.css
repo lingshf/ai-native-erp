@@ -71,6 +71,14 @@
   background: var(--color-primary-soft);
   font-weight: var(--weight-semibold);
 }
+/* S5-e：替代 styles.css 全局 th, td 的同值类规则（text-align 归 S5-i 组件规则）；:where() 特异性为 0，
+   .card > .journal-scroll th、.card .journal-row td 的覆盖照旧生效，只剩超过 100 行时 VirtualRows 占位行 td 取这里的值 */
+:where(.period-close > fieldset .journal-scroll :is(th, td)) {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+  min-width: 96px;
+}
 .period-close > fieldset .journal-scroll :is(th, td):nth-child(n + 2) {
   text-align: right;
   font-variant-numeric: tabular-nums;
