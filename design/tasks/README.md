@@ -277,20 +277,21 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- |
-| [S5-a](S5-a-journals-global-rules.md) | 凭证 / 业务事件：无类 `legend`（含凭证草稿与暂记户）、凭证预览合计行 `td` 的 `min-width` / `border-bottom`、`select`（含 `max-width`、`jv-status`）、按钮、VirtualRows 表头、复选框改为类规则，补采编辑 / 清账 / 预览状态 | 页面 tsx + CSS | S5-b（C 线前序） | web-ui:journals | in-review | [#118](https://github.com/lingshf/ai-native-erp/pull/118) |
+| [S5-a](S5-a-journals-global-rules.md) | 凭证 / 业务事件：无类 `legend`（含凭证草稿与暂记户）、凭证预览合计行 `td` 的 `min-width` / `border-bottom`、`select`（含 `max-width`、`jv-status`）、按钮、VirtualRows 表头、复选框改为类规则，补采编辑 / 清账 / 预览状态 | 页面 tsx + CSS | S5-b（C 线前序） | web-ui:journals | done | [#118](https://github.com/lingshf/ai-native-erp/pull/118) |
 | [S5-b](S5-b-migration-global-rules.md) | 迁移核对页：`dl` / `dt` / `dd` / `thead` 改为类规则；`.kv` 表进独立滚动区 | CSS（必要时 tsx） | — | web-ui:migration | done | [#112](https://github.com/lingshf/ai-native-erp/pull/112) |
 | [S5-c](S5-c-trade-global-rules.md) | 贸易页面：复选框、`.tinv-facts` / `.trpt-facts`、`cell-link` 圆角、`caption` | CSS | — | web-ui:trade | done | [#113](https://github.com/lingshf/ai-native-erp/pull/113) |
-| [S5-d](S5-d-trade-orders-global-rules.md) | 订单录入页：复选框、`.tord-facts` | CSS | S5-h（同冲突域） | web-ui:trade-orders | todo | — |
+| [S5-d](S5-d-trade-orders-global-rules.md) | 订单录入页：复选框、`.tord-facts` | CSS | S5-h（同冲突域） | web-ui:trade-orders | done | [#120](https://github.com/lingshf/ai-native-erp/pull/120) |
 | [S5-e](S5-e-ledger-period-master-global-rules.md) | 总账报表 / 期末 / 科目表：`caption`、明细 `th, td`（不含对齐，归 S5-i）、tfoot | CSS | S5-i（A 线前序） | web-ui:ledger, web-ui:period-close, web-ui:master | todo | — |
-| [S5-f](S5-f-shell-components-global-rules.md) | 外壳 / 共享组件：偏好区 `legend` / `select` / 复选框、概览 `dd`、`.ui-field` 与 `.field` 的 `select`、VirtualRows tfoot | CSS | S5-c（同改 `components.css`） | web-ui:shell（不含 `styles.css`）, web-ui:components | in-review | [#115](https://github.com/lingshf/ai-native-erp/pull/115) |
-| [S5-i](S5-i-grid-table-component-rules.md) | 共享表格：`.grid` / `.journal-scroll` 的 `td` 对齐、`thead` 底色与 `.grid tfoot` 底色改为组件规则（#113 报告的缺口；`select` 的 `max-width` 已由 #115 覆盖）；`.fasttab-toggle:disabled` 的 opacity / cursor（D116） | CSS | S5-f、S5-c（同改 `components.css`） | web-ui:components | todo | — |
+| [S5-f](S5-f-shell-components-global-rules.md) | 外壳 / 共享组件：偏好区 `legend` / `select` / 复选框、概览 `dd`、`.ui-field` 与 `.field` 的 `select`、VirtualRows tfoot | CSS | S5-c（同改 `components.css`） | web-ui:shell（不含 `styles.css`）, web-ui:components | done | [#115](https://github.com/lingshf/ai-native-erp/pull/115) |
+| [S5-i](S5-i-grid-table-component-rules.md) | 共享表格：`.grid` / `.journal-scroll` 的 `td` 对齐、`thead` 底色与 `.grid tfoot` 底色改为组件规则（#113 报告的缺口；`select` 的 `max-width` 已由 #115 覆盖）；`.fasttab-toggle:disabled` 的 opacity / cursor（D116） | CSS | S5-f、S5-c（同改 `components.css`） | web-ui:components | done | [#122](https://github.com/lingshf/ai-native-erp/pull/122) |
 | [S5-g](S5-g-delete-global-element-rules.md) | 删除 `styles.css` 剩余全局元素规则（D-7 收尾，含 44px 基线的两道检查；文件清空时删除 `main.tsx:5` 的 import） | CSS + 入口 import 一行 | S5-a..f、S5-i 全部（外壳串行最后） | web-ui:shell | todo | — |
 | [S5-h](S5-h-trade-orders-focus-race.md) | 订单录入页保存后焦点断言偶发失败：先复现、核对真实 Chrome，再修复（D92，原因待证实） | 测试 / 页面 tsx | S5-c（B 线前序） | web-ui:trade-orders | done | [#117](https://github.com/lingshf/ai-native-erp/pull/117) |
-| [FLAKE-02](FLAKE-02-trade-gui-period-option-poll.md) | 贸易 GUI E2E：期末月份下拉选项轮询偶发为空；afterAll teardown 超时（两项分别记录，原因均未知）；已有 trace 只含旧标题与空读取，其余由定向诊断采集（排队，不计入 S5 目标） | 调查 / 测试 | —（与 S5-h 无文件重叠，可并行；共同原因则由设计角色决定合并） | tests:e2e | todo | — |
-| [FOCUS-01](FOCUS-01-journals-events-passive-focus.md) | 凭证 / 业务事件：7 处在被动 effect 中设置焦点，可能晚一帧；逐处以同一真实交互的真实 Chrome base / head 证据判定（jsdom 注入仅作辅助），只修已复现的（排队，不计入 S5 目标） | 调查 / 页面 tsx / 测试 | **S5-a 合并后**（同冲突域，不能并行）；参考 S5-h #117 | web-ui:journals | todo | — |
+| [FLAKE-02](FLAKE-02-trade-gui-period-option-poll.md) | 贸易 GUI E2E：期末月份下拉选项轮询偶发为空；afterAll teardown 超时（两项分别记录，原因均未知）；已有 trace 只含旧标题与空读取，其余由定向诊断采集（排队，不计入 S5 目标） | 调查 / 测试 | —（与 S5-h 无文件重叠，可并行；共同原因则由设计角色决定合并） | tests:e2e | in-review | [#121](https://github.com/lingshf/ai-native-erp/pull/121) |
+| [FOCUS-01](FOCUS-01-journals-events-passive-focus.md) | 凭证 / 业务事件：7 处在被动 effect 中设置焦点，可能晚一帧；逐处以同一真实交互的真实 Chrome base / head 证据判定（jsdom 注入仅作辅助），只修已复现的（排队，不计入 S5 目标） | 调查 / 页面 tsx / 测试 | **S5-a 合并后**（同冲突域，不能并行）；参考 S5-h #117 | web-ui:journals | in-progress | — |
+| [UI-11a](UI-11a-business-queue-actions-column.md) | 业务事件“待转队列”操作列按钮截成“…”、`<td>` 拦截点击（FOCUS-01 取证发现，base `045fa59` 已存在）；1440 / 390 完整显示、可点击、这三个按钮命中区 ≥ 44 × 44（S5 收尾后 backlog，不计入 S5 目标） | 页面 CSS（必要时 tsx） | FOCUS-01（同冲突域）、S5-g | web-ui:journals | todo | — |
 | [PROC-02](PROC-02-release-rc-and-demo-checks.md) | 发布流程：RC 断言范围与 API / GUI 分条；Demo 截图状态断言与进程归属（版本管理） | 文档 | — | docs/release | done | [#111](https://github.com/lingshf/ai-native-erp/pull/111) |
 
-**S5 共同验收**（S5-a..g、S5-i；S5-h、PROC-02、FLAKE-02、FOCUS-01 见各自文件）：
+**S5 共同验收**（S5-a..g、S5-i；S5-h、PROC-02、FLAKE-02、FOCUS-01、UI-11a 见各自文件）：
 1. 满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9，PG-05 口径同 S4（基线为 PR 实际 base 的 gzip 列）。S5-a..f、S5-i 的 CSS 合计 gzip ≤ +0.3 kB（声明先复制到页面，S5-g 再删除全局规则）。
 2. **只改本任务冲突域，不改 `styles.css`**（S5-g 除外）。在页面或组件 CSS 中用类规则给出与现值相同的声明，需要类名时再改 `.tsx`。
 3. **计算值证据**：复用 UI-09g 的 `rules-probe.mjs`（#106 证据 gist，作为临时文件使用，不提交）。在一个**只用于取证、不提交**的构建中删去本任务涉及的全局声明，证明本任务页面在全部采集点上计算值“变”为 0；采集点含本页导航路由、两主题、1440 / 390，以及任务文件列出的补采状态。证据表格式同 [UI-1.md §5.1](../reviews/UI-1.md)。
