@@ -52,6 +52,9 @@ export const zh = {
   "shell.teachingNote":
     "状态由同源的只读 health 接口实时返回。连接成功并不代表目标业务账套已配置。",
   "shell.compatible": "与本工作区兼容",
+  "shell.uiLoading": "正在加载界面组件…",
+  "shell.uiFailed": "界面组件加载失败，当前为简化显示；运行状态与重试仍可用。",
+  "shell.uiReload": "重新加载页面",
   "shell.networkError": "无法连接本地 API。请检查服务后重试。",
   "shell.invalidResponse": "本地 API 返回了不符合契约的响应。未确认连接状态。",
   "shell.httpError": "本地 API 请求失败（HTTP {status}）。请检查服务后重试。",
@@ -108,6 +111,10 @@ export const en = {
   "shell.teachingNote":
     "Status is returned live by the same-origin, read-only health endpoint. A successful connection does not mean the target business ledger is configured.",
   "shell.compatible": "Compatible with this workspace",
+  "shell.uiLoading": "Loading interface components…",
+  "shell.uiFailed":
+    "Interface components failed to load; showing a simplified view. Status and retry still work.",
+  "shell.uiReload": "Reload page",
   "shell.networkError": "Cannot connect to the local API. Check the service and retry.",
   "shell.invalidResponse":
     "The local API returned a response that does not match the contract. Connection status is unconfirmed.",

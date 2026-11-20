@@ -53,3 +53,44 @@
   flex-wrap: wrap;
   gap: var(--space-3);
 }
+
+/* 共享组件 chunk 到达前：最终 DOM 已就位但透明且不可操作，只显示加载提示，到达后不再位移 */
+.overview-page {
+  position: relative;
+}
+.overview-pending > :not(.overview-pending-note) {
+  opacity: 0;
+  pointer-events: none;
+}
+.overview-pending-note {
+  position: absolute;
+  inset: 0 auto auto 0;
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+/* 共享组件加载失败：简化显示，控件仍 ≥ --control-h（窄屏 / 粗指针 44px） */
+.overview-ui-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-danger);
+  border-left-width: 4px;
+  border-radius: var(--radius-sm);
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+.overview-ui-error p {
+  flex: 1 1 16rem;
+  margin: 0;
+}
+.overview-degraded > * + * {
+  margin-top: var(--space-4);
+}
+.overview-degraded button {
+  min-height: var(--control-h);
+  padding: 0 var(--space-4);
+  font: inherit;
+}

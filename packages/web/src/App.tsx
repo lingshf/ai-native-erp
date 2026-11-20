@@ -378,8 +378,10 @@ type SharedUi = {
   TeachingTip: typeof TeachingTip;
 };
 // The shared components stay in their own chunk (D39): a static import here would fold them and
-// components.css into the entry. Overview renders the same text, roles and order at once and
-// swaps in the shared components when that chunk arrives.
+// components.css into the entry. Until that chunk arrives Overview keeps its final DOM in place
+// but transparent and inert (only the loading text inside the stable status region), so nothing
+// becomes operable before the final layout. If the chunk fails, the same content is shown with
+// these plain stand-ins and a visible reload notice.
 const plainUi: SharedUi = {
   Badge: ({ children }) => <span>{children}</span>,
   MessageBar: ({ children }) => <div>{children}</div>,
@@ -398,29 +400,60 @@ const plainUi: SharedUi = {
     ) : null,
 };
 
-function useSharedUi() {
-  const [ui, setUi] = useState(plainUi);
+type SharedUiState = "pending" | "ready" | "failed";
+let loadedUi: SharedUi | undefined;
+
+function useSharedUi(): [SharedUiState, SharedUi] {
+  const [state, setState] = useState<SharedUiState>(loadedUi ? "ready" : "pending");
   useEffect(() => {
+    if (loadedUi) return;
     let active = true;
-    void import("./ui/components/index.tsx").then((module) => {
-      if (active) setUi(module);
-    });
+    // Awaited as a whole: Vite wraps this import() with a CSS preload whose failure would
+    // otherwise escape a .then() chained onto the bare import().
+    const load = async () => {
+      try {
+        const module = await import("./ui/components/index.tsx");
+        loadedUi = module;
+        if (active) setState("ready");
+      } catch {
+        if (active) setState("failed");
+      }
+    };
+    void load();
     return () => {
       active = false;
     };
   }, []);
-  return ui;
+  return [state, state === "ready" && loadedUi ? loadedUi : plainUi];
 }
 
 function Overview({ preferences }: { preferences: Preferences }) {
   const [attempt, setAttempt] = useState(0);
-  const health = useHealth(attempt);
-  const { Badge, MessageBar, PageHeader, TeachingTip } = useSharedUi();
+  const loaded = useHealth(attempt);
+  const [uiState, { Badge, MessageBar, PageHeader, TeachingTip }] = useSharedUi();
+  const pending = uiState === "pending";
+  const health: typeof loaded = pending ? { kind: "loading" } : loaded;
   const language = preferences.language;
   const t = (key: Exclude<LabelKey, "shell.httpError">) => label(language, key);
   const configured = health.kind === "ready" && health.health.data === "configured";
   return (
-    <div className="page overview-page">
+    <div
+      className={`page overview-page${pending ? " overview-pending" : ""}${uiState === "failed" ? " overview-degraded" : ""}`}
+      aria-busy={pending || undefined}
+    >
+      {pending && (
+        <p className="overview-pending-note" aria-hidden="true">
+          {t("shell.uiLoading")}
+        </p>
+      )}
+      {uiState === "failed" && (
+        <div className="overview-ui-error" role="alert">
+          <p>{t("shell.uiFailed")}</p>
+          <button type="button" onClick={() => window.location.reload()}>
+            {t("shell.uiReload")}
+          </button>
+        </div>
+      )}
       <PageHeader title={t("shell.overview")} description={t("shell.intro")} />
       <TeachingTip teaching={preferences.teaching} title={t("shell.teachingTitle")}>
         {t("shell.teachingNote")}
