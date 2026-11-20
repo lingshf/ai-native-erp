@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, expect, test } from "vitest";
+import { type ExpectStatic, afterAll, beforeAll, expect, test } from "vitest";
 import { chromium, type Browser, type BrowserContext, type Locator, type Page } from "playwright";
 import { build } from "vite";
 import { MasterDataService } from "@erp/core/application";
@@ -75,8 +75,9 @@ async function type(page: Page, target: Locator, text: string) {
   await page.keyboard.insertText(text);
   await page.keyboard.press("Tab");
 }
-async function choose(page: Page, target: Locator, value: string) {
-  await expect
+// Concurrent tests pass their own `expect`: expect.poll needs the current test.
+async function choose(page: Page, target: Locator, value: string, check: ExpectStatic = expect) {
+  await check
     .poll(
       () =>
         target
@@ -92,7 +93,7 @@ async function choose(page: Page, target: Locator, value: string) {
         options.findIndex((option) => (option as HTMLOptionElement).value === value),
       value,
     );
-  expect(index).toBeGreaterThanOrEqual(0);
+  check(index).toBeGreaterThanOrEqual(0);
   await tabTo(page, target);
   await page.keyboard.press("Home");
   for (let i = 0; i < index; i++) await page.keyboard.press("ArrowDown");
@@ -1050,9 +1051,11 @@ export function tradeGuiSmoke(combinations: readonly (readonly ["zh" | "en", "re
     await closeAll(undefined, servers);
   });
 
+  // Combinations are independent (own context, read-only browsing), so they run concurrently.
   for (const [language, theme] of combinations)
-    test(`real trade GUI smoke: ${language}/${theme}, every trade page loads translated with lang and data-theme`, async ({
+    test.concurrent(`real trade GUI smoke: ${language}/${theme}, every trade page loads translated with lang and data-theme`, async ({
       onTestFinished,
+      expect,
     }) => {
       const name = `smoke-${language}-${theme}`;
       let context: BrowserContext | undefined;
@@ -1078,8 +1081,8 @@ export function tradeGuiSmoke(combinations: readonly (readonly ["zh" | "en", "re
       let failed = true;
       try {
         await page.goto(address);
-        await choose(page, page.locator("#workspace-language"), language);
-        await choose(page, page.locator("#workspace-theme"), theme);
+        await choose(page, page.locator("#workspace-language"), language, expect);
+        await choose(page, page.locator("#workspace-theme"), theme, expect);
         for (const [path, title] of tradePages) {
           await page.goto(`${address}#/${path}`);
           await page.waitForURL((url) => url.hash === `#/${path}`);
