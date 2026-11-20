@@ -8,9 +8,9 @@
 
 （暂无）
 
-## [0.4.0] - 待定（发布候选，发布时填日期）
+## [0.4.0] - 2026-11-20
 
-> **发布候选**：基于 `main` 662a763（S4 全部合并：#86–#104、#106）。不打 tag、不发 Release，须协调者授权。按 D21，tag 将打在本发布 PR 合并后的 squash 提交上。
+> S4 Sprint 发布，已获协调者授权（D102）。产品代码基线为 `main` 662a763（S4 全部合并：#86–#104、#106）；之后 main 只增加了文档与设计提交（#105、#107、#108），`packages/` 与 662a763 相同。按 D21，tag `v0.4.0` 打在本日期 PR 合并后的 squash 提交上。
 
 S4 Sprint：补上非库存订单录入页，完善教学提示与未结项筛选，并统一各页的控件高度、徽标与表格细节。产品代码变化只在 `packages/web`（界面、文案、样式）与测试；**无新增迁移**（最新仍为 016），无后端 / CLI / 日志 / 端口变化；已升到 v0.3.0（迁移 016）的账套升级无需额外步骤。
 
@@ -190,7 +190,8 @@ M1 贸易里程碑完成（M1-01..07，M1-R 评审通过，无阻塞项）。产
 - 旧快照未配置提示、凭证空列表文案和根 README 迁移版本说明已在 v0.2.0 修复（见 `[0.2.0]`）；v0.1.0 原发布基线不包含这些修复。
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
-[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/lingshf/ai-native-erp/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/lingshf/ai-native-erp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/lingshf/ai-native-erp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/lingshf/ai-native-erp/releases/tag/v0.1.0
