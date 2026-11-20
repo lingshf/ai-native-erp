@@ -38,7 +38,7 @@
 
 正确写法示例（行号为 main `28f9de8` 时的位置，写发布说明时按当时的 SHA 重新核对）：
 
-- 44px：`packages/web/src/styles.css:8-11` 的 `button, select { min-height: 44px }` 是**未被其他样式覆盖**的 `button` / `select` 的最小高度基线；被覆盖的有分段按钮（`packages/web/src/theme/components.css:364`，`calc(var(--control-h) - 6px)`）。
+- 44px：（写于 main `28f9de8`；**#126 已删除该全局规则**，此处仅作“范围 + 例外 + 行号”写法示例，不再描述当前代码）`packages/web/src/styles.css:8-11` 的 `button, select { min-height: 44px }` 当时是**未被其他样式覆盖**的 `button` / `select` 的最小高度基线；被覆盖的有分段按钮（`packages/web/src/theme/components.css:364`，`calc(var(--control-h) - 6px)`）。
 - 36px：`--control-h` 在桌面为 36px（`packages/web/src/theme/tokens.css:51`），只适用于 #92 / #97 / #98 所列页面的控件；窄屏或粗指针下为 44px（`packages/web/src/theme/shell.css:133`，粗指针未做真机实测）。
 
 ## 面向调用方与面向界面的变化分条写
