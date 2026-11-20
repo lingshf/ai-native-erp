@@ -55,6 +55,10 @@ describe("M01 read-only health shell", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/health", { signal: expect.any(AbortSignal) });
     expect(screen.queryByRole("button")).toBeNull();
+    expect(
+      screen.getAllByRole("heading", { level: 1, name: label("zh", "shell.title") }),
+    ).toHaveLength(1);
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(document.title).toBe(label("zh", "shell.documentTitle"));
     expect(document.documentElement.lang).toBe("zh");
   });
