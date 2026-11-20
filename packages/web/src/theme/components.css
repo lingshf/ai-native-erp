@@ -10,6 +10,13 @@
   max-height: 480px;
   overflow: auto;
   margin-block: var(--space-2);
+  /* F2：右侧还有未显示的列时右缘出现渐隐；第一层随内容滚动（local），滚到最右时盖住第二层（scroll，固定在可视右缘）。
+     上下各让出卡片圆角（--radius-md），不在 .card 圆角裁剪处叠画背景，不滚动的表格像素不变。 */
+  background:
+    linear-gradient(to left, var(--color-surface) 50%, transparent) right center / 24px
+    calc(100% - 2 * var(--radius-md)) no-repeat local,
+    linear-gradient(to left, color-mix(in srgb, var(--color-text) 18%, transparent), transparent)
+    right center / 12px calc(100% - 2 * var(--radius-md)) no-repeat scroll;
 }
 .journal-scroll table {
   border-collapse: separate;
@@ -98,6 +105,17 @@
   border-color: var(--color-border);
   color: var(--color-text-disabled);
   cursor: not-allowed;
+}
+/* F3：subtle 禁用时外形与可用态一致（无框、无底），只把文字降为禁用色 */
+.btn-subtle:disabled {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* D-8：消息条段落不带浏览器默认外边距（原先在 5 个页面 CSS 中各写一份，副本由 UI-09c/d/f 删除）。
+   放在页头等 (0,2,1) 规则之前，保持选择器特异性递增。 */
+.message-bar p {
+  margin: 0;
 }
 
 /* ---------- 页头 ---------- */
@@ -364,10 +382,12 @@
 .segmented button:active:not(:disabled) {
   background: var(--color-surface-alt);
 }
+/* F10：浅主色底 + 主色字 + 2px 主色内边框（非颜色提示）；同屏实心主色只留给主按钮。焦点框在外侧（offset 2px），两者可同时看见 */
 .segmented button[aria-pressed="true"],
 .segmented button[aria-pressed="true"]:hover:not(:disabled) {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  box-shadow: inset 0 0 0 2px var(--color-primary);
 }
 .segmented button:disabled {
   opacity: 1;
@@ -377,6 +397,7 @@
 .segmented button[aria-pressed="true"]:disabled {
   background: var(--color-surface-alt);
   color: var(--color-text-muted);
+  box-shadow: none;
 }
 
 /* ---------- KPI ---------- */
