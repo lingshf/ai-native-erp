@@ -20,7 +20,7 @@ export const tradeOrderEn = {
   "tord.roundingDocument": "Per document",
   "tord.codeHint": "Codes use upper-case letters, digits and _ . : -",
   "tord.lines": "Order lines",
-  "tord.lineCount": "{count} lines (at most 100)",
+  "tord.lineCount": "Lines: {count} (at most 100)",
   "tord.lineId": "Line",
   "tord.lineNo": "#",
   "tord.product": "Product",
