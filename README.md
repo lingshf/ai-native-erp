@@ -165,26 +165,11 @@ npm run start:local
 | 非库存商品 `EXPENSE` | expense、费用 `5000`、允许税码 `VAT` |
 | 非库存商品 `SERVICE` | service、收入 `4000`、允许税码 `VAT` |
 
-**订单目前只有 API，没有订单录入 GUI**。在第二个 PowerShell 窗口显式创建采购订单（与浏览器使用同一新临时实例）；之后的发票匹配及财务主路径全部在 GUI 完成：
-
-```powershell
-$origin = "http://127.0.0.1:4187"
-$today = Get-Date -Format "yyyy-MM-dd"
-$po = @{
-  company="DEFAULT"; orderId="PO-DEMO"; side="AP"; party="PARTY"; currency="CNY"
-  orderDate=$today; priceIncludesTax=$false; rounding="line"
-  lines=@(@{
-    lineId="OL1"; product="EXPENSE"; taxCode="VAT"; quantity="10"
-    unitPrice="10"; discountPercent="0"; taxableCharge="0"
-  })
-} | ConvertTo-Json -Depth 5
-Invoke-RestMethod "$origin/api/v1/trade/orders" -Method Post `
-  -Headers @{Origin=$origin} -ContentType "application/json" -Body $po
-```
+在「采购 / 销售订单」页录入采购订单（M1-R1a，v0.3.0 之后的 main；v0.3.0 及更早只有 API）：订单号 `PO-DEMO`、子账保持 AP、伙伴 `PARTY`、订单日期保持默认（当天）；行 `L1`（行号由页面自动编号，不可编辑）：商品 `EXPENSE`、税码 `VAT`、数量 `10`、单价 `10`，折扣保持 `0`。点「保存订单」，页面只显示服务端返回的净额 **100.00**、税 **13.00**、价税合计 **113.00**，不在本地计算；之后的发票匹配及财务主路径全部在 GUI 完成。
 
 | 顺序 / 页面 | 操作与预期 |
 | --- | --- |
-| 采购和销售发票 | AP、伙伴 `PARTY`、外部号 `AP-DEMO`、订单 `PO-DEMO`；行 `L1`：`EXPENSE`、`VAT`、数量 `10`、单价 `10`、订单行 `OL1`，其余金额 `0`。预览显示净额 **100.00**、税 **13.00**、总额 **113.00**、匹配成功；再明确「确认发票」。 |
+| 采购和销售发票 | AP、伙伴 `PARTY`、外部号 `AP-DEMO`、订单 `PO-DEMO`；行 `L1`：`EXPENSE`、`VAT`、数量 `10`、单价 `10`、订单行 `L1`，其余金额 `0`。预览显示净额 **100.00**、税 **13.00**、总额 **113.00**、匹配成功；再明确「确认发票」。 |
 | 付款与收款 | 伙伴 `PARTY`、AP，选择 `AP-DEMO`；核销金额输入整数最小单位 **5650**，勾选现金折扣。预览核销 **56.50**、现金 **55.75**、折扣 **0.75**、余款 **56.50**，再明确确认账面核销。 |
 | 预付、贷项与纠错 | 新建 AP 预付，伙伴 `PARTY`、总额 **2000**；预览并确认。选择「应用预付/贷项」，来源选刚创建的预付，目标 `AP-DEMO`、金额 **2000**，预览确认后发票余款 **36.50**、预付余款 **0.00**。 |
 | 采购和销售发票 | AR、伙伴 `PARTY`、外部号 `AR-DEMO`；行 `L1`：`SERVICE`、`VAT`、数量 `10`、单价 `10`，不填订单。预览 **113.00**，明确确认。 |
@@ -199,7 +184,7 @@ Invoke-RestMethod "$origin/api/v1/trade/orders" -Method Post `
 
 ![贸易主路径：月末 GL 核对（中文、红主题）](docs/images/trade-main-path-zh-red.png)
 
-真实浏览器测试为 `packages/infra/test/http/trade-gui-{zh-red,en-green}-{1,2}.slow.test.ts` 与 `trade-gui-smoke.slow.test.ts`（共享 `packages/infra/test/support/trade-gui-scenario.ts`）。zh/red 与 en/green 两个组合仅用键盘完成完整主路径，另测存储拒写、提交已落库但响应丢失的原封套重试、依赖阻止取消（断言具体错误码）；中/英 × 红/绿四个组合另做页面级冒烟：每个贸易页加载、`lang` 与 `data-theme` 正确、标题为所选语言，且不显示另一语言或硬编码的界面文字。主路径每个组合分两段在 Full 的不同分片运行：第 1 段经 GUI 完成期间准入、贸易配置、匹配采购发票与付款，并断言其发出的请求与第 2 段的预置请求逐条一致；第 2 段经真实 HTTP API（预览后显式确认）重放这些请求，再经 GUI 完成预付、红字、取消与报表。只预置六个基础 GL 科目及上述 API 采购订单；贸易配置、期间准入、发票、付款、动作和报表操作经过真实 Web。测试自行构建前端、临时建库、启动 loopback HTTP 与生产 SQLite workers，结束关闭并清理自有目录；不触碰已有实例。
+真实浏览器测试为 `packages/infra/test/http/trade-gui-{zh-red,en-green}-{1,2}.slow.test.ts` 与 `trade-gui-smoke.slow.test.ts`（共享 `packages/infra/test/support/trade-gui-scenario.ts`）。zh/red 与 en/green 两个组合仅用键盘完成完整主路径，另测存储拒写、提交已落库但响应丢失的原封套重试、依赖阻止取消（断言具体错误码）；中/英 × 红/绿四个组合另做页面级冒烟：每个贸易页加载、`lang` 与 `data-theme` 正确、标题为所选语言，且不显示另一语言或硬编码的界面文字。主路径每个组合分两段在 Full 的不同分片运行：第 1 段经 GUI 完成期间准入、贸易配置、匹配采购发票与付款，并断言其发出的请求与第 2 段的预置请求逐条一致；第 2 段经真实 HTTP API（预览后显式确认）重放这些请求，再经 GUI 完成预付、红字、取消与报表。只预置六个基础 GL 科目；第 1 段的采购订单经订单页键盘录入（M1-R1b），第 2 段与冒烟场景的订单仍经 API 预置；贸易配置、期间准入、发票、付款、动作和报表操作经过真实 Web。测试自行构建前端、临时建库、启动 loopback HTTP 与生产 SQLite workers，结束关闭并清理自有目录；不触碰已有实例。
 
 ```powershell
 npx playwright install --only-shell chromium
