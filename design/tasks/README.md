@@ -265,7 +265,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 ## S5：`styles.css` 全局元素规则收尾 + S4 回顾行动（建议 v0.5.0）
 
 **目标**：
-- 完成 D-7：各页不再依赖 `styles.css` 的全局元素规则，最后一次性删除（S5-a..g、S5-i）。S5-g（#126）第二道检查发现 4 项遗漏，相关声明保留；由 backlog 中的 UI-11b、UI-11c 补齐后，UI-11d 删除，D-7 才完成；
+- 完成 D-7：各页不再依赖 `styles.css` 的全局元素规则，最后一次性删除（S5-a..g、S5-i）。**D-7：部分完成，剩余项见 UI-11b..d。** S5-g（[#126](https://github.com/lingshf/ai-native-erp/pull/126)，main `6c8724b`）第二道检查发现 4 项遗漏，相关声明保留；由 backlog 中的 UI-11b、UI-11c 补齐后，UI-11d 删除，D-7 才完成；
 - 调查并修复 S4 回顾记录的焦点断言偶发失败 D92（S5-h，原因待证实），落实其余回顾行动（路线图 §4 / §5 已由 S4 回顾 PR 写入；发布流程部分为 PROC-02）。
 
 版本号由协调者定。基线为 main `66d8e15`（v0.4.0 Demo #108 之后）。来源：UI-09g [#106](https://github.com/lingshf/ai-native-erp/pull/106)（head `f269d23`，合并为 main `662a763`）证据表的“保留”部分，摘要见 [UI-1.md §5.2](../reviews/UI-1.md#52-ui-09gstylescss-全局元素规则删除记录)；回顾见 [S4-retro.md](../reviews/S4-retro.md)。
@@ -284,7 +284,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [S5-e](S5-e-ledger-period-master-global-rules.md) | 总账报表 / 期末 / 科目表：`caption`、明细 `th, td`（不含对齐，归 S5-i）、tfoot | CSS | S5-i（A 线前序） | web-ui:ledger, web-ui:period-close, web-ui:master | done | [#125](https://github.com/lingshf/ai-native-erp/pull/125) |
 | [S5-f](S5-f-shell-components-global-rules.md) | 外壳 / 共享组件：偏好区 `legend` / `select` / 复选框、概览 `dd`、`.ui-field` 与 `.field` 的 `select`、VirtualRows tfoot | CSS | S5-c（同改 `components.css`） | web-ui:shell（不含 `styles.css`）, web-ui:components | done | [#115](https://github.com/lingshf/ai-native-erp/pull/115) |
 | [S5-i](S5-i-grid-table-component-rules.md) | 共享表格：`.grid` / `.journal-scroll` 的 `td` 对齐、`thead` 底色与 `.grid tfoot` 底色改为组件规则（#113 报告的缺口；`select` 的 `max-width` 已由 #115 覆盖）；`.fasttab-toggle:disabled` 的 opacity / cursor（D116） | CSS | S5-f、S5-c（同改 `components.css`） | web-ui:components | done | [#122](https://github.com/lingshf/ai-native-erp/pull/122) |
-| [S5-g](S5-g-delete-global-element-rules.md) | 删除 `styles.css` 剩余全局元素规则（D-7 收尾，含 44px 基线的两道检查；文件清空时删除 `main.tsx:5` 的 import） | CSS + 入口 import 一行 | S5-a..f、S5-i 全部（外壳串行最后） | web-ui:shell | in-review | [#126](https://github.com/lingshf/ai-native-erp/pull/126) |
+| [S5-g](S5-g-delete-global-element-rules.md) | 删除 `styles.css` 剩余全局元素规则（D-7 收尾，含 44px 基线的两道检查；文件清空时删除 `main.tsx:5` 的 import） | CSS + 入口 import 一行 | S5-a..f、S5-i 全部（外壳串行最后） | web-ui:shell | done | [#126](https://github.com/lingshf/ai-native-erp/pull/126) |
 | [S5-h](S5-h-trade-orders-focus-race.md) | 订单录入页保存后焦点断言偶发失败：先复现、核对真实 Chrome，再修复（D92，原因待证实） | 测试 / 页面 tsx | S5-c（B 线前序） | web-ui:trade-orders | done | [#117](https://github.com/lingshf/ai-native-erp/pull/117) |
 | [FLAKE-02](FLAKE-02-trade-gui-period-option-poll.md) | 贸易 GUI E2E：期末月份下拉选项轮询偶发为空；afterAll teardown 超时（两项分别记录，原因均未知）；已有 trace 只含旧标题与空读取，其余由定向诊断采集（排队，不计入 S5 目标） | 调查 / 测试 | —（与 S5-h 无文件重叠，可并行；共同原因则由设计角色决定合并） | tests:e2e | done | [#121](https://github.com/lingshf/ai-native-erp/pull/121) |
 | [FOCUS-01](FOCUS-01-journals-events-passive-focus.md) | 凭证 / 业务事件：7 处在被动 effect 中设置焦点，可能晚一帧；逐处以同一真实交互的真实 Chrome base / head 证据判定（jsdom 注入仅作辅助），只修已复现的（排队，不计入 S5 目标） | 调查 / 页面 tsx / 测试 | **S5-a 合并后**（同冲突域，不能并行）；参考 S5-h #117 | web-ui:journals | done | [#123](https://github.com/lingshf/ai-native-erp/pull/123) |

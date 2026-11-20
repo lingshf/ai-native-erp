@@ -3,6 +3,7 @@
 - Sprint：S5　依赖：S5-a、S5-b、S5-c、S5-d、S5-e、S5-f、S5-i 全部合并（外壳串行最后）　建议分支：`s5-g-delete-global-rules`
 - 冲突域：web-ui:shell（**只改 `src/styles.css`，以及 `src/main.tsx:5` 的 `import "./styles.css";` 这一行**）。证据覆盖全部页面，开工时不应有正在进行的页面 CSS 任务；rebase 后 main 上有新的页面 CSS 时，重新采集证据。
 - 类型：CSS，外加入口 import 一行。允许的 `.tsx` 改动**只有**：文件清空时删除 `src/main.tsx:5` 的 import。只改 CSS 的“JS 逻辑不变”证明相应改为：`git diff <base>..HEAD -- '*.ts' '*.tsx'` 只含测试文件与这一行删除
+- 状态：done，[#126](https://github.com/lingshf/ai-native-erp/pull/126)（main `6c8724b`）。**D-7：部分完成，剩余项见 [UI-11b](UI-11b-s5g-leftover-button-checkbox.md)、[UI-11c](UI-11c-virtualrows-spacer-cells.md)、[UI-11d](UI-11d-delete-styles-css-remaining.md)。**
 - 来源：[UI-1.md §5.2](../reviews/UI-1.md#52-ui-09gstylescss-全局元素规则删除记录)、D-7
 
 ## 范围
