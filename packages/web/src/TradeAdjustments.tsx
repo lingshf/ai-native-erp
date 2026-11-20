@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import {
   companiesPageSchema,
   openItemPageSchema,
@@ -62,6 +62,7 @@ function empty(): Draft {
   };
 }
 const key = (company: string) => `erp.tradeActions.v1.${company}`;
+const partyCode = /^[A-Z0-9][A-Z0-9_.:-]{0,59}$/u;
 function restore(company: string): { saved: Saved; failed: boolean } {
   const fallback: Saved = { draft: empty(), pending: null };
   try {
@@ -249,13 +250,17 @@ function ActionEntry({
       ),
     });
   }, [busy, saved.pending, draft, onGuard]);
+  const client = useQueryClient();
+  const [partyFilter, setPartyFilter] = useState("");
+  const [partyInput, setPartyInput] = useState("");
+  const partyInvalid = partyInput.trim() !== "" && !partyCode.test(partyInput.trim());
   const page = useInfiniteQuery({
-    queryKey: ["tradeActionItems", company.code],
+    queryKey: ["tradeActionItems", company.code, partyFilter],
     initialPageParam: "",
     refetchOnMount: "always",
     queryFn: ({ pageParam, signal }) =>
       masterRequest(
-        `/api/v1/trade/open-items?company=${encodeURIComponent(company.code)}&limit=100${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`,
+        `/api/v1/trade/open-items?company=${encodeURIComponent(company.code)}${partyFilter ? `&party=${encodeURIComponent(partyFilter)}` : ""}&limit=100${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`,
         openItemPageSchema,
         { signal },
       ),
@@ -268,6 +273,15 @@ function ActionEntry({
     setPreview(null);
     setReceipt(null);
     setError(null);
+  }
+  function applyPartyFilter() {
+    const value = partyInput.trim();
+    if (value !== "" && !partyCode.test(value)) return;
+    setPartyInput(value);
+    if (value === partyFilter) return;
+    client.removeQueries({ queryKey: ["tradeActionItems", company.code] });
+    setPartyFilter(value);
+    change({ sourceId: "", targetId: "", items: [] });
   }
   function command(): TradeActionCommandDto {
     const common = {
@@ -460,6 +474,9 @@ function ActionEntry({
             setSaved({ draft: empty(), pending: null });
             setPreview(null);
             setReceipt(null);
+            if (partyFilter) client.removeQueries({ queryKey: ["tradeActionItems", company.code] });
+            setPartyFilter("");
+            setPartyInput("");
           }}
         >
           {t("tadj.clear")}
@@ -557,6 +574,29 @@ function ActionEntry({
           {draft.kind === "credit" && <p className="tadj-hint">{t("tadj.creditHint")}</p>}
           {draft.kind === "reverse" && <p className="tadj-hint">{t("tadj.reverseHint")}</p>}
           <div className="ui-form-grid">
+            {draft.kind !== "advance" && (
+              <div className="ui-field">
+                <label htmlFor="tadj-partyFilter">{t("tadj.partyFilter")}</label>
+                <input
+                  id="tadj-partyFilter"
+                  maxLength={60}
+                  placeholder={t("tadj.partyFilterAll")}
+                  aria-invalid={partyInvalid}
+                  aria-describedby="tadj-partyFilter-hint"
+                  value={partyInput}
+                  onChange={(e) => setPartyInput(e.target.value)}
+                  onBlur={applyPartyFilter}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    applyPartyFilter();
+                  }}
+                />
+                <p id="tadj-partyFilter-hint" className="tadj-hint">
+                  {t(partyInvalid ? "tadj.partyFilterInvalid" : "tadj.partyFilterHint")}
+                </p>
+              </div>
+            )}
             {draft.kind !== "advance" && draft.kind !== "reverse" && itemSelect("sourceId")}
             {draft.kind === "apply" && itemSelect("targetId")}
             {(draft.kind === "advance" || draft.kind === "apply") && (

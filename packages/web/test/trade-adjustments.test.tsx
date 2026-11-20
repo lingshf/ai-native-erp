@@ -124,7 +124,13 @@ function preview(command: TradeActionCommandDto) {
     },
   };
 }
-function mockApi(unknownFirst = false) {
+const otherInvoice = {
+  ...invoice,
+  itemId: "00000000-0000-4000-8000-000000000003",
+  party: "V2",
+  externalNo: "INV-2",
+};
+function mockApi(unknownFirst = false, paged = false) {
   const previews: TradeActionCommandDto[] = [];
   const posts: ReturnType<typeof tradeActionConfirmSchema.parse>[] = [];
   vi.stubGlobal(
@@ -133,8 +139,14 @@ function mockApi(unknownFirst = false) {
       const url = String(path);
       if (url.startsWith("/api/v1/companies"))
         return response({ items: [company], nextCursor: null });
-      if (url.startsWith("/api/v1/trade/open-items"))
-        return response({ items: [invoice, advance], nextCursor: null });
+      if (url.startsWith("/api/v1/trade/open-items")) {
+        const query = new URL(url, "http://erp.test").searchParams;
+        const party = query.get("party");
+        if (party === "V2") return response({ items: [otherInvoice], nextCursor: null });
+        if (party) return response({ items: [], nextCursor: null });
+        if (paged && !query.get("cursor")) return response({ items: [invoice], nextCursor: "P2" });
+        return response({ items: paged ? [advance] : [invoice, advance], nextCursor: null });
+      }
       if (url === "/api/v1/trade/actions/preview") {
         const command = tradeActionCommandSchema.parse(JSON.parse(String(init?.body)));
         previews.push(command);
@@ -324,6 +336,79 @@ describe("typed trade adjustments", () => {
         });
     },
   );
+  it("filters open items by partner on the server, clears chosen items and restores the unfiltered list", async () => {
+    mockApi();
+    await open();
+    const reads = () =>
+      vi
+        .mocked(fetch)
+        .mock.calls.map(([url]) => String(url))
+        .filter((url) => url.startsWith("/api/v1/trade/open-items"));
+    const options = (field: "tadj.source" | "tadj.target") =>
+      [...(screen.getByLabelText(t(field)) as HTMLSelectElement).options].map(
+        (option) => option.textContent,
+      );
+    fireEvent.change(screen.getByLabelText(t("tadj.kind")), { target: { value: "apply" } });
+    await screen.findByRole("option", { name: /ADV-1/ });
+    expect(reads()).toEqual(["/api/v1/trade/open-items?company=DEFAULT&limit=100"]);
+    const before = { source: options("tadj.source"), target: options("tadj.target") };
+    fireEvent.change(screen.getByLabelText(t("tadj.source")), { target: { value: advanceId } });
+    fireEvent.change(screen.getByLabelText(t("tadj.target")), { target: { value: invoiceId } });
+    const filter = screen.getByLabelText(t("tadj.partyFilter"));
+    expect(filter.getAttribute("placeholder")).toBe(t("tadj.partyFilterAll"));
+    fireEvent.change(filter, { target: { value: " V2 " } });
+    fireEvent.keyDown(filter, { key: "Enter" });
+    await screen.findByRole("option", { name: /INV-2/ });
+    expect(reads()).toEqual([
+      "/api/v1/trade/open-items?company=DEFAULT&limit=100",
+      "/api/v1/trade/open-items?company=DEFAULT&party=V2&limit=100",
+    ]);
+    expect((filter as HTMLInputElement).value).toBe("V2");
+    expect(options("tadj.target")).toEqual([
+      t("tadj.choose"),
+      expect.stringContaining("INV-2 · V2"),
+    ]);
+    expect(options("tadj.source")).toEqual([t("tadj.choose")]);
+    expect((screen.getByLabelText(t("tadj.source")) as HTMLSelectElement).value).toBe("");
+    expect((screen.getByLabelText(t("tadj.target")) as HTMLSelectElement).value).toBe("");
+    fireEvent.blur(filter);
+    expect(reads()).toHaveLength(2);
+    fireEvent.change(filter, { target: { value: "" } });
+    fireEvent.blur(filter);
+    await screen.findByRole("option", { name: /ADV-1/ });
+    expect(reads()[2]).toBe("/api/v1/trade/open-items?company=DEFAULT&limit=100");
+    expect({ source: options("tadj.source"), target: options("tadj.target") }).toEqual(before);
+  });
+  it("resets paging when the partner filter changes and rejects malformed partner codes without a request", async () => {
+    mockApi(false, true);
+    await open();
+    const reads = () =>
+      vi
+        .mocked(fetch)
+        .mock.calls.filter(([url]) => String(url).startsWith("/api/v1/trade/open-items")).length;
+    fireEvent.change(screen.getByLabelText(t("tadj.kind")), { target: { value: "cancel" } });
+    fireEvent.click(await screen.findByRole("button", { name: t("master.loadMore") }));
+    await screen.findByRole("option", { name: /ADV-1/ });
+    fireEvent.change(screen.getByLabelText(t("tadj.source")), { target: { value: advanceId } });
+    const filter = screen.getByLabelText(t("tadj.partyFilter"));
+    fireEvent.change(filter, { target: { value: "v 1" } });
+    fireEvent.blur(filter);
+    expect(filter.getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByText(t("tadj.partyFilterInvalid"))).toBeTruthy();
+    expect((screen.getByLabelText(t("tadj.source")) as HTMLSelectElement).value).toBe(advanceId);
+    expect(reads()).toBe(2);
+    fireEvent.change(filter, { target: { value: "V1" } });
+    fireEvent.keyDown(filter, { key: "Enter" });
+    await waitFor(() => expect(reads()).toBe(3));
+    expect(String(vi.mocked(fetch).mock.calls.at(-1)?.[0])).not.toContain("cursor=");
+    expect((screen.getByLabelText(t("tadj.source")) as HTMLSelectElement).value).toBe("");
+    expect(screen.queryByRole("button", { name: t("master.loadMore") })).toBeNull();
+    fireEvent.change(filter, { target: { value: "" } });
+    fireEvent.keyDown(filter, { key: "Enter" });
+    await screen.findByRole("button", { name: t("master.loadMore") });
+    expect(screen.queryByRole("option", { name: /ADV-1/ })).toBeNull();
+    expect(screen.getByRole("option", { name: /INV-1/ })).toBeTruthy();
+  });
   it.each(["missing", "changed", "unreadable"] as const)(
     "does not post when the saved confirmation envelope is %s on readback",
     async (failure) => {
