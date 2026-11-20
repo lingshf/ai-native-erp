@@ -1,4 +1,4 @@
-# 界面流程图（v0.2.0）
+# 界面流程图（v0.3.0）
 
 | 图 | 内容 |
 | --- | --- |
@@ -8,5 +8,7 @@
 | [legacy-import-flow.md](legacy-import-flow.md) | 旧账导入（M2-03，命令行） |
 | [period-close-flow.md](period-close-flow.md) | 期末结账向导 |
 | [teaching-toggle.md](teaching-toggle.md) | 教学说明开关 |
+| [ui-shell-and-templates.md](ui-shell-and-templates.md) | UI-1 外壳、导航与页面模板 |
+| [migration-page-flow.md](migration-page-flow.md) | 迁移核对页与 D26 门禁 |
 
-图以 Mermaid 编写，路径与按钮名称以 v0.2.0 对应 `main` 的界面为准。
+图以 Mermaid 编写，路径与按钮名称以 v0.3.0 对应 `main` 的界面为准。
