@@ -158,8 +158,9 @@ test.for([100, 99])(
         );
         const control = check?.actual.find((row) => row.account === "1300");
         assert.equal(control?.subledgerMinor, "100");
-        assert.equal(control?.tradeDifferenceMinor, "-100");
-        assert.equal(control?.otherSourceMinor, "100");
+        assert.equal(control?.openingGlMinor, "100");
+        assert.equal(control?.tradeDifferenceMinor, "0");
+        assert.equal(control?.otherSourceMinor, "0");
       } finally {
         imported.close();
       }
@@ -202,8 +203,9 @@ test.for([100, 99])(
             subledgerMinor: 100,
             glMinor: 100,
             tradeGlMinor: 0,
-            otherSourceMinor: 100,
-            tradeDifferenceMinor: -100,
+            openingGlMinor: 100,
+            otherSourceMinor: 0,
+            tradeDifferenceMinor: 0,
             differenceMinor: 0,
           },
         );

@@ -14,6 +14,7 @@ import {
   tradeInvoicePreviewSchema,
   tradeInvoiceReceiptSchema,
   tradeOrderSchema,
+  tradeReconciliationSchema,
   tradeReportSchema,
 } from "@erp/core/contracts";
 import type { TradeInvoiceCommand, TradeOrderCommand } from "@erp/core/domain";
@@ -322,6 +323,34 @@ async function runOnce(filename: string, run: number) {
               aged.overdue61_90 +
               aged.overdue91Plus,
             aged.invoiceGrossMinor,
+          );
+        }
+        if (index >= warmups) {
+          raw.push(result.ms);
+          responseBytes.push(result.bytes);
+        }
+      }
+      scenarios.push({ ...scenario, ...summarizeTradeSamples(raw, 1_000), responseBytes });
+      console.info(
+        JSON.stringify({ run, name: scenario.name, ...summarizeTradeSamples(raw, 1_000) }),
+      );
+    }
+    {
+      const scenario = {
+        name: "gl-reconciliation",
+        path: "/api/v1/trade/reports/reconciliation?company=DEFAULT",
+      };
+      const raw: number[] = [],
+        responseBytes: number[] = [];
+      for (let index = 0; index < warmups + samples; index++) {
+        const result = await server.http(scenario.path, tradeReconciliationSchema);
+        assert.ok(result.value.rows.length > 0);
+        for (const row of result.value.rows) {
+          assert.equal(row.openingGlMinor, 0);
+          assert.equal(row.otherSourceMinor, row.glMinor - row.tradeGlMinor - row.openingGlMinor);
+          assert.equal(
+            row.tradeDifferenceMinor,
+            row.tradeGlMinor + row.openingGlMinor - row.subledgerMinor,
           );
         }
         if (index >= warmups) {

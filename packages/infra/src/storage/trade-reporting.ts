@@ -152,6 +152,14 @@ export function tradeReportingRepository(db: Pick<Connection, "query">): TradeRe
         SELECT control_account account,
           sum(balance_gross * CASE WHEN (side='AR' AND kind='invoice') OR (side='AP' AND kind<>'invoice') THEN 1 ELSE -1 END) balance
         FROM aged GROUP BY control_account
+      ), opening AS (
+        SELECT o.control_account account,
+          sum(o.gross_minor * CASE WHEN (o.side='AR' AND s.kind='invoice') OR (o.side='AP' AND s.kind<>'invoice') THEN 1 ELSE -1 END) balance
+        FROM legacy_refs r JOIN open_items o ON o.company_id=? AND o.item_id=r.target_id
+        JOIN trade_item_sources s ON s.company_id=o.company_id AND s.item_id=o.item_id
+        WHERE r.source IN('teaching','enterprise') AND r.object_type='opening_items'
+          AND o.accounting_date<=?
+        GROUP BY o.control_account
       ), gl AS (
         SELECT l.account_code account,sum(l.debit_minor-l.credit_minor) balance,
           sum(CASE WHEN json_extract(r.result,'$.module')='TRADE' THEN l.debit_minor-l.credit_minor ELSE 0 END) trade
@@ -160,21 +168,25 @@ export function tradeReportingRepository(db: Pick<Connection, "query">): TradeRe
         WHERE l.company_id=? AND j.accounting_date<=?
         AND l.account_code IN(SELECT account FROM accounts_in_scope) GROUP BY l.account_code
       ) SELECT a.account,coalesce(s.balance,0) subledger,coalesce(g.balance,0) gl,
-        coalesce(g.trade,0) trade FROM accounts_in_scope a
-        LEFT JOIN subledger s USING(account) LEFT JOIN gl g USING(account) ORDER BY a.account`,
-        [...p.values, company, company, cutoff],
+        coalesce(g.trade,0) trade,coalesce(o.balance,0) opening FROM accounts_in_scope a
+        LEFT JOIN subledger s USING(account) LEFT JOIN gl g USING(account)
+        LEFT JOIN opening o USING(account) ORDER BY a.account`,
+        [...p.values, company, company, cutoff, company, cutoff],
       );
       return rows.map((row) => {
         const subledgerMinor = integer(row.subledger),
           glMinor = integer(row.gl),
-          tradeGlMinor = integer(row.trade);
+          tradeGlMinor = integer(row.trade),
+          openingGlMinor = integer(row.opening);
+        // D25 single rule: P = 0 without opening items, so M1 results are unchanged.
         return {
           account: text(row.account),
           subledgerMinor,
           glMinor,
           tradeGlMinor,
-          otherSourceMinor: integer(glMinor - tradeGlMinor),
-          tradeDifferenceMinor: integer(tradeGlMinor - subledgerMinor),
+          openingGlMinor,
+          otherSourceMinor: integer(glMinor - tradeGlMinor - openingGlMinor),
+          tradeDifferenceMinor: integer(tradeGlMinor + openingGlMinor - subledgerMinor),
           differenceMinor: integer(glMinor - subledgerMinor),
         };
       });

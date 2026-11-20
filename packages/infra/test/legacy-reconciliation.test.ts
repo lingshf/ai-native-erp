@@ -408,6 +408,19 @@ test.for(gateCases)(
     const f = await fixture(t, { tradeControls: true, controlAmounts: amounts });
     assert.deepEqual(f.report.blockers, []);
     assert.equal(f.report.verdict, "pending");
+    const control = f.report.checks
+      .find((check) => check.section === "trade-reconciliation")
+      ?.actual.find((row) => row.account === "1300");
+    const total = String(amounts.reduce((sum, amount) => sum + amount, 0));
+    assert.deepEqual(
+      [
+        control?.glMinor,
+        control?.openingGlMinor,
+        control?.tradeDifferenceMinor,
+        control?.otherSourceMinor,
+      ],
+      [total, total, "0", "0"],
+    );
     const db = new Database(f.targetFile, { readonly: true });
     try {
       const run = db.prepare("SELECT opening,opening_details_sha FROM legacy_import_runs").get();
@@ -502,3 +515,88 @@ test("only opening=done satisfies the control-account gate; true differences sti
     "pass",
   );
 });
+
+/** Isolated anomaly fixture: bypasses immutability triggers on an already-imported target. */
+function tamper(target: string, tables: readonly string[], sql: string) {
+  const db = new Database(target);
+  try {
+    db.pragma("foreign_keys=OFF");
+    const triggers = db
+      .prepare(
+        `SELECT name,sql FROM sqlite_schema WHERE type='trigger' AND tbl_name IN(${tables.map(() => "?").join(",")})`,
+      )
+      .all(...tables) as { name: string; sql: string }[];
+    db.transaction(() => {
+      for (const trigger of triggers) db.exec(`DROP TRIGGER "${trigger.name}"`);
+      db.exec(sql);
+      for (const trigger of triggers) db.exec(trigger.sql);
+    })();
+  } finally {
+    db.close();
+  }
+}
+const openingItem =
+  "SELECT o.item_id FROM open_items o JOIN legacy_refs r ON r.object_type='opening_items' AND r.target_id=o.item_id WHERE o.control_account='1300'";
+const tamperCases = [
+  {
+    name: "opening item original amount changed",
+    tables: ["open_items"],
+    sql: `UPDATE open_items SET gross_minor=gross_minor+7,net_minor=net_minor+7,
+      remaining_gross_minor=remaining_gross_minor+7,remaining_net_minor=remaining_net_minor+7
+      WHERE item_id IN(${openingItem})`,
+    expected: { tradeDifferenceMinor: "0", otherSourceMinor: "-7" },
+  },
+  {
+    name: "opening item deleted",
+    tables: ["open_items"],
+    sql: `DELETE FROM open_items WHERE item_id IN(${openingItem})`,
+    expected: { tradeDifferenceMinor: "0", otherSourceMinor: "100" },
+  },
+  {
+    name: "LEGACY entry without an opening item appended",
+    tables: ["journal_entries", "journal_lines"],
+    sql: `CREATE TEMP TABLE extra_entry AS SELECT * FROM journal_entries
+        WHERE id=(SELECT entry_id FROM journal_lines WHERE company_id='F' AND account_code='1300' LIMIT 1);
+      CREATE TEMP TABLE extra_lines AS SELECT * FROM journal_lines
+        WHERE entry_id=(SELECT id FROM extra_entry);
+      UPDATE extra_entry SET id='00000000-0000-4000-8000-0000000000aa',
+        sequence=(SELECT max(sequence)+1 FROM journal_entries);
+      UPDATE extra_lines SET entry_id='00000000-0000-4000-8000-0000000000aa',
+        debit_minor=CASE WHEN debit_minor>0 THEN 30 ELSE 0 END,
+        credit_minor=CASE WHEN credit_minor>0 THEN 30 ELSE 0 END;
+      INSERT INTO journal_entries SELECT * FROM extra_entry;
+      INSERT INTO journal_lines SELECT * FROM extra_lines;`,
+    expected: { tradeDifferenceMinor: "0", otherSourceMinor: "30" },
+  },
+] as const;
+test.for(tamperCases)(
+  "tampered opening evidence is a difference, not a known difference: $name",
+  async ({ tables, sql, expected }, t) => {
+    const f = await fixture(t, { tradeControls: true, controlAmounts: [100] });
+    assert.equal(f.report.verdict, "pending");
+    tamper(f.targetFile, tables, sql);
+    const report = await checkLegacyReconciliation(f.snapshotReader, f.targetFile);
+    assert.equal(report.verdict, "difference");
+    assert.deepEqual(report.blockers, []);
+    assert.equal(report.knownDifferencesSha256, f.report.knownDifferencesSha256);
+    assert.deepEqual(
+      report.differences.find(
+        (difference) =>
+          difference.section === "trade-reconciliation" && difference.key === "F:1300",
+      ),
+      {
+        section: "trade-reconciliation",
+        key: "F:1300",
+        expected: { tradeDifferenceMinor: "0", otherSourceMinor: "0" },
+        actual: expected,
+      },
+    );
+    const before = state(f.targetFile);
+    assert.equal(
+      (await confirmLegacyReconciliation(f.snapshotReader, f.targetFile, f.confirmation)).verdict,
+      "difference",
+    );
+    assert.deepEqual(state(f.targetFile), before);
+    assert.equal(before.run.status, "imported");
+  },
+);

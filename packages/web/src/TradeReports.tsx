@@ -395,6 +395,7 @@ function CompanyReports({
                     [
                       "subledger",
                       "tradeGl",
+                      "opening",
                       "other",
                       "gl",
                       "tradeDifference",
@@ -418,6 +419,7 @@ function CompanyReports({
                     {[
                       row.subledgerMinor,
                       row.tradeGlMinor,
+                      row.openingGlMinor,
                       row.otherSourceMinor,
                       row.glMinor,
                       row.tradeDifferenceMinor,
@@ -425,7 +427,15 @@ function CompanyReports({
                     ].map((n, i) => (
                       <td
                         key={
-                          ["subledger", "trade", "other", "gl", "tradeDifference", "difference"][i]
+                          [
+                            "subledger",
+                            "trade",
+                            "opening",
+                            "other",
+                            "gl",
+                            "tradeDifference",
+                            "difference",
+                          ][i]
                         }
                         className="num"
                       >

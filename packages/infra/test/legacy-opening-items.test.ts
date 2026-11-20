@@ -608,6 +608,26 @@ test("opening items settle by payment and apply on their own accounts; credit an
           lines.push([line.account, line.debit, line.credit]);
       return lines.sort();
     };
+    // D25 P formula: opening items explain LEGACY GL before and after TRADE settlements.
+    const explained = async () =>
+      (await service.reconciliation("F", "2026-01")).rows.map((row) => ({
+        account: row.account,
+        openingGlMinor: row.openingGlMinor,
+        tradeGlMinor: row.tradeGlMinor,
+        tradeDifferenceMinor: row.tradeDifferenceMinor,
+        otherSourceMinor: row.otherSourceMinor,
+        differenceMinor: row.differenceMinor,
+      }));
+    const initial = await explained();
+    assert.ok(initial.some((row) => row.openingGlMinor !== 0));
+    for (const row of initial)
+      assert.deepEqual(row, {
+        ...row,
+        tradeGlMinor: 0,
+        tradeDifferenceMinor: 0,
+        otherSourceMinor: 0,
+        differenceMinor: 0,
+      });
     assert.deepEqual((await settle("AR", ids["OPEN-1300-1"], 60)).sort(), [
       ["1000", 60, 0],
       ["1300", 0, 60],
@@ -646,6 +666,19 @@ test("opening items settle by payment and apply on their own accounts; credit an
       )?.remainingGross,
       5,
     );
+    const settled = await explained();
+    assert.deepEqual(
+      settled.map((row) => row.openingGlMinor),
+      initial.map((row) => row.openingGlMinor),
+    );
+    assert.equal(settled.find((row) => row.account === "1300")?.tradeGlMinor, -85);
+    for (const row of settled)
+      assert.deepEqual(row, {
+        ...row,
+        tradeDifferenceMinor: 0,
+        otherSourceMinor: 0,
+        differenceMinor: 0,
+      });
     const before = rows(target, "SELECT * FROM open_items ORDER BY item_id");
     await assert.rejects(
       service.previewAction({

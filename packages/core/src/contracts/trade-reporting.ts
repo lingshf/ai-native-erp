@@ -76,6 +76,7 @@ export const tradeReconciliationSchema = z.strictObject({
       account: accountCodeSchema,
       subledgerMinor: signed,
       tradeGlMinor: signed,
+      openingGlMinor: signed,
       otherSourceMinor: signed,
       glMinor: signed,
       tradeDifferenceMinor: signed,

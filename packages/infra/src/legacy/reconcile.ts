@@ -426,12 +426,25 @@ export async function reconcileLegacy(
       expected: [],
       actual: controls,
     });
+    // D26 gate: only opening=done is completion evidence; with it, D25's P formula decides.
     if (run.opening !== "done")
       report.blockers = controls.map((row) => ({
         code: "M2_03B_OPENING_REQUIRED",
         company: String(row.company),
         account: String(row.account),
       }));
+    else
+      for (const row of controls)
+        if (row.tradeDifferenceMinor !== "0" || row.otherSourceMinor !== "0")
+          report.differences.push({
+            section: "trade-reconciliation",
+            key: `${row.company}:${row.account}`,
+            expected: { tradeDifferenceMinor: "0", otherSourceMinor: "0" },
+            actual: {
+              tradeDifferenceMinor: row.tradeDifferenceMinor,
+              otherSourceMinor: row.otherSourceMinor,
+            },
+          });
     report.knownDifferencesSha256 = reconciliationSha256(JSON.stringify(report.knownDifferences));
     const saved = db
       .prepare("SELECT 1 FROM sqlite_schema WHERE name='legacy_reconciliations' AND type='table'")

@@ -170,7 +170,8 @@ function mockApi(held = false) {
             {
               account: "2100",
               subledgerMinor: -8197,
-              tradeGlMinor: -8197,
+              tradeGlMinor: -7000,
+              openingGlMinor: -1197,
               otherSourceMinor: -700,
               glMinor: -8897,
               tradeDifferenceMinor: 0,
@@ -269,6 +270,8 @@ describe("trade historical reports", () => {
     fireEvent.click(screen.getByRole("button", { name: "GL reconciliation" }));
     const table = await screen.findByRole("table", { name: "GL reconciliation" });
     expect(table.textContent).toContain("-7.00");
+    expect(within(table).getByRole("columnheader", { name: "Opening" })).toBeTruthy();
+    expect(table.textContent).toContain("-11.97");
     expect(screen.getByText(/all company parties and AP\/AR/u)).toBeTruthy();
     expect(reads.find((url) => url.includes("/reconciliation"))).not.toContain("party=");
   });

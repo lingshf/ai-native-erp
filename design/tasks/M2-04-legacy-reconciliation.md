@@ -24,7 +24,7 @@
 - **判定**：
   - `差异`：上面任一核对项不一致 → 失败。
   - `待确认`：核对项一致，但有已知差异尚未确认 → 阻断，不能切换。
-  - `阻断`：核对项一致，但有不能用确认文件放行的项。目前只有一类：贸易期初未完成，标注“待 M2-03b 消除”（见下面的期初门禁）。
+  - `阻断`：核对项一致，但有不能用确认文件放行的项。目前只有一类：贸易期初未完成（代码 `M2_03B_OPENING_REQUIRED`；首批标注“待 M2-03b 消除”，M2-04b 起页面改为“缺少期初完成标记 opening=done，需用期初明细文件重新导入”），见下面的期初门禁。
   - `待确认`：核对项一致、没有阻断项，但有已知差异尚未确认 → 不能切换。
   - `通过`：核对项一致、没有阻断项，且已知差异全部确认。确认文件由用户提供，内容绑定本次报告中已知差异清单的 SHA-256；清单有任何变化，原确认失效。虚构测试可以自带确认文件。
   - 优先级：`差异` > `阻断` > `待确认` > `通过`。
@@ -34,7 +34,7 @@
 - **贸易子账，首批（D26）**：复用现行 `tradeReconciliation`（`packages/infra/src/storage/trade-reporting.ts:146-182`），报告逐控制科目列出切换日的 `subledgerMinor`、`glMinor`、`tradeGlMinor`、`otherSourceMinor`、`tradeDifferenceMinor`、`differenceMinor`，只用于显示。
 - **期初门禁（fail-closed，单一规则，两批相同）**：
   - 期初完成证据只有一种：run 记录中的 M2-03b 阶段标记 `opening=done`，它绑定明细文件 SHA，包括逐科目的 `detail`/`empty` 声明。
-  - 目标库切换日存在任一 AP/AR 控制科目（`tradeReconciliation` 的 `accounts_in_scope`），而 run 没有该标记 → 贸易子账判 `阻断`，标注“待 M2-03b 消除”。
+  - 目标库切换日存在任一 AP/AR 控制科目（`tradeReconciliation` 的 `accounts_in_scope`），而 run 没有该标记 → 贸易子账判 `阻断`（代码 `M2_03B_OPENING_REQUIRED`）。
   - 这条不看各差额字段的值：即使净额为 0、三个差额全为 0，也不能放行。首批不把 LEGACY 余额落在 `otherSourceMinor` 判为 `差异`，因为它由门禁统一阻断。
   - 确认文件不能放行这一项，它也不进入已知差异清单。
   - 目标库没有 AP/AR 控制科目时，门禁不适用。
@@ -54,11 +54,13 @@
 6. 首次确认后做一次业务写入，再执行 `--confirm`：拒绝，W 和 run 状态不变；无写入时再次 `--confirm` 通过，且不改写 W。
 7. 页面支持中/英、红/绿、键盘操作；没有写操作。
 8. **期初门禁**：每个用例都带有效确认文件。
-   - AR 控制科目有 LEGACY 余额 100、run 无 `opening=done`：`--check` 判 `阻断`，标注“待 M2-03b 消除”；`--confirm` 拒绝，run 仍为 `imported`；两条路径都非零退出。
+   - AR 控制科目有 LEGACY 余额 100、run 无 `opening=done`：`--check` 判 `阻断`（代码 `M2_03B_OPENING_REQUIRED`）；`--confirm` 拒绝，run 仍为 `imported`；两条路径都非零退出。
    - AR 控制科目有两笔 LEGACY 分录 +100/−100，净额为 0，三个差额都为 0：仍判 `阻断`，`--confirm` 拒绝。
    - 控制科目存在但没有任何分录：仍判 `阻断`。
 
 ## 跟进 M2-04b（D25/D26）
+
+> 状态：已实现（M2-04b PR）。`tradeReconciliation` 新增 `openingGlMinor`（P：`legacy_refs` 中 `opening_items` 指向、记账日 ≤ 截止日的期初项原始金额带符号合计，与子账同一符号规则），`tradeDifferenceMinor = T + P − S`、`otherSourceMinor = G − T − P`；没有期初项时 P = 0，与 M1 逐字段相同，贸易报表与迁移核对共用这一个公式，无模式开关。`opening=done` 时任一控制科目两式不为 0 记 `trade-reconciliation` 段差异（键 `公司:科目`）。阻断代码 `M2_03B_OPENING_REQUIRED` 保持不变（契约与已存报告兼容），只改页面文案。无新迁移。
 
 - 依赖：M2-04 首批、M2-03b。冲突域：legacy-import, admin-cli（与 M2-03b 串行）。只改核对的贸易子账部分，其他核对项不变。
 - 贸易子账改按 [M2-03b §三](M2-03b-legacy-opening-open-items.md) 的同一函数 `tradeReconciliation`，逐控制科目在切换日判定：`tradeDifferenceMinor = T + P − S = 0`，且 `otherSourceMinor = G − T − P = 0`。任一不为 0 记为 `差异`，不作为已知差异类别放行。报告增加 `openingGlMinor`（P）列。
