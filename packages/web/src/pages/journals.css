@@ -44,6 +44,40 @@
 :is(.journals, .business-events) .journal-row .btn-sm {
   height: var(--control-h);
 }
+/*
+ * UI-11a 待转队列操作列：三个按钮（查看 / 预览 / 撤回）完整显示、不被 td 裁切。
+ * 只作用于 .be-queue（BusinessEvents.tsx 队列表）；凭证页与其他业务事件表的列宽不变。
+ * 列宽 = English 三按钮自然宽之和（约 259px）+ 两个间距 + td 左右内边距 24px，留少量余量；
+ * 表格最小宽同步加宽，窄屏横向滚动时前三列不被挤占。按钮字号为 px，列宽也用 px。
+ */
+.business-events .card > .be-queue table {
+  min-width: 760px;
+}
+.business-events .be-queue th:last-child {
+  width: 312px;
+}
+.be-queue-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 44px;
+}
+/* 可视高度沿用 --control-h；命中区用 ::before 上下扩到行高 44px（桌面各扩 4px，窄屏按钮本身已 44px），
+   左右与 padding box 齐平（不产生横向溢出），min-width 46px 保证命中宽 ≥ 44px。
+   焦点环外缘收在 44px 行内：桌面 offset 2px；窄屏按钮已 44px 高时为 -2px（内收），不被 td 的 overflow 裁掉。 */
+.be-queue-actions .btn {
+  position: relative;
+  flex: none;
+  min-width: 46px;
+  max-width: none;
+  overflow: visible;
+  outline-offset: calc((44px - var(--control-h)) / 2 - 2px);
+}
+.be-queue-actions .btn::before {
+  content: "";
+  position: absolute;
+  inset: calc((var(--control-h) - 44px) / 2 - 1px) 0;
+}
 .journals .jv-lines td {
   padding: var(--space-1) var(--space-2);
 }
