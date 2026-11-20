@@ -26,6 +26,7 @@
    - 此后 `#close-month` 的 option 被读取了很多次（timeline 中可见 95 次，协调者转报约 120 次），每次都是空数组，直到失败截图。
    - trace 的 network 部分为 0 字节，看不到 `/periods` 请求的发出与响应时间。
    - 这些只说明该轮 `navigate()` 可能在期末页渲染前就返回了。为何此后 10 s 内选项一直为空，未验证。
+5. **第 4 轮诊断没有采到数据**：#115 作者用 `console.log` 插桩（[gist 修订 e53b126](https://gist.github.com/lingshf/0f2258dbc1805c681fd297e2ca90c117/e53b1261a03cba1bdb7b7c77b246b5ee3d9f4a83) 的 `r4-diag.patch`）。Vitest 不输出通过运行的 stdout，而该轮运行通过，所以一条诊断记录也没有留下。教训：诊断输出不能依赖 stdout。
 
 ## 推断（均待验证，不作为结论）
 
@@ -40,9 +41,11 @@
 ## 范围
 
 1. **已有证据的边界**：失败的用例会保存 `*-last.png` 和 `*-trace.zip`（`trade-gui-scenario.ts:535–536`，仅失败时保存；tracing 以 `screenshots: false, snapshots: false` 启动，见 `:517`）。第 2 轮的 trace 已经回读（观察 4），它只支持两点：`navigate()` 命中旧页标题，以及 `#close-month` 的 95 次空读取。trace 没有 DOM 快照，network 为空，**不能**从中得到轮询期间的 DOM 变化或 periods 请求时间。这些数据由第 2 项的定向诊断采集。teardown 超时没有 trace，同样由定向诊断采集。
-2. **定向诊断**（只在失败或超时时输出，不改断言和超时）：
-   - option：轮询每一次读到的选项列表，`#close-month` 的元素数量与 `disabled` 状态，`main h2` 的文本；periods 查询的请求与响应时间（trace 的 network 为空，需用 `page.on("request" / "response")` 之类的方式另行记录）；
-   - teardown：`afterAll` 中每一步的开始与结束时间，以定位卡住的那一步。
+2. **定向诊断**（不改断言和超时）：把事件逐条写入 `ERP_E2E_ARTIFACTS` 目录下的 JSONL 文件（`trade-gui-scenario.ts:19`、`migration-gui.slow.test.ts:15` 已解析该目录），每行一个事件，带时间戳和 suite / 用例名。**不用 `console.log`**：通过的运行不输出 stdout（观察 5）。通过和失败的运行都写，便于对照。记录：
+   - option：轮询每一次读到的选项列表，`#close-month` 的元素数量与 `disabled` 状态，`main h2` 的文本，以及当前 URL hash；
+   - `/periods`：每次请求的发出时间、响应时间和状态码（trace 的 network 为空，用 `page.on("request" / "response")` 之类的方式另行记录）；
+   - teardown：`afterAll` 中每一步（`harness.launching`、`browser.close()`、删除临时目录）的开始与结束时间，以定位卡住的那一步。
+   - 每次实验运行后，JSONL 文件与对应的完整日志一起保存（范围 3）。
 3. **稳定性实验**：开始前在 PR 中**预先写明**运行次数（≥ 5 次）和命令，按序保存每一次的完整日志（Tee-Object），成功的和失败的都保存。这是本地诊断，不是失败后反复重跑直到通过，也不是 PR CI 单次重跑的豁免（[路线图 §5 偶发失败](../roadmap.md#5-团队流程)）。
 4. 查明原因后再修复：
    - 原因在测试：改等待条件为真实的就绪信号（例如 periods 响应完成或选项出现），而不是加长时间；
