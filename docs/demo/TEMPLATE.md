@@ -29,6 +29,9 @@
   $db = Join-Path $demo "demo.sqlite"
   npm run storage:admin -- migrate --provider sqlite --file $db
   if ($LASTEXITCODE -ne 0) { throw "迁移失败，退出码 $LASTEXITCODE" }
+  $day = Get-Date -Format yyyy-MM-dd
+  node docs/demo/v0.4.0/scripts/prepare.mjs $db (Get-Date).Year   # 本版的预置脚本，换成本版实际的；服务启动前写入
+  if ($LASTEXITCODE -ne 0) { throw "预置失败，退出码 $LASTEXITCODE" }
   $env:ERP_SQLITE_FILE = $db
   $env:ERP_PORT = "$port"
   $env:ERP_HOST = "127.0.0.1"
@@ -56,13 +59,13 @@
 ```powershell
 . {
   $script = "docs/demo/v0.4.0/scripts/seed-trade.mjs"   # 换成本版要运行的脚本
-  if (-not $server -or -not $port) { throw "本轮没有已启动的 `$server，先运行启动块" }
+  if (-not $server -or -not $port -or -not $day) { throw "本轮没有已启动的 `$server，先运行启动块" }
   if ($server.HasExited) { throw "本轮服务进程已退出，中止，不要写入数据" }
   $owner = @((Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue).OwningProcess)
   if ($owner.Count -ne 1 -or $owner[0] -ne $server.Id) {
     throw "端口 $port 的监听进程 ($($owner -join ',')) 不是本轮启动的 $($server.Id)，中止，不要写入数据"
   }
-  node $script
+  node $script "http://127.0.0.1:$port" $day   # 地址用刚校验过的 $port；本版 seed 还需要日期（yyyy-mm-dd），参数按脚本的 usage 补全
   if ($LASTEXITCODE -ne 0) { throw "$script 失败，退出码 $LASTEXITCODE" }
 }
 ```
