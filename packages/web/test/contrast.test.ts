@@ -44,7 +44,7 @@ const pairs: ReadonlyArray<readonly [string, string, number, string]> = [
   ["color-text-muted", "color-bg", 4.5, "次要文字 / 页面底"],
   ["color-text-muted", "color-surface-alt", 4.5, "次要文字 / 表头"],
   ["color-primary", "color-surface", 4.5, "链接、次按钮文字"],
-  ["color-primary", "color-primary-soft", 4.5, "导航选中、徽标文字"],
+  ["color-primary", "color-primary-soft", 4.5, "导航选中、徽标文字、分段选中文字"],
   ["color-text", "color-primary-soft", 4.5, "正文 / 选中行"],
   ["color-on-primary", "color-primary", 4.5, "主按钮"],
   ["color-on-primary", "color-primary-hover", 4.5, "主按钮悬停"],
@@ -64,19 +64,24 @@ const pairs: ReadonlyArray<readonly [string, string, number, string]> = [
   ["color-border-strong", "color-primary-soft", 3, "选中行内的输入框"],
   ["color-danger", "color-surface", 3, "危险按钮边框（静止）/ 校验失败输入框"],
   ["color-danger", "color-danger-bg", 3, "危险按钮边框（悬停）"],
-  ["color-primary", "color-surface", 3, "主按钮底色作边界 / 选中指示条 / 分段选中"],
+  [
+    "color-primary",
+    "color-surface",
+    3,
+    "主按钮底色作边界 / 选中指示条 / 分段选中内边框（外侧分段容器底）",
+  ],
   ["color-primary", "color-bg", 3, "页面底上的主按钮"],
   ["color-primary-hover", "color-surface", 3, "主按钮悬停作边界"],
   ["color-primary-active", "color-surface", 3, "主按钮按下作边界"],
   ["color-focus", "color-surface-alt", 3, "焦点框 / 表头、交替行"],
   ["color-focus", "color-primary-soft", 3, "焦点框 / 选中行"],
-  ["color-focus", "color-surface", 3, "焦点框 / 卡片"],
+  ["color-focus", "color-surface", 3, "焦点框 / 卡片（含分段外侧焦点框）"],
   ["color-focus", "color-bg", 3, "焦点框 / 页面底"],
   ["color-surface", "color-appbar", 3, "焦点框 / 顶栏（白色外框）"],
   // UI-01 shell additions: preference controls on the app bar.
   ["color-appbar-muted", "color-appbar", 3, "顶栏偏好下拉框边框"],
   ["color-on-appbar", "color-appbar", 3, "顶栏教学复选框（勾选态填充）"],
-  ["color-primary", "color-primary-soft", 3, "导航当前页指示条 / 选中底"],
+  ["color-primary", "color-primary-soft", 3, "导航当前页指示条 / 选中底 / 分段选中内边框（内侧）"],
   // UI-02a report components: teaching tip, links inside hovered grid rows.
   ["color-surface", "color-teach", 4.5, "教学提示标记"],
   ["color-text", "color-teach-bg", 4.5, "教学提示正文"],
@@ -133,5 +138,36 @@ describe("design token contrast", () => {
   test("fails when the control boundary returns to the old border value", () => {
     const found = failures(withToken("color-border-strong", "#8a939e"));
     expect(found.some((failure) => failure.includes("color-border-strong"))).toBe(true);
+  });
+
+  // Pairs only protect what components.css actually paints: bind the UI-09a declarations to checked pairs.
+  test("UI-09a segmented selected states and disabled subtle button paint only checked pairs", () => {
+    const components = readFileSync(
+      resolve(import.meta.dirname, "../src/theme/components.css"),
+      "utf8",
+    ).replace(/\/\*[\s\S]*?\*\//gu, "");
+    const declarations = (selector: string) => {
+      const found: Record<string, string> = {};
+      for (const [, selectors, body] of components.matchAll(/([^{}]+)\{([^{}]*)\}/gu))
+        if (selectors.split(",").some((s) => s.replace(/\s+/gu, " ").trim() === selector))
+          for (const [, prop, value] of body.matchAll(/([\w-]+)\s*:\s*([^;]+);/gu))
+            found[prop] = value.trim();
+      return found;
+    };
+    const token = (value = "") => /var\(--([\w-]+)\)/u.exec(value)?.[1];
+    const checked = (fg: string | undefined, bg: string | undefined, min: number) =>
+      pairs.some(([f, b, m]) => f === fg && b === bg && m >= min);
+
+    const selected = '.segmented button[aria-pressed="true"]';
+    for (const state of ["", ":hover:not(:disabled)", ":active:not(:disabled)"]) {
+      const d = declarations(selected + state);
+      const bg = token(d.background);
+      expect(bg, state).toBe("color-primary-soft");
+      expect(checked(token(d.color), bg, 4.5), `${state} text`).toBe(true);
+      expect(checked(token(d["box-shadow"]), bg, 3), `${state} inner border`).toBe(true);
+    }
+
+    const subtle = declarations(".btn-subtle:disabled");
+    expect([subtle.background, subtle["border-color"]]).toEqual(["transparent", "transparent"]);
   });
 });
