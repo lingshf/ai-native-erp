@@ -1,6 +1,6 @@
 /*
  * UI-07a 总账报表页（/ledger-reports 与 /reports/*）：只作用于 .ledger-page 之内。
- * 卡片、表格、KPI、消息条沿用 components.css；这里只补布局、行表头与窄屏触控尺寸。
+ * 卡片、表格、KPI、消息条沿用 components.css；这里只补布局、行表头、表格内链接与窄屏触控尺寸。
  */
 .ledger-stack {
   display: grid;
@@ -78,6 +78,15 @@
 .ledger-page .grid tr.selected th,
 .ledger-page .grid tr.selected td {
   background: var(--color-primary-soft);
+}
+
+/* F4：表格内链接（含 0.00）静止为细点线下划线（UA 默认 underline 改 dotted），悬停 / 键盘焦点加深为 2px 实线；下划线始终存在（WCAG 1.4.1） */
+.ledger-page :is(td, th) a {
+  text-decoration-style: dotted;
+}
+.ledger-page :is(td, th) a:is(:hover, :focus-visible) {
+  color: var(--color-primary-hover);
+  text-decoration: underline 2px;
 }
 
 /* VirtualRows：窄屏横向滚动，数字列表头右对齐 */
