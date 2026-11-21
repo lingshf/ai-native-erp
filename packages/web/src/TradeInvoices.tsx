@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useSearchParams } from "react-router-dom";
@@ -56,7 +56,7 @@ const idleGuard: Guard = { busy: false, unsaved: false };
 // TINV-01: one `fromOrder` request taken from the address; `company` null means the current one.
 type Intake = { company: string | null; orderId: string };
 type IntakeState = {
-  status: "loading" | "loaded" | "notFound" | "fullyInvoiced" | "failed" | "locked";
+  status: "loaded" | "notFound" | "fullyInvoiced" | "failed" | "locked";
   orderId: string;
 };
 const intakeTone = {
@@ -290,15 +290,14 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
   const [selected, setSelected] = useState(() => params.get("company") ?? "");
   const [guard, setGuard] = useState(idleGuard);
   const [intake, setIntake] = useState<Intake | null>(null);
-  const [missingCompany, setMissingCompany] = useState<string | null>(null);
   useInvoiceLeaveGuard(guard);
   const fromOrder = params.get("fromOrder");
   // Take the request once and drop it from the address (replace), so a refresh never refills.
   useEffect(() => {
     if (fromOrder === null) return;
     const target = params.get("company");
-    setMissingCompany(null);
-    if (fromOrder.trim()) setIntake({ company: target || null, orderId: fromOrder.trim() });
+    const orderId = fromOrder.trim();
+    setIntake(orderId ? { company: target || null, orderId } : null);
     if (target && !guard.busy) setSelected(target);
     setParams(
       (current) => {
@@ -309,7 +308,6 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
       { replace: true },
     );
   }, [fromOrder, params, setParams, guard.busy]);
-  const finishIntake = useCallback(() => setIntake(null), []);
   const companies = useInfiniteQuery({
     queryKey: ["companies"],
     initialPageParam: "",
@@ -324,20 +322,10 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
   });
   const rows = companies.data?.pages.flatMap((page) => page.items) ?? [];
   const company = rows.find((row) => row.code === selected) ?? rows[0];
-  // An order link names its company: page through the list until it is found, otherwise report it
-  // and drop the request instead of filling (or later firing) in another company.
-  const wanted = intake?.company ?? null;
-  const resolving =
-    wanted !== null && !companies.isError && !rows.some((row) => row.code === wanted);
-  const { isPending, isFetching, hasNextPage, fetchNextPage } = companies;
-  useEffect(() => {
-    if (!resolving || isPending || isFetching) return;
-    if (hasNextPage) void fetchNextPage();
-    else {
-      setMissingCompany(wanted);
-      setIntake(null);
-    }
-  }, [resolving, wanted, isPending, isFetching, hasNextPage, fetchNextPage]);
+  // An order link names its company: if it is not among the loaded companies, say so and fill
+  // nothing instead of falling back to another company (picking a company drops the request).
+  const wanted = intake?.company;
+  const missing = !!wanted && companies.isSuccess && !rows.some((row) => row.code === wanted);
   return (
     <section className="page trade-invoices">
       <PageHeader
@@ -352,7 +340,7 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
               disabled={guard.busy}
               onChange={(event) => {
                 setSelected(event.target.value);
-                setMissingCompany(null);
+                setIntake(null);
               }}
             >
               {rows.map((row) => (
@@ -364,10 +352,10 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
           </div>
         }
       />
-      {(companies.isPending || resolving) && <p role="status">{t("master.loading")}</p>}
-      {missingCompany !== null && (
+      {companies.isPending && <p role="status">{t("master.loading")}</p>}
+      {missing && (
         <MessageBar tone="danger" role="alert">
-          {t("tinv.fromOrder.company")} · {missingCompany}
+          {t("tinv.fromOrder.company")} · {wanted}
         </MessageBar>
       )}
       {companies.isError && (
@@ -382,7 +370,7 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
           </button>
         </MessageBar>
       )}
-      {company && !resolving && (
+      {company && !missing && (
         <>
           <InvoiceEntry
             key={company.code}
@@ -395,7 +383,7 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
                 ? intake.orderId
                 : null
             }
-            onIntake={finishIntake}
+            onIntake={setIntake}
           />
           <InvoiceList company={company} preferences={preferences} t={t} />
         </>
@@ -417,7 +405,7 @@ function InvoiceEntry({
   t: T;
   onGuard: (guard: Guard) => void;
   intake: string | null;
-  onIntake: () => void;
+  onIntake: (done: null) => void;
 }) {
   const client = useQueryClient();
   const [saved] = useState(() => loadSaved(company.code));
@@ -476,8 +464,7 @@ function InvoiceEntry({
       return;
     }
     setBusy(true);
-
-    setFromOrder({ status: "loading", orderId });
+    setFromOrder(null);
     try {
       const value = await masterRequest(
         `/api/v1/trade/orders/${encodeURIComponent(orderId)}/invoicing?company=${encodeURIComponent(company.code)}`,
@@ -503,7 +490,7 @@ function InvoiceEntry({
       setFocusTick((tick) => tick + 1);
     } catch (issue) {
       // Only a confirmed NOT_FOUND means "no such order"; anything else (400 included) can be retried.
-      const missing = issue instanceof MasterDataFailure && issue.detail?.code === "NOT_FOUND";
+      const missing = (issue as MasterDataFailure | undefined)?.detail?.code === "NOT_FOUND";
       setFromOrder({ status: missing ? "notFound" : "failed", orderId });
     } finally {
       setBusy(false);
@@ -512,7 +499,7 @@ function InvoiceEntry({
   // biome-ignore lint/correctness/useExhaustiveDependencies: one load per address request; fillFromOrder reads that render's draft state.
   useEffect(() => {
     if (intake === null) return;
-    onIntake();
+    onIntake(null);
     void fillFromOrder(intake);
   }, [intake, onIntake]);
   const editLine = (index: number, field: (typeof lineFields)[number], value: string) =>
@@ -679,7 +666,7 @@ function InvoiceEntry({
           {t("tinv.posted")} {receipt.journalIds.join(", ")} · {money(receipt.gross)}
         </MessageBar>
       )}
-      {fromOrder && fromOrder.status !== "loading" && (
+      {fromOrder && (
         <MessageBar
           tone={intakeTone[fromOrder.status]}
           role={

@@ -644,16 +644,13 @@ describe("trade invoices from an order (TINV-01)", () => {
     expect(reads()).toBe(3);
   });
 
-  it("finds the link's company beyond the first page and reports an unknown company without filling", async () => {
-    const other = { ...company, code: "ACME", name: "Acme" };
+  it("reports a link company outside the loaded companies instead of filling another company", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (path) => {
       const url = String(path);
-      if (url === "/api/v1/companies?limit=100&cursor=DEFAULT")
-        return response({ items: [other], nextCursor: null });
+      // ACME exists, but only on a later page that this page has not loaded.
       if (url.startsWith("/api/v1/companies"))
         return response({ items: [company], nextCursor: "DEFAULT" });
-      if (url === "/api/v1/trade/orders/PO-1/invoicing?company=ACME")
-        return response(invoicing(["0", "0", "0"]));
+      if (url.includes("/invoicing")) return response(invoicing(["0", "0", "0"]));
       if (url.startsWith("/api/v1/trade/invoices?"))
         return response({ items: [], nextCursor: null });
       return response({}, 404);
@@ -662,28 +659,19 @@ describe("trade invoices from an order (TINV-01)", () => {
     const reads = () =>
       fetchMock.mock.calls.filter(([path]) => String(path).includes("/invoicing")).length;
     window.history.replaceState(null, "", "/#/trade-invoices?company=ACME&fromOrder=PO-1");
-    const found = render(<App />);
-    expect(await screen.findByText(`${t("tinv.fromOrder.loaded")} · PO-1`)).toBeTruthy();
-    expect(screen.getByLabelText<HTMLSelectElement>(t("master.company")).value).toBe("ACME");
-    expect(value(t("tinv.party"))).toBe("C1");
-    expect(reads()).toBe(1);
-    found.unmount();
-    window.sessionStorage.clear();
-
-    window.history.replaceState(null, "", "/#/trade-invoices?company=NOPE&fromOrder=PO-1");
     render(<App />);
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain(`${t("tinv.fromOrder.company")} · NOPE`);
+    expect(alert.textContent).toContain(`${t("tinv.fromOrder.company")} · ACME`);
     expect(alert.className).toContain("danger");
-    expect(window.location.hash).toBe("#/trade-invoices?company=NOPE");
-    // Choosing a company afterwards must not fire the dropped request.
-    fireEvent.change(screen.getByLabelText(t("master.company")), { target: { value: "ACME" } });
+    expect(window.location.hash).toBe("#/trade-invoices?company=ACME");
+    expect(screen.queryByLabelText(t("tinv.party"))).toBeNull();
+    // Picking a company afterwards clears the report and never fires the dropped request.
+    fireEvent.change(screen.getByLabelText(t("master.company")), { target: { value: "DEFAULT" } });
     expect(await screen.findByLabelText(t("tinv.party"))).toBeTruthy();
     expect(value(t("tinv.party"))).toBe("");
-    expect(screen.queryByText(`${t("tinv.fromOrder.company")} · NOPE`)).toBeNull();
-    expect(reads()).toBe(1);
+    expect(screen.queryByText(`${t("tinv.fromOrder.company")} · ACME`)).toBeNull();
+    expect(reads()).toBe(0);
   });
-
   it("asks before replacing an unsaved draft and keeps it when cancelled", async () => {
     const reads = mockApi(() => response(invoicing(["0", "0", "0"])));
     const view = render(<App />);
