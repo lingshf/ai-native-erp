@@ -107,7 +107,8 @@ for (const [lang, theme, width, orderId] of combos) {
     const previewed = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/v1/trade/orders/preview" && r.request().method() === "POST");
     await page.getByRole("button", { name: t.preview, exact: true }).click();
     const previewResponse = await previewed;
-    await page.locator('[aria-labelledby="tord-preview-title"]').waitFor();
+    if (previewResponse.status() !== 200) throw new Error(`预览请求返回 ${previewResponse.status()}：${(await previewResponse.text()).slice(0, 300)}`);
+    await page.locator('[aria-labelledby="tord-preview-title"]').waitFor({ timeout: 8000 });
     await page.waitForTimeout(300);
     const listAfterPreview = await page.locator("table.tord-list tbody tr").count();
     log.push({ page: "orders-preview", tag, order: orderId, status: previewResponse.status(), active: await describeActive(page), listRowsAfterPreview: listAfterPreview });
