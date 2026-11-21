@@ -1,15 +1,38 @@
-import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it, vi } from "vitest";
+import { createVitest } from "vitest/node";
 import {
   balanceShards,
   fileWeights,
   guiStartupSummary,
   selectPrTests,
   selectShardFiles,
+  shardWeightProblems,
   shouldRun,
   testSummary,
   vitestTimings,
   type TestTiming,
 } from "../../../../scripts/ci.ts";
+
+const root = fileURLToPath(new URL("../../../../", import.meta.url));
+
+/**
+ * Every test file of every project (slow and browser lanes included), keyed like
+ * WeightedShardSequencer.key(). Uses Vitest's own collection from vitest.config.ts, so it is
+ * the set the sequencer receives in a Full run.
+ */
+async function collectedTestFiles() {
+  vi.stubEnv("CI_TEST_LAYER", "full");
+  const vitest = await createVitest({ config: join(root, "vitest.config.ts"), watch: false });
+  try {
+    const specs = await vitest.globTestSpecifications();
+    return specs.map((spec) => relative(root, spec.moduleId).replaceAll("\\", "/"));
+  } finally {
+    await vitest.close();
+  }
+}
 
 describe("CI selection and reporting", () => {
   it("keeps component-only and documentation changes incremental", () => {
@@ -203,5 +226,35 @@ describe("CI selection and reporting", () => {
     expect(report.markdown).toContain("diagnostic only");
     expect(() => guiStartupSummary(phase("page", -1))).toThrow("Invalid GUI phase timing");
     expect(guiStartupSummary("No browser in this ordinary shard").phases).toEqual([]);
+  });
+
+  it("reports test files without a shard weight and weights without a test file", () => {
+    const weights = { "a.test.ts": 1, "b.test.ts": 2 };
+    expect(shardWeightProblems(["b.test.ts", "a.test.ts"], weights)).toEqual([]);
+
+    const missing = shardWeightProblems(["a.test.ts", "b.test.ts", "new.test.ts"], weights);
+    expect(missing).toContain("  missing: new.test.ts");
+    expect(missing.join("\n")).toContain("node scripts/ci.ts weights REPORT.json");
+    expect(missing.join("\n")).not.toContain("stale");
+
+    const stale = shardWeightProblems(["a.test.ts"], weights);
+    expect(stale).toContain("  stale: b.test.ts");
+    expect(stale.join("\n")).not.toContain("missing");
+
+    const both = shardWeightProblems(["a.test.ts", "c.test.ts"], weights);
+    expect(both.filter((line) => /^ {2}(missing|stale):/u.test(line))).toEqual([
+      "  missing: c.test.ts",
+      "  stale: b.test.ts",
+    ]);
+  });
+
+  it("has a shard weight for exactly the test files Vitest collects", async () => {
+    const files = await collectedTestFiles();
+    expect(files).toContain("packages/infra/test/tooling/ci.test.ts");
+    expect(files.some((file) => file.endsWith(".slow.test.ts"))).toBe(true);
+    const weights = JSON.parse(
+      readFileSync(join(root, "scripts/test-shard-weights.json"), "utf8"),
+    ) as Record<string, number>;
+    expect(shardWeightProblems(files, weights).join("\n")).toBe("");
   });
 });

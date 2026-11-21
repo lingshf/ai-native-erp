@@ -101,6 +101,34 @@ export function fileWeights(reports: unknown[], root = process.cwd()) {
 }
 
 /**
+ * Compares the test files Vitest collects (repo-relative, `/`-separated, as the shard
+ * sequencer keys them) with the recorded shard weights. Returns one line per problem;
+ * an empty list means every collected file has a weight and every weight has a file.
+ */
+export function shardWeightProblems(files: string[], weights: Record<string, number>) {
+  const collected = new Set(files);
+  const missing = [...collected].filter((file) => !Object.hasOwn(weights, file)).sort();
+  const stale = Object.keys(weights)
+    .filter((key) => !collected.has(key))
+    .sort();
+  return [
+    ...(missing.length
+      ? [
+          `Test files without a weight in scripts/test-shard-weights.json (the sequencer runs them as longest and reorders projects):`,
+          ...missing.map((file) => `  missing: ${file}`),
+          "Fix: regenerate with `node scripts/ci.ts weights REPORT.json...` from Vitest JSON reports, or add an estimated weight (ms) by hand and say so in the PR.",
+        ]
+      : []),
+    ...(stale.length
+      ? [
+          "Weights in scripts/test-shard-weights.json without a collected test file (remove or rename them):",
+          ...stale.map((key) => `  stale: ${key}`),
+        ]
+      : []),
+  ];
+}
+
+/**
  * Deterministic longest-first greedy split, minimizing estimated project/worker wall time.
  * Files without a recorded weight use the median weight; every file lands in exactly one shard.
  */
