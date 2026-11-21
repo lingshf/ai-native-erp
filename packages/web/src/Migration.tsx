@@ -22,6 +22,31 @@ const delta = (field: string, a: unknown, b: unknown) =>
         ? BigInt(b) - BigInt(a)
         : undefined;
 const show = (value: unknown) => (value === undefined ? "—" : String(value));
+// Long strings may break anywhere: JSON (text that parses whole to an object or array, so prose
+// such as "[Draft] Depreciation / equipment" stays prose), or one whitespace-free token that is an identifier (`_`),
+// a path or URL (`\`, or `/` with a leading `/ ~ .` or a dot), or over 24 chars (UUIDs, hashes).
+// Every other value, including prose with slashes or quotes, gets class "word" so narrow screens
+// break it only between words.
+const isJson = (text: string) => {
+  if (!/^[{[]/.test(text)) return false;
+  try {
+    const value: unknown = JSON.parse(text);
+    return typeof value === "object" && value !== null;
+  } catch {
+    return false;
+  }
+};
+const longString = (text: string) => {
+  const token = text.trim();
+  if (isJson(token)) return true;
+  if (/\s/.test(token)) return false;
+  return (
+    token.length > 24 ||
+    /[_\\]/.test(token) ||
+    (token.includes("/") && (/^[/~.]/.test(token) || token.includes(".")))
+  );
+};
+const word = (text: string) => (longString(text) ? undefined : "word");
 // The response carries no business keys for check rows, so the two sides are listed one by one,
 // never paired by position; only server-reported differences (same key) are compared.
 const listChecks = (expected: Row[], actual: Row[]): Pair[] => [
@@ -60,17 +85,16 @@ export function Migration({ preferences }: { preferences: Preferences }) {
                     const a = left?.[field],
                       b = right?.[field],
                       change = delta(field, a, b),
-                      off = a !== b && left !== undefined && right !== undefined;
+                      off = a !== b && left !== undefined && right !== undefined,
+                      diff = change === undefined ? "—" : change > 0 ? `+${change}` : `${change}`;
                     return (
                       <tr key={field} data-mismatch={off || undefined}>
                         <th scope="row">
                           {field} {off && <strong className="mismatch">{d.mismatch}</strong>}
                         </th>
-                        <td>{show(a)}</td>
-                        <td>{show(b)}</td>
-                        <td>
-                          {change === undefined ? "—" : change > 0 ? `+${change}` : `${change}`}
-                        </td>
+                        <td className={word(show(a))}>{show(a)}</td>
+                        <td className={word(show(b))}>{show(b)}</td>
+                        <td className="word">{diff}</td>
                       </tr>
                     );
                   },
