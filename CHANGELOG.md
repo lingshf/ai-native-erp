@@ -8,9 +8,9 @@
 
 （暂无）
 
-## [0.7.0] - 待定（发布日在日期 PR 中填写）
+## [0.7.0] - 2026-11-21
 
-> 发布候选草稿，未获打 tag 授权。产品代码基线为 `main` 9421906（S7 功能任务全部合并，Full 12/12）；自 v0.6.0（tag 所指提交 3548d58）到产品基线 9421906 共 6 个已合并 PR 的 6 个 squash 提交（#155–#157、#159–#161；`git rev-list --count v0.6.0..9421906` = 6），其中 #155、#160 是设计提交，#156 是流程文档，其余为产品与测试提交。本 RC 的 main base 72e22d8 多一个 #162（只同步任务表，共 7 个），不影响产品代码。按 D21，tag `v0.7.0` 打在日期 PR 合并后的 squash 提交上。
+> 产品代码基线为 `main` 9421906（S7 功能任务全部合并，Full 12/12）；自 v0.6.0（tag 所指提交 3548d58）到产品基线 9421906 共 6 个已合并 PR 的 6 个 squash 提交（#155–#157、#159–#161；`git rev-list --count v0.6.0..9421906` = 6），其中 #155、#160 是设计提交，#156 是流程文档，其余为产品与测试提交。基线之后 main 只有文档提交（#162 任务表、#163 发布候选、#164 Demo、#165 Sprint 评审，以及本日期 PR）；`git diff --name-only 9421906 origin/main` 只含 docs/、design/、CHANGELOG 与根 README，产品代码与 9421906 相同。按 D21，tag `v0.7.0` 打在本日期 PR 合并后的 squash 提交上。Demo 记录：[docs/demo/v0.7.0](docs/demo/v0.7.0/run-through.md)。
 
 S7 Sprint：订单列表可按伙伴、方向、订单日期区间筛选（新增迁移 017，只加一个索引）；D-7 完成（`styles.css` 删除）；CI 新增分片权重守卫。无依赖变化。
 
@@ -298,7 +298,7 @@ M1 贸易里程碑完成（M1-01..07，M1-R 评审通过，无阻塞项）。产
 - 旧快照未配置提示、凭证空列表文案和根 README 迁移版本说明已在 v0.2.0 修复（见 `[0.2.0]`）；v0.1.0 原发布基线不包含这些修复。
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
-[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.7.0...HEAD
 [0.7.0]: https://github.com/lingshf/ai-native-erp/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/lingshf/ai-native-erp/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/lingshf/ai-native-erp/compare/v0.4.0...v0.5.0
