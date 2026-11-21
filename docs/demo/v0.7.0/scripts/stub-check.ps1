@@ -12,7 +12,7 @@ $oldTemp = $env:TEMP; $oldTmp = $env:TMP; $iso = $null; $before = $null; $after 
 $problems = New-Object System.Collections.Generic.List[string]
 function Fail($msg) { $script:problems.Add($msg); "ASSERT FAIL: $msg" }
 $snap = { param($dir) @(Get-ChildItem -LiteralPath $dir -Recurse -File -Force -ErrorAction Stop | Sort-Object FullName | ForEach-Object { (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256 -ErrorAction Stop).Hash + "  " + $_.FullName }) }
-$ServerPid = 111; $ForeignPid = 999
+$ServerPid = 111; $ForeignPid = 999; $oldNode = (Get-Command node -CommandType Application).Source
 
 try {
   if (-not (Test-Path -LiteralPath $real)) { throw "真实截图目录不存在：$real" }
@@ -27,6 +27,11 @@ try {
   $m = [regex]::Match($sec, '(?s)```powershell\r?\n(.*?)```')
   if (-not $m.Success) { throw "README 第 4 节没有 powershell 块" }
   $block = [scriptblock]::Create($m.Groups[1].Value)
+
+  # seed-orders 的真实脚本对假 HTTP 服务（回环临时端口）跑一遍，覆盖 AR 分支需要带收入科目的商品
+  $seedOut = & $oldNode "$root\docs\demo\v0.7.0\scripts\seed-orders-stub.mjs" 2>&1
+  $seedOut | ForEach-Object { "seed-orders-stub: $_" }
+  if ($LASTEXITCODE -ne 0) { Fail "seed-orders 对假服务的运行失败（AR 分支或请求序列不符）" }
 
   $global:Calls = New-Object System.Collections.Generic.List[string]
   $global:Stopped = New-Object System.Collections.Generic.List[int]
@@ -127,4 +132,4 @@ if ($null -ne $before -and $null -ne $after) {
 if ($iso -and (Test-Path $iso)) { $problems.Add("隔离目录未删除") }
 if ((git status --porcelain -- docs/demo/v0.7.0/screenshots)) { $problems.Add("真实截图目录出现 git 改动") }
 if ($problems.Count -gt 0) { $problems | ForEach-Object { "PROBLEM: $_" }; "FAILED: $($problems.Count) problem(s)"; exit 1 }
-"ALL ASSERTIONS PASSED (10 scenarios)"
+"ALL ASSERTIONS PASSED (10 scenarios + seed-orders stub)"

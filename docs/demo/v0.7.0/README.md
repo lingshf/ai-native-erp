@@ -19,7 +19,7 @@
 
 ## 3. 演示脚本（口述顺序）
 
-预置 4 张虚构订单：`PO-F1` 采购 PARTY（10-05）、`PO-F2` 采购 PARTY2（11-05）、`SO-F3` 销售 PARTY（11-12）、`SO-F4` 销售 PARTY2（12-03）。
+预置 4 张虚构订单（采购单用商品 EXPENSE，销售单用服务类商品 SERVICE，由 `seed-orders.mjs` 按现有契约建立，收入科目 4000）：`PO-F1` 采购 PARTY（10-05）、`PO-F2` 采购 PARTY2（11-05）、`SO-F3` 销售 PARTY（11-12）、`SO-F4` 销售 PARTY2（12-03）。
 
 1. 打开“采购 / 销售订单”：筛选栏在列表上方，列表显示 4 张订单。
 2. 伙伴填 PARTY，方向选“销售”，起始 11-01、截止 11-30，点“应用”：只剩 `SO-F3`。
@@ -55,7 +55,7 @@
 powershell -NoProfile -File docs\demo\v0.7.0\scripts\stub-check.ps1
 ```
 
-脚本入口：[run-main.ps1](scripts/run-main.ps1)、[capture.mjs](scripts/capture.mjs)、[seed-orders.mjs](scripts/seed-orders.mjs)、[stub-check.ps1](scripts/stub-check.ps1)；账套准备与主数据 seed 复用 v0.4.0 的 `prepare.mjs`、`seed-trade.mjs`。
+脚本入口：[run-main.ps1](scripts/run-main.ps1)、[capture.mjs](scripts/capture.mjs)、[seed-orders.mjs](scripts/seed-orders.mjs)、[stub-check.ps1](scripts/stub-check.ps1)、[seed-orders-stub.mjs](scripts/seed-orders-stub.mjs)（对假 HTTP 服务跑 seed-orders）；账套准备与主数据 seed 复用 v0.4.0 的 `prepare.mjs`、`seed-trade.mjs`。
 
 ## 5. 范围与限制（未演示的内容）
 
