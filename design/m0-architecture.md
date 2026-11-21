@@ -25,9 +25,11 @@ packages/
 | core/application | core/domain |
 | core/contracts | zod |
 | infra | core/*、Node 内置、kysely、better-sqlite3、fastify、@fastify/static、@github/copilot-sdk |
-| web | core/contracts（经 `@erp/core/contracts` 导出）、浏览器 API、React 生态 |
+| web | core/contracts（经 `@erp/core/contracts`，或 `@erp/core/contracts/migration`、`@erp/core/contracts/master-data` 两条子路径；不得导入 `@erp/core/application/storage`）、浏览器 API、React 生态 |
 
 core 不得导入 infra/web；web 不得导入 Node 内置或服务端库。
+
+`@erp/core` 的入口：`./domain`、`./application`、`./contracts`（桶文件），以及 D199（FLAKE-05 [#147](https://github.com/lingshf/ai-native-erp/pull/147)）新增的 3 条叶子子路径 `./application/storage`、`./contracts/migration`、`./contracts/master-data`。叶子子路径不得直接或间接导入桶文件；`check-boundaries.mjs` 按精确入口识别导入，把每条入口映射到所属层（`application/storage` → application，两条 `contracts/*` → contracts），分层规则不变：infra 可导入全部 3 条；web 只可导入两条 contracts 子路径，仍不能导入 `application/storage`。未列出的 `@erp/core/...` 子路径一律判为违规。新增、改名或移动子路径须报告设计角色。
 
 ## 2. 直接运行 TS 源码
 
