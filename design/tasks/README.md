@@ -491,7 +491,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 **目标**：
 - **产品**：订单与发票双向可追溯。S8 做到了“订单 → 发票”，还缺两处：订单列表上看不出哪些订单还没开票，只能逐张打开；发票列表上看不出发票来自哪张订单（`tradeInvoicePageSchema` 列表项没有 `orderId`，`packages/core/src/contracts/trade-documents.ts:469–486`），发票页也没有详情视图。S9 给订单列表加“开票状态”列并支持 `?order=` 直接打开订单（TINV-03），给发票列表加“来源订单”列（TINV-04）。**无迁移，不改过账。**
 - **流程**：[S8 回顾](../reviews/S8-retro.md) 6 条行动项（D258）落地：行动 4、5 写入[路线图 §5“设计文档自查”](../roadmap.md#5-团队流程)第 7、8 项与新建的[任务书模板](TEMPLATE.md)；行动 1、2 写入路线图 §5“UI PR 证据清单”第 7、8 项（以上由本 PR 写入）；行动 1、2、3、6 在 Demo 模板与发布清单中的落地由 PROC-06 完成（版本管理）。
-- **遗留**：v0.8.0 release-notes 第 3 行的过时提示、`components.css` 第 3–4 行注释（S7 / S8 遗留 1）、#174 文档残留（S8 遗留 6），都并入 PROC-06（D263）。
+- **遗留**：v0.8.0 release-notes 第 3 行的过时提示、`components.css` 第 3–4 行注释（S7 / S8 遗留 1），都并入 PROC-06（D263）。#174 文档残留（S8 遗留 6）已由 #176 修正。
 
 版本号由协调者定。基线为 v0.8.0 tag 所指提交 `deb80fc`（= 本计划编写时的 main）。本节由设计 PR 写入，协调者确认见 D263。
 
@@ -504,9 +504,9 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| [TINV-03](TINV-03-order-list-invoicing-status.md) | 订单列表“开票状态”列（未开票 / 部分开票 / 已开完，与过账匹配同一谓词）；订单页 `?company=…&order=…` 直接打开订单详情，逐个参数处理异常 | 存储读 + 契约（只加响应字段）+ 页面 | P1 | — | 存储、contracts（`tradeOrderPageSchema` 列表项）、web-ui:trade-orders、bench（`trade-order-list.ts`）；共享单文件见泳道（A 线在前） | todo | — |
-| [TINV-04](TINV-04-invoice-list-source-order.md) | 发票列表“来源订单”列，链接到 TINV-03 的 `?order=`；无订单显示“—” | 存储读 + 契约（只加响应字段）+ 页面 | P1 | TINV-03（仅开工可并行；TINV-03 合并且 main Full 绿、rebase 之后才改共享单文件、跑端到端 / 取证、请求评审） | 存储、contracts（`tradeInvoicePageSchema` 列表项）、web-ui:trade；共享单文件见泳道（在 TINV-03 之后） | todo | — |
-| [PROC-06](PROC-06-s8-retro-actions.md) | S8 回顾行动 1、2、3、6 写入 Demo 模板与发布清单；删除 v0.8.0 release-notes 第 3 行过时提示；修正 #174 文档残留；`components.css` 第 3–4 行只改注释（原 CSS-01，D263）（版本管理，不占开发名额） | 文档 + 注释 | P2（v0.9.0 RC 之前） | — | docs:release、web-ui:components（只改注释） | todo | — |
+| [TINV-03](TINV-03-order-list-invoicing-status.md) | 订单列表“开票状态”列（未开票 / 部分开票 / 已开完，与过账匹配同一谓词）；订单页 `?company=…&order=…` 直接打开订单详情，逐个参数处理异常 | 存储读 + 契约（只加响应字段）+ 页面 | P1 | — | 存储、contracts（`tradeOrderPageSchema` 列表项）、domain 类型（`TradeOrderSummary`）、web-ui:trade-orders、bench（`trade-order-list.ts`）；共享单文件见泳道（A 线在前） | todo | — |
+| [TINV-04](TINV-04-invoice-list-source-order.md) | 发票列表“来源订单”列，链接到 TINV-03 的 `?order=`；无订单显示“—”；发票页等使用 `useInvoiceLeaveGuard` 的页面在草稿 dirty 时，站内跳转先确认 | 存储读 + 契约（只加响应字段）+ 页面 | P1 | TINV-03（仅开工可并行；TINV-03 合并且 main Full 绿之前不改任何共享单文件、不 rebase、不跑真实路径、不请求评审，见“TINV-04 评审门禁”） | 存储、contracts（`tradeInvoicePageSchema` 列表项）、domain 类型（`TradeDocumentSummary`）、web-ui:trade（含 `useInvoiceLeaveGuard` 及其四个调用页面的调用行）；共享单文件见泳道（在 TINV-03 之后） | todo | — |
+| [PROC-06](PROC-06-s8-retro-actions.md) | S8 回顾行动 1、2、3、6 写入 Demo 模板与发布清单；删除 v0.8.0 release-notes 第 3 行过时提示；`components.css` 第 3–4 行只改注释（原 CSS-01，D263）（版本管理，不占开发名额） | 文档 + 注释 | P2（v0.9.0 RC 之前） | — | docs:release、web-ui:components（只改注释） | todo | — |
 
 **S9 共同验收**：
 1. UI 任务满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9，PG-05 口径同 S8（基线为 PR 实际 base 的 gzip 列，数字绑定最终送审 head，与取证 head 分开写）；真实 Chrome 证据按[路线图 §5 UI PR 证据清单](../roadmap.md#5-团队流程) 1–8 项（含本计划新增的第 7 项断言对照、第 8 项先 build），请求评审前逐项勾选写入 PR 正文。
@@ -521,11 +521,11 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | 线 | 顺序 | 冲突域 | 共享单文件（顺序与门禁） |
 | --- | --- | --- | --- |
-| A：订单 ↔ 发票 | TINV-03 → TINV-04（仅开工可并行，见下“TINV-04 评审门禁”） | 存储 + contracts + web-ui:trade-orders + bench → 存储 + contracts + web-ui:trade | `packages/core/src/contracts/trade-documents.ts`、`packages/infra/src/storage/trade-documents.ts`、`scripts/test-shard-weights.json`：都是 TINV-03 在前；TINV-03 合并且覆盖其合并提交的 main Full 变绿之前，TINV-04 不 rebase 这些文件的改动、不改权重 |
+| A：订单 ↔ 发票 | TINV-03 → TINV-04（仅开工可并行，见下“TINV-04 评审门禁”） | 存储 + contracts + domain 类型 + web-ui:trade-orders + bench → 存储 + contracts + domain 类型 + web-ui:trade | `packages/core/src/contracts/trade-documents.ts`、`packages/core/src/domain/trade-documents.ts`、`packages/infra/src/storage/trade-documents.ts`、`scripts/test-shard-weights.json`：都是 TINV-03 在前；TINV-03 合并且覆盖其合并提交的 main Full 变绿之前，TINV-04 不改这四个文件中的任何一个，也不 rebase |
 | 版本管理 | PROC-06 | docs:release + web-ui:components（只改 `components.css` 注释） | 无；A 线不得改 `components.css`，确实需要时停下报告 |
 
-- **首批**：TINV-03 与 TINV-04 两名开发同时开工。TINV-04 在门禁前只按 TINV-04 任务书写定的形状（`orderId` 字段、`?order=` 链接）开发，只跑 mock fetch 的 web 测试。PROC-06 由版本管理并行处理。
-- **TINV-04 评审门禁**：TINV-03 合并、且覆盖其合并提交的 main Full 变绿之前，TINV-04 不改共享单文件、不跑真实接口路径（端到端、真实 Chrome）、不请求评审。门禁满足后依次 rebase → 登记权重（如有）→ 独占时段内跑端到端并取证 → 请求评审。
+- **首批**：TINV-03 与 TINV-04 两名开发同时开工。TINV-04 在门禁前只做任务书“评审门禁”列出的 mock-first 工作（离开确认、链接函数、列组件），只跑 mock fetch 的 web 测试。PROC-06 由版本管理并行处理。
+- **TINV-04 评审门禁**：TINV-03 合并、且覆盖其合并提交的 main Full 变绿之前，TINV-04 不改上表四个共享单文件中的任何一个、不 rebase、不跑真实接口路径（端到端、真实 Chrome）、不请求评审。门禁满足后依次 rebase → 改共享单文件 → 补列渲染与接口用例 → 登记权重（如有）→ 独占时段内跑端到端并取证 → 请求评审。详见 [TINV-04 评审门禁](TINV-04-invoice-list-source-order.md#评审门禁)。
 - **真实 Chrome 与 E2E 由谁、何时验证**：与 S8 相同。默认 PR CI 排除 `*.slow.test.*`（`vitest.config.ts:11`），所以端到端与真实 Chrome 证据由开发者在独占时段内用 PR head 运行并附完整日志；合并后由协调者跟踪覆盖合并提交的 main Full。开发者不得为过验收修改 `CI_TEST_LAYER`、`vitest.config.ts` 或 workflow。
 - **第三个名额先空着**（D263）：等 TINV-03 合并后，由协调者看有没有可并行的小任务。插入的任务只能与 A 线冲突域不相交、不加迁移、不改 `scripts/test-shard-weights.json` 与 `contrast.test.ts`。
 - 每个任务合并后，按[路线图 §5 合并后动作](../roadmap.md#5-团队流程)跟踪 main Full，变绿前不派发同一冲突域的下一个任务。
@@ -539,7 +539,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | 3 | TINV-02 权重来自本机采样 | 不单独立项；TINV-03 / TINV-04 改权重文件时，由协调者附上最近一次 Full 的分片耗时作参考，是否校准由守卫和 D15 决定 |
 | 4 | #172 证据注记 | 不变，只影响引用 |
 | 5 | Demo 未演示的分支（销售方向、价格超容差、跨月、取消后恢复） | v0.9.0 Demo 至少补“销售方向”；TINV-04 验收 5 已覆盖销售发票到订单的跳转 |
-| 6 | #174 文档残留 | PROC-06 |
+| 6 | #174 文档残留 | 已由 #176（`deb80fc`）修正，结案 |
 | 7 | S7 遗留 3–5 | 维持 |
 | 8 | M2-05 / M2-06 | 仍待用户授权 |
 | 9 | v0.8.0 发布收尾 | 已完成（tag `v0.8.0` → `deb80fc`） |
