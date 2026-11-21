@@ -25,14 +25,22 @@
 4. 点列表里的订单号：查询框填入该号，显示只读详情。
 5. 打开“迁移核对”，窄屏（390）下查看键值表：不再在单词中间断行。
 
-## 4. 复跑（同一个 PowerShell 终端，从仓库根目录）
+## 4. 复跑（同一个 PowerShell 终端，从仓库根目录执行）
 
-1. `npm run build`。
-2. 主账套：迁移空库 → `docs/demo/v0.4.0/scripts/prepare.mjs <db> <年>` → 用 `ERP_SQLITE_FILE/ERP_PORT/ERP_HOST=127.0.0.1/ERP_PROFILE=local` 启动 `packages/infra/src/main.ts` → 校验端口监听进程 == 本轮启动的 pid → `seed-trade.mjs <url> <日期>` → `capture.mjs main <url> <输出目录>`。
-3. 迁移账套：`migration-setup.mjs <目录>` → `legacy-import` → `legacy-reconcile --check` → `--confirm` → 启动 → 校验归属 → `capture.mjs migration <url> <输出目录>`。
-4. 收尾：只停本轮 pid，只删本轮 `erp-demo-*` 目录，确认端口已释放。
+两个脚本都是一个 `. { ... try { ... } finally { ... } }` 块：开头清空 `$server/$demo/$db/$port`；启动前检查端口 4198 空闲；就绪后校验监听进程 == 本轮启动的 pid，之后才写入（seed、capture）；`finally` 只停本轮 `$server`、只删本轮创建的 `erp-demo-*` 目录，并报告端口是否释放。端口 4198 若被占用，脚本直接 `throw`，换端口后再跑；不要用 4173。
 
-写入块与收尾块的自检写法见 [docs/demo/TEMPLATE.md](../TEMPLATE.md)；本次实跑用的脚本逻辑与 v0.5.0 README 的 A–G 块相同，端口改为 4198。
+```powershell
+$shots = Join-Path $env:TEMP "demo-s6-shots"
+npm run build
+if ($LASTEXITCODE -ne 0) { throw "构建失败，退出码 $LASTEXITCODE" }
+& .\docs\demo\v0.6.0\scripts\run-main.ps1        # 主账套：订单预览 / 保存 / 列表，12 张截图
+& .\docs\demo\v0.6.0\scripts\run-migration.ps1   # 迁移账套：迁移核对页，4 张截图
+Copy-Item "$shots\*" docs\demo\v0.6.0\screenshots\
+```
+
+输出在 `$env:TEMP\demo-s6-shots`（16 张 PNG + 2 个 `capture-log-*.json`），提交前复制到 `screenshots/`。脚本里的 `$shots` 在脚本内部重新定义，与上面的变量值相同。
+
+脚本入口：[run-main.ps1](scripts/run-main.ps1)、[run-migration.ps1](scripts/run-migration.ps1)、[capture.mjs](scripts/capture.mjs)、[migration-setup.mjs](scripts/migration-setup.mjs)；seed 与预置复用 v0.4.0 的 `prepare.mjs`、`seed-trade.mjs`。
 
 ## 5. 范围与限制（未演示的内容）
 
