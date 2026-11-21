@@ -30,6 +30,10 @@
 ## 验收标准
 
 1. 范围 1、2 各有可勾选、可核对的条目，落点在 `docs/demo/TEMPLATE.md`。
-2. 用 v0.7.0 的 `seed-orders.mjs` 旧版（#164 中的提交 `27de52e`，不在 main 历史上，用 `git fetch origin pull/164/head` 取得）对照验证；可参考已合并的 `docs/demo/v0.7.0/scripts/seed-orders-stub.mjs`：按新条目写的替身能让旧脚本失败（退出 1，报与真实服务相同的错误码），修复后的脚本通过；两边输出摘要写进 PR 正文。
+2. 用 v0.7.0 的 `seed-orders.mjs` 旧版（#164 中的提交 `27de52e`，不在 main 历史上，用 `git fetch origin pull/164/head` 取得）对照验证；可参考已合并的 `docs/demo/v0.7.0/scripts/seed-orders-stub.mjs`：按新条目写的替身，对两个版本给出**精确**结果，不能只判非零退出：
+   - **旧版**：先确认替身已就绪且参数齐全（`<address> <yyyy>` 都给出；替身的就绪探测成功，日志写进 PR 正文）。之后 PO-F1、PO-F2 被替身接受并写入（各返回 201，脚本各输出一行 `posted`）；SO-F3（AR 单用 EXPENSE 商品）因商品规则被拒，返回 HTTP 400、错误码 `api.error.tradeDocument.product`；脚本报出这一状态码与错误码后退出 1；SO-F4 没有发出。替身的请求日志恰好是这三次 POST。
+   - **修复版**（main 上的现行脚本）：同一替身、同一规则下，四单都返回 201，脚本退出 0。
+   - 缺参数、替身未就绪、连接失败、或错误码不是 `api.error.tradeDocument.product` 的非零退出，都不算通过。
+   - 两个版本的命令、退出码、脚本输出与替身请求日志写进 PR 正文。
 3. 文中新增的命令用替身跑过成功分支和失败分支（S5 行动项 10）。
 4. 只改 `docs/demo/TEMPLATE.md`。
