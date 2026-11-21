@@ -172,7 +172,6 @@ try {
     const { readFileSync } = await import("node:fs");
     const { join } = await import("node:path");
     const { LegacyImportSnapshot } = await import("../packages/infra/src/legacy/import-plan.ts");
-    const { executeLegacyImport } = await import("../packages/infra/src/storage/legacy-import.ts");
     let manifest;
     try {
       manifest = JSON.parse(readFileSync(join(command.snapshot, "manifest.json"), "utf8"));
@@ -185,6 +184,9 @@ try {
     try {
       let result;
       if (command.action === "legacy-import") {
+        const { executeLegacyImport } = await import(
+          "../packages/infra/src/storage/legacy-import.ts"
+        );
         result = await executeLegacyImport(snapshot, {
           target: command.target,
           choices: command.choices,

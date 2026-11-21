@@ -3,7 +3,7 @@ import { isAbsolute, win32 } from "node:path";
 import Database from "better-sqlite3";
 import { StorageError } from "@erp/core/application";
 import { migrationStatusSchema, type MigrationStatus } from "@erp/core/contracts";
-import { APPLICATION_ID } from "./sqlite.ts";
+import { APPLICATION_ID } from "./application-id.ts";
 export type ReconciliationConnection = Database.Database;
 
 export function openReconciliationTarget(target: string, readonly = true): Database.Database {
