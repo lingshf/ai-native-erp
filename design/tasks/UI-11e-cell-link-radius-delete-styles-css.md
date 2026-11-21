@@ -1,6 +1,6 @@
 # UI-11e 订单列表 `button.cell-link` 圆角改由类规则提供；删除 `styles.css` 及入口 import（D-7 完成）
 
-- Sprint：backlog（S7 候选）　依赖：UI-11d（已合并，[#142](https://github.com/lingshf/ai-native-erp/pull/142)，main `6be3bcf`）　建议分支：`ui-11e-cell-link-radius-delete-styles-css`
+- Sprint：S7（[计划](README.md#s7订单列表筛选--d-7-完成--s6-遗留收尾建议-v070)，A 线第一项，P1）　依赖：UI-11d（已合并，[#142](https://github.com/lingshf/ai-native-erp/pull/142)，main `6be3bcf`）　建议分支：`ui-11e-cell-link-radius-delete-styles-css`
 - 冲突域：
   - web-ui:trade-orders（`pages/trade-orders.css`，新增一条规则）；
   - web-ui:shell（删除 `src/styles.css`，删除 `src/main.tsx` 中 `import "./styles.css";` 这一行）。

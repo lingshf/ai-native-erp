@@ -356,11 +356,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [FLAKE-04](FLAKE-04-legacy-reconciliation-cli-spawnsync-timeout.md) | 旧账核对 CLI 用例 `spawnSync` 3000 ms 超时间歇触发：测量冷启动分布（空载 / 受控负载）、归因，按 D11 修复（计划外插入，不计入 S6 目标） | 调查（附修复） | 无代码依赖；测量时段与 E2E-01 及其他独占时段错开 | tests:legacy-reconciliation；改 CLI 启动路径时加 admin-cli | done（部分修复：验收 3 未满足，后续见 FLAKE-05） | [#144](https://github.com/lingshf/ai-native-erp/pull/144)（`2c21b51`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44863261267)） |
 | [FLAKE-05](FLAKE-05-legacy-cli-tests-under-full-load.md) | 旧账核对 CLI 用例在整机满载（load-cpu）下仍超时：评估 CLI 用例改进程内调用 + 少量 spawn 冒烟、进一步减启动开销、3000 ms 预算的依据与 D11 关系（D189，FLAKE-04 后续；不计入 S6 目标）。评估已完成，D199：方向 1 + 2（`@erp/core` 新增 3 条子路径 exports），3000 ms 不调整，验收负载为 PR 层实际负载 | 调查 + 方案评估（附实施） | FLAKE-04（已合并，[#144](https://github.com/lingshf/ai-native-erp/pull/144)） | tests:legacy-reconciliation, admin-cli；实施时加 core:package-exports、tooling:boundaries 及 infra 中改导入的 6 个文件 | done（PR 层实际负载下本次未观察到回归，余量见 PR；load-cpu 下仍超时，为已知限制） | [#147](https://github.com/lingshf/ai-native-erp/pull/147)（`d6c5014`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44874051073)） |
 
-**S6 后 backlog（S7 候选）**：
-
-| ID | 标题 | 类型 | 依赖 | 冲突域 | 状态 | PR |
-| --- | --- | --- | --- | --- | --- | --- |
-| [UI-11e](UI-11e-cell-link-radius-delete-styles-css.md) | 订单列表 `button.cell-link` 圆角改由 `trade-orders.css` 类规则提供，然后删除 `styles.css` 与 `main.tsx` 的 import；合并后 main Full 12/12 通过，D-7 完成（UI-11d [#142](https://github.com/lingshf/ai-native-erp/pull/142) 第二道检查遗漏） | CSS + 入口 import 一行 | UI-11d（已合并）；从开工到合并期间无进行中的页面 CSS 任务 | web-ui:trade-orders（`pages/trade-orders.css`）, web-ui:shell（`styles.css`、`main.tsx` import） | backlog | — |
+**S6 后 backlog（S7 候选）**：UI-11e 已排入 [S7](#s7订单列表筛选--d-7-完成--s6-遗留收尾建议-v070)。
 
 **S6 共同验收**：
 1. UI 任务满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9，PG-05 口径同 S5（基线为 PR 实际 base 的 gzip 列）。**不设 Sprint 累计 CSS 门槛**（[路线图 §4 累计预算](../roadmap.md#4-ci-与测试策略设计角色牵头)）：各任务的预算见任务文件；设计角色同步任务表时按 [S5 回顾议题 1](../reviews/S5.md#议题-1d131-改为-d133s5-累计-css-413-b) 的口径记录累计值，只作观察。
@@ -386,6 +382,54 @@ M1-R3（#78）、M1-R4（#81）已完成。
 - **迁移规则**：本 Sprint 计划内没有迁移任务。若 TORD-03 / TORD-04 发现必须加索引，停下报告设计角色，另立迁移任务；**两个要加迁移的任务不能并行**（共用 `migrations.ts` 与编号）。
 - **E2E 时段**：在 E2E-01 有结论之前，仍按 D115 / D118 的独占时段（[路线图 §5 工作区隔离](../roadmap.md#5-团队流程)）。三条线需要真实 Chrome 的阶段尽量错开；**E2E-01 需要整台机器**，安排在其他两条线都处于编辑 / 评审阶段、没有 E2E 需求的时段，由协调者定时间。
 - **对比度测试**：本 Sprint 预计不改 `contrast.test.ts`；需要新增配对的任务先报告设计角色（`tests:contrast` 串行）。
+- 每个任务合并后，按[路线图 §5 合并后动作](../roadmap.md#5-团队流程)跟踪 main Full，变绿前不派发同一冲突域的下一个任务。
+
+## S7：订单列表筛选 + D-7 完成 + S6 遗留收尾（建议 v0.7.0）
+
+**目标**：
+- **产品**：订单列表可按伙伴、方向、订单日期筛选（TORD-05）。TORD-03 上线后订单列表只能从头翻页，“看某个伙伴的订单”“看本月的采购订单”做不到；这是贸易页现阶段日常使用中最缺的能力，也是 S6 明确推迟、需要迁移的一项。只加一条伙伴索引（迁移 017）。
+- **D-7 完成**：UI-11e 给订单列表 `button.cell-link` 补上类规则圆角，删除 `styles.css` 及 `main.tsx` 的 import；合并后 main Full 12/12 测试步骤通过，D-7 完成。
+- **S6 遗留**：分片权重守卫、D204 墙钟的 Full 观察、D199 CLI 冒烟所在用例的耗时观察（不作为子进程余量，CI-01）；v0.6.0 回顾行动项 1–5 落入模板与清单（PROC-03）。
+
+版本号由协调者定。基线为 v0.6.0 tag 所在的 main（`3548d58`）。**S7 开发任务在 v0.6.0 tag 打出后派发**（已打）；本节由设计 PR 写入。
+
+**不在本 Sprint**：
+- M2-05 / M2-06：仍需用户授权决定 A / B，见上文 M2 节；
+- D199 load-cpu（整机 CPU 满载）下 CLI 冒烟仍超时：按 D199 是压力观察、不是验收负载，3000 ms 为防挂死阈值，**不立修复任务、不做新的满载实验**。CI-01 只观察 Full 上这些用例的整条耗时，不据此计算子进程余量；如需余量数据，要另立任务做逐路径子进程计时，由协调者决定；
+- 方向 / 日期索引、按日期排序、发票列表筛选（见 TORD-05“不在范围”）；
+- `package.json` / lock 变化。
+
+| ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| [UI-11e](UI-11e-cell-link-radius-delete-styles-css.md) | 订单列表 `button.cell-link` 圆角改由 `trade-orders.css` 类规则提供，删除 `styles.css` 与 `main.tsx` 的 import；D-7 完成 | CSS + 入口 import 一行 | P1 | UI-11d（已合并，[#142](https://github.com/lingshf/ai-native-erp/pull/142)）；从开工到合并期间无进行中的页面 CSS 任务 | web-ui:trade-orders, web-ui:shell | todo | — |
+| [TORD-05](TORD-05-trade-order-list-filters.md) | 订单列表按伙伴 / 方向 / 订单日期筛选；迁移 017 只加 `trade_orders_party` 索引；排序与游标不变；PG-05 计划与 p95 基准 | 迁移 + 后端 API + 页面 | P1 | UI-11e（web-ui:trade-orders 串行）；CI-01（共享 `scripts/test-shard-weights.json`：CI-01 合并且 main Full 绿之前不得改动该文件，见泳道“权重文件门禁”） | **迁移/schema**, 存储, trade-docs, contracts, web-ui:trade-orders, bench/CI（基准文件、`scripts/test-shard-weights.json`） | todo | — |
+| [CI-01](CI-01-shard-weight-guard-and-wallclock.md) | 分片权重完整性守卫（缺失 / 陈旧即失败）；D204 墙钟的 Full 观察（空载测量只作新基线）；D199 CLI 冒烟所在用例的耗时观察（不算余量） | CI 守卫 + 测量报告 | P2 | — | bench/CI（`scripts/test-shard-weights.json`、`scripts/ci.ts`、`vitest.config.ts`、`infra/test/tooling`） | todo | — |
+| [PROC-03](PROC-03-v060-retro-actions.md) | v0.6.0 回顾行动项 1–5 写入 Demo 模板与发布清单（版本管理，不占开发名额） | 文档 | P2（v0.7.0 RC 之前合并） | — | docs:release（`docs/demo/TEMPLATE.md`、`docs/release/README.md`） | todo | — |
+
+**S7 共同验收**：
+1. UI 任务满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9，PG-05 口径同 S6（基线为 PR 实际 base 的 gzip 列），不设 Sprint 累计 CSS 门槛；真实 Chrome 证据按[路线图 §5 UI PR 证据清单](../roadmap.md#5-团队流程)，请求评审前逐项勾选写入 PR 正文。
+2. 现有测试与 E2E 不删除、不削弱、不跳过、不按平台禁用（D11）。作为证据的本机运行保存完整日志，失败的也保存。
+3. CI-01 合并后，任何新增测试文件的 PR 都要在 `scripts/test-shard-weights.json` 中登记权重；CI-01 合并且覆盖其合并提交的 main Full 变绿之前，其他任务不得改动该文件。
+4. 迁移只有 TORD-05 一项（017）。若其他任务发现需要迁移，停下报告设计角色另立任务，且**不能与 TORD-05 并行**（共用 `migrations.ts` 与编号）。
+5. 开发者不改 `design/`；合并后由设计角色同步任务表；UI-11e 合并后把 D-7 完成的摘要追加到 UI-1.md §5。
+
+**泳道**（同时在岗的开发不超过 3 个；同一行内串行；不同行同时进行时冲突域不相交）：
+
+| 线 | 顺序 | 冲突域 |
+| --- | --- | --- |
+| A：订单页与 D-7 | UI-11e → TORD-05 | trade-orders + shell → 迁移 + 存储 + trade-docs + contracts + trade-orders + `test-shard-weights.json`（门禁后） |
+| B：CI | CI-01 | bench/CI（含 `test-shard-weights.json`） |
+| 版本管理 | PROC-03 | docs:release |
+
+- **首批**：UI-11e（A）、CI-01（B）两名开发同时开工，冲突域不相交；PROC-03 由版本管理并行处理。
+- **UI-11e 先于 TORD-05**：UI-11e 的证据覆盖全部页面，要求取证期间没有进行中的页面 CSS 任务；它很小，先做可以让 TORD-05 在没有 `styles.css` 的基线上开发，也不让 TORD-05 的页面 CSS 卡住 D-7。TORD-05 等 UI-11e 合并、且覆盖其合并提交的 main Full 变绿后开工。
+- **权重文件门禁（TORD-05 与 CI-01 串行）**：两者都会改 `scripts/test-shard-weights.json`，这个文件上二者必须串行，CI-01 在前。
+  - CI-01 合并、且覆盖其合并提交的 main Full 变绿之前，TORD-05 **不得改动** `scripts/test-shard-weights.json`；在此之前 TORD-05 可以开工，只改自己冲突域内的其他文件。
+  - 门禁满足后，TORD-05 先 rebase 到该 main，再登记新增测试文件的权重并通过守卫，然后才能请求评审。
+  - 若 TORD-05 已准备请求评审而 CI-01 仍未合并，TORD-05 等待，不自行登记权重、不提前请求评审。
+- **UI-11e 期间的派发限制**：UI-11e 的证据覆盖全部页面，从开工、取证、评审直到合并，**不得派发或进行任何会改动页面渲染样式的任务**，包括任何 CSS 文件、组件内联样式、类名或 DOM 结构的改动，无论其文件冲突域是否与 UI-11e 相交。这一限制同样适用于计划外插入的第三项。
+- **第三个名额留空**：本 Sprint 计划内只占两个开发名额，第三个名额留给计划外插入（S5、S6 都有）。协调者如要追加，只能选：与 A / B 冲突域都不相交、不加迁移、不改 `scripts/test-shard-weights.json` 的任务；UI-11e 进行期间还须满足上一条。
+- **E2E 与测量时段**：按 D115 / D118 与 E2E-01 结论安排独占时段（[路线图 §5 工作区隔离](../roadmap.md#5-团队流程)）。CI-01 若做可选的本机空载测量（只作新基线），会产生整机 node 负载，与 UI-11e / TORD-05 的真实 Chrome 取证错开。
 - 每个任务合并后，按[路线图 §5 合并后动作](../roadmap.md#5-团队流程)跟踪 main Full，变绿前不派发同一冲突域的下一个任务。
 
 ## 派发顺序
