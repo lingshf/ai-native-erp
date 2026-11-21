@@ -24,7 +24,7 @@
 1. 在 `trade-orders.css` 中加上上面这条规则，值与全局规则相同（`var(--radius-sm)`），特异度高于 `button`。
 2. 删除 `packages/web/src/styles.css` 和 `main.tsx` 中的 import。
 3. 做第二道检查（增量），方法同 UI-11d：
-   - 以 `6be3bcf` 为基线，重新确认 `button { border-radius }` 的命中元素只有 `button.cell-link`（订单列表）；
+   - 判定的是“页面是否仍**依赖**全局圆角”，不是“`button` 选择器匹配到哪些元素”（`button` 会匹配所有按钮，其中大多数已有类规则给出同值或不同值的圆角）。以 `6be3bcf` 为基线，在 control 中去掉全局圆角后，全部路由 × 两主题 × 1440 / 390 × 各状态的计算值差只出现在订单列表 `button.cell-link`，即它是唯一仍依赖全局圆角的元素；若出现其他元素，同样要在本任务中补类规则并列入检查表；
    - 对 `6be3bcf` 之后改过的 tsx，重新列出 button / checkbox / th / td，逐个核对。
 4. 只改 CSS 的“JS 逻辑不变”证明：`git diff <base>..HEAD -- '*.ts' '*.tsx'` 只含 `main.tsx` 这一行删除。
 
@@ -37,7 +37,7 @@
 
 1. 满足 [UI-1 通用验收标准](README.md#ui-1界面逐步改进) 1–9。PG-05 只用本任务自己的预算：相对 merge-base，CSS 合计 gzip **减少或不变**；入口 JS 除删除一个 import 外不变；路由 chunk 只有 trade-orders 的 CSS 变化。
 2. 全部导航路由 × 两主题 × 1440 / 390，以及订单列表 `button.cell-link` 的普通、`:hover`、`:active`、`:focus-visible` 状态（`:focus-visible` 用键盘 Tab 进入，不只靠强制伪类）：计算值“变”为 0，像素差为 0。
-3. 对照运行：只删 `styles.css`、不加新规则的 control 运行，必须检出 `button.cell-link` 的 `border-*-radius` 差异。这证明探针能检出被新规则修正的那处差异。
+3. 对照运行（control）：不加新规则，并去掉全局圆角，且必须可构建。二选一，PR 中写明用了哪种：(a) 只删除 `styles.css` 中的 `button { border-radius }` 声明，保留空文件和 `main.tsx` 的 import；(b) 同时删除 `styles.css` 文件和 `main.tsx` 的 import。不能只删文件而留下 import（构建会失败，探针无从运行）。control 必须检出订单列表 `button.cell-link` 的 `border-*-radius` 差异，且不出现其他元素的差异（见范围 3）。这证明探针能检出新规则修正的那处差异。
 4. PR 描述附第二道检查表（元素、文件:行、覆盖它的类规则）。
 5. 现有测试与 E2E 不删除、不削弱、不跳过（D11）；真实 Chrome 证据按[路线图 §5 UI PR 证据清单](../roadmap.md#5-团队流程)。
 6. 合并后 main Full 12/12 测试步骤通过。设计角色把 D-7 改写为“完成”，并在 [UI-1.md §5](../reviews/UI-1.md#5-兼容层清理记录) 追加摘要。
