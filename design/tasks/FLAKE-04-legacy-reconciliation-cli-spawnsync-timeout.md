@@ -5,7 +5,7 @@
 - 类型：调查（结论成立时附修复）
 - 环境：只用 node，不用 Chrome；**测量会产生 node 负载**。空载组需要整台机器（同 [路线图 §5 E2E 独占时段](../roadmap.md#5-团队流程)：其他 session 不跑真实 Chrome、Playwright、vitest slow，也不跑本机 vitest 全量），由协调者安排时段；负载组的负载由本任务自己产生，也要在无外部负载时进行。
 - 来源：协调者汇总，以下都是**观察**：
-  1. UI-13、FLAKE-03、TORD-04、UI-11c 四个 session 在 PR 层快速套件中都遇到过，每次 2–3 个用例失败，失败时 `spawnSync` 返回 `status=null`。**待验证**：`status=null` 只说明子进程被信号终止，`spawnSync` 超时（`error.code === "ETIMEDOUT"`）是一种可能，外部信号等也会得到 null；历史日志没有记录 `error.code` 与 `signal`，不能据此认定为超时；
+  1. UI-13、FLAKE-03、TORD-04、UI-11c 四个 session 在 PR 层快速套件中都遇到过，每次 2–3 个用例失败，失败时 `spawnSync` 返回 `status=null`。**待验证**：`status=null` 本身不能说明原因：`spawnSync` 超时（`error.code === "ETIMEDOUT"`）、被外部信号终止（`signal` 非空），以及启动失败（如 `status=null, signal=null, error.code=ENOENT`）都会得到 null；历史日志没有记录 `error.code` 与 `signal`，不能据此认定为超时；
   2. 单独跑这个文件，同一 base `0a91b00` 一次 30/30 通过，一次 3/30 失败；
   3. CLI 的导入耗时约 1 s（未附测量方法，待本任务复测）；
   4. 失败时机器上通常有外部 node 并行负载（未定量，不能据此归因于负载，见[路线图 §4 本机数字的地位](../roadmap.md#4-ci-与测试策略设计角色牵头)）。
@@ -39,7 +39,7 @@
      - (d) 完整的 `legacy-reconcile --check` 与 `--confirm`（各用自己的基准副本）；
      - (e) :317 的租约子进程。
    - 每组给出 p50 / p95 / p99 / max，以及超过 3000 ms 的次数。
-   - **失败分类**：只有 `error.code === "ETIMEDOUT"` 的样本记为 `spawnSync` 超时；`status=null` 但没有 `ETIMEDOUT` 的记为“被信号终止，非超时”，并记录 signal；只是墙钟超过 3000 ms 而没有 `ETIMEDOUT` 的，不计为已证实的超时。三类分开统计。
+   - **失败分类**：只有 `error.code === "ETIMEDOUT"` 的样本记为 `spawnSync` 超时；其余失败中，`signal` 非空的才记为“被信号终止”，并记录 signal；剩下的非 `ETIMEDOUT` 失败（如 `signal=null` 且 `error.code=ENOENT`，或没有 `error`）单列为“其他执行 / 启动失败或未知”，记录 `error.code`（没有则记为空）。只是墙钟超过 3000 ms 而没有 `ETIMEDOUT` 的，不计为已证实的超时。超时、信号终止、其他 / 未知三类分开统计。
    - 测量时 `spawnSync` 的 `timeout` 取测试的 3000 ms，另用一组不设 `timeout` 的采样得到无截断的耗时分布；两组分开报告。
    - **两组条件**：
      - 空载：开跑前连续两次确认外部 node / 浏览器进程为 0（D118 口径），运行中每 10 s 采样 CPU；
@@ -57,10 +57,10 @@
 
 ## 验收标准
 
-1. 测量数据完整：五段 × 两组条件的原始耗时、每次的 `status` / `signal` / `error.code`、按三类分开的失败统计、统计值、CPU 采样与负载描述都在 gist 中；fixture 基准的构造方式与预期结果写明；首尾记录精确 head 与空的 `status --porcelain --untracked-files=all`。
+1. 测量数据完整：五段 × 两组条件的原始耗时、每次的 `status` / `signal` / `error.code`、按“超时 / 信号终止 / 其他执行或启动失败或未知”三类分开的失败统计、统计值、CPU 采样与负载描述都在 gist 中；fixture 基准的构造方式与预期结果写明；首尾记录精确 head 与空的 `status --porcelain --untracked-files=all`。
 2. 原因结论只用“观察 / 推断 / 归因”三种表述；未归因时明确写“原因未知”，不按负载结案。
 3. 若有修复：
-   - 在同样的受控负载下，修复前后各跑本文件 K 次（两侧 fixture 都从同一基准新建）；修复后 0 次 `ETIMEDOUT`，也没有其他被信号终止的失败，且 (d) 的分布有可比较的改善，附前后对照表；
+   - 在同样的受控负载下，修复前后各跑本文件 K 次（两侧 fixture 都从同一基准新建）；修复后 0 次 `ETIMEDOUT`，也没有信号终止或其他执行 / 启动失败，且 (d) 的分布有可比较的改善，附前后对照表；
    - CLI 行为不变：现有 9 个用例原样通过，另以同一基准各自复制的副本比对修复前后 CLI 的 stdout、stderr 与退出码一致；
    - 超时值若改动，推导过程写在 PR 描述并能在 gist 数据中复算。
 4. 现有测试与 E2E 不删除、不削弱、不跳过、不按平台禁用（D11）；不改 `vitest.config.ts` 的并行度与全局超时；无 `package.json` / lock 变化。
