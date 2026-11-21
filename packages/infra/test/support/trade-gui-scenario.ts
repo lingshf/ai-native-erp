@@ -938,10 +938,11 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         .poll(() => page.evaluate(() => document.activeElement?.id))
         .toBe("tinv-externalInvoice");
       await type(page, page.locator("#tinv-externalInvoice"), external);
+      // The draft holds only the order's uninvoiced lines, renumbered from L1 (TINV-01).
       if (quantity)
         await type(
           page,
-          page.getByRole("textbox", { name: new RegExp(`^${t("tinv.quantity")} `, "u") }).first(),
+          page.getByRole("textbox", { name: `${t("tinv.quantity")} L1`, exact: true }),
           quantity,
         );
       const preview = await post("tinv.preview", "/api/v1/trade/invoices/preview");

@@ -3,8 +3,8 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { Link } from "react-router-dom";
 import {
   companiesPageSchema,
-  type ContractSchema,
   tradeOrderCommandSchema,
+  tradeOrderInvoicingSchema,
   tradeOrderPageSchema,
   tradeOrderPreviewSchema,
   tradeOrderSchema,
@@ -119,32 +119,6 @@ const ruleKey = (messageKey: string): TradeOrderKey => {
     : "tord.issue.other";
 };
 
-// Shape of TINV-01's `tradeOrderInvoicingSchema` (TINV-01 task book, scope 4); swap for the
-// contract export once TINV-01 is on main.
-type Invoicing = { order: Order; invoiced: { lineId: string; invoicedQuantity: string }[] };
-const decimalPattern = /^(?:0|[1-9]\d{0,11})(?:\.\d{1,6})?$/u;
-const invoicingSchema = {
-  safeParse(value: unknown) {
-    const body = value as Partial<Record<string, unknown>> | null;
-    const order = tradeOrderSchema.safeParse(body?.order);
-    const invoiced = body?.invoiced;
-    const valid =
-      order.success &&
-      Object.keys(body ?? {}).length === 2 &&
-      Array.isArray(invoiced) &&
-      invoiced.length === order.data.lines.length &&
-      invoiced.every(
-        (row: Partial<Record<string, unknown>>, index) =>
-          Object.keys(row).length === 2 &&
-          row.lineId === order.data.lines[index]?.lineId &&
-          typeof row.invoicedQuantity === "string" &&
-          decimalPattern.test(row.invoicedQuantity),
-      );
-    return valid
-      ? { success: true, data: { order: order.data, invoiced } as Invoicing }
-      : { success: false, error: new Error("invalid invoicing response") };
-  },
-} as unknown as ContractSchema<Invoicing>;
 // Exact decimal arithmetic in millionths (the contract allows at most 6 fraction digits).
 const micros = (value: string) => {
   const [whole = "0", fraction = ""] = value.split(".");
@@ -1157,7 +1131,7 @@ function OrderView({
     queryFn: ({ signal }) =>
       masterRequest(
         `/api/v1/trade/orders/${encodeURIComponent(order.orderId)}/invoicing?company=${encodeURIComponent(company.code)}`,
-        invoicingSchema,
+        tradeOrderInvoicingSchema,
         { signal },
       ),
   });
