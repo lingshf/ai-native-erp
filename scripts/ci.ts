@@ -120,12 +120,14 @@ export function shardWeightProblems(files: string[], weights: Record<string, unk
   const stale = Object.keys(weights)
     .filter((key) => !collected.includes(key))
     .sort();
+  const shown = (value: unknown) =>
+    typeof value === "number" ? String(value) : JSON.stringify(value);
   return [
     ...(missing.length || invalid.length
       ? [
           `Test files without a valid weight in scripts/test-shard-weights.json (the sequencer runs them as longest and reorders projects):`,
           ...missing.map((file) => `  missing: ${file}`),
-          ...invalid.map((file) => `  invalid: ${file} (${JSON.stringify(weights[file])})`),
+          ...invalid.map((file) => `  invalid: ${file} (${shown(weights[file])})`),
           "Fix: regenerate with `node scripts/ci.ts weights REPORT.json...` from Vitest JSON reports, or add an estimated weight (ms, finite and > 0) by hand and say so in the PR.",
         ]
       : []),
