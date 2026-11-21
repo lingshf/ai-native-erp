@@ -22,13 +22,23 @@ const delta = (field: string, a: unknown, b: unknown) =>
         ? BigInt(b) - BigInt(a)
         : undefined;
 const show = (value: unknown) => (value === undefined ? "—" : String(value));
-// Long strings may break anywhere: JSON, or one whitespace-free token that is an identifier (`_`),
+// Long strings may break anywhere: JSON (text that parses whole to an object or array, so prose
+// such as "[Draft] Depreciation / equipment" stays prose), or one whitespace-free token that is an identifier (`_`),
 // a path or URL (`\`, or `/` with a leading `/ ~ .` or a dot), or over 24 chars (UUIDs, hashes).
 // Every other value, including prose with slashes or quotes, gets class "word" so narrow screens
 // break it only between words.
+const isJson = (text: string) => {
+  if (!/^[{[]/.test(text)) return false;
+  try {
+    const value: unknown = JSON.parse(text);
+    return typeof value === "object" && value !== null;
+  } catch {
+    return false;
+  }
+};
 const longString = (text: string) => {
   const token = text.trim();
-  if (/^[{[]/.test(token)) return true;
+  if (isJson(token)) return true;
   if (/\s/.test(token)) return false;
   return (
     token.length > 24 ||

@@ -116,6 +116,8 @@ test("migration details show key-value tables with non-color mismatch marks, raw
                   note: "Depreciation/equipment",
                   evidence: '{"memo":"Opening balance"}',
                   file: "legacy/teaching.sqlite",
+                  label: "[Draft] Depreciation / equipment",
+                  payload: '["teaching","journals"]',
                 },
                 actual: {
                   company: "DEMO",
@@ -126,6 +128,8 @@ test("migration details show key-value tables with non-color mismatch marks, raw
                   note: "Cash & receivables: 50%",
                   evidence: "7b1e9d24-0c3a-4f5e-8a61-93d2c4b5e7f0",
                   file: "C:\\legacy\\teaching.sqlite",
+                  label: "{Q1} accrual / equipment",
+                  payload: "[Draft]",
                 },
               },
             ],
@@ -199,9 +203,12 @@ test("migration details show key-value tables with non-color mismatch marks, raw
       true,
     ],
     ["file 不符", "legacy/teaching.sqlite", "C:\\legacy\\teaching.sqlite", "—", true],
+    ["label 不符", "[Draft] Depreciation / equipment", "{Q1} accrual / equipment", "—", true],
+    ["payload 不符", '["teaching","journals"]', "[Draft]", "—", true],
   ]);
   // UI-12: prose cells — even with slashes, quotes or other punctuation — wrap only between words
-  // on narrow screens; identifiers, JSON, UUIDs and paths keep breaking anywhere.
+  // on narrow screens; identifiers, JSON, UUIDs and paths keep breaking anywhere. Only text that
+  // parses whole as a JSON object or array counts as JSON, not prose that merely starts with [ or {.
   const wordCells = (details: Element | undefined) =>
     [...(details?.querySelectorAll("tbody td") ?? [])].map((td) => td.classList.contains("word"));
   expect(wordCells(draft)).toEqual([
@@ -213,6 +220,8 @@ test("migration details show key-value tables with non-color mismatch marks, raw
     ...[true, true, true],
     ...[false, false, true],
     ...[false, false, true],
+    ...[true, true, true],
+    ...[false, true, true],
   ]);
   // Check rows carry no business key: each side is listed on its own, unmarked, without 差额.
   expect(cells(check)).toEqual([
