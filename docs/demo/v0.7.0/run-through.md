@@ -18,13 +18,29 @@
 
 - 11:53:14–11:54:07 连续 6 次 precheck 均为 0。可复制的预检命令见本文“预检命令”一节；时段 1 当时的原始命令没有保存，这里给的是同一规则的等价写法，不是原命令。第一次误用了更宽的匹配，把 `conhost --headless` 和 shell 自身算进去得 9，纠正后重做，没有动任何进程。
 - `npm run build` 成功；`run-main.ps1` 迁移、启动、两条 seed 后，`seed-orders.mjs` 创建 SO-F3（销售，商品 EXPENSE）返回 `400 api.error.tradeDocument.product`：EXPENSE 是采购商品，没有收入科目，销售单不能用。PO-F1、PO-F2 已 201。capture 未执行，没有截图，未复制，脚本 `throw` 后 `finally` 清理：端口 4199 已释放、无 `erp-demo-*`。
-- 时段 1 实跑命令：与时段 2 相同的 README §4 整块（当时脚本为 `27de52e` 版），原始输出没有保存，上面的结果来自当时的汇报记录。\n- 原因：`seed-orders.mjs` 的缺陷；第一版替身不执行 `seed-orders.mjs`，覆盖不到。按规则没有重试。
+- 时段 1 实跑命令：与时段 2 相同的 README §4 整块（当时脚本为提交 `27de52e` 的版本，其 `seed-orders.mjs` 与 `stub-check.ps1` 的 blob 见上文第 15 行），原始输出没有保存，上面的结果来自当时的汇报记录。
+- 原因：`seed-orders.mjs` 的缺陷；第一版替身不执行 `seed-orders.mjs`，覆盖不到。按规则没有重试。
 
 ## 修复与新增检查（D228）
 
 - `seed-orders.mjs` 先用 API 建服务类商品 `SERVICE`（`type: service`、`revenueAccount: 4000`，与 `tradeProduct` 校验一致），销售单改用它。
 - 新增 `seed-orders-stub.mjs`：在回环临时端口起假 HTTP 服务（按产品规则拒绝没有收入科目的商品），原样运行 `seed-orders.mjs`，断言请求序列（先建商品，再 4 张订单）、AR 商品有收入科目、缺少财年参数时失败。对旧版 `seed-orders.mjs` 运行，它报 3 个问题并退出 1（复现第一个时段的失败）；对新版退出 0。`stub-check.ps1` 在场景之前调用它。
-## 预检命令（可复制）\n\n`node`/`chrome`/`msedge`/`chrome-headless-shell` 进程中，命令行含 vitest、playwright 或 headless 的个数；独占时段要求连续 6 次均为 0（10 s 采样）：\n\n```powershell\n1..6 | ForEach-Object {\n  $n = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(node|chrome|msedge|chrome-headless-shell)(\.exe)?$' -and $_.CommandLine -match 'vitest|playwright|headless' }).Count\n  "{0:HH:mm:ss} {1}" -f (Get-Date), $n\n  if ($_ -lt 6) { Start-Sleep 10 }\n}\n```\n\n时段 2 当时的原始预检日志在 `$env:TEMP\s7-precheck2.log`（未入库）；上面的命令是同一规则的可复制写法，没有把它冒充成当时的原命令。\n\n## 无浏览器替身检查（D208，脚本版本一）
+
+## 预检命令（可复制）
+
+`node`/`chrome`/`msedge`/`chrome-headless-shell` 进程中，命令行含 vitest、playwright 或 headless 的个数；独占时段要求连续 6 次均为 0（10 s 采样）：
+
+```powershell
+1..6 | ForEach-Object {
+  $n = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^(node|chrome|msedge|chrome-headless-shell)(\.exe)?$' -and $_.CommandLine -match 'vitest|playwright|headless' }).Count
+  "{0:HH:mm:ss} {1}" -f (Get-Date), $n
+  if ($_ -lt 6) { Start-Sleep 10 }
+}
+```
+
+时段 2 当时的原始预检日志在 `$env:TEMP\s7-precheck2.log`（未入库）；上面的命令是同一规则的可复制写法，没有把它冒充成当时的原命令。
+
+## 无浏览器替身检查（D208，脚本版本一）
 
 命令（仓库根目录）：
 
@@ -51,7 +67,7 @@ powershell -NoProfile -File docs\demo\v0.7.0\scripts\stub-check.ps1
 
 ## 替身不能证明的事
 
-- 替身不执行 `capture.mjs`；其中对筛选请求参数、列表行数、日期错误无请求的断言，只有真实运行才验证（`capture.mjs` 并不断言 `aria` 属性；日期错误靠 `#tord-filter-range-error` 的文字与“无请求”核对）。`capture.mjs` 通过了 `node --check` 语法检查，选择器与 id 对照了 `TradeOrders.tsx`，但在替身与无浏览器演练阶段没有在浏览器里跑过；真实浏览器运行只发生在时段 2（见下）。
+- 替身不执行 `capture.mjs`；其中对筛选请求参数、列表行数、日期错误无请求的断言，只有真实运行才验证（`capture.mjs` 并不断言 `aria` 属性；日期错误用 `getByText(文案, { exact: true })` 按文案匹配校验，不按元素 id，并核对“无请求”）。`capture.mjs` 通过了 `node --check` 语法检查，选择器与 id 对照了 `TradeOrders.tsx`，但在替身与无浏览器演练阶段没有在浏览器里跑过；真实浏览器运行只发生在时段 2（见下）。
 - 假服务的规则是对产品规则的手写近似；是否被真实服务接受，由下面的真实服务演练验证。
 
 ## 无浏览器的真实服务演练（D228，提交 `447c645`）
@@ -60,7 +76,11 @@ powershell -NoProfile -File docs\demo\v0.7.0\scripts\stub-check.ps1
 
 输出摘要：`ready port=4199 pid=29000`；`posted product SERVICE 201`；PO-F1、PO-F2、SO-F3、SO-F4 均 201；`readiness ok: partners and 4 orders present`；`port 4199 released`。结束后无监听 4199、无 `erp-demo-*`，工作区只有预期改动。
 
-## 无浏览器的真实服务演练：命令\n\n演练用的是 `run-main.ps1` 去掉 capture 一行的临时副本，副本和原始终端输出没有保存；复现方法是复制 `scripts/run-main.ps1`，删去 `capture.mjs` 那一行，按脚本版本一（无 `-Shots` 参数）直接运行。上面“输出摘要”来自当时汇报，如实说明：不是可重放的保存日志。\n\n## 真实运行（第二个时段，D229，脚本版本一）
+## 无浏览器的真实服务演练：命令
+
+演练用的是 `run-main.ps1` 去掉 capture 一行的临时副本，副本和原始终端输出没有保存；复现方法是复制 `scripts/run-main.ps1`，删去 `capture.mjs` 那一行，按脚本版本一（无 `-Shots` 参数）直接运行。上面“输出摘要”来自当时汇报，如实说明：不是可重放的保存日志。
+
+## 真实运行（第二个时段，D229，脚本版本一）
 
 - 运行对象：提交 `0d10871`（脚本提交 `447c645`），开跑前 `git status --porcelain` 为空；与产品基线 main `f06d30c` 的产品代码相同（本分支只改文档与 Demo 脚本）。
 - 预检：11:57:36–11:58:28 连续 6 次，均为 0（10 s 采样，日志 `$env:TEMP\s7-precheck2.log`；规则：node / chrome / msedge 进程命令行含 vitest、playwright、headless）。
