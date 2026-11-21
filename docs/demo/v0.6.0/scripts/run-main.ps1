@@ -15,7 +15,8 @@
   $owner=@((Get-NetTCPConnection -LocalPort $port -State Listen).OwningProcess); if($owner.Count -ne 1 -or $owner[0] -ne $server.Id){throw "owner mismatch"}
   "ready port=$port pid=$($server.Id) start=$(Get-Date -Format HH:mm:ss)"
   node docs/demo/v0.4.0/scripts/seed-trade.mjs "http://127.0.0.1:$port" (Get-Date -Format yyyy-MM-dd); if ($LASTEXITCODE) { throw "seed" }
-  node docs/demo/v0.6.0/scripts/capture.mjs main "http://127.0.0.1:$port" $shots; "capture exit $LASTEXITCODE"
+  $owner=@((Get-NetTCPConnection -LocalPort $port -State Listen).OwningProcess); if($server.HasExited -or $owner.Count -ne 1 -or $owner[0] -ne $server.Id){throw "owner mismatch after seed"}
+  node docs/demo/v0.6.0/scripts/capture.mjs main "http://127.0.0.1:$port" $shots; if ($LASTEXITCODE) { throw "capture failed, exit $LASTEXITCODE" }; "capture exit 0"
   } finally {
   if ($server -and -not $server.HasExited) { Stop-Process -Id $server.Id }
   if ($demo -and (Split-Path $demo -Leaf) -like "erp-demo-*") { Remove-Item -Recurse -Force $demo }

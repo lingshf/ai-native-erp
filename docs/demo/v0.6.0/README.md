@@ -30,13 +30,21 @@
 两个脚本都是一个 `. { ... try { ... } finally { ... } }` 块：开头清空 `$server/$demo/$db/$port`；启动前检查端口 4198 空闲；就绪后校验监听进程 == 本轮启动的 pid，之后才写入（seed、capture）；`finally` 只停本轮 `$server`、只删本轮创建的 `erp-demo-*` 目录，并报告端口是否释放。端口 4198 若被占用，脚本直接 `throw`，换端口后再跑；不要用 4173。
 
 ```powershell
-$shots = Join-Path $env:TEMP "demo-s6-shots"
-npm run build
-if ($LASTEXITCODE -ne 0) { throw "构建失败，退出码 $LASTEXITCODE" }
-& .\docs\demo\v0.6.0\scripts\run-main.ps1        # 主账套：订单预览 / 保存 / 列表，12 张截图
-& .\docs\demo\v0.6.0\scripts\run-migration.ps1   # 迁移账套：迁移核对页，4 张截图
-Copy-Item "$shots\*" docs\demo\v0.6.0\screenshots\
+. {
+  $ErrorActionPreference = "Stop"
+  $shots = Join-Path $env:TEMP "demo-s6-shots"
+  if (Test-Path $shots) { Remove-Item -Recurse -Force $shots }   # 清掉旧输出，失败时不会复制到上一轮的截图
+  npm run build
+  if ($LASTEXITCODE -ne 0) { throw "构建失败，退出码 $LASTEXITCODE" }
+  & .\docs\demo\v0.6.0\scripts\run-main.ps1        # 主账套：订单预览 / 保存 / 列表，12 张截图
+  & .\docs\demo\v0.6.0\scripts\run-migration.ps1   # 迁移账套：迁移核对页，4 张截图
+  $n = @(Get-ChildItem $shots -Filter *.png).Count
+  if ($n -ne 16) { throw "截图数 $n，不是 16，不复制" }
+  Copy-Item "$shots\*" docs\demo\v0.6.0\screenshots\
+}
 ```
+
+任一步骤（构建、seed、capture 非零退出、端口归属不符）都会 `throw` 中止整块，后面的复制不会执行。
 
 输出在 `$env:TEMP\demo-s6-shots`（16 张 PNG + 2 个 `capture-log-*.json`），提交前复制到 `screenshots/`。脚本里的 `$shots` 在脚本内部重新定义，与上面的变量值相同。
 

@@ -12,7 +12,8 @@
 |---|---|---|
 | `scripts/capture.mjs` | `51a17354e5b35355fc690aeb33476694479d42ba` | 成功运行时工作区里带有“预览响应非 200 即抛错并显示响应体”的两行改动，该改动随后在 `5675c9e` 提交，之后内容未再变，blob 即为所用版本 |
 | `scripts/migration-setup.mjs` | `bfdcef4c1c989e4b18a709ba54ecd37ff16f5487` | 来自 v0.5.0 的同名脚本，仅把注释中的版本号改为 v0.6.0 |
-| `scripts/run-main.ps1`、`scripts/run-migration.ps1` | 见仓库 | 运行时存放在 `$env:TEMP`（`s6-run-main.ps1`、`s6-run-mig.ps1`），事后原样复制进仓库 |
+| `scripts/run-main.ps1`、`scripts/run-migration.ps1`（**实际运行版**） | `bb568754eb14a48b41ff40aee7c0d882cf961d9d`、`8351ef2091e3bb159c136089541defbc58c11da7` | 运行时存放在 `$env:TEMP`（`s6-run-main.ps1`、`s6-run-mig.ps1`），事后原样复制进仓库（提交 `03c90c4`）；对 TEMP 原文件和该提交里的文件分别 `git hash-object`，两者一致 |
+| 同两份脚本（**复审后修改版，当前仓库版本**） | 见 `git rev-parse HEAD:docs/demo/v0.6.0/scripts/run-main.ps1` 等 | capture 非零即 `throw`；seed 之后、capture 之前再次校验端口归属；README 块清空旧输出、整块遇错即停、不复制。**这些修改未实跑**，未获得新的独占时段 |
 
 ## 实际运行与输出
 
@@ -31,5 +32,6 @@
 
 ## 未在授权时段内验证的分支
 
-- 两个 ps1 脚本是成功运行所用文件，但事后才复制进仓库；复制后没有再运行（本次修改按要求不启动浏览器）。
+- 复审后修改的两份脚本和 README 复跑块（见上表）未实跑，只做了 PowerShell 语法解析；复跑前请先申请时段。
+- 两个 ps1 脚本的实际运行版事后才复制进仓库；复制后没有再运行（本次修改按要求不启动浏览器）。
 - 端口 4198 被占用的 `throw` 分支、监听进程归属不符的 `throw` 分支：本次未触发，未验证。`finally` 清理在前两次失败运行中实际执行过。
