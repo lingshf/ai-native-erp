@@ -15,6 +15,7 @@ import {
   tradeOrderCommandSchema,
   tradeOrderListQuerySchema,
   tradeOrderPageSchema,
+  tradeOrderPreviewSchema,
   tradeOrderSchema,
   tradeSettlementCommandSchema,
   tradeSettlementConfirmSchema,
@@ -94,6 +95,13 @@ export function registerTradeDocumentRoutes(
     }
     const order = await app.createOrder(parse(tradeOrderCommandSchema, request.body));
     return reply.code(201).send(tradeOrderSchema.parse(order));
+  });
+  server.all("/api/v1/trade/orders/preview", async (request, reply) => {
+    boundary.assert(request, reply, ["POST"]);
+    const app = ready(request);
+    return tradeOrderPreviewSchema.parse(
+      await app.previewOrder(parse(tradeOrderCommandSchema, request.body)),
+    );
   });
   server.all("/api/v1/trade/actions/preview", async (request, reply) => {
     boundary.assert(request, reply, ["POST"]);

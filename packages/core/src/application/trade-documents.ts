@@ -42,6 +42,7 @@ import {
   type TradeLineMatch,
   type TradeOrder,
   type TradeOrderCommand,
+  type TradeOrderPreview,
   type TradeOrderSummary,
   type TradeSide,
   type TradeSettlementCommand,
@@ -711,6 +712,59 @@ export class TradeDocumentService {
     return company;
   }
 
+  /**
+   * The resolve-and-calculate step shared by createOrder and previewOrder, so a preview and the
+   * save that follows it get their amounts from the same code (TORD-04).
+   */
+  private async calculateOrder(repo: Repo, command: TradeOrderCommand, company: Company) {
+    const day = command.orderDate;
+    const { party } = await this.party(repo, command.company, command.side, command.party, day);
+    const taxes = (
+      await this.resolveLines(repo, command.company, command.side, party, command.lines, day, day)
+    ).resolved.map((item) => item.tax);
+    return calculateTrade({
+      side: command.side === "AP" ? "ap" : "ar",
+      currency: command.currency,
+      accountingCurrency: company.currency,
+      scale: company.scale,
+      priceMode: command.priceIncludesTax ? "inclusive" : "exclusive",
+      rounding: command.rounding,
+      lines: command.lines.map((line, index) => ({
+        id: line.lineId,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        discountPercent: line.discountPercent,
+        taxableCharges: line.taxableCharge,
+        tax: {
+          code: taxes[index].tax.code,
+          treatment:
+            taxes[index].tax.data.mode === "ordinary" ? "standard" : taxes[index].tax.data.mode,
+          ratePercent: taxes[index].rate.ratePercent,
+          deductiblePercent: taxes[index].tax.data.deductiblePercent,
+        },
+      })),
+    });
+  }
+
+  /** Read-only: never checks or reserves orderId; saving still answers 409 for a taken number. */
+  async previewOrder(command: TradeOrderCommand): Promise<TradeOrderPreview> {
+    checkedTradeOrder(command);
+    return this.store.read(async (repo) => {
+      const company = await this.company(repo, command.company, command.currency);
+      const calculation = await this.calculateOrder(repo, command, company);
+      const lines = command.lines.map((line, index) => ({
+        lineId: line.lineId,
+        lineNo: index + 1,
+        net: calculation.lines[index].net,
+        tax: calculation.lines[index].tax,
+        gross: calculation.lines[index].gross,
+      }));
+      const total = (key: "net" | "tax" | "gross") =>
+        lines.reduce((sum, line) => sum + line[key], 0);
+      return { lines, net: total("net"), tax: total("tax"), gross: total("gross") };
+    });
+  }
+
   async createOrder(command: TradeOrderCommand): Promise<TradeOrder> {
     checkedTradeOrder(command);
     const commandHash = this.tools.hash(["trade-order-v1", command]);
@@ -721,33 +775,7 @@ export class TradeDocumentService {
         if (existing.commandHash !== commandHash) tradeDocumentError("orderId", "duplicate", true);
         return existing;
       }
-      const day = command.orderDate;
-      const { party } = await this.party(repo, command.company, command.side, command.party, day);
-      const taxes = (
-        await this.resolveLines(repo, command.company, command.side, party, command.lines, day, day)
-      ).resolved.map((item) => item.tax);
-      const calculation = calculateTrade({
-        side: command.side === "AP" ? "ap" : "ar",
-        currency: command.currency,
-        accountingCurrency: company.currency,
-        scale: company.scale,
-        priceMode: command.priceIncludesTax ? "inclusive" : "exclusive",
-        rounding: command.rounding,
-        lines: command.lines.map((line, index) => ({
-          id: line.lineId,
-          quantity: line.quantity,
-          unitPrice: line.unitPrice,
-          discountPercent: line.discountPercent,
-          taxableCharges: line.taxableCharge,
-          tax: {
-            code: taxes[index].tax.code,
-            treatment:
-              taxes[index].tax.data.mode === "ordinary" ? "standard" : taxes[index].tax.data.mode,
-            ratePercent: taxes[index].rate.ratePercent,
-            deductiblePercent: taxes[index].tax.data.deductiblePercent,
-          },
-        })),
-      });
+      const calculation = await this.calculateOrder(repo, command, company);
       const { company: _, lines, ...header } = command;
       const order: TradeOrder = {
         ...header,

@@ -4,10 +4,12 @@ import {
   companiesPageSchema,
   tradeOrderCommandSchema,
   tradeOrderPageSchema,
+  tradeOrderPreviewSchema,
   tradeOrderSchema,
   tradePageSchema,
   type CompanyDto,
   type TradeDto,
+  type TradeOrderPreviewDto,
 } from "@erp/core/contracts";
 import { label, type Preferences } from "./ui/index.ts";
 import { orderLabel, type TradeOrderKey } from "./ui/trade-order-labels.ts";
@@ -42,6 +44,7 @@ type Failure = { message: string; issues: Issue[]; uncertain: boolean };
 const idleGuard: Guard = { busy: false, unsaved: false };
 const lineFields = ["product", "taxCode", "quantity", "unitPrice", "discountPercent"] as const;
 const numeric = new Set<string>(["quantity", "unitPrice", "discountPercent"]);
+const amountKeys = ["net", "tax", "gross"] as const;
 const rules = [
   "shape",
   "reference",
@@ -262,12 +265,18 @@ function OrderWorkspace({
   const language = preferences.language;
   const [draft, setDraft] = useState(blankDraft);
   const [dirty, setDirty] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [working, setWorking] = useState<"save" | "preview" | null>(null);
+  const busy = working !== null;
   const [failure, setFailure] = useState<Failure | null>(null);
   const [saved, setSaved] = useState<Order | null>(null);
+  const [preview, setPreview] = useState<TradeOrderPreviewDto | null>(null);
+  // Focus after a preview request ends: the result region on success, the Preview button on failure.
+  const [previewFocus, setPreviewFocus] = useState<{ to: "result" | "button" } | null>(null);
   const [opened, setOpened] = useState<{ orderId: string } | null>(null);
   const client = useQueryClient();
   const savedNotice = useRef<HTMLDivElement>(null);
+  const previewButton = useRef<HTMLButtonElement>(null);
+  const previewResult = useRef<HTMLElement>(null);
   const parties = useOptions(company.code, "tradeParty");
   const products = useOptions(company.code, "tradeProduct");
   const taxes = useOptions(company.code, "taxCode");
@@ -277,6 +286,10 @@ function OrderWorkspace({
   useLayoutEffect(() => {
     if (saved) savedNotice.current?.focus();
   }, [saved]);
+  useLayoutEffect(() => {
+    if (previewFocus)
+      (previewFocus.to === "result" ? previewResult : previewButton).current?.focus();
+  }, [previewFocus]);
   const money = (value: number) => formatMinor(value, language, company.scale);
   const issueAt = (path: string) => failure?.issues.find((issue) => issue.path === path);
 
@@ -284,6 +297,7 @@ function OrderWorkspace({
     setDraft((current) => ({ ...current, ...change }));
     setDirty(true);
     setSaved(null);
+    setPreview(null);
   };
   const editLine = (index: number, field: (typeof lineFields)[number], value: string) =>
     edit({
@@ -313,51 +327,89 @@ function OrderWorkspace({
     setDraft(blankDraft());
     setDirty(false);
     setFailure(null);
+    setPreview(null);
+  };
+  const failed = (
+    error: unknown,
+    lines: Command["lines"],
+    invalid: TradeOrderKey,
+    other: TradeOrderKey,
+  ) => {
+    const fields = error instanceof MasterDataFailure ? (error.detail?.fieldErrors ?? []) : [];
+    const definite =
+      error instanceof MasterDataFailure && error.kind === "http" && (error.status ?? 500) < 500;
+    setFailure({
+      message: fields.length ? t(invalid) : t(definite ? "tord.issue.other" : other),
+      issues: fields.map((field) => ({
+        path: stablePath(field.path, lines),
+        key: ruleKey(field.messageKey),
+      })),
+      uncertain: !definite,
+    });
+  };
+  const checkedCommand = (invalid: TradeOrderKey) => {
+    const command = toCommand(company, draft);
+    const checked = tradeOrderCommandSchema.safeParse(command);
+    if (checked.success) return checked.data;
+    setFailure({
+      message: t(invalid),
+      issues: checked.error.issues.map((issue) => ({
+        path: stablePath(issue.path.join("."), command.lines),
+        key: "tord.issue.shape",
+      })),
+      uncertain: false,
+    });
+    return null;
+  };
+
+  const runPreview = async () => {
+    if (busy) return;
+    const command = checkedCommand("tord.previewInvalid");
+    if (!command) {
+      setPreviewFocus({ to: "button" });
+      return;
+    }
+    setWorking("preview");
+    setFailure(null);
+    setSaved(null);
+    try {
+      setPreview(
+        await masterRequest("/api/v1/trade/orders/preview", tradeOrderPreviewSchema, {
+          method: "POST",
+          body: command,
+        }),
+      );
+      setPreviewFocus({ to: "result" });
+    } catch (error) {
+      setPreview(null);
+      failed(error, command.lines, "tord.previewInvalid", "tord.previewFailed");
+      setPreviewFocus({ to: "button" });
+    } finally {
+      setWorking(null);
+    }
   };
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
     if (busy) return;
-    const command = toCommand(company, draft);
-    const checked = tradeOrderCommandSchema.safeParse(command);
-    if (!checked.success) {
-      setFailure({
-        message: t("tord.invalid"),
-        issues: checked.error.issues.map((issue) => ({
-          path: stablePath(issue.path.join("."), command.lines),
-          key: "tord.issue.shape",
-        })),
-        uncertain: false,
-      });
-      return;
-    }
-    setBusy(true);
+    const command = checkedCommand("tord.invalid");
+    if (!command) return;
+    setWorking("save");
     setFailure(null);
     try {
       const order = await masterRequest("/api/v1/trade/orders", tradeOrderSchema, {
         method: "POST",
-        body: checked.data,
+        body: command,
       });
       setSaved(order);
+      setPreview(null);
       setDraft(blankDraft());
       setDirty(false);
       void client.resetQueries({ queryKey: ["trade-orders", company.code] });
     } catch (error) {
-      const fields = error instanceof MasterDataFailure ? (error.detail?.fieldErrors ?? []) : [];
-      const definite =
-        error instanceof MasterDataFailure && error.kind === "http" && (error.status ?? 500) < 500;
-      setFailure({
-        message: fields.length
-          ? t("tord.invalid")
-          : t(definite ? "tord.issue.other" : "tord.uncertain"),
-        issues: fields.map((field) => ({
-          path: stablePath(field.path, command.lines),
-          key: ruleKey(field.messageKey),
-        })),
-        uncertain: !definite,
-      });
+      failed(error, command.lines, "tord.invalid", "tord.uncertain");
     } finally {
-      setBusy(false);
+      setWorking(null);
     }
   };
 
@@ -423,6 +475,15 @@ function OrderWorkspace({
         onSubmit={(event) => void save(event)}
       >
         <div className="tord-command-bar">
+          <button
+            ref={previewButton}
+            type="button"
+            className="btn btn-secondary"
+            disabled={busy}
+            onClick={() => void runPreview()}
+          >
+            {t("tord.preview")}
+          </button>
           <button type="submit" className="btn btn-primary" disabled={busy}>
             {t("tord.save")}
           </button>
@@ -435,7 +496,15 @@ function OrderWorkspace({
             {t("tord.discard")}
           </button>
           <span className="tord-status">
-            {busy ? <span role="status">{t("tord.saving")}</span> : t("tord.amountsAfterSave")}
+            {busy ? (
+              <span role="status">
+                {t(working === "preview" ? "tord.previewing" : "tord.saving")}
+              </span>
+            ) : preview ? (
+              <Badge tone="info">{t("tord.previewBadge")}</Badge>
+            ) : (
+              t("tord.amountsAfterSave")
+            )}
           </span>
         </div>
         {failure && (
@@ -461,6 +530,27 @@ function OrderWorkspace({
               </p>
             </MessageBar>
           </div>
+        )}
+        {preview && (
+          <section
+            className="tord-lookup-result"
+            ref={previewResult}
+            tabIndex={-1}
+            aria-labelledby="tord-preview-title"
+          >
+            <h4 id="tord-preview-title">
+              {t("tord.previewTitle")} <Badge tone="info">{t("tord.previewBadge")}</Badge>
+            </h4>
+            <p className="ui-hint">{t("tord.previewNote")}</p>
+            <dl className="kpis">
+              {amountKeys.map((key) => (
+                <div key={key} className={key === "gross" ? "kpi emphasis" : "kpi"}>
+                  <dt className="label">{t(`tord.${key}`)}</dt>
+                  <dd className="value">{money(preview[key])}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
         )}
         {optionsFailed && (
           <MessageBar tone="warning">
@@ -566,6 +656,12 @@ function OrderWorkspace({
                         {t(`tord.${field}`)}
                       </th>
                     ))}
+                    {preview &&
+                      amountKeys.map((key) => (
+                        <th key={key} scope="col" className="num">
+                          {t(`tord.${key}`)}
+                        </th>
+                      ))}
                     <th scope="col">{t("tord.removeLine")}</th>
                   </tr>
                 </thead>
@@ -597,6 +693,12 @@ function OrderWorkspace({
                           </td>
                         );
                       })}
+                      {preview &&
+                        amountKeys.map((key) => (
+                          <td key={key} className="num">
+                            {money(preview.lines[index][key])}
+                          </td>
+                        ))}
                       <td>
                         <button
                           type="button"
@@ -610,6 +712,17 @@ function OrderWorkspace({
                       </td>
                     </tr>
                   ))}
+                  {preview && (
+                    <tr className="tord-total">
+                      <th scope="row" colSpan={1 + lineFields.length}>
+                        {t("tord.total")}
+                      </th>
+                      {amountKeys.map((key) => (
+                        <td key={key}>{money(preview[key])}</td>
+                      ))}
+                      <td />
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

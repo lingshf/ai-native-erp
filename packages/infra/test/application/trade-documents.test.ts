@@ -3281,4 +3281,246 @@ describe("trade invoices on real SQLite", () => {
       await backend.close();
     }
   });
+
+  // TORD-04: read-only order preview.
+  const previewGroups: [string, TradeOrderCommand][] = [
+    [
+      "exclusive/line AP with discount and taxable charge",
+      order({
+        orderId: "PV-EL",
+        lines: [
+          { ...orderLine("EL1", "3", "33.33"), discountPercent: "7.5", taxableCharge: "4.15" },
+          { ...orderLine("EL2", "4", "25.00"), product: "WAGE" },
+        ],
+      }),
+    ],
+    [
+      "inclusive/line AP across the 9% rate with an exempt line",
+      order({
+        orderId: "PV-IL",
+        party: "V2",
+        orderDate: "2026-03-20",
+        priceIncludesTax: true,
+        lines: [
+          orderLine("IL1", "7", "1.99"),
+          { ...orderLine("IL2", "2", "5.55"), taxCode: "EXEMPT" },
+        ],
+      }),
+    ],
+    [
+      "exclusive/document AR service",
+      order({
+        orderId: "PV-ED",
+        side: "AR",
+        party: "C1",
+        rounding: "document",
+        lines: ["1", "2", "3"].map((n) => ({
+          ...orderLine(`ED${n}`, "1", "0.335"),
+          product: "CONSULT",
+        })),
+      }),
+    ],
+    [
+      "inclusive/document AP",
+      order({
+        orderId: "PV-ID",
+        rounding: "document",
+        priceIncludesTax: true,
+        lines: ["1", "2", "3"].map((n) => orderLine(`ID${n}`, "3", "3.333333")),
+      }),
+    ],
+  ];
+  const previewOf = (saved: Awaited<ReturnType<TradeDocumentService["createOrder"]>>) => {
+    const lines = saved.lines.map(({ lineId, lineNo, net, tax, gross }) => ({
+      lineId,
+      lineNo,
+      net,
+      tax,
+      gross,
+    }));
+    const total = (key: "net" | "tax" | "gross") => lines.reduce((sum, item) => sum + item[key], 0);
+    return { lines, net: total("net"), tax: total("tax"), gross: total("gross") };
+  };
+
+  it("TORD-04 previews over HTTP with the amounts the following save stores, without writing", async () => {
+    const executor = await SqliteExecutor.create({ filename, readers: 2 });
+    const api = await createApi({
+      environment: { ERP_PORT: "0" },
+      allowPortZero: true,
+      ...executor.services(),
+      logError: () => undefined,
+    });
+    const observer = new Database(filename, { readonly: true });
+    try {
+      const host = new URL(await api.listen()).host;
+      const post = (url: string, payload: unknown) =>
+        api.app.inject({ method: "POST", url, payload: payload as object, headers: { host } });
+      await threeOrders();
+      for (const [name, command] of previewGroups) {
+        const before = userTableSnapshot(observer);
+        const preview = await post("/api/v1/trade/orders/preview", command);
+        expect(preview.statusCode, name).toBe(200);
+        expect(userTableSnapshot(observer), name).toEqual(before);
+        const saved = await post("/api/v1/trade/orders", command);
+        expect(saved.statusCode, name).toBe(201);
+        expect(preview.json(), name).toEqual(previewOf(saved.json()));
+        const after = userTableSnapshot(observer).orders;
+        expect(after.length, name).toBe(before.orders.length + 1);
+        expect(after, name).toContainEqual({ company_id: "DEFAULT", order_id: command.orderId });
+      }
+
+      const taken = order({ orderId: "PO-B", lines: [orderLine("NEW", "9", "9.99")] });
+      const before = userTableSnapshot(observer);
+      const existing = await post("/api/v1/trade/orders/preview", taken);
+      expect(existing.statusCode).toBe(200);
+      expect(existing.json().lines).toEqual([
+        { lineId: "NEW", lineNo: 1, net: 8991, tax: 1169, gross: 10160 },
+      ]);
+      expect(userTableSnapshot(observer)).toEqual(before);
+      const conflict = await post("/api/v1/trade/orders", taken);
+      expect(conflict.statusCode).toBe(409);
+      expect(userTableSnapshot(observer)).toEqual(before);
+
+      for (const [payload, status] of [
+        [{ ...taken, orderId: "" }, 400],
+        [{ ...taken, extra: true }, 400],
+        [{ ...taken, orderId: "PV-NOPE", party: "NOPE" }, 400],
+        [{ ...taken, company: "MISSING" }, 404],
+      ] as const) {
+        const preview = await post("/api/v1/trade/orders/preview", payload);
+        expect(preview.statusCode).toBe(status);
+        expect(userTableSnapshot(observer)).toEqual(before);
+        const save = await post("/api/v1/trade/orders", payload);
+        const { requestId: _p, ...previewError } = preview.json();
+        const { requestId: _s, ...saveError } = save.json();
+        expect([save.statusCode, saveError]).toEqual([status, previewError]);
+      }
+      expect(userTableSnapshot(observer)).toEqual(before);
+      for (const method of ["GET", "PUT", "DELETE"] as const)
+        expect(
+          (
+            await api.app.inject({
+              method,
+              url: "/api/v1/trade/orders/preview",
+              headers: { host },
+            })
+          ).statusCode,
+        ).toBe(405);
+      expect(userTableSnapshot(observer)).toEqual(before);
+    } finally {
+      observer.close();
+      await api.close();
+      await executor.close();
+    }
+  });
+
+  it("TORD-04 previewOrder opens exactly one read transaction and never writes, even for a taken orderId", async () => {
+    await threeOrders();
+    const calls = { read: 0, write: 0 };
+    const spy = new TradeDocumentService(
+      {
+        read: (work) => {
+          calls.read++;
+          return store.read(work);
+        },
+        write: (work) => {
+          calls.write++;
+          return store.write(work);
+        },
+      },
+      journals,
+      journalTools,
+    );
+    const preview = await spy.previewOrder(order({ orderId: "PO-B", rounding: "document" }));
+    expect(preview.lines.map((item) => item.lineId)).toEqual(["OL1", "OL2"]);
+    expect(calls).toEqual({ read: 1, write: 0 });
+  });
+
+  it("TORD-04 PG-05: preview runs createOrder's resolve statements, fixed for any line count", async () => {
+    const backend = sqliteBackend({ filename });
+    const statements: string[] = [];
+    const counted = (db: Connection) =>
+      masterDataRepository({
+        ...db,
+        query: (sql: string, values: Parameters<Connection["query"]>[1] = []) => {
+          statements.push(sql);
+          return db.query(sql, values);
+        },
+      } as Connection);
+    const reader = await backend.acquire(true, false);
+    const previewing = new TradeDocumentService(
+      {
+        read: (work) => work(counted(reader)),
+        write: () => Promise.reject(new Error("previewOrder must not write")),
+      },
+      journals,
+      journalTools,
+    );
+    const lineSet = (count: number) =>
+      Array.from({ length: count }, (_, n) => ({
+        ...orderLine(`X${n}`, "1", "1.00"),
+        product: n % 2 ? "WAGE" : "RENT",
+      }));
+    try {
+      const sequences: string[][] = [];
+      for (const count of [2, 10, 100]) {
+        statements.length = 0;
+        await previewing.previewOrder(
+          order({
+            orderId: `PV-${count}`,
+            priceIncludesTax: true,
+            rounding: "document",
+            lines: lineSet(count),
+          }),
+        );
+        sequences.push([...statements]);
+      }
+      expect(sequences[1]).toEqual(sequences[0]);
+      expect(sequences[2]).toEqual(sequences[0]);
+      expect(sequences[0].some((sql) => /trade_order/.test(sql))).toBe(false);
+      expect(sequences[0].every((sql) => /^\s*SELECT/i.test(sql))).toBe(true);
+    } finally {
+      await reader.release();
+    }
+    const writer = await backend.acquire(false, false);
+    const creating = new TradeDocumentService(
+      {
+        read: () => Promise.reject(new Error("unused")),
+        write: async (work) => {
+          await writer.begin();
+          try {
+            const result = await work(counted(writer));
+            await writer.commit();
+            return result;
+          } catch (error) {
+            await writer.rollback();
+            throw error;
+          }
+        },
+      },
+      journals,
+      journalTools,
+    );
+    try {
+      const previewSequence = [...statements];
+      statements.length = 0;
+      await creating.createOrder(
+        order({
+          orderId: "PV-100",
+          priceIncludesTax: true,
+          rounding: "document",
+          lines: lineSet(100),
+        }),
+      );
+      const resolve = statements.slice(
+        0,
+        statements.findIndex((sql) => /^\s*INSERT/i.test(sql)),
+      );
+      expect(resolve.filter((sql) => !/FROM trade_orders/.test(sql))).toEqual(previewSequence);
+      expect(resolve.length).toBe(previewSequence.length + 1);
+    } finally {
+      await writer.release();
+      await backend.close();
+    }
+  });
 });

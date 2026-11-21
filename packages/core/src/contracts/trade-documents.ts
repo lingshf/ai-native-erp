@@ -52,6 +52,20 @@ export const tradeOrderSchema = z.strictObject({
     }),
   ),
 });
+export const tradeOrderPreviewSchema = z.strictObject({
+  lines: lines(
+    z.strictObject({
+      lineId,
+      lineNo: z.number().int().min(1).max(100),
+      net: minor,
+      tax: minor,
+      gross: minor,
+    }),
+  ),
+  net: minor,
+  tax: minor,
+  gross: minor,
+});
 export const tradeInvoiceCommandSchema = z.strictObject({
   company: companyCodeSchema,
   documentId: id,
@@ -494,6 +508,7 @@ export const tradeOrderPageSchema = z.strictObject({
   nextCursor: companyCodeSchema.nullable(),
 });
 export type TradeOrderPageDto = z.infer<typeof tradeOrderPageSchema>;
+export type TradeOrderPreviewDto = z.infer<typeof tradeOrderPreviewSchema>;
 export type TradeInvoiceCommandDto = z.infer<typeof tradeInvoiceCommandSchema>;
 export type TradeInvoicePreviewDto = z.infer<typeof tradeInvoicePreviewSchema>;
 export type TradeInvoiceReceiptDto = z.infer<typeof tradeInvoiceReceiptSchema>;
@@ -613,6 +628,20 @@ export const tradeDocumentsOpenApi = {
         },
       },
     },
+    "/api/v1/trade/orders/preview": {
+      post: {
+        operationId: "previewTradeOrder",
+        requestBody: { required: true, ...ref("TradeOrderCommand") },
+        responses: {
+          200: {
+            description:
+              "Read-only per-line and total amounts the same command would store; reserves no orderId.",
+            ...ref("TradeOrderPreview"),
+          },
+          ...errors([400, 403, 404, 405, 409, 415, 500, 503]),
+        },
+      },
+    },
     "/api/v1/trade/orders/{orderId}": {
       get: {
         operationId: "getTradeOrder",
@@ -694,6 +723,7 @@ export const tradeDocumentsOpenApi = {
     TradeSettlementReceipt: z.toJSONSchema(tradeSettlementReceiptSchema),
     TradeOrderCommand: z.toJSONSchema(tradeOrderCommandSchema),
     TradeOrder: z.toJSONSchema(tradeOrderSchema),
+    TradeOrderPreview: z.toJSONSchema(tradeOrderPreviewSchema),
     TradeOrderPage: z.toJSONSchema(tradeOrderPageSchema),
     TradeInvoiceCommand: z.toJSONSchema(tradeInvoiceCommandSchema),
     TradeInvoiceConfirm: z.toJSONSchema(tradeInvoiceConfirmSchema),
