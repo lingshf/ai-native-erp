@@ -94,8 +94,8 @@
 | A1 对照：监听不换 | 真实 `run-main.ps1` 走完，退出 0，两个 seed 替身都执行，端口释放 |
 | A2 进程 A 存活（`HasExited` 为假），4200 监听换成进程 B（seed-trade 替身触发） | 真实 `run-main.ps1` 以 `owner mismatch before seed-invoicing` 中止；seed-trade 已执行，seed-invoicing 没有执行；`finally` 停掉 A，harness 停掉 B；端口释放 |
 | A3 run-main 副本去掉该处的 PID 比较（`-or $owner[0] -ne $server.Id`），同一场景 | seed-invoicing 被执行了，即负例失效，证明 PID 比较是必需的 |
-| B3 渲染结果里的真实服务演练块（当前是第 4 块；脚本按内容取块，不依赖序号） | 在沙箱里执行，退出 0；替身 run-main 带 `-SkipCapture` 被调用，没有 build |
-| B6 渲染结果里的取图块（当前是第 7 块） | 在沙箱里执行，退出 0；build 先于 run-main 替身（不带 `-SkipCapture`）；16 张复制进沙箱截图目录；`demo-s8-shots-*` 目录已清 |
+| B3 渲染结果里的真实服务演练块（脚本按内容取块，不依赖序号） | 在沙箱里执行，退出 0；替身 run-main 带 `-SkipCapture` 被调用，没有 build |
+| B6 渲染结果里的取图块 | 在沙箱里执行，退出 0；build 先于 run-main 替身（不带 `-SkipCapture`）；16 张复制进沙箱截图目录；`demo-s8-shots-*` 目录已清 |
 | B6 负例（取图块）：dist 里没有 `fromOrder` | 取图块因 dist 断言中止（退出 1），run-main 替身没有被调用，没有复制截图 |
 
 这里的 run-main 被运行的是真实脚本（A1–A3 的 A3 是改动副本）；它调用的命令是沙箱替身。B3、B6 里的 run-main 是替身，目的是验证块本身的编排（build、dist 断言、复制、清理）。真实截图目录 18 个文件前后一致。
