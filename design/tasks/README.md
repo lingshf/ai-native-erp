@@ -505,7 +505,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | [TINV-03](TINV-03-order-list-invoicing-status.md) | 订单列表“开票状态”列（未开票 / 部分开票 / 已开完，与过账匹配同一谓词）；订单页 `?company=…&order=…` 直接打开订单详情，逐个参数处理异常 | 存储读 + 契约（只加响应字段）+ 页面 | P1 | — | 存储、contracts（`tradeOrderPageSchema` 列表项）、domain 类型（`TradeOrderSummary`）、web-ui:trade-orders、bench（`trade-order-list.ts`）；共享单文件见泳道（A 线在前） | todo | — |
-| [TINV-04](TINV-04-invoice-list-source-order.md) | 发票列表“来源订单”列，链接到 TINV-03 的 `?order=`；无订单显示“—”；发票页等使用 `useInvoiceLeaveGuard` 的页面在草稿 dirty 时，站内跳转先确认 | 存储读 + 契约（只加响应字段）+ 页面 | P1 | TINV-03（仅开工可并行；TINV-03 合并且 main Full 绿之前不改任何共享单文件、不 rebase、不跑真实路径、不请求评审，见“TINV-04 评审门禁”） | 存储、contracts（`tradeInvoicePageSchema` 列表项）、domain 类型（`TradeDocumentSummary`）、web-ui:trade（含 `useInvoiceLeaveGuard` 及其四个调用页面的调用行）；共享单文件见泳道（在 TINV-03 之后） | todo | — |
+| [TINV-04](TINV-04-invoice-list-source-order.md) | 发票列表“来源订单”列，链接到 TINV-03 的 `?order=`；无订单显示“—”；发票页等使用 `useInvoiceLeaveGuard` 的页面在草稿 dirty 时，站内跳转与浏览器后退 / 前进先确认（一次导航只确认一次）；busy 只表示真正提交，报表页与期间准入页不再把 dirty 算作 busy（D264） | 存储读 + 契约（只加响应字段）+ 页面 | P1 | TINV-03（仅开工可并行；TINV-03 合并且 main Full 绿之前不改任何共享单文件、不 rebase、不跑真实路径、不请求评审，见“TINV-04 评审门禁”） | 存储、contracts（`tradeInvoicePageSchema` 列表项）、domain 类型（`TradeDocumentSummary`）、web-ui:trade（含 `useInvoiceLeaveGuard` 及其四个调用页面的调用行）；共享单文件见泳道（在 TINV-03 之后） | todo | — |
 | [PROC-06](PROC-06-s8-retro-actions.md) | S8 回顾行动 1、2、3、6 写入 Demo 模板与发布清单；删除 v0.8.0 release-notes 第 3 行过时提示；`components.css` 第 3–4 行只改注释（原 CSS-01，D263）（版本管理，不占开发名额） | 文档 + 注释 | P2（v0.9.0 RC 之前） | — | docs:release、web-ui:components（只改注释） | todo | — |
 
 **S9 共同验收**：
