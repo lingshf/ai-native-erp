@@ -466,3 +466,56 @@ it("refocuses the first rule input as soon as a duplicate posting rule save fail
   expect(focusedAtUnlock).toBe(code);
   expect(document.activeElement).toBe(code);
 });
+
+it("leaves focus on the page after a posting rule form closes by cancel or successful save, like master settings", async () => {
+  window.history.replaceState(null, "", "/#/events");
+  let answer: ((value: Response) => void) | undefined;
+  let saved: unknown;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn<typeof fetch>().mockImplementation(async (path, options) => {
+      const url = new URL(String(path), "http://localhost");
+      if (url.pathname === "/api/v1/companies")
+        return response({ items: [company], nextCursor: null });
+      if (url.pathname === "/api/v1/posting-rules" && options?.method === "POST") {
+        saved = (JSON.parse(String(options.body)) as { value: unknown }).value;
+        return new Promise<Response>((resolve) => (answer = resolve));
+      }
+      if (options?.method && options.method !== "GET")
+        throw new Error(`Unexpected write ${url.pathname}`);
+      return response({ items: [], nextCursor: null });
+    }),
+  );
+  render(<App />);
+  fireEvent.click(await screen.findByRole("button", { name: label("zh", "business.settings") }));
+  fireEvent.click(screen.getByRole("button", { name: label("zh", "business.rules") }));
+  const create = await screen.findByRole("button", { name: label("zh", "business.new") });
+  const field = (key: Parameters<typeof label>[1]) =>
+    screen.getByLabelText<HTMLInputElement>(label("zh", key));
+
+  fireEvent.click(create);
+  expect(document.activeElement).toBe(field("business.code"));
+  const cancel = screen.getByRole("button", { name: label("zh", "journal.cancel") });
+  cancel.focus();
+  fireEvent.click(cancel);
+  expect(screen.queryByLabelText(label("zh", "business.code"))).toBeNull();
+  expect(document.activeElement).toBe(document.body);
+
+  fireEvent.click(create);
+  expect(document.activeElement).toBe(field("business.code"));
+  for (const [key, value] of [
+    ["business.code", "NEW"],
+    ["business.objectCode", "S"],
+    ["journal.account", "1000"],
+  ] as const)
+    fireEvent.change(field(key), { target: { value } });
+  const save = screen.getByRole("button", { name: label("zh", "business.save") });
+  save.focus();
+  fireEvent.click(save);
+  await waitFor(() => expect(answer).toBeDefined());
+  answer?.(response({ ...(saved as object), revision: 1 }));
+  await screen.findByText(label("zh", "business.saved"));
+  expect(screen.queryByLabelText(label("zh", "business.code"))).toBeNull();
+  await waitFor(() => expect(create.matches(":disabled")).toBe(false));
+  expect(document.activeElement).toBe(document.body);
+});
