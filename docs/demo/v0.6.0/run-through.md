@@ -30,8 +30,30 @@
 - 截图共 **16 张** = 订单页 3 个阶段（预览、保存后列表、从列表打开）× 4 个组合 + 迁移页 × 4 个组合。favicon 是日志检查，不是截图。另有 2 个 `capture-log-*.json`。
 - 结束：无残留 `erp-demo-*`、无 vitest/playwright/headless 浏览器进程，端口 4198 已释放，时段已释放。
 
+## 无浏览器替身检查（D208，现版命令）
+
+命令（仓库根目录；提交 `03a1170` 之上增加本脚本后运行，脚本只读取 README 第 4 节的复跑块并原样执行）：
+
+```powershell
+powershell -NoProfile -File docs\demo\v0.6.0\scripts\stub-check.ps1
+```
+
+退出码 0。替身用 PowerShell 函数遮蔽 `npm`、`node`、`Start-Process`、`Invoke-WebRequest`、`Stop-Process`、`Copy-Item`、`Get-NetTCPConnection`：没有启动 Chrome、Playwright、Vitest，没有监听端口，没有重拍截图，不碰仓库文件；`capture.mjs` 的替身按场景返回退出码并在 `$env:TEMP\demo-s6-shots` 生成空 PNG（12 + 4）。检查后另用进程查询确认无 headless/playwright 进程。`Copy-Item` 只记录调用，不真正复制。
+
+| 场景 | 结果 | Copy-Item | Stop-Process | 残留 erp-demo-* |
+|---|---|---|---|---|
+| 1 成功 | 块完成 | 1 | 2（两轮各停本轮 pid） | 0 |
+| 2 主账套 capture 退出码 3 | `throw capture failed, exit 3` | 0 | 1 | 0 |
+| 3 迁移 capture 退出码 5 | `throw capture failed, exit 5` | 0 | 2 | 0 |
+| 4 启动前端口被占用 | `throw port busy` | 0 | 0（未启动任何进程） | 0 |
+| 5 启动后监听进程归属不符 | `throw owner mismatch` | 0 | 1 | 0 |
+| 6 seed 之后归属不符 | `throw owner mismatch after seed`（capture 未被调用） | 0 | 1 | 0 |
+| 7 迁移账套归属不符 | `throw owner mismatch` | 0 | 2 | 0 |
+
+这只验证脚本的控制流（失败即停、不复制、只清本轮对象），**没有验证**真实 Chrome 截图、真实端口监听或真实 seed 行为；修改后的脚本也没有按真实环境实跑。
+
 ## 未在授权时段内验证的分支
 
-- 复审后修改的两份脚本和 README 复跑块（见上表）未实跑，只做了 PowerShell 语法解析；复跑前请先申请时段。
+- 复审后修改的两份脚本和 README 复跑块未做真实实跑；失败分支与成功分支的控制流由上面的替身检查覆盖。
 - 两个 ps1 脚本的实际运行版事后才复制进仓库；复制后没有再运行（本次修改按要求不启动浏览器）。
 - 端口 4198 被占用的 `throw` 分支、监听进程归属不符的 `throw` 分支：本次未触发，未验证。`finally` 清理在前两次失败运行中实际执行过。
