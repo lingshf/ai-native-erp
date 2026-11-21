@@ -408,6 +408,8 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 **Sprint 评审**：[design/reviews/S7.md](../reviews/S7.md)（main `1d507f3`，S7 通过；例外与遗留项见该文）。
 
+**Sprint 回顾**：[design/reviews/S7-retro.md](../reviews/S7-retro.md)（main `08651f7`；3 个议题、7 条行动项，S6 回顾行动项检查）。
+
 **S7 共同验收**：
 1. UI 任务满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9，PG-05 口径同 S6（基线为 PR 实际 base 的 gzip 列），不设 Sprint 累计 CSS 门槛；真实 Chrome 证据按[路线图 §5 UI PR 证据清单](../roadmap.md#5-团队流程)，请求评审前逐项勾选写入 PR 正文。
 2. 现有测试与 E2E 不删除、不削弱、不跳过、不按平台禁用（D11）。作为证据的本机运行保存完整日志，失败的也保存。
