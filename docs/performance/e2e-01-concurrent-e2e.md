@@ -59,8 +59,57 @@
 
 ## 3. 结果
 
-待整机时段执行后填写，全部日志放入 gist。
+全部证据（带 sha256 清单）在 gist [b334e3c7](https://gist.github.com/lingshf/b334e3c79d9760ddfb07294cef3cfa6f)：
+- 文件名 `<目录>--<文件>`，对应原 OutDir 的 `<目录>/<文件>`；
+- 顶层 `SHA256SUMS.txt` 覆盖 gist 里每个文件，克隆后逐一校验，0 不符。
+
+整机时段：D170 交给本任务，16:49 释放。执行顺序如下表，三个目录都保留。
+
+| 目录 | 时间 | head / harness | 结果 |
+| --- | --- | --- | --- |
+| `serial` | 16:35–16:40 | 168dacb / 168dacb 版 | 5/5 通过，每次 13/13 |
+| `concurrent` | 16:41–16:42 | 168dacb / 168dacb 版 | 第 1 轮中止，harness 误判（见下） |
+| `concurrent-rerun` | 16:46–16:49 | 168dacb / 修复版副本（sha256 `E06CD4DE…47A2E7`） | 第 1 轮 A、B 都失败，按 D150 停止；剩余 4 轮未跑 |
+
+两个 worktree 的首尾 `rev-parse` 都是 `168dacb90c1fbc77bd9d64935a835d28384d2fc1`，尾 porcelain 都为空。
+
+**串行**（`serial--summary.md`）：
+
+| 运行 | 结果 | CPU 均值 % | 各文件 Duration（s） |
+| --- | --- | --- | --- |
+| run1 | 通过 | 86 | migration 27.9，en-green-1 26.6，en-green-2 30.7，smoke 7.5，zh-red-1 32.3，zh-red-2 31.2 |
+| run2 | 通过 | 83 | 29.5，33.6，31.2，7.2，26.5，31.3 |
+| run3 | 通过 | 96 | 24.2，28.7，27.9，7.3，31.8，30.2 |
+| run4 | 通过 | 97 | 36.6，35.1，31.7，10.0，43.5，42.4 |
+| run5 | 通过 | 92 | 38.4，36.5，36.5，7.8，46.7，40.7 |
+
+外部负载：串行全程都是 node 2 个，即长驻 dev server 22720（`npm start`）和 17516（`node src/server.js`），均属 shaoling；外部自动化浏览器为 0。
+
+**并发第 1 次尝试（`concurrent`，中止）**：16:42:30，A 的 Vitest worker（PID 25464）在 `browser.close()` 期间先退出，它的 Chrome（PID 85976）成了孤儿。
+- 当时 harness 按实时父进程链判定归属，于是把这个 Chrome 当成“外部自动化浏览器”，随即中止并杀掉两路运行（exit -1）。
+- 当时的尾部检查在 worktree 不干净时直接抛错（B 留有被杀运行的 `.legacy-fixture-*` 目录），所以没有生成 `summary` 与 `SHA256SUMS`。该目录事后已删除。
+- 修复：harness 改为粘性归属（`own-processes.txt` 记录 pid + 创建时间，由采样器与编排器共享），尾部检查改为只记录、不抛错。
+- 修复只在 worktree 外的副本里用 `-DryRun` 验证过：用 node 分离子进程模拟孤儿，它始终被归为 own，没有出现 would-abort。修复版没有单独正式跑过，唯一一次真实使用就是下面的重跑。
+
+**并发重跑第 1 轮（`concurrent-rerun`）**：A、B 都以 exit 1 结束。13 个测试全部通过，失败都发生在 `afterAll`：`Hook timed out in 15000ms`，位置 [trade-gui-scenario.ts:550](../../packages/infra/test/support/trade-gui-scenario.ts#L550)。
+
+| 运行 | 失败文件 | CPU 均值 / 最大 % | 各文件 Duration（s） |
+| --- | --- | --- | --- |
+| A-run1 | trade-gui-en-green-2、trade-gui-smoke | 99 / 100 | migration 67.3，en-green-1 64.6，en-green-2 52.1，smoke 16.9，zh-red-1 76.3，zh-red-2 69.9 |
+| B-run1 | migration-gui、trade-gui-smoke、trade-gui-zh-red-2 | 99 / 100 | 51.2，68.2，72.2，22.7，64.6，54.4 |
+
+外部负载（D150 披露）：
+- 外部 node：开跑前两次检查分别为 2 个和 4 个，运行中最多 7 个，均属 shaoling：
+  - 22720、17516：长驻 dev server；
+  - 69392：`node --env-file-if-exists=.env server.js`；
+  - 81224：`npm start`；
+  - 58872、60028、5136：另一项目 debate-coach 的 `playwright install chromium`，只下载浏览器，没有启动 Chrome。
+- 外部自动化浏览器：0。
+- 桌面 Chrome / Edge：25 个进程，按 D146 列出、不计入外部负载，用 `-AllowDesktopChrome` 披露。
+- msedgewebview2：约 156 个，只计数。
+
+失败时存在外部 node 负载，按 D150 与 D168 立即停止，剩余 4 轮未跑；按 D172 不重跑。
 
 ## 4. 结论
 
-待实验完成后，从任务文件规定的三种表述中选一种填写。
+并发出现失败：保留全部日志，标为观察，不归因，独占时段不变。

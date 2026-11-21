@@ -63,8 +63,18 @@ function Get-Owner($process) {
 
 # Classes: own (descendant of the orchestrator), automation-browser (Playwright / headless profile),
 # desktop-browser (interactive profile), node, webview (msedgewebview2: counted, not listed).
+# Ownership is sticky: a Vitest worker can exit while its Chrome is still closing, which orphans
+# that Chrome (its parent PID no longer exists). Every process ever seen as own is kept in
+# own-processes.txt as "pid creation-ticks", shared by the sampler and the orchestrator; a process
+# stays own if it matches an entry, or if its parent PID matches an entry created before it.
+$ownSeen = @{}
 function Get-Snapshot([int]$root) {
   $all = Get-CimInstance Win32_Process
+  $ownFile = if ($OutDir) { Join-Path $OutDir "own-processes.txt" } else { $null }
+  if ($ownFile -and (Test-Path $ownFile)) {
+    try { $lines = Get-Content $ownFile } catch { $lines = @() }
+    foreach ($line in $lines) { $f = $line -split " "; if ($f.Count -eq 2) { $ownSeen[[int]$f[0]] = [long]$f[1] } }
+  }
   $byId = @{}; foreach ($p in $all) { $byId[[int]$p.ProcessId] = $p }
   $children = @{}
   foreach ($p in $all) {
@@ -74,9 +84,26 @@ function Get-Snapshot([int]$root) {
   }
   $own = [System.Collections.Generic.HashSet[int]]::new()
   $queue = [System.Collections.Generic.Queue[int]]::new(); $queue.Enqueue($root)
+  foreach ($p in $all) {
+    $id = [int]$p.ProcessId; $parent = [int]$p.ParentProcessId; $created = $p.CreationDate.Ticks
+    if (($ownSeen.ContainsKey($id) -and $ownSeen[$id] -eq $created) -or
+      ($ownSeen.ContainsKey($parent) -and $ownSeen[$parent] -le $created -and -not ($byId.ContainsKey($parent) -and $byId[$parent].CreationDate.Ticks -ne $ownSeen[$parent]))) {
+      $queue.Enqueue($id)
+    }
+  }
   while ($queue.Count) {
     $id = $queue.Dequeue()
     if ($own.Add($id) -and $children.ContainsKey($id)) { foreach ($c in $children[$id]) { $queue.Enqueue($c) } }
+  }
+  $new = foreach ($id in $own) {
+    if ($byId.ContainsKey($id) -and -not $ownSeen.ContainsKey($id)) {
+      $ownSeen[$id] = $byId[$id].CreationDate.Ticks; "$id $($ownSeen[$id])"
+    }
+  }
+  if ($ownFile -and $new) {
+    for ($try = 0; $try -lt 20; $try++) {
+      try { Add-Content -Path $ownFile -Value $new -Encoding ascii; break } catch { Start-Sleep -Milliseconds 50 }
+    }
   }
   $listed = foreach ($p in $all) {
     $isBrowser = $p.Name -match $browserNames
@@ -133,7 +160,8 @@ if ($Role -eq "run") {
   $log = Join-Path $OutDir "$Label.log"; $json = Join-Path $OutDir "$Label.json"
   "# $Label start $((Get-Date).ToString('o')) head $(git rev-parse HEAD) cwd $Worktree" | Tee-Object -FilePath $log
   if ($DryRun) {
-    & node -e "console.log('dry run: no vitest, no Chrome'); setTimeout(() => {}, 25000)" 2>&1 | Tee-Object -FilePath $log -Append
+    # Leaves a detached child alive after the run exits, like a Chrome still closing after its worker.
+    & node -e "console.log('dry run: no vitest, no Chrome'); require('node:child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 40000)'], { detached: true, stdio: 'ignore' }).unref(); setTimeout(() => {}, 15000)" 2>&1 | Tee-Object -FilePath $log -Append
   } else {
     & node node_modules/vitest/vitest.mjs run trade-gui- migration-gui.slow --reporter=verbose --reporter=json "--outputFile.json=$json" 2>&1 | Tee-Object -FilePath $log -Append
   }
@@ -164,10 +192,11 @@ function Write-Head([string]$when) {
     git -C $Worktrees[$i] rev-parse HEAD | Set-Content (Join-Path $OutDir "$($tags[$i])-$when-rev-parse.txt") -Encoding ascii
     $porcelain = git -C $Worktrees[$i] status --porcelain --untracked-files=all
     Set-Content (Join-Path $OutDir "$($tags[$i])-$when-porcelain.txt") -Value $porcelain -Encoding ascii -NoNewline
-    if ($porcelain -and -not $DryRun) { throw "$($Worktrees[$i]) is not clean at $when" }
+    # At the end the porcelain files are the record; throwing would skip the summary and SHA256SUMS.
+    if ($porcelain -and -not $DryRun -and $when -eq "start") { throw "$($Worktrees[$i]) is not clean at $when" }
   }
   $heads = @(for ($i = 0; $i -lt $Worktrees.Count; $i++) { (Get-Content (Join-Path $OutDir "$($tags[$i])-$when-rev-parse.txt")).Trim() })
-  if (@($heads | Sort-Object -Unique).Count -ne 1) { throw "heads differ at ${when}: $heads" }
+  if (@($heads | Sort-Object -Unique).Count -ne 1 -and $when -eq "start") { throw "heads differ at ${when}: $heads" }
   foreach ($w in $Worktrees) { if (-not (Test-Path (Join-Path $w "node_modules\vitest\vitest.mjs"))) { throw "$w has no node_modules" } }
 }
 
