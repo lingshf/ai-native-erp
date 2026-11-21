@@ -49,6 +49,10 @@ jobs:
         run: npm run typecheck
       - name: Import boundaries
         run: npm run check:boundaries
+      # Unconditional, unlike the affected tests below: a PR that only adds a test file does
+      # not select tooling/ci.test.ts under --changed, but must still register its weight.
+      - name: Shard weight guard
+        run: node scripts/ci.ts weights-check
       - name: Select tests
         id: scope
         env:

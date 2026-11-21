@@ -1,6 +1,6 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { basename, relative, resolve } from "node:path";
+import { basename, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 export interface TestTiming {
@@ -98,6 +98,74 @@ export function fileWeights(reports: unknown[], root = process.cwd()) {
         Math.max(1, Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)),
       ]),
   );
+}
+
+/**
+ * Compares the test files Vitest collects (repo-relative, `/`-separated, as the shard
+ * sequencer keys them) with the recorded shard weights. Returns one line per problem;
+ * an empty list means every collected file has a finite positive weight and every weight
+ * has a file. A key whose value is not a finite positive number (e.g. null) counts as
+ * invalid: the sequencer would treat it like a missing weight.
+ */
+export function shardWeightProblems(files: string[], weights: Record<string, unknown>) {
+  const collected = [...new Set(files)].sort();
+  const missing = collected.filter((file) => !Object.hasOwn(weights, file));
+  const invalid = collected.filter((file) => {
+    const weight = weights[file];
+    return (
+      Object.hasOwn(weights, file) &&
+      !(typeof weight === "number" && Number.isFinite(weight) && weight > 0)
+    );
+  });
+  const stale = Object.keys(weights)
+    .filter((key) => !collected.includes(key))
+    .sort();
+  const shown = (value: unknown) =>
+    typeof value === "number" ? String(value) : JSON.stringify(value);
+  return [
+    ...(missing.length || invalid.length
+      ? [
+          `Test files without a valid weight in scripts/test-shard-weights.json (the sequencer runs them as longest and reorders projects):`,
+          ...missing.map((file) => `  missing: ${file}`),
+          ...invalid.map((file) => `  invalid: ${file} (${shown(weights[file])})`),
+          "Fix: regenerate with `node scripts/ci.ts weights REPORT.json...` from Vitest JSON reports, or add an estimated weight (ms, finite and > 0) by hand and say so in the PR.",
+        ]
+      : []),
+    ...(stale.length
+      ? [
+          "Weights in scripts/test-shard-weights.json without a collected test file (remove or rename them):",
+          ...stale.map((key) => `  stale: ${key}`),
+        ]
+      : []),
+  ];
+}
+
+/**
+ * Every test file of every project in vitest.config.ts (slow and browser lanes included,
+ * whatever CI_TEST_LAYER is), collected by Vitest itself and keyed like
+ * WeightedShardSequencer.key(): the set the sequencer receives in a Full run.
+ */
+export async function collectTestFiles(root = process.cwd()) {
+  const { createVitest } = await import("vitest/node");
+  const layer = process.env.CI_TEST_LAYER;
+  process.env.CI_TEST_LAYER = "full";
+  try {
+    // The `native` loader imports the config with Node: when this file is the CLI entry, the
+    // config's import of it reuses the loaded module instead of re-running a bundled copy.
+    const vitest = await createVitest({
+      config: join(root, "vitest.config.ts"),
+      watch: false,
+      configLoader: "native",
+    });
+    try {
+      return (await vitest.globTestSpecifications()).map((spec) => repoPath(spec.moduleId, root));
+    } finally {
+      await vitest.close();
+    }
+  } finally {
+    if (layer === undefined) delete process.env.CI_TEST_LAYER;
+    else process.env.CI_TEST_LAYER = layer;
+  }
 }
 
 /**
@@ -316,6 +384,18 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       rootArg?.slice("--root=".length),
     );
     writeFileSync("scripts/test-shard-weights.json", `${JSON.stringify(weights, null, 2)}\n`);
+  } else if (command === "weights-check") {
+    const files = await collectTestFiles();
+    const problems = shardWeightProblems(
+      files,
+      JSON.parse(readFileSync("scripts/test-shard-weights.json", "utf8")),
+    );
+    if (problems.length) {
+      console.error(problems.join("\n"));
+      process.exitCode = 1;
+    } else {
+      console.log(`Shard weights match all ${files.length} collected test files.`);
+    }
   } else {
     throw new Error(`Unknown CI command: ${command}`);
   }
