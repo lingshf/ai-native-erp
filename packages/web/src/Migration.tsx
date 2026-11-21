@@ -22,11 +22,21 @@ const delta = (field: string, a: unknown, b: unknown) =>
         ? BigInt(b) - BigInt(a)
         : undefined;
 const show = (value: unknown) => (value === undefined ? "—" : String(value));
-// Prose values (words, dates, amounts) get class "word" so narrow screens break them only between
-// words; identifiers, hashes, paths and JSON (`_ / " {`, or any run over 24 chars) still break anywhere.
-const prose = /^[\p{L}\p{N}\s.,;:'’()&%+-]*$/u;
-const word = (text: string) =>
-  prose.test(text) && text.split(/\s+/).every((run) => run.length <= 24) ? "word" : undefined;
+// Long strings may break anywhere: JSON, or one whitespace-free token that is an identifier (`_`),
+// a path or URL (`\`, or `/` with a leading `/ ~ .` or a dot), or over 24 chars (UUIDs, hashes).
+// Every other value, including prose with slashes or quotes, gets class "word" so narrow screens
+// break it only between words.
+const longString = (text: string) => {
+  const token = text.trim();
+  if (/^[{[]/.test(token)) return true;
+  if (/\s/.test(token)) return false;
+  return (
+    token.length > 24 ||
+    /[_\\]/.test(token) ||
+    (token.includes("/") && (/^[/~.]/.test(token) || token.includes(".")))
+  );
+};
+const word = (text: string) => (longString(text) ? undefined : "word");
 // The response carries no business keys for check rows, so the two sides are listed one by one,
 // never paired by position; only server-reported differences (same key) are compared.
 const listChecks = (expected: Row[], actual: Row[]): Pair[] => [

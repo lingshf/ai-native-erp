@@ -112,12 +112,20 @@ test("migration details show key-value tables with non-color mismatch marks, raw
                   account: "1100",
                   debit: "100",
                   table: "line_dimensions",
+                  memo: "Depreciation / equipment",
+                  note: "Depreciation/equipment",
+                  evidence: '{"memo":"Opening balance"}',
+                  file: "legacy/teaching.sqlite",
                 },
                 actual: {
                   company: "DEMO",
                   account: "1200",
                   debit: "150",
                   table: "line_dimensions",
+                  memo: '"Depreciation" equipment',
+                  note: "Cash & receivables: 50%",
+                  evidence: "7b1e9d24-0c3a-4f5e-8a61-93d2c4b5e7f0",
+                  file: "C:\\legacy\\teaching.sqlite",
                 },
               },
             ],
@@ -181,14 +189,29 @@ test("migration details show key-value tables with non-color mismatch marks, raw
     ["account 不符", "1100", "1200", "—", true],
     ["debit 不符", "100", "150", "+50", true],
     ["table ", "line_dimensions", "line_dimensions", "—", false],
+    ["memo 不符", "Depreciation / equipment", '"Depreciation" equipment', "—", true],
+    ["note 不符", "Depreciation/equipment", "Cash & receivables: 50%", "—", true],
+    [
+      "evidence 不符",
+      '{"memo":"Opening balance"}',
+      "7b1e9d24-0c3a-4f5e-8a61-93d2c4b5e7f0",
+      "—",
+      true,
+    ],
+    ["file 不符", "legacy/teaching.sqlite", "C:\\legacy\\teaching.sqlite", "—", true],
   ]);
-  // UI-12: prose cells wrap only between words on narrow screens; identifiers keep breaking anywhere.
+  // UI-12: prose cells — even with slashes, quotes or other punctuation — wrap only between words
+  // on narrow screens; identifiers, JSON, UUIDs and paths keep breaking anywhere.
   const wordCells = (details: Element | undefined) =>
     [...(details?.querySelectorAll("tbody td") ?? [])].map((td) => td.classList.contains("word"));
   expect(wordCells(draft)).toEqual([
     ...[true, true, true],
     ...[true, true, true],
     ...[true, true, true],
+    ...[false, false, true],
+    ...[true, true, true],
+    ...[true, true, true],
+    ...[false, false, true],
     ...[false, false, true],
   ]);
   // Check rows carry no business key: each side is listed on its own, unmarked, without 差额.
