@@ -56,7 +56,7 @@ async function poll(read, wanted, label) {
 }
 // 订单行表：每行取 订单行号、数量、已开票、未开票 四列
 const orderRows = (page) =>
-  page.locator("table.tord-amounts tbody tr:not(.tord-total)").evaluateAll((rows) => rows.map((row) => [1, 4, 5, 6].map((i) => row.children[i].textContent.trim())));
+  page.locator("table.tord-amounts tbody tr:not(.tord-total)").evaluateAll((rows) => rows.map((row) => [1, 4, 5, 6].map((i) => row.children[i].textContent.replace(/^\u2713\s*/, "").trim())));
 
 for (const [lang, theme, width] of combos) {
   const tag = `${lang}-${theme}-${width}`;
