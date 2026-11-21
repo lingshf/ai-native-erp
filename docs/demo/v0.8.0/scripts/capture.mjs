@@ -127,13 +127,23 @@ for (const [lang, theme, width] of combos) {
   log.push({ step: "order-full", tag });
   await shot(page, `order-full-${tag}`, want);
 
-  // 4 直接用链接打开发票页：订单已全部开票，提示且不生成行（仍是一行空白草稿）
-  await page.goto(`${base}/#/trade-invoices?company=DEFAULT&fromOrder=PO-I2`);
-  await page.getByText(t.fully, { exact: false }).first().waitFor({ timeout: 8000 });
-  const blank = await page.locator("fieldset.tinv-lines tbody tr").evaluateAll((rows) => rows.map((row) => [...row.querySelectorAll("input")].map((i) => i.value)));
+  // 4 直接用链接打开发票页（全新浏览器上下文，没有前面步骤留下的草稿）：订单已全部开票，提示且不生成行（仍是一行空白草稿）
+  const fresh = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: 1 });
+  await fresh.addInitScript(
+    (value) => window.localStorage.setItem("erp.workspace.preferences.v1", value),
+    JSON.stringify({ language: lang, theme, teaching: true }),
+  );
+  const page4 = await fresh.newPage();
+  page4.on("pageerror", (e) => errors.push(String(e)));
+  page4.on("console", (m) => m.type() === "error" && errors.push(`${m.text()} @ ${page4.url()}`));
+  page4.on("response", (r) => r.status() >= 400 && errors.push(`HTTP ${r.status()} ${r.request().method()} ${new URL(r.url()).pathname}`));
+  await page4.goto(`${base}/#/trade-invoices?company=DEFAULT&fromOrder=PO-I2`);
+  await page4.getByText(t.fully, { exact: false }).first().waitFor({ timeout: 8000 });
+  const blank = await page4.locator("fieldset.tinv-lines tbody tr").evaluateAll((rows) => rows.map((row) => [...row.querySelectorAll("input")].map((i) => i.value)));
   if (blank.length !== 1 || blank[0].some((v) => v === "PO-I2" || v === "L1")) throw new Error("全部开完时不应带入行：" + JSON.stringify(blank));
   log.push({ step: "invoice-fully-invoiced", tag, rows: blank.length });
-  await shot(page, `invoice-fully-invoiced-${tag}`, want);
+  await shot(page4, `invoice-fully-invoiced-${tag}`, want);
+  await fresh.close();
 
   log.push({ page: "s8", tag, invoicingRequests: invoicing, errors });
   await context.close();
