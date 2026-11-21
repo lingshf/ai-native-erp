@@ -94,7 +94,16 @@
   font-variant-numeric: tabular-nums;
 }
 .trade-orders .tord-amounts {
-  min-width: 760px;
+  min-width: 920px;
+}
+.trade-orders .tord-invoice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.trade-orders .tord-invoice-actions .ui-hint {
+  margin: 0;
 }
 /* 订单列表订单号按钮：圆角（焦点环形状），原由 styles.css 全局 button 规则给出（UI-11e，D-7） */
 .trade-orders .tord-list .cell-link {

@@ -1,7 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import {
   companiesPageSchema,
+  type ContractSchema,
   tradeOrderCommandSchema,
   tradeOrderPageSchema,
   tradeOrderPreviewSchema,
@@ -115,6 +117,46 @@ const ruleKey = (messageKey: string): TradeOrderKey => {
   return rules.find((known) => known === rule)
     ? (`tord.issue.${rule}` as TradeOrderKey)
     : "tord.issue.other";
+};
+
+// Shape of TINV-01's `tradeOrderInvoicingSchema` (TINV-01 task book, scope 4); swap for the
+// contract export once TINV-01 is on main.
+type Invoicing = { order: Order; invoiced: { lineId: string; invoicedQuantity: string }[] };
+const decimalPattern = /^(?:0|[1-9]\d{0,11})(?:\.\d{1,6})?$/u;
+const invoicingSchema = {
+  safeParse(value: unknown) {
+    const body = value as Partial<Record<string, unknown>> | null;
+    const order = tradeOrderSchema.safeParse(body?.order);
+    const invoiced = body?.invoiced;
+    const valid =
+      order.success &&
+      Object.keys(body ?? {}).length === 2 &&
+      Array.isArray(invoiced) &&
+      invoiced.length === order.data.lines.length &&
+      invoiced.every(
+        (row: Partial<Record<string, unknown>>, index) =>
+          Object.keys(row).length === 2 &&
+          row.lineId === order.data.lines[index]?.lineId &&
+          typeof row.invoicedQuantity === "string" &&
+          decimalPattern.test(row.invoicedQuantity),
+      );
+    return valid
+      ? { success: true, data: { order: order.data, invoiced } as Invoicing }
+      : { success: false, error: new Error("invalid invoicing response") };
+  },
+} as unknown as ContractSchema<Invoicing>;
+// Exact decimal arithmetic in millionths (the contract allows at most 6 fraction digits).
+const micros = (value: string) => {
+  const [whole = "0", fraction = ""] = value.split(".");
+  return BigInt(whole) * 1_000_000n + BigInt(fraction.padEnd(6, "0"));
+};
+const fromMicros = (value: bigint) => {
+  const sign = value < 0n ? "-" : "";
+  const abs = value < 0n ? -value : value;
+  const fraction = String(abs % 1_000_000n)
+    .padStart(6, "0")
+    .replace(/0+$/u, "");
+  return `${sign}${abs / 1_000_000n}${fraction ? `.${fraction}` : ""}`;
 };
 
 // Same contract as the other trade pages' leave guards: links and history are blocked while a
@@ -766,7 +808,7 @@ function OrderWorkspace({
       </form>
       {saved && (
         <FastTab id="tord-saved" title={t("tord.savedTitle")} summary={saved.orderId}>
-          <OrderView order={saved} language={language} money={money} t={t} />
+          <OrderView order={saved} company={company} language={language} money={money} t={t} />
         </FastTab>
       )}
       <OrderList
@@ -1085,7 +1127,7 @@ function OrderLookup({
           <h4>
             {t("tord.lookupTitle")} <Badge tone="info">{result.orderId}</Badge>
           </h4>
-          <OrderView order={result} language={language} money={money} t={t} />
+          <OrderView order={result} company={company} language={language} money={money} t={t} />
         </section>
       )}
     </FastTab>
@@ -1094,16 +1136,40 @@ function OrderLookup({
 
 function OrderView({
   order,
+  company,
   language,
   money,
   t,
 }: {
   order: Order;
+  company: CompanyDto;
   language: Preferences["language"];
   money: (value: number) => string;
   t: T;
 }) {
   const amountKeys = ["net", "tax", "gross"] as const;
+  const reasonId = useId();
+  // The saved / looked-up order stays the source of the detail; invoiced quantities come from one
+  // extra read of the invoicing endpoint (TINV-02 decision 1), always fresh when the detail mounts.
+  const invoicing = useQuery({
+    queryKey: ["trade-order-invoicing", company.code, order.orderId],
+    refetchOnMount: "always",
+    queryFn: ({ signal }) =>
+      masterRequest(
+        `/api/v1/trade/orders/${encodeURIComponent(order.orderId)}/invoicing?company=${encodeURIComponent(company.code)}`,
+        invoicingSchema,
+        { signal },
+      ),
+  });
+  const known = invoicing.isSuccess && !invoicing.isFetching ? invoicing.data : null;
+  const invoiced = new Map(known?.invoiced.map((row) => [row.lineId, row.invoicedQuantity]));
+  const remaining = (line: Order["lines"][number]) => {
+    const done = invoiced.get(line.lineId);
+    return done === undefined ? null : micros(line.quantity) - micros(done);
+  };
+  const fullyInvoiced =
+    known !== null && order.lines.every((line) => (remaining(line) ?? 1n) <= 0n);
+  const invoiceLink = `/trade-invoices?${new URLSearchParams({ company: company.code, fromOrder: order.orderId })}`;
   // Totals only add up the server's per-line amounts; no tax is calculated here (PG-01).
   const total = (key: (typeof amountKeys)[number]) =>
     order.lines.reduce((sum, line) => sum + line[key], 0);
@@ -1162,6 +1228,8 @@ function OrderView({
               <th scope="col">{t("tord.product")}</th>
               <th scope="col">{t("tord.taxCode")}</th>
               <th scope="col">{t("tord.quantity")}</th>
+              <th scope="col">{t("tord.invoicedQuantity")}</th>
+              <th scope="col">{t("tord.uninvoicedQuantity")}</th>
               <th scope="col">{t("tord.unitPrice")}</th>
               <th scope="col">{t("tord.discountPercent")}</th>
               {amountKeys.map((key) => (
@@ -1172,22 +1240,38 @@ function OrderView({
             </tr>
           </thead>
           <tbody>
-            {order.lines.map((line) => (
-              <tr key={line.lineId}>
-                <td>{line.lineNo}</td>
-                <td>{line.lineId}</td>
-                <td>{line.product}</td>
-                <td>{line.taxCode}</td>
-                <td>{line.quantity}</td>
-                <td>{line.unitPrice}</td>
-                <td>{line.discountPercent}</td>
-                {amountKeys.map((key) => (
-                  <td key={key}>{money(line[key])}</td>
-                ))}
-              </tr>
-            ))}
+            {order.lines.map((line) => {
+              const left = remaining(line);
+              return (
+                <tr key={line.lineId}>
+                  <td>{line.lineNo}</td>
+                  <td>{line.lineId}</td>
+                  <td>{line.product}</td>
+                  <td>{line.taxCode}</td>
+                  <td>{line.quantity}</td>
+                  <td>{invoiced.get(line.lineId) ?? "…"}</td>
+                  <td>
+                    {left === null ? (
+                      "…"
+                    ) : left > 0n ? (
+                      fromMicros(left)
+                    ) : (
+                      <>
+                        {left < 0n && `${fromMicros(left)} `}
+                        <Badge tone="success">{t("tord.fullyInvoicedBadge")}</Badge>
+                      </>
+                    )}
+                  </td>
+                  <td>{line.unitPrice}</td>
+                  <td>{line.discountPercent}</td>
+                  {amountKeys.map((key) => (
+                    <td key={key}>{money(line[key])}</td>
+                  ))}
+                </tr>
+              );
+            })}
             <tr className="tord-total">
-              <th scope="row" colSpan={7}>
+              <th scope="row" colSpan={9}>
                 {t("tord.total")}
               </th>
               {amountKeys.map((key) => (
@@ -1196,6 +1280,40 @@ function OrderView({
             </tr>
           </tbody>
         </table>
+      </div>
+      {invoicing.isFetching && <p role="status">{t("tord.invoicingLoading")}</p>}
+      {invoicing.isError && !invoicing.isFetching && (
+        <MessageBar tone="danger" role="alert">
+          <p>{t("tord.invoicingFailed")}</p>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => void invoicing.refetch()}
+          >
+            {label(language, "master.retry")}
+          </button>
+        </MessageBar>
+      )}
+      <div className="tord-invoice-actions">
+        {known && !fullyInvoiced ? (
+          <Link className="btn btn-primary" to={invoiceLink}>
+            {t("tord.invoice")}
+          </Link>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled
+            aria-describedby={fullyInvoiced ? reasonId : undefined}
+          >
+            {t("tord.invoice")}
+          </button>
+        )}
+        {fullyInvoiced && (
+          <p className="ui-hint" id={reasonId}>
+            {t("tord.fullyInvoiced")}
+          </p>
+        )}
       </div>
     </div>
   );

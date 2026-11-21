@@ -253,7 +253,7 @@ export function guiPhase(scenario: string, name: string, started: number) {
 type Recorded = { method: string; path: string; body: unknown; preview?: unknown };
 const parts = {
   1: "period admission, trade configuration, matched AP invoice and payment",
-  2: "advance, AR credit and cancellations, open-item reports",
+  2: "advance, AR credit and cancellations, open-item reports, invoicing an order in two steps",
 } as const;
 
 // The only values the GUI generates itself (crypto.randomUUID) in the part 1 writes. The replay
@@ -856,7 +856,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
     // The purchase order the AP invoice matches, entered on the order page by keyboard. Side
     // (AP), rounding (line), prices excluding tax, discount 0 and the order date (the page's
     // local today under the fixed clock) stay at their defaults; the replay asserts all of them.
-    async function purchaseOrder() {
+    async function purchaseOrder(orderId = "PO-DEMO") {
       const o = (key: TradeOrderKey, params?: Record<string, string>) =>
         orderLabel(language, key, params);
       // Product and tax code offer a datalist, so they are comboboxes.
@@ -865,7 +865,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       await navigate("trade-orders");
       expect(await page.locator("#tord-side").inputValue()).toBe("AP");
       expect(await page.locator("#tord-orderDate").inputValue()).toBe("2026-01-20");
-      await type(page, page.locator("#tord-orderId"), "PO-DEMO");
+      await type(page, page.locator("#tord-orderId"), orderId);
       await type(page, page.locator("#tord-party"), "PARTY");
       await type(page, line("tord.product", "combobox"), "EXPENSE");
       await type(page, line("tord.taxCode", "combobox"), "VAT");
@@ -881,22 +881,95 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       const saved = await response.json();
       expect(response.status(), JSON.stringify(saved)).toBe(201);
       expect(saved).toMatchObject({
-        orderId: "PO-DEMO",
+        orderId,
         side: "AP",
         party: "PARTY",
         lines: [{ lineId: "L1", net: 10000, tax: 1300, gross: 11300 }],
       });
       await page
         .getByRole("status")
-        .filter({ hasText: o("tord.saved", { orderId: "PO-DEMO" }) })
+        .filter({ hasText: o("tord.saved", { orderId }) })
         .waitFor();
       // Only the server's amounts are shown; the page computes no tax itself.
-      const amounts = page.getByRole("table", { name: `${o("tord.lines")} PO-DEMO`, exact: true });
+      const amounts = page.getByRole("table", {
+        name: `${o("tord.lines")} ${orderId}`,
+        exact: true,
+      });
       const money = (minor: number) => formatMinor(minor, language);
       for (const row of [amounts.locator("tbody tr").first(), amounts.locator("tr.tord-total")])
         expect(
           (await row.locator("td").allTextContents()).slice(-3).map((text) => text.trim()),
         ).toEqual([money(10000), money(1300), money(11300)]);
+      expect(failures).toEqual([]);
+    }
+    // TINV-02: the order detail's invoiced / not-invoiced quantities and its Invoice entry, which
+    // opens the invoice page with a draft carried in from the order (TINV-01 `fromOrder`).
+    const ordered = (key: TradeOrderKey) => orderLabel(language, key);
+    async function orderQuantities(orderId: string) {
+      const detail = page.getByRole("table", {
+        name: `${ordered("tord.lines")} ${orderId}`,
+        exact: true,
+      });
+      const cells = async () =>
+        (await detail.locator("tbody tr").first().locator("td").allTextContents())
+          .slice(4, 7)
+          .map((text) => text.trim());
+      await expect
+        .poll(async () => (await cells()).includes("\u2026"), {
+          message: "Invoiced quantities must load",
+          timeout: 10_000,
+        })
+        .toBe(false);
+      return await cells();
+    }
+    async function openOrder(orderId: string) {
+      await navigate("trade-orders");
+      const list = page.getByRole("table", { name: ordered("tord.list"), exact: true });
+      await activate(page, list.getByRole("button", { name: orderId, exact: true }));
+      await page.getByRole("region", { name: ordered("tord.lookupTitle"), exact: true }).waitFor();
+    }
+    async function invoiceFromOrder(orderId: string, external: string, quantity?: string) {
+      await activate(page, page.getByRole("link", { name: ordered("tord.invoice"), exact: true }));
+      await page.waitForURL((url) => url.hash.startsWith("#/trade-invoices"));
+      await expect.poll(() => page.locator("#tinv-orderId").inputValue()).toBe(orderId);
+      expect(new URL(page.url()).hash).not.toContain("fromOrder=");
+      // TINV-01: focus lands on the first header field the user must fill.
+      await expect
+        .poll(() => page.evaluate(() => document.activeElement?.id))
+        .toBe("tinv-externalInvoice");
+      await type(page, page.locator("#tinv-externalInvoice"), external);
+      if (quantity)
+        await type(
+          page,
+          page.getByRole("textbox", { name: new RegExp(`^${t("tinv.quantity")} `, "u") }).first(),
+          quantity,
+        );
+      const preview = await post("tinv.preview", "/api/v1/trade/invoices/preview");
+      expect(preview.poMatch).toBe("matched");
+      return await post("tinv.confirm", "/api/v1/trade/invoices");
+    }
+    async function orderToInvoice() {
+      const orderId = "PO-FROM";
+      await purchaseOrder(orderId);
+      expect(await orderQuantities(orderId)).toEqual(["10", "0", "10"]);
+      // First invoice covers only part of the order; the second takes the rest.
+      const first = await invoiceFromOrder(orderId, "AP-FROM-1", "4");
+      expect(first.calculation.gross).toBe(4520);
+      await openOrder(orderId);
+      expect(await orderQuantities(orderId)).toEqual(["10", "4", "6"]);
+      const second = await invoiceFromOrder(orderId, "AP-FROM-2");
+      expect(second.calculation.gross).toBe(6780);
+      await openOrder(orderId);
+      const [quantity, invoiced, remaining] = await orderQuantities(orderId);
+      expect([quantity, invoiced]).toEqual(["10", "10"]);
+      expect(remaining).toContain(ordered("tord.fullyInvoicedBadge"));
+      const entry = page.getByRole("button", { name: ordered("tord.invoice"), exact: true });
+      expect(await entry.isDisabled()).toBe(true);
+      const reason = page.getByText(ordered("tord.fullyInvoiced"), { exact: true });
+      expect(await entry.getAttribute("aria-describedby")).toBe(await reason.getAttribute("id"));
+      expect(
+        await page.getByRole("link", { name: ordered("tord.invoice"), exact: true }).count(),
+      ).toBe(0);
       expect(failures).toEqual([]);
     }
     async function invoice(side: "AP" | "AR", external: string, matched = false) {
@@ -1187,6 +1260,8 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         path: join(artifacts, `${name}-reconciliation.png`),
         fullPage: true,
       });
+      // After the report totals above, so the new AP invoices do not change them.
+      await orderToInvoice();
     }
   }, 180_000);
 }

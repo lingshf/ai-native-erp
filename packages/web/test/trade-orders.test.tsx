@@ -116,7 +116,19 @@ const field = (key: TradeOrderKey, lineId?: string) =>
 
 type Handler = (url: string, init?: RequestInit) => Response | Promise<Response>;
 const emptyList: Handler = () => response({ items: [], nextCursor: null });
-function stubApi(onOrder: Handler, onList: Handler = emptyList) {
+const invoicingOf = (order: typeof savedOrder, quantities: readonly string[]) => ({
+  order,
+  invoiced: order.lines.map((line, index) => ({
+    lineId: line.lineId,
+    invoicedQuantity: quantities[index] ?? "0",
+  })),
+});
+// TINV-02: the order detail reads GET /trade/orders/:orderId/invoicing (TINV-01 scope 4 shape).
+const noneInvoiced: Handler = (url) => {
+  const orderId = decodeURIComponent(/\/trade\/orders\/([^/?]+)\/invoicing/u.exec(url)?.[1] ?? "");
+  return response(invoicingOf({ ...savedOrder, orderId }, []));
+};
+function stubApi(onOrder: Handler, onList: Handler = emptyList, onInvoicing = noneInvoiced) {
   const calls: string[] = [];
   const posts: unknown[] = [];
   const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (path, init) => {
@@ -132,6 +144,7 @@ function stubApi(onOrder: Handler, onList: Handler = emptyList) {
       return response({ items: [tax], nextCursor: null });
     if (url.startsWith("/api/v1/trade/orders?") && (init?.method ?? "GET") === "GET")
       return onList(url, init);
+    if (/^\/api\/v1\/trade\/orders\/[^/?]+\/invoicing\?/u.test(url)) return onInvoicing(url, init);
     if (url.startsWith("/api/v1/trade/orders")) {
       if (init?.method === "POST") posts.push(JSON.parse(String(init.body)));
       return onOrder(url, init);
@@ -827,5 +840,174 @@ describe("trade orders", () => {
     expect(previewRegion()).toBeNull();
     expect(posts).toHaveLength(2);
     expect(document.querySelector(".tord-amounts")).toBeNull();
+  });
+
+  // TINV-02: invoiced / not-invoiced quantities and the Invoice entry on the order detail.
+  const twoLines = {
+    ...savedOrder,
+    lines: [
+      { ...savedOrder.lines[0], quantity: "10.5" },
+      { ...savedOrder.lines[0], lineId: "L2", lineNo: 2, quantity: "0.3" },
+      { ...savedOrder.lines[0], lineId: "L3", lineNo: 3, quantity: "2" },
+    ],
+  };
+  const invoicingCalls = (calls: string[]) =>
+    calls.filter((call) => call === "GET /api/v1/trade/orders/PO-1/invoicing");
+  const detail = (root: ParentNode = document) =>
+    within(
+      root.querySelector<HTMLElement>(".tord-amounts") ??
+        (() => {
+          throw new Error("no detail");
+        })(),
+    );
+  const quantities = (root?: ParentNode) =>
+    detail(root)
+      .getAllByRole("row")
+      .slice(1, -1)
+      .map((row) =>
+        within(row)
+          .getAllByRole("cell")
+          .slice(4, 7)
+          .map((cell) => cell.textContent),
+      );
+  const invoiceEntry = () => screen.getByText(t("tord.invoice"), { selector: "a, button" });
+
+  it("reads invoiced quantities once after save and subtracts them as exact decimals", async () => {
+    const { calls } = stubApi(
+      () => response(twoLines, 201),
+      emptyList,
+      () => response(invoicingOf(twoLines, ["3.25", "0.1", "2"])),
+    );
+    render(<App />);
+    await fillOrder();
+    save();
+    await waitFor(() => expect(quantities()[0]).toEqual(["10.5", "3.25", "7.25"]));
+    const headers = detail()
+      .getAllByRole("columnheader")
+      .map((cell) => cell.textContent);
+    expect(headers.slice(4, 7)).toEqual([
+      t("tord.quantity"),
+      t("tord.invoicedQuantity"),
+      t("tord.uninvoicedQuantity"),
+    ]);
+    // 0.3 - 0.1 is 0.19999999999999998 in floating point.
+    expect(quantities()[1]).toEqual(["0.3", "0.1", "0.2"]);
+    const done = detail().getAllByRole("row")[3] as HTMLElement;
+    expect(
+      within(done).getAllByRole("cell")[6]?.querySelector(".badge.success")?.textContent,
+    ).toContain(t("tord.fullyInvoicedBadge"));
+    const entry = invoiceEntry();
+    expect(entry.tagName).toBe("A");
+    expect(entry.getAttribute("href")).toBe("#/trade-invoices?company=DEFAULT&fromOrder=PO-1");
+    expect(screen.queryByText(t("tord.fullyInvoiced"))).toBeNull();
+    expect(invoicingCalls(calls)).toHaveLength(1);
+  });
+
+  it("reads invoiced quantities once after a lookup and disables Invoice with a reason when all is invoiced", async () => {
+    const { calls } = stubApi(
+      () => response(twoLines),
+      () => response({ items: [summary("PO-1", 11300)], nextCursor: null }),
+      () => response(invoicingOf(twoLines, ["10.5", "0.3", "2"])),
+    );
+    render(<App />);
+    const table = await listTable();
+    fireEvent.click(await within(table).findByRole("button", { name: "PO-1" }));
+    const reason = await screen.findByText(t("tord.fullyInvoiced"));
+    const result = document.querySelector(".tord-lookup-result") as HTMLElement;
+    expect(quantities(result).map((row) => row[2])).toEqual(
+      [
+        t("tord.fullyInvoicedBadge"),
+        t("tord.fullyInvoicedBadge"),
+        t("tord.fullyInvoicedBadge"),
+      ].map((text) => expect.stringContaining(text)),
+    );
+    const entry = invoiceEntry();
+    expect(entry.tagName).toBe("BUTTON");
+    expect((entry as HTMLButtonElement).disabled).toBe(true);
+    expect(entry.getAttribute("aria-describedby")).toBe(reason.id);
+    expect(within(result).queryByRole("link")).toBeNull();
+    expect(invoicingCalls(calls)).toHaveLength(1);
+    expect(calls.filter((call) => call === "GET /api/v1/trade/orders/PO-1")).toHaveLength(1);
+  });
+
+  it("shows placeholders while loading, keeps the order on failure and retries", async () => {
+    let attempt = 0;
+    let release = () => {};
+    const { calls } = stubApi(
+      () => response(twoLines, 201),
+      emptyList,
+      () => {
+        attempt += 1;
+        if (attempt === 1) return failure(500, "INTERNAL", []);
+        return new Promise<Response>((resolve) => {
+          release = () => resolve(response(invoicingOf(twoLines, ["1", "0", "0"])));
+        });
+      },
+    );
+    render(<App />);
+    await fillOrder();
+    save();
+    const alert = await screen.findByText(t("tord.invoicingFailed"));
+    expect(document.querySelector(".tord-amounts .tord-total")?.textContent).toContain(
+      formatMinor(3 * 11300, "zh", 2),
+    );
+    expect(quantities()[0]).toEqual(["10.5", "\u2026", "\u2026"]);
+    expect((invoiceEntry() as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByText(t("tord.fullyInvoiced"))).toBeNull();
+
+    fireEvent.click(
+      within(alert.closest(".message-bar") as HTMLElement).getByRole("button", {
+        name: label("zh", "master.retry"),
+      }),
+    );
+    expect(await screen.findByText(t("tord.invoicingLoading"))).toBeTruthy();
+    expect(screen.queryByText(t("tord.invoicingFailed"))).toBeNull();
+    expect(quantities()[0]).toEqual(["10.5", "\u2026", "\u2026"]);
+    expect((invoiceEntry() as HTMLButtonElement).disabled).toBe(true);
+    await waitFor(() => expect(attempt).toBe(2));
+    release();
+    await waitFor(() => expect(quantities()[0]).toEqual(["10.5", "1", "9.5"]));
+    expect(screen.queryByText(t("tord.invoicingLoading"))).toBeNull();
+    expect(invoiceEntry().tagName).toBe("A");
+    expect(invoicingCalls(calls)).toHaveLength(2);
+  });
+
+  // S7 review leftover 8: list filters are not remembered after leaving the page (TORD-05).
+  it("resets the list filters after leaving the order page and coming back", async () => {
+    const lists: string[] = [];
+    stubApi(
+      () => response({}, 404),
+      (url) => {
+        lists.push(url);
+        return response({
+          items: url.includes("party=") ? [] : [summary("PO-1", 11300)],
+          nextCursor: null,
+        });
+      },
+    );
+    render(<App />);
+    await filterForm();
+    setFilters({ party: "VENDOR", side: "AP", from: "2026-01-01", to: "2026-06-30" });
+    apply();
+    await waitFor(() =>
+      expect(lists.at(-1)).toBe(`${base}&party=VENDOR&side=AP&from=2026-01-01&to=2026-06-30`),
+    );
+    fireEvent.click(screen.getByRole("link", { name: label("zh", "shell.overview") }));
+    await waitFor(() => expect(screen.queryByRole("form", { name: t("tord.filter") })).toBeNull());
+    const before = lists.length;
+    fireEvent.click(screen.getByRole("link", { name: label("zh", "shell.tradeOrders") }));
+    await filterForm();
+    expect(
+      ["tord.filterParty", "tord.filterSide", "tord.filterFrom", "tord.filterTo"].map(
+        (key) => filterField(key as TradeOrderKey).value,
+      ),
+    ).toEqual(["", "", "", ""]);
+    // The unfiltered list is shown again; any request made on return carries no filter.
+    expect(await within(await listTable()).findByRole("button", { name: "PO-1" })).toBeTruthy();
+    expect(screen.queryByText(t("tord.listNoMatch"))).toBeNull();
+    for (const url of lists.slice(before)) {
+      const params = new URL(url, "http://local").searchParams;
+      expect(["party", "side", "from", "to"].filter((key) => params.has(key))).toEqual([]);
+    }
   });
 });
