@@ -665,8 +665,9 @@ describe("trade invoices from an order (TINV-01)", () => {
     expect(alert.className).toContain("danger");
     expect(window.location.hash).toBe("#/trade-invoices?company=ACME");
     expect(screen.queryByLabelText(t("tinv.party"))).toBeNull();
-    // Picking a company afterwards clears the report and never fires the dropped request.
-    fireEvent.change(screen.getByLabelText(t("master.company")), { target: { value: "DEFAULT" } });
+    // DEFAULT is already the selected (only) option, so the alert's own action is the way back.
+    expect(value(t("master.company"))).toBe("DEFAULT");
+    fireEvent.click(within(alert).getByRole("button", { name: t("tinv.fromOrder.manual") }));
     expect(await screen.findByLabelText(t("tinv.party"))).toBeTruthy();
     expect(value(t("tinv.party"))).toBe("");
     expect(screen.queryByText(`${t("tinv.fromOrder.company")} · ACME`)).toBeNull();

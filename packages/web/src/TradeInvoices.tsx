@@ -355,7 +355,12 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
       {companies.isPending && <p role="status">{t("master.loading")}</p>}
       {missing && (
         <MessageBar tone="danger" role="alert">
-          {t("tinv.fromOrder.company")} · {wanted}
+          <p>
+            {t("tinv.fromOrder.company")} · {wanted}
+          </p>
+          <button type="button" className="btn btn-secondary" onClick={() => setIntake(null)}>
+            {t("tinv.fromOrder.manual")}
+          </button>
         </MessageBar>
       )}
       {companies.isError && (
@@ -454,10 +459,10 @@ function InvoiceEntry({
     setFromOrder(null);
   };
   const [fromOrder, setFromOrder] = useState<IntakeState | null>(null);
-  const [focusTick, setFocusTick] = useState(0);
+  // Each fill sets a new "loaded" state object, so focus moves once per fill.
   useEffect(() => {
-    if (focusTick) document.getElementById("tinv-externalInvoice")?.focus();
-  }, [focusTick]);
+    if (fromOrder?.status === "loaded") document.getElementById("tinv-externalInvoice")?.focus();
+  }, [fromOrder]);
   const fillFromOrder = async (orderId: string) => {
     if (locked) {
       setFromOrder({ status: "locked", orderId });
@@ -476,10 +481,8 @@ function InvoiceEntry({
         setFromOrder({ status: "fullyInvoiced", orderId });
         return;
       }
-      if (dirty && !window.confirm(t("tinv.fromOrder.replaceConfirm"))) {
-        setFromOrder(null);
-        return;
-      }
+      // Cancelled: the request status was already cleared above.
+      if (dirty && !window.confirm(t("tinv.fromOrder.replaceConfirm"))) return;
       setDraft(next);
       setDocumentId(crypto.randomUUID());
       setDirty(true);
@@ -487,7 +490,6 @@ function InvoiceEntry({
       setError(null);
       setReceipt(null);
       setFromOrder({ status: "loaded", orderId });
-      setFocusTick((tick) => tick + 1);
     } catch (issue) {
       // Only a confirmed NOT_FOUND means "no such order"; anything else (400 included) can be retried.
       const missing = (issue as MasterDataFailure | undefined)?.detail?.code === "NOT_FOUND";
