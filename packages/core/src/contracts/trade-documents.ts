@@ -487,11 +487,17 @@ export const openItemPageSchema = z.strictObject({
   items: z.array(openItemSchema).max(500),
   nextCursor: z.string().nullable(),
 });
-export const tradeOrderListQuerySchema = z.strictObject({
-  company: companyCodeSchema,
-  limit,
-  cursor: companyCodeSchema.optional(),
-});
+export const tradeOrderListQuerySchema = z
+  .strictObject({
+    company: companyCodeSchema,
+    limit,
+    cursor: companyCodeSchema.optional(),
+    party: companyCodeSchema.optional(),
+    side: side.optional(),
+    from: day.optional(),
+    to: day.optional(),
+  })
+  .refine((query) => !query.from || !query.to || query.from <= query.to, { path: ["to"] });
 export const tradeOrderPageSchema = z.strictObject({
   items: z
     .array(

@@ -66,6 +66,22 @@ export interface OpenItemQuery extends PageQuery {
   readonly party?: string;
   readonly status?: OpenItem["status"];
 }
+/** TORD-05: optional filters, combined with AND; the keyset stays on orderId. */
+export interface TradeOrderListQuery extends PageQuery {
+  readonly party?: string;
+  readonly side?: TradeSide;
+  readonly from?: string;
+  readonly to?: string;
+}
+function checkedOrderDay(day: string, path: string): void {
+  const time = Date.parse(`${day}T00:00:00.000Z`);
+  if (
+    !/^\d{4}-\d\d-\d\d$/u.test(day) ||
+    Number.isNaN(time) ||
+    new Date(time).toISOString().slice(0, 10) !== day
+  )
+    tradeDocumentError(path, "shape");
+}
 export interface TradeDocumentRepository {
   tradeAction(company: string, id: string, byReceipt?: boolean): Promise<TradeActionRecord | null>;
   tradeItemActions(company: string, itemId: string): Promise<readonly TradeActionRecord[]>;
@@ -93,8 +109,8 @@ export interface TradeDocumentRepository {
   tradeOrder(company: string, orderId: string): Promise<TradeOrder | null>;
   tradeOrderLatestDate(company: string, orderId: string): Promise<string>;
   insertTradeOrder(company: string, order: TradeOrder): Promise<void>;
-  /** One statement per page: keyset on the primary key, line totals grouped in storage. */
-  tradeOrderPage(company: string, query: PageQuery): Promise<Page<TradeOrderSummary>>;
+  /** One statement per page: keyset on orderId (party filter via trade_orders_party), line totals grouped in storage. */
+  tradeOrderPage(company: string, query: TradeOrderListQuery): Promise<Page<TradeOrderSummary>>;
   /** Exact invoiced quantity in micros per requested order line, aggregated in storage. */
   tradeOrderInvoiced(
     company: string,
@@ -1224,10 +1240,17 @@ export class TradeDocumentService {
     checkedCode(orderId);
     return this.store.read(async (repo) => required(await repo.tradeOrder(company, orderId)));
   }
-  async listOrders(company: string, query: PageQuery): Promise<Page<TradeOrderSummary>> {
+  async listOrders(company: string, query: TradeOrderListQuery): Promise<Page<TradeOrderSummary>> {
     checkedCode(company);
     checkedPage(query);
     if (query.cursor !== undefined) checkedCode(query.cursor);
+    if (query.party !== undefined) checkedCode(query.party);
+    if (query.side !== undefined && query.side !== "AP" && query.side !== "AR")
+      tradeDocumentError("side", "shape");
+    if (query.from !== undefined) checkedOrderDay(query.from, "from");
+    if (query.to !== undefined) checkedOrderDay(query.to, "to");
+    if (query.from !== undefined && query.to !== undefined && query.from > query.to)
+      tradeDocumentError("to", "shape");
     return this.store.read(async (repo) => {
       required(await repo.company(company));
       return repo.tradeOrderPage(company, query);
