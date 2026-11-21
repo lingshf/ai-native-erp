@@ -1,4 +1,5 @@
-import { StorageError, type TradeReportingRepository } from "@erp/core/application";
+import type { TradeReportingRepository } from "@erp/core/application";
+import { StorageError } from "@erp/core/application/storage";
 import type { TradeReportItem, TradeReportScope } from "@erp/core/domain";
 import type { Connection, Row } from "./types.ts";
 

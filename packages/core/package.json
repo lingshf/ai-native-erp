@@ -6,7 +6,10 @@
   "exports": {
     "./domain": "./src/domain/index.ts",
     "./application": "./src/application/index.ts",
-    "./contracts": "./src/contracts/index.ts"
+    "./application/storage": "./src/application/storage.ts",
+    "./contracts": "./src/contracts/index.ts",
+    "./contracts/master-data": "./src/contracts/master-data.ts",
+    "./contracts/migration": "./src/contracts/migration.ts"
   },
   "dependencies": {
     "zod": "4.6.7"

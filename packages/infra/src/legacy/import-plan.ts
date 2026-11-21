@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { DatabaseSync } from "node:sqlite";
 import type { SQLOutputValue } from "node:sqlite";
-import { StorageError } from "@erp/core/application";
-import { accountFieldsSchema } from "@erp/core/contracts";
+import { StorageError } from "@erp/core/application/storage";
+import { accountFieldsSchema } from "@erp/core/contracts/master-data";
 import { checkedAccount, DomainError } from "@erp/core/domain";
 import { preflightLegacySnapshotPair, snapshotError, snapshotStat } from "./teaching.ts";
 
