@@ -48,6 +48,8 @@ $shots = Join-Path $env:TEMP ("demo-s8-shots-" + [guid]::NewGuid())
   $ErrorActionPreference = "Stop"
   $shots = Join-Path $env:TEMP ("demo-s8-shots-" + [guid]::NewGuid())
   try {
+    npm run build   # 服务托管 packages/web/dist；不重建会演示旧界面
+    if ($LASTEXITCODE -ne 0) { throw "构建失败，退出码 $LASTEXITCODE" }
     & .\docs\demo\v0.8.0\scripts\run-main.ps1 -Shots $shots
     $n = @(Get-ChildItem $shots -Filter *.png).Count
     if ($n -ne 16) { throw "截图数 $n，不是 16，不复制" }
