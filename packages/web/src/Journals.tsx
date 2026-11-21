@@ -1512,7 +1512,11 @@ export function VirtualRows<T>({
         <tbody>
           {virtual && (
             <tr aria-hidden="true" tabIndex={-1}>
-              <td colSpan={header.length} style={{ height: visible[0]?.start ?? 0, padding: 0 }} />
+              <td
+                className="journal-spacer"
+                colSpan={header.length}
+                style={{ height: visible[0]?.start ?? 0, padding: 0 }}
+              />
             </tr>
           )}
           {visible.map(({ index }) => (
@@ -1523,6 +1527,7 @@ export function VirtualRows<T>({
           {virtual && (
             <tr aria-hidden="true" tabIndex={-1}>
               <td
+                className="journal-spacer"
                 colSpan={header.length}
                 style={{ height: rows.getTotalSize() - (visible.at(-1)?.end ?? 0), padding: 0 }}
               />

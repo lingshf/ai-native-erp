@@ -587,3 +587,23 @@ it("bounds the paged virtual table DOM while scrolling within a full page", asyn
   expect(count()).toBeLessThanOrEqual(Math.ceil(440 / 44) + 2 * 5 + 1);
   expect(screen.getByRole("table").getAttribute("aria-rowcount")).toBe("501");
 });
+it("gives both virtual spacer cells the component class instead of relying on global td rules", async () => {
+  geometry();
+  const items = Array.from({ length: 101 }, (_, index) => index);
+  render(
+    <VirtualRows
+      items={items}
+      title="Long list"
+      header={["A", "B"]}
+      render={(index) => <td>R-{index}</td>}
+    />,
+  );
+  const region = screen.getByRole("region", { name: "Long list" });
+  await screen.findByText("R-0");
+  const spacers = [...region.querySelectorAll("tbody tr[aria-hidden='true'] > td")];
+  expect(spacers).toHaveLength(2);
+  for (const td of spacers) {
+    expect(td.className).toBe("journal-spacer");
+    expect(td.getAttribute("colspan")).toBe("2");
+  }
+});
