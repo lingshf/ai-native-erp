@@ -2,6 +2,7 @@
 
 - Sprint：backlog（不急，空闲时处理；不计入 S6 目标）　依赖：[FLAKE-04](FLAKE-04-legacy-reconciliation-cli-spawnsync-timeout.md)（[#144](https://github.com/lingshf/ai-native-erp/pull/144)，已合并为 `2c21b51`）　建议分支：`flake-05-legacy-cli-test-layering`
 - 冲突域：tests:legacy-reconciliation（`packages/infra/test/legacy-reconciliation.test.ts`）、admin-cli（`scripts/storage-admin.mjs` 及其 `legacy-reconcile` 启动路径）。与 FLAKE-04 相同，必须在 FLAKE-04 之后串行。
+  - 实施方向 2（D199 方案 A）时另加：core:package-exports（`packages/core/package.json` 的 `exports`）、tooling:boundaries（`scripts/check-boundaries.mjs`、`packages/infra/test/tooling/boundaries.test.ts`）、infra 中改导入的文件（`legacy/reconcile.ts`、`legacy/import-plan.ts`、`legacy/teaching.ts`、`storage/maintenance.ts`、`storage/reconciliation.ts`、`storage/trade-reporting.ts`）。派发前确认这些文件没有进行中的任务。
 - 类型：调查 + 方案评估。评估结论经协调者决定后才实施，实施可以在本任务内做，也可以另立任务。
 - 环境：只用 node，不用 Chrome。负载实验会产生整机 node 负载，所以按[路线图 §5 E2E 独占时段](../roadmap.md#5-团队流程)安排，由协调者排期，同 FLAKE-04。
 - 来源：协调者 D189，数据出自 FLAKE-04 的证据 PR [#144](https://github.com/lingshf/ai-native-erp/pull/144)（head `26490f8`，合并为 `2c21b51`）。以下都是**观察**，本任务开工前要先对照证据 PR 核对：
@@ -12,19 +13,37 @@
 - 样本量偏小（load-cpu N=13、K=4），见 [#144](https://github.com/lingshf/ai-native-erp/pull/144) 的自述。
 - **推断**（未证实）：(a) 空进程启动和 (e) 租约路径在 load-cpu 下也会被拉长，说明这种负载会影响所有子进程用例，包括 (e) 本身。但 (a)、(e) 都不是 `legacy-reconcile` 的路径，**只作为独立对照，不能用来推算优化后的 CLI 还剩多少超时**。还要回答一个问题：PR 层快速套件实际运行时的负载，和 load-cpu 是否同一个量级。
 
+## 设计决定（D199，评估之后）
+
+评估报告（时段 2026-11-21 04:26:42Z–05:12:15Z，实施 PR 附入证据 gist）给出三项待决事项。协调者 D199 的决定，经设计角色审批如下：
+
+1. **方向 1 + 2 实施；方向 2 用方案 A：`@erp/core` 新增 3 个正式子路径导出**，CLI 启动路径上的文件改从子路径导入，不用相对深导入（D194 禁止绕开 `exports`）。设计角色认可这 3 个子路径作为 `@erp/core` 的公开契约（`private: true` 的 workspace 包，契约对象是仓库内的其他包，不对外发布），条件是：
+   - **只加这 3 条，逐条列出，不用通配**（不写 `"./application/*"`）：
+     - `./application/storage` → `./src/application/storage.ts`
+     - `./contracts/migration` → `./src/contracts/migration.ts`
+     - `./contracts/master-data` → `./src/contracts/master-data.ts`
+   - 现有 3 个入口（`./domain`、`./application`、`./contracts`）保持不变，桶文件继续重新导出这 3 个文件。同一符号从桶和子路径导入得到同一个模块（同一文件 URL），`instanceof StorageError` 不受影响；实施 PR 用一条测试证明。
+   - **叶子约束**：子路径目标文件不得导入自己所在的桶文件，也不得经其他文件间接导入桶文件；`contracts/*` 子路径只依赖 `zod`，`application/storage` 不引入新的导入。违反时收益消失，实施 PR 用静态导入图证明（报告中 `:317` 子进程仓库模块 30 → 2，CLI 50 → 23 的口径）。
+   - **边界检查**：`check-boundaries.mjs:86` 现在只认 3 个精确入口，子路径会被判为违规（fail-closed）。改为只额外识别上面 3 条子路径，并按前缀归到 application / contracts 层，依赖方向规则不变；其他 `@erp/core/...` 子路径仍判违规。`boundaries.test.ts` 增加用例：infra 导入这 3 条子路径通过；web 导入 `@erp/core/application/storage` 被拒；未列出的子路径（例如 `@erp/core/application/ledger`）被拒。
+   - 其他包中已有的桶导入不批量迁移；只改 CLI 启动路径上的文件（范围 2 列出的导入来源）。
+   - 改名或移动这 3 个文件时，必须同步 `exports`，并报告设计角色。合并后设计角色在 [M0 架构 §1](../m0-architecture.md#1-包与分层) 登记这 3 条子路径。
+2. **方向 3 不调整**：`timeout: 3000` 维持，定性为防挂死保护（D194 (a)）。评估 §7.4 的推导只存档，不实施。
+3. **验收负载以 PR 层快速套件的实际负载为准**；load-cpu 只作为压力观察，照常测量、报告，不作为通过条件。load-cpu 下 CLI 冒烟仍会超时，这是已知限制，实施 PR 如实写明，不宣称“整机满载下已解决”。
+4. 方向 1 的入口函数保持 `process.exitCode`（D194 (c)），不改为 `process.exit`，以免截断管道上的 stdout。
+
 ## 范围
 
 评估三个方向。每个方向都要给出数据、代价，以及与 D11 的关系，最后给出推荐的组合，交协调者决定。
 
 1. **测试分层：多数 CLI 用例改为进程内调用，保留少量 spawn 冒烟**
    - 写一张映射表，列出现有 9 个子进程用例（`:317` 租约 1 个、`:388` explicit 2 个、`:476` gate 6 个）中每条断言改层后由哪个用例覆盖：判定、退出码、stdout / stderr 文本、数据库状态。
-   - 进程内调用的入口要和真实 CLI 走同一条代码路径，例如把参数解析、执行和退出码映射抽成一个可导入的函数，`storage-admin.mjs` 只负责调用它并调用 `process.exit`。不能为测试另写一套逻辑。
+   - 进程内调用的入口要和真实 CLI 走同一条代码路径，例如把参数解析、执行和退出码映射抽成一个可导入的函数，`storage-admin.mjs` 只负责调用它，并把返回值写入 `process.exitCode`（D199 第 4 条）。不能为测试另写一套逻辑。
    - 写明要保留哪几条 spawn 冒烟（建议：`--check` 与 `--confirm` 各 1 条，加 1 条 gate 非零退出），以及它们覆盖进程内调用覆盖不到的东西：真实退出码、stdout 刷新、模块解析。
    - 租约子进程 `:317` 测的是跨进程互斥，不能改成进程内调用。单独评估它的预算（见方向 3）。
    - 与 D11 的关系：只要映射表中每条断言都有等价的覆盖，改层就不算削弱。断言少了、变弱了，或者只剩“不抛错”的，都按削弱处理，不接受。
 2. **进一步减少启动开销**
    - 在 FLAKE-04 之后的 172 个模块中，列出 `legacy-reconcile` 实际用不到的模块和导入来源（例如经 `@erp/core/application` 这类汇总入口带进来的），并测量 `.ts` 去类型所占的时间。
-   - 评估可行的办法和收益上限，例如更细的按需导入、绕开汇总入口。不新增依赖，无 `package.json` / lock 变化；如果需要预编译或改 loader，先报告设计角色。
+   - 评估可行的办法和收益上限，例如更细的按需导入、绕开汇总入口。不新增依赖，lock 无变化；`package.json` 只允许 D199 第 1 条列出的 `exports` 变化。如果需要预编译或改 loader，先报告设计角色。
    - 要量化这个方向之后还剩多少超时，必须直接测候选 CLI 路径（改动后的 `legacy-reconcile`），在同样的负载下分别统计 `timeout` 不设组的墙钟分布和 `timeout: 3000` 组的 `ETIMEDOUT` 次数；测不了就写明“现有数据无法估计”。(a)、(e) 只作为独立对照报告，不用于这项推算。
 3. **3000 ms 预算是否合理**
    - 先说明这个 `timeout` 的用途。它是防止子进程挂死的保护（hang guard），还是对 CLI 启动性能的断言？出处以测试代码、PR 历史和设计文档为准，找不到就写“未知”。
@@ -51,11 +70,20 @@
    - 代价：改动面和冲突域；
    - 与 D11 的关系。
    - 最后给出推荐组合。结论只用“观察 / 推断 / 归因”三种表述。
-2. 数据至少覆盖三种负载：idle-bg、load-cpu、PR 层快速套件实际运行。负载形式和强度事先写进 PR 描述，运行中不调整；失败的运行也保存。
+2. 数据至少覆盖三种负载：idle-bg、load-cpu、PR 层快速套件实际运行。负载形式和强度事先写进 PR 描述，运行中不调整；失败的运行也保存。**通过条件只看 PR 层快速套件的实际负载**（D199 第 3 条）；idle-bg 和 load-cpu 只作为对照与压力观察。
 3. 实施部分（协调者决定之后）：
-   - **共同门槛**：任何声称解决问题的实施（方向 1、2、3 或其组合），都要在 PR 层快速套件的实际负载下做前后复验。K 事先写明，修复前、修复后各跑 K 次；验证范围是所有保留下来的相关子进程用例，**包括租约用例 `:317`**；每次都按“超时 / 信号终止 / 其他执行或启动失败或未知”三类分开统计。修复后三类都为 0，才算解决；否则 PR 标为“部分改进”，不宣称修复。
+   - **共同门槛**：任何声称解决问题的实施（方向 1、2、3 或其组合），都要在 PR 层快速套件的实际负载下做前后复验。K 事先写明，修复前、修复后各跑 K 次；验证范围是所有保留下来的相关子进程用例，**包括租约用例 `:317`**；每次都按“超时 / 信号终止 / 其他执行或启动失败或未知”三类分开统计。这是**原用例的 3000 ms 门控**，单独列表报告，不与下面的余量采样合并。修复后三类有任何一类不为 0，PR 标为“部分改进”，不宣称修复。
+   - **逐路径余量采样**：门控结果是“过 / 不过”，看不出离 3000 ms 有多远；超时样本的墙钟只是等子进程被结束的时间，不是它本来的完成时间。所以另做伴随采样，要求：
+     - 保留的 4 条子进程路径——3 条 spawn 冒烟（S-check、S-confirm、S-gate）和租约 `:317`——**每条分别采样、分别报告**，不汇总；
+     - 修复前、修复后用**同一负载**（PR 层快速套件实际运行，负载形式与 K 事先写明）和**同一基准 fixture**（每次从同一固定状态复制出独立临时副本，同 FLAKE-04）；
+     - 采样**不设 `timeout`**（不受 3000 ms 截断），记录完整墙钟；每条路径前后各写 N、p50 / p95 / p99 / max、超过 3000 ms 的次数，以及 `status` / `signal` / `error.code`；
+     - 原始数据放进证据 gist，评审能复算。
+   - **结论表述**：
+     - 修复前、修复后门控都是 0 失败（评估中修复前 K=5 已经是 0/633）时，只能写“本次未观察到回归”，不能据此认定超时已修复；
+     - 关于余量的结论只按逐路径采样逐条写，例如“S-confirm 修复后 max 低于 3000 ms，余量由 x 变为 y”，限定为本次负载与样本量；小样本下 p99 等于 max 时如实注明，只说“未观察到”，不说“概率为 0”；
+     - “修复 / 改进”的含义只限 PR 层实际负载，不外推到 load-cpu。
    - 方向 1：另外要求映射表中每条断言都有对应的覆盖；改层前后，在同一基准上分别生成的副本里，CLI 的 stdout、stderr 与退出码逐字一致。
-   - 方向 2：另外附修复前后对照表，CLI 行为不变。
+   - 方向 2：另外附修复前后对照表，CLI 行为不变；满足 D199 第 1 条全部条件，包括 `npm ci` 后 `git diff --exit-code package-lock.json` 通过，`node scripts/check-boundaries.mjs` 和 `tsc -b` 通过。
    - 方向 3：另外要求只有拿到协调者的 D 编号后才改预算，PR 写明推导，评审能复算。只有推导、没有通过共同门槛的，不算实施完成。
-4. 现有测试与 E2E 不删除、不削弱、不跳过、不按平台禁用（D11）；无 `package.json` / lock 变化。
+4. 现有测试与 E2E 不删除、不削弱、不跳过、不按平台禁用（D11）。lock 无变化；`package.json` 的变化只限 `packages/core/package.json` 中 D199 第 1 条列出的 3 条 `exports`（单项豁免），依赖、脚本和其他包的 `package.json` 都不变。
 5. 合并后 main Full 12/12 测试步骤通过。
