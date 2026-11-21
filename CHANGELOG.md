@@ -10,7 +10,7 @@
 
 ## [0.7.0] - 2026-11-21
 
-> 产品代码基线为 `main` 9421906（S7 功能任务全部合并，Full 12/12）；自 v0.6.0（tag 所指提交 3548d58）到产品基线 9421906 共 6 个已合并 PR 的 6 个 squash 提交（#155–#157、#159–#161；`git rev-list --count v0.6.0..9421906` = 6），其中 #155、#160 是设计提交，#156 是流程文档，其余为产品与测试提交。基线之后 main 只有文档提交（#162 任务表、#163 发布候选、#164 Demo、#165 Sprint 评审，以及本日期 PR）；`git diff --name-only 9421906 origin/main` 只含 docs/、design/、CHANGELOG 与根 README，产品代码与 9421906 相同。按 D21，tag `v0.7.0` 打在本日期 PR 合并后的 squash 提交上。Demo 记录：[docs/demo/v0.7.0](docs/demo/v0.7.0/run-through.md)。
+> 产品代码基线为 `main` 9421906（S7 功能任务全部合并，Full 12/12）；自 v0.6.0（tag 所指提交 3548d58）到产品基线 9421906 共 6 个已合并 PR 的 6 个 squash 提交（#155–#157、#159–#161；`git rev-list --count v0.6.0..9421906` = 6），其中 #155、#160 是设计提交，#156 是流程文档，其余为产品与测试提交。基线之后 main 只有文档提交（#162 任务表、#163 发布候选、#164 Demo、#165 Sprint 评审、#167 回顾，以及本日期 PR）；`git diff --name-only 9421906 origin/main` 只含 docs/、design/、CHANGELOG 与根 README，产品代码与 9421906 相同。按 D21，tag `v0.7.0` 打在本日期 PR 合并后的 squash 提交上。Demo 记录：[docs/demo/v0.7.0](docs/demo/v0.7.0/run-through.md)。
 
 S7 Sprint：订单列表可按伙伴、方向、订单日期区间筛选（新增迁移 017，只加一个索引）；D-7 完成（`styles.css` 删除）；CI 新增分片权重守卫。无依赖变化。
 
