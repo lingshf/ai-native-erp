@@ -53,6 +53,7 @@
   "packages/infra/test/storage-admin-cli.test.ts": 12469,
   "packages/infra/test/storage-backup.test.ts": 6623,
   "packages/infra/test/storage-sqlite.test.ts": 9616,
+  "packages/infra/test/trade-order-filters-migration.test.ts": 1530,
   "packages/infra/test/tooling/boundaries.test.ts": 1595,
   "packages/infra/test/tooling/ci.test.ts": 6,
   "packages/web/test/App.test.tsx": 1294,
