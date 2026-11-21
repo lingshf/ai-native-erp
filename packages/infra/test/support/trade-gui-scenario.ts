@@ -928,7 +928,12 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       await activate(page, list.getByRole("button", { name: orderId, exact: true }));
       await page.getByRole("region", { name: ordered("tord.lookupTitle"), exact: true }).waitFor();
     }
-    async function invoiceFromOrder(orderId: string, external: string, quantity?: string) {
+    async function invoiceFromOrder(
+      orderId: string,
+      external: string,
+      gross: number,
+      quantity?: string,
+    ) {
       await activate(page, page.getByRole("link", { name: ordered("tord.invoice"), exact: true }));
       await page.waitForURL((url) => url.hash.startsWith("#/trade-invoices"));
       await expect.poll(() => page.locator("#tinv-orderId").inputValue()).toBe(orderId);
@@ -947,19 +952,21 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         );
       const preview = await post("tinv.preview", "/api/v1/trade/invoices/preview");
       expect(preview.poMatch).toBe("matched");
-      return await post("tinv.confirm", "/api/v1/trade/invoices");
+      expect(preview.calculation.gross).toBe(gross);
+      // The confirm body is the receipt (top-level gross), not the preview's calculation.
+      const receipt = await post("tinv.confirm", "/api/v1/trade/invoices");
+      expect(receipt).toMatchObject({ poMatch: "matched", gross });
+      return receipt;
     }
     async function orderToInvoice() {
       const orderId = "PO-FROM";
       await purchaseOrder(orderId);
       expect(await orderQuantities(orderId)).toEqual(["10", "0", "10"]);
       // First invoice covers only part of the order; the second takes the rest.
-      const first = await invoiceFromOrder(orderId, "AP-FROM-1", "4");
-      expect(first.calculation.gross).toBe(4520);
+      await invoiceFromOrder(orderId, "AP-FROM-1", 4520, "4");
       await openOrder(orderId);
       expect(await orderQuantities(orderId)).toEqual(["10", "4", "6"]);
-      const second = await invoiceFromOrder(orderId, "AP-FROM-2");
-      expect(second.calculation.gross).toBe(6780);
+      await invoiceFromOrder(orderId, "AP-FROM-2", 6780);
       await openOrder(orderId);
       const [quantity, invoiced, remaining] = await orderQuantities(orderId);
       expect([quantity, invoiced]).toEqual(["10", "10"]);
