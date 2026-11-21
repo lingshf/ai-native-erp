@@ -486,6 +486,76 @@ M1-R3（#78）、M1-R4（#81）已完成。
 - **第三个名额留空**：本 Sprint 计划内占两个开发名额，第三个名额留给计划外插入。协调者如要追加，只能选：与 A 线冲突域不相交、不加迁移、不改 `scripts/test-shard-weights.json` 与 `contrast.test.ts` 的任务。
 - 每个任务合并后，按[路线图 §5 合并后动作](../roadmap.md#5-团队流程)跟踪 main Full，变绿前不派发同一冲突域的下一个任务。
 
+## S9：订单 ↔ 发票双向可追溯 + v0.8.0 回顾行动（建议 v0.9.0）
+
+**目标**：
+- **产品**：订单与发票双向可追溯。S8 做到了“订单 → 发票”，还缺两处：订单列表上看不出哪些订单还没开票，只能逐张打开；发票列表上看不出发票来自哪张订单（`tradeInvoicePageSchema` 列表项没有 `orderId`，`packages/core/src/contracts/trade-documents.ts:469–486`），发票页也没有详情视图。S9 给订单列表加“开票状态”列并支持 `?order=` 直接打开订单（TINV-03），给发票列表加“来源订单”列（TINV-04）。**无迁移，不改过账。**
+- **流程**：[S8 回顾](../reviews/S8-retro.md) 6 条行动项（D258）落地：行动 4、5 写入[路线图 §5“设计文档自查”](../roadmap.md#5-团队流程)第 7、8 项与新建的[任务书模板](TEMPLATE.md)；行动 1、2 写入路线图 §5“UI PR 证据清单”第 7、8 项（以上由本 PR 写入）；行动 1、2、3、6 在 Demo 模板与发布清单中的落地由 PROC-06 完成（版本管理）。
+- **遗留**：v0.8.0 release-notes 第 3 行的过时提示、`components.css` 第 3–4 行注释（S7 / S8 遗留 1）、#174 文档残留（S8 遗留 6），都并入 PROC-06（D263）。
+
+版本号由协调者定。基线为 v0.8.0 tag 所指提交 `deb80fc`（= 本计划编写时的 main）。本节由设计 PR 写入，协调者确认见 D263。
+
+**不在本 Sprint**：
+- M2-05 / M2-06：仍需用户授权决定 A / B，见上文 M2 节；
+- 按开票状态筛选或排序订单列表：需要跨页聚合，要么在订单行上冗余存储已开票数量（加迁移，并在发票过账事务里维护），要么每次全表聚合（不满足热读 p95）。D263：列入 S10 及以后的候选，看 TINV-03 上线后的使用情况再议；
+- 多订单合并开票；贷项是否冲减已开票数量（同 TINV-01“不在范围”）；发票详情页；
+- TORD-05 候选池、D199 load-cpu、D204 墙钟（[S7 评审遗留 3–5](../reviews/S7.md#5-遗留项均不阻塞-v070)）：维持现状；
+- 迁移、`package.json` / lock 变化。
+
+| ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| [TINV-03](TINV-03-order-list-invoicing-status.md) | 订单列表“开票状态”列（未开票 / 部分开票 / 已开完，与过账匹配同一谓词）；订单页 `?company=…&order=…` 直接打开订单详情，逐个参数处理异常 | 存储读 + 契约（只加响应字段）+ 页面 | P1 | — | 存储、contracts（`tradeOrderPageSchema` 列表项）、web-ui:trade-orders、bench（`trade-order-list.ts`）；共享单文件见泳道（A 线在前） | todo | — |
+| [TINV-04](TINV-04-invoice-list-source-order.md) | 发票列表“来源订单”列，链接到 TINV-03 的 `?order=`；无订单显示“—” | 存储读 + 契约（只加响应字段）+ 页面 | P1 | TINV-03（仅开工可并行；TINV-03 合并且 main Full 绿、rebase 之后才改共享单文件、跑端到端 / 取证、请求评审） | 存储、contracts（`tradeInvoicePageSchema` 列表项）、web-ui:trade；共享单文件见泳道（在 TINV-03 之后） | todo | — |
+| [PROC-06](PROC-06-s8-retro-actions.md) | S8 回顾行动 1、2、3、6 写入 Demo 模板与发布清单；删除 v0.8.0 release-notes 第 3 行过时提示；修正 #174 文档残留；`components.css` 第 3–4 行只改注释（原 CSS-01，D263）（版本管理，不占开发名额） | 文档 + 注释 | P2（v0.9.0 RC 之前） | — | docs:release、web-ui:components（只改注释） | todo | — |
+
+**S9 共同验收**：
+1. UI 任务满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9，PG-05 口径同 S8（基线为 PR 实际 base 的 gzip 列，数字绑定最终送审 head，与取证 head 分开写）；真实 Chrome 证据按[路线图 §5 UI PR 证据清单](../roadmap.md#5-团队流程) 1–8 项（含本计划新增的第 7 项断言对照、第 8 项先 build），请求评审前逐项勾选写入 PR 正文。
+2. 独占时段按[路线图 §5“E2E 独占时段”](../roadmap.md#5-团队流程)执行，口径同 S8（D217 / D234）。TINV-03、TINV-04 各自申请时段，不同时取证；PROC-06 不需要时段。
+3. 现有测试与 E2E 不删除、不削弱、不跳过、不按平台禁用（D11）。作为证据的本机运行保存完整日志，失败的也保存。
+4. 新增测试文件的 PR 在 `scripts/test-shard-weights.json` 登记权重并通过 CI-01 的守卫；该文件按下表“共享单文件”的顺序改动。
+5. S9 没有迁移。若任务发现需要迁移，停下报告设计角色另立任务。
+6. 契约只在响应 schema 上增加字段（S8 TINV-01 的经验）；请求 schema 与其他共享的严格 schema 一字不改。
+7. 开发者不改 `design/`；合并后由设计角色同步任务表。
+
+**泳道**（同时在岗的开发不超过 3 个；同一行内串行，唯一例外是 A 线“仅开工可并行”；不同行同时进行时冲突域不相交）：
+
+| 线 | 顺序 | 冲突域 | 共享单文件（顺序与门禁） |
+| --- | --- | --- | --- |
+| A：订单 ↔ 发票 | TINV-03 → TINV-04（仅开工可并行，见下“TINV-04 评审门禁”） | 存储 + contracts + web-ui:trade-orders + bench → 存储 + contracts + web-ui:trade | `packages/core/src/contracts/trade-documents.ts`、`packages/infra/src/storage/trade-documents.ts`、`scripts/test-shard-weights.json`：都是 TINV-03 在前；TINV-03 合并且覆盖其合并提交的 main Full 变绿之前，TINV-04 不 rebase 这些文件的改动、不改权重 |
+| 版本管理 | PROC-06 | docs:release + web-ui:components（只改 `components.css` 注释） | 无；A 线不得改 `components.css`，确实需要时停下报告 |
+
+- **首批**：TINV-03 与 TINV-04 两名开发同时开工。TINV-04 在门禁前只按 TINV-04 任务书写定的形状（`orderId` 字段、`?order=` 链接）开发，只跑 mock fetch 的 web 测试。PROC-06 由版本管理并行处理。
+- **TINV-04 评审门禁**：TINV-03 合并、且覆盖其合并提交的 main Full 变绿之前，TINV-04 不改共享单文件、不跑真实接口路径（端到端、真实 Chrome）、不请求评审。门禁满足后依次 rebase → 登记权重（如有）→ 独占时段内跑端到端并取证 → 请求评审。
+- **真实 Chrome 与 E2E 由谁、何时验证**：与 S8 相同。默认 PR CI 排除 `*.slow.test.*`（`vitest.config.ts:11`），所以端到端与真实 Chrome 证据由开发者在独占时段内用 PR head 运行并附完整日志；合并后由协调者跟踪覆盖合并提交的 main Full。开发者不得为过验收修改 `CI_TEST_LAYER`、`vitest.config.ts` 或 workflow。
+- **第三个名额先空着**（D263）：等 TINV-03 合并后，由协调者看有没有可并行的小任务。插入的任务只能与 A 线冲突域不相交、不加迁移、不改 `scripts/test-shard-weights.json` 与 `contrast.test.ts`。
+- 每个任务合并后，按[路线图 §5 合并后动作](../roadmap.md#5-团队流程)跟踪 main Full，变绿前不派发同一冲突域的下一个任务。
+
+**遗留项处理**（承接 [S8 评审 §5](../reviews/S8.md#5-遗留项均不阻塞-v080)）：
+
+| # | 遗留 | S9 处理 |
+| --- | --- | --- |
+| 1 | `components.css` 第 3–4 行注释（S7 遗留 1） | PROC-06（D263） |
+| 2 | v0.7.0 Demo 脚本版本二复跑 | 已结案（D258，已被取代） |
+| 3 | TINV-02 权重来自本机采样 | 不单独立项；TINV-03 / TINV-04 改权重文件时，由协调者附上最近一次 Full 的分片耗时作参考，是否校准由守卫和 D15 决定 |
+| 4 | #172 证据注记 | 不变，只影响引用 |
+| 5 | Demo 未演示的分支（销售方向、价格超容差、跨月、取消后恢复） | v0.9.0 Demo 至少补“销售方向”；TINV-04 验收 5 已覆盖销售发票到订单的跳转 |
+| 6 | #174 文档残留 | PROC-06 |
+| 7 | S7 遗留 3–5 | 维持 |
+| 8 | M2-05 / M2-06 | 仍待用户授权 |
+| 9 | v0.8.0 发布收尾 | 已完成（tag `v0.8.0` → `deb80fc`） |
+| 新 | `docs/release/v0.8.0-release-notes.md:3` 中过时的“仍须授权”与“（tag 创建后生效）” | PROC-06（D263；v0.5.0、v0.7.0 历史文档不改） |
+
+**S8 回顾行动项落点**：
+
+| # | 行动 | 落点 | 由谁 |
+| --- | --- | --- | --- |
+| 1 | 断言对照 main 上组件的实际渲染与响应 schema 字段位置 | 路线图 §5 UI PR 证据清单第 7 项；任务书模板“证据要求”；`docs/demo/TEMPLATE.md`“截图状态断言” | 设计（本 PR）；版本管理（PROC-06） |
+| 2 | 取证先 build，断言 dist 新于 HEAD | 路线图 §5 UI PR 证据清单第 8 项；`docs/demo/TEMPLATE.md`“启动与检查” | 设计（本 PR）；版本管理（PROC-06） |
+| 3 | 演练覆盖 capture，每步用新上下文；覆盖不了时至少逐条核对断言（D258） | `docs/demo/TEMPLATE.md` 要求 12 与演练记录模板 | 版本管理（PROC-06） |
+| 4 | 入口参数逐个列异常与恢复路径 | 路线图 §5 设计文档自查第 7 项；任务书模板“入口参数与异常”（TINV-03 已按此写） | 设计（本 PR） |
+| 5 | 改条款时检查上下文，旧口径在原处改掉 | 路线图 §5 设计文档自查第 8 项；任务书模板“设计自查” | 设计（本 PR） |
+| 6 | CHANGELOG 只增不删；“已验证”写明命令与取证 head | `docs/release/README.md` 检查清单 | 版本管理（PROC-06） |
+
 ## 派发顺序
 
 1. 第一批（按顺序，同时只开一个以避免 `package.json`/lock 冲突）：M0-01 → M0-02 → M0-03 → M0-04 → M0-05 → M0-06→ M0-07。M0-02 与 M0-03 可并行，后合并者重新生成 lock。
