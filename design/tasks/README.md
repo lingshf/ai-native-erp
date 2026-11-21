@@ -342,17 +342,18 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- |
-| [UI-11a](UI-11a-business-queue-actions-column.md) | 业务事件“待转队列”操作列按钮截断、`<td>` 拦截点击；1440 / 390 完整显示、可点击、命中区 ≥ 44 × 44 | 页面 CSS（必要时 tsx） | FOCUS-01（已合并，[#123](https://github.com/lingshf/ai-native-erp/pull/123)）、S5-g（已合并） | web-ui:journals | todo | — |
-| [FOCUS-02](FOCUS-02-business-master-save-failure-focus.md) | 业务事件主数据保存失败（409）后焦点晚一帧；聚焦与 `lock` 拆开 | 调查 / 页面 tsx / 测试 | UI-11a（同冲突域串行） | web-ui:journals | todo | — |
-| [UI-11b](UI-11b-s5g-leftover-button-checkbox.md) | S5-g 遗留：`.btn-primary:active`、概览重试按钮、维度命中列复选框 | CSS（必要时 tsx） | S5-g（已合并） | web-ui:components, web-ui:shell（不含 `styles.css`）, web-ui:master | todo | — |
-| [UI-11c](UI-11c-virtualrows-spacer-cells.md) | S5-g 遗留：VirtualRows 占位行 `td` 的边框、对齐与最小宽度 | CSS（必要时 tsx） | FOCUS-02（journals 串行）、UI-11b（components 串行） | web-ui:journals, web-ui:components | todo | — |
+| [UI-11a](UI-11a-business-queue-actions-column.md) | 业务事件“待转队列”操作列按钮截断、`<td>` 拦截点击；1440 / 390 完整显示、可点击、命中区 ≥ 44 × 44 | 页面 CSS（必要时 tsx） | FOCUS-01（已合并，[#123](https://github.com/lingshf/ai-native-erp/pull/123)）、S5-g（已合并） | web-ui:journals | done | [#133](https://github.com/lingshf/ai-native-erp/pull/133)（`8df3874`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44837057918)） |
+| [FOCUS-02](FOCUS-02-business-master-save-failure-focus.md) | 业务事件主数据保存失败（409）后焦点晚一帧；聚焦与 `lock` 拆开 | 调查 / 页面 tsx / 测试 | UI-11a（同冲突域串行） | web-ui:journals | done | [#135](https://github.com/lingshf/ai-native-erp/pull/135)（`331f52a`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44842809884)） |
+| [UI-11b](UI-11b-s5g-leftover-button-checkbox.md) | S5-g 遗留：`.btn-primary:active`、概览重试按钮、维度命中列复选框 | CSS（必要时 tsx） | S5-g（已合并） | web-ui:components, web-ui:shell（不含 `styles.css`）, web-ui:master | done | [#134](https://github.com/lingshf/ai-native-erp/pull/134)（`ebd5e0d`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44837526542)） |
+| [UI-11c](UI-11c-virtualrows-spacer-cells.md) | S5-g 遗留：VirtualRows 占位行 `td` 的边框、对齐与最小宽度 | CSS（必要时 tsx） | FOCUS-02（journals 串行）、UI-11b（components 串行） | web-ui:journals, web-ui:components | in-progress | — |
 | [UI-11d](UI-11d-delete-styles-css-remaining.md) | 删除 `styles.css` 保留的全局声明，D-7 完成 | CSS + 入口 import 一行 | UI-11b、UI-11c；从开工到合并期间无进行中的页面 CSS 任务（含 C 线） | web-ui:shell（`styles.css`、`main.tsx` import） | todo | — |
-| [TORD-03](TORD-03-trade-order-list.md) | 订单列表：`GET /api/v1/trade/orders` keyset 分页（走主键，无迁移）+ 订单页列表 | 后端 API + 页面 | — | trade-docs, contracts, web-ui:trade-orders | todo | — |
-| [TORD-04](TORD-04-trade-order-preview.md) | 订单保存前预览：`POST /api/v1/trade/orders/preview`，与保存金额同源 | 后端 API + 页面 | TORD-03（同冲突域串行） | trade-docs, contracts, web-ui:trade-orders | todo | — |
+| [TORD-03](TORD-03-trade-order-list.md) | 订单列表：`GET /api/v1/trade/orders` keyset 分页（走主键，无迁移）+ 订单页列表 | 后端 API + 页面 | — | trade-docs, contracts, web-ui:trade-orders | done | [#132](https://github.com/lingshf/ai-native-erp/pull/132)（`267d067`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44838308314)） |
+| [TORD-04](TORD-04-trade-order-preview.md) | 订单保存前预览：`POST /api/v1/trade/orders/preview`，与保存金额同源 | 后端 API + 页面 | TORD-03（同冲突域串行） | trade-docs, contracts, web-ui:trade-orders | done | [#138](https://github.com/lingshf/ai-native-erp/pull/138)（`7aac72f`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44845093526)） |
 | [UI-12](UI-12-migration-kv-narrow-wrap.md) | 迁移核对页 390 宽 `.kv` 英文词内断行（Demo #129 观察） | 页面 CSS | TORD-04（C 线排序，无文件依赖） | web-ui:migration | todo | — |
-| [UI-13](UI-13-favicon-404.md) | 首页每次加载一条 404，先抓包证实是否为 favicon，再修（Demo #129 观察） | 调查 + 静态资源 | UI-11b（B 线排序，无文件依赖） | web:entry（`index.html`、`public/`） | todo | — |
-| [FLAKE-03](FLAKE-03-navigate-target-page-ready.md) | 贸易 GUI E2E：`navigate()` 等待目标页标志（已证实的提前返回；不宣称修复 FLAKE-02） | 测试 | UI-13（B 线排序） | tests:e2e | todo | — |
-| [E2E-01](E2E-01-concurrent-e2e-interference.md) | 并发真实 Chrome E2E 是否互相干扰：静态核对 + 受控实验；结论交协调者决定独占时段 | 调查 | FLAKE-03（同冲突域）；需要整台机器 | tests:e2e | todo | — |
+| [UI-13](UI-13-favicon-404.md) | 首页每次加载一条 404，先抓包证实是否为 favicon，再修（Demo #129 观察） | 调查 + 静态资源 | UI-11b（B 线排序，无文件依赖） | web:entry（`index.html`、`public/`） | done | [#136](https://github.com/lingshf/ai-native-erp/pull/136)（`0a91b00`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44839984864)） |
+| [FLAKE-03](FLAKE-03-navigate-target-page-ready.md) | 贸易 GUI E2E：`navigate()` 等待目标页标志（已证实的提前返回；不宣称修复 FLAKE-02） | 测试 | UI-13（B 线排序） | tests:e2e | done | [#137](https://github.com/lingshf/ai-native-erp/pull/137)（`fbc1199`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44842497843)） |
+| [E2E-01](E2E-01-concurrent-e2e-interference.md) | 并发真实 Chrome E2E 是否互相干扰：静态核对 + 受控实验；结论交协调者决定独占时段 | 调查 | FLAKE-03（同冲突域）；需要整台机器 | tests:e2e | in-review | [#139](https://github.com/lingshf/ai-native-erp/pull/139) |
+| [FLAKE-04](FLAKE-04-legacy-reconciliation-cli-spawnsync-timeout.md) | 旧账核对 CLI 用例 `spawnSync` 3000 ms 超时间歇触发：测量冷启动分布（空载 / 受控负载）、归因，按 D11 修复（计划外插入，不计入 S6 目标） | 调查（附修复） | 无代码依赖；测量时段与 E2E-01 及其他独占时段错开 | tests:legacy-reconciliation；改 CLI 启动路径时加 admin-cli | todo | — |
 
 **S6 共同验收**：
 1. UI 任务满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9，PG-05 口径同 S5（基线为 PR 实际 base 的 gzip 列）。**不设 Sprint 累计 CSS 门槛**（[路线图 §4 累计预算](../roadmap.md#4-ci-与测试策略设计角色牵头)）：各任务的预算见任务文件；设计角色同步任务表时按 [S5 回顾议题 1](../reviews/S5.md#议题-1d131-改为-d133s5-累计-css-413-b) 的口径记录累计值，只作观察。
@@ -367,12 +368,14 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | A：凭证 / 业务事件与 D-7 | UI-11a → FOCUS-02 → UI-11c → UI-11d | journals → journals → journals + components → shell |
 | B：共享组件与 E2E | UI-11b → UI-13 → FLAKE-03 → E2E-01 | components + shell + master → web:entry → tests:e2e → tests:e2e（整机） |
 | C：订单 | TORD-03 → TORD-04 → UI-12 | trade-docs + contracts + trade-orders → 同 → migration |
+| 计划外 | FLAKE-04 | tests:legacy-reconciliation（+ admin-cli） |
 
 - **首批**（v0.5.0 tag 后）：UI-11a（A）、UI-11b（B）、TORD-03（C）同时开工，冲突域两两不相交。
 - **跨线等待**：
   - UI-11c 等 A 线的 FOCUS-02 和 B 线的 UI-11b 都合并（journals 与 components 都串行）；
   - UI-11d 等 UI-11b、UI-11c 合并，并看到覆盖最后一个合并提交的完整 main Full；它的证据覆盖全部页面，要求全页零差的基线在取证期间不变：**从 UI-11d 开工、取证、评审直到合并，C 线不得有进行中的 TORD-03 / TORD-04 / UI-12 等页面 CSS 任务，也不得启动新的**。协调者在 C 线某个任务合并之后、下一个开工之前派发 UI-11d，C 线下一个任务等 UI-11d 合并后再开工；
   - UI-11b 与 UI-11d 都占 web-ui:shell，由 A 线的依赖保证串行。
+- **FLAKE-04**（计划外，S6 中由协调者登记）：冲突域与 A / B / C 三条线都不相交，但占一个在岗名额，协调者在某条线空出时派发。它只用 node、不用 Chrome，但测量会产生整机 node 负载：空载组与负载组都按独占时段安排，不与 E2E-01 的并发实验或其他 session 的取证运行重叠。
 - **迁移规则**：本 Sprint 计划内没有迁移任务。若 TORD-03 / TORD-04 发现必须加索引，停下报告设计角色，另立迁移任务；**两个要加迁移的任务不能并行**（共用 `migrations.ts` 与编号）。
 - **E2E 时段**：在 E2E-01 有结论之前，仍按 D115 / D118 的独占时段（[路线图 §5 工作区隔离](../roadmap.md#5-团队流程)）。三条线需要真实 Chrome 的阶段尽量错开；**E2E-01 需要整台机器**，安排在其他两条线都处于编辑 / 评审阶段、没有 E2E 需求的时段，由协调者定时间。
 - **对比度测试**：本 Sprint 预计不改 `contrast.test.ts`；需要新增配对的任务先报告设计角色（`tests:contrast` 串行）。
