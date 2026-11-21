@@ -290,13 +290,15 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
   const [selected, setSelected] = useState(() => params.get("company") ?? "");
   const [guard, setGuard] = useState(idleGuard);
   const [intake, setIntake] = useState<Intake | null>(null);
+  const [missingCompany, setMissingCompany] = useState<string | null>(null);
   useInvoiceLeaveGuard(guard);
   const fromOrder = params.get("fromOrder");
   // Take the request once and drop it from the address (replace), so a refresh never refills.
   useEffect(() => {
     if (fromOrder === null) return;
     const target = params.get("company");
-    if (fromOrder.trim()) setIntake({ company: target, orderId: fromOrder.trim() });
+    setMissingCompany(null);
+    if (fromOrder.trim()) setIntake({ company: target || null, orderId: fromOrder.trim() });
     if (target && !guard.busy) setSelected(target);
     setParams(
       (current) => {
@@ -322,6 +324,20 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
   });
   const rows = companies.data?.pages.flatMap((page) => page.items) ?? [];
   const company = rows.find((row) => row.code === selected) ?? rows[0];
+  // An order link names its company: page through the list until it is found, otherwise report it
+  // and drop the request instead of filling (or later firing) in another company.
+  const wanted = intake?.company ?? null;
+  const resolving =
+    wanted !== null && !companies.isError && !rows.some((row) => row.code === wanted);
+  const { isPending, isFetching, hasNextPage, fetchNextPage } = companies;
+  useEffect(() => {
+    if (!resolving || isPending || isFetching) return;
+    if (hasNextPage) void fetchNextPage();
+    else {
+      setMissingCompany(wanted);
+      setIntake(null);
+    }
+  }, [resolving, wanted, isPending, isFetching, hasNextPage, fetchNextPage]);
   return (
     <section className="page trade-invoices">
       <PageHeader
@@ -334,7 +350,10 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
               id="tinv-company"
               value={company?.code ?? ""}
               disabled={guard.busy}
-              onChange={(event) => setSelected(event.target.value)}
+              onChange={(event) => {
+                setSelected(event.target.value);
+                setMissingCompany(null);
+              }}
             >
               {rows.map((row) => (
                 <option key={row.code} value={row.code}>
@@ -345,7 +364,12 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
           </div>
         }
       />
-      {companies.isPending && <p role="status">{t("master.loading")}</p>}
+      {(companies.isPending || resolving) && <p role="status">{t("master.loading")}</p>}
+      {missingCompany !== null && (
+        <MessageBar tone="danger" role="alert">
+          {t("tinv.fromOrder.company")} · {missingCompany}
+        </MessageBar>
+      )}
       {companies.isError && (
         <MessageBar tone="danger" role="alert">
           <p>{t(failure(companies.error).key)}</p>
@@ -358,7 +382,7 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
           </button>
         </MessageBar>
       )}
-      {company && (
+      {company && !resolving && (
         <>
           <InvoiceEntry
             key={company.code}
@@ -478,10 +502,8 @@ function InvoiceEntry({
       setFromOrder({ status: "loaded", orderId });
       setFocusTick((tick) => tick + 1);
     } catch (issue) {
-      const missing =
-        issue instanceof MasterDataFailure &&
-        issue.kind === "http" &&
-        (issue.status === 404 || issue.status === 400);
+      // Only a confirmed NOT_FOUND means "no such order"; anything else (400 included) can be retried.
+      const missing = issue instanceof MasterDataFailure && issue.detail?.code === "NOT_FOUND";
       setFromOrder({ status: missing ? "notFound" : "failed", orderId });
     } finally {
       setBusy(false);
