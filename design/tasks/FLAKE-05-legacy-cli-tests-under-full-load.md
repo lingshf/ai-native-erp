@@ -1,10 +1,10 @@
 # FLAKE-05 旧账核对 CLI 用例在整机满载下仍超时：测试分层、启动开销与 3000 ms 预算评估
 
-- Sprint：backlog（不急，空闲时处理；不计入 S6 目标）　依赖：[FLAKE-04](FLAKE-04-legacy-reconciliation-cli-spawnsync-timeout.md) 合并，并且它的证据 PR 已补链接　建议分支：`flake-05-legacy-cli-test-layering`
+- Sprint：backlog（不急，空闲时处理；不计入 S6 目标）　依赖：[FLAKE-04](FLAKE-04-legacy-reconciliation-cli-spawnsync-timeout.md)（[#144](https://github.com/lingshf/ai-native-erp/pull/144)）合并　建议分支：`flake-05-legacy-cli-test-layering`
 - 冲突域：tests:legacy-reconciliation（`packages/infra/test/legacy-reconciliation.test.ts`）、admin-cli（`scripts/storage-admin.mjs` 及其 `legacy-reconcile` 启动路径）。与 FLAKE-04 相同，必须在 FLAKE-04 之后串行。
 - 类型：调查 + 方案评估。评估结论经协调者决定后才实施，实施可以在本任务内做，也可以另立任务。
 - 环境：只用 node，不用 Chrome。负载实验会产生整机 node 负载，所以按[路线图 §5 E2E 独占时段](../roadmap.md#5-团队流程)安排，由协调者排期，同 FLAKE-04。
-- 来源：协调者 D189，数据出自 FLAKE-04 的证据（PR：待补）。以下都是**观察**，本任务开工前要先对照证据 PR 核对：
+- 来源：协调者 D189，数据出自 FLAKE-04 的证据 PR [#144](https://github.com/lingshf/ai-native-erp/pull/144)（评审时 head `26490f8`）。以下都是**观察**，本任务开工前要先对照证据 PR 核对：
   1. FLAKE-04 的修复去掉了 `legacy-reconcile` 约一半的启动工作：加载的模块数从 444 降到 172，p50 下降约 45%。在 idle-bg 条件下 `ETIMEDOUT` 为 0；
   2. 在 load-cpu 条件下（16 个满负荷忙循环，整机 CPU 100%），修复前后的 `spawnSync` 都超时。p50 分别约 15 s 和约 5.5 s，`timeout: 3000` 时几乎全部是 `ETIMEDOUT`；
   3. 对照组 (e)（租约子进程，只导入 `maintenance.ts`）在 load-cpu 下也有 4/13 超过 3000 ms。
