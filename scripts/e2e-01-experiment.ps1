@@ -145,7 +145,8 @@ if ($Role -eq "run") {
 
 # orchestrate
 if (-not $OutDir) { throw "-OutDir is required" }
-$Worktrees = @($Worktrees | ForEach-Object { (Resolve-Path $_).Path })
+# `pwsh -File` passes `-Worktrees a,b` as one string.
+$Worktrees = @($Worktrees | ForEach-Object { $_ -split "," } | Where-Object { $_ } | ForEach-Object { (Resolve-Path $_).Path })
 if ($Mode -eq "serial") { $Worktrees = @($Worktrees[0]) }
 if ($Mode -eq "concurrent" -and $Worktrees.Count -ne 2) { throw "concurrent needs exactly two -Worktrees" }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
