@@ -96,6 +96,10 @@
 .trade-orders .tord-amounts {
   min-width: 760px;
 }
+/* 订单列表订单号按钮：圆角（焦点环形状），原由 styles.css 全局 button 规则给出（UI-11e，D-7） */
+.trade-orders .tord-list .cell-link {
+  border-radius: var(--radius-sm);
+}
 .trade-orders .tord-total :is(th, td) {
   position: static;
   background: none;

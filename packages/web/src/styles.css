@@ -1,9 +1,0 @@
-/*
- * 全局元素基线（UI-11d 后）：只剩第二道源码检查仍找不到类规则覆盖的一条声明，原样保留，交回对应泳道补齐后再删：
- * - button 的 border-radius：订单列表的订单号按钮 button.cell-link（TradeOrders.tsx，表格 .grid.tord-list；TORD-03 #132 引入），
- *   .cell-link 与 trade-orders.css 都没有给出 border-radius（贸易报表的 .cell-link 由 trade-reports.css 给出）。
- *   归属 web-ui:trade（pages/trade-orders.css），或 web-ui:components（.cell-link 组件规则）。
- */
-button {
-  border-radius: var(--radius-sm);
-}
