@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it, vi } from "vitest";
-import { createVitest } from "vitest/node";
+import { describe, expect, it } from "vitest";
 import {
   balanceShards,
+  collectTestFiles,
   fileWeights,
   guiStartupSummary,
   selectPrTests,
@@ -17,22 +17,6 @@ import {
 } from "../../../../scripts/ci.ts";
 
 const root = fileURLToPath(new URL("../../../../", import.meta.url));
-
-/**
- * Every test file of every project (slow and browser lanes included), keyed like
- * WeightedShardSequencer.key(). Uses Vitest's own collection from vitest.config.ts, so it is
- * the set the sequencer receives in a Full run.
- */
-async function collectedTestFiles() {
-  vi.stubEnv("CI_TEST_LAYER", "full");
-  const vitest = await createVitest({ config: join(root, "vitest.config.ts"), watch: false });
-  try {
-    const specs = await vitest.globTestSpecifications();
-    return specs.map((spec) => relative(root, spec.moduleId).replaceAll("\\", "/"));
-  } finally {
-    await vitest.close();
-  }
-}
 
 describe("CI selection and reporting", () => {
   it("keeps component-only and documentation changes incremental", () => {
@@ -249,7 +233,7 @@ describe("CI selection and reporting", () => {
   });
 
   it("has a shard weight for exactly the test files Vitest collects", async () => {
-    const files = await collectedTestFiles();
+    const files = await collectTestFiles(root);
     expect(files).toContain("packages/infra/test/tooling/ci.test.ts");
     expect(files.some((file) => file.endsWith(".slow.test.ts"))).toBe(true);
     const weights = JSON.parse(
