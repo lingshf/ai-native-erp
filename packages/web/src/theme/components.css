@@ -1,7 +1,7 @@
 /*
  * UI-1 共享组件（design/ui/README.md §5、§6），类名与原型 prototype.css 一致，只引用 token。
- * 只经类名启用：不写元素选择器，不改 styles.css 中全局 button 等元素的默认外观。
- * styles.css 的全局 button 规则含 :hover:not(:disabled) 与 :disabled，这里的悬停 / 禁用规则写得更具体以覆盖它们。
+ * 只经类名启用：不写元素选择器。元素默认外观由浏览器默认样式与 theme/base.css 提供（button / input / select / textarea
+ * 只继承字体，见 base.css:18-23）；styles.css 已在 UI-11e 删除，不再有全局 button 规则。
  */
 
 /* ---------- VirtualRows 基础（Journals.tsx，凭证 / 业务事件 / 总账 / 期末 / 贸易报表共用；UI-08 由 styles.css 原样迁入，
