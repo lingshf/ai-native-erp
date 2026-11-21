@@ -265,7 +265,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 ## S5：`styles.css` 全局元素规则收尾 + S4 回顾行动（建议 v0.5.0）
 
 **目标**：
-- 完成 D-7：各页不再依赖 `styles.css` 的全局元素规则，最后一次性删除（S5-a..g、S5-i）。**D-7：部分完成，剩余项见 UI-11b..d。** S5-g（[#126](https://github.com/lingshf/ai-native-erp/pull/126)，main `6c8724b`）第二道检查发现 4 项遗漏，相关声明保留；由 backlog 中的 UI-11b、UI-11c 补齐后，UI-11d 删除，D-7 才完成；
+- 完成 D-7：各页不再依赖 `styles.css` 的全局元素规则，最后一次性删除（S5-a..g、S5-i）。**D-7：部分完成。** UI-11b..d 已合并（UI-11d [#142](https://github.com/lingshf/ai-native-erp/pull/142)，main `6be3bcf`），只剩订单列表 `button.cell-link` 的圆角，见 S7 候选 [UI-11e](UI-11e-cell-link-radius-delete-styles-css.md)。 S5-g（[#126](https://github.com/lingshf/ai-native-erp/pull/126)，main `6c8724b`）第二道检查发现 4 项遗漏，相关声明保留；由 backlog 中的 UI-11b、UI-11c 补齐后，UI-11d 删除，D-7 才完成；
 - 调查并修复 S4 回顾记录的焦点断言偶发失败 D92（S5-h，原因待证实），落实其余回顾行动（路线图 §4 / §5 已由 S4 回顾 PR 写入；发布流程部分为 PROC-02）。
 
 版本号由协调者定。基线为 main `66d8e15`（v0.4.0 Demo #108 之后）。来源：UI-09g [#106](https://github.com/lingshf/ai-native-erp/pull/106)（head `f269d23`，合并为 main `662a763`）证据表的“保留”部分，摘要见 [UI-1.md §5.2](../reviews/UI-1.md#52-ui-09gstylescss-全局元素规则删除记录)；回顾见 [S4-retro.md](../reviews/S4-retro.md)。
@@ -346,7 +346,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [FOCUS-02](FOCUS-02-business-master-save-failure-focus.md) | 业务事件主数据保存失败（409）后焦点晚一帧；聚焦与 `lock` 拆开 | 调查 / 页面 tsx / 测试 | UI-11a（同冲突域串行） | web-ui:journals | done | [#135](https://github.com/lingshf/ai-native-erp/pull/135)（`331f52a`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44842809884)） |
 | [UI-11b](UI-11b-s5g-leftover-button-checkbox.md) | S5-g 遗留：`.btn-primary:active`、概览重试按钮、维度命中列复选框 | CSS（必要时 tsx） | S5-g（已合并） | web-ui:components, web-ui:shell（不含 `styles.css`）, web-ui:master | done | [#134](https://github.com/lingshf/ai-native-erp/pull/134)（`ebd5e0d`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44837526542)） |
 | [UI-11c](UI-11c-virtualrows-spacer-cells.md) | S5-g 遗留：VirtualRows 占位行 `td` 的边框、对齐与最小宽度 | CSS（必要时 tsx） | FOCUS-02（journals 串行）、UI-11b（components 串行） | web-ui:journals, web-ui:components | done | [#141](https://github.com/lingshf/ai-native-erp/pull/141)（`e47b93b`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44849765247)） |
-| [UI-11d](UI-11d-delete-styles-css-remaining.md) | 删除 `styles.css` 保留的全局声明，D-7 完成 | CSS + 入口 import 一行 | UI-11b、UI-11c；从开工到合并期间无进行中的页面 CSS 任务（含 C 线） | web-ui:shell（`styles.css`、`main.tsx` import） | in-progress | [#142](https://github.com/lingshf/ai-native-erp/pull/142)（draft，证据未补齐） |
+| [UI-11d](UI-11d-delete-styles-css-remaining.md) | 删除 `styles.css` 保留的全局声明，D-7 完成 | CSS + 入口 import 一行 | UI-11b、UI-11c；从开工到合并期间无进行中的页面 CSS 任务（含 C 线） | web-ui:shell（`styles.css`、`main.tsx` import） | done（D-7 部分完成，剩余项见 UI-11e） | [#142](https://github.com/lingshf/ai-native-erp/pull/142)（`6be3bcf`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44864113434)） |
 | [TORD-03](TORD-03-trade-order-list.md) | 订单列表：`GET /api/v1/trade/orders` keyset 分页（走主键，无迁移）+ 订单页列表 | 后端 API + 页面 | — | trade-docs, contracts, web-ui:trade-orders | done | [#132](https://github.com/lingshf/ai-native-erp/pull/132)（`267d067`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44838308314)） |
 | [TORD-04](TORD-04-trade-order-preview.md) | 订单保存前预览：`POST /api/v1/trade/orders/preview`，与保存金额同源 | 后端 API + 页面 | TORD-03（同冲突域串行） | trade-docs, contracts, web-ui:trade-orders | done | [#138](https://github.com/lingshf/ai-native-erp/pull/138)（`7aac72f`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44845093526)） |
 | [UI-12](UI-12-migration-kv-narrow-wrap.md) | 迁移核对页 390 宽 `.kv` 英文词内断行（Demo #129 观察） | 页面 CSS | TORD-04（C 线排序，无文件依赖） | web-ui:migration | todo | — |
@@ -355,6 +355,12 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [E2E-01](E2E-01-concurrent-e2e-interference.md) | 并发真实 Chrome E2E 是否互相干扰：静态核对 + 受控实验；结论交协调者决定独占时段 | 调查 | FLAKE-03（同冲突域）；需要整台机器 | tests:e2e | done | [#139](https://github.com/lingshf/ai-native-erp/pull/139)（`92e0306`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44847056925)） |
 | [FLAKE-04](FLAKE-04-legacy-reconciliation-cli-spawnsync-timeout.md) | 旧账核对 CLI 用例 `spawnSync` 3000 ms 超时间歇触发：测量冷启动分布（空载 / 受控负载）、归因，按 D11 修复（计划外插入，不计入 S6 目标） | 调查（附修复） | 无代码依赖；测量时段与 E2E-01 及其他独占时段错开 | tests:legacy-reconciliation；改 CLI 启动路径时加 admin-cli | done（部分修复：验收 3 未满足，后续见 FLAKE-05） | [#144](https://github.com/lingshf/ai-native-erp/pull/144)（`2c21b51`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44863261267)） |
 | [FLAKE-05](FLAKE-05-legacy-cli-tests-under-full-load.md) | 旧账核对 CLI 用例在整机满载（load-cpu）下仍超时：评估 CLI 用例改进程内调用 + 少量 spawn 冒烟、进一步减启动开销、3000 ms 预算的依据与 D11 关系（D189，FLAKE-04 后续；不计入 S6 目标） | 调查 + 方案评估 | FLAKE-04（已合并，[#144](https://github.com/lingshf/ai-native-erp/pull/144)） | tests:legacy-reconciliation, admin-cli | backlog | — |
+
+**S6 后 backlog（S7 候选）**：
+
+| ID | 标题 | 类型 | 依赖 | 冲突域 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- |
+| [UI-11e](UI-11e-cell-link-radius-delete-styles-css.md) | 订单列表 `button.cell-link` 圆角改由 `trade-orders.css` 类规则提供，然后删除 `styles.css` 与 `main.tsx` 的 import，D-7 完成（UI-11d [#142](https://github.com/lingshf/ai-native-erp/pull/142) 第二道检查遗漏） | CSS + 入口 import 一行 | UI-11d（已合并）；从开工到合并期间无进行中的页面 CSS 任务 | web-ui:trade-orders（`pages/trade-orders.css`）, web-ui:shell（`styles.css`、`main.tsx` import） | backlog | — |
 
 **S6 共同验收**：
 1. UI 任务满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9，PG-05 口径同 S5（基线为 PR 实际 base 的 gzip 列）。**不设 Sprint 累计 CSS 门槛**（[路线图 §4 累计预算](../roadmap.md#4-ci-与测试策略设计角色牵头)）：各任务的预算见任务文件；设计角色同步任务表时按 [S5 回顾议题 1](../reviews/S5.md#议题-1d131-改为-d133s5-累计-css-413-b) 的口径记录累计值，只作观察。
