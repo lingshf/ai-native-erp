@@ -338,7 +338,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 - M2-05 / M2-06：需要用户授权决定 A / B，见上文 M2 节；
 - 订单筛选（伙伴 / 日期 / 方向）：需要新索引即为迁移，单独立项（见 TORD-03）；
 - “S5 累计 CSS +413 B 的瘦身”：协调者已决定不立任务（D140），理由见 [S5 回顾议题 1](../reviews/S5.md#议题-1d131-改为-d133s5-累计-css-413-b)；
-- `package.json` / lock 变化；本 Sprint 计划内没有迁移任务。
+- `package.json` / lock 变化（例外：FLAKE-05 按 D199 单项豁免，`packages/core/package.json` 新增 3 条 `exports`，lock 不变）；本 Sprint 计划内没有迁移任务。
 
 | ID | 标题 | 类型 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -349,12 +349,12 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [UI-11d](UI-11d-delete-styles-css-remaining.md) | 删除 `styles.css` 保留的全局声明，推进 D-7 | CSS + 入口 import 一行 | UI-11b、UI-11c；从开工到合并期间无进行中的页面 CSS 任务（含 C 线） | web-ui:shell（`styles.css`、`main.tsx` import） | done（任务完成；D-7 部分完成，剩余项见 UI-11e） | [#142](https://github.com/lingshf/ai-native-erp/pull/142)（`6be3bcf`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44864113434)） |
 | [TORD-03](TORD-03-trade-order-list.md) | 订单列表：`GET /api/v1/trade/orders` keyset 分页（走主键，无迁移）+ 订单页列表 | 后端 API + 页面 | — | trade-docs, contracts, web-ui:trade-orders | done | [#132](https://github.com/lingshf/ai-native-erp/pull/132)（`267d067`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44838308314)） |
 | [TORD-04](TORD-04-trade-order-preview.md) | 订单保存前预览：`POST /api/v1/trade/orders/preview`，与保存金额同源 | 后端 API + 页面 | TORD-03（同冲突域串行） | trade-docs, contracts, web-ui:trade-orders | done | [#138](https://github.com/lingshf/ai-native-erp/pull/138)（`7aac72f`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44845093526)） |
-| [UI-12](UI-12-migration-kv-narrow-wrap.md) | 迁移核对页 390 宽 `.kv` 英文词内断行（Demo #129 观察） | 页面 CSS | TORD-04（C 线排序，无文件依赖） | web-ui:migration | todo | — |
+| [UI-12](UI-12-migration-kv-narrow-wrap.md) | 迁移核对页 390 宽 `.kv` 英文词内断行（Demo #129 观察） | 页面 CSS | TORD-04（C 线排序，无文件依赖） | web-ui:migration | done | [#148](https://github.com/lingshf/ai-native-erp/pull/148)（`0f74db9`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44874949609)） |
 | [UI-13](UI-13-favicon-404.md) | 首页每次加载一条 404，先抓包证实是否为 favicon，再修（Demo #129 观察） | 调查 + 静态资源 | UI-11b（B 线排序，无文件依赖） | web:entry（`index.html`、`public/`） | done | [#136](https://github.com/lingshf/ai-native-erp/pull/136)（`0a91b00`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44839984864)） |
 | [FLAKE-03](FLAKE-03-navigate-target-page-ready.md) | 贸易 GUI E2E：`navigate()` 等待目标页标志（已证实的提前返回；不宣称修复 FLAKE-02） | 测试 | UI-13（B 线排序） | tests:e2e | done | [#137](https://github.com/lingshf/ai-native-erp/pull/137)（`fbc1199`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44842497843)） |
 | [E2E-01](E2E-01-concurrent-e2e-interference.md) | 并发真实 Chrome E2E 是否互相干扰：静态核对 + 受控实验；结论交协调者决定独占时段 | 调查 | FLAKE-03（同冲突域）；需要整台机器 | tests:e2e | done | [#139](https://github.com/lingshf/ai-native-erp/pull/139)（`92e0306`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44847056925)） |
 | [FLAKE-04](FLAKE-04-legacy-reconciliation-cli-spawnsync-timeout.md) | 旧账核对 CLI 用例 `spawnSync` 3000 ms 超时间歇触发：测量冷启动分布（空载 / 受控负载）、归因，按 D11 修复（计划外插入，不计入 S6 目标） | 调查（附修复） | 无代码依赖；测量时段与 E2E-01 及其他独占时段错开 | tests:legacy-reconciliation；改 CLI 启动路径时加 admin-cli | done（部分修复：验收 3 未满足，后续见 FLAKE-05） | [#144](https://github.com/lingshf/ai-native-erp/pull/144)（`2c21b51`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44863261267)） |
-| [FLAKE-05](FLAKE-05-legacy-cli-tests-under-full-load.md) | 旧账核对 CLI 用例在整机满载（load-cpu）下仍超时：评估 CLI 用例改进程内调用 + 少量 spawn 冒烟、进一步减启动开销、3000 ms 预算的依据与 D11 关系（D189，FLAKE-04 后续；不计入 S6 目标）。评估已完成，D199：方向 1 + 2（`@erp/core` 新增 3 条子路径 exports），3000 ms 不调整，验收负载为 PR 层实际负载 | 调查 + 方案评估（附实施） | FLAKE-04（已合并，[#144](https://github.com/lingshf/ai-native-erp/pull/144)） | tests:legacy-reconciliation, admin-cli；实施时加 core:package-exports、tooling:boundaries 及 infra 中改导入的 6 个文件 | in-progress（评估完成，待实施） | — |
+| [FLAKE-05](FLAKE-05-legacy-cli-tests-under-full-load.md) | 旧账核对 CLI 用例在整机满载（load-cpu）下仍超时：评估 CLI 用例改进程内调用 + 少量 spawn 冒烟、进一步减启动开销、3000 ms 预算的依据与 D11 关系（D189，FLAKE-04 后续；不计入 S6 目标）。评估已完成，D199：方向 1 + 2（`@erp/core` 新增 3 条子路径 exports），3000 ms 不调整，验收负载为 PR 层实际负载 | 调查 + 方案评估（附实施） | FLAKE-04（已合并，[#144](https://github.com/lingshf/ai-native-erp/pull/144)） | tests:legacy-reconciliation, admin-cli；实施时加 core:package-exports、tooling:boundaries 及 infra 中改导入的 6 个文件 | done（PR 层实际负载下本次未观察到回归，余量见 PR；load-cpu 下仍超时，为已知限制） | [#147](https://github.com/lingshf/ai-native-erp/pull/147)（`d6c5014`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44874051073)） |
 
 **S6 后 backlog（S7 候选）**：
 
