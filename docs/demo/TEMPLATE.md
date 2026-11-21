@@ -12,6 +12,8 @@
 6. **滚动位置**：截图前显式设定滚动位置（通常回到页首），整页截图时粘性顶栏才不会压在正文中间；怀疑遮挡是否会在正常使用中出现时，在真实视口里量输入框与顶栏的位置并记录，不在截图里掩盖。
 7. 未实跑的分支（例如夹具无法覆盖的用法）写明“仅对照代码，未实跑”，不得写成已通过；预期结果与实测结果分开标注。
 8. **执行记录里做过的人工检查，都要落到可复制的命令里**（例如“确认端口空闲”“确认进程归属”“确认服务就绪”）；写不成命令的检查，注明是人工目视。
+9. **脚本先写好、先用替身跑通，再申请 Demo 时段**：复跑脚本（含 seed、capture、清理）在申请时段之前就写完，并用不启动浏览器的替身完整跑通成功分支和失败分支（见下“替身验证”）；真实运行使用的就是通过评审、通过替身验证的那份脚本，运行后不再为“整理成可复制”而改它。运行前核对账套就绪清单：迁移已执行，预览 / 保存所需的主数据（例如伙伴）已 seed；缺少就中止，不要带着空账套去截图。（v0.6.0 回顾行动项 1）
+10. **含删除 / 复制操作的替身必须隔离 `TEMP`（`TMP`）并校验真实产物哈希**：替身把 `TEMP`、`TMP` 指向本次专用的临时目录，并在前后各记一次真实产物（账套、备份、截图等）的 SHA256，证明替身没有触及它们（见下“替身验证”）。每个场景还要断言预期结果（是否抛出、复制了几次、停了哪些 pid、有无残留），任一断言失败就以非零退出。（v0.6.0 回顾行动项 2）
 
 ## 启动与检查
 
@@ -84,6 +86,34 @@
   $server = $null; $demo = $null; $db = $null; $port = $null
 }
 ```
+
+## 替身验证（先于申请时段）
+
+替身不启动 Chrome、Playwright 或 Vitest，用假进程和假脚本代替。含删除 / 复制操作的替身，整段放在下面的块里：先记真实产物哈希，再把 `TEMP`、`TMP` 指向专用临时目录，在 `# 替身` 处放本版脚本的替身调用，结束时恢复环境、只删专用目录，最后比对哈希。哈希不一致就 `throw`（命令行运行时退出码为 1）。从仓库根目录执行：
+
+```powershell
+. {
+  $real = "docs/demo/v0.6.0/screenshots"   # 换成本版真实产物目录（截图、账套、备份等）
+  $oldTemp = $env:TEMP; $oldTmp = $env:TMP; $iso = $null; $before = $null; $after = $null
+  try {
+    if (-not (Test-Path $real)) { throw "真实产物目录不存在：$real" }
+    $before = @(Get-ChildItem $real -Recurse -File | Sort-Object FullName | Get-FileHash -Algorithm SHA256 | ForEach-Object { $_.Hash + "  " + $_.Path })
+    if ($before.Count -eq 0) { throw "真实产物目录为空，无法证明替身没有触及它：$real" }
+    $iso = Join-Path ([IO.Path]::GetTempPath()) ("erp-stub-" + [guid]::NewGuid())
+    New-Item -ItemType Directory -Path $iso | Out-Null
+    $env:TEMP = $iso; $env:TMP = $iso
+    # 替身：在这里调用本版脚本的替身，成功分支和失败分支各一次，并逐个场景断言结果
+  } finally {
+    $env:TEMP = $oldTemp; $env:TMP = $oldTmp
+    if ($iso -and (Split-Path $iso -Leaf) -like "erp-stub-*") { Remove-Item -Recurse -Force $iso }
+  }
+  $after = @(Get-ChildItem $real -Recurse -File | Sort-Object FullName | Get-FileHash -Algorithm SHA256 | ForEach-Object { $_.Hash + "  " + $_.Path })
+  if (Compare-Object $before $after) { throw "真实产物哈希在替身运行前后不一致：$real" }
+  "真实产物未变：$($before.Count) 个文件"
+}
+```
+
+替身验证的输出（场景、断言、退出码、哈希结论）写进 `run-through.md` 和 PR 正文，成功分支和失败分支都要有。（v0.6.0 回顾行动项 1、2）
 
 ## 截图状态断言
 
