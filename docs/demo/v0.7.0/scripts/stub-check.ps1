@@ -76,6 +76,7 @@ try {
   $okParties = '[{"code":"PARTY"},{"code":"PARTY2"}]'
   $okOrders = '[{"orderId":"PO-F1"},{"orderId":"PO-F2"},{"orderId":"SO-F3"},{"orderId":"SO-F4"}]'
   $okQ = @($null, $ServerPid, $ServerPid, $null)
+  $shortQ = @($null, $ServerPid, $null)   # 就绪清单或 seed 失败时不会做第三次端口查询，finally 里的那次是最后一次
   $base = @{ q = $okQ; build = 0; seedOrders = 0; capture = 0; pngs = 16; parties = $okParties; orders = $okOrders
     throws = $null; copied = 1; stopped = @($ServerPid); captures = 1; seedOrderCalls = 1 }
   function Variant($changes) { $h = $base.Clone(); foreach ($k in $changes.Keys) { $h[$k] = $changes[$k] }; $h }
@@ -86,9 +87,9 @@ try {
     "4 port busy at start" = Variant @{ q = @(4242, 4242); throws = "port busy"; copied = 0; stopped = @(); captures = 0; seedOrderCalls = 0 }
     "5 owner mismatch after start" = Variant @{ q = @($null, $ForeignPid, $null, $null); throws = "owner mismatch"; copied = 0; captures = 0; seedOrderCalls = 0 }
     "6 owner mismatch after seed" = Variant @{ q = @($null, $ServerPid, $ForeignPid, $null); throws = "owner mismatch after seed"; copied = 0; captures = 0 }
-    "7 seed-orders fails" = Variant @{ seedOrders = 1; throws = "seed-orders"; copied = 0; captures = 0 }
-    "8 readiness: order missing" = Variant @{ orders = '[{"orderId":"PO-F1"},{"orderId":"PO-F2"},{"orderId":"SO-F3"}]'; throws = "readiness: order SO-F4 missing"; copied = 0; captures = 0 }
-    "9 readiness: partner missing" = Variant @{ parties = '[{"code":"PARTY"}]'; throws = "readiness: partner PARTY2 missing"; copied = 0; captures = 0 }
+    "7 seed-orders fails" = Variant @{ q = $shortQ; seedOrders = 1; throws = "seed-orders"; copied = 0; captures = 0 }
+    "8 readiness: order missing" = Variant @{ q = $shortQ; orders = '[{"orderId":"PO-F1"},{"orderId":"PO-F2"},{"orderId":"SO-F3"}]'; throws = "readiness: order SO-F4 missing"; copied = 0; captures = 0 }
+    "9 readiness: partner missing" = Variant @{ q = $shortQ; parties = '[{"code":"PARTY"}]'; throws = "readiness: partner PARTY2 missing"; copied = 0; captures = 0 }
     "10 wrong screenshot count (15)" = Variant @{ pngs = 15; throws = "截图数"; copied = 0 }
   }
   foreach ($name in $scenarios.Keys) {
