@@ -52,6 +52,10 @@ export const tradeOrderSchema = z.strictObject({
     }),
   ),
 });
+export const tradeOrderInvoicingSchema = z.strictObject({
+  order: tradeOrderSchema,
+  invoiced: lines(z.strictObject({ lineId, invoicedQuantity: decimal })),
+});
 export const tradeOrderPreviewSchema = z.strictObject({
   lines: lines(
     z.strictObject({
@@ -515,6 +519,7 @@ export const tradeOrderPageSchema = z.strictObject({
 });
 export type TradeOrderPageDto = z.infer<typeof tradeOrderPageSchema>;
 export type TradeOrderPreviewDto = z.infer<typeof tradeOrderPreviewSchema>;
+export type TradeOrderInvoicingDto = z.infer<typeof tradeOrderInvoicingSchema>;
 export type TradeInvoiceCommandDto = z.infer<typeof tradeInvoiceCommandSchema>;
 export type TradeInvoicePreviewDto = z.infer<typeof tradeInvoicePreviewSchema>;
 export type TradeInvoiceReceiptDto = z.infer<typeof tradeInvoiceReceiptSchema>;
@@ -658,6 +663,19 @@ export const tradeDocumentsOpenApi = {
         },
       },
     },
+    "/api/v1/trade/orders/{orderId}/invoicing": {
+      get: {
+        operationId: "getTradeOrderInvoicing",
+        parameters: [pathParam("orderId", companyCodeSchema), ...query(tradeCompanyQuerySchema)],
+        responses: {
+          200: {
+            description: "Order with invoiced quantity per line",
+            ...ref("TradeOrderInvoicing"),
+          },
+          ...errors([400, 403, 404, 405, 500, 503]),
+        },
+      },
+    },
     "/api/v1/trade/invoices/preview": {
       post: {
         operationId: "previewTradeInvoice",
@@ -731,6 +749,7 @@ export const tradeDocumentsOpenApi = {
     TradeOrder: z.toJSONSchema(tradeOrderSchema),
     TradeOrderPreview: z.toJSONSchema(tradeOrderPreviewSchema),
     TradeOrderPage: z.toJSONSchema(tradeOrderPageSchema),
+    TradeOrderInvoicing: z.toJSONSchema(tradeOrderInvoicingSchema),
     TradeInvoiceCommand: z.toJSONSchema(tradeInvoiceCommandSchema),
     TradeInvoiceConfirm: z.toJSONSchema(tradeInvoiceConfirmSchema),
     TradeInvoicePreview: z.toJSONSchema(tradeInvoicePreviewSchema),

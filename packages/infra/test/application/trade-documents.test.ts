@@ -11,6 +11,7 @@ import {
   TradeDocumentService,
   TradeMasterService,
 } from "@erp/core/application";
+import { tradeOrderInvoicingSchema, tradeOrderSchema } from "@erp/core/contracts";
 import {
   normalizeExternalInvoice,
   parseAiCandidate,
@@ -3769,6 +3770,201 @@ describe("trade invoices on real SQLite", () => {
       expect(resolve.length).toBe(previewSequence.length + 1);
     } finally {
       await writer.release();
+      await backend.close();
+    }
+  });
+  // TINV-01: read-only per-line invoiced quantity, same source as invoice order matching.
+  function orderInvoice(
+    quantity: string,
+    wage: string | null,
+    changes: Partial<TradeInvoiceCommand> = {},
+  ) {
+    return invoice({
+      orderId: "PO-1",
+      lines: [
+        line({ lineId: "L1", orderLineId: "OL1", quantity }),
+        ...(wage
+          ? [
+              line({
+                lineId: "L2",
+                product: "WAGE",
+                orderLineId: "OL2",
+                quantity: wage,
+                unitPrice: "25.00",
+              }),
+            ]
+          : []),
+      ],
+      ...changes,
+    });
+  }
+  async function expectInvoiced(expected: readonly [string, string][], probe: TradeInvoiceCommand) {
+    const result = await service.orderInvoicing("DEFAULT", "PO-1");
+    const pairs = result.invoiced.map((row) => [row.lineId, row.invoicedQuantity]);
+    expect(pairs).toEqual(expected);
+    // Same fixture: the matcher's previouslyInvoiced equals the exposed invoicedQuantity.
+    const before = counts();
+    const preview = await service.preview(probe);
+    expect(counts()).toEqual(before);
+    expect(preview.matches.map((match) => [match.orderLineId, match.previouslyInvoiced])).toEqual(
+      pairs,
+    );
+    return result;
+  }
+
+  it("TINV-01 orderInvoicing: 0 without invoices, partial, two invoices summed, cancellation rolls back, equal to matching previouslyInvoiced", async () => {
+    const created = await service.createOrder(order());
+    const zero = await expectInvoiced(
+      [
+        ["OL1", "0"],
+        ["OL2", "0"],
+      ],
+      orderInvoice("1", "1"),
+    );
+    expect(zero.order).toEqual(created);
+    await post(orderInvoice("3", "1"));
+    await expectInvoiced(
+      [
+        ["OL1", "3"],
+        ["OL2", "1"],
+      ],
+      orderInvoice("1", "1"),
+    );
+    const second = orderInvoice("2.5", null);
+    await post(second);
+    await expectInvoiced(
+      [
+        ["OL1", "5.5"],
+        ["OL2", "1"],
+      ],
+      orderInvoice("0.5", "0.5"),
+    );
+    await cancel(second.documentId);
+    await expectInvoiced(
+      [
+        ["OL1", "3"],
+        ["OL2", "1"],
+      ],
+      orderInvoice("0.5", "0.5", { accountingDate: "2026-01-26" }),
+    );
+    await expect(service.orderInvoicing("DEFAULT", "PO-X")).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+  });
+
+  it("TINV-01 serves GET /trade/orders/:orderId/invoicing over HTTP; existing order responses keep tradeOrderSchema without invoicedQuantity", async () => {
+    const executor = await SqliteExecutor.create({ filename, readers: 2 });
+    const api = await createApi({
+      environment: { ERP_PORT: "0" },
+      allowPortZero: true,
+      ...executor.services(),
+      logError: () => undefined,
+    });
+    try {
+      const host = new URL(await api.listen()).host;
+      const send = (method: "GET" | "POST" | "DELETE", url: string, payload?: unknown) =>
+        api.app.inject({
+          method,
+          url,
+          headers: { host },
+          ...(payload === undefined ? {} : { payload }),
+        });
+      const created = await send("POST", "/api/v1/trade/orders", order());
+      expect(created.statusCode).toBe(201);
+      const fetched = await send("GET", "/api/v1/trade/orders/PO-1?company=DEFAULT");
+      expect(fetched.statusCode).toBe(200);
+      for (const response of [created, fetched]) {
+        expect(tradeOrderSchema.safeParse(response.json()).success).toBe(true);
+        expect(response.body).not.toContain("invoicedQuantity");
+      }
+      await post(orderInvoice("2.5", "1"));
+      const invoicing = await send("GET", "/api/v1/trade/orders/PO-1/invoicing?company=DEFAULT");
+      expect(invoicing.statusCode).toBe(200);
+      expect(tradeOrderInvoicingSchema.parse(invoicing.json())).toEqual({
+        order: created.json(),
+        invoiced: [
+          { lineId: "OL1", invoicedQuantity: "2.5" },
+          { lineId: "OL2", invoicedQuantity: "1" },
+        ],
+      });
+      for (const [orderUrl, invoicingUrl] of [
+        [
+          "/api/v1/trade/orders/PO-X?company=DEFAULT",
+          "/api/v1/trade/orders/PO-X/invoicing?company=DEFAULT",
+        ],
+        [
+          "/api/v1/trade/orders/PO-1?company=MISSING",
+          "/api/v1/trade/orders/PO-1/invoicing?company=MISSING",
+        ],
+        ["/api/v1/trade/orders/PO-1", "/api/v1/trade/orders/PO-1/invoicing"],
+        [
+          "/api/v1/trade/orders/po-1?company=DEFAULT",
+          "/api/v1/trade/orders/po-1/invoicing?company=DEFAULT",
+        ],
+      ]) {
+        const expected = await send("GET", orderUrl);
+        const actual = await send("GET", invoicingUrl);
+        const body = (response: typeof actual) => ({ ...response.json(), requestId: undefined });
+        expect(expected.statusCode).toBeGreaterThanOrEqual(400);
+        expect([actual.statusCode, body(actual)]).toEqual([expected.statusCode, body(expected)]);
+      }
+      expect(
+        (await send("DELETE", "/api/v1/trade/orders/PO-1/invoicing?company=DEFAULT")).statusCode,
+      ).toBe(405);
+    } finally {
+      await api.close();
+      await executor.close();
+    }
+  });
+
+  it("TINV-01 PG-05: one read transaction, one invoiced-quantity statement for all lines on trade_document_lines_order", async () => {
+    await service.createOrder(
+      order({ lines: Array.from({ length: 100 }, (_, n) => orderLine(`X${n}`, "2", "1.00")) }),
+    );
+    const backend = sqliteBackend({ filename });
+    const db = await backend.acquire(true, false);
+    const statements: { sql: string; values: readonly unknown[] }[] = [];
+    const counting = {
+      ...db,
+      query: (sql: string, values: Parameters<Connection["query"]>[1] = []) => {
+        statements.push({ sql, values });
+        return db.query(sql, values);
+      },
+    } as Connection;
+    const calls = { read: 0 };
+    const counted = new TradeDocumentService(
+      {
+        read: (work) => {
+          calls.read++;
+          return work(masterDataRepository(counting));
+        },
+        write: () => Promise.reject(new Error("orderInvoicing must not write")),
+      },
+      journals,
+      journalTools,
+    );
+    try {
+      const result = await counted.orderInvoicing("DEFAULT", "PO-1");
+      expect(result.invoiced).toHaveLength(100);
+      expect(calls.read).toBe(1);
+      const invoiced = statements.filter((item) => item.sql.includes("trade_document_lines"));
+      expect(invoiced).toHaveLength(1);
+      expect(invoiced[0].values).toHaveLength(102);
+      const raw = new Database(filename, { readonly: true });
+      try {
+        const plan = raw
+          .prepare(`EXPLAIN QUERY PLAN ${invoiced[0].sql}`)
+          .all(...invoiced[0].values)
+          .map((row) => (row as { detail: string }).detail);
+        expect(
+          plan.some((detail) => detail.includes("USING INDEX trade_document_lines_order")),
+        ).toBe(true);
+        expect(plan.some((detail) => /^SCAN l\b/u.test(detail))).toBe(false);
+      } finally {
+        raw.close();
+      }
+    } finally {
+      await db.release();
       await backend.close();
     }
   });

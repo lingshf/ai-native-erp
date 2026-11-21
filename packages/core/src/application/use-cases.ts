@@ -15,6 +15,7 @@ export interface ApplicationServices {
     TradeDocumentService,
     | "createOrder"
     | "order"
+    | "orderInvoicing"
     | "listOrders"
     | "previewOrder"
     | "preview"
@@ -82,6 +83,7 @@ export const applicationLanes = {
     confirmSettlement: "write",
     createOrder: "write",
     order: "light",
+    orderInvoicing: "light",
     listOrders: "light",
     previewOrder: "light",
     preview: "heavy",

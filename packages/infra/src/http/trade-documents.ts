@@ -13,6 +13,7 @@ import {
   tradeInvoicePreviewSchema,
   tradeInvoiceReceiptSchema,
   tradeOrderCommandSchema,
+  tradeOrderInvoicingSchema,
   tradeOrderListQuerySchema,
   tradeOrderPageSchema,
   tradeOrderPreviewSchema,
@@ -157,6 +158,17 @@ export function registerTradeDocumentRoutes(
       const { company } = parse(tradeCompanyQuerySchema, request.query);
       return tradeOrderSchema.parse(
         await app.order(company, parse(companyCodeSchema, request.params.orderId)),
+      );
+    },
+  );
+  server.all<{ Params: { orderId: string } }>(
+    "/api/v1/trade/orders/:orderId/invoicing",
+    async (request, reply) => {
+      boundary.assert(request, reply, ["GET"]);
+      const app = ready(request);
+      const { company } = parse(tradeCompanyQuerySchema, request.query);
+      return tradeOrderInvoicingSchema.parse(
+        await app.orderInvoicing(company, parse(companyCodeSchema, request.params.orderId)),
       );
     },
   );
