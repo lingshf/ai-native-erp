@@ -29,6 +29,8 @@ packages/
 
 core 不得导入 infra/web；web 不得导入 Node 内置或服务端库。
 
+`@erp/core` 的入口：`./domain`、`./application`、`./contracts`（桶文件），以及 D199（FLAKE-05 [#147](https://github.com/lingshf/ai-native-erp/pull/147)）新增的 3 条叶子子路径 `./application/storage`、`./contracts/migration`、`./contracts/master-data`。叶子子路径不得直接或间接导入桶文件；`check-boundaries.mjs` 只放行这 3 条，其他 `@erp/core/...` 子路径判为违规。新增、改名或移动子路径须报告设计角色。
+
 ## 2. 直接运行 TS 源码
 
 - 各包 `exports` 指向 `src/*.ts`；源码内相对导入写 `.ts` 扩展名。tsconfig：`erasableSyntaxOnly`、`verbatimModuleSyntax`、`allowImportingTsExtensions`、`noEmit`、`strict`。
