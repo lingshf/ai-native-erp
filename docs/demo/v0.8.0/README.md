@@ -6,7 +6,7 @@
 
 | 变化 | PR | 演示 | 截图 |
 |---|---|---|---|
-| 订单查询页：部分开票的订单显示每行已开/剩余数量，并有“开票”入口，带入开票页 | #171 | 查 PO-I1 → 看已开/剩余 → 点“开票” | `order-partial-*`、`invoice-prefilled-*` |
+| 订单查询页：部分开票的订单显示每行已开/剩余数量，并有“开票”入口，带入开票页 | #172 | 查 PO-I1 → 看已开/剩余 → 点“开票” | `order-partial-*`、`invoice-prefilled-*` |
 | 开票页按订单带入行（数量为剩余量）、带入提示、焦点到外部发票号 | #171 | 点“开票”后的开票页 | `invoice-prefilled-*` |
 | 已全部开票的订单：显示“已开完”，开票按钮禁用并说明原因；直接带 `fromOrder` 打开开票页只提示、不生成行 | #171、#172 | 查 PO-I2 → 直接打开其开票页 | `order-full-*`、`invoice-fully-invoiced-*` |
 | PROC-04、PROC-05（文档与脚本流程） | #169、#170 | 无界面变化，不演示 | — |
@@ -28,10 +28,16 @@
 
 ## 4. 复跑（从仓库根目录）
 
-先做无浏览器替身检查（不启动 Chrome / Playwright / Vitest）：
+先做无浏览器替身检查（不启动 Chrome / Playwright / Vitest）。替身按顺序运行 `seed-trade.mjs` 与 `seed-invoicing.mjs`，校验前置主数据引用（伙伴、税码、档案、条款、商品）和订单规则；场景含成功、超量开票、缺主数据、缺税码、缺参数：
 
 ```powershell
 powershell -NoProfile -File docs\demo\v0.8.0\scripts\stub-check.ps1
+```
+
+PROC-05 固定负例 1–5（空目录与删光、隐藏文件、读不了的文件、中途抛错、端口归属变化）的夹具，同样无浏览器：
+
+```powershell
+powershell -NoProfile -File docs\demo\v0.8.0\scripts\proc05-negatives.ps1
 ```
 
 真实服务演练（无浏览器，需协调者批准，D234）：
@@ -41,7 +47,26 @@ $shots = Join-Path $env:TEMP ("demo-s8-shots-" + [guid]::NewGuid())
 & .\docs\demo\v0.8.0\scripts\run-main.ps1 -Shots $shots -SkipCapture
 ```
 
-真实 Chrome 取图（需独占时段）：
+真实 Chrome 取图（需独占时段）。开始前先做外部进程预检（连续 6 次都应为 0，每次间隔 10 秒），不为 0 就不要开始：
+
+```powershell
+1..6 | ForEach-Object {
+  $n = @(Get-CimInstance Win32_Process | Where-Object {
+    $_.ProcessId -ne $PID -and $_.Name -ne "pwsh.exe" -and $_.Name -ne "powershell.exe" -and
+    ($_.Name -match "^(chrome|biome)" -or $_.CommandLine -match "vitest|playwright|vite\b|tsc\b|main\.ts|capture\.mjs")
+  }).Count
+  "预检 $_ : $n"
+  if ($n -ne 0) { throw "有外部进程，不开始" }
+  if ($_ -lt 6) { Start-Sleep 10 }
+}
+```
+
+build 完成后、capture 之前的 dist 断言（取图块里已串联；单独运行时用这段，不含 `/invoicing` 与 `fromOrder` 就中止）：
+
+```powershell
+$dist = Get-ChildItem packages\web\dist\assets -Filter *.js | Get-Content -Raw
+if (-not ($dist -match "/invoicing" -and $dist -match "fromOrder")) { throw "dist 里没有 /invoicing 或 fromOrder，旧界面，中止" }
+```
 
 ```powershell
 . {
@@ -50,6 +75,8 @@ $shots = Join-Path $env:TEMP ("demo-s8-shots-" + [guid]::NewGuid())
   try {
     npm run build   # 服务托管 packages/web/dist；不重建会演示旧界面
     if ($LASTEXITCODE -ne 0) { throw "构建失败，退出码 $LASTEXITCODE" }
+    $dist = Get-ChildItem packages\web\dist\assets -Filter *.js | Get-Content -Raw
+    if (-not ($dist -match "/invoicing" -and $dist -match "fromOrder")) { throw "dist 里没有 /invoicing 或 fromOrder，中止" }
     & .\docs\demo\v0.8.0\scripts\run-main.ps1 -Shots $shots
     $n = @(Get-ChildItem $shots -Filter *.png).Count
     if ($n -ne 16) { throw "截图数 $n，不是 16，不复制" }
@@ -62,7 +89,7 @@ $shots = Join-Path $env:TEMP ("demo-s8-shots-" + [guid]::NewGuid())
 
 `run-main.ps1` 启动前检查端口 4200 空闲；每个 seed 与 capture 之前都校验监听进程就是本轮服务；`finally` 只停本轮服务、只删本轮 `erp-demo-*` 目录。`screenshots/.gitkeep` 是替身检查的哨兵文件，别删。
 
-脚本入口：[run-main.ps1](scripts/run-main.ps1)、[capture.mjs](scripts/capture.mjs)、[seed-invoicing.mjs](scripts/seed-invoicing.mjs)、[stub-check.ps1](scripts/stub-check.ps1)、[seed-invoicing-stub.mjs](scripts/seed-invoicing-stub.mjs)；账套准备与主数据复用 v0.4.0 的 `prepare.mjs`、`seed-trade.mjs`。
+脚本入口：[run-main.ps1](scripts/run-main.ps1)、[capture.mjs](scripts/capture.mjs)、[seed-invoicing.mjs](scripts/seed-invoicing.mjs)、[stub-check.ps1](scripts/stub-check.ps1)、[proc05-negatives.ps1](scripts/proc05-negatives.ps1)、[seed-invoicing-stub.mjs](scripts/seed-invoicing-stub.mjs)；账套准备与主数据复用 v0.4.0 的 `prepare.mjs`、`seed-trade.mjs`。
 
 ## 5. 范围与限制
 

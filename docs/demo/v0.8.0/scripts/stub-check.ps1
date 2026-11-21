@@ -20,23 +20,39 @@ try {
   New-Item -ItemType Directory $iso | Out-Null
   $env:TEMP = $iso; $env:TMP = $iso
 
-  "== 场景 1：现行 seed-invoicing.mjs，成功分支 =="
-  & $node "$scripts\seed-invoicing-stub.mjs" "$scripts\seed-invoicing.mjs" pass
+  $trade = Join-Path $root "docs\demo\v0.4.0\scripts\seed-trade.mjs"
+  $stub = "$scripts\seed-invoicing-stub.mjs"
+  $utf8 = New-Object Text.UTF8Encoding $false
+  $tsrc = [IO.File]::ReadAllText($trade, [Text.Encoding]::UTF8)
+  $isrc = [IO.File]::ReadAllText("$scripts\seed-invoicing.mjs", [Text.Encoding]::UTF8)
+
+  "== 场景 1：现行 seed-trade.mjs + seed-invoicing.mjs 依次运行，成功分支（20 条请求） =="
+  & $node $stub pass $trade "$scripts\seed-invoicing.mjs"
   if ($LASTEXITCODE -ne 0) { $problems.Add("场景 1 失败，退出码 $LASTEXITCODE") }
 
-  "== 场景 2：副本把 PO-I1 开票数量改为 11，应被拒 =="
-  $copy = Join-Path $iso "seed-invoicing-over.mjs"
-  $src = [IO.File]::ReadAllText("$scripts\seed-invoicing.mjs", [Text.Encoding]::UTF8)
+  "== 场景 2：seed-trade 后，副本把 PO-I1 开票数量改为 11，应被拒 =="
   $needle = 'await invoice("PO-I1", "AP-I1-1", "4");'
-  if (-not $src.Contains($needle)) { throw "场景 2：原脚本里找不到要改的调用，副本不成立" }
-  [IO.File]::WriteAllText($copy, $src.Replace($needle, 'await invoice("PO-I1", "AP-I1-1", "11");'), (New-Object Text.UTF8Encoding $false))
-  & $node "$scripts\seed-invoicing-stub.mjs" $copy over-quantity
+  if (-not $isrc.Contains($needle)) { throw "场景 2：原脚本里找不到要改的调用，副本不成立" }
+  $over = Join-Path $iso "seed-invoicing-over.mjs"
+  [IO.File]::WriteAllText($over, $isrc.Replace($needle, 'await invoice("PO-I1", "AP-I1-1", "11");'), $utf8)
+  & $node $stub over-quantity $trade $over
   if ($LASTEXITCODE -ne 0) { $problems.Add("场景 2 失败，退出码 $LASTEXITCODE") }
 
-  "== 场景 3：缺少脚本路径参数，替身应以 2 退出（不算通过） =="
-  & $node "$scripts\seed-invoicing-stub.mjs"
-  if ($LASTEXITCODE -ne 2) { $problems.Add("场景 3 应退出 2，实际 $LASTEXITCODE") }
-} catch {
+  "== 场景 3：没有前置主数据（不跑 seed-trade）直接运行 seed-invoicing，订单应因伙伴不存在被拒 =="
+  & $node $stub no-master "$scripts\seed-invoicing.mjs"
+  if ($LASTEXITCODE -ne 0) { $problems.Add("场景 3 失败，退出码 $LASTEXITCODE") }
+
+  "== 场景 4：seed-trade 副本去掉税码 VAT，伙伴创建应因税码不存在被拒 =="
+  $taxNeedle = 'await trade("taxCode", "VAT", {'
+  if (-not $tsrc.Contains($taxNeedle)) { throw "场景 4：seed-trade 里找不到税码块，副本不成立" }
+  $noTax = Join-Path $iso "seed-trade-notax.mjs"
+  [IO.File]::WriteAllText($noTax, $tsrc.Replace($taxNeedle, 'if (false) await trade("taxCode", "VAT", {'), $utf8)
+  & $node $stub no-taxcode $noTax
+  if ($LASTEXITCODE -ne 0) { $problems.Add("场景 4 失败，退出码 $LASTEXITCODE") }
+
+  "== 场景 5：缺少参数，替身应以 2 退出（不算通过） =="
+  & $node $stub
+  if ($LASTEXITCODE -ne 2) { $problems.Add("场景 5 应退出 2，实际 $LASTEXITCODE") }} catch {
   $problems.Add("替身或前置检查失败：" + $_.Exception.Message)
 } finally {
   $env:TEMP = $oldTemp; $env:TMP = $oldTmp
