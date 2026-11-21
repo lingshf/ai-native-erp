@@ -32,25 +32,31 @@
 
 ## 无浏览器替身检查（D208，现版命令）
 
-命令（仓库根目录；提交 `03a1170` 之上增加本脚本后运行，脚本只读取 README 第 4 节的复跑块并原样执行）：
+命令（仓库根目录；脚本只读取 README 第 4 节的复跑块并原样执行）：
 
 ```powershell
 powershell -NoProfile -File docs\demo\v0.6.0\scripts\stub-check.ps1
 ```
 
-退出码 0。替身用 PowerShell 函数遮蔽 `npm`、`node`、`Start-Process`、`Invoke-WebRequest`、`Stop-Process`、`Copy-Item`、`Get-NetTCPConnection`：没有启动 Chrome、Playwright、Vitest，没有监听端口，没有重拍截图，不碰仓库文件；`capture.mjs` 的替身按场景返回退出码并在 `$env:TEMP\demo-s6-shots` 生成空 PNG（12 + 4）。检查后另用进程查询确认无 headless/playwright 进程。`Copy-Item` 只记录调用，不真正复制。
+最终运行：退出码 **0**，输出 `ALL ASSERTIONS PASSED (7 scenarios)`。对应提交即本记录所在 PR 的 head（见 PR 正文）。
 
-| 场景 | 结果 | Copy-Item | Stop-Process | 残留 erp-demo-* |
-|---|---|---|---|---|
-| 1 成功 | 块完成 | 1 | 2（两轮各停本轮 pid） | 0 |
-| 2 主账套 capture 退出码 3 | `throw capture failed, exit 3` | 0 | 1 | 0 |
-| 3 迁移 capture 退出码 5 | `throw capture failed, exit 5` | 0 | 2 | 0 |
-| 4 启动前端口被占用 | `throw port busy` | 0 | 0（未启动任何进程） | 0 |
-| 5 启动后监听进程归属不符 | `throw owner mismatch` | 0 | 1 | 0 |
-| 6 seed 之后归属不符 | `throw owner mismatch after seed`（capture 未被调用） | 0 | 1 | 0 |
-| 7 迁移账套归属不符 | `throw owner mismatch` | 0 | 2 | 0 |
+- 替身用 PowerShell 函数遮蔽 `npm`、`node`、`Start-Process`、`Invoke-WebRequest`、`Stop-Process`、`Copy-Item`、`Get-NetTCPConnection`：没有启动 Chrome、Playwright、Vitest，没有监听端口，没有重拍截图；运行前后用进程查询确认无 headless/playwright 进程。
+- **隔离**：运行期间 `TEMP`/`TMP` 指向独立目录 `s6-stub-<guid>`，shots 与 `erp-demo-*` 都落在其中，结束后整体删除；替身拦截任何不在隔离目录内的 capture 输出。`Copy-Item` 只记录，不真正复制。运行前先确认真实截图目录无未提交改动，并对其 16 张 PNG 与 2 个日志做 SHA256；运行后再比对，全部不变，`git status` 干净。
+- **上一版缺陷**：上一版没有隔离，其 `Remove-Item` 清掉了真实的 `$env:TEMP\demo-s6-shots`（仓库里已提交的 `screenshots/` 未受影响，已核对与提交 `5675c9e` 逐字节一致）。本版不再触碰该目录。
+- **断言**：每个场景断言是否抛出及抛出内容、`Copy-Item` 次数、capture 调用次数、被停止的 pid 列表、残留 `erp-demo-*` 数；任一断言失败即退出码 1。另做了一次反向验证（把场景 1 的期望 pid 改成 `[111]`），脚本如期报出 `ASSERT FAIL` 并以退出码 1 结束。
+- **假 PID**：主账套 111，迁移账套 222；“端口被别的进程占用/归属不符”用 999 和 4242。因此能区分清理的是哪一个服务。
 
-这只验证脚本的控制流（失败即停、不复制、只清本轮对象），**没有验证**真实 Chrome 截图、真实端口监听或真实 seed 行为；修改后的脚本也没有按真实环境实跑。
+| 场景 | 抛出 | Copy-Item | capture 调用 | 停止的 pid | 残留 erp-demo-* |
+|---|---|---|---|---|---|
+| 1 成功 | 无 | 1 | 2 | 111、222 | 0 |
+| 2 主账套 capture 退出码 3 | `capture failed, exit 3` | 0 | 1 | 111 | 0 |
+| 3 迁移 capture 退出码 5 | `capture failed, exit 5` | 0 | 2 | 111、222 | 0 |
+| 4 启动前端口被占用 | `port busy` | 0 | 0 | 无（未启动进程） | 0 |
+| 5 启动后归属不符（主） | `owner mismatch` | 0 | 0 | 111 | 0 |
+| 6 seed 之后归属不符（主） | `owner mismatch after seed` | 0 | 0 | 111 | 0 |
+| 7 迁移账套归属不符 | `owner mismatch` | 0 | 1 | 111、222 | 0 |
+
+这只验证脚本控制流（失败即停、不复制、只清本轮对象），**没有验证**真实 Chrome 截图、真实端口监听或真实 seed 行为。
 
 ## 未在授权时段内验证的分支
 
