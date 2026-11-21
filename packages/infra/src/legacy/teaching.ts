@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { dirname, isAbsolute, join, parse, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type { SQLOutputValue } from "node:sqlite";
-import { StorageError } from "@erp/core/application";
+import { StorageError } from "@erp/core/application/storage";
 import type {
   LegacyTeachingLedger,
   LegacyTeachingLedgerQuery,

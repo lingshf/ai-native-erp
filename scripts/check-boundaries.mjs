@@ -47,6 +47,14 @@ const browser = new Set([
   "Response",
   "process",
 ]);
+const coreEntries = Object.assign(Object.create(null), {
+  "@erp/core/domain": "domain",
+  "@erp/core/application": "application",
+  "@erp/core/contracts": "contracts",
+  "@erp/core/application/storage": "application",
+  "@erp/core/contracts/master-data": "contracts",
+  "@erp/core/contracts/migration": "contracts",
+});
 const builtins = new Set(builtinModules.map((name) => name.replace(/^node:/, "")));
 const projectOf = (file) =>
   Object.entries(projects).find(([, prefix]) => file.startsWith(prefix))?.[0] ??
@@ -83,7 +91,7 @@ export function checkImportBoundaries(file, text) {
       report(node, "Native SQLite imports are restricted to storage and the worker entry.");
     const destination = name.startsWith(".")
       ? projectOf(posix.normalize(posix.join(posix.dirname(normalized), name)))
-      : (/^@erp\/core\/(domain|application|contracts)$/.exec(name)?.[1] ??
+      : (coreEntries[name] ??
         (/^@erp\/infra(?:\/|$)/.test(name)
           ? "infra"
           : /^@erp\/web(?:\/|$)/.test(name)

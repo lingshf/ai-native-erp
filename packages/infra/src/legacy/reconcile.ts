@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { StorageError } from "@erp/core/application";
-import { migrationReportSchema, type MigrationReport } from "@erp/core/contracts";
+import { StorageError } from "@erp/core/application/storage";
+import { migrationReportSchema, type MigrationReport } from "@erp/core/contracts/migration";
 import {
   type LegacyImportSnapshot,
   legacyImportPlan,

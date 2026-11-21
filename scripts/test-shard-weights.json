@@ -9,6 +9,7 @@
   "packages/core/test/domain/master-data.test.ts": 6,
   "packages/core/test/domain/trade-calculator.test.ts": 65,
   "packages/core/test/domain/trade-master.test.ts": 48,
+  "packages/core/test/package-exports.test.ts": 12,
   "packages/infra/bench/reports.test.ts": 3606,
   "packages/infra/bench/trade-http.test.ts": 12,
   "packages/infra/test/application/ai-assistant.test.ts": 1177,

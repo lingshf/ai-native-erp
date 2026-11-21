@@ -79,6 +79,44 @@ test("application and web reject concrete or relative backdoors but allow their 
     ),
     [],
   );
+  for (const source of [
+    "import { StorageError } from '@erp/core/application/storage';",
+    "import { accountFieldsSchema } from '@erp/core/contracts/master-data';",
+    "import { migrationReportSchema } from '@erp/core/contracts/migration';",
+  ])
+    assert.deepEqual(checkImportBoundaries("packages/infra/src/legacy/reconcile.ts", source), []);
+  assert.deepEqual(
+    checkImportBoundaries(
+      "packages/web/src/app.tsx",
+      "import { migrationReportSchema } from '@erp/core/contracts/migration';",
+    ),
+    [],
+  );
+  for (const [file, source] of [
+    ["packages/web/src/app.tsx", "import { StorageError } from '@erp/core/application/storage';"],
+    [
+      "packages/core/src/domain/money.ts",
+      "import { migrationReportSchema } from '@erp/core/contracts/migration';",
+    ],
+    [
+      "packages/core/src/contracts/health.ts",
+      "import { StorageError } from '@erp/core/application/storage';",
+    ],
+  ])
+    assert.ok(checkImportBoundaries(file, source).length, source);
+  for (const source of [
+    "import { x } from '@erp/core/application/index';",
+    "import { x } from '@erp/core/application/trade-reporting';",
+    "import { x } from '@erp/core/contracts/openapi';",
+    "import { x } from '@erp/core/domain/money';",
+    "import { x } from '@erp/core/application/../../../infra/src/main.ts';",
+    "import { x } from '@erp/core/domain-extra';",
+    "import { x } from '@erp/core/constructor';",
+  ])
+    assert.ok(
+      checkImportBoundaries("packages/infra/src/legacy/reconcile.ts", source).length,
+      source,
+    );
 });
 
 test("computed dynamic imports and require cannot evade pure-layer checks", () => {

@@ -11,7 +11,7 @@ import {
 } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { setTimeout } from "node:timers/promises";
-import { StorageError } from "@erp/core/application";
+import { StorageError } from "@erp/core/application/storage";
 
 function paths(filename: string) {
   const canonical = join(realpathSync(dirname(filename)), basename(filename));

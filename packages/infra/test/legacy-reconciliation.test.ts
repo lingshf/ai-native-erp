@@ -15,6 +15,7 @@ import { executeLegacyImport } from "../src/storage/legacy-import.ts";
 import { readMigrationStatus } from "../src/storage/reconciliation.ts";
 import { createMasterDataStore } from "../src/storage/master-data.ts";
 import { legacyFixture, captureDirectory, openingItemsFile } from "./support/legacy-fixture.mjs";
+import { runStorageAdmin } from "../../../scripts/storage-admin-main.mjs";
 
 const choices: ImportChoices = {
   drafts: "import-as-draft",
@@ -123,6 +124,15 @@ async function fixture(
     JSON.stringify({ knownDifferencesSha256: report.knownDifferencesSha256 }),
   );
   return { ...f, snapshotReader: snapshot, targetFile: target, confirmation, report };
+}
+async function storageAdmin(args: string[]) {
+  const stdout: string[] = [],
+    stderr: string[] = [];
+  const status = await runStorageAdmin(args, {
+    stdout: (line: string) => stdout.push(`${line}\n`),
+    stderr: (line: string) => stderr.push(`${line}\n`),
+  });
+  return { status, stdout: stdout.join(""), stderr: stderr.join("") };
 }
 function state(target: string) {
   const db = new Database(target, { readonly: true });
@@ -327,6 +337,7 @@ test("confirmation excludes another process's business admission and rejects a c
             ],
             { encoding: "utf8", timeout: 3000 },
           );
+          assert.ifError(child.error);
           assert.equal(child.status, 0, child.stderr);
           const db = new Database(f.targetFile);
           try {
@@ -393,8 +404,27 @@ test.for(["check", "confirm"] as const)(
         timeout: 3000,
       },
     );
+    assert.ifError(result.error);
     assert.equal(result.status, action === "check" ? 1 : 0, result.stderr);
     assert.equal(JSON.parse(result.stdout).verdict, action === "check" ? "pending" : "pass");
+  },
+);
+test.for(["check", "confirm"] as const)(
+  "CLI entry explicit %s preserves the verdict and exit status in process",
+  async (action, t) => {
+    const f = await fixture(t);
+    const result = await storageAdmin([
+      "legacy-reconcile",
+      "--snapshot-dir",
+      f.target,
+      "--target",
+      f.targetFile,
+      ...(action === "check" ? ["--check"] : ["--confirm", f.confirmation]),
+    ]);
+    assert.equal(result.status, action === "check" ? 1 : 0, result.stderr);
+    assert.equal(result.stderr, "");
+    assert.equal(JSON.parse(result.stdout).verdict, action === "check" ? "pending" : "pass");
+    assert.equal(state(f.targetFile).run.status, action === "check" ? "imported" : "reconciled");
   },
 );
 const gateCases = [
@@ -467,10 +497,29 @@ test.for(
   gateCases.flatMap((scenario) =>
     (["check", "confirm"] as const).map((action) => ({ ...scenario, action })),
   ),
-)("CLI opening gate exits nonzero: $name / $action", async ({ amounts, action }, t) => {
+)("CLI entry opening gate exits nonzero: $name / $action", async ({ amounts, action }, t) => {
   const f = await fixture(t, {
     tradeControls: true,
     controlAmounts: amounts,
+    withoutOpening: true,
+  });
+  const result = await storageAdmin([
+    "legacy-reconcile",
+    "--snapshot-dir",
+    f.target,
+    "--target",
+    f.targetFile,
+    ...(action === "check" ? ["--check"] : ["--confirm", f.confirmation]),
+  ]);
+  assert.equal(result.status, 1, result.stderr);
+  assert.equal(result.stderr, "");
+  assert.equal(JSON.parse(result.stdout).verdict, "blocked");
+  assert.equal(state(f.targetFile).run.status, "imported");
+});
+test("CLI opening gate exits nonzero: LEGACY 100 / confirm", async (t) => {
+  const f = await fixture(t, {
+    tradeControls: true,
+    controlAmounts: [100],
     withoutOpening: true,
   });
   const result = spawnSync(
@@ -482,10 +531,12 @@ test.for(
       f.target,
       "--target",
       f.targetFile,
-      ...(action === "check" ? ["--check"] : ["--confirm", f.confirmation]),
+      "--confirm",
+      f.confirmation,
     ],
     { encoding: "utf8", timeout: 3000 },
   );
+  assert.ifError(result.error);
   assert.equal(result.status, 1, result.stderr);
   assert.equal(JSON.parse(result.stdout).verdict, "blocked");
   assert.equal(state(f.targetFile).run.status, "imported");
