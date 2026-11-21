@@ -214,8 +214,8 @@
   font-family: var(--font-mono);
 }
 /* UI-12：窄屏下固定布局四等分列宽太窄，普通英文词（enterprise、Difference）被词内断开。
-   改为自动布局：th（表头、字段名）只在词边界断行，列至少宽到最长的词；值列至少 10 个等宽字符，
-   更长的标识符 / 哈希 / 路径仍可断开。放不下时表在自身 .grid-wrap 内横向滚动（S5-b） */
+   改为自动布局：th（表头、字段名）与 td.word（词、日期、金额）只在词边界断行，列至少宽到最长的词；
+   其余 td（标识符 / 哈希 / 路径 / JSON）保持 anywhere，不撑宽列。放不下时表在自身 .grid-wrap 内横向滚动（S5-b） */
 @media (max-width: 599px) {
   .migration-page .kv {
     table-layout: auto;
@@ -224,11 +224,9 @@
   .migration-page .kv td {
     padding-inline: var(--space-1);
   }
-  .migration-page .kv th {
+  .migration-page .kv th,
+  .migration-page .kv td.word {
     overflow-wrap: break-word;
-  }
-  .migration-page .kv td:not(:last-child) {
-    min-width: 10ch;
   }
 }
 /* S5-b：原由 styles.css 全局 thead 规则给出 */

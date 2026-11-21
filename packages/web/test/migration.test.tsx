@@ -107,8 +107,18 @@ test("migration details show key-value tables with non-color mismatch marks, raw
               {
                 section: "draft-lines",
                 key: "teaching:DEMO-L-1",
-                expected: { company: "DEMO", account: "1100", debit: "100" },
-                actual: { company: "DEMO", account: "1200", debit: "150" },
+                expected: {
+                  company: "DEMO",
+                  account: "1100",
+                  debit: "100",
+                  table: "line_dimensions",
+                },
+                actual: {
+                  company: "DEMO",
+                  account: "1200",
+                  debit: "150",
+                  table: "line_dimensions",
+                },
               },
             ],
             knownDifferences: [],
@@ -170,6 +180,16 @@ test("migration details show key-value tables with non-color mismatch marks, raw
     ["company ", "DEMO", "DEMO", "—", false],
     ["account 不符", "1100", "1200", "—", true],
     ["debit 不符", "100", "150", "+50", true],
+    ["table ", "line_dimensions", "line_dimensions", "—", false],
+  ]);
+  // UI-12: prose cells wrap only between words on narrow screens; identifiers keep breaking anywhere.
+  const wordCells = (details: Element | undefined) =>
+    [...(details?.querySelectorAll("tbody td") ?? [])].map((td) => td.classList.contains("word"));
+  expect(wordCells(draft)).toEqual([
+    ...[true, true, true],
+    ...[true, true, true],
+    ...[true, true, true],
+    ...[false, false, true],
   ]);
   // Check rows carry no business key: each side is listed on its own, unmarked, without 差额.
   expect(cells(check)).toEqual([

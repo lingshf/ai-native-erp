@@ -22,6 +22,11 @@ const delta = (field: string, a: unknown, b: unknown) =>
         ? BigInt(b) - BigInt(a)
         : undefined;
 const show = (value: unknown) => (value === undefined ? "—" : String(value));
+// Prose values (words, dates, amounts) get class "word" so narrow screens break them only between
+// words; identifiers, hashes, paths and JSON (`_ / " {`, or any run over 24 chars) still break anywhere.
+const prose = /^[\p{L}\p{N}\s.,;:'’()&%+-]*$/u;
+const word = (text: string) =>
+  prose.test(text) && text.split(/\s+/).every((run) => run.length <= 24) ? "word" : undefined;
 // The response carries no business keys for check rows, so the two sides are listed one by one,
 // never paired by position; only server-reported differences (same key) are compared.
 const listChecks = (expected: Row[], actual: Row[]): Pair[] => [
@@ -60,17 +65,16 @@ export function Migration({ preferences }: { preferences: Preferences }) {
                     const a = left?.[field],
                       b = right?.[field],
                       change = delta(field, a, b),
-                      off = a !== b && left !== undefined && right !== undefined;
+                      off = a !== b && left !== undefined && right !== undefined,
+                      diff = change === undefined ? "—" : change > 0 ? `+${change}` : `${change}`;
                     return (
                       <tr key={field} data-mismatch={off || undefined}>
                         <th scope="row">
                           {field} {off && <strong className="mismatch">{d.mismatch}</strong>}
                         </th>
-                        <td>{show(a)}</td>
-                        <td>{show(b)}</td>
-                        <td>
-                          {change === undefined ? "—" : change > 0 ? `+${change}` : `${change}`}
-                        </td>
+                        <td className={word(show(a))}>{show(a)}</td>
+                        <td className={word(show(b))}>{show(b)}</td>
+                        <td className="word">{diff}</td>
                       </tr>
                     );
                   },
