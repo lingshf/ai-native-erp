@@ -60,7 +60,7 @@ powershell -NoProfile -File docs\demo\v0.7.0\scripts\stub-check.ps1
 
 输出摘要：`ready port=4199 pid=29000`；`posted product SERVICE 201`；PO-F1、PO-F2、SO-F3、SO-F4 均 201；`readiness ok: partners and 4 orders present`；`port 4199 released`。结束后无监听 4199、无 `erp-demo-*`，工作区只有预期改动。
 
-## 无浏览器的真实服务演练：命令\n\n演练用的是 `run-main.ps1` 去掉 capture 一行的临时副本，副本和原始终端输出没有保存；复现方法是复制 `scripts/run-main.ps1`，删去 `capture.mjs` 那一行，用 `-Shots` 以外的版本参数照旧调用（脚本版本一不含 `-Shots` 参数，直接运行）。上面“输出摘要”来自当时汇报，如实说明：不是可重放的保存日志。\n\n## 真实运行（第二个时段，D229，脚本版本一）
+## 无浏览器的真实服务演练：命令\n\n演练用的是 `run-main.ps1` 去掉 capture 一行的临时副本，副本和原始终端输出没有保存；复现方法是复制 `scripts/run-main.ps1`，删去 `capture.mjs` 那一行，按脚本版本一（无 `-Shots` 参数）直接运行。上面“输出摘要”来自当时汇报，如实说明：不是可重放的保存日志。\n\n## 真实运行（第二个时段，D229，脚本版本一）
 
 - 运行对象：提交 `0d10871`（脚本提交 `447c645`），开跑前 `git status --porcelain` 为空；与产品基线 main `f06d30c` 的产品代码相同（本分支只改文档与 Demo 脚本）。
 - 预检：11:57:36–11:58:28 连续 6 次，均为 0（10 s 采样，日志 `$env:TEMP\s7-precheck2.log`；规则：node / chrome / msedge 进程命令行含 vitest、playwright、headless）。
