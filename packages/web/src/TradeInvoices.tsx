@@ -1,16 +1,19 @@
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { useSearchParams } from "react-router-dom";
 import {
   companiesPageSchema,
   tradeInvoiceCommandSchema,
   tradeInvoicePageSchema,
   tradeInvoicePreviewSchema,
   tradeInvoiceReceiptSchema,
+  tradeOrderInvoicingSchema,
   type CompanyDto,
   type TradeInvoiceCommandDto,
   type TradeInvoicePreviewDto,
   type TradeInvoiceReceiptDto,
+  type TradeOrderInvoicingDto,
 } from "@erp/core/contracts";
 import { label, type LabelKey, type Preferences } from "./ui/index.ts";
 import { tradeEn } from "./ui/trade-labels.ts";
@@ -50,6 +53,11 @@ type Pending = { command: TradeInvoiceCommandDto; fingerprint: string; key: stri
 type Saved = { draft: Draft; documentId: string; dirty: boolean; pending: Pending | null };
 type Guard = { busy: boolean; unsaved: boolean };
 const idleGuard: Guard = { busy: false, unsaved: false };
+// TINV-01: one `fromOrder` request taken from the address; `company` null means the current one.
+type Intake = { company: string | null; orderId: string };
+type IntakeState =
+  | { status: "loading"; orderId: string }
+  | { status: "loaded" | "notFound" | "fullyInvoiced" | "failed" | "locked"; orderId: string };
 
 const today = () => new Date().toISOString().slice(0, 10);
 const blankLine = (n: number): LineDraft => ({
@@ -88,6 +96,43 @@ const lineFields = [
   "taxableCharge",
   "orderLineId",
 ] as const;
+
+// Exact decimal arithmetic in millionths, matching the contract's at-most-6-decimal quantities.
+const micros = (value: string) => {
+  const [whole = "0", fraction = ""] = value.split(".");
+  return BigInt(whole) * 1_000_000n + BigInt(fraction.padEnd(6, "0"));
+};
+const decimalText = (value: bigint) => {
+  const fraction = (value % 1_000_000n).toString().padStart(6, "0").replace(/0+$/u, "");
+  return fraction ? `${value / 1_000_000n}.${fraction}` : (value / 1_000_000n).toString();
+};
+/** New draft from an order: header from the order, only lines with an uninvoiced quantity. */
+function draftFromOrder({ order, invoiced }: TradeOrderInvoicingDto): Draft | null {
+  const done = new Map(invoiced.map((row) => [row.lineId, micros(row.invoicedQuantity)]));
+  const lines = order.lines.flatMap((line) => {
+    const remaining = micros(line.quantity) - (done.get(line.lineId) ?? 0n);
+    return remaining > 0n ? [{ line, remaining }] : [];
+  });
+  if (!lines.length) return null;
+  return {
+    ...blankDraft(),
+    side: order.side,
+    party: order.party,
+    orderId: order.orderId,
+    priceIncludesTax: order.priceIncludesTax,
+    rounding: order.rounding,
+    lines: lines.map(({ line, remaining }, index) => ({
+      lineId: `L${index + 1}`,
+      product: line.product,
+      taxCode: line.taxCode,
+      quantity: decimalText(remaining),
+      unitPrice: line.unitPrice,
+      discountPercent: line.discountPercent,
+      taxableCharge: line.taxableCharge,
+      orderLineId: line.lineId,
+    })),
+  };
+}
 
 // Drafts and an unresolved post envelope survive company switches, route changes and reloads in this tab.
 const sessionKey = (company: string) => `erp.tradeInvoices.v1.${company}`;
@@ -233,9 +278,28 @@ function toCommand(company: CompanyDto, documentId: string, draft: Draft): Trade
 
 export function TradeInvoices({ preferences }: { preferences: Preferences }) {
   const t: T = (key) => label(preferences.language, key);
-  const [selected, setSelected] = useState("");
+  const [params, setParams] = useSearchParams();
+  const [selected, setSelected] = useState(() => params.get("company") ?? "");
   const [guard, setGuard] = useState(idleGuard);
+  const [intake, setIntake] = useState<Intake | null>(null);
   useInvoiceLeaveGuard(guard);
+  const fromOrder = params.get("fromOrder");
+  // Take the request once and drop it from the address (replace), so a refresh never refills.
+  useEffect(() => {
+    if (fromOrder === null) return;
+    const target = params.get("company");
+    if (fromOrder.trim()) setIntake({ company: target, orderId: fromOrder.trim() });
+    if (target && !guard.busy) setSelected(target);
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete("fromOrder");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [fromOrder, params, setParams, guard.busy]);
+  const finishIntake = useCallback(() => setIntake(null), []);
   const companies = useInfiniteQuery({
     queryKey: ["companies"],
     initialPageParam: "",
@@ -249,7 +313,7 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
   const rows = companies.data?.pages.flatMap((page) => page.items) ?? [];
-  const company = rows.find((row) => row.code === (selected || rows[0]?.code));
+  const company = rows.find((row) => row.code === selected) ?? rows[0];
   return (
     <section className="page trade-invoices">
       <PageHeader
@@ -294,6 +358,12 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
             preferences={preferences}
             t={t}
             onGuard={setGuard}
+            intake={
+              intake && (intake.company === null || intake.company === company.code)
+                ? intake.orderId
+                : null
+            }
+            onIntake={finishIntake}
           />
           <InvoiceList company={company} preferences={preferences} t={t} />
         </>
@@ -307,11 +377,15 @@ function InvoiceEntry({
   preferences,
   t,
   onGuard,
+  intake,
+  onIntake,
 }: {
   company: CompanyDto;
   preferences: Preferences;
   t: T;
   onGuard: (guard: Guard) => void;
+  intake: string | null;
+  onIntake: () => void;
 }) {
   const client = useQueryClient();
   const [saved] = useState(() => loadSaved(company.code));
@@ -357,7 +431,66 @@ function InvoiceEntry({
     setDirty(false);
     setPreview(null);
     setError(null);
+    setFromOrder(null);
   };
+  const [fromOrder, setFromOrder] = useState<IntakeState | null>(null);
+  const [focusTick, setFocusTick] = useState(0);
+  useEffect(() => {
+    if (focusTick) document.getElementById("tinv-externalInvoice")?.focus();
+  }, [focusTick]);
+  const loading = useRef<AbortController | null>(null);
+  useEffect(() => () => loading.current?.abort(), []);
+  const fillFromOrder = async (orderId: string) => {
+    if (locked) {
+      setFromOrder({ status: "locked", orderId });
+      return;
+    }
+    loading.current?.abort();
+    const controller = new AbortController();
+    loading.current = controller;
+    setBusy(true);
+    setFromOrder({ status: "loading", orderId });
+    try {
+      const value = await masterRequest(
+        `/api/v1/trade/orders/${encodeURIComponent(orderId)}/invoicing?company=${encodeURIComponent(company.code)}`,
+        tradeOrderInvoicingSchema,
+        { signal: controller.signal },
+      );
+      if (controller.signal.aborted) return;
+      const next = draftFromOrder(value);
+      if (!next) {
+        setFromOrder({ status: "fullyInvoiced", orderId });
+        return;
+      }
+      if (dirty && !window.confirm(t("tinv.fromOrder.replaceConfirm"))) {
+        setFromOrder(null);
+        return;
+      }
+      setDraft(next);
+      setDocumentId(crypto.randomUUID());
+      setDirty(true);
+      setPreview(null);
+      setError(null);
+      setReceipt(null);
+      setFromOrder({ status: "loaded", orderId });
+      setFocusTick((tick) => tick + 1);
+    } catch (issue) {
+      if (controller.signal.aborted) return;
+      const missing =
+        issue instanceof MasterDataFailure &&
+        issue.kind === "http" &&
+        (issue.status === 404 || issue.status === 400);
+      setFromOrder({ status: missing ? "notFound" : "failed", orderId });
+    } finally {
+      if (!controller.signal.aborted) setBusy(false);
+    }
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: one load per address request; fillFromOrder reads that render's draft state.
+  useEffect(() => {
+    if (intake === null) return;
+    onIntake();
+    void fillFromOrder(intake);
+  }, [intake, onIntake]);
   const editLine = (index: number, field: (typeof lineFields)[number], value: string) =>
     edit({
       lines: draft.lines.map((line, i) => (i === index ? { ...line, [field]: value } : line)),
@@ -419,6 +552,7 @@ function InvoiceEntry({
       setReceipt(value);
       setPending(null);
       setPreview(null);
+      setFromOrder(null);
       setDraft(blankDraft());
       setDocumentId(crypto.randomUUID());
       setDirty(false);
@@ -521,6 +655,41 @@ function InvoiceEntry({
           {t("tinv.posted")} {receipt.journalIds.join(", ")} · {money(receipt.gross)}
         </MessageBar>
       )}
+      {fromOrder && fromOrder.status !== "loaded" && (
+        <MessageBar
+          tone={
+            fromOrder.status === "loading" || fromOrder.status === "fullyInvoiced"
+              ? "info"
+              : fromOrder.status === "locked"
+                ? "warning"
+                : "danger"
+          }
+          role={
+            fromOrder.status === "loading" || fromOrder.status === "fullyInvoiced"
+              ? "status"
+              : "alert"
+          }
+        >
+          <p>
+            {t(`tinv.fromOrder.${fromOrder.status}`)} · {fromOrder.orderId}
+          </p>
+          {fromOrder.status === "failed" && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={busy}
+              onClick={() => void fillFromOrder(fromOrder.orderId)}
+            >
+              {t("master.retry")}
+            </button>
+          )}
+        </MessageBar>
+      )}
+      {fromOrder?.status === "loaded" && (
+        <MessageBar tone="success" role="status">
+          {t("tinv.fromOrder.loaded")} · {fromOrder.orderId}
+        </MessageBar>
+      )}
       {stale && (
         <MessageBar tone="warning" role="alert">
           {t("tinv.stale")}
@@ -528,6 +697,12 @@ function InvoiceEntry({
       )}
       <TeachingTip teaching={preferences.teaching} title={t("master.teachingTitle")}>
         {t("tinv.teaching")}
+        {fromOrder?.status === "loaded" && (
+          <>
+            <br />
+            {t("tinv.fromOrder.teaching")}
+          </>
+        )}
       </TeachingTip>
       <FastTab id="tinv-general" title={t("tinv.entry")} summary={generalSummary}>
         <fieldset disabled={locked} className="ui-form-grid">

@@ -14,6 +14,7 @@ import {
   tradeDimensionKey,
   tradeSegments,
   roundTradeRatio,
+  formatMicros,
   formatMinor,
   matchTradeOrderLine,
   normalizeExternalInvoice,
@@ -150,6 +151,10 @@ export interface TradeDocumentRepository {
   ): Promise<void>;
   itemSettlements(company: string, itemId: string): Promise<readonly TradeSettlementReceipt[]>;
   latestSettlementDate(company: string, itemId: string): Promise<string>;
+}
+export interface TradeOrderInvoicing {
+  readonly order: TradeOrder;
+  readonly invoiced: readonly { readonly lineId: string; readonly invoicedQuantity: string }[];
 }
 export interface TradeInvoicePreview {
   readonly fingerprint: string;
@@ -1239,6 +1244,30 @@ export class TradeDocumentService {
     checkedCode(company);
     checkedCode(orderId);
     return this.store.read(async (repo) => required(await repo.tradeOrder(company, orderId)));
+  }
+  /** TINV-01: invoiced quantity per order line from the same tradeOrderInvoiced used by matching. */
+  async orderInvoicing(company: string, orderId: string): Promise<TradeOrderInvoicing> {
+    checkedCode(company);
+    checkedCode(orderId);
+    return this.store.read(async (repo) => {
+      const order = required(await repo.tradeOrder(company, orderId));
+      const invoiced = new Map(
+        (
+          await repo.tradeOrderInvoiced(
+            company,
+            order.orderId,
+            order.lines.map((line) => line.lineId),
+          )
+        ).map((row) => [row.orderLineId, row.micros]),
+      );
+      return {
+        order,
+        invoiced: order.lines.map((line) => ({
+          lineId: line.lineId,
+          invoicedQuantity: formatMicros(invoiced.get(line.lineId) ?? 0n),
+        })),
+      };
+    });
   }
   async listOrders(company: string, query: TradeOrderListQuery): Promise<Page<TradeOrderSummary>> {
     checkedCode(company);
