@@ -205,6 +205,20 @@
 **已有问题**（与 #106 无关）：迁移页 `.kv` 表不在独立滚动区，版式检查报 `not in own scroller`，base 上已存在，由 UI-10e 引入，登记为 S5-b。
 
 
+### 5.3 UI-11d：`styles.css` 保留声明删除记录
+
+来源：UI-11d [#142](https://github.com/lingshf/ai-native-erp/pull/142)，head `b40f2e5`，base `e47b93b`，合并为 main `6be3bcf`（[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44864113434) 12/12 测试步骤通过）。完整证据（四个时段的日志、第二道检查表、sha256 清单）见 PR 正文与证据 gist。本节只记摘要。前置：UI-11b [#134](https://github.com/lingshf/ai-native-erp/pull/134)、UI-11c [#141](https://github.com/lingshf/ai-native-erp/pull/141) 补齐了 S5-g（[#126](https://github.com/lingshf/ai-native-erp/pull/126)）登记的 4 项遗漏。
+
+**删除**（只改 `styles.css`）：`input[type="checkbox"]` 整条；`button` 的 background / color / border / cursor；`button:hover:not(:disabled)`；`button:active:not(:disabled)`；`th, td` 整条。
+
+**保留**：`button { border-radius: var(--radius-sm) }`。第二道检查发现订单列表 `button.cell-link`（`TradeOrders.tsx:841`，TORD-03 [#132](https://github.com/lingshf/ai-native-erp/pull/132) 引入）没有圆角的类规则。control 运行（去掉 `button` 规则）的差异只有这个元素的 4 个 `border-*-radius`，共 40 条，像素差 0（圆角只在焦点环上可见）。登记为 S7 候选 [UI-11e](../tasks/UI-11e-cell-link-radius-delete-styles-css.md)，文件清空后连同 `main.tsx` 的 import 一起删除。
+
+**结果**（PR 自述）：
+- r2（head 对 base）：全部导航路由 × 两主题 × 1440 / 390 共 160 张，计算值差 0，像素差 0；UI-11b / UI-11c 补采状态在时段 4 通过，含 UI-11b 时段漏采的 PeriodClose 结账按钮 8 个状态；真实 Chrome infra-browser E2E 6 个文件 / 13 个用例通过。
+- PG-05（相对 `e47b93b`）：`index.css` gzip 2.97 → 2.92 kB（gzip-9 −52 B）；入口 JS +6 B，只是内嵌资产 hash，视为不变。
+
+**D-7**：部分完成，剩余项见 UI-11e。
+
 ## 6. 偏差与裁定
 
 裁定来自设计审阅评论。

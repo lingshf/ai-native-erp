@@ -1,4 +1,6 @@
-# UI-11d 删除 `styles.css` 保留的全局声明（D-7 完成）
+# UI-11d 删除 `styles.css` 保留的全局声明（推进 D-7）
+
+> 结果（[#142](https://github.com/lingshf/ai-native-erp/pull/142)，main `6be3bcf`）：任务完成，D-7 部分完成。保留的 `button { border-radius }` 及文件、入口 import 的删除转 [UI-11e](UI-11e-cell-link-radius-delete-styles-css.md)，D-7 在 UI-11e 合并且 main Full 12/12 通过后才完成。
 
 - Sprint：S6（[计划](README.md#s6订单列表与保存前预览--s5-遗留收尾建议-v060)；S5 收尾后登记的 backlog）　依赖：[UI-11b](UI-11b-s5g-leftover-button-checkbox.md)、[UI-11c](UI-11c-virtualrows-spacer-cells.md) 都合并（外壳串行最后）　建议分支：`ui-11d-delete-styles-css`
 - 冲突域：web-ui:shell（**只改 `src/styles.css`，以及文件清空时 `src/main.tsx` 中 `import "./styles.css";` 这一行**）。证据覆盖全部页面，开工时不应有正在进行的页面 CSS 任务。
