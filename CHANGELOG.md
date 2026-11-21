@@ -8,9 +8,9 @@
 
 （暂无）
 
-## [0.8.0] - 待定（发布日在日期 PR 中填写）
+## [0.8.0] - 2026-11-21
 
-> 发布候选草稿，未获打 tag 授权。产品代码基线为 `main` 3720e96（S8 功能与流程任务全部合并，Full 12/12，run 44956152354）；自 v0.7.0（tag 所指提交 9f557f7）到产品基线 3720e96 共 5 个已合并 PR 的 5 个 squash 提交（#168–#172；`git rev-list --count v0.7.0..3720e96` = 5），其中 #168 是设计提交，#169、#170 是流程文档，#171、#172 是产品与测试提交。本 RC 的 main base 与产品基线相同（3720e96）。按 D21，tag `v0.8.0` 打在日期 PR 合并后的 squash 提交上。Demo 记录（基线 981151d）：[docs/demo/v0.8.0](docs/demo/v0.8.0/run-through.md)。
+> 产品代码基线为 `main` 3720e96（S8 功能与流程任务全部合并，Full 12/12，run 44956152354）；自 v0.7.0（tag 所指提交 9f557f7）到产品基线 3720e96 共 5 个已合并 PR 的 5 个 squash 提交（#168–#172；`git rev-list --count v0.7.0..3720e96` = 5），其中 #168 是设计提交，#169、#170 是流程文档，#171、#172 是产品与测试提交。之后 main 只有文档提交（RC #173、Demo #174、S8 评审与回顾 #175，main `fc54f69` 为日期 PR 的基线），产品代码与 `3720e96` 相同。按 D21，tag `v0.8.0` 打在本日期 PR 合并后的 squash 提交上，不是 `3720e96`。Demo 记录（基线 981151d）：[docs/demo/v0.8.0](docs/demo/v0.8.0/run-through.md)。
 
 S8 Sprint：从订单开票。订单详情逐行显示已开票 / 未开票数量，并提供“开票”入口；发票页按订单带入还没开票的数量，生成发票草稿。**无新增迁移**（最新仍为 017），无依赖变化，不改过账规则。
 
@@ -327,7 +327,7 @@ M1 贸易里程碑完成（M1-01..07，M1-R 评审通过，无阻塞项）。产
 - 旧快照未配置提示、凭证空列表文案和根 README 迁移版本说明已在 v0.2.0 修复（见 `[0.2.0]`）；v0.1.0 原发布基线不包含这些修复。
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
-[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.8.0...HEAD
 [0.8.0]: https://github.com/lingshf/ai-native-erp/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/lingshf/ai-native-erp/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/lingshf/ai-native-erp/compare/v0.5.0...v0.6.0
