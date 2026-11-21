@@ -9,6 +9,11 @@
 //   side:  AP for odd n, AR for even n (alternating by orderId);
 //   date:  2026-12-15 for n > 9,950 (PO-009951..PO-010000, the 50 largest orderIds), otherwise
 //          2026-01-01 + ((n - 1) % 334) days, i.e. within 2026-01-01..2026-11-30.
+// TINV-03 invoice fixture (only trade_document_lines and open_items, which the invoicing
+// aggregate reads), one invoice per invoiced order:
+//   n % 3 === 1: every line invoiced in full (full);
+//   n % 3 === 0: half of line L1 invoiced (partial);
+//   n % 3 === 2: nothing invoiced (none); PO-000002 also has one cancelled invoice on all lines.
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { cpus, release, tmpdir } from "node:os";
@@ -16,6 +21,7 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 import { MasterDataService, type TradeOrderListQuery } from "@erp/core/application";
 import { tradeOrderPageSchema } from "@erp/core/contracts";
+import { quantityMicros } from "@erp/core/domain";
 import { createApi } from "../src/http/index.ts";
 import { createSqliteStorage } from "../src/storage/index.ts";
 import { createMasterDataStore } from "../src/storage/master-data.ts";
@@ -38,6 +44,10 @@ const dateOf = (index: number) =>
   index > 9_950
     ? "2026-12-15"
     : new Date(Date.UTC(2026, 0, 1 + ((index - 1) % 334))).toISOString().slice(0, 10);
+const cancelled = 2;
+const invoicingOf = (index: number) =>
+  index % 3 === 1 ? "full" : index % 3 === 0 ? "partial" : "none";
+const documentId = (index: number) => `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
 
 async function seed(filename: string) {
   const storage = createSqliteStorage({ filename });
@@ -54,6 +64,7 @@ async function seed(filename: string) {
   }
   const db = new Database(filename);
   let lines = 0;
+  let invoiceLines = 0;
   try {
     db.pragma("foreign_keys = OFF");
     const order = db.prepare(
@@ -62,6 +73,36 @@ async function seed(filename: string) {
     const line = db.prepare(
       `INSERT INTO trade_order_lines VALUES('DEFAULT',?,?,?,'EXPENSE','VAT','1','100','0','0',10000,1300,11300)`,
     );
+    const invoiceLine = db.prepare(
+      `INSERT INTO trade_document_lines VALUES('DEFAULT',?,?,?,'P','EXPENSE','VAT','VAT','13',?,?,'100','0','0',10000,1300,11300,1300,?,?,10000,'matched')`,
+    );
+    const openItem = db.prepare(
+      `INSERT INTO open_items VALUES('DEFAULT',?,?,'P02','2202','{}','CNY','2026-01-15','2026-01-15','2026-02-15','2026-02-15',11300,10000,1300,?,?,?,?,1)`,
+    );
+    const invoice = (index: number, lineIds: number, quantity: string, status: string) => {
+      const document = documentId(index);
+      const open = status === "open";
+      openItem.run(
+        document,
+        sideOf(index),
+        open ? 11300 : 0,
+        open ? 10000 : 0,
+        open ? 1300 : 0,
+        status,
+      );
+      for (let n = 1; n <= lineIds; n++) {
+        invoiceLine.run(
+          document,
+          `I${n}`,
+          n,
+          quantity,
+          Number(quantityMicros(quantity)),
+          orderId(index),
+          `L${n}`,
+        );
+        invoiceLines++;
+      }
+    };
     db.transaction(() => {
       for (let index = 1; index <= orders; index++) {
         const id = orderId(index);
@@ -70,12 +111,16 @@ async function seed(filename: string) {
           line.run(id, `L${n}`, n);
           lines++;
         }
+        const status = invoicingOf(index);
+        if (status === "full") invoice(index, lineCount(index), "1", "open");
+        else if (status === "partial") invoice(index, 1, "0.5", "open");
+        else if (index === cancelled) invoice(index, lineCount(index), "1", "cancelled");
       }
     })();
   } finally {
     db.close();
   }
-  return lines;
+  return { lines, invoiceLines };
 }
 
 function percentile(sorted: readonly number[], fraction: number) {
@@ -115,6 +160,13 @@ async function measure(origin: string, scenario: Scenario) {
     assert.equal(page.items.length, scenario.expected.items, scenario.name);
     assert.equal(page.items[0]?.orderId, scenario.expected.first, scenario.name);
     assert.equal(page.nextCursor, scenario.expected.next, scenario.name);
+    // Base (pre-TINV-03) pages carry no invoicing; the same bench file runs on both.
+    for (const item of page.items) {
+      const invoicing = (item as { invoicing?: string }).invoicing;
+      if (invoicing !== undefined) {
+        assert.equal(invoicing, invoicingOf(Number(item.orderId.slice(3))), item.orderId);
+      }
+    }
   };
   check((await once()).page);
   for (let index = 0; index < warmups; index++) await once();
@@ -138,6 +190,7 @@ async function measure(origin: string, scenario: Scenario) {
     responseBytes: last.bytes,
     p50Ms: Number(percentile(sorted, 0.5).toFixed(2)),
     p95Ms: Number(percentile(sorted, 0.95).toFixed(2)),
+    p99Ms: Number(percentile(sorted, 0.99).toFixed(2)),
     maxMs: Number((sorted.at(-1) as number).toFixed(2)),
     budgetMs,
     pass: percentile(sorted, 0.95) <= budgetMs,
@@ -179,7 +232,7 @@ const directory = await mkdtemp(join(tmpdir(), "erp-tord05-bench-"));
 try {
   const filename = join(directory, "ledger.sqlite");
   const seededAt = performance.now();
-  const lines = await seed(filename);
+  const { lines, invoiceLines } = await seed(filename);
   console.info(
     JSON.stringify({
       node: process.version,
@@ -188,6 +241,7 @@ try {
       cpu: cpus()[0]?.model,
       orders,
       lines,
+      invoiceLines,
       seedMs: Math.round(performance.now() - seededAt),
     }),
   );
@@ -207,6 +261,18 @@ try {
       lastBefore: "2026-11-30",
       firstDate: "2026-01-01",
       ap: orders / 2,
+    });
+    const invoices = raw
+      .prepare(
+        "SELECT count(*) AS documents,sum(status='cancelled') AS cancelled,(SELECT count(*) FROM trade_document_lines) AS lines,(SELECT count(DISTINCT order_id) FROM trade_document_lines) AS orders FROM open_items",
+      )
+      .get();
+    console.info(JSON.stringify({ invoices }));
+    assert.deepEqual(invoices, {
+      documents: Math.ceil(orders / 3) + Math.floor(orders / 3) + 1,
+      cancelled: 1,
+      lines: invoiceLines,
+      orders: Math.ceil(orders / 3) + Math.floor(orders / 3) + 1,
     });
     for (const scenario of scenarios) {
       const statement = tradeOrderPageStatement("DEFAULT", {
@@ -242,10 +308,11 @@ try {
     }
     console.info(
       JSON.stringify({
-        summary: results.map(({ scenario, p50Ms, p95Ms, maxMs, pass }) => ({
+        summary: results.map(({ scenario, p50Ms, p95Ms, p99Ms, maxMs, pass }) => ({
           scenario,
           p50Ms,
           p95Ms,
+          p99Ms,
           maxMs,
           pass,
         })),

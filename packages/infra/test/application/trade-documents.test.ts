@@ -11,7 +11,12 @@ import {
   TradeDocumentService,
   TradeMasterService,
 } from "@erp/core/application";
-import { tradeOrderInvoicingSchema, tradeOrderSchema } from "@erp/core/contracts";
+import {
+  openApiDocument,
+  tradeOrderInvoicingSchema,
+  tradeOrderPageSchema,
+  tradeOrderSchema,
+} from "@erp/core/contracts";
 import {
   normalizeExternalInvoice,
   parseAiCandidate,
@@ -3108,7 +3113,10 @@ describe("trade invoices on real SQLite", () => {
       ),
     ];
   }
-  const summary = (created: Awaited<ReturnType<TradeDocumentService["createOrder"]>>) => {
+  const summary = (
+    created: Awaited<ReturnType<TradeDocumentService["createOrder"]>>,
+    invoicing: "none" | "partial" | "full" = "none",
+  ) => {
     const { commandHash: _, lines, ...header } = created;
     return {
       ...header,
@@ -3116,6 +3124,7 @@ describe("trade invoices on real SQLite", () => {
       net: lines.reduce((sum, item) => sum + item.net, 0),
       tax: lines.reduce((sum, item) => sum + item.tax, 0),
       gross: lines.reduce((sum, item) => sum + item.gross, 0),
+      invoicing,
     };
   };
   function userTableSnapshot(observer: Database.Database) {
@@ -3162,7 +3171,7 @@ describe("trade invoices on real SQLite", () => {
       await seedOtherCompany();
       await service.createOrder(order({ company: "OTHER", orderId: "PO-A" }));
       await service.createOrder(order({ company: "OTHER", orderId: "PO-0" }));
-      const [b, a, c] = created.map(summary);
+      const [b, a, c] = created.map((item) => summary(item));
       expect(a).toMatchObject({ rounding: "document", lineCount: 3 });
       const before = userTableSnapshot(observer);
       const first = await get("/api/v1/trade/orders?company=DEFAULT&limit=2");
@@ -3258,7 +3267,8 @@ describe("trade invoices on real SQLite", () => {
         await counted.listOrders("DEFAULT", query);
         sizes.push(statements.length);
       }
-      expect(new Set(sizes)).toEqual(new Set([2]));
+      // TINV-03: every page here is non-empty and adds one invoiced-status aggregate.
+      expect(new Set(sizes)).toEqual(new Set([3]));
       await counted.listOrders("DEFAULT", { limit: 2 });
       const page = statements.find((item) => item.sql.includes("FROM trade_orders"));
       if (!page) throw new Error("Missing order page statement");
@@ -3514,8 +3524,9 @@ describe("trade invoices on real SQLite", () => {
           { limit: 100, cursor: "PO-03" },
         ]) {
           statements.length = 0;
-          await counted.listOrders("DEFAULT", { ...page, ...filter });
-          expect(statements.length).toBe(2);
+          const listed = await counted.listOrders("DEFAULT", { ...page, ...filter });
+          // TINV-03: a non-empty page adds one invoiced-status aggregate; an empty page skips it.
+          expect(statements.length).toBe(listed.items.length > 0 ? 3 : 2);
           const [statement] = statements.filter((item) => item.sql.includes("FROM trade_orders"));
           if (!statement) throw new Error("Missing order page statement");
           expect(statement.sql).not.toMatch(/IS NULL/u);
@@ -3964,6 +3975,194 @@ describe("trade invoices on real SQLite", () => {
         raw.close();
       }
     } finally {
+      await db.release();
+      await backend.close();
+    }
+  });
+  // TINV-03: invoicing status on the order list, from the same invoiced quantities as TINV-01.
+  const micros = (value: string) => {
+    const [whole = "0", fraction = ""] = value.split(".");
+    return BigInt(whole) * 1_000_000n + BigInt(fraction.padEnd(6, "0"));
+  };
+  // Design decision 1, restated from the invoicing response: none / full / otherwise partial.
+  const statusOf = (body: {
+    order: { lines: { lineId: string; quantity: string }[] };
+    invoiced: { lineId: string; invoicedQuantity: string }[];
+  }) => {
+    const pairs = body.order.lines.map((orderLine) => {
+      const invoiced = body.invoiced.find((row) => row.lineId === orderLine.lineId);
+      if (!invoiced) throw new Error(`Missing invoiced row for ${orderLine.lineId}`);
+      return [micros(orderLine.quantity), micros(invoiced.invoicedQuantity)] as const;
+    });
+    if (pairs.every(([, invoiced]) => invoiced === 0n)) return "none";
+    return pairs.every(([ordered, invoiced]) => invoiced >= ordered) ? "full" : "partial";
+  };
+  const invoiceFor = (orderId: string, lines: [string, string, "RENT" | "WAGE"][]) =>
+    invoice({
+      orderId,
+      lines: lines.map(([orderLineId, quantity, product], index) =>
+        line({
+          lineId: `L${index + 1}`,
+          orderLineId,
+          quantity,
+          product,
+          unitPrice: product === "WAGE" ? "25.00" : "10.00",
+        }),
+      ),
+    });
+
+  it("TINV-03 lists each order's invoicing equal to the status derived from GET …/invoicing, through decimals and cancellations", async () => {
+    const executor = await SqliteExecutor.create({ filename, readers: 2 });
+    const api = await createApi({
+      environment: { ERP_PORT: "0" },
+      allowPortZero: true,
+      ...executor.services(),
+      logError: () => undefined,
+    });
+    try {
+      const host = new URL(await api.listen()).host;
+      const get = (url: string) => api.app.inject({ method: "GET", url, headers: { host } });
+      await service.createOrder(order());
+      await service.createOrder(
+        order({ orderId: "PO-D", lines: [orderLine("DL1", "1.5", "10.00")] }),
+      );
+      await service.createOrder(
+        order({
+          orderId: "PO-F",
+          lines: [
+            orderLine("FL1", "2", "10.00"),
+            { ...orderLine("FL2", "1", "25.00"), product: "WAGE" },
+          ],
+        }),
+      );
+      await service.createOrder(order({ orderId: "PO-N" }));
+      const listed = async () => {
+        const page = await get("/api/v1/trade/orders?company=DEFAULT");
+        expect(page.statusCode).toBe(200);
+        const items = tradeOrderPageSchema.parse(page.json()).items;
+        for (const item of items) {
+          const detail = await get(
+            `/api/v1/trade/orders/${item.orderId}/invoicing?company=DEFAULT`,
+          );
+          expect([item.orderId, item.invoicing]).toEqual([
+            item.orderId,
+            statusOf(tradeOrderInvoicingSchema.parse(detail.json())),
+          ]);
+        }
+        return Object.fromEntries(items.map((item) => [item.orderId, item.invoicing]));
+      };
+      expect(await listed()).toEqual({
+        "PO-1": "none",
+        "PO-D": "none",
+        "PO-F": "none",
+        "PO-N": "none",
+      });
+
+      // Multi-line order with one line fully invoiced; decimal 1.5 of 1.5; every line of PO-F.
+      await post(invoiceFor("PO-1", [["OL1", "10", "RENT"]]));
+      await post(invoiceFor("PO-D", [["DL1", "1.5", "RENT"]]));
+      const both = invoiceFor("PO-F", [
+        ["FL1", "2", "RENT"],
+        ["FL2", "1", "WAGE"],
+      ]);
+      await post(both);
+      const rest = invoiceFor("PO-1", [["OL2", "4", "WAGE"]]);
+      await post(rest);
+      expect(await listed()).toEqual({
+        "PO-1": "full",
+        "PO-D": "full",
+        "PO-F": "full",
+        "PO-N": "none",
+      });
+
+      // Cancelled invoices no longer count: full → partial (PO-1) and full → none (PO-F).
+      await cancel(rest.documentId);
+      await cancel(both.documentId);
+      expect(await listed()).toEqual({
+        "PO-1": "partial",
+        "PO-D": "full",
+        "PO-F": "none",
+        "PO-N": "none",
+      });
+
+      // OpenAPI: the generated TradeOrderPage item requires `invoicing` with exactly three values.
+      const item = (
+        openApiDocument.components.schemas.TradeOrderPage as unknown as {
+          properties: {
+            items: { items: { required: string[]; properties: Record<string, unknown> } };
+          };
+        }
+      ).properties.items.items;
+      expect(item.required).toContain("invoicing");
+      expect(item.properties.invoicing).toEqual({
+        type: "string",
+        enum: ["none", "partial", "full"],
+      });
+    } finally {
+      await api.close();
+      await executor.close();
+    }
+  });
+
+  it("TINV-03 PG-05: one invoiced-status aggregate per page whatever its size, on trade_document_lines_order", async () => {
+    for (let index = 0; index < 60; index++) {
+      const orderId = `PO-M${String(index).padStart(2, "0")}`;
+      await service.createOrder(
+        order({
+          orderId,
+          lines: Array.from({ length: 1 + (index % 5) }, (_, n) =>
+            orderLine(`X${n}`, "2", "10.00"),
+          ),
+        }),
+      );
+      if (index % 3 === 0) await post(invoiceFor(orderId, [["X0", "1", "RENT"]]));
+    }
+    const backend = sqliteBackend({ filename });
+    const db = await backend.acquire(true, false);
+    const statements: { sql: string; values: readonly unknown[] }[] = [];
+    const counting = {
+      ...db,
+      query: (sql: string, values: Parameters<Connection["query"]>[1] = []) => {
+        statements.push({ sql, values });
+        return db.query(sql, values);
+      },
+    } as Connection;
+    const counted = new TradeDocumentService(
+      {
+        read: (work) => work(masterDataRepository(counting)),
+        write: () => Promise.reject(new Error("listOrders must not write")),
+      },
+      journals,
+      journalTools,
+    );
+    const raw = new Database(filename, { readonly: true });
+    try {
+      const sizes: number[] = [];
+      let aggregate: { sql: string; values: readonly unknown[] } | undefined;
+      for (const limit of [2, 60]) {
+        statements.length = 0;
+        const page = await counted.listOrders("DEFAULT", { limit });
+        expect(page.items).toHaveLength(limit);
+        expect(new Set(page.items.map((item) => item.invoicing))).toEqual(
+          new Set(["partial", "none"]),
+        );
+        sizes.push(statements.length);
+        const invoiced = statements.filter((item) => item.sql.includes("trade_document_lines"));
+        expect(invoiced).toHaveLength(1);
+        aggregate = invoiced[0];
+      }
+      expect(sizes).toEqual([3, 3]);
+      if (!aggregate) throw new Error("Missing invoiced-status aggregate");
+      const plan = raw
+        .prepare(`EXPLAIN QUERY PLAN ${aggregate.sql}`)
+        .all(...aggregate.values)
+        .map((row) => (row as { detail: string }).detail);
+      expect(plan.some((detail) => detail.includes("USING INDEX trade_document_lines_order"))).toBe(
+        true,
+      );
+      expect(plan.some((detail) => /^SCAN (l|ol)\b/u.test(detail))).toBe(false);
+    } finally {
+      raw.close();
       await db.release();
       await backend.close();
     }

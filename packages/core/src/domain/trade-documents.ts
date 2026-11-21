@@ -79,12 +79,13 @@ export interface TradeOrderPreview {
   readonly tax: number;
   readonly gross: number;
 }
-/** TORD-03 list row: order header plus stored line totals; no lines. */
+/** TORD-03 list row: order header plus stored line totals; no lines. TINV-03 adds invoicing. */
 export interface TradeOrderSummary extends Omit<TradeOrder, "commandHash" | "lines"> {
   readonly lineCount: number;
   readonly net: number;
   readonly tax: number;
   readonly gross: number;
+  readonly invoicing: "none" | "partial" | "full";
 }
 export interface TradeInvoiceLineInput {
   readonly lineId: string;

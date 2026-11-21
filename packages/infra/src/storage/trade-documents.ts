@@ -147,6 +147,27 @@ export function tradeOrderPageStatement(
   return { sql: sql + tradeOrderPageOrder, values };
 }
 
+// TINV-03: the single "invoiced" predicate. Invoice lines of the company that reference an order and
+// whose open item is not cancelled; tradeOrderInvoiced and the order-list aggregate both append
+// their own order filters. First bound value: company.
+const invoicedOrderLines =
+  "FROM trade_document_lines l JOIN open_items o ON o.company_id=l.company_id AND o.item_id=l.document_id WHERE l.company_id=? AND l.order_id IS NOT NULL AND o.status<>'cancelled'";
+const placeholders = (count: number) => Array.from({ length: count }, () => "?").join(",");
+// TINV-03: one statement per list page, whatever its size. Ordered quantity of every line of the
+// page's orders (trade_order_lines primary key) with its invoiced micros, summed on
+// trade_document_lines_order over the same orders. Values: (company, ...orderIds) twice.
+export function tradeOrderPageInvoicedSql(orders: number): string {
+  const ids = placeholders(orders);
+  return `SELECT ol.order_id,ol.quantity,COALESCE(i.micros,'0') AS micros FROM trade_order_lines ol LEFT JOIN (SELECT l.order_id,l.order_line_id,CAST(SUM(l.quantity_micros) AS TEXT) AS micros ${invoicedOrderLines} AND l.order_id IN(${ids}) GROUP BY l.order_id,l.order_line_id) i ON i.order_id=ol.order_id AND i.order_line_id=ol.line_id WHERE ol.company_id=? AND ol.order_id IN(${ids})`;
+}
+/** TINV-03: none = nothing invoiced on any line; full = every line invoiced up to its ordered quantity. */
+export function tradeOrderInvoicingStatus(
+  lines: readonly { readonly ordered: bigint; readonly invoiced: bigint }[],
+): TradeOrderSummary["invoicing"] {
+  if (lines.every((line) => line.invoiced === 0n)) return "none";
+  return lines.every((line) => line.invoiced >= line.ordered) ? "full" : "partial";
+}
+
 export function tradeDocumentRepository(db: Connection): TradeDocumentRepository {
   async function segments(company: string, ids: readonly string[]) {
     const result = new Map<string, TradeControlSegment[]>();
@@ -529,8 +550,27 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
     },
     async tradeOrderPage(company, query) {
       const statement = tradeOrderPageStatement(company, query);
-      const rows = await db.query(statement.sql, statement.values);
-      const items: TradeOrderSummary[] = rows.slice(0, query.limit).map((row) => ({
+      const fetched = await db.query(statement.sql, statement.values);
+      const rows = fetched.slice(0, query.limit);
+      const lines = new Map<string, { ordered: bigint; invoiced: bigint }[]>();
+      if (rows.length) {
+        const ids = rows.map((row) => str(row.order_id));
+        for (const row of await db.query(tradeOrderPageInvoicedSql(ids.length), [
+          company,
+          ...ids,
+          company,
+          ...ids,
+        ])) {
+          const orderId = str(row.order_id);
+          const list = lines.get(orderId) ?? [];
+          list.push({
+            ordered: quantityMicros(str(row.quantity)),
+            invoiced: BigInt(str(row.micros)),
+          });
+          lines.set(orderId, list);
+        }
+      }
+      const items: TradeOrderSummary[] = rows.map((row) => ({
         orderId: str(row.order_id),
         side: str(row.side) as TradeOrderSummary["side"],
         party: str(row.party_id),
@@ -543,17 +583,18 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
         net: int(row.net_minor),
         tax: int(row.tax_minor),
         gross: int(row.gross_minor),
+        invoicing: tradeOrderInvoicingStatus(lines.get(str(row.order_id)) ?? []),
       }));
       return {
         items,
-        nextCursor: rows.length > query.limit ? items[items.length - 1].orderId : null,
+        nextCursor: fetched.length > query.limit ? items[items.length - 1].orderId : null,
       };
     },
     async tradeOrderInvoiced(company, orderId, orderLineIds) {
       if (!orderLineIds.length) return [];
       // Summed exactly in SQLite over only the referenced lines; TEXT keeps 64-bit precision.
       const rows = await db.query(
-        `SELECT l.order_line_id,CAST(SUM(l.quantity_micros) AS TEXT) AS micros FROM trade_document_lines l JOIN open_items o ON o.company_id=l.company_id AND o.item_id=l.document_id WHERE l.company_id=? AND l.order_id=? AND l.order_id IS NOT NULL AND o.status<>'cancelled' AND l.order_line_id IN(${orderLineIds.map(() => "?").join(",")}) GROUP BY l.order_line_id`,
+        `SELECT l.order_line_id,CAST(SUM(l.quantity_micros) AS TEXT) AS micros ${invoicedOrderLines} AND l.order_id=? AND l.order_line_id IN(${placeholders(orderLineIds.length)}) GROUP BY l.order_line_id`,
         [company, orderId, ...orderLineIds],
       );
       return rows.map((row) => ({
