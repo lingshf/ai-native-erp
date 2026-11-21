@@ -8,6 +8,31 @@
 
 （暂无）
 
+## [0.7.0] - 待定（发布日在日期 PR 中填写）
+
+> 发布候选草稿，未获打 tag 授权。产品代码基线为 `main` 9421906（S7 功能任务全部合并，Full 12/12）；自 v0.6.0（tag 所指提交 3548d58）到产品基线 9421906 共 6 个已合并 PR 的 6 个 squash 提交（#155–#157、#159–#161；`git rev-list --count v0.6.0..9421906` = 6），其中 #155、#160 是设计提交，#156 是流程文档，其余为产品与测试提交。本 RC 的 main base 72e22d8 多一个 #162（只同步任务表，共 7 个），不影响产品代码。按 D21，tag `v0.7.0` 打在日期 PR 合并后的 squash 提交上。
+
+S7 Sprint：订单列表可按伙伴、方向、订单日期区间筛选（新增迁移 017，只加一个索引）；D-7 完成（`styles.css` 删除）；CI 新增分片权重守卫。无依赖变化。
+
+### Added（用户可见）
+
+- **订单列表筛选（TORD-05，#161）**：采购 / 销售订单页的订单列表上方新增筛选栏：“伙伴代码”、“方向”（全部 / 采购 AP / 销售 AR）、“订单日期起”、“订单日期止”，以及“应用”“清除”；在任一输入框按 Enter 等同“应用”。应用后从第一页重新读取，“加载更多”沿用筛选；“清除”恢复无筛选首页；保存新订单成功后按当前筛选刷新。起始日期晚于截止日期，或伙伴代码格式不对时就地提示且不发请求（“起始日期不能晚于截止日期。”“值或格式无效。”）。无结果时区分“本公司还没有订单。”（无筛选）与“没有符合条件的订单。”（有筛选），中英同步。教学说明末尾补一句“筛选只作用于列表、不会被记住”，关闭教学模式后不显示。筛选条件不保存。#161 已在真实 Chrome 做过筛选验收（8 个变体，截图与逐像素对比见其正文）；本轮 RC 未新增复测。
+
+### Changed
+
+- **迁移 017（运维可见，#161）**：新增 `017-trade-order-filters.sql`，只有一条 `CREATE INDEX trade_orders_party ON trade_orders(company_id, party_id, order_id)`。**最新迁移 016 → 017**；既有账套须先显式 migrate 到 017 才能由新版启动（启动只校验最新 schema，不自动迁移）。`trade_orders` 的列、约束和触发器不变（#161 正文，测试 `trade-order-filters-migration.test.ts`）。
+
+### Internal（无用户可见变化）
+
+- **D-7 完成（UI-11e，#159）**：订单号按钮 `button.cell-link` 的圆角改由 `trade-orders.css` 的类规则提供，`styles.css` 及其入口 import 删除。#159 正文称 33 个页面状态 × 5 种变体的计算值差与像素差均为 0；发布前未重测。
+- **CI-01（#157）**：`scripts/ci.ts` 新增分片权重完整性守卫，PR CI 新增无条件步骤 “Shard weight guard”（`node scripts/ci.ts weights-check`）；新增测试文件必须在 `scripts/test-shard-weights.json` 登记权重，否则失败。同时补上 5 个缺失权重。附带 D204 Full 墙钟与 D199 用例耗时的观察数据（只观察，不改预算）。
+- **PROC-03（#156）**：v0.6.0 回顾行动项写入 Demo 模板与发布清单（只含文档）。
+- **文档与设计**：#155（S7 计划）、#160（任务表同步）。
+
+### 面向调用方（HTTP API）
+
+- `GET /api/v1/trade/orders` 新增可选参数 `party`、`side`（`AP` / `AR`）、`from`、`to`（`YYYY-MM-DD`）；不带这些参数时请求、排序（订单号升序）与游标契约不变，语句文本与 v0.6.0 逐字相同（#161 正文）。不存在的伙伴返回空页；`side` 非法、日期非法、`from > to`、未知参数仍返回 400。**旧 → 新**：此前 `party` 是未知参数（400），现在是合法参数。
+- 其余 API、CLI、日志、端口未变，无依赖变化。
 ## [0.6.0] - 2026-11-21
 
 > 产品代码基线为 `main` 0f74db9（S6 功能任务全部合并）；自 v0.5.0（tag 所指提交 5e222e7）起 #132–#148 共 17 个提交，其中设计 / 文档提交为 #140、#143、#145、#146，其余为产品与测试提交。0f74db9 之后 main 只有文档提交（#149–#154），产品代码与 0f74db9 相同；按 D21，tag `v0.6.0` 打在日期 PR（#154）合并后的 squash 提交上。
@@ -274,6 +299,7 @@ M1 贸易里程碑完成（M1-01..07，M1-R 评审通过，无阻塞项）。产
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
 [Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.6.0...HEAD
+[0.7.0]: https://github.com/lingshf/ai-native-erp/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/lingshf/ai-native-erp/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/lingshf/ai-native-erp/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/lingshf/ai-native-erp/compare/v0.3.0...v0.4.0
