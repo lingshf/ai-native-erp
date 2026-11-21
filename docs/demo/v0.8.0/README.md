@@ -40,7 +40,7 @@ PROC-05 固定负例 1–5（空目录与删光、隐藏文件、读不了的文
 powershell -NoProfile -File docs\demo\v0.8.0\scripts\proc05-negatives.ps1
 ```
 
-编排级替身（无浏览器、无真实服务；端口 4200 须空闲）：在沙箱里原样运行真实 `run-main.ps1`，构造“进程 A 存活但监听归进程 B”，并把渲染后 README 的第 3、6 块实际执行一遍：
+编排级替身（无浏览器、无真实服务；端口 4200 须空闲）：在沙箱里原样运行真实 `run-main.ps1`，构造“进程 A 存活但监听归进程 B”，并把渲染后 README 里的真实服务演练块和取图块实际执行一遍：
 
 ```powershell
 powershell -NoProfile -File docs\demo\v0.8.0\scripts\orchestration-stub.ps1
