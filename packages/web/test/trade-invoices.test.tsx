@@ -667,7 +667,7 @@ describe("trade invoices from an order (TINV-01)", () => {
     expect(screen.queryByLabelText(t("tinv.party"))).toBeNull();
     // DEFAULT is already the selected (only) option, so the alert's own action is the way back.
     expect(value(t("master.company"))).toBe("DEFAULT");
-    fireEvent.click(within(alert).getByRole("button", { name: t("tinv.fromOrder.manual") }));
+    fireEvent.click(within(alert).getByRole("button", { name: t("master.cancel") }));
     expect(await screen.findByLabelText(t("tinv.party"))).toBeTruthy();
     expect(value(t("tinv.party"))).toBe("");
     expect(screen.queryByText(`${t("tinv.fromOrder.company")} · ACME`)).toBeNull();

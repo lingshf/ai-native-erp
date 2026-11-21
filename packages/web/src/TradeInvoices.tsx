@@ -359,7 +359,7 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
             {t("tinv.fromOrder.company")} · {wanted}
           </p>
           <button type="button" className="btn btn-secondary" onClick={() => setIntake(null)}>
-            {t("tinv.fromOrder.manual")}
+            {t("master.cancel")}
           </button>
         </MessageBar>
       )}
