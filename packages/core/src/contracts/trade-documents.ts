@@ -669,8 +669,7 @@ export const tradeDocumentsOpenApi = {
         parameters: [pathParam("orderId", companyCodeSchema), ...query(tradeCompanyQuerySchema)],
         responses: {
           200: {
-            description:
-              "Stored order with per-line invoiced quantity, same source as invoice order matching; cancelled invoices excluded.",
+            description: "Order with invoiced quantity per line",
             ...ref("TradeOrderInvoicing"),
           },
           ...errors([400, 403, 404, 405, 500, 503]),

@@ -55,9 +55,17 @@ type Guard = { busy: boolean; unsaved: boolean };
 const idleGuard: Guard = { busy: false, unsaved: false };
 // TINV-01: one `fromOrder` request taken from the address; `company` null means the current one.
 type Intake = { company: string | null; orderId: string };
-type IntakeState =
-  | { status: "loading"; orderId: string }
-  | { status: "loaded" | "notFound" | "fullyInvoiced" | "failed" | "locked"; orderId: string };
+type IntakeState = {
+  status: "loading" | "loaded" | "notFound" | "fullyInvoiced" | "failed" | "locked";
+  orderId: string;
+};
+const intakeTone = {
+  loaded: "success",
+  fullyInvoiced: "info",
+  locked: "warning",
+  notFound: "danger",
+  failed: "danger",
+} as const;
 
 const today = () => new Date().toISOString().slice(0, 10);
 const blankLine = (n: number): LineDraft => ({
@@ -100,11 +108,11 @@ const lineFields = [
 // Exact decimal arithmetic in millionths, matching the contract's at-most-6-decimal quantities.
 const micros = (value: string) => {
   const [whole = "0", fraction = ""] = value.split(".");
-  return BigInt(whole) * 1_000_000n + BigInt(fraction.padEnd(6, "0"));
+  return BigInt(whole + fraction.padEnd(6, "0"));
 };
 const decimalText = (value: bigint) => {
-  const fraction = (value % 1_000_000n).toString().padStart(6, "0").replace(/0+$/u, "");
-  return fraction ? `${value / 1_000_000n}.${fraction}` : (value / 1_000_000n).toString();
+  const digits = value.toString().padStart(7, "0");
+  return `${digits.slice(0, -6)}.${digits.slice(-6)}`.replace(/\.?0+$/u, "");
 };
 /** New draft from an order: header from the order, only lines with an uninvoiced quantity. */
 function draftFromOrder({ order, invoiced }: TradeOrderInvoicingDto): Draft | null {
@@ -438,25 +446,20 @@ function InvoiceEntry({
   useEffect(() => {
     if (focusTick) document.getElementById("tinv-externalInvoice")?.focus();
   }, [focusTick]);
-  const loading = useRef<AbortController | null>(null);
-  useEffect(() => () => loading.current?.abort(), []);
   const fillFromOrder = async (orderId: string) => {
     if (locked) {
       setFromOrder({ status: "locked", orderId });
       return;
     }
-    loading.current?.abort();
-    const controller = new AbortController();
-    loading.current = controller;
     setBusy(true);
+
     setFromOrder({ status: "loading", orderId });
     try {
       const value = await masterRequest(
         `/api/v1/trade/orders/${encodeURIComponent(orderId)}/invoicing?company=${encodeURIComponent(company.code)}`,
         tradeOrderInvoicingSchema,
-        { signal: controller.signal },
       );
-      if (controller.signal.aborted) return;
+
       const next = draftFromOrder(value);
       if (!next) {
         setFromOrder({ status: "fullyInvoiced", orderId });
@@ -475,14 +478,13 @@ function InvoiceEntry({
       setFromOrder({ status: "loaded", orderId });
       setFocusTick((tick) => tick + 1);
     } catch (issue) {
-      if (controller.signal.aborted) return;
       const missing =
         issue instanceof MasterDataFailure &&
         issue.kind === "http" &&
         (issue.status === 404 || issue.status === 400);
       setFromOrder({ status: missing ? "notFound" : "failed", orderId });
     } finally {
-      if (!controller.signal.aborted) setBusy(false);
+      setBusy(false);
     }
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: one load per address request; fillFromOrder reads that render's draft state.
@@ -655,17 +657,11 @@ function InvoiceEntry({
           {t("tinv.posted")} {receipt.journalIds.join(", ")} · {money(receipt.gross)}
         </MessageBar>
       )}
-      {fromOrder && fromOrder.status !== "loaded" && (
+      {fromOrder && fromOrder.status !== "loading" && (
         <MessageBar
-          tone={
-            fromOrder.status === "loading" || fromOrder.status === "fullyInvoiced"
-              ? "info"
-              : fromOrder.status === "locked"
-                ? "warning"
-                : "danger"
-          }
+          tone={intakeTone[fromOrder.status]}
           role={
-            fromOrder.status === "loading" || fromOrder.status === "fullyInvoiced"
+            fromOrder.status === "loaded" || fromOrder.status === "fullyInvoiced"
               ? "status"
               : "alert"
           }
@@ -683,11 +679,6 @@ function InvoiceEntry({
               {t("master.retry")}
             </button>
           )}
-        </MessageBar>
-      )}
-      {fromOrder?.status === "loaded" && (
-        <MessageBar tone="success" role="status">
-          {t("tinv.fromOrder.loaded")} · {fromOrder.orderId}
         </MessageBar>
       )}
       {stale && (
