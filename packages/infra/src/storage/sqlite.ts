@@ -16,8 +16,9 @@ import { inspectSchema } from "./migrations.ts";
 import { acquireDatabaseLease } from "./maintenance.ts";
 import { advanceWriteSequence, assertReconciledImport } from "./write-sequence.ts";
 import type { Backend, Connection, Parameters, Row, SqliteStorageConfig } from "./types.ts";
+import { APPLICATION_ID } from "./application-id.ts";
 
-export const APPLICATION_ID = 0x45525032;
+export { APPLICATION_ID };
 const initializing = new Set<string>();
 
 class ImmediateDriver extends SqliteDriver {
