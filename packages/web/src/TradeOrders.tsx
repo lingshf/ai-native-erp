@@ -42,6 +42,9 @@ type Guard = { busy: boolean; unsaved: boolean };
 type Issue = { path: string; key: TradeOrderKey };
 type Failure = { message: string; issues: Issue[]; uncertain: boolean };
 const idleGuard: Guard = { busy: false, unsaved: false };
+type Filter = { party: string; side: "" | "AP" | "AR"; from: string; to: string };
+const noFilter: Filter = { party: "", side: "", from: "", to: "" };
+const filterKeys = ["party", "side", "from", "to"] as const;
 const lineFields = ["product", "taxCode", "quantity", "unitPrice", "discountPercent"] as const;
 const numeric = new Set<string>(["quantity", "unitPrice", "discountPercent"]);
 const amountKeys = ["net", "tax", "gross"] as const;
@@ -791,21 +794,122 @@ function OrderList({
   t: T;
   onOpen: (orderId: string) => void;
 }) {
+  const client = useQueryClient();
+  const [draft, setDraft] = useState(noFilter);
+  const [applied, setApplied] = useState(noFilter);
+  const [invalid, setInvalid] = useState<"party" | "range" | null>(null);
+  const queryKey = ["trade-orders", company.code, applied] as const;
   const page = useInfiniteQuery({
-    queryKey: ["trade-orders", company.code],
+    queryKey,
     initialPageParam: "",
     refetchOnMount: true,
-    queryFn: ({ pageParam, signal }) =>
-      masterRequest(
-        `/api/v1/trade/orders?company=${encodeURIComponent(company.code)}&limit=100${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`,
-        tradeOrderPageSchema,
-        { signal },
-      ),
+    queryFn: ({ pageParam, signal }) => {
+      // Load more keeps the applied filters (TORD-05); an unfiltered URL is unchanged from TORD-03.
+      const params = new URLSearchParams({ company: company.code, limit: "100" });
+      if (pageParam) params.set("cursor", pageParam);
+      for (const key of filterKeys) if (applied[key]) params.set(key, applied[key]);
+      return masterRequest(`/api/v1/trade/orders?${params}`, tradeOrderPageSchema, { signal });
+    },
     getNextPageParam: (value) => value.nextCursor ?? undefined,
   });
   const rows = page.data?.pages.flatMap((value) => value.items) ?? [];
+  const filtered = filterKeys.some((key) => applied[key]);
+  // Apply and Clear always reload from the first page, never from pages cached for those filters.
+  const show = (next: Filter) => {
+    setInvalid(null);
+    void client.resetQueries({ queryKey: ["trade-orders", company.code, next], exact: true });
+    setApplied(next);
+  };
+  const apply = (event: FormEvent) => {
+    event.preventDefault();
+    const next = { ...draft, party: draft.party.trim() };
+    if (next.party && !tradeOrderCommandSchema.shape.party.safeParse(next.party).success)
+      setInvalid("party");
+    else if (next.from && next.to && next.from > next.to) setInvalid("range");
+    else show(next);
+  };
+  const clear = () => {
+    setDraft(noFilter);
+    show(noFilter);
+  };
+  const edit = (patch: Partial<Filter>) => {
+    setDraft((current) => ({ ...current, ...patch }));
+    setInvalid(null);
+  };
+  const described = (kind: "party" | "range") =>
+    invalid === kind
+      ? { "aria-invalid": true as const, "aria-describedby": `tord-filter-${kind}-error` }
+      : {};
   return (
     <FastTab id="tord-list" title={t("tord.list")}>
+      <form
+        className="filter-bar tord-filter"
+        aria-label={t("tord.filter")}
+        noValidate
+        onSubmit={apply}
+      >
+        <div className="field">
+          <label htmlFor="tord-filter-party">{t("tord.filterParty")}</label>
+          <input
+            id="tord-filter-party"
+            maxLength={60}
+            autoComplete="off"
+            value={draft.party}
+            onChange={(event) => edit({ party: event.target.value })}
+            {...described("party")}
+          />
+          {invalid === "party" && (
+            <p className="ui-error-text" id="tord-filter-party-error">
+              {t("tord.issue.shape")}
+            </p>
+          )}
+        </div>
+        <div className="field">
+          <label htmlFor="tord-filter-side">{t("tord.filterSide")}</label>
+          <select
+            id="tord-filter-side"
+            value={draft.side}
+            onChange={(event) => edit({ side: event.target.value as Filter["side"] })}
+          >
+            <option value="">{t("tord.filterAll")}</option>
+            <option value="AP">{t("tord.filterAP")}</option>
+            <option value="AR">{t("tord.filterAR")}</option>
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="tord-filter-from">{t("tord.filterFrom")}</label>
+          <input
+            id="tord-filter-from"
+            type="date"
+            value={draft.from}
+            onChange={(event) => edit({ from: event.target.value })}
+            {...described("range")}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="tord-filter-to">{t("tord.filterTo")}</label>
+          <input
+            id="tord-filter-to"
+            type="date"
+            value={draft.to}
+            onChange={(event) => edit({ to: event.target.value })}
+            {...described("range")}
+          />
+          {invalid === "range" && (
+            <p className="ui-error-text" id="tord-filter-range-error">
+              {t("tord.filterRange")}
+            </p>
+          )}
+        </div>
+        <div className="actions">
+          <button type="submit" className="btn btn-secondary">
+            {t("tord.filterApply")}
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={clear}>
+            {t("tord.filterClear")}
+          </button>
+        </div>
+      </form>
       {page.isPending && <p role="status">{label(language, "master.loading")}</p>}
       {page.isError && (
         <MessageBar tone="danger" role="alert">
@@ -815,7 +919,9 @@ function OrderList({
           </button>
         </MessageBar>
       )}
-      {page.isSuccess && rows.length === 0 && <p className="empty-state">{t("tord.listEmpty")}</p>}
+      {page.isSuccess && rows.length === 0 && (
+        <p className="empty-state">{t(filtered ? "tord.listNoMatch" : "tord.listEmpty")}</p>
+      )}
       {rows.length > 0 && (
         <div className="grid-wrap">
           <table className="grid tord-list" aria-label={t("tord.list")}>

@@ -518,6 +518,187 @@ describe("trade orders", () => {
     expect(screen.queryByText(t("tord.listEmpty"))).toBeNull();
   });
 
+  // TORD-05: list filters.
+  const base = "/api/v1/trade/orders?company=DEFAULT&limit=100";
+  const filterForm = () => screen.findByRole("form", { name: t("tord.filter") });
+  const filterField = (key: TradeOrderKey) => screen.getByLabelText<HTMLInputElement>(t(key));
+  const setFilters = (values: Partial<Record<"party" | "side" | "from" | "to", string>>) => {
+    const keys = {
+      party: "tord.filterParty",
+      side: "tord.filterSide",
+      from: "tord.filterFrom",
+      to: "tord.filterTo",
+    } as const;
+    for (const [name, value] of Object.entries(values))
+      fireEvent.change(filterField(keys[name as keyof typeof keys]), { target: { value } });
+  };
+  const apply = () => fireEvent.click(screen.getByRole("button", { name: t("tord.filterApply") }));
+
+  it("applies filters from the first page, keeps them for load more, applies on Enter and clears", async () => {
+    const lists: string[] = [];
+    stubApi(
+      () => response({}, 404),
+      (url) => {
+        lists.push(url);
+        if (url.includes("side=AR")) return response({ items: [], nextCursor: null });
+        if (url.includes("party=VENDOR"))
+          return url.includes("cursor=")
+            ? response({ items: [summary("PO-3", 500)], nextCursor: null })
+            : response({ items: [summary("PO-1", 11300)], nextCursor: "PO-1" });
+        return response({
+          items: [summary("PO-1", 11300), summary("PO-2", 2000)],
+          nextCursor: null,
+        });
+      },
+    );
+    render(<App />);
+    const table = await listTable();
+    const rows = () => within(table).getAllByRole("row").slice(1);
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    expect(lists).toEqual([base]);
+
+    setFilters({ party: " VENDOR ", side: "AP", from: "2026-01-01", to: "2026-06-30" });
+    expect(lists).toHaveLength(1);
+    apply();
+    const filtered = `${base}&party=VENDOR&side=AP&from=2026-01-01&to=2026-06-30`;
+    await waitFor(() => expect(lists).toEqual([base, filtered]));
+    const narrowed = await listTable();
+    await waitFor(() => expect(within(narrowed).getAllByRole("row")).toHaveLength(2));
+    fireEvent.click(screen.getByRole("button", { name: label("zh", "master.loadMore") }));
+    await waitFor(() =>
+      expect(lists.at(-1)).toBe(
+        `${base}&cursor=PO-1&party=VENDOR&side=AP&from=2026-01-01&to=2026-06-30`,
+      ),
+    );
+    await waitFor(() => expect(within(narrowed).getAllByRole("row")).toHaveLength(3));
+
+    // Applying unchanged filters reloads from the first page.
+    apply();
+    await waitFor(() => expect(lists.at(-1)).toBe(filtered));
+    const reloaded = await listTable();
+    await waitFor(() => expect(within(reloaded).getAllByRole("row")).toHaveLength(2));
+
+    // Enter in a filter input submits the form (implicit submission; real Enter is checked in Chrome).
+    expect(screen.getByRole("button", { name: t("tord.filterApply") }).getAttribute("type")).toBe(
+      "submit",
+    );
+    setFilters({ party: "", side: "AR", from: "", to: "" });
+    fireEvent.submit(await filterForm());
+    await waitFor(() => expect(lists.at(-1)).toBe(`${base}&side=AR`));
+    expect(await screen.findByText(t("tord.listNoMatch"))).toBeTruthy();
+    expect(screen.queryByText(t("tord.listEmpty"))).toBeNull();
+
+    const count = lists.length;
+    fireEvent.click(screen.getByRole("button", { name: t("tord.filterClear") }));
+    await waitFor(() => expect(lists.length).toBe(count + 1));
+    expect(lists.at(-1)).toBe(base);
+    expect(
+      ["tord.filterParty", "tord.filterSide", "tord.filterFrom", "tord.filterTo"].map(
+        (key) => filterField(key as TradeOrderKey).value,
+      ),
+    ).toEqual(["", "", "", ""]);
+    const cleared = await listTable();
+    await waitFor(() => expect(within(cleared).getAllByRole("row")).toHaveLength(3));
+    expect(screen.queryByText(t("tord.listNoMatch"))).toBeNull();
+  });
+
+  it("rejects an inverted date range and a malformed partner code without a request", async () => {
+    const lists: string[] = [];
+    stubApi(
+      () => response({}, 404),
+      (url) => {
+        lists.push(url);
+        return response({ items: [], nextCursor: null });
+      },
+    );
+    render(<App />);
+    expect(await screen.findByText(t("tord.listEmpty"))).toBeTruthy();
+    setFilters({ from: "2026-06-30", to: "2026-01-01" });
+    apply();
+    const error = await screen.findByText(t("tord.filterRange"));
+    expect(error.id).toBe("tord-filter-range-error");
+    for (const key of ["tord.filterFrom", "tord.filterTo"] as const) {
+      expect(filterField(key).getAttribute("aria-describedby")).toBe(error.id);
+      expect(filterField(key).getAttribute("aria-invalid")).toBe("true");
+    }
+    fireEvent.submit(await filterForm());
+    expect(lists).toEqual([base]);
+    // Equal dates are a valid one-day range; editing removes the error.
+    setFilters({ to: "2026-06-30" });
+    expect(screen.queryByText(t("tord.filterRange"))).toBeNull();
+    expect(filterField("tord.filterFrom").getAttribute("aria-describedby")).toBeNull();
+
+    setFilters({ party: "vendor" });
+    apply();
+    const shape = await screen.findByText(t("tord.issue.shape"));
+    expect(filterField("tord.filterParty").getAttribute("aria-describedby")).toBe(shape.id);
+    expect(lists).toEqual([base]);
+
+    setFilters({ party: "VENDOR" });
+    apply();
+    await waitFor(() =>
+      expect(lists).toEqual([base, `${base}&party=VENDOR&from=2026-06-30&to=2026-06-30`]),
+    );
+    expect(await screen.findByText(t("tord.listNoMatch"))).toBeTruthy();
+  });
+
+  it("refreshes the first page with the current filters after a save", async () => {
+    let saved = false;
+    const lists: string[] = [];
+    stubApi(
+      () => {
+        saved = true;
+        return response(savedOrder, 201);
+      },
+      (url) => {
+        lists.push(url);
+        return response({ items: saved ? [summary("PO-1", 11300)] : [], nextCursor: null });
+      },
+    );
+    render(<App />);
+    await filterForm();
+    setFilters({ party: "VENDOR" });
+    apply();
+    expect(await screen.findByText(t("tord.listNoMatch"))).toBeTruthy();
+    const before = lists.length;
+    await fillOrder();
+    save();
+    const table = await listTable();
+    expect(await within(table).findByRole("button", { name: "PO-1" })).toBeTruthy();
+    expect(lists.slice(before)).toEqual([`${base}&party=VENDOR`]);
+  });
+
+  it("keeps the filter controls in keyboard order before the list", async () => {
+    stubApi(
+      () => response({}, 404),
+      () => response({ items: [summary("PO-1", 11300)], nextCursor: null }),
+    );
+    render(<App />);
+    const table = await listTable();
+    await within(table).findByRole("button", { name: "PO-1" });
+    const body = document.getElementById("tord-list-body") as HTMLElement;
+    const focusable = [...body.querySelectorAll<HTMLElement>("input, select, button")];
+    expect(focusable.every((element) => element.tabIndex === 0)).toBe(true);
+    expect(focusable.map((element) => element.id || element.textContent)).toEqual([
+      "tord-filter-party",
+      "tord-filter-side",
+      "tord-filter-from",
+      "tord-filter-to",
+      t("tord.filterApply"),
+      t("tord.filterClear"),
+      "PO-1",
+    ]);
+    expect(
+      [...(filterField("tord.filterSide") as unknown as HTMLSelectElement).options].map(
+        (option) => [option.value, option.textContent],
+      ),
+    ).toEqual([
+      ["", t("tord.filterAll")],
+      ["AP", t("tord.filterAP")],
+      ["AR", t("tord.filterAR")],
+    ]);
+  });
+
   // TORD-04: preview before save.
   const previewed = {
     lines: [{ lineId: "L1", lineNo: 1, net: 9000, tax: 1170, gross: 10170 }],

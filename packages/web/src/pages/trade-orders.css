@@ -81,7 +81,7 @@
   background: var(--color-surface-alt);
   color: var(--color-text-muted);
 }
-.trade-orders .tord-lines .ui-error-text {
+.trade-orders :is(.tord-lines, .tord-filter) .ui-error-text {
   margin: var(--space-1) 0 0;
   color: var(--color-danger);
   font-size: var(--text-xs);
@@ -128,6 +128,8 @@
   overflow-wrap: anywhere;
 }
 
+/* 列表筛选栏（TORD-05）与订单查询共用：在 FastTab 内不再套卡片 */
+.trade-orders .tord-filter,
 .trade-orders .tord-lookup {
   margin-bottom: var(--space-4);
   box-shadow: none;

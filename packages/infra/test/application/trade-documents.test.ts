@@ -3180,7 +3180,7 @@ describe("trade invoices on real SQLite", () => {
       for (const query of [
         "company=DEFAULT&limit=0",
         "company=DEFAULT&limit=501",
-        "company=DEFAULT&party=V1",
+        "company=DEFAULT&status=open",
         "limit=2",
         "company=DEFAULT&cursor=po-a",
       ])
@@ -3277,6 +3277,255 @@ describe("trade invoices on real SQLite", () => {
         raw.close();
       }
     } finally {
+      await db.release();
+      await backend.close();
+    }
+  });
+
+  // TORD-05: order-list filters (party / side / order date), same keyset on orderId.
+  const filterFixture = [
+    { orderId: "PO-01", side: "AP", party: "V1", orderDate: "2026-01-05" },
+    { orderId: "PO-02", side: "AR", party: "C1", orderDate: "2026-02-10" },
+    { orderId: "PO-03", side: "AP", party: "V2", orderDate: "2026-02-10" },
+    { orderId: "PO-04", side: "AP", party: "V1", orderDate: "2026-03-01" },
+    { orderId: "PO-05", side: "AR", party: "C1", orderDate: "2026-03-31" },
+    { orderId: "PO-06", side: "AP", party: "V1", orderDate: "2026-04-15" },
+  ] as const;
+  async function filterOrders() {
+    for (const header of filterFixture)
+      await service.createOrder(
+        order({
+          ...header,
+          lines:
+            header.side === "AR"
+              ? [{ ...orderLine("CL1", "1", "7.77"), product: "CONSULT" }]
+              : [orderLine("L1", "2", "3.00")],
+        }),
+      );
+  }
+  const allFilters = "party=V1&side=AP&from=2026-03-01&to=2026-04-15";
+
+  it("TORD-05 filters by party, side and inclusive order dates over HTTP, alone and combined, with keyset paging", async () => {
+    const executor = await SqliteExecutor.create({ filename, readers: 2 });
+    const api = await createApi({
+      environment: { ERP_PORT: "0" },
+      allowPortZero: true,
+      ...executor.services(),
+      logError: () => undefined,
+    });
+    try {
+      const host = new URL(await api.listen()).host;
+      const get = (url: string) => api.app.inject({ method: "GET", url, headers: { host } });
+      await filterOrders();
+      await seedOtherCompany();
+      await service.createOrder(
+        order({ company: "OTHER", orderId: "PO-00", orderDate: "2026-03-01" }),
+      );
+      const all = (await get("/api/v1/trade/orders?company=DEFAULT")).json().items as {
+        orderId: string;
+        side: string;
+        party: string;
+        orderDate: string;
+      }[];
+      expect(all.map((item) => item.orderId)).toEqual(filterFixture.map((item) => item.orderId));
+      const ids = async (query: string) => {
+        const response = await get(`/api/v1/trade/orders?company=DEFAULT&${query}`);
+        expect(response.statusCode).toBe(200);
+        const page = response.json();
+        expect(page.nextCursor).toBeNull();
+        return page.items;
+      };
+      for (const [query, keep] of [
+        ["party=V1", (item: (typeof all)[number]) => item.party === "V1"],
+        ["side=AR", (item: (typeof all)[number]) => item.side === "AR"],
+        ["from=2026-02-10", (item: (typeof all)[number]) => item.orderDate >= "2026-02-10"],
+        ["to=2026-02-10", (item: (typeof all)[number]) => item.orderDate <= "2026-02-10"],
+        [
+          allFilters,
+          (item: (typeof all)[number]) =>
+            item.party === "V1" &&
+            item.side === "AP" &&
+            item.orderDate >= "2026-03-01" &&
+            item.orderDate <= "2026-04-15",
+        ],
+      ] as const)
+        expect(await ids(query)).toEqual(all.filter(keep));
+      expect(
+        (await ids("from=2026-02-10&to=2026-02-10")).map(
+          (item: { orderId: string }) => item.orderId,
+        ),
+      ).toEqual(["PO-02", "PO-03"]);
+      expect((await ids(allFilters)).map((item: { orderId: string }) => item.orderId)).toEqual([
+        "PO-04",
+        "PO-06",
+      ]);
+      expect(await ids("party=NOPE")).toEqual([]);
+      const first = await get("/api/v1/trade/orders?company=DEFAULT&party=V1&limit=2");
+      expect(first.json()).toEqual({
+        items: all.filter((item) => ["PO-01", "PO-04"].includes(item.orderId)),
+        nextCursor: "PO-04",
+      });
+      const second = await get(
+        "/api/v1/trade/orders?company=DEFAULT&party=V1&limit=2&cursor=PO-04",
+      );
+      expect(second.json()).toEqual({
+        items: all.filter((item) => item.orderId === "PO-06"),
+        nextCursor: null,
+      });
+      expect(
+        (await get("/api/v1/trade/orders?company=OTHER&party=V1&from=2026-03-01"))
+          .json()
+          .items.map((item: { orderId: string }) => item.orderId),
+      ).toEqual(["PO-00"]);
+      for (const query of [
+        "side=XX",
+        "side=ap",
+        "from=2026-13-01",
+        "to=2026-02-30",
+        "from=2026-03-02&to=2026-03-01",
+        "party=v1",
+        "foo=1",
+      ])
+        expect((await get(`/api/v1/trade/orders?company=DEFAULT&${query}`)).statusCode).toBe(400);
+    } finally {
+      await api.close();
+      await executor.close();
+    }
+  });
+
+  it("TORD-05 listOrders validates filters itself and rejects an inverted date range", async () => {
+    for (const query of [
+      { limit: 2, side: "XX" as "AP" },
+      { limit: 2, from: "2026-13-01" },
+      { limit: 2, to: "2026-02-30" },
+      { limit: 2, from: "2026-03-02", to: "2026-03-01" },
+      { limit: 2, party: "v1" },
+    ])
+      await expect(service.listOrders("DEFAULT", query)).rejects.toMatchObject({
+        code: "INVALID_INPUT",
+      });
+  });
+
+  it("TORD-05 filtered listOrders opens one read transaction, never writes, and leaves every row in place", async () => {
+    await filterOrders();
+    const calls = { read: 0, write: 0 };
+    const spy = new TradeDocumentService(
+      {
+        read: (work) => {
+          calls.read++;
+          return store.read(work);
+        },
+        write: (work) => {
+          calls.write++;
+          return store.write(work);
+        },
+      },
+      journals,
+      journalTools,
+    );
+    expect(
+      (
+        await spy.listOrders("DEFAULT", {
+          limit: 1,
+          party: "V1",
+          side: "AP",
+          from: "2026-03-01",
+          to: "2026-04-15",
+        })
+      ).nextCursor,
+    ).toBe("PO-04");
+    expect(calls).toEqual({ read: 1, write: 0 });
+    const executor = await SqliteExecutor.create({ filename, readers: 2 });
+    const api = await createApi({
+      environment: { ERP_PORT: "0" },
+      allowPortZero: true,
+      ...executor.services(),
+      logError: () => undefined,
+    });
+    const observer = new Database(filename, { readonly: true });
+    try {
+      const host = new URL(await api.listen()).host;
+      const before = userTableSnapshot(observer);
+      const response = await api.app.inject({
+        method: "GET",
+        url: `/api/v1/trade/orders?company=DEFAULT&${allFilters}`,
+        headers: { host },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(userTableSnapshot(observer)).toEqual(before);
+    } finally {
+      observer.close();
+      await api.close();
+      await executor.close();
+    }
+  });
+
+  it("TORD-05 PG-05: one page statement for every filter combination; party uses trade_orders_party, others the primary key", async () => {
+    await filterOrders();
+    for (let index = 0; index < 3; index++)
+      await service.createOrder(
+        order({
+          orderId: `PO-D${index}`,
+          lines: Array.from({ length: 1 + index * 9 }, (_, n) => orderLine(`X${n}`, "1", "1.00")),
+        }),
+      );
+    const backend = sqliteBackend({ filename });
+    const db = await backend.acquire(true, false);
+    const statements: { sql: string; values: readonly unknown[] }[] = [];
+    const counting = {
+      ...db,
+      query: (sql: string, values: Parameters<Connection["query"]>[1] = []) => {
+        statements.push({ sql, values });
+        return db.query(sql, values);
+      },
+    } as Connection;
+    const counted = new TradeDocumentService(
+      {
+        read: (work) => work(masterDataRepository(counting)),
+        write: () => Promise.reject(new Error("listOrders must not write")),
+      },
+      journals,
+      journalTools,
+    );
+    const primary = "SEARCH o USING PRIMARY KEY (company_id=? AND order_id>?)";
+    const party =
+      "SEARCH o USING INDEX trade_orders_party (company_id=? AND party_id=? AND order_id>?)";
+    const lines = "SEARCH l USING PRIMARY KEY (company_id=? AND order_id=?)";
+    const raw = new Database(filename, { readonly: true });
+    try {
+      const filters = [
+        [{}, primary],
+        [{ side: "AR" }, primary],
+        [{ from: "2026-02-01" }, primary],
+        [{ to: "2026-03-31" }, primary],
+        [{ from: "2026-02-01", to: "2026-03-31" }, primary],
+        [{ side: "AP", from: "2026-02-01", to: "2026-03-31" }, primary],
+        [{ party: "V1" }, party],
+        [{ party: "V1", side: "AP" }, party],
+        [{ party: "V1", from: "2026-02-01", to: "2026-04-30" }, party],
+        [{ party: "V1", side: "AP", from: "2026-02-01", to: "2026-04-30" }, party],
+      ] as const;
+      for (const [filter, orders] of filters)
+        for (const page of [
+          { limit: 1 },
+          { limit: 100 },
+          { limit: 1, cursor: "PO-03" },
+          { limit: 100, cursor: "PO-03" },
+        ]) {
+          statements.length = 0;
+          await counted.listOrders("DEFAULT", { ...page, ...filter });
+          expect(statements.length).toBe(2);
+          const [statement] = statements.filter((item) => item.sql.includes("FROM trade_orders"));
+          if (!statement) throw new Error("Missing order page statement");
+          expect(statement.sql).not.toMatch(/IS NULL/u);
+          const plan = raw
+            .prepare(`EXPLAIN QUERY PLAN ${statement.sql}`)
+            .all(...statement.values)
+            .map((row) => (row as { detail: string }).detail);
+          expect(plan).toEqual([orders, lines]);
+        }
+    } finally {
+      raw.close();
       await db.release();
       await backend.close();
     }

@@ -1,4 +1,8 @@
-import { StorageError, type TradeDocumentRepository } from "@erp/core/application";
+import {
+  StorageError,
+  type TradeDocumentRepository,
+  type TradeOrderListQuery,
+} from "@erp/core/application";
 import type {
   DimensionMap,
   OpenItem,
@@ -109,10 +113,39 @@ function openItemRow(row: Row, segments: readonly TradeControlSegment[]): OpenIt
 }
 const openItemSelect =
   "SELECT o.*,d.kind,d.external_no,t.discount_percent,t.allow_partial_discount FROM open_items o JOIN trade_item_sources d ON d.company_id=o.company_id AND d.item_id=o.item_id JOIN trade_invoice_terms t ON t.company_id=o.company_id AND t.item_id=o.item_id";
+const tradeOrderPageSelect = (from: string) =>
+  `SELECT o.order_id,o.side,o.party_id,o.order_date,o.currency,o.price_includes_tax,o.rounding_mode,o.recorded_at,count(*) AS line_count,sum(l.net_minor) AS net_minor,sum(l.tax_minor) AS tax_minor,sum(l.gross_minor) AS gross_minor FROM ${from} JOIN trade_order_lines l ON l.company_id=o.company_id AND l.order_id=o.order_id WHERE o.company_id=?`;
+const tradeOrderPageOrder = " GROUP BY o.order_id ORDER BY o.order_id LIMIT ?";
 // TORD-03: one statement per order-list page; parameters are (company, cursor or "", limit + 1).
 // Orders always have 1–100 lines, so the inner join keeps every order; both tables use their primary keys.
-export const tradeOrderPageSql =
-  "SELECT o.order_id,o.side,o.party_id,o.order_date,o.currency,o.price_includes_tax,o.rounding_mode,o.recorded_at,count(*) AS line_count,sum(l.net_minor) AS net_minor,sum(l.tax_minor) AS tax_minor,sum(l.gross_minor) AS gross_minor FROM trade_orders o JOIN trade_order_lines l ON l.company_id=o.company_id AND l.order_id=o.order_id WHERE o.company_id=? AND o.order_id>? GROUP BY o.order_id ORDER BY o.order_id LIMIT ?";
+export const tradeOrderPageSql = `${tradeOrderPageSelect("trade_orders o")} AND o.order_id>?${tradeOrderPageOrder}`;
+// TORD-05: still one statement per page. The text is assembled only from fixed fragments chosen by
+// which filters are present; every value is bound. With a party the statement SEARCHes
+// trade_orders_party (company_id, party_id, order_id), already in order_id order. INDEXED BY is
+// required: without ANALYZE statistics SQLite's default estimates prefer the primary key, which
+// would walk every order of the company after the cursor. Side and date are filtered row by row
+// on the primary-key range. With no filter the text is exactly tradeOrderPageSql.
+export function tradeOrderPageStatement(
+  company: string,
+  query: TradeOrderListQuery,
+): { readonly sql: string; readonly values: readonly (string | number)[] } {
+  let sql = tradeOrderPageSelect(
+    query.party === undefined ? "trade_orders o" : "trade_orders o INDEXED BY trade_orders_party",
+  );
+  const values: (string | number)[] = [company];
+  const add = (fragment: string, value: string | undefined) => {
+    if (value === undefined) return;
+    sql += fragment;
+    values.push(value);
+  };
+  add(" AND o.party_id=?", query.party);
+  add(" AND o.order_id>?", query.cursor ?? "");
+  add(" AND o.side=?", query.side);
+  add(" AND o.order_date>=?", query.from);
+  add(" AND o.order_date<=?", query.to);
+  values.push(query.limit + 1);
+  return { sql: sql + tradeOrderPageOrder, values };
+}
 
 export function tradeDocumentRepository(db: Connection): TradeDocumentRepository {
   async function segments(company: string, ids: readonly string[]) {
@@ -495,11 +528,8 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
         );
     },
     async tradeOrderPage(company, query) {
-      const rows = await db.query(tradeOrderPageSql, [
-        company,
-        query.cursor ?? "",
-        query.limit + 1,
-      ]);
+      const statement = tradeOrderPageStatement(company, query);
+      const rows = await db.query(statement.sql, statement.values);
       const items: TradeOrderSummary[] = rows.slice(0, query.limit).map((row) => ({
         orderId: str(row.order_id),
         side: str(row.side) as TradeOrderSummary["side"],

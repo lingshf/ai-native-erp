@@ -88,9 +88,19 @@ export function registerTradeDocumentRoutes(
     boundary.assert(request, reply, ["GET", "POST"]);
     const app = ready(request);
     if (request.method === "GET") {
-      const { company, limit, cursor } = parse(tradeOrderListQuerySchema, request.query);
+      const { company, limit, cursor, party, side, from, to } = parse(
+        tradeOrderListQuerySchema,
+        request.query,
+      );
       return tradeOrderPageSchema.parse(
-        await app.listOrders(company, { limit: Number(limit), ...(cursor ? { cursor } : {}) }),
+        await app.listOrders(company, {
+          limit: Number(limit),
+          ...(cursor ? { cursor } : {}),
+          ...(party ? { party } : {}),
+          ...(side ? { side } : {}),
+          ...(from ? { from } : {}),
+          ...(to ? { to } : {}),
+        }),
       );
     }
     const order = await app.createOrder(parse(tradeOrderCommandSchema, request.body));
