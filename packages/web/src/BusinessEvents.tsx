@@ -1310,9 +1310,13 @@ function MasterSettings({
   }, []);
   useEffect(() => {
     lock(editing || busy);
-    if (editing) form.current?.querySelector<HTMLInputElement>("input:not(:disabled)")?.focus();
     return () => lock(false);
   }, [editing, busy, lock]);
+  // Entering edit, or a failed save (busy ends while still editing); layout phase so focus is not a task late.
+  useLayoutEffect(() => {
+    if (editing && !busy)
+      form.current?.querySelector<HTMLInputElement>("input:not(:disabled)")?.focus();
+  }, [editing, busy]);
   return (
     <>
       <button
@@ -1481,9 +1485,13 @@ function RuleSettings({
   }, []);
   useEffect(() => {
     lock(editing || busy);
-    if (editing) form.current?.querySelector<HTMLInputElement>("input:not(:disabled)")?.focus();
     return () => lock(false);
   }, [editing, busy, lock]);
+  // Same as MasterSettings: refocus in the layout phase on entering edit or after a failed save.
+  useLayoutEffect(() => {
+    if (editing && !busy)
+      form.current?.querySelector<HTMLInputElement>("input:not(:disabled)")?.focus();
+  }, [editing, busy]);
   const newRule = (): PostingRuleDto => ({
     code: "",
     revision: 0,
