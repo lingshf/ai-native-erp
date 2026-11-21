@@ -10,7 +10,7 @@
 
 ## [0.6.0] - 2026-11-21
 
-> 发布候选草稿，未获打 tag 授权。产品代码基线为 `main` 0f74db9（S6 功能任务全部合并，Full 12/12）；自 v0.5.0（tag 所指提交 5e222e7）起 #132–#148 共 17 个提交，其中设计 / 文档提交为 #140、#143、#145、#146，其余为产品与测试提交。按 D21，tag `v0.6.0` 打在发布 PR 合并后的 squash 提交上。
+> 产品代码基线为 `main` 0f74db9（S6 功能任务全部合并）；自 v0.5.0（tag 所指提交 5e222e7）起 #132–#148 共 17 个提交，其中设计 / 文档提交为 #140、#143、#145、#146，其余为产品与测试提交。0f74db9 之后 main 只有文档提交（#149–#154），产品代码与 0f74db9 相同；按 D21，tag `v0.6.0` 打在日期 PR（#154）合并后的 squash 提交上。
 
 S6 Sprint：订单页补上订单列表与保存前预览（两个新 API，无迁移）；修复业务事件与迁移核对页的几处显示 / 焦点问题；标签页有了图标；`styles.css` 继续瘦身（D-7 仍只是部分完成）。**无新增迁移**（最新仍为 016），无依赖变化。
 
@@ -273,7 +273,8 @@ M1 贸易里程碑完成（M1-01..07，M1-R 评审通过，无阻塞项）。产
 - 旧快照未配置提示、凭证空列表文案和根 README 迁移版本说明已在 v0.2.0 修复（见 `[0.2.0]`）；v0.1.0 原发布基线不包含这些修复。
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
-[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/lingshf/ai-native-erp/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/lingshf/ai-native-erp/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/lingshf/ai-native-erp/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/lingshf/ai-native-erp/compare/v0.2.0...v0.3.0
