@@ -436,6 +436,52 @@ M1-R3（#78）、M1-R4（#81）已完成。
 - **E2E 与测量时段**：按 D115 / D118 与 E2E-01 结论安排独占时段（[路线图 §5 工作区隔离](../roadmap.md#5-团队流程)）。CI-01 若做可选的本机空载测量（只作新基线），会产生整机 node 负载，与 UI-11e / TORD-05 的真实 Chrome 取证错开。
 - 每个任务合并后，按[路线图 §5 合并后动作](../roadmap.md#5-团队流程)跟踪 main Full，变绿前不派发同一冲突域的下一个任务。
 
+## S8：从订单开票 + v0.7.0 回顾行动（建议 v0.8.0）
+
+**目标**：
+- **产品**：从订单开票（TINV-01、TINV-02）。M1 起后端已按订单行匹配发票数量与单价，但订单明细不返回已开票数量，发票页的订单号、订单行 ID 要手工抄录，剩余数量要用户自己算，抄错或超开到预览 / 过账才被拒绝。TORD-03..05 让订单能录、能查、能筛之后，“订单 → 发票”是贸易流程里下一个最常用、目前最费事的环节。无迁移、不改过账：只暴露已有的已开票数量（与过账匹配同一来源），并在发票页按订单带入草稿、在订单页给出入口。
+- **流程**：S7 回顾行动项 3–5 写入 Demo 模板与发布清单（PROC-04、PROC-05，版本管理）；行动项 1、2 已由本 PR 写入[路线图 §5“E2E 独占时段”](../roadmap.md#5-团队流程)，行动项 6、7 写入路线图 §5“设计文档自查”，本表的泳道已按行动项 7 加“共享单文件”列（D234）。
+- **S7 遗留**：遗留 8（筛选重置用例）并入 TINV-02；其余见下“不在本 Sprint”。
+
+版本号由协调者定。基线为 v0.7.0 tag 所在的 main（本计划按 main `1bb9dbb` 编写，tag 打出后以 tag 所指提交为准）。**S8 开发任务在 v0.7.0 tag 打出之后才派发**；本节由设计 PR 写入。
+
+**不在本 Sprint**：
+- M2-05 / M2-06：仍需用户授权决定 A / B，见上文 M2 节；
+- TORD-05“不在范围”的候选池（按日期 / 金额排序、发票列表筛选、方向 / 日期索引等，[S7 评审遗留 5](../reviews/S7.md#5-遗留项均不阻塞-v070)）：目前没有 p95 或用户反馈显示需要，不立项；
+- 订单列表开票状态列、按开票状态筛选、多订单合并开票（见 TINV-01 / TINV-02“不在范围”）；
+- D199 load-cpu、D204 墙钟（[S7 评审遗留 3、4](../reviews/S7.md#5-遗留项均不阻塞-v070)）：维持现状，不立任务；
+- `components.css` 第 3–4 行过时注释（遗留 1）：S8 没有任务改该文件，继续留给下次改它的任务；
+- Demo 脚本版本二的真实复跑（遗留 2）：v0.8.0 Demo 按 PROC-04 的新条目执行时一并完成；
+- 迁移、`package.json` / lock 变化。
+
+| ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| [TINV-01](TINV-01-invoice-from-order.md) | 新增只读接口 `GET …/orders/:orderId/invoicing`，返回每行已开票数量（与过账匹配同一来源；现有订单契约不变）；发票页 `?fromOrder=` 按订单带入草稿 | 后端只读字段 + 页面 | P1 | — | trade-docs, contracts, web-ui:trade；共享 `scripts/test-shard-weights.json`（A 线在前） | todo | |
+| [TINV-02](TINV-02-order-invoice-entry.md) | 订单详情显示已开票 / 未开票数量与“开票”入口；补 S7 遗留 8 的筛选重置用例；端到端路径 | 页面 + 端到端测试 | P1 | TINV-01（仅开工可并行；TINV-01 合并且 main Full 绿、rebase 之后才跑端到端 / 取证、改权重文件、请求评审） | web-ui:trade-orders, tests:trade-e2e；共享 `scripts/test-shard-weights.json`（在 TINV-01 之后） | todo | |
+| [PROC-04](PROC-04-demo-stub-write-scripts-and-dry-run.md) | Demo 替身执行每个写入脚本并按产品规则断言；时段前无浏览器真实服务演练（S7 回顾行动项 3、4；版本管理，不占开发名额） | 文档 | P2（v0.8.0 申请 Demo 时段之前） | — | docs:release（`docs/demo/TEMPLATE.md`，与 PROC-05 共享，在前） | todo | |
+| [PROC-05](PROC-05-doc-code-negative-cases.md) | 含可执行代码的文档请求评审前跑固定负例组（S7 回顾行动项 5；版本管理，不占开发名额） | 文档 | P2（v0.8.0 RC 之前） | PROC-04（共享 `docs/demo/TEMPLATE.md`） | docs:release（`docs/release/README.md`、`docs/demo/TEMPLATE.md`） | todo | |
+
+**S8 共同验收**：
+1. UI 任务满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9，PG-05 口径同 S7（基线为 PR 实际 base 的 gzip 列）；真实 Chrome 证据按[路线图 §5 UI PR 证据清单](../roadmap.md#5-团队流程)，请求评审前逐项勾选写入 PR 正文。
+2. 独占时段按[路线图 §5“E2E 独占时段”](../roadmap.md#5-团队流程)执行，时段内整机独占，其他会话只能编辑（D217 / D234）：批时段前协调者收齐所有在岗会话的“已停”回执；precheck 采到外部进程时报告其命令行与来源 worktree，由协调者处理后从头计数；运行中采到则立即中止，不在原时段内重新开跑。
+3. 现有测试与 E2E 不删除、不削弱、不跳过、不按平台禁用（D11）。作为证据的本机运行保存完整日志，失败的也保存。
+4. 新增测试文件的 PR 在 `scripts/test-shard-weights.json` 登记权重并通过 CI-01 的守卫；该文件按下表“共享单文件”的顺序改动。
+5. S8 没有迁移。若任务发现需要迁移，停下报告设计角色另立任务。
+6. 开发者不改 `design/`；合并后由设计角色同步任务表。
+
+**泳道**（同时在岗的开发不超过 3 个；同一行内串行，唯一例外是下面注明“仅开工可并行”的 A 线；不同行同时进行时冲突域不相交；“共享单文件”列出两个及以上任务都会改的单个文件及其顺序，S7 回顾行动项 7）：
+
+| 线 | 顺序 | 冲突域 | 共享单文件（顺序与门禁） |
+| --- | --- | --- | --- |
+| A：从订单开票 | TINV-01 → TINV-02（仅开工可并行；依赖验收、权重改动与送审串行，见下“TINV-02 评审门禁”） | trade-docs + contracts + web-ui:trade → web-ui:trade-orders + tests:trade-e2e | `scripts/test-shard-weights.json`：TINV-01 在前；TINV-01 合并且覆盖其合并提交的 main Full 变绿之前，TINV-02 不得改动该文件 |
+| 版本管理 | PROC-04 → PROC-05 | docs:release | `docs/demo/TEMPLATE.md`：PROC-04 在前；PROC-04 合并后 PROC-05 才改该文件 |
+
+- **首批**：v0.7.0 tag 打出后，TINV-01 与 TINV-02 两名开发同时开工（冲突域不相交）。TINV-02 在门禁前只按 TINV-01 任务书写定的接口与 mock 形状（TINV-01 范围 4）开发，只跑 mock fetch 的 web 测试。PROC-04 由版本管理并行处理。
+- **TINV-02 评审门禁**：TINV-01 合并、且覆盖其合并提交的 main Full 变绿之前，TINV-02 不改权重文件、不跑真实接口路径（端到端、真实 Chrome）、不请求评审。门禁满足后依次 rebase → 登记权重（如有）→ 独占时段内跑端到端并取证 → 请求评审。TINV-02 已就绪而 TINV-01 未合并时，TINV-02 等待。
+- **真实 Chrome 与 E2E 由谁、何时验证**：默认 PR CI（`verify`，`CI_TEST_LAYER=pr`）排除 `*.slow.test.*`（`vitest.config.ts:11`），Full 只在 push 到 main 与定时运行。因此 TINV-01 的真实 Chrome 演示与 TINV-02 的端到端用例，由各自开发者在独占时段内用 PR head 运行并附完整日志，评审核对日志；合并后由协调者跟踪覆盖合并提交的 main Full。两人各自申请时段，不同时取证。开发者不得为过验收修改 `CI_TEST_LAYER`、`vitest.config.ts` 或 workflow。
+- **第三个名额留空**：本 Sprint 计划内占两个开发名额，第三个名额留给计划外插入。协调者如要追加，只能选：与 A 线冲突域不相交、不加迁移、不改 `scripts/test-shard-weights.json` 与 `contrast.test.ts` 的任务。
+- 每个任务合并后，按[路线图 §5 合并后动作](../roadmap.md#5-团队流程)跟踪 main Full，变绿前不派发同一冲突域的下一个任务。
+
 ## 派发顺序
 
 1. 第一批（按顺序，同时只开一个以避免 `package.json`/lock 冲突）：M0-01 → M0-02 → M0-03 → M0-04 → M0-05 → M0-06→ M0-07。M0-02 与 M0-03 可并行，后合并者重新生成 lock。
