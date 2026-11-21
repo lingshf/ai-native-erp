@@ -90,10 +90,16 @@
 
 ## 日期 PR 清单（tag 之前的最后一个发布 PR）
 
-日期 PR 单独开，只改文档，逐项勾选后再送评审（v0.6.0 回顾行动项 5；历史版本的发布物不回补）：
+日期 PR 单独开，只改文档（v0.6.0 回顾行动项 5；历史版本的发布物不回补）。清单分两段：**送审前**逐项勾选后再送评审；**合并后**的两项在 PR 合并之后才能完成，不是送审条件。
+
+送审前：
 
 - [ ] CHANGELOG 与 release notes 都填入发布日期，两处一致。
-- [ ] compare 链接已填入（上一版本 tag 到本版本 tag，即 `vX.Y.(Z-1)...vX.Y.Z` 或实际上一版本），`[Unreleased]` 改为 `本版本...HEAD`；链接能打开（tag 创建前 compare 链接不可达时，在 PR 中写明，tag 后再核对）。
+- [ ] compare 链接已填入（上一版本 tag 到本版本 tag，即 `vX.Y.(Z-1)...vX.Y.Z` 或实际上一版本），`[Unreleased]` 改为 `本版本...HEAD`；tag 创建前 compare 链接不可达，在 PR 中写明，tag 后再核对。
 - [ ] 去掉“草稿”等草稿标记（CHANGELOG 与 release notes 两处），并写明产品基线 SHA 与 tag 目标的关系（之后只有文档提交时，写出依据）。
-- [ ] 链接到本版本的 Demo 记录（Demo PR 或 `docs/demo/vX.Y.Z/` 的 `run-through.md`）。
-- [ ] 合并后先等该 squash 提交上 main 的 Full 全绿，再按协调者授权在该提交上打 annotated tag、发 Release（见上“顺序”第 4 步）；未获授权不打 tag、不发 Release。
+- [ ] 链接到本版本的 Demo 记录（Demo PR 或 `docs/demo/vX.Y.Z/` 的 `run-through.md`），链接能打开。
+
+合并后（由协调者合并；未获授权不打 tag、不发 Release）：
+
+- [ ] 该 squash 提交上 main 的 Full 全绿。
+- [ ] 全绿后，按协调者授权在该提交上打 annotated tag、发 Release（见上“顺序”第 4 步）；发布后核对 compare 链接与 Release 正文中的链接能打开。
