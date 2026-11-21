@@ -451,15 +451,19 @@ M1-R3（#78）、M1-R4（#81）已完成。
 - 订单列表开票状态列、按开票状态筛选、多订单合并开票（见 TINV-01 / TINV-02“不在范围”）；
 - D199 load-cpu、D204 墙钟（[S7 评审遗留 3、4](../reviews/S7.md#5-遗留项均不阻塞-v070)）：维持现状，不立任务；
 - `components.css` 第 3–4 行过时注释（遗留 1）：S8 没有任务改该文件，继续留给下次改它的任务；
-- Demo 脚本版本二的真实复跑（遗留 2）：v0.8.0 Demo 按 PROC-04 的新条目执行时一并完成；
+- Demo 脚本版本二的真实复跑（遗留 2）：v0.8.0 Demo 按 PROC-04 的新条目执行时一并完成；（结果：未复跑，D258 按“已被取代”结案，见 [S8 评审 §5](../reviews/S8.md#5-遗留项均不阻塞-v080)）
 - 迁移、`package.json` / lock 变化。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| [TINV-01](TINV-01-invoice-from-order.md) | 新增只读接口 `GET …/orders/:orderId/invoicing`，返回每行已开票数量（与过账匹配同一来源；现有订单契约不变）；发票页 `?fromOrder=` 按订单带入草稿 | 后端只读字段 + 页面 | P1 | — | trade-docs, contracts, web-ui:trade；共享 `scripts/test-shard-weights.json`（A 线在前） | todo | |
-| [TINV-02](TINV-02-order-invoice-entry.md) | 订单详情显示已开票 / 未开票数量与“开票”入口；补 S7 遗留 8 的筛选重置用例；端到端路径 | 页面 + 端到端测试 | P1 | TINV-01（仅开工可并行；TINV-01 合并且 main Full 绿、rebase 之后才跑端到端 / 取证、改权重文件、请求评审） | web-ui:trade-orders, tests:trade-e2e；共享 `scripts/test-shard-weights.json`（在 TINV-01 之后） | todo | |
-| [PROC-04](PROC-04-demo-stub-write-scripts-and-dry-run.md) | Demo 替身执行每个写入脚本并按产品规则断言；时段前无浏览器真实服务演练（S7 回顾行动项 3、4；版本管理，不占开发名额） | 文档 | P2（v0.8.0 申请 Demo 时段之前） | — | docs:release（`docs/demo/TEMPLATE.md`，与 PROC-05 共享，在前） | todo | |
-| [PROC-05](PROC-05-doc-code-negative-cases.md) | 含可执行代码的文档请求评审前跑固定负例组（S7 回顾行动项 5；版本管理，不占开发名额） | 文档 | P2（v0.8.0 RC 之前） | PROC-04（共享 `docs/demo/TEMPLATE.md`） | docs:release（`docs/release/README.md`、`docs/demo/TEMPLATE.md`） | todo | |
+| [TINV-01](TINV-01-invoice-from-order.md) | 新增只读接口 `GET …/orders/:orderId/invoicing`，返回每行已开票数量（与过账匹配同一来源；现有订单契约不变）；发票页 `?fromOrder=` 按订单带入草稿 | 后端只读字段 + 页面 | P1 | — | trade-docs, contracts, web-ui:trade；共享 `scripts/test-shard-weights.json`（A 线在前） | done（真实 Chrome D243；评审修复只改错误路径，沿用 D243 主流程证据，D244） | [#171](https://github.com/lingshf/ai-native-erp/pull/171)（`ad57e6a`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44953274030) 12/12） |
+| [TINV-02](TINV-02-order-invoice-entry.md) | 订单详情显示已开票 / 未开票数量与“开票”入口；补 S7 遗留 8 的筛选重置用例；端到端路径 | 页面 + 端到端测试 | P1 | TINV-01（仅开工可并行；TINV-01 合并且 main Full 绿、rebase 之后才跑端到端 / 取证、改权重文件、请求评审） | web-ui:trade-orders, tests:trade-e2e；共享 `scripts/test-shard-weights.json`（在 TINV-01 之后） | done（E2E D249；S7 遗留 8 已补；权重 D250 两项） | [#172](https://github.com/lingshf/ai-native-erp/pull/172)（`3720e96`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44956152354) 12/12） |
+| [PROC-04](PROC-04-demo-stub-write-scripts-and-dry-run.md) | Demo 替身执行每个写入脚本并按产品规则断言；时段前无浏览器真实服务演练（S7 回顾行动项 3、4；版本管理，不占开发名额） | 文档 | P2（v0.8.0 申请 Demo 时段之前） | — | docs:release（`docs/demo/TEMPLATE.md`，与 PROC-05 共享，在前） | done（在 Demo #174 首次执行） | [#169](https://github.com/lingshf/ai-native-erp/pull/169)（`4a11bf3`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44948073972) 12/12） |
+| [PROC-05](PROC-05-doc-code-negative-cases.md) | 含可执行代码的文档请求评审前跑固定负例组（S7 回顾行动项 5；版本管理，不占开发名额） | 文档 | P2（v0.8.0 RC 之前） | PROC-04（共享 `docs/demo/TEMPLATE.md`） | docs:release（`docs/release/README.md`、`docs/demo/TEMPLATE.md`） | done（在 Demo #174 首次执行） | [#170](https://github.com/lingshf/ai-native-erp/pull/170)（`536123e`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44948861897) 12/12） |
+
+**Sprint 评审**：[design/reviews/S8.md](../reviews/S8.md)（main `bb74141`，S8 通过；裁定接受的事项与遗留项见该文）。
+
+**Sprint 回顾**：[design/reviews/S8-retro.md](../reviews/S8-retro.md)（main `bb74141`；3 个议题、6 条行动项，S7 回顾行动项检查）。
 
 **S8 共同验收**：
 1. UI 任务满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9，PG-05 口径同 S7（基线为 PR 实际 base 的 gzip 列）；真实 Chrome 证据按[路线图 §5 UI PR 证据清单](../roadmap.md#5-团队流程)，请求评审前逐项勾选写入 PR 正文。
