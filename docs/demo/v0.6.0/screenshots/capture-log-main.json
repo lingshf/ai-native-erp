@@ -1,0 +1,274 @@
+[
+ {
+  "page": "home-icon",
+  "tag": "zh-red-1440",
+  "iconHref": "/favicon.svg",
+  "iconStatus": 200,
+  "iconType": "image/svg+xml",
+  "badResponses": []
+ },
+ {
+  "page": "orders-list-before",
+  "tag": "zh-red-1440",
+  "emptyMessageVisible": true
+ },
+ {
+  "page": "orders-preview",
+  "tag": "zh-red-1440",
+  "order": "PO-S6-A",
+  "status": 200,
+  "active": {
+   "tag": "SECTION",
+   "id": null,
+   "cls": "tord-lookup-result",
+   "labelledby": "tord-preview-title",
+   "insidePreview": true,
+   "insideLookupResult": true,
+   "text": "金额预览 i预览预览不保存，也不占用订单号。改动任一字段即清除预览；保存后以保存"
+  },
+  "listRowsAfterPreview": 0
+ },
+ {
+  "name": "trade-orders-preview-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders-saved",
+  "tag": "zh-red-1440",
+  "order": "PO-S6-A",
+  "status": 201,
+  "listRows": 1,
+  "previewStillShown": false
+ },
+ {
+  "name": "trade-orders-saved-list-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders-open-from-list",
+  "tag": "zh-red-1440",
+  "order": "PO-S6-A",
+  "lookupValue": "PO-S6-A",
+  "active": {
+   "tag": "SECTION",
+   "id": null,
+   "cls": "tord-lookup-result",
+   "labelledby": null,
+   "insidePreview": false,
+   "insideLookupResult": true,
+   "text": "订单（只读） iPO-S6-A净额100.00税额13.00价税合计113.00"
+  }
+ },
+ {
+  "name": "trade-orders-open-from-list-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders",
+  "errors": []
+ },
+ {
+  "page": "home-icon",
+  "tag": "zh-red-390",
+  "iconHref": "/favicon.svg",
+  "iconStatus": 200,
+  "iconType": "image/svg+xml",
+  "badResponses": []
+ },
+ {
+  "page": "orders-list-before",
+  "tag": "zh-red-390",
+  "emptyMessageVisible": false
+ },
+ {
+  "page": "orders-preview",
+  "tag": "zh-red-390",
+  "order": "PO-S6-B",
+  "status": 200,
+  "active": {
+   "tag": "SECTION",
+   "id": null,
+   "cls": "tord-lookup-result",
+   "labelledby": "tord-preview-title",
+   "insidePreview": true,
+   "insideLookupResult": true,
+   "text": "金额预览 i预览预览不保存，也不占用订单号。改动任一字段即清除预览；保存后以保存"
+  },
+  "listRowsAfterPreview": 1
+ },
+ {
+  "name": "trade-orders-preview-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders-saved",
+  "tag": "zh-red-390",
+  "order": "PO-S6-B",
+  "status": 201,
+  "listRows": 2,
+  "previewStillShown": false
+ },
+ {
+  "name": "trade-orders-saved-list-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders-open-from-list",
+  "tag": "zh-red-390",
+  "order": "PO-S6-B",
+  "lookupValue": "PO-S6-B",
+  "active": {
+   "tag": "SECTION",
+   "id": null,
+   "cls": "tord-lookup-result",
+   "labelledby": null,
+   "insidePreview": false,
+   "insideLookupResult": true,
+   "text": "订单（只读） iPO-S6-B净额100.00税额13.00价税合计113.00"
+  }
+ },
+ {
+  "name": "trade-orders-open-from-list-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders",
+  "errors": []
+ },
+ {
+  "page": "home-icon",
+  "tag": "en-green-1440",
+  "iconHref": "/favicon.svg",
+  "iconStatus": 200,
+  "iconType": "image/svg+xml",
+  "badResponses": []
+ },
+ {
+  "page": "orders-list-before",
+  "tag": "en-green-1440",
+  "emptyMessageVisible": false
+ },
+ {
+  "page": "orders-preview",
+  "tag": "en-green-1440",
+  "order": "PO-S6-C",
+  "status": 200,
+  "active": {
+   "tag": "SECTION",
+   "id": null,
+   "cls": "tord-lookup-result",
+   "labelledby": "tord-preview-title",
+   "insidePreview": true,
+   "insideLookupResult": true,
+   "text": "Amount preview iPreviewNot saved and the"
+  },
+  "listRowsAfterPreview": 2
+ },
+ {
+  "name": "trade-orders-preview-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders-saved",
+  "tag": "en-green-1440",
+  "order": "PO-S6-C",
+  "status": 201,
+  "listRows": 3,
+  "previewStillShown": false
+ },
+ {
+  "name": "trade-orders-saved-list-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders-open-from-list",
+  "tag": "en-green-1440",
+  "order": "PO-S6-C",
+  "lookupValue": "PO-S6-C",
+  "active": {
+   "tag": "SECTION",
+   "id": null,
+   "cls": "tord-lookup-result",
+   "labelledby": null,
+   "insidePreview": false,
+   "insideLookupResult": true,
+   "text": "Order (read-only) iPO-S6-CNet100.00Tax13"
+  }
+ },
+ {
+  "name": "trade-orders-open-from-list-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders",
+  "errors": []
+ },
+ {
+  "page": "home-icon",
+  "tag": "en-green-390",
+  "iconHref": "/favicon.svg",
+  "iconStatus": 200,
+  "iconType": "image/svg+xml",
+  "badResponses": []
+ },
+ {
+  "page": "orders-list-before",
+  "tag": "en-green-390",
+  "emptyMessageVisible": false
+ },
+ {
+  "page": "orders-preview",
+  "tag": "en-green-390",
+  "order": "PO-S6-D",
+  "status": 200,
+  "active": {
+   "tag": "SECTION",
+   "id": null,
+   "cls": "tord-lookup-result",
+   "labelledby": "tord-preview-title",
+   "insidePreview": true,
+   "insideLookupResult": true,
+   "text": "Amount preview iPreviewNot saved and the"
+  },
+  "listRowsAfterPreview": 3
+ },
+ {
+  "name": "trade-orders-preview-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders-saved",
+  "tag": "en-green-390",
+  "order": "PO-S6-D",
+  "status": 201,
+  "listRows": 4,
+  "previewStillShown": false
+ },
+ {
+  "name": "trade-orders-saved-list-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders-open-from-list",
+  "tag": "en-green-390",
+  "order": "PO-S6-D",
+  "lookupValue": "PO-S6-D",
+  "active": {
+   "tag": "SECTION",
+   "id": null,
+   "cls": "tord-lookup-result",
+   "labelledby": null,
+   "insidePreview": false,
+   "insideLookupResult": true,
+   "text": "Order (read-only) iPO-S6-DNet100.00Tax13"
+  }
+ },
+ {
+  "name": "trade-orders-open-from-list-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders",
+  "errors": []
+ }
+]
