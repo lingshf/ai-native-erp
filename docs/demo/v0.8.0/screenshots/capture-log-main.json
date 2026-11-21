@@ -1,0 +1,202 @@
+[
+ {
+  "step": "order-partial",
+  "tag": "zh-red-1440",
+  "href": "#/trade-invoices?company=DEFAULT&fromOrder=PO-I1"
+ },
+ {
+  "name": "order-partial-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "invoice-prefilled",
+  "tag": "zh-red-1440",
+  "header": [
+   "AP",
+   "PARTY",
+   "PO-I1",
+   ""
+  ]
+ },
+ {
+  "name": "invoice-prefilled-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "order-full",
+  "tag": "zh-red-1440"
+ },
+ {
+  "name": "order-full-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "invoice-fully-invoiced",
+  "tag": "zh-red-1440",
+  "rows": 1
+ },
+ {
+  "name": "invoice-fully-invoiced-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "s8",
+  "tag": "zh-red-1440",
+  "invoicingRequests": [
+   "200 /api/v1/trade/orders/PO-I1/invoicing",
+   "200 /api/v1/trade/orders/PO-I1/invoicing",
+   "200 /api/v1/trade/orders/PO-I2/invoicing"
+  ],
+  "errors": []
+ },
+ {
+  "step": "order-partial",
+  "tag": "zh-red-390",
+  "href": "#/trade-invoices?company=DEFAULT&fromOrder=PO-I1"
+ },
+ {
+  "name": "order-partial-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "invoice-prefilled",
+  "tag": "zh-red-390",
+  "header": [
+   "AP",
+   "PARTY",
+   "PO-I1",
+   ""
+  ]
+ },
+ {
+  "name": "invoice-prefilled-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "order-full",
+  "tag": "zh-red-390"
+ },
+ {
+  "name": "order-full-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "invoice-fully-invoiced",
+  "tag": "zh-red-390",
+  "rows": 1
+ },
+ {
+  "name": "invoice-fully-invoiced-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "s8",
+  "tag": "zh-red-390",
+  "invoicingRequests": [
+   "200 /api/v1/trade/orders/PO-I1/invoicing",
+   "200 /api/v1/trade/orders/PO-I1/invoicing",
+   "200 /api/v1/trade/orders/PO-I2/invoicing"
+  ],
+  "errors": []
+ },
+ {
+  "step": "order-partial",
+  "tag": "en-green-1440",
+  "href": "#/trade-invoices?company=DEFAULT&fromOrder=PO-I1"
+ },
+ {
+  "name": "order-partial-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "invoice-prefilled",
+  "tag": "en-green-1440",
+  "header": [
+   "AP",
+   "PARTY",
+   "PO-I1",
+   ""
+  ]
+ },
+ {
+  "name": "invoice-prefilled-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "order-full",
+  "tag": "en-green-1440"
+ },
+ {
+  "name": "order-full-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "invoice-fully-invoiced",
+  "tag": "en-green-1440",
+  "rows": 1
+ },
+ {
+  "name": "invoice-fully-invoiced-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "s8",
+  "tag": "en-green-1440",
+  "invoicingRequests": [
+   "200 /api/v1/trade/orders/PO-I1/invoicing",
+   "200 /api/v1/trade/orders/PO-I1/invoicing",
+   "200 /api/v1/trade/orders/PO-I2/invoicing"
+  ],
+  "errors": []
+ },
+ {
+  "step": "order-partial",
+  "tag": "en-green-390",
+  "href": "#/trade-invoices?company=DEFAULT&fromOrder=PO-I1"
+ },
+ {
+  "name": "order-partial-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "invoice-prefilled",
+  "tag": "en-green-390",
+  "header": [
+   "AP",
+   "PARTY",
+   "PO-I1",
+   ""
+  ]
+ },
+ {
+  "name": "invoice-prefilled-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "order-full",
+  "tag": "en-green-390"
+ },
+ {
+  "name": "order-full-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "invoice-fully-invoiced",
+  "tag": "en-green-390",
+  "rows": 1
+ },
+ {
+  "name": "invoice-fully-invoiced-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "s8",
+  "tag": "en-green-390",
+  "invoicingRequests": [
+   "200 /api/v1/trade/orders/PO-I1/invoicing",
+   "200 /api/v1/trade/orders/PO-I1/invoicing",
+   "200 /api/v1/trade/orders/PO-I2/invoicing"
+  ],
+  "errors": []
+ }
+]
