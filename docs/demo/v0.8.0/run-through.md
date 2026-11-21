@@ -20,6 +20,7 @@
 | `scripts/seed-invoicing-stub.mjs` | `d6dc6546cba3caa12b1192654bfbaf646973b701`（只运行 seed-invoicing，不校验主数据） | `cfe6400c821c6764cd02df79ae8aa7318979fc88`（带状态，依次运行 seed-trade 与 seed-invoicing，校验主数据引用） |
 | `scripts/stub-check.ps1` | `6cd05dc4a4fdd3f69526d90d2d40ac6899b25c3a` | `3a64087bf8658ce1ca08164b36e4ec5c5d4c5495` |
 | `scripts/proc05-negatives.ps1`（新增） | — | `8d7e3b3a127d224cef96585e60641ebe33954887` |
+| `scripts/orchestration-stub.ps1`（#174 复审后新增） | — | `8aae0a45bded9864439c8d091c22ea4df2e80a46` |
 
 `run-main.ps1`、`seed-invoicing.mjs` 在时段 1 到 4 之间没有变化；`capture.mjs` 在时段 1–3 之间的三次修订见 §3 的表。这些是全新脚本，没有“历史旧版”；替身负例用的是改过的副本（在隔离临时目录里生成），不是历史脚本。
 
@@ -84,6 +85,20 @@
 
 每张截图前断言语言、主题、宽度、教学开关与 scrollY。日志：16 张截图的横向溢出都是 0；4 个组合的页面错误、控制台错误与 HTTP 错误数都是 0；每个组合都有 3 次 `/invoicing` 请求，全部 200（PO-I1 两次，PO-I2 一次）。我看过的两张：`order-partial-zh-red-1440` 与 `invoice-prefilled-en-green-390`，行数据、提示与焦点与断言一致；390 宽度下发票行表格需要横向滚动，属表格自身滚动，没有页面级溢出。
 
+### 2.1b 编排级替身（#174 复审后补充）
+
+命令：`powershell -NoProfile -File docs\demo\v0.8.0\scripts\orchestration-stub.ps1`，退出 0。沙箱 `erp-orch-<guid>` 里放假的 `npm.cmd`、`prepare.mjs`、`seed-trade.mjs`、`seed-invoicing.mjs`、`main.ts`；不启动真实服务、Chrome、Vitest。run-main 写死端口 4200，开始前必须空闲。
+
+| 场景 | 结果 |
+|---|---|
+| A1 对照：监听不换 | 真实 `run-main.ps1` 走完，退出 0，两个 seed 替身都执行，端口释放 |
+| A2 进程 A 存活（`HasExited` 为假），4200 监听换成进程 B（seed-trade 替身触发） | 真实 `run-main.ps1` 以 `owner mismatch before seed-invoicing` 中止；seed-trade 已执行，seed-invoicing 没有执行；`finally` 停掉 A，harness 停掉 B；端口释放 |
+| A3 run-main 副本去掉该处的 PID 比较（`-or $owner[0] -ne $server.Id`），同一场景 | seed-invoicing 被执行了，即负例失效，证明 PID 比较是必需的 |
+| B3 渲染结果里的真实服务演练块（复审时是第 3 块，加入本块后是第 4 块；脚本按内容取块） | 在沙箱里执行，退出 0；替身 run-main 带 `-SkipCapture` 被调用，没有 build |
+| B6 渲染结果里的取图块（复审时是第 6 块，现为第 7 块） | 在沙箱里执行，退出 0；build 先于 run-main 替身（不带 `-SkipCapture`）；16 张复制进沙箱截图目录；`demo-s8-shots-*` 目录已清 |
+| B6 负例（取图块）：dist 里没有 `fromOrder` | 第 6 块因 dist 断言中止（退出 1），run-main 替身没有被调用，没有复制截图 |
+
+这里的 run-main 被运行的是真实脚本（A1–A3 的 A3 是改动副本）；它调用的命令是沙箱替身。B3、B6 里的 run-main 是替身，目的是验证块本身的编排（build、dist 断言、复制、清理）。真实截图目录 18 个文件前后一致。
 ## 5. 固定负例组（PROC-05，按 `docs/release/README.md` 的 1–6 项）
 
 1–5 项的实际运行见 §2.1a（`proc05-negatives.ps1`，退出 0），第 6 项见 §6。此前 D254–D257 的真实中止里 `finally` 也执行了，但那只是旁证，不能替代构造出的负例。
@@ -99,7 +114,7 @@
 
 ## 6. 文档渲染检查
 
-README 与本文档用 `gh api -X POST markdown -f mode=gfm -F text=@文件` 渲染（必须是 `-F`，`-f` 会把路径当字面文本）。README 渲染结果：6 个独立的 `<pre>` 代码块（替身检查、PROC-05 夹具、真实服务演练、预检、dist 断言、取图块），没有字面 `\n`，没有字面 `@路径`。从渲染结果取出的第 1 块（stub-check）、第 2 块（PROC-05 夹具）、第 4 块（预检）、第 5 块（dist 断言）在新的 PowerShell 进程里各运行一次，退出码均为 0；第 3、6 块（真实服务演练、取图）需要时段，没有运行。渲染对照见 PR 正文。
+README 与本文档用 `gh api -X POST markdown -f mode=gfm -F text=@文件` 渲染（必须是 `-F`，`-f` 会把路径当字面文本）。README 渲染结果：7 个独立的 `<pre>` 代码块（替身检查、PROC-05 夹具、编排替身、真实服务演练、预检、dist 断言、取图块），没有字面 `\n`，没有字面 `@路径`。从渲染结果取出的 stub-check、PROC-05 夹具、预检、dist 断言四块在评审修订时各运行一次，退出码均为 0；真实服务演练块与取图块不能在真实服务上运行，改在隔离替身里实际执行，见 §2.1b B3、B6（含 dist 缺 `fromOrder` 的负例）。渲染对照见 PR 正文。
 
 ## 7. 没做的事
 

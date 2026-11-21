@@ -40,6 +40,11 @@ PROC-05 固定负例 1–5（空目录与删光、隐藏文件、读不了的文
 powershell -NoProfile -File docs\demo\v0.8.0\scripts\proc05-negatives.ps1
 ```
 
+编排级替身（无浏览器、无真实服务；端口 4200 须空闲）：在沙箱里原样运行真实 `run-main.ps1`，构造“进程 A 存活但监听归进程 B”，并把渲染后 README 的第 3、6 块实际执行一遍：
+
+```powershell
+powershell -NoProfile -File docs\demo\v0.8.0\scripts\orchestration-stub.ps1
+```
 真实服务演练（无浏览器，需协调者批准，D234）：
 
 ```powershell
@@ -89,7 +94,7 @@ if (-not ($dist -match "/invoicing" -and $dist -match "fromOrder")) { throw "dis
 
 `run-main.ps1` 启动前检查端口 4200 空闲；每个 seed 与 capture 之前都校验监听进程就是本轮服务；`finally` 只停本轮服务、只删本轮 `erp-demo-*` 目录。`screenshots/.gitkeep` 是替身检查的哨兵文件，别删。
 
-脚本入口：[run-main.ps1](scripts/run-main.ps1)、[capture.mjs](scripts/capture.mjs)、[seed-invoicing.mjs](scripts/seed-invoicing.mjs)、[stub-check.ps1](scripts/stub-check.ps1)、[proc05-negatives.ps1](scripts/proc05-negatives.ps1)、[seed-invoicing-stub.mjs](scripts/seed-invoicing-stub.mjs)；账套准备与主数据复用 v0.4.0 的 `prepare.mjs`、`seed-trade.mjs`。
+脚本入口：[run-main.ps1](scripts/run-main.ps1)、[capture.mjs](scripts/capture.mjs)、[seed-invoicing.mjs](scripts/seed-invoicing.mjs)、[stub-check.ps1](scripts/stub-check.ps1)、[proc05-negatives.ps1](scripts/proc05-negatives.ps1)、[orchestration-stub.ps1](scripts/orchestration-stub.ps1)、[seed-invoicing-stub.mjs](scripts/seed-invoicing-stub.mjs)；账套准备与主数据复用 v0.4.0 的 `prepare.mjs`、`seed-trade.mjs`。
 
 ## 5. 范围与限制
 
