@@ -126,7 +126,7 @@ export function TradeAdjustments({ preferences }: { preferences: Preferences }) 
     label(preferences.language, key);
   const [selected, setSelected] = useState("");
   const [guard, setGuard] = useState({ busy: false, unsaved: false });
-  useInvoiceLeaveGuard(guard);
+  useInvoiceLeaveGuard(guard, t("trade.leaveConfirm"));
   const companies = useInfiniteQuery({
     queryKey: ["companies"],
     initialPageParam: "",

@@ -318,4 +318,21 @@ describe("trade historical reports", () => {
       t("trpt.teaching"),
     );
   });
+  it("asks before leaving unapplied filter input instead of blocking navigation", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    mockApi();
+    render(<App />);
+    await screen.findByRole("button", { name: "INV-HISTORY" });
+    const address = window.location.hash;
+    fireEvent.change(screen.getByLabelText(t("trpt.party")), { target: { value: "V2" } });
+    fireEvent.click(screen.getByRole("link", { name: t("journal.title") }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(confirm).toHaveBeenCalledWith(t("trade.leaveConfirm"));
+    expect(window.location.hash).toBe(address);
+    expect((screen.getByLabelText(t("trpt.party")) as HTMLInputElement).value).toBe("V2");
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole("link", { name: t("journal.title") }));
+    await waitFor(() => expect(window.location.hash).toBe("#/journals"));
+    expect(confirm).toHaveBeenCalledTimes(2);
+  });
 });

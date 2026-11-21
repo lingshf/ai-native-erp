@@ -59,6 +59,7 @@ export const tradeEn = {
   "tadj.status": "Status",
   "tadj.teaching": "Cancel and reverse post new journals; posted journals are never edited.",
   "trade.discard": "Discard unsaved trade configuration changes?",
+  "trade.leaveConfirm": "This page has changes that are not submitted. Leave anyway?",
   "trade.uncertain":
     "Save outcome is unknown. The draft is locked; retry the same revision and verify the stored result before leaving.",
   "trade.reconcile": "Retry safely and verify save",
@@ -197,6 +198,8 @@ export const tradeEn = {
   "tinv.previewSummary": "Not posted · preview only",
   "tinv.postingPreview": "Posting preview",
   "tinv.empty": "No posted invoices yet",
+  "tinv.sourceOrder": "Source order",
+  "tinv.noSourceOrder": "No source order",
   "tinv.teaching":
     "AP invoices credit the payables control account and debit expense plus deductible input tax; AR invoices debit receivables and credit revenue plus output tax. Each posted invoice opens an item due by payment terms.",
   "tinv.issue.shape": "Invalid field value or unsupported field.",
@@ -283,6 +286,7 @@ export const tradeZh: Record<keyof typeof tradeEn, string> = {
   "tadj.status": "状态",
   "tadj.teaching": "取消与反向都生成新凭证，不修改已过账凭证。",
   "trade.discard": "放弃尚未保存的贸易配置修改？",
+  "trade.leaveConfirm": "本页有未提交的修改，仍要离开吗？",
   "trade.uncertain":
     "保存结果尚未确定。草稿已锁定；请以相同版本安全重试并核对保存结果，再离开页面。",
   "trade.reconcile": "安全重试并核对保存",
@@ -413,6 +417,8 @@ export const tradeZh: Record<keyof typeof tradeEn, string> = {
   "tinv.previewSummary": "尚未过账 · 仅预览",
   "tinv.postingPreview": "过账预览",
   "tinv.empty": "尚无已过账发票",
+  "tinv.sourceOrder": "来源订单",
+  "tinv.noSourceOrder": "无来源订单",
   "tinv.teaching":
     "AP 发票贷记应付控制科目，借记费用及可抵扣进项税；AR 发票借记应收，贷记收入及销项税。每张已过账发票按付款条件生成未结项。",
   "tinv.issue.shape": "字段值无效或含不支持的字段。",

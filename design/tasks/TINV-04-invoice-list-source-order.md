@@ -17,7 +17,7 @@
 - 发票列表接口 `GET /api/v1/trade/invoices`（`packages/infra/src/http/trade-documents.ts:182`）返回 `tradeInvoicePageSchema`（`packages/core/src/contracts/trade-documents.ts:469–486`，严格 schema），列表项没有 `orderId`；存储 `tradeDocumentPage` 的 SELECT 也不取 `order_id`（`packages/infra/src/storage/trade-documents.ts:689–712`）。
 - `trade_documents.order_id` 在过账时已写入（发票带订单时），可以为空。
 - 发票页没有详情视图；列表上看不出发票来自哪张订单，要回到订单只能手工抄订单号。
-- 应用用 HashRouter（`packages/web/src/App.tsx:82`），站内链接只改 hash，不触发 `beforeunload`。`useInvoiceLeaveGuard`（`TradeInvoices.tsx:199–230`）对站内链接点击与 `popstate` / `hashchange` **只在 busy 时拦截**；草稿 dirty 只挂 `beforeunload`（`:219–223`），所以 dirty 草稿经站内链接离开时既不确认也不保留，草稿直接丢失。该 hook 还被另外四个页面使用（见冲突域）。其中两页把 dirty 算进了 busy：`TradeReports.tsx:105` 传 `{ busy: dirty, unsaved: dirty }`，`TradePeriodAdmission.tsx:51–54` 的 busy 为 `busy || pending !== null || dirty || loaded.failed`。所以这两页 dirty 时站内跳转走 busy 分支，被直接阻止，不弹确认；即使 hook 加了 dirty 确认，这两页不改调用行也不会变。订单页的 `useOrderLeaveGuard`（`TradeOrders.tsx:138–183`）已经按“busy 拦截、dirty 用 `window.confirm` 确认、修饰键点击与 `_blank` 放行”处理。
+- 应用用 HashRouter（`packages/web/src/App.tsx:82`），站内链接只改 hash，不触发 `beforeunload`。`useInvoiceLeaveGuard`（`TradeInvoices.tsx:199–230`）对站内链接点击与 `popstate` / `hashchange` **只在 busy 时拦截**；草稿 dirty 只挂 `beforeunload`（`:219–223`），所以 dirty 草稿经站内链接离开时不确认。（D266 更正：发票、结算、调整三页的草稿与结果未知的 pending 按公司保存在 sessionStorage，离开后返回本页能恢复，并不丢失；往来未结项与账龄、期间准入两页的未应用 / 未提交输入离开后不保留。）该 hook 还被另外四个页面使用（见冲突域）。其中两页把 dirty 算进了 busy：`TradeReports.tsx:105` 传 `{ busy: dirty, unsaved: dirty }`，`TradePeriodAdmission.tsx:51–54` 的 busy 为 `busy || pending !== null || dirty || loaded.failed`。所以这两页 dirty 时站内跳转走 busy 分支，被直接阻止，不弹确认；即使 hook 加了 dirty 确认，这两页不改调用行也不会变。订单页的 `useOrderLeaveGuard`（`TradeOrders.tsx:138–183`）已经按“busy 拦截、dirty 用 `window.confirm` 确认、修饰键点击与 `_blank` 放行”处理。
 
 ## 设计决定（产品负责人）
 
@@ -26,7 +26,7 @@
 3. 链接是路由 Link（`href` 为 `#/trade-orders?…`），可用键盘激活、可在新标签页打开；链接本身不自带确认框。
 4. **dirty 草稿离开确认，按通用方案**（协调者倾向，本任务书采纳）：在 `useInvoiceLeaveGuard` 一处修改，规则与 `useOrderLeaveGuard` 相同：
    - busy：照旧拦截，不弹确认；
-   - dirty 且不 busy：站内链接点击（左键、无修饰键、非 `_blank`）与 `popstate` / `hashchange` 先弹 `window.confirm`（新增文案键 `trade.leaveConfirm`，中英各一）。**取消**：不跳转，地址与草稿保持原样；**继续**：跳转，草稿按现状丢弃；
+   - dirty 且不 busy：站内链接点击（左键、无修饰键、非 `_blank`）与 `popstate` / `hashchange` 先弹 `window.confirm`（新增文案键 `trade.leaveConfirm`，中英各一）。**取消**：不跳转，地址与草稿保持原样；**继续**：跳转，草稿按现状处理（发票、结算、调整三页的草稿保留在 sessionStorage，返回可恢复；其余两页的输入不保留；文案中性，见 D266）；
    - 修饰键点击、中键、`_blank`：放行，不弹确认（草稿留在原标签页）；
    - `beforeunload` 不变。
 

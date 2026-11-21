@@ -7,6 +7,7 @@ import {
   type TradeOrderInvoicingDto,
 } from "@erp/core/contracts";
 import { App } from "../src/App.tsx";
+import { sourceOrderPath } from "../src/TradeInvoices.tsx";
 import { label, type LabelKey } from "../src/ui/index.ts";
 
 const company = {
@@ -294,7 +295,9 @@ describe("trade invoices", () => {
     await waitFor(() =>
       expect(screen.getByLabelText<HTMLInputElement>(t("tinv.party")).value).toBe("V1"),
     );
+    const leave = vi.spyOn(window, "confirm").mockReturnValue(true);
     fireEvent.click(screen.getByRole("link", { name: t("trade.title") }));
+    expect(leave).toHaveBeenCalledTimes(1);
     expect(window.location.hash).toBe("#/trade");
     fireEvent.click(screen.getByRole("link", { name: t("tinv.title") }));
     expect((await screen.findByLabelText<HTMLInputElement>(t("tinv.party"))).value).toBe("V1");
@@ -323,7 +326,9 @@ describe("trade invoices", () => {
       expect(screen.getByLabelText<HTMLSelectElement>(t("master.company")).disabled).toBe(false),
     );
 
+    leave.mockClear();
     fireEvent.click(screen.getByRole("link", { name: t("trade.title") }));
+    expect(leave).toHaveBeenCalledTimes(1);
     expect(window.location.hash).toBe("#/trade");
     fireEvent.click(screen.getByRole("link", { name: t("tinv.title") }));
     expect(await screen.findByText(t("tinv.uncertain"))).toBeTruthy();
@@ -723,5 +728,159 @@ describe("trade invoices from an order (TINV-01)", () => {
     } finally {
       ask.mockRestore();
     }
+  });
+});
+
+describe("trade invoices leave guard", () => {
+  const leave = t("trade.leaveConfirm");
+  const party = () => screen.getByLabelText<HTMLInputElement>(t("tinv.party"));
+  const ordersLink = () => screen.getByRole("link", { name: t("shell.tradeOrders") });
+  // A keyboard Enter on a focused link makes the browser dispatch a click with detail 0.
+  const pressEnter = (link: HTMLElement) => {
+    link.focus();
+    expect(document.activeElement).toBe(link);
+    if (fireEvent.keyDown(link, { key: "Enter" })) fireEvent.click(link, { detail: 0 });
+  };
+  const stub = (
+    post: () => Response | Promise<Response> = () => Promise.reject(new TypeError("network down")),
+  ) =>
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockImplementation(async (path, init) => {
+        const url = String(path);
+        if (url.startsWith("/api/v1/companies"))
+          return response({ items: [company], nextCursor: null });
+        if (url === "/api/v1/trade/invoices/preview") {
+          const command = tradeInvoiceCommandSchema.parse(JSON.parse(String(init?.body)));
+          return response(preview(command.documentId));
+        }
+        if (url === "/api/v1/trade/invoices" && init?.method === "POST") return post();
+        if (url.startsWith("/api/v1/trade/invoices?"))
+          return response({ items: [], nextCursor: null });
+        return response({}, 404);
+      }),
+    );
+
+  it("asks once before leaving a dirty draft by click or Enter, keeping the draft on cancel", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    stub();
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(t("tinv.party")), { target: { value: "V1" } });
+    fireEvent.click(ordersLink());
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(confirm).toHaveBeenCalledWith(leave);
+    pressEnter(ordersLink());
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(window.location.hash).toBe("#/trade-invoices");
+    expect(party().value).toBe("V1");
+    expect(screen.getByLabelText(`${t("tinv.product")} L1`)).toBeTruthy();
+    confirm.mockReturnValue(true);
+    pressEnter(ordersLink());
+    expect(confirm).toHaveBeenCalledTimes(3);
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-orders"));
+    expect(confirm).toHaveBeenCalledTimes(3);
+  });
+
+  it("leaves a clean draft without asking", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    stub();
+    render(<App />);
+    await screen.findByLabelText(t("tinv.party"));
+    fireEvent.click(ordersLink());
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-orders"));
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it("lets Ctrl/Meta clicks open a new tab without asking", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    stub();
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(t("tinv.party")), { target: { value: "V1" } });
+    // Stands in for the browser opening a new tab: the page itself must not be blocked.
+    const prevented: boolean[] = [];
+    const newTab = (event: Event) => {
+      prevented.push(event.defaultPrevented);
+      event.preventDefault();
+    };
+    document.addEventListener("click", newTab);
+    try {
+      for (const modifier of [{ ctrlKey: true }, { metaKey: true }])
+        fireEvent.click(ordersLink(), modifier);
+    } finally {
+      document.removeEventListener("click", newTab);
+    }
+    expect(prevented).toEqual([false, false]);
+    expect(confirm).not.toHaveBeenCalled();
+    expect(window.location.hash).toBe("#/trade-invoices");
+    expect(party().value).toBe("V1");
+  });
+
+  it("confirms back/forward once per navigation and restores the address on cancel", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    stub();
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(t("tinv.party")), { target: { value: "V1" } });
+    const back = () =>
+      act(() => {
+        window.history.pushState(null, "", "/#/trade-orders");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+        window.dispatchEvent(new HashChangeEvent("hashchange"));
+      });
+    back();
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(window.location.hash).toBe("#/trade-invoices");
+    expect(party().value).toBe("V1");
+    back();
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(window.location.hash).toBe("#/trade-invoices");
+    confirm.mockReturnValue(true);
+    back();
+    expect(confirm).toHaveBeenCalledTimes(3);
+    await waitFor(() =>
+      expect(screen.queryByRole("heading", { name: t("tinv.title") })).toBeNull(),
+    );
+    expect(window.location.hash).toBe("#/trade-orders");
+  });
+
+  it("blocks links and history without asking while a post is in flight", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    stub(() => new Promise<Response>(() => {}));
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(t("tinv.party")), { target: { value: "V1" } });
+    fireEvent.change(screen.getByLabelText(t("tinv.externalInvoice")), {
+      target: { value: "inv-1" },
+    });
+    fireEvent.change(screen.getByLabelText(`${t("tinv.product")} L1`), {
+      target: { value: "RENT" },
+    });
+    fireEvent.change(screen.getByLabelText(`${t("tinv.unitPrice")} L1`), {
+      target: { value: "10" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.preview") }));
+    await screen.findByRole("region", { name: t("tinv.previewTitle") });
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.confirm") }));
+    await waitFor(() =>
+      expect(screen.getByLabelText<HTMLSelectElement>(t("master.company")).disabled).toBe(true),
+    );
+    fireEvent.click(ordersLink());
+    fireEvent.click(ordersLink(), { ctrlKey: true });
+    expect(window.location.hash).toBe("#/trade-invoices");
+    act(() => {
+      window.history.pushState(null, "", "/#/trade-orders");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(window.location.hash).toBe("#/trade-invoices");
+    expect(confirm).not.toHaveBeenCalled();
+    expect(party().value).toBe("V1");
+  });
+});
+
+describe("source order link", () => {
+  it("addresses the order on the order page with the current company, URL-encoded", () => {
+    expect(sourceOrderPath("DEFAULT", "PO-1")).toBe("/trade-orders?company=DEFAULT&order=PO-1");
+    const path = sourceOrderPath("C&1", "PO 1/#?&=+%");
+    expect(path).toBe("/trade-orders?company=C%261&order=PO%201%2F%23%3F%26%3D%2B%25");
+    const params = new URLSearchParams(path.split("?")[1]);
+    expect([params.get("company"), params.get("order")]).toEqual(["C&1", "PO 1/#?&=+%"]);
   });
 });

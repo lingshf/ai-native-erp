@@ -177,3 +177,22 @@ it.for(["open", "closed"] as const)(
     expect(screen.getByRole("button", { name: t("trpt.save") }).matches(":disabled")).toBe(true);
   },
 );
+it("asks before leaving unsaved admission input instead of blocking navigation", async () => {
+  const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  mockApi();
+  render(<App />);
+  await enter();
+  const address = window.location.hash;
+  fireEvent.click(screen.getByRole("link", { name: t("journal.title") }));
+  expect(confirm).toHaveBeenCalledTimes(1);
+  expect(confirm).toHaveBeenCalledWith(t("trade.leaveConfirm"));
+  expect(window.location.hash).toBe(address);
+  expect((screen.getByLabelText(t("trpt.trade")) as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByLabelText(t("trpt.reason")) as HTMLInputElement).value).toBe(
+    "Fictional explicit admission",
+  );
+  confirm.mockReturnValue(true);
+  fireEvent.click(screen.getByRole("link", { name: t("journal.title") }));
+  await waitFor(() => expect(window.location.hash).toBe("#/journals"));
+  expect(confirm).toHaveBeenCalledTimes(2);
+});

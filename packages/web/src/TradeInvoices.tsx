@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   companiesPageSchema,
   tradeInvoiceCommandSchema,
@@ -196,23 +196,39 @@ function storeSaved(company: string, saved: Saved): boolean {
     return false;
   }
 }
-export function useInvoiceLeaveGuard(guard: Guard) {
+// Shared by the trade pages: busy (a submit in flight or its outcome unknown) blocks in-app links
+// and history; unsaved input asks once per navigation; modified clicks open a new tab untouched.
+export function useInvoiceLeaveGuard(guard: Guard, message: string) {
   // Listeners read the latest guard so a just-finished post never keeps blocking navigation.
   const latest = useRef(guard);
   latest.current = guard;
   useEffect(() => {
     if (!guard.busy && !guard.unsaved) return;
     const current = window.location.href;
+    // Back/forward may raise popstate and hashchange for one navigation: reuse an accepted answer.
+    let accepted: string | null = null;
+    const mayLeave = (target: string) => {
+      if (latest.current.busy) return false;
+      if (!latest.current.unsaved || accepted === target) return true;
+      if (!window.confirm(message)) return false;
+      accepted = target;
+      return true;
+    };
     const click = (event: MouseEvent) => {
-      if (!latest.current.busy) return;
       const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
       if (!(link instanceof HTMLAnchorElement) || link.href === current || link.target === "_blank")
         return;
+      const plain =
+        event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey;
+      if (!latest.current.busy && !plain) return;
+      if (mayLeave(link.href)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
     };
+    // Restoring the address with replaceState raises no event, so a cancel never asks again.
     const navigation = (event: Event) => {
-      if (!latest.current.busy || window.location.href === current) return;
+      const target = window.location.href;
+      if (target === current || mayLeave(target)) return;
       event.stopImmediatePropagation();
       window.history.replaceState(window.history.state, "", current);
     };
@@ -231,7 +247,7 @@ export function useInvoiceLeaveGuard(guard: Guard) {
       window.removeEventListener("hashchange", navigation, true);
       window.removeEventListener("beforeunload", unload);
     };
-  }, [guard.busy, guard.unsaved]);
+  }, [guard.busy, guard.unsaved, message]);
 }
 
 function isIssueKey(key: string): key is Key {
@@ -290,7 +306,7 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
   const [selected, setSelected] = useState(() => params.get("company") ?? "");
   const [guard, setGuard] = useState(idleGuard);
   const [intake, setIntake] = useState<Intake | null>(null);
-  useInvoiceLeaveGuard(guard);
+  useInvoiceLeaveGuard(guard, t("trade.leaveConfirm"));
   const fromOrder = params.get("fromOrder");
   // The router commits the dropped parameter in a transition, so this effect can rerun (e.g. on
   // guard.busy) while the address still shows the request: take each request only once.
@@ -1008,6 +1024,35 @@ function PreviewPanel({
         )}
       </div>
     </section>
+  );
+}
+
+/** Router path of an order's detail on the order page (TINV-03 reads `company` and `order`). */
+export const sourceOrderPath = (company: string, orderId: string) =>
+  `/trade-orders?company=${encodeURIComponent(company)}&order=${encodeURIComponent(orderId)}`;
+
+// A router link: keyboard-activatable and openable in a new tab; leaving a dirty draft is confirmed
+// by the page's leave guard like any other in-app link.
+export function SourceOrderCell({
+  company,
+  orderId,
+  t,
+}: {
+  company: string;
+  orderId: string | null;
+  t: T;
+}) {
+  return (
+    <td className="tinv-source">
+      {orderId === null ? (
+        <>
+          <span aria-hidden="true">—</span>
+          <span className="visually-hidden">{t("tinv.noSourceOrder")}</span>
+        </>
+      ) : (
+        <Link to={sourceOrderPath(company, orderId)}>{orderId}</Link>
+      )}
+    </td>
   );
 }
 

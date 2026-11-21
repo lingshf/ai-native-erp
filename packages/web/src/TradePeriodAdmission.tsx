@@ -48,10 +48,10 @@ export function TradePeriodAdmission({
     loaded.failed ? "trpt.storage" : null,
   );
   const dirty = reason !== "" || [...modules].sort().join() !== [...period.modules].sort().join();
-  useInvoiceLeaveGuard({
-    busy: busy || pending !== null || dirty || loaded.failed,
-    unsaved: dirty,
-  });
+  useInvoiceLeaveGuard(
+    { busy: busy || pending !== null || loaded.failed, unsaved: dirty },
+    t("trade.leaveConfirm"),
+  );
   useEffect(() => {
     lock(busy || dirty || pending !== null || loaded.failed);
     return () => lock(false);
