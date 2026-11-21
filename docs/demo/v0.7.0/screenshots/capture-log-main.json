@@ -1,0 +1,218 @@
+[
+ {
+  "step": "all",
+  "tag": "zh-red-1440",
+  "rows": 4
+ },
+ {
+  "name": "trade-orders-filter-all-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "party-only",
+  "tag": "zh-red-1440",
+  "rows": 2
+ },
+ {
+  "step": "combined",
+  "tag": "zh-red-1440",
+  "rows": 1
+ },
+ {
+  "name": "trade-orders-filter-combined-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "cleared",
+  "tag": "zh-red-1440",
+  "rows": 4
+ },
+ {
+  "step": "no-match",
+  "tag": "zh-red-1440",
+  "message": "没有符合条件的订单。",
+  "rows": 0
+ },
+ {
+  "name": "trade-orders-filter-no-match-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "range-error",
+  "tag": "zh-red-1440",
+  "message": "起始日期不能晚于截止日期。",
+  "rows": 4
+ },
+ {
+  "name": "trade-orders-filter-range-error-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders",
+  "tag": "zh-red-1440",
+  "listRequests": 6,
+  "errors": []
+ },
+ {
+  "step": "all",
+  "tag": "zh-red-390",
+  "rows": 4
+ },
+ {
+  "name": "trade-orders-filter-all-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "party-only",
+  "tag": "zh-red-390",
+  "rows": 2
+ },
+ {
+  "step": "combined",
+  "tag": "zh-red-390",
+  "rows": 1
+ },
+ {
+  "name": "trade-orders-filter-combined-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "cleared",
+  "tag": "zh-red-390",
+  "rows": 4
+ },
+ {
+  "step": "no-match",
+  "tag": "zh-red-390",
+  "message": "没有符合条件的订单。",
+  "rows": 0
+ },
+ {
+  "name": "trade-orders-filter-no-match-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "range-error",
+  "tag": "zh-red-390",
+  "message": "起始日期不能晚于截止日期。",
+  "rows": 4
+ },
+ {
+  "name": "trade-orders-filter-range-error-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders",
+  "tag": "zh-red-390",
+  "listRequests": 6,
+  "errors": []
+ },
+ {
+  "step": "all",
+  "tag": "en-green-1440",
+  "rows": 4
+ },
+ {
+  "name": "trade-orders-filter-all-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "party-only",
+  "tag": "en-green-1440",
+  "rows": 2
+ },
+ {
+  "step": "combined",
+  "tag": "en-green-1440",
+  "rows": 1
+ },
+ {
+  "name": "trade-orders-filter-combined-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "cleared",
+  "tag": "en-green-1440",
+  "rows": 4
+ },
+ {
+  "step": "no-match",
+  "tag": "en-green-1440",
+  "message": "No orders match the filters.",
+  "rows": 0
+ },
+ {
+  "name": "trade-orders-filter-no-match-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "range-error",
+  "tag": "en-green-1440",
+  "message": "The start date must not be later than the end date.",
+  "rows": 4
+ },
+ {
+  "name": "trade-orders-filter-range-error-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders",
+  "tag": "en-green-1440",
+  "listRequests": 6,
+  "errors": []
+ },
+ {
+  "step": "all",
+  "tag": "en-green-390",
+  "rows": 4
+ },
+ {
+  "name": "trade-orders-filter-all-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "party-only",
+  "tag": "en-green-390",
+  "rows": 2
+ },
+ {
+  "step": "combined",
+  "tag": "en-green-390",
+  "rows": 1
+ },
+ {
+  "name": "trade-orders-filter-combined-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "cleared",
+  "tag": "en-green-390",
+  "rows": 4
+ },
+ {
+  "step": "no-match",
+  "tag": "en-green-390",
+  "message": "No orders match the filters.",
+  "rows": 0
+ },
+ {
+  "name": "trade-orders-filter-no-match-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "range-error",
+  "tag": "en-green-390",
+  "message": "The start date must not be later than the end date.",
+  "rows": 4
+ },
+ {
+  "name": "trade-orders-filter-range-error-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "orders",
+  "tag": "en-green-390",
+  "listRequests": 6,
+  "errors": []
+ }
+]

@@ -1,6 +1,6 @@
 # v0.7.0 Demo 运行记录
 
-状态：第一个独占时段（D227）在 seed-orders 步中止；已修脚本（D228）、补替身并做了无浏览器的真实服务演练；等待第二个时段。
+状态：第一个独占时段（D227）在 seed-orders 步中止；已修脚本（D228）、补替身并做了无浏览器的真实服务演练；第二个时段（D229）成功，16 张截图已入库。
 
 ## 脚本版本（第二个时段将使用，提交 `447c645`）
 
@@ -60,6 +60,13 @@ powershell -NoProfile -File docs\demo\v0.7.0\scripts\stub-check.ps1
 
 输出摘要：`ready port=4199 pid=29000`；`posted product SERVICE 201`；PO-F1、PO-F2、SO-F3、SO-F4 均 201；`readiness ok: partners and 4 orders present`；`port 4199 released`。结束后无监听 4199、无 `erp-demo-*`，工作区只有预期改动。
 
-## 真实运行（第二个时段）
+## 真实运行（第二个时段，D229）
 
-待补：独占时段预检记录、实际命令输出、退出码、截图数量、清理结果、已知控制台错误。
+- 运行对象：提交 `0d10871`（脚本提交 `447c645`），开跑前 `git status --porcelain` 为空；与产品基线 main `f06d30c` 的产品代码相同（本分支只改文档与 Demo 脚本）。
+- 预检：11:57:36–11:58:28 连续 6 次，均为 0（10 s 采样，日志 `$env:TEMP\s7-precheck2.log`；规则：node / chrome / msedge 进程命令行含 vitest、playwright、headless）。
+- 命令：README §4 整块，一次。`npm run build` 退出 0（约 3 s）；`run-main.ps1`：就绪 `ready port=4199 pid=50000 start=11:58:44`；`posted product SERVICE 201`，PO-F1、PO-F2、SO-F3、SO-F4 均 201；`readiness ok: partners and 4 orders present`；capture 输出 `[]`（无横向溢出、无错误）、`shots 16`、`capture exit 0`；`port 4199 released`；截图数 16，已复制。全程 39 s。
+- 清理：端口 4199 已释放，无 `erp-demo-*`，无 vitest / playwright / headless 进程，时段已释放。
+- 页面核对（`capture-log-main.json`，4 个组合一致）：无筛选 4 行（首次请求只带 `company`、`limit`）；仅伙伴 PARTY 2 行；伙伴 + 销售 + 日期区间 1 行（SO-F3）；清除后 4 行且四个控件清空；PARTY2 + 销售 + 截止 10-31 无结果，显示“没有符合条件的订单。” / “No orders match the filters.”；起始 12-01 晚于截止 11-01 时显示日期错误，没有发请求，列表仍 4 行。每个组合 6 次列表请求，0 个页面错误、0 个 ≥400 响应。
+- 截图：16 张，在 `screenshots/`（`trade-orders-filter-{all,combined,no-match,range-error}-{zh-red-1440,zh-red-390,en-green-1440,en-green-390}.png`），另有 `capture-log-main.json`。截图前 `assertState` 通过。人工抽看了 zh/1440 日期错误与 en/390 组合筛选两张，内容与预期一致，教学说明里有“列表筛选……不会被记忆”的句子。
+- 已知控制台错误：无。
+- 未实跑：见 README §5。第一个时段的中止见上文。
