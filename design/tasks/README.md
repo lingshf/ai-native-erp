@@ -388,7 +388,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 **目标**：
 - **产品**：订单列表可按伙伴、方向、订单日期筛选（TORD-05）。TORD-03 上线后订单列表只能从头翻页，“看某个伙伴的订单”“看本月的采购订单”做不到；这是贸易页现阶段日常使用中最缺的能力，也是 S6 明确推迟、需要迁移的一项。只加一条伙伴索引（迁移 017）。
-- **D-7 完成**：UI-11e 给订单列表 `button.cell-link` 补上类规则圆角，删除 `styles.css` 及 `main.tsx` 的 import；合并后 main Full 12/12 测试步骤通过，D-7 完成。
+- **D-7 完成**：UI-11e 给订单列表 `button.cell-link` 补上类规则圆角，删除 `styles.css` 及 `main.tsx` 的 import；合并后 main Full 12/12 测试步骤通过，D-7 完成。**已完成**：[#159](https://github.com/lingshf/ai-native-erp/pull/159)，main `49cb443`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44937384278) 12/12。
 - **S6 遗留**：分片权重守卫、D204 墙钟的 Full 观察、D199 CLI 冒烟所在用例的耗时观察（不作为子进程余量，CI-01）；v0.6.0 回顾行动项 1–5 落入模板与清单（PROC-03）。
 
 版本号由协调者定。基线为 v0.6.0 tag 所在的 main（`3548d58`）。**S7 开发任务在 v0.6.0 tag 打出后派发**（已打）；本节由设计 PR 写入。
@@ -401,10 +401,10 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| [UI-11e](UI-11e-cell-link-radius-delete-styles-css.md) | 订单列表 `button.cell-link` 圆角改由 `trade-orders.css` 类规则提供，删除 `styles.css` 与 `main.tsx` 的 import；D-7 完成 | CSS + 入口 import 一行 | P1 | UI-11d（已合并，[#142](https://github.com/lingshf/ai-native-erp/pull/142)）；从开工到合并期间无进行中的页面 CSS 任务 | web-ui:trade-orders, web-ui:shell | todo | — |
-| [TORD-05](TORD-05-trade-order-list-filters.md) | 订单列表按伙伴 / 方向 / 订单日期筛选；迁移 017 只加 `trade_orders_party` 索引；排序与游标不变；PG-05 计划与 p95 基准 | 迁移 + 后端 API + 页面 | P1 | UI-11e（web-ui:trade-orders 串行）；CI-01（共享 `scripts/test-shard-weights.json`：CI-01 合并且 main Full 绿之前不得改动该文件，见泳道“权重文件门禁”） | **迁移/schema**, 存储, trade-docs, contracts, web-ui:trade-orders, bench/CI（基准文件、`scripts/test-shard-weights.json`） | todo | — |
-| [CI-01](CI-01-shard-weight-guard-and-wallclock.md) | 分片权重完整性守卫（缺失 / 陈旧即失败）；D204 墙钟的 Full 观察（空载测量只作新基线）；D199 CLI 冒烟所在用例的耗时观察（不算余量） | CI 守卫 + 测量报告 | P2 | — | bench/CI（`scripts/test-shard-weights.json`、`scripts/ci.ts`、`vitest.config.ts`、`infra/test/tooling`） | todo | — |
-| [PROC-03](PROC-03-v060-retro-actions.md) | v0.6.0 回顾行动项 1–5 写入 Demo 模板与发布清单（版本管理，不占开发名额） | 文档 | P2（v0.7.0 RC 之前合并） | — | docs:release（`docs/demo/TEMPLATE.md`、`docs/release/README.md`） | todo | — |
+| [UI-11e](UI-11e-cell-link-radius-delete-styles-css.md) | 订单列表 `button.cell-link` 圆角改由 `trade-orders.css` 类规则提供，删除 `styles.css` 与 `main.tsx` 的 import；D-7 完成 | CSS + 入口 import 一行 | P1 | UI-11d（已合并，[#142](https://github.com/lingshf/ai-native-erp/pull/142)）；从开工到合并期间无进行中的页面 CSS 任务 | web-ui:trade-orders, web-ui:shell | done（D-7 完成；PG-05 例外：CSS 合计 gzip-9 +8 B，评审按 UI-1 #9 批准，见 [UI-1.md §5.4](../reviews/UI-1.md#54-ui-11e订单列表-cell-link-圆角与-stylescss-删除记录d-7-完成)） | [#159](https://github.com/lingshf/ai-native-erp/pull/159)（`49cb443`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44937384278) 12/12） |
+| [TORD-05](TORD-05-trade-order-list-filters.md) | 订单列表按伙伴 / 方向 / 订单日期筛选；迁移 017 只加 `trade_orders_party` 索引；排序与游标不变；PG-05 计划与 p95 基准 | 迁移 + 后端 API + 页面 | P1 | UI-11e（web-ui:trade-orders 串行）；CI-01（共享 `scripts/test-shard-weights.json`：CI-01 合并且 main Full 绿之前不得改动该文件，见泳道“权重文件门禁”） | **迁移/schema**, 存储, trade-docs, contracts, web-ui:trade-orders, bench/CI（基准文件、`scripts/test-shard-weights.json`） | in-progress（UI-11e 合并、CI-01 合并且 main Full 绿后派发；权重文件门禁已满足） | — |
+| [CI-01](CI-01-shard-weight-guard-and-wallclock.md) | 分片权重完整性守卫（缺失 / 陈旧即失败）；D204 墙钟的 Full 观察（空载测量只作新基线）；D199 CLI 冒烟所在用例的耗时观察（不算余量） | CI 守卫 + 测量报告 | P2 | — | bench/CI（`scripts/test-shard-weights.json`、`scripts/ci.ts`、`vitest.config.ts`、`infra/test/tooling`） | done（守卫补登 5 个缺失权重；Full 观察与用例耗时见 PR） | [#157](https://github.com/lingshf/ai-native-erp/pull/157)（`ee95178`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44934751859)） |
+| [PROC-03](PROC-03-v060-retro-actions.md) | v0.6.0 回顾行动项 1–5 写入 Demo 模板与发布清单（版本管理，不占开发名额） | 文档 | P2（v0.7.0 RC 之前合并） | — | docs:release（`docs/demo/TEMPLATE.md`、`docs/release/README.md`） | done | [#156](https://github.com/lingshf/ai-native-erp/pull/156)（`3410daa`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44933171837)） |
 
 **S7 共同验收**：
 1. UI 任务满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9，PG-05 口径同 S6（基线为 PR 实际 base 的 gzip 列），不设 Sprint 累计 CSS 门槛；真实 Chrome 证据按[路线图 §5 UI PR 证据清单](../roadmap.md#5-团队流程)，请求评审前逐项勾选写入 PR 正文。
