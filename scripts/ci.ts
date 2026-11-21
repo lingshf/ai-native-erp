@@ -103,20 +103,30 @@ export function fileWeights(reports: unknown[], root = process.cwd()) {
 /**
  * Compares the test files Vitest collects (repo-relative, `/`-separated, as the shard
  * sequencer keys them) with the recorded shard weights. Returns one line per problem;
- * an empty list means every collected file has a weight and every weight has a file.
+ * an empty list means every collected file has a finite positive weight and every weight
+ * has a file. A key whose value is not a finite positive number (e.g. null) counts as
+ * invalid: the sequencer would treat it like a missing weight.
  */
-export function shardWeightProblems(files: string[], weights: Record<string, number>) {
-  const collected = new Set(files);
-  const missing = [...collected].filter((file) => !Object.hasOwn(weights, file)).sort();
+export function shardWeightProblems(files: string[], weights: Record<string, unknown>) {
+  const collected = [...new Set(files)].sort();
+  const missing = collected.filter((file) => !Object.hasOwn(weights, file));
+  const invalid = collected.filter((file) => {
+    const weight = weights[file];
+    return (
+      Object.hasOwn(weights, file) &&
+      !(typeof weight === "number" && Number.isFinite(weight) && weight > 0)
+    );
+  });
   const stale = Object.keys(weights)
-    .filter((key) => !collected.has(key))
+    .filter((key) => !collected.includes(key))
     .sort();
   return [
-    ...(missing.length
+    ...(missing.length || invalid.length
       ? [
-          `Test files without a weight in scripts/test-shard-weights.json (the sequencer runs them as longest and reorders projects):`,
+          `Test files without a valid weight in scripts/test-shard-weights.json (the sequencer runs them as longest and reorders projects):`,
           ...missing.map((file) => `  missing: ${file}`),
-          "Fix: regenerate with `node scripts/ci.ts weights REPORT.json...` from Vitest JSON reports, or add an estimated weight (ms) by hand and say so in the PR.",
+          ...invalid.map((file) => `  invalid: ${file} (${JSON.stringify(weights[file])})`),
+          "Fix: regenerate with `node scripts/ci.ts weights REPORT.json...` from Vitest JSON reports, or add an estimated weight (ms, finite and > 0) by hand and say so in the PR.",
         ]
       : []),
     ...(stale.length

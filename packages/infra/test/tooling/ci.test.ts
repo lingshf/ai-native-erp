@@ -230,6 +230,24 @@ describe("CI selection and reporting", () => {
       "  missing: c.test.ts",
       "  stale: b.test.ts",
     ]);
+
+    const invalid = shardWeightProblems(
+      ["a.test.ts", "b.test.ts", "c.test.ts", "d.test.ts", "e.test.ts", "f.test.ts"],
+      {
+        ...weights,
+        "c.test.ts": null,
+        "d.test.ts": 0,
+        "e.test.ts": "5",
+        "f.test.ts": -1,
+      },
+    );
+    expect(invalid.filter((line) => /^ {2}\w+:/u.test(line))).toEqual([
+      "  invalid: c.test.ts (null)",
+      "  invalid: d.test.ts (0)",
+      '  invalid: e.test.ts ("5")',
+      "  invalid: f.test.ts (-1)",
+    ]);
+    expect(invalid.join("\n")).toContain("node scripts/ci.ts weights REPORT.json");
   });
 
   it("has a shard weight for exactly the test files Vitest collects", async () => {
