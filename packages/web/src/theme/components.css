@@ -56,6 +56,13 @@
   text-overflow: ellipsis;
   padding-block: 0;
 }
+/* UI-11c：虚拟化时前后占位行的跨列 td，原由 styles.css 全局 th, td 提供（值不变）；
+   1px 下边框计入滚动总高度，高度与 padding 仍为内联样式 */
+.journal-spacer {
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+  min-width: 96px;
+}
 .journal-row button {
   height: 44px;
   max-width: 100%;
