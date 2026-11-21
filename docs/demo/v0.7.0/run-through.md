@@ -94,5 +94,5 @@ powershell -NoProfile -File docs\demo\v0.7.0\scripts\stub-check.ps1
 
 | 脚本 | git blob SHA |
 |---|---|
-| `scripts/run-main.ps1` | `RUNMAIN` |
-| `scripts/stub-check.ps1` | `STUBCHECK` |
+| `scripts/run-main.ps1` | `50269859a7c68f8481f80d26500afb89cedff6a1` |
+| `scripts/stub-check.ps1` | `ac443696fd85ce51fcece0b8f0b5fdab26fda97d` |
