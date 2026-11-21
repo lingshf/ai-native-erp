@@ -12,6 +12,8 @@
 6. **滚动位置**：截图前显式设定滚动位置（通常回到页首），整页截图时粘性顶栏才不会压在正文中间；怀疑遮挡是否会在正常使用中出现时，在真实视口里量输入框与顶栏的位置并记录，不在截图里掩盖。
 7. 未实跑的分支（例如夹具无法覆盖的用法）写明“仅对照代码，未实跑”，不得写成已通过；预期结果与实测结果分开标注。
 8. **执行记录里做过的人工检查，都要落到可复制的命令里**（例如“确认端口空闲”“确认进程归属”“确认服务就绪”）；写不成命令的检查，注明是人工目视。
+9. **脚本先写好、先用替身跑通，再申请 Demo 时段**：复跑脚本（含 seed、capture、清理）在申请时段之前就写完，并用不启动浏览器的替身完整跑通成功分支和失败分支（见下“替身验证”）；真实运行使用的就是通过评审、通过替身验证的那份脚本，运行后不再为“整理成可复制”而改它。运行前核对账套就绪清单：迁移已执行，预览 / 保存所需的主数据（例如伙伴）已 seed；缺少就中止，不要带着空账套去截图。（v0.6.0 回顾行动项 1）
+10. **含删除 / 复制操作的替身必须隔离 `TEMP`（`TMP`）并校验真实产物哈希**：替身把 `TEMP`、`TMP` 指向本次专用的临时目录，并在前后各记一次真实产物（账套、备份、截图等）的 SHA256，证明替身没有触及它们（见下“替身验证”）。每个场景还要断言预期结果（是否抛出、复制了几次、停了哪些 pid、有无残留），任一断言失败就以非零退出。（v0.6.0 回顾行动项 2）
 
 ## 启动与检查
 
@@ -84,6 +86,44 @@
   $server = $null; $demo = $null; $db = $null; $port = $null
 }
 ```
+
+## 替身验证（先于申请时段）
+
+替身不启动 Chrome、Playwright 或 Vitest，用假进程和假脚本代替。含删除 / 复制操作的替身，整段放在下面的块里：先记真实产物哈希，再把 `TEMP`、`TMP` 指向专用临时目录，在 `# 替身` 处放本版脚本的替身调用，结束时（无论替身成功还是抛错）恢复环境、只删专用目录，并**在 `finally` 里重新计算哈希**，最后统一判定。以下任一情况都 `throw`（命令行运行时退出码为 1）：替身抛错、哈希前后不一致、任何文件（含隐藏文件）无法读取。后置快照为空（文件被删光、只剩空目录）按“缺失”照常比较，与“快照失败”分开报告。隐藏文件计入；读不了的文件不会被静默跳过。从仓库根目录执行：
+
+```powershell
+. {
+  $real = "docs/demo/v0.6.0/screenshots"   # 换成本版真实产物目录（截图、账套、备份等）
+  $oldTemp = $env:TEMP; $oldTmp = $env:TMP; $iso = $null; $before = $null; $after = $null; $problems = @()
+  $snap = { param($dir) @(Get-ChildItem -LiteralPath $dir -Recurse -File -Force -ErrorAction Stop | Sort-Object FullName | ForEach-Object { (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256 -ErrorAction Stop).Hash + "  " + $_.FullName }) }
+  try {
+    if (-not (Test-Path -LiteralPath $real)) { throw "真实产物目录不存在：$real" }
+    $before = @(& $snap $real)
+    if ($before.Count -eq 0) { throw "真实产物目录为空，无法证明替身没有触及它：$real" }
+    $iso = Join-Path ([IO.Path]::GetTempPath()) ("erp-stub-" + [guid]::NewGuid())
+    New-Item -ItemType Directory -Path $iso | Out-Null
+    $env:TEMP = $iso; $env:TMP = $iso
+    # 替身：在这里调用本版脚本的替身，成功分支和失败分支各一次，并逐个场景断言结果
+  } catch {
+    $problems += "替身或前置检查失败：" + $_.Exception.Message
+  } finally {
+    $env:TEMP = $oldTemp; $env:TMP = $oldTmp
+    if ($iso -and (Split-Path $iso -Leaf) -like "erp-stub-*") { Remove-Item -Recurse -Force $iso }
+    if ($null -ne $before) {
+      try { $after = @(& $snap $real) } catch { $problems += "后置哈希失败（有文件读不了或目录消失）：" + $_.Exception.Message }
+    }
+  }
+  # 快照为空（@()）与快照失败（$null）要区分：空快照照常比较，删光文件会报为缺失
+  if ($null -ne $before -and $null -ne $after -and (($before -join "`n") -ne ($after -join "`n"))) {
+    $missing = @($before | Where-Object { $after -notcontains $_ }).Count
+    $problems += "真实产物哈希在替身运行前后不一致（缺失或改动 $missing 个文件，运行前 $($before.Count) 个，运行后 $($after.Count) 个）：$real"
+  }
+  if ($problems.Count -gt 0) { throw ($problems -join "；") }
+  "真实产物未变：$($before.Count) 个文件（含隐藏文件）"
+}
+```
+
+替身验证的输出（场景、断言、退出码、哈希结论）写进 `run-through.md` 和 PR 正文，成功分支和失败分支都要有。（v0.6.0 回顾行动项 1、2）
 
 ## 截图状态断言
 
