@@ -71,7 +71,7 @@
 | `concurrent` | 16:41–16:42 | 168dacb / 168dacb 版 | 第 1 轮中止，harness 误判（见下） |
 | `concurrent-rerun` | 16:46–16:49 | 168dacb / 修复版副本（sha256 `E06CD4DE…47A2E7`） | 第 1 轮 A、B 都失败，按 D150 停止；剩余 4 轮未跑 |
 
-两个 worktree 的首尾 `rev-parse` 都是 `168dacb90c1fbc77bd9d64935a835d28384d2fc1`，尾 porcelain 都为空。
+三个目录里，两个 worktree 的首尾 `rev-parse` 都是 `168dacb90c1fbc77bd9d64935a835d28384d2fc1`，首 porcelain 都为空。尾 porcelain 有一处例外：`concurrent` 的 `B-end-porcelain.txt` 不为空（见下），其余都为空。
 
 **串行**（`serial--summary.md`）：
 
@@ -87,16 +87,20 @@
 
 **并发第 1 次尝试（`concurrent`，中止）**：16:42:30，A 的 Vitest worker（PID 25464）在 `browser.close()` 期间先退出，它的 Chrome（PID 85976）成了孤儿。
 - 当时 harness 按实时父进程链判定归属，于是把这个 Chrome 当成“外部自动化浏览器”，随即中止并杀掉两路运行（exit -1）。
-- 当时的尾部检查在 worktree 不干净时直接抛错（B 留有被杀运行的 `.legacy-fixture-*` 目录），所以没有生成 `summary` 与 `SHA256SUMS`。该目录事后已删除。
+- B 的尾 porcelain（`concurrent--B-end-porcelain.txt`）记录了一处未跟踪残留：`?? .legacy-fixture-4afbde58-43b7-4450-84cc-bf58728af2d2/snapshot/manifest.json`。这是被杀的 B 迁移套件来不及在 `afterAll` 清理的旧账套 fixture 目录。A 的尾 porcelain 为空。
+- 当时的尾部检查遇到不干净的 worktree 直接抛错，所以这次没有生成 `summary` 与 `SHA256SUMS`。
+- 处理：中止后手工删除了 B 下这个 `.legacy-fixture-4afbde58-…` 目录，没有改动其他文件，随后确认 A、B 的 `git status --porcelain --untracked-files=all` 均为空。同时删除了被杀运行留在 `%TEMP%` 的 `erp-*-gui-*` 和 Playwright 临时目录。重跑前，`concurrent-rerun` 的 `B-start-porcelain.txt` 为空。
 - 修复：harness 改为粘性归属（`own-processes.txt` 记录 pid + 创建时间，由采样器与编排器共享），尾部检查改为只记录、不抛错。
 - 修复只在 worktree 外的副本里用 `-DryRun` 验证过：用 node 分离子进程模拟孤儿，它始终被归为 own，没有出现 would-abort。修复版没有单独正式跑过，唯一一次真实使用就是下面的重跑。
 
-**并发重跑第 1 轮（`concurrent-rerun`）**：A、B 都以 exit 1 结束。13 个测试全部通过，失败都发生在 `afterAll`：`Hook timed out in 15000ms`，位置 [trade-gui-scenario.ts:550](../../packages/infra/test/support/trade-gui-scenario.ts#L550)。
+**并发重跑第 1 轮（`concurrent-rerun`）**：A、B 都以 exit 1 结束。13 个测试全部通过，失败都是 `afterAll` 的 `Hook timed out in 15000ms`，超时位置按套件分别为：
+- 贸易套件（trade-gui-*）：harness 的 `afterAll`，位于 [trade-gui-scenario.ts:550](../../packages/infra/test/support/trade-gui-scenario.ts#L550)；
+- 迁移套件（migration-gui）：文件自己的 `afterAll`，位于 [migration-gui.slow.test.ts:35](../../packages/infra/test/http/migration-gui.slow.test.ts#L35)。
 
 | 运行 | 失败文件 | CPU 均值 / 最大 % | 各文件 Duration（s） |
 | --- | --- | --- | --- |
-| A-run1 | trade-gui-en-green-2、trade-gui-smoke | 99 / 100 | migration 67.3，en-green-1 64.6，en-green-2 52.1，smoke 16.9，zh-red-1 76.3，zh-red-2 69.9 |
-| B-run1 | migration-gui、trade-gui-smoke、trade-gui-zh-red-2 | 99 / 100 | 51.2，68.2，72.2，22.7，64.6，54.4 |
+| A-run1 | trade-gui-en-green-2、trade-gui-smoke（均为 trade-gui-scenario.ts:550） | 99 / 100 | migration 67.3，en-green-1 64.6，en-green-2 52.1，smoke 16.9，zh-red-1 76.3，zh-red-2 69.9 |
+| B-run1 | migration-gui（migration-gui.slow.test.ts:35）；trade-gui-smoke、trade-gui-zh-red-2（均为 trade-gui-scenario.ts:550） | 99 / 100 | 51.2，68.2，72.2，22.7，64.6，54.4 |
 
 外部负载（D150 披露）：
 - 外部 node：开跑前两次检查分别为 2 个和 4 个，运行中最多 7 个，均属 shaoling：
