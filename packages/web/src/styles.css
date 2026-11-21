@@ -1,33 +1,9 @@
 /*
- * 全局元素基线（S5-g 后）：只剩第二道源码检查仍找不到类规则覆盖的声明，原样保留，交回对应泳道补齐后再删：
- * - button 的 background / color / border / border-radius / cursor 与 :hover：概览加载失败的重试按钮（App.tsx，web-ui:shell）；
- * - button:active 的 background：.btn-primary 无 :active 规则（web-ui:components），以及上面的重试按钮；
- * - input[type="checkbox"]：财务维度命中列 label.ui-master-hit 内的复选框（Dimensions.tsx，web-ui:master）；
- * - th, td 的 border-bottom / vertical-align / min-width：VirtualRows 超过 100 行时的占位行单元格
- *   （Journals.tsx 组件；调用页 web-ui:business-events、web-ui:journals、web-ui:trade）。
+ * 全局元素基线（UI-11d 后）：只剩第二道源码检查仍找不到类规则覆盖的一条声明，原样保留，交回对应泳道补齐后再删：
+ * - button 的 border-radius：订单列表的订单号按钮 button.cell-link（TradeOrders.tsx，表格 .grid.tord-list；TORD-03 #132 引入），
+ *   .cell-link 与 trade-orders.css 都没有给出 border-radius（贸易报表的 .cell-link 由 trade-reports.css 给出）。
+ *   归属 web-ui:trade（pages/trade-orders.css），或 web-ui:components（.cell-link 组件规则）。
  */
-input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  accent-color: var(--color-primary);
-}
 button {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  border: 0;
   border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-button:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-}
-button:active:not(:disabled) {
-  background: var(--color-primary-active);
-}
-th,
-td {
-  border-bottom: 1px solid var(--color-border);
-  vertical-align: top;
-  min-width: 96px;
 }
