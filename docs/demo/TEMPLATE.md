@@ -89,7 +89,7 @@
 
 ## 替身验证（先于申请时段）
 
-替身不启动 Chrome、Playwright 或 Vitest，用假进程和假脚本代替。含删除 / 复制操作的替身，整段放在下面的块里：先记真实产物哈希，再把 `TEMP`、`TMP` 指向专用临时目录，在 `# 替身` 处放本版脚本的替身调用，结束时（无论替身成功还是抛错）恢复环境、只删专用目录，并**在 `finally` 里重新计算哈希**，最后统一判定。以下任一情况都 `throw`（命令行运行时退出码为 1）：替身抛错、哈希前后不一致、任何文件（含隐藏文件）无法读取。隐藏文件计入；读不了的文件不会被静默跳过。从仓库根目录执行：
+替身不启动 Chrome、Playwright 或 Vitest，用假进程和假脚本代替。含删除 / 复制操作的替身，整段放在下面的块里：先记真实产物哈希，再把 `TEMP`、`TMP` 指向专用临时目录，在 `# 替身` 处放本版脚本的替身调用，结束时（无论替身成功还是抛错）恢复环境、只删专用目录，并**在 `finally` 里重新计算哈希**，最后统一判定。以下任一情况都 `throw`（命令行运行时退出码为 1）：替身抛错、哈希前后不一致、任何文件（含隐藏文件）无法读取。后置快照为空（文件被删光、只剩空目录）按“缺失”照常比较，与“快照失败”分开报告。隐藏文件计入；读不了的文件不会被静默跳过。从仓库根目录执行：
 
 ```powershell
 . {
@@ -98,7 +98,7 @@
   $snap = { param($dir) @(Get-ChildItem -LiteralPath $dir -Recurse -File -Force -ErrorAction Stop | Sort-Object FullName | ForEach-Object { (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256 -ErrorAction Stop).Hash + "  " + $_.FullName }) }
   try {
     if (-not (Test-Path -LiteralPath $real)) { throw "真实产物目录不存在：$real" }
-    $before = & $snap $real
+    $before = @(& $snap $real)
     if ($before.Count -eq 0) { throw "真实产物目录为空，无法证明替身没有触及它：$real" }
     $iso = Join-Path ([IO.Path]::GetTempPath()) ("erp-stub-" + [guid]::NewGuid())
     New-Item -ItemType Directory -Path $iso | Out-Null
@@ -109,11 +109,15 @@
   } finally {
     $env:TEMP = $oldTemp; $env:TMP = $oldTmp
     if ($iso -and (Split-Path $iso -Leaf) -like "erp-stub-*") { Remove-Item -Recurse -Force $iso }
-    if ($before) {
-      try { $after = & $snap $real } catch { $problems += "后置哈希失败（有文件读不了）：" + $_.Exception.Message }
+    if ($null -ne $before) {
+      try { $after = @(& $snap $real) } catch { $problems += "后置哈希失败（有文件读不了或目录消失）：" + $_.Exception.Message }
     }
   }
-  if ($before -and $after -and (Compare-Object $before $after)) { $problems += "真实产物哈希在替身运行前后不一致：$real" }
+  # 快照为空（@()）与快照失败（$null）要区分：空快照照常比较，删光文件会报为缺失
+  if ($null -ne $before -and $null -ne $after -and (($before -join "`n") -ne ($after -join "`n"))) {
+    $missing = @($before | Where-Object { $after -notcontains $_ }).Count
+    $problems += "真实产物哈希在替身运行前后不一致（缺失或改动 $missing 个文件，运行前 $($before.Count) 个，运行后 $($after.Count) 个）：$real"
+  }
   if ($problems.Count -gt 0) { throw ($problems -join "；") }
   "真实产物未变：$($before.Count) 个文件（含隐藏文件）"
 }
