@@ -15,6 +15,7 @@ import { createApi, type LocalApi } from "../../src/http/index.ts";
 import { label, resources } from "../../../web/src/ui/index.ts";
 import { orderLabel, type TradeOrderKey } from "../../../web/src/ui/trade-order-labels.ts";
 import { formatMinor } from "../../../web/src/reports-data.ts";
+import { navigateTitle, targetPageShown, type NavigatePath } from "./navigate-ready.ts";
 
 const root = fileURLToPath(new URL("../../../../", import.meta.url));
 const artifacts = resolve(process.env.ERP_E2E_ARTIFACTS ?? join(root, "artifacts/ci/trade-e2e"));
@@ -821,7 +822,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       expect(failures).toEqual([]);
       return body;
     }
-    async function navigate(path: string) {
+    async function navigate(path: NavigatePath) {
       await expect
         .poll(
           () =>
@@ -834,6 +835,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         .toBe(0);
       await activate(page, page.locator(`nav a[href="#/${path}"]`));
       await page.waitForURL((url) => url.hash === `#/${path}`);
+      await page.waitForFunction(targetPageShown, navigateTitle(language, path));
       await page.locator("main h2").waitFor();
       if (log) log("navigated", { test: name, path, ...(await pageState(page)) });
     }
