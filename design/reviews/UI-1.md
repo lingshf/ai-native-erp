@@ -217,7 +217,23 @@
 - r2（head 对 base）：全部导航路由 × 两主题 × 1440 / 390 共 160 张，计算值差 0，像素差 0；UI-11b / UI-11c 补采状态在时段 4 通过，含 UI-11b 时段漏采的 PeriodClose 结账按钮 8 个状态；真实 Chrome infra-browser E2E 6 个文件 / 13 个用例通过。
 - PG-05（相对 `e47b93b`）：`index.css` gzip 2.97 → 2.92 kB（gzip-9 −52 B）；入口 JS +6 B，只是内嵌资产 hash，视为不变。
 
-**D-7**：部分完成，剩余项见 UI-11e。
+**D-7**：部分完成，剩余项见 UI-11e（已于 S7 完成，见 §5.4）。
+
+### 5.4 UI-11e：订单列表 cell-link 圆角与 `styles.css` 删除记录（D-7 完成）
+
+来源：UI-11e [#159](https://github.com/lingshf/ai-native-erp/pull/159)，证据 head `3f1fa92`（base `3410daa`），rebase 后 PR head `61fb51d`（base `ee95178`，相对证据 head 只多 #157 的 4 个 CI 文件，web 文件完全相同），合并为 main `49cb443`（[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44937384278) 12/12 测试步骤通过）。完整证据（时段日志、第二道检查表、1025 项 sha256 清单）见 PR 正文与证据 gist。本节只记摘要。
+
+**改动**：`pages/trade-orders.css` 新增 `.trade-orders .tord-list .cell-link { border-radius: var(--radius-sm); }`；删除 `src/styles.css`（只剩 `button { border-radius }` 一条）；删除 `main.tsx` 的 `import "./styles.css";`。
+
+**第二道检查**（判定“页面是否仍依赖全局圆角”）：相对 #142 的增量（`6be3bcf` → `3410daa`）只有 UI-12 的迁移页改动，没有新增 button；唯一依赖者为订单列表 `button.cell-link`，已由上面的类规则同值覆盖。control（同时删除 `styles.css` 和 import，不加新规则）的差异只有该元素的 `border-*-radius`。
+
+**结果**（PR 自述，评审核实）：全部页面状态 × 两主题 × 1440 / 390（另加教学关），head 对 base 计算值差 0、像素差 0，含 `:focus-visible`（键盘 Tab 进入）；真实 Chrome E2E 13 / 13 通过。
+
+**PG-05 例外**：CSS 合计 gzip-9 **+8 B**（Vite gzip 列：入口 `index-*.css` 不变，`TradeOrders-*.css` +0.02 kB），超出任务预算“CSS 合计 gzip 减少或不变”。原因：新规则写进按需加载的 `TradeOrders.css`（+13 B），删除全局规则只让入口 `index.css` 少 5 B，两份文件分别压缩。已试的较小实现也未达到预算。评审按 [UI-1 通用验收](../tasks/README.md#ui-1界面逐步改进) #9 批准此例外，保留作用域更窄的类规则。**例外只适用于 UI-11e 本次改动，不改变后续任务的预算口径。**
+
+**遗留**（不阻塞 D-7）：`theme/components.css` 第 3–4 行注释仍提到 `styles.css` 的全局 button 规则，已过时（web-ui:components，只改注释），留待下次改动该文件的任务顺带修正。
+
+**D-7**：**完成**。`styles.css` 已不存在，全局元素规则全部由组件 / 页面类规则替代。
 
 ## 6. 偏差与裁定
 
@@ -231,7 +247,7 @@
 | D-4 | 凭证、业务事件 | 预览对话框内“确认过账 / 确认”是第二个实心主按钮 | 本里程碑接受：模态对话框单独计数，背后“预览”已禁用 | 规则已写入 [README §5](../ui/README.md#5-核心组件) |
 | D-5 | 付款与收款 | `.accounts-scroll td` 的 `inset box-shadow` 与 `.grid td` 底边叠成双分隔线 | 必须在 UI-08 修复 | 已修（C2） |
 | D-6 | 科目表、贸易主数据 | 表格内禁用复选框（只读状态）为 18px，不可交互 | 转待办；不可交互的指示不计入 44px 目标尺寸，本里程碑接受 | **UI-02b 后续**（UI-04 同理）：改为徽标（✓ 启用 / 停用），需改 `.tsx` |
-| D-7 | 全局 | `styles.css` 的全局元素规则未删 | 本里程碑接受，转待办 | **UI-09**（新开，只改 CSS）：按 §5.1 的属性级方法逐页列出 `button/select/table` 覆盖情况后再删除 |
+| D-7 | 全局 | `styles.css` 的全局元素规则未删 | 本里程碑接受，转待办 | **UI-09**（新开，只改 CSS）：按 §5.1 的属性级方法逐页列出 `button/select/table` 覆盖情况后再删除。**已完成**（S7 UI-11e [#159](https://github.com/lingshf/ai-native-erp/pull/159)，main `49cb443`；PG-05 +8 B 例外按 UI-1 #9 批准，见 §5.4） |
 | D-8 | 科目表、主数据、期末、发票、付款 / 纠错 | `.message-bar p { margin: 0 }` 在 5 个页面 CSS 中按页作用域重复 | 本里程碑接受，转待办；会改变其他页段落间距，不能在像素差 0 的清理中顺带做 | **UI-09**（只改 CSS）：提升为 `.message-bar p { margin: 0 }`，逐页截图对比 |
 | D-9 | 全部 | 截图只有教学开启态 | 必须在 UI-08 补证据 | 已补（C3） |
 
