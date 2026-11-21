@@ -406,6 +406,8 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [CI-01](CI-01-shard-weight-guard-and-wallclock.md) | 分片权重完整性守卫（缺失 / 陈旧即失败）；D204 墙钟的 Full 观察（空载测量只作新基线）；D199 CLI 冒烟所在用例的耗时观察（不算余量） | CI 守卫 + 测量报告 | P2 | — | bench/CI（`scripts/test-shard-weights.json`、`scripts/ci.ts`、`vitest.config.ts`、`infra/test/tooling`） | done（守卫补登 5 个缺失权重；Full 观察与用例耗时见 PR） | [#157](https://github.com/lingshf/ai-native-erp/pull/157)（`ee95178`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44934751859)） |
 | [PROC-03](PROC-03-v060-retro-actions.md) | v0.6.0 回顾行动项 1–5 写入 Demo 模板与发布清单（版本管理，不占开发名额） | 文档 | P2（v0.7.0 RC 之前合并） | — | docs:release（`docs/demo/TEMPLATE.md`、`docs/release/README.md`） | done | [#156](https://github.com/lingshf/ai-native-erp/pull/156)（`3410daa`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44933171837)） |
 
+**Sprint 评审**：[design/reviews/S7.md](../reviews/S7.md)（main `1d507f3`，S7 通过；例外与遗留项见该文）。
+
 **S7 共同验收**：
 1. UI 任务满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9，PG-05 口径同 S6（基线为 PR 实际 base 的 gzip 列），不设 Sprint 累计 CSS 门槛；真实 Chrome 证据按[路线图 §5 UI PR 证据清单](../roadmap.md#5-团队流程)，请求评审前逐项勾选写入 PR 正文。
 2. 现有测试与 E2E 不删除、不削弱、不跳过、不按平台禁用（D11）。作为证据的本机运行保存完整日志，失败的也保存。
