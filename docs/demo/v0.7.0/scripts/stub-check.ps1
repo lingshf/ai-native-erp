@@ -1,6 +1,6 @@
 ﻿# 无浏览器替身检查（D208）：用函数遮蔽 npm / node / Start-Process / Get-NetTCPConnection / Invoke-WebRequest 等，
 # 原样运行 README 第 4 节的复跑块（现版命令），覆盖成功分支与失败分支，并对每个场景断言预期结果；任一断言失败则以非零退出。
-# 不启动 Chrome、Playwright、Vitest，不监听端口，不重拍截图。
+# 不启动 Chrome、Playwright、Vitest，不重拍截图。唯一的监听是 seed-orders-stub.mjs 在回环临时端口起的假 HTTP 服务，只活在那一步。
 # 隔离：运行期间 TEMP/TMP 指到专用临时目录，所有输出（shots、erp-demo-*）都落在那里；结束时（无论成败）在 finally 里恢复环境、
 # 删除专用目录并重新计算真实截图目录（含隐藏文件 .gitkeep）的 SHA256；读不了的文件、前后不一致都视为失败。
 # 假 PID：服务 111；不属于本轮的监听进程 999（任何场景都不得被停止）。
@@ -35,7 +35,7 @@ try {
 
   $global:Calls = New-Object System.Collections.Generic.List[string]
   $global:Stopped = New-Object System.Collections.Generic.List[int]
-  $global:Copied = 0; $global:Captures = 0; $global:SeedOrders = 0; $global:Nq = 0; $global:Sc = $null
+  $global:Copied = 0; $global:Captures = 0; $global:SeedOrders = 0; $global:SeedTrade = 0; $global:Nq = 0; $global:Sc = $null
 
   function npm {
     $global:Calls.Add("npm " + ($args -join " ")); $global:LASTEXITCODE = 0
@@ -45,6 +45,7 @@ try {
     $global:Calls.Add("node " + ($args -join " "))
     $script = [string]$args[0]
     $global:LASTEXITCODE = 0
+    if ($script -like "*seed-trade.mjs") { $global:SeedTrade++ }
     if ($script -like "*seed-orders.mjs") { $global:SeedOrders++; $global:LASTEXITCODE = [int]$global:Sc.seedOrders }
     if ($script -like "*capture.mjs") {
       $global:Captures++
@@ -80,27 +81,30 @@ try {
 
   $okParties = '[{"code":"PARTY"},{"code":"PARTY2"}]'
   $okOrders = '[{"orderId":"PO-F1"},{"orderId":"PO-F2"},{"orderId":"SO-F3"},{"orderId":"SO-F4"}]'
-  $okQ = @($null, $ServerPid, $ServerPid, $null)
-  $shortQ = @($null, $ServerPid, $null)   # 就绪清单或 seed 失败时不会做第三次端口查询，finally 里的那次是最后一次
+  $okQ = @($null, $ServerPid, $ServerPid, $ServerPid, $null)
+  $shortQ = @($null, $ServerPid, $ServerPid, $null)   # seed-orders 或就绪清单失败时，只做了就绪后与 seed-orders 前两次归属查询，finally 里的是最后一次
   $base = @{ q = $okQ; build = 0; seedOrders = 0; capture = 0; pngs = 16; parties = $okParties; orders = $okOrders
-    throws = $null; copied = 1; stopped = @($ServerPid); captures = 1; seedOrderCalls = 1 }
+    throws = $null; copied = 1; stopped = @($ServerPid); captures = 1; seedTradeCalls = 1; seedOrderCalls = 1 }
   function Variant($changes) { $h = $base.Clone(); foreach ($k in $changes.Keys) { $h[$k] = $changes[$k] }; $h }
   $scenarios = [ordered]@{
     "1 success" = Variant @{}
     "2 capture exit 3" = Variant @{ capture = 3; throws = "capture failed, exit 3"; copied = 0 }
-    "3 build fails" = Variant @{ build = 1; throws = "构建失败"; copied = 0; stopped = @(); captures = 0; seedOrderCalls = 0 }
-    "4 port busy at start" = Variant @{ q = @(4242, 4242); throws = "port busy"; copied = 0; stopped = @(); captures = 0; seedOrderCalls = 0 }
-    "5 owner mismatch after start" = Variant @{ q = @($null, $ForeignPid, $null, $null); throws = "owner mismatch"; copied = 0; captures = 0; seedOrderCalls = 0 }
-    "6 owner mismatch after seed" = Variant @{ q = @($null, $ServerPid, $ForeignPid, $null); throws = "owner mismatch after seed"; copied = 0; captures = 0 }
+    "3 build fails" = Variant @{ build = 1; throws = "构建失败"; copied = 0; stopped = @(); captures = 0; seedTradeCalls = 0; seedOrderCalls = 0 }
+    "4 port busy at start" = Variant @{ q = @(4242, 4242); throws = "port busy"; copied = 0; stopped = @(); captures = 0; seedTradeCalls = 0; seedOrderCalls = 0 }
+    "5 owner mismatch after start" = Variant @{ q = @($null, $ForeignPid, $null); throws = "owner mismatch"; copied = 0; captures = 0; seedTradeCalls = 0; seedOrderCalls = 0 }
+    "5b owner mismatch before seed-orders" = Variant @{ q = @($null, $ServerPid, $ForeignPid, $null); throws = "owner mismatch before seed-orders"; copied = 0; captures = 0; seedTradeCalls = 1; seedOrderCalls = 0 }
+    "6 owner mismatch after seed" = Variant @{ q = @($null, $ServerPid, $ServerPid, $ForeignPid, $null); throws = "owner mismatch after seed"; copied = 0; captures = 0 }
     "7 seed-orders fails" = Variant @{ q = $shortQ; seedOrders = 1; throws = "seed-orders"; copied = 0; captures = 0 }
     "8 readiness: order missing" = Variant @{ q = $shortQ; orders = '[{"orderId":"PO-F1"},{"orderId":"PO-F2"},{"orderId":"SO-F3"}]'; throws = "readiness: order SO-F4 missing"; copied = 0; captures = 0 }
     "9 readiness: partner missing" = Variant @{ q = $shortQ; parties = '[{"code":"PARTY"}]'; throws = "readiness: partner PARTY2 missing"; copied = 0; captures = 0 }
     "10 wrong screenshot count (15)" = Variant @{ pngs = 15; throws = "截图数"; copied = 0 }
   }
+  # 预存的固定名与他轮目录：任何场景（成功或失败）都不得读、复制或删除它们
+  $keepDirs = @("demo-s7-shots", "demo-s7-shots-other-run") | ForEach-Object { $d = Join-Path $iso $_; New-Item -ItemType Directory -Force $d | Out-Null; Set-Content -LiteralPath (Join-Path $d "keep.png") -Value "sentinel $_"; $d }
   foreach ($name in $scenarios.Keys) {
     $s = $scenarios[$name]
     $global:Sc = $s; $global:Calls.Clear(); $global:Stopped.Clear()
-    $global:Copied = 0; $global:Captures = 0; $global:SeedOrders = 0; $global:Nq = 0
+    $global:Copied = 0; $global:Captures = 0; $global:SeedOrders = 0; $global:SeedTrade = 0; $global:Nq = 0
     "=== $name"
     $threw = $null
     try { . $block } catch { $threw = $_.Exception.Message }
@@ -111,6 +115,10 @@ try {
     elseif (-not $threw -or $threw -notlike "*$($s.throws)*") { Fail "$name：应抛出 '$($s.throws)'，实际：$threw" }
     if ($global:Copied -ne $s.copied) { Fail "$name：Copy-Item 应 $($s.copied) 次，实际 $global:Copied" }
     if ($global:Captures -ne $s.captures) { Fail "$name：capture 应 $($s.captures) 次，实际 $global:Captures" }
+    if ($global:SeedTrade -ne $s.seedTradeCalls) { Fail "$name：seed-trade 应 $($s.seedTradeCalls) 次，实际 $global:SeedTrade" }
+    foreach ($d in $keepDirs) { $f = Join-Path $d "keep.png"; if (-not (Test-Path -LiteralPath $f) -or (Get-Content -LiteralPath $f -Raw).Trim() -ne "sentinel $(Split-Path $d -Leaf)") { Fail "$name：预存目录 $d 被动过" } }
+    $runDirs = @(Get-ChildItem $iso -Directory -Filter "demo-s7-shots-*" | Where-Object { $_.Name -ne "demo-s7-shots-other-run" }).Count
+    if ($runDirs -ne 0) { Fail "$name：残留本轮唯一截图目录 $runDirs 个" }
     if ($global:SeedOrders -ne $s.seedOrderCalls) { Fail "$name：seed-orders 应 $($s.seedOrderCalls) 次，实际 $global:SeedOrders" }
     if ($stoppedList -ne (@($s.stopped) -join ",")) { Fail "$name：应停止 pid [$(@($s.stopped) -join ',')]，实际 [$stoppedList]" }
     if (@($global:Stopped) -contains $ForeignPid) { Fail "$name：停了不属于本轮的进程 $ForeignPid" }
@@ -132,4 +140,4 @@ if ($null -ne $before -and $null -ne $after) {
 if ($iso -and (Test-Path $iso)) { $problems.Add("隔离目录未删除") }
 if ((git status --porcelain -- docs/demo/v0.7.0/screenshots)) { $problems.Add("真实截图目录出现 git 改动") }
 if ($problems.Count -gt 0) { $problems | ForEach-Object { "PROBLEM: $_" }; "FAILED: $($problems.Count) problem(s)"; exit 1 }
-"ALL ASSERTIONS PASSED (10 scenarios + seed-orders stub)"
+"ALL ASSERTIONS PASSED (11 scenarios + seed-orders stub)"

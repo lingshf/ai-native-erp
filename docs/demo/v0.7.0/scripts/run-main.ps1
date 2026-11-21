@@ -1,6 +1,7 @@
+param([Parameter(Mandatory)][string]$Shots)   # per-run unique output dir, named by the caller; this script only writes into it
 . {
   $server=$null;$demo=$null;$db=$null;$port=$null
-  $shots = Join-Path $env:TEMP "demo-s7-shots"
+  $shots = $Shots
   try {
   $port = 4199
   $year = (Get-Date).Year
@@ -16,6 +17,7 @@
   $owner=@((Get-NetTCPConnection -LocalPort $port -State Listen).OwningProcess); if($owner.Count -ne 1 -or $owner[0] -ne $server.Id){throw "owner mismatch"}
   "ready port=$port pid=$($server.Id) start=$(Get-Date -Format HH:mm:ss)"
   node docs/demo/v0.4.0/scripts/seed-trade.mjs "http://127.0.0.1:$port" (Get-Date -Format yyyy-MM-dd); if ($LASTEXITCODE) { throw "seed" }
+  $owner=@((Get-NetTCPConnection -LocalPort $port -State Listen).OwningProcess); if($server.HasExited -or $owner.Count -ne 1 -or $owner[0] -ne $server.Id){throw "owner mismatch before seed-orders"}
   node docs/demo/v0.7.0/scripts/seed-orders.mjs "http://127.0.0.1:$port" $year; if ($LASTEXITCODE) { throw "seed-orders" }
   $parties=(Invoke-WebRequest "http://127.0.0.1:$port/api/v1/trade/tradeParty?company=DEFAULT&limit=500" -UseBasicParsing).Content
   $orders=(Invoke-WebRequest "http://127.0.0.1:$port/api/v1/trade/orders?company=DEFAULT&limit=100" -UseBasicParsing).Content

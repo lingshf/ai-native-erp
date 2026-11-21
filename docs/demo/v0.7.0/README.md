@@ -1,6 +1,6 @@
 # v0.7.0 Demo
 
-运行对象：提交 `0d10871` 的脚本，产品代码与 RC 合并提交 `f06d30c` 相同（详见 [run-through.md](run-through.md)）。演示账套是临时目录里的虚构账套，端口 4199；未连接 4173，未碰真实旧账或 `.bak`。
+运行对象：已入库的 16 张截图由提交 `0d10871` 的脚本在真实运行中采集（当时的暂存目录是固定的 `demo-s7-shots`）；本文档里的复跑块与 `run-main.ps1` 是评审后的修订版（暂存目录改为每轮唯一、第二个 seed 前加归属检查），**修订版只经过替身验证，没有真实复跑**，旧截图不算在修订版名下。产品代码与 RC 合并提交 `f06d30c` 相同（详见 [run-through.md](run-through.md)）。演示账套是临时目录里的虚构账套，端口 4199；未连接 4173，未碰真实旧账或 `.bak`。
 
 ## 1. S7 用户可见变化与演示点
 
@@ -11,7 +11,7 @@
 | 起始日晚于截止日：就地提示，不发请求 | #161 | 起始 12-01、截止 11-01，点“应用” | `trade-orders-filter-range-error-*` |
 | 删除 `styles.css`（D-7）、分片权重守卫（CI-01）、回顾行动项入模板（PROC-03）、文档（#160） | #159、#157、#156、#160 | 无界面变化，不演示 | — |
 
-文件名后缀 `*` = `zh-red-1440`、`zh-red-390`、`en-green-1440`、`en-green-390`（教学模式均开启）。脚本内还断言并记录了：无筛选时请求只带 `company` 与 `limit`；每次“应用 / 清除”发出的 `party`、`side`、`from`、`to` 参数；日期错误时没有发出请求；伙伴格式无效的就地提示未演示（见 §5）。
+`screenshots/` 里的 16 张截图与日志的采集脚本是 `0d10871`（见 [run-through.md](run-through.md)）。文件名后缀 `*` = `zh-red-1440`、`zh-red-390`、`en-green-1440`、`en-green-390`（教学模式均开启）。脚本内还断言并记录了：无筛选时请求只带 `company` 与 `limit`；每次“应用 / 清除”发出的 `party`、`side`、`from`、`to` 参数；日期错误时没有发出请求；伙伴格式无效的就地提示未演示（见 §5）。
 
 ## 2. 流程图
 
@@ -29,25 +29,28 @@
 
 ## 4. 复跑（同一个 PowerShell 终端，从仓库根目录执行）
 
-`run-main.ps1` 是一个 `. { ... try { ... } finally { ... } }` 块：开头清空 `$server/$demo/$db/$port`；启动前检查端口 4199 空闲；就绪后校验监听进程 == 本轮启动的 pid；seed 之后做账套就绪清单（伙伴 PARTY、PARTY2 与 4 张订单都在，缺少就中止），并再次校验端口归属，才开始 capture；`finally` 只停本轮 `$server`、只删本轮创建的 `erp-demo-*` 目录，并报告端口是否释放。财年取当前年份，订单日期随之变化。端口 4199 若被占用，脚本直接 `throw`，换端口后再跑；不要用 4173。
+`run-main.ps1` 是一个 `. { ... try { ... } finally { ... } }` 块：开头清空 `$server/$demo/$db/$port`；启动前检查端口 4199 空闲；就绪后校验监听进程 == 本轮启动的 pid；每个写入步骤（seed-trade、seed-orders）之前都先确认服务仍在、监听进程是本轮的；seed 之后做账套就绪清单（伙伴 PARTY、PARTY2 与 4 张订单都在，缺少就中止），并再次校验端口归属，才开始 capture；`finally` 只停本轮 `$server`、只删本轮创建的 `erp-demo-*` 目录，并报告端口是否释放。财年取当前年份，订单日期随之变化。端口 4199 若被占用，脚本直接 `throw`，换端口后再跑；不要用 4173。
 
 ```powershell
 . {
   $ErrorActionPreference = "Stop"
-  $shots = Join-Path $env:TEMP "demo-s7-shots"
-  if (Test-Path $shots) { Remove-Item -Recurse -Force $shots }   # 清掉旧输出，失败时不会复制到上一轮的截图
-  npm run build
-  if ($LASTEXITCODE -ne 0) { throw "构建失败，退出码 $LASTEXITCODE" }
-  & .\docs\demo\v0.7.0\scripts\run-main.ps1        # 主账套：订单筛选，16 张截图
-  $n = @(Get-ChildItem $shots -Filter *.png).Count
-  if ($n -ne 16) { throw "截图数 $n，不是 16，不复制" }
-  Copy-Item "$shots\*" docs\demo\v0.7.0\screenshots\
+  $shots = Join-Path $env:TEMP ("demo-s7-shots-" + [guid]::NewGuid())   # 本轮唯一目录，不碰其他轮的输出
+  try {
+    npm run build
+    if ($LASTEXITCODE -ne 0) { throw "构建失败，退出码 $LASTEXITCODE" }
+    & .\docs\demo\v0.7.0\scripts\run-main.ps1 -Shots $shots   # 主账套：订单筛选，16 张截图
+    $n = @(Get-ChildItem $shots -Filter *.png).Count
+    if ($n -ne 16) { throw "截图数 $n，不是 16，不复制" }
+    Copy-Item "$shots\*" docs\demo\v0.7.0\screenshots\
+  } finally {
+    if ((Split-Path $shots -Leaf) -like "demo-s7-shots-*" -and (Test-Path $shots)) { Remove-Item -Recurse -Force $shots }   # 只清本轮目录
+  }
 }
 ```
 
 任一步骤（构建、seed、就绪清单、capture 非零退出、端口归属不符、截图数不对）都会 `throw` 中止整块，后面的复制不会执行。
 
-输出在 `$env:TEMP\demo-s7-shots`（16 张 PNG + `capture-log-main.json`），提交前复制到 `screenshots/`。`screenshots/.gitkeep` 是替身检查用来证明“真实目录没被碰”的哨兵文件，别删。
+每轮的输出在唯一目录 `$env:TEMP\demo-s7-shots-` 加一个 GUID 后缀（16 张 PNG + `capture-log-main.json`），成功后复制到 `screenshots/`，结束时只删除本轮目录，固定名字或其他轮的目录不会被碰。`screenshots/.gitkeep` 是替身检查用来证明“真实目录没被碰”的哨兵文件，别删。
 
 无浏览器替身检查（不启动 Chrome / Playwright / Vitest，可随时跑）：
 
