@@ -93,7 +93,13 @@
    - 筛选下的分页：满足条件的 3 张发票、中间穿插不满足条件的发票、`limit=2`：第一页 2 条且 `nextCursor` 为第 2 条的 `cursor`，第二页 1 条且 `nextCursor` 为 `null`；
    - 日期边界：`from` / `to` 等于记账日期时包含；
    - 400：`side=XX`、`from=2026-13-01`、`from > to`、未知参数；不存在的 `party` 返回空页；
-   - **兼容**：只带 `company` / `limit` / `cursor` 的请求，响应与 base 逐字节相同（同一夹具，比较 JSON）；另一公司的发票不出现；TINV-04 及之前的发票列表测试不改、全部通过。
+   - **兼容（旧请求的响应逐字节不变）**：同一固定夹具分别在 PR 实际 base 与 head 上启动 HTTP 服务，用真实请求读取**未解析的响应体字节**（`await res.arrayBuffer()`，不经 `JSON.parse` 或契约解析）比较，至少两组：
+     - ① 无游标首页：`?company=<C>&limit=2`；
+     - ② 带游标续页：`?company=<C>&limit=2&cursor=<X>`，`X` 取自 base 首页响应体中的 `nextCursor`，两版使用同一个字符串；
+     - 两组在两版上都断言状态 200、`Content-Type` 相同、响应体字节完全相同。PR 正文给出 base 提交号、命令，以及两版各两份响应体的字节长度与 SHA-256；
+     - 夹具须确定（固定 ID、时间戳与序号）。若某字段在同一版本两次运行之间本身就不稳定，停下报告设计角色，不改为解析后比较；
+     - 把 base 上取得的两份原始响应体作为字面量写进 head 的契约测试，断言 `await res.text()` 与之全等，防止以后回退。
+   - 另一公司的发票不出现；TINV-04 及之前的发票列表测试不改、全部通过。
 3. **性能（[PG-05](../product-guidelines.md#5-pg-05性能从设计开始)）**：
    - **执行计划**（测试中断言 `EXPLAIN QUERY PLAN` 文本）：带 `party` 时走 `trade_documents_party`，条件含 `party_id=?` 与 `sequence<?`；不带 `party` 时走 `trade_documents_company`；所有组合下不出现 `USE TEMP B-TREE`。
    - **无 N+1**：每页语句数固定为 1，与 `limit`、筛选组合无关。
