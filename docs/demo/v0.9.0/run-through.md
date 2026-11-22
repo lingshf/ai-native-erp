@@ -1,6 +1,6 @@
 # v0.9.0 Demo 执行记录
 
-状态：**脚本与无浏览器替身已验证；真实服务演练与真实 Chrome 取图尚未执行**（需协调者批准独占时段，D234）。取图后本文补充时段、head、命令、输出和退出码，并把截图与 `capture-log-main.json` 入库。基线 main `9bbabe7`。
+状态：已完成。脚本与无浏览器替身已验证，真实服务演练通过，真实 Chrome 取图在第 3 次独占时段通过，16 张截图与 `capture-log-main.json` 已入库。基线 main `9bbabe7`。
 
 ## 1. 已执行（无浏览器、无真实服务、无 build）
 
@@ -12,10 +12,19 @@
 
 orchestration-stub 相对 v0.8.0 的改动：渲染后的代码块下限由 7 改为 6（本版 README 没有独立的清理块，块的识别仍按内容）；沙箱新增假 `git`（报告 HEAD 提交时间）和会固定 `index.html` 时间的假 build，用来执行取图块里“严格晚于 HEAD”的断言，并新增“相等”负例。
 
+## 1b. 独占时段记录（D298–D300，均为 -08:00，端口 4201，每次预检 6 次外部进程数均为 0）
+
+| 时段 | head | 范围 | 结果 |
+|---|---|---|---|
+| D298 21:54:26–21:56:42 | fc994e1 | 步骤 1 演练 + 步骤 2 取图 | 演练退出 0；build、dist 断言通过；capture 退出 1。我用 `Select-Object -Last 30` 截断了输出且清掉了 shots 目录，丢失了失败断言原文（我的流程疏漏），未重试 |
+| D299 21:58:15–21:59:59 | be2ae39 | 步骤 2（输出 tee 到文件、失败保留目录、4b 改用真实 `page.goBack`） | 中止：步骤 3“发票列表来源订单”断言应为 2 行，实际有 4 行，多出 seed-trade 自带的 AP-DEMO、AP-DEMO2（来源列“—无来源订单”）。脚本断言错误，产品正确。步骤 1、2 的 2 张截图已落盘 |
+| D300 22:00:46–22:02:48 | a4f9857 | 步骤 2 | 通过：dist 严格晚于 HEAD 且含 `Partly invoiced`、`Source order`；capture 退出 0；16 张截图；每张 overflowPx 为 0；离开确认每组恰好 2 次 confirm 对话框；结束后 chrome 0、端口 4201 释放、无 `erp-demo-*` 与 shots 残留 |
+
+D300 控制台错误：4 组各只有 `order=PO-MISSING` 的预期 404（HTTP 404 与 Failed to load resource 两条），无其他。
 ## 2. 未实跑（诚实披露）
 
-- 真实服务演练、真实 Chrome 取图、`npm run build`：未执行。
-- `capture.mjs` 没有任何替身页面或无头路径会执行它，断言只对照源码逐条核对（下表），**仅对照代码，未实跑**。其中最可能在真实 Chrome 里出问题的是：Playwright 对 `window.confirm` 的 dialog 处理次数、`history.back()` 触发 HashRouter 的 popstate 与离开守卫的时序、390 宽度下深链接结果区的焦点。若取图时某条断言在真实页面上失败，按 D234 中止，不放宽语义断言，记入本文。
+- 无（演练、build、取图均已在上表时段执行；以下只列仍未实跑的项）。
+- `capture.mjs` 没有替身页面路径，断言先对照源码逐条核对（§3），再由 D300 在真实 Chrome 实跑通过。核对时最可能在真实 Chrome 里出问题的是：Playwright 对 `window.confirm` 的 dialog 处理次数、`history.back()` 触发 HashRouter 的 popstate 与离开守卫的时序、390 宽度下深链接结果区的焦点。若取图时某条断言在真实页面上失败，按 D234 中止，不放宽语义断言，记入本文。
 - dist 标记 `Partly invoiced`、`Source order` 来自 `trade-order-labels.ts` 与 `trade-labels.ts` 的英文文案，是否出现在构建产物里，取图块的 dist 断言会在 build 之后实际检查。
 
 ## 3. capture.mjs 断言逐条核对（对照 main 9bbabe7）
@@ -27,7 +36,7 @@ orchestration-stub 相对 v0.8.0 的改动：渲染后的代码块下限由 7 �
 | 深链接 `#/trade-orders?company=DEFAULT&order=PO-I1`：行 L1 10/4/6、L2 4/0/4；焦点在 `.tord-lookup-result`；刷新仍在 | `TradeOrders.tsx`:1114–1118、1202–1212；#179 正文已核对；`HashRouter`（`App.tsx`:84），刷新保留 hash | 一致 |
 | `order=PO-MISSING`：404 → `tord.notFound`；点返回后 hash 为 `#/trade-orders?company=DEFAULT`（控制台出现预期的一条 404） | OrderLookup 的 `error` 渲染 MessageBar，返回调用 `link({order:null})`，以 replace 方式保留 `company` | 一致 |
 | `company=NOPE`：文案“公司不在已加载的列表中 · NOPE”；返回后 hash 为 `#/trade-orders` | `<p>{t(tord.deepLink.company)} · {linkCompany}</p>`；返回 `link({company:null,order:null})` | 一致 |
-| 发票列表表头“来源订单” / `Source order`（`th.tinv-source`）；两行 AP-I1-1→PO-I1、AP-I2-1→PO-I2，href 为 `#/trade-orders?company=DEFAULT&order=PO-I*` | `TradeInvoices.tsx` 列表 `SourceOrderCell` 渲染 `<Link to=/trade-orders?company=..&order=..>`；`trade-labels.ts` `tinv.sourceOrder` | 一致 |
+| 发票列表表头“来源订单” / `Source order`（`th.tinv-source`）；四行：AP-DEMO、AP-DEMO2（seed-trade 自带，“—无来源订单”，无链接）、AP-I1-1→PO-I1、AP-I2-1→PO-I2，href（D299 因漏掉前两行中止，已修正） 为 `#/trade-orders?company=DEFAULT&order=PO-I*` | `TradeInvoices.tsx` 列表 `SourceOrderCell` 渲染 `<Link to=/trade-orders?company=..&order=..>`；`trade-labels.ts` `tinv.sourceOrder` | 一致 |
 | 外部发票号输入使页面“有未提交修改”：`#tinv-externalInvoice` 存在，`edit()` 里 `setDirty(true)` | `TradeInvoices.tsx`:~755、:466–469；守卫 `onGuard({unsaved: dirty \|\| pending})`:455 | 一致 |
 | 点来源订单链接：恰好一次 confirm，文案为 `trade.leaveConfirm`，取消后 hash 不变、草稿保留 | `useInvoiceLeaveGuard`（~203–245）对链接点击用 `window.confirm` | 一致 |
 | `history.back()` 取消：再出现一次 confirm，hash 不变、草稿保留（D275 截断前进历史，本演示不断言前进） | `leave-guard-history.ts` `guardHistory`；`App.tsx` 在 HashRouter 之前注册 popstate | 一致，待真实浏览器验证时序 |

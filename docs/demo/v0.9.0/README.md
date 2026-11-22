@@ -1,6 +1,6 @@
 # v0.9.0 Demo
 
-状态：脚本已写好并通过无浏览器替身验证；真实服务演练与真实 Chrome 取图尚未做（按 D234 需协调者批准的独占时段）。截图与日志入库后，本节更新为实际时段、head 与结果。基线 main `9bbabe7`（产品代码同 `6478d10`）。演示账套是临时目录里的虚构账套，端口 4201；不连接 4173，不碰真实旧账或 `.bak`。
+状态：已取图。16 张截图与 `capture-log-main.json` 在 `screenshots/`，采集在 D300 时段（head `a4f9857`）完成，详见 [run-through.md](run-through.md)。基线 main `9bbabe7`（产品代码同 `6478d10`）。演示账套是临时目录里的虚构账套，端口 4201；不连接 4173，不碰真实旧账或 `.bak`。
 
 ## 1. S9 用户可见变化与演示点
 
@@ -104,5 +104,5 @@ $shots = Join-Path $env:TEMP ("demo-s9-shots-" + [guid]::NewGuid())
 
 - 未演示：销售方向、五页中的付款与收款、调整、报表、期间准入页的离开确认（只演示发票页，其余四页见用户文档，仅对照代码，未实跑）；待重试 / 读取失败的硬拦截；订单页自己的草稿确认。
 - 取消后退时前进历史被丢弃（D275 已接受的限制）本 Demo 不演示。
-- capture 没有用替身页面执行，走“逐条核对”路径，见 [run-through.md](run-through.md)。
+- capture 没有用替身页面执行，走“逐条核对”路径，并已在真实 Chrome 实跑通过，见 [run-through.md](run-through.md)。发票列表里还有 seed-trade 自带的两张无来源订单发票（AP-DEMO、AP-DEMO2，来源列显示“—”），属预期。
 - 日志与时段记录见 [run-through.md](run-through.md)。
