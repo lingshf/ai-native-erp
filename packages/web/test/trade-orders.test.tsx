@@ -1459,9 +1459,18 @@ describe("trade orders", () => {
     },
   );
 
-  // D272: history A → B → C is built by real fragment navigations while the page is open, then
-  // real Back / Forward. A cancel must not add or rewrite entries: the order and the forward entries
-  // stay, a retry in the same direction reaches the original target, and each navigation asks once.
+  // react-router's history writes { usr, key, idx } into history.state on every in-app push; the
+  // guard trusts only such positions (D273). These entries stand for ones the router pushed earlier.
+  const routerEntry = (idx: number, search: string, push = true) =>
+    window.history[push ? "pushState" : "replaceState"](
+      { usr: null, key: `k${idx}`, idx },
+      "",
+      `/#/trade-orders${search}`,
+    );
+
+  // D272: history A → B → C holds router entries, then real Back / Forward. A cancel must not add
+  // or rewrite entries: the order and the forward entries stay, a retry in the same direction
+  // reaches the original target, and each navigation asks once.
   it.each([
     ["Back", "PO-2", "PO-1"],
     ["Forward", "PO-1", "PO-2"],
@@ -1470,17 +1479,13 @@ describe("trade orders", () => {
     async (direction, start, target) => {
       const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
       stubApi(found, emptyList, noneInvoiced);
-      linkTo("?company=DEFAULT&order=PO-1");
+      routerEntry(0, "?company=DEFAULT&order=PO-1", false);
+      routerEntry(1, "?company=DEFAULT&order=PO-2");
+      routerEntry(2, "?company=DEFAULT&order=PO-3");
       render(<App />);
-      await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
       const order = () => address().get("order");
-      const visit = async (id: string) => {
-        window.location.hash = `#/trade-orders?company=DEFAULT&order=${id}`;
-        await waitFor(() => expect(order()).toBe(id));
-        await screen.findByText(t("tord.notFound"));
-      };
-      await visit("PO-2");
-      await visit("PO-3");
+      await waitFor(() => expect(order()).toBe("PO-3"));
+      await screen.findByText(t("tord.notFound"));
       window.history.back();
       await waitFor(() => expect(order()).toBe("PO-2"));
       if (start === "PO-1") {
@@ -1519,4 +1524,32 @@ describe("trade orders", () => {
       expect(field("tord.orderId").value).toBe("PO-DRAFT");
     },
   );
+  // D273: an entry the router did not write (B, another page reached by a plain fragment link)
+  // has no trusted position, and neither has the order page reached from it (C). From C, a Back
+  // across two entries to A must ask once and keep C's address and draft; no position is invented.
+  it("asks once when a Back crosses an entry without a router position", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    stubApi(found, emptyList, noneInvoiced);
+    routerEntry(0, "?company=DEFAULT&order=PO-1", false);
+    render(<App />);
+    await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+    window.location.hash = "#/trade-invoices";
+    await waitFor(() => expect(screen.queryByLabelText(t("tord.lookupId"))).toBeNull());
+    window.location.hash = "#/trade-orders?company=DEFAULT&order=PO-2";
+    await screen.findByText(t("tord.notFound"));
+    const here = window.location.href;
+    fireEvent.change(field("tord.orderId"), { target: { value: "PO-DRAFT" } });
+
+    window.history.go(-2);
+    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(window.location.href).toBe(here);
+    expect(field("tord.orderId").value).toBe("PO-DRAFT");
+
+    confirm.mockReturnValue(true);
+    window.history.back();
+    await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+    expect(confirm).toHaveBeenCalledTimes(2);
+  });
 });

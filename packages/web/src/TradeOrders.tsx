@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
-import { guardHistory, settleHistoryEntry, type HistoryGuard } from "./leave-guard-history.js";
+import { guardHistory, type HistoryGuard } from "./leave-guard-history.js";
 import {
   companiesPageSchema,
   tradeOrderCommandSchema,
@@ -144,12 +144,8 @@ function useOrderLeaveGuard(guard: Guard, message: string) {
   latest.current = guard;
   const history = useRef<HistoryGuard | null>(null);
   // After every render: the page rewrites its own address (company, order) while a draft is open,
-  // and a cancelled navigation must return to that address. Unguarded, this gives the shown history
-  // entry a position so a later Back or Forward knows its direction (leave-guard-history.ts).
-  useEffect(() => {
-    if (history.current) history.current.settle();
-    else settleHistoryEntry();
-  });
+  // and a cancelled navigation must return to that address (leave-guard-history.ts).
+  useEffect(() => history.current?.settle());
   useEffect(() => {
     if (!guard.busy && !guard.unsaved) return;
     const mayLeave = () => !latest.current.busy && window.confirm(message);

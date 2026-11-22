@@ -1,34 +1,27 @@
-// Back/Forward guard for a page with unsaved work (TINV-03, D272). It asks before a history
+// Back/Forward guard for a page with unsaved work (TINV-03, D272 / D273). It asks before a history
 // traversal leaves the page's current address; a cancel returns to that entry with history.go and
 // adds or rewrites no entry, so later Back and Forward entries keep their order.
 //
-// Positions: react-router's history writes an increasing `idx` into history.state on every in-app
-// push and replace. An entry without one (a typed address or a plain fragment link) gets one once,
-// by replaceState with the same URL, when the page settles on it: the last settled position + 1.
-// When the entry an event arrives at has no position, the direction is unknown; a cancel then falls
-// back to pushing the current address after it, which keeps the address but drops forward entries.
+// Positions: only the ones react-router's history writes into history.state ({ usr, key, idx }, the
+// idx increasing on every in-app push) are trusted; no position is ever inferred or written here,
+// because an entry the router did not write may sit any distance away. When the current or the
+// target entry has no trusted position, the distance is unknown; a cancel then falls back to pushing
+// the current address after the target, which keeps the address and the draft but drops the
+// entries that were ahead of the target.
 
 type Entry = { href: string; state: unknown; position: number | null };
 
-let lastPosition: number | null = null;
-
 const positionOf = (state: unknown) => {
-  const idx = state !== null && typeof state === "object" ? (state as { idx?: unknown }).idx : null;
-  return typeof idx === "number" && Number.isInteger(idx) ? idx : null;
+  if (state === null || typeof state !== "object") return null;
+  const { idx, key } = state as { idx?: unknown; key?: unknown };
+  return typeof key === "string" && typeof idx === "number" && Number.isInteger(idx) ? idx : null;
 };
 
-// Records the entry the page now shows and gives it a position if it has none.
-export function settleHistoryEntry(): Entry {
-  let state: unknown = window.history.state;
-  let position = positionOf(state);
-  if (position === null && (state === null || state === undefined || typeof state === "object")) {
-    position = lastPosition === null ? 0 : lastPosition + 1;
-    state = { ...(state as object | null), idx: position };
-    window.history.replaceState(state, "");
-  }
-  if (position !== null) lastPosition = position;
-  return { href: window.location.href, state, position };
-}
+const currentEntry = (): Entry => ({
+  href: window.location.href,
+  state: window.history.state,
+  position: positionOf(window.history.state),
+});
 
 export type HistoryGuard = {
   // The address a cancelled navigation returns to.
@@ -40,7 +33,7 @@ export type HistoryGuard = {
 
 // Installs capture listeners for popstate and hashchange. `mayLeave` asks once per navigation.
 export function guardHistory(mayLeave: () => boolean): HistoryGuard {
-  let here = settleHistoryEntry();
+  let here = currentEntry();
   let accepted = "";
   // The address of a cancelled traversal while history.go returns to `here`; its events are dropped.
   let cancelled = "";
@@ -72,7 +65,7 @@ export function guardHistory(mayLeave: () => boolean): HistoryGuard {
     here: () => here.href,
     settle: () => {
       if (cancelled) return;
-      here = settleHistoryEntry();
+      here = currentEntry();
       if (accepted === here.href) accepted = "";
     },
     dispose: () => {
