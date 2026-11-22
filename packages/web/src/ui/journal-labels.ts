@@ -1,5 +1,4 @@
 export const journalEn = {
-  "journal.group": "General ledger",
   "journal.editor": "Journal draft",
   "journal.title": "Journals",
   "journal.teachingTitle": "How posting works",
@@ -95,7 +94,6 @@ export const journalEn = {
     "Save a draft, preview the exact business and balancing lines, then explicitly confirm. Historical mirrors retain original amounts and dimensions (D6).",
 } as const;
 export const journalZh: Record<keyof typeof journalEn, string> = {
-  "journal.group": "总账",
   "journal.editor": "凭证草稿",
   "journal.title": "凭证",
   "journal.teachingTitle": "过账流程",
