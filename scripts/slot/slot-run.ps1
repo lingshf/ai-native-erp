@@ -71,6 +71,9 @@ if ($BaseRoot) {
   if (-not (Test-Path -LiteralPath $BaseRoot -PathType Container)) { Say "missing -BaseRoot $BaseRoot"; exit 4 }
   Say "base head=$(git -C $BaseRoot rev-parse HEAD) status=[$(git -C $BaseRoot status --porcelain --untracked-files=all)]"
 }
+# Steps are loaded before the build so a steps file that rejects its inputs stops the run first (kit: exit 4).
+try { $steps = @(& $StepsFile -OutDir $OutDir -Root $root -BaseRoot $BaseRoot) } catch { Say "$($_.Exception.Message)"; exit 4 }
+Say "steps from $StepsFile`: $(($steps | ForEach-Object { $_.name }) -join ', ')"
 # Build gate (roadmap §5 item 8): build this tree, then require packages/web/dist/index.html to be strictly
 # newer than the HEAD commit time; otherwise stop before any browser or measurement step runs.
 Say "build start"
@@ -90,8 +93,6 @@ while ($zeros -lt 6) {
   Say "precheck $n counted=$c consecutive-zero=$zeros"
   if ($zeros -lt 6) { Start-Sleep -Seconds 10 }
 }
-$steps = @(& $StepsFile -OutDir $OutDir -Root $root -BaseRoot $BaseRoot)
-Say "steps from $StepsFile`: $(($steps | ForEach-Object { $_.name }) -join ', ')"
 if ($Stub) {
   Say "STUB MODE ${Stub}: no browser, no vitest"
   foreach ($step in $steps) {

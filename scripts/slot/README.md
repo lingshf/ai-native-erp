@@ -4,13 +4,14 @@ E2E 独占时段（[路线图 §5](../../design/roadmap.md#5-团队流程)“E2E
 
 不进 Vitest、不进 CI。
 
-| 文件                 | 作用                                                                            | 平台            |
-| -------------------- | ------------------------------------------------------------------------------- | --------------- |
-| `procs.ps1`          | 候选、归属与排除判定（`Counted`），每个判定出口标注 SR 编号                     | Windows         |
-| `slot-run.ps1`       | 时段运行器：构建门禁、预检（连续 6 次计数为 0）、逐步运行并每 10 s 采样         | Windows         |
-| `steps.example.ps1`  | `-StepsFile` 示例（步骤列表；kit 中为 GATE-01 专用列表）                        | Windows         |
-| `selftest.ps1`       | 自测：kit 原有 27 项 + 每条 SR 规则的正例与反例 + 可选的与 D316 kit 逐 PID 对照 | Windows         |
-| `check-manifest.mjs` | 清单检查：判定出口与路线图规则表、规则版本逐一对照                              | 任意 OS（Node） |
+| 文件                 | 作用                                                                                                           | 平台            |
+| -------------------- | -------------------------------------------------------------------------------------------------------------- | --------------- |
+| `procs.ps1`          | 候选、归属与排除判定（`Counted`），每个判定出口标注 SR 编号                                                    | Windows         |
+| `slot-run.ps1`       | 时段运行器：构建门禁、预检（连续 6 次计数为 0）、逐步运行并每 10 s 采样                                        | Windows         |
+| `steps.example.ps1`  | `-StepsFile` 示例（步骤列表；kit 中为 GATE-01 专用列表）                                                       | Windows         |
+| `steps.gate01.ps1`   | 原样复现 D316 kit 的 GATE-01 七个步骤（D347）；需要 `-BaseRoot` 下有 `artifacts/ci/gate01/` 工具，否则退出码 4 | Windows         |
+| `selftest.ps1`       | 自测：kit 原有 27 项 + 每条 SR 规则的正例与反例 + 可选的与 D316 kit 逐 PID 对照                                | Windows         |
+| `check-manifest.mjs` | 清单检查：判定出口与路线图规则表、规则版本逐一对照                                                             | 任意 OS（Node） |
 
 ## 运行
 
@@ -26,7 +27,7 @@ pwsh -File scripts/slot/slot-run.ps1 -OutDir $env:TEMP\slot-<任务>-<日期> -S
 node scripts/slot/check-manifest.mjs [--roadmap design/roadmap.md] [--code scripts/slot/procs.ps1]
 ```
 
-- 只能在 Windows 的 PowerShell 7 上运行：`selftest.ps1` 与 `slot-run.ps1` 在非 Windows 上立即以退出码 2 结束（“只能在 Windows 运行”）；在 Windows PowerShell 5.1 上同样以退出码 2 结束，因为 `procs.ps1`（与 D316 kit 相同）用了只有 .NET Core 才有的 `[IO.Path]::GetFullPath(path, base)`，5.1 下所有 git 工作树（`.git` 是文件）都会被当成“无仓库”。D316 kit 也一直在 PowerShell 7 下运行。它用 WMI 启动替身进程（node.exe 及其改名副本），在 `%TEMP%\slot-selftest-*`、`%LOCALAPPDATA%\Programs\slot-selftest-*` 与 `scripts/slot/selftest/` 下建临时文件；结束时只停止这些替身进程的进程树并删除这些临时目录，不碰其他进程。输出逐项 `PASS` / `FAIL` 与 `summary` 行，有 FAIL 时退出码 1。
+- **需 pwsh 7**（D347）：只能在 Windows 的 PowerShell 7 上运行：`selftest.ps1` 与 `slot-run.ps1` 在非 Windows 上立即以退出码 2 结束（“只能在 Windows 运行”）；在 Windows PowerShell 5.1 上同样以退出码 2 结束，因为 `procs.ps1`（与 D316 kit 相同）用了只有 .NET Core 才有的 `[IO.Path]::GetFullPath(path, base)`，5.1 下所有 git 工作树（`.git` 是文件）都会被当成“无仓库”。D316 kit 也一直在 PowerShell 7 下运行。它用 WMI 启动替身进程（node.exe 及其改名副本），在 `%TEMP%\slot-selftest-*`、`%LOCALAPPDATA%\Programs\slot-selftest-*` 与 `scripts/slot/selftest/` 下建临时文件；结束时只停止这些替身进程的进程树并删除这些临时目录，不碰其他进程。输出逐项 `PASS` / `FAIL` 与 `summary` 行，有 FAIL 时退出码 1。
 - `-ReferenceProcs`：D316 kit 的 `procs.ps1` 副本（按 LF 计算 SHA-256 须为 `906A4B70…90A6F8`，否则失败）。它用 `git -C <所在目录>` 定位本仓库，所以副本须放在本仓库某个工作树内，建议 `artifacts/ci/gate01-ref/procs.ps1`（`artifacts/ci/` 已被 git 忽略，不入库）。给出时，自测的每个快照同时交给 kit 的 `Counted`，计数集合与排除集合须逐 PID 相同（`EQUIV` 项）。
 - `check-manifest.mjs` 退出码：0 一致；1 有出口缺编号、有表外编号、表内编号没有出口，或规则版本不一致；2 输入不可用（文件不存在、找不到规则表或版本）。判定出口按代码结构识别（`Get-Owner` / `Get-SystemExclusion` 中返回非空的 `return`，`Counted` 中的 `continue`、`@{ Kind = … }`、运行器树扩展与排除汇总），不依赖标注本身。
 
