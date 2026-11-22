@@ -1103,6 +1103,14 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       }
       return await post("tadj.confirm", "/api/v1/trade/actions");
     }
+    // GATE-01: the invoice page's per-company draft keys in sessionStorage. Declared before the
+    // run below, which calls the leave steps that read them.
+    const draftPrefix = "erp.tradeInvoices.v1.";
+    const drafts = () =>
+      page.evaluate(
+        (prefix) => Object.keys(sessionStorage).filter((key) => key.startsWith(prefix)).length,
+        draftPrefix,
+      );
     let failed = true;
     try {
       await page.goto(address);
@@ -1332,6 +1340,22 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         ordered("tord.title"),
         1,
       );
+      const invoiceLeave = {
+        path: "trade-invoices",
+        field: "#tinv-party",
+        message: t("trade.leaveConfirm"),
+        title: t("tinv.title"),
+      } as const;
+      const orderLeave = {
+        path: "trade-orders",
+        field: "#tord-party",
+        message: ordered("tord.leaveConfirm"),
+        title: ordered("tord.title"),
+      } as const;
+      await leaveOnFirstKey(invoiceLeave);
+      await leaveOnFirstKey(orderLeave);
+      await leaveByForward(invoiceLeave);
+      await leaveByForward(orderLeave);
     }
     // TINV-04: the invoice list's source order column links each invoice to its order detail,
     // purchase (PO-DEMO, seeded) and sales (SO-DEMO, seeded here); AR-DEMO has none ("—").
@@ -1457,6 +1481,126 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         page.off("dialog", answer);
       }
       expect(failures).toEqual([]);
+    }
+    // GATE-01 acceptance 4b/4c. Each branch starts clean (cleanStart): on #/trade-reports with
+    // neither guarded page mounted, no invoice draft in sessionStorage (the invoice page restores a
+    // dirty draft per company) and no confirmation counted. Every dialog is counted; until a branch
+    // registers its cancel/accept answer, a dialog is dismissed and still counted, so an
+    // unexpected confirmation fails the count.
+    type Leave = {
+      path: "trade-invoices" | "trade-orders";
+      field: string;
+      message: string;
+      title: string;
+    };
+    async function leaveBranches(
+      leave: Leave,
+      branch: (
+        accept: boolean,
+        confirmed: (count: number) => Promise<void>,
+        register: () => void,
+      ) => Promise<void>,
+    ) {
+      let dialogs = 0;
+      let leaving = false;
+      let registered: "dismiss" | "accept" | undefined;
+      const watch = async (dialog: import("playwright").Dialog) => {
+        expect(dialog.type()).toBe("confirm");
+        if (leaving) {
+          await dialog.accept();
+          return;
+        }
+        dialogs += 1;
+        expect(dialog.message()).toBe(leave.message);
+        await (registered === "accept" ? dialog.accept() : dialog.dismiss());
+      };
+      // The cumulative count of this branch, settled: a second confirmation would arrive late.
+      const confirmed = async (count: number) => {
+        await expect.poll(() => dialogs, { timeout: 10_000 }).toBe(count);
+        await page.waitForTimeout(300);
+        expect(dialogs).toBe(count);
+      };
+      page.on("dialog", watch);
+      try {
+        for (const accept of [false, true]) {
+          // cleanStart(path), 1: a branch left on a dirty page leaves it accepting; not counted.
+          if (new URL(page.url()).hash !== "#/trade-reports") {
+            leaving = true;
+            await navigate("trade-reports");
+            leaving = false;
+          }
+          dialogs = 0;
+          registered = undefined;
+          // 2: drop the invoice drafts while the invoice page is not mounted.
+          await page.evaluate((prefix) => {
+            for (const key of Object.keys(sessionStorage))
+              if (key.startsWith(prefix)) sessionStorage.removeItem(key);
+          }, draftPrefix);
+          expect(await drafts()).toBe(0);
+          // 3: enter the page clean, before any answer is registered or any key is pressed.
+          await navigate(leave.path);
+          await page.locator(leave.field).waitFor();
+          expect(await page.locator(leave.field).inputValue()).toBe("");
+          expect(await drafts()).toBe(0);
+          await confirmed(0);
+          await branch(accept, confirmed, () => {
+            registered = accept ? "accept" : "dismiss";
+          });
+          registered = undefined;
+        }
+      } finally {
+        page.off("dialog", watch);
+      }
+      expect(failures).toEqual([]);
+    }
+    // After a leaving traversal: one confirmation, then either the page kept as it was (cancel) or
+    // the reports page reached (accept).
+    async function settledLeave(
+      leave: Leave,
+      accept: boolean,
+      confirmed: (count: number) => Promise<void>,
+      value: string,
+    ) {
+      await confirmed(1);
+      if (accept) {
+        await page.waitForURL((url) => url.hash === "#/trade-reports");
+        await page.waitForFunction(targetPageShown, navigateTitle(language, "trade-reports"));
+        return;
+      }
+      expect(new URL(page.url()).hash).toBe(`#/${leave.path}`);
+      await page.getByRole("heading", { name: leave.title, exact: true }).waitFor();
+      expect(await page.locator(leave.field).inputValue()).toBe(value);
+    }
+    // 4b (D280 + D282): Back right after the first key that makes the draft dirty still asks.
+    async function leaveOnFirstKey(leave: Leave) {
+      await leaveBranches(leave, async (accept, confirmed, register) => {
+        register();
+        await tabTo(page, page.locator(leave.field));
+        await page.keyboard.press("K");
+        // A cancelled same-document traversal may never settle as a navigation.
+        await page.goBack({ waitUntil: "commit", timeout: 2_000 }).catch(() => null);
+        await settledLeave(leave, accept, confirmed, "K");
+      });
+    }
+    // 4c: a real Forward from a dirty draft asks once. Each branch rebuilds its own history: a
+    // cancel drops the entries ahead (D275).
+    async function leaveByForward(leave: Leave) {
+      await leaveBranches(leave, async (accept, confirmed, register) => {
+        await navigate("trade-reports");
+        await confirmed(0);
+        // Unguarded (the page is clean); the hash is asserted by waitForURL below.
+        await page.goBack({ waitUntil: "commit", timeout: 2_000 }).catch(() => null);
+        await page.waitForURL((url) => url.hash === `#/${leave.path}`);
+        await page.waitForFunction(targetPageShown, navigateTitle(language, leave.path));
+        await page.locator(leave.field).waitFor();
+        await confirmed(0);
+        expect(await page.locator(leave.field).inputValue()).toBe("");
+        expect(await drafts()).toBe(0);
+        register();
+        await type(page, page.locator(leave.field), "PARTY-FORWARD");
+        await page.goForward({ waitUntil: "commit", timeout: 2_000 }).catch(() => null);
+        await settledLeave(leave, accept, confirmed, "PARTY-FORWARD");
+      });
     }
   }, 180_000);
 }
