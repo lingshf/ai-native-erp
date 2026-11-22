@@ -1381,6 +1381,11 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
             t("tinv.noSourceOrder"),
           );
           await page.screenshot({ path: join(artifacts, `${name}-invoice-list.png`) });
+          // TINV-05: the same row height and column bound measured at 1440 (the 390 checks below
+          // are unchanged).
+          const wide = await sourceCell(row("AR-LONG-SO"));
+          expect(wide).toMatchObject({ row: 44, title: longOrderId });
+          expect(wide.cell).toBeLessThanOrEqual(240);
           await page.setViewportSize({ width: 390, height: 1100 });
           // The 60-character order ID wraps inside its cell: full text shown (not clipped by
           // the 3-line clamp), the row keeps the virtual list's 44 px, the cell stays bounded.
@@ -1436,6 +1441,20 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       }
       expect(failures).toEqual([]);
     }
+    // The source order cell of an invoice row: the row's laid-out height, the cell's width and the
+    // link's title (the full order ID).
+    async function sourceCell(target: import("playwright").Locator) {
+      const link = target.locator("td.tinv-source a");
+      await link.scrollIntoViewIfNeeded();
+      return link.evaluate((element) => {
+        const cell = element.closest("td") as HTMLElement;
+        return {
+          row: (cell.parentElement as HTMLElement).getBoundingClientRect().height,
+          cell: cell.getBoundingClientRect().width,
+          title: element.getAttribute("title"),
+        };
+      });
+    }
     // TINV-05: the filter bar narrows the list by keyboard (Apply button and Enter) with teaching
     // explanations on and off; the address never changes and nothing asks to leave. At 390 px the
     // bar wraps inside the page. Ends unfiltered at 1440 with teaching restored.
@@ -1484,8 +1503,16 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
           await row("AR-DEMO").waitFor();
           await row("AR-FROM-SO").waitFor();
           await unchanged();
+          // With the bar applied the source order column keeps the TINV-04 row height and bound.
+          const filteredSource = async () => {
+            const cell = await sourceCell(row("AR-LONG-SO"));
+            expect(cell).toMatchObject({ row: 44, title: longOrderId });
+            expect(cell.cell).toBeLessThanOrEqual(240);
+          };
+          await filteredSource();
           await page.screenshot({ path: join(artifacts, `${name}-invoice-filter-${mode}.png`) });
           await page.setViewportSize({ width: 390, height: 1100 });
+          await filteredSource();
           await bar.scrollIntoViewIfNeeded();
           const layout = await bar.evaluate((element) => {
             const items = [...element.children].map((child) => child.getBoundingClientRect());
