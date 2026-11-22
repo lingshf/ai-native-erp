@@ -1391,6 +1391,10 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
           expect(box.lines).toBeLessThanOrEqual(3);
           expect(box.overhang).toBeLessThanOrEqual(1);
           expect(box.cell).toBeLessThanOrEqual(240);
+          // The wide column scrolls inside the table, never the page.
+          expect(
+            await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
+          ).toBeLessThanOrEqual(0);
           await page.screenshot({ path: join(artifacts, `${name}-invoice-list-390.png`) });
           await page.setViewportSize({ width: 1440, height: 1100 });
         }

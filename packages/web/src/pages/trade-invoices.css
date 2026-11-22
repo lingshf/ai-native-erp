@@ -172,6 +172,11 @@
   min-width: 8ch;
   white-space: normal;
 }
+/* “—”行的 visually-hidden 文本是绝对定位：以本格为包含块，留在表格滚动容器内，
+   否则其静态位置会溢出成页面横向滚动（390 px）。 */
+.trade-invoices td.tinv-source {
+  position: relative;
+}
 .trade-invoices td.tinv-source > a {
   display: -webkit-box;
   width: 26ch;
