@@ -939,6 +939,33 @@ describe("trade invoices leave guard", () => {
     );
     expect(go).not.toHaveBeenCalled();
   });
+  it("asks on a Back that arrives right after the first keystroke, before any later task", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    stub();
+    window.history.replaceState(null, "", "/#/trade-orders");
+    window.history.pushState(null, "", "/#/trade-invoices");
+    render(<App />);
+    const input = (await screen.findByLabelText(t("tinv.party"))) as HTMLInputElement;
+    const here = window.location.href;
+    // Outside act(): as in a browser, React renders the keystroke in a microtask. A guard armed
+    // only by passive effects waits for a later task and would miss this Back.
+    const actEnvironment = Reflect.get(globalThis, "IS_REACT_ACT_ENVIRONMENT");
+    Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", false);
+    try {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, "V1");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      for (let turn = 0; turn < 5; turn += 1) await Promise.resolve();
+      window.history.replaceState(null, "", "/#/trade-orders");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      expect(confirm).toHaveBeenCalledTimes(1);
+      expect(window.location.href).toBe(here);
+    } finally {
+      Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", actEnvironment);
+    }
+    await act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+    expect(party().value).toBe("V1");
+    expect(confirm).toHaveBeenCalledTimes(1);
+  });
   it("blocks links and history without asking while a post is in flight", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     stub(() => new Promise<Response>(() => {}));

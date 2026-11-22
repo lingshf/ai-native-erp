@@ -206,8 +206,10 @@ export function useInvoiceLeaveGuard(guard: Guard, message: string) {
   latest.current = guard;
   const history = useRef<HistoryGuard | null>(null);
   // After every render: the page may rewrite its own address while guarded (leave-guard-history.ts).
-  useEffect(() => history.current?.settle());
-  useEffect(() => {
+  useLayoutEffect(() => history.current?.settle());
+  // Layout effects: the guard is armed in the same commit as the input that made the page dirty,
+  // so an immediate Back is asked (passive effects may run after the traversal has begun).
+  useLayoutEffect(() => {
     if (!guard.busy && !guard.unsaved) return;
     const mayLeave = () =>
       !latest.current.busy && (!latest.current.unsaved || window.confirm(message));
@@ -449,10 +451,10 @@ function InvoiceEntry({
   useLayoutEffect(() => {
     storeSaved(company.code, { draft, documentId, dirty, pending });
   }, [company.code, draft, documentId, dirty, pending]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     onGuard({ busy, unsaved: dirty || pending !== null });
   }, [onGuard, busy, dirty, pending]);
-  useEffect(() => () => onGuard(idleGuard), [onGuard]);
+  useLayoutEffect(() => () => onGuard(idleGuard), [onGuard]);
   const [receipt, setReceipt] = useState<TradeInvoiceReceiptDto | null>(null);
   const firstField = useRef<HTMLSelectElement>(null);
   const command = toCommand(company, documentId, draft);

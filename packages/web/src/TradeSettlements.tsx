@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
@@ -220,7 +220,7 @@ function SettlementEntry({
       setStorageFailed(true);
     }
   }, [company.code, saved, storageFailed]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     onGuard({
       busy: busy || saved.pending !== null,
       unsaved: command.party !== "" || command.items.length > 0,

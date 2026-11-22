@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
@@ -25,7 +25,8 @@ type Failure = { path: string; key: Exclude<LabelKey, "shell.httpError">; confli
 type EditorGuard = { open: boolean; dirty: boolean; pending: boolean };
 const idleGuard: EditorGuard = { open: false, dirty: false, pending: false };
 function useTradeLeaveGuard(guard: EditorGuard, discard: string) {
-  useEffect(() => {
+  // Layout effect: armed in the commit that made the editor dirty (see TradeInvoices.tsx).
+  useLayoutEffect(() => {
     if (!guard.dirty && !guard.pending) return;
     const mayLeave = () => !guard.pending && window.confirm(discard);
     // Back/Forward: a cancel keeps the address and the draft (leave-guard-history.ts).
@@ -422,10 +423,10 @@ function TradeEditor({
   const dirty = JSON.stringify({ code, active, draft }) !== starting.current;
   const pendingCommand = useRef<TradeCommand | null>(null);
   const generation = useRef(0);
-  useEffect(() => {
+  useLayoutEffect(() => {
     lock({ open: true, dirty, pending: busy || uncertain });
   }, [lock, dirty, busy, uncertain]);
-  useEffect(() => () => lock(idleGuard), [lock]);
+  useLayoutEffect(() => () => lock(idleGuard), [lock]);
   useEffect(
     () => () => {
       generation.current++;

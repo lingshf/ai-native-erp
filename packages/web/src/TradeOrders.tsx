@@ -145,8 +145,9 @@ function useOrderLeaveGuard(guard: Guard, message: string) {
   const history = useRef<HistoryGuard | null>(null);
   // After every render: the page rewrites its own address (company, order) while a draft is open,
   // and a cancelled navigation must return to that address (leave-guard-history.ts).
-  useEffect(() => history.current?.settle());
-  useEffect(() => {
+  useLayoutEffect(() => history.current?.settle());
+  // Layout effect: armed in the commit that made the page dirty (see TradeInvoices.tsx).
+  useLayoutEffect(() => {
     if (!guard.busy && !guard.unsaved) return;
     const mayLeave = () => !latest.current.busy && window.confirm(message);
     const guarded = guardHistory(mayLeave);
@@ -360,8 +361,8 @@ function OrderWorkspace({
   const parties = useOptions(company.code, "tradeParty");
   const products = useOptions(company.code, "tradeProduct");
   const taxes = useOptions(company.code, "taxCode");
-  useEffect(() => onGuard({ busy, unsaved: dirty }), [onGuard, busy, dirty]);
-  useEffect(() => () => onGuard(idleGuard), [onGuard]);
+  useLayoutEffect(() => onGuard({ busy, unsaved: dirty }), [onGuard, busy, dirty]);
+  useLayoutEffect(() => () => onGuard(idleGuard), [onGuard]);
   // Layout effect: focus moves inside the commit, so the notice never appears with focus elsewhere (D92).
   useLayoutEffect(() => {
     if (saved) savedNotice.current?.focus();

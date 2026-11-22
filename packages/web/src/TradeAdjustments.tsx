@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import {
   companiesPageSchema,
@@ -240,7 +240,7 @@ function ActionEntry({
       setStorageFailed(true);
     }
   }, [company.code, saved, storageFailed]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     onGuard({
       busy: busy || saved.pending !== null,
       unsaved: !!(
