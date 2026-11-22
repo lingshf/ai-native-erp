@@ -509,9 +509,9 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [PROC-06](PROC-06-s8-retro-actions.md) | S8 回顾行动 1、2、3、6 写入 Demo 模板与发布清单；删除 v0.8.0 release-notes 第 3 行过时提示；`components.css` 第 3–4 行只改注释（原 CSS-01，D263）（版本管理，不占开发名额） | 文档 + 注释 | P2（v0.9.0 RC 之前） | — | docs:release、web-ui:components（只改注释） | done（CSS 12 个文件 SHA 不变） | [#178](https://github.com/lingshf/ai-native-erp/pull/178)（`7e88a68`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44963425015) 12/12） |
 | FLAKE-06/07（无任务书，协调者另立） | 计划外：FLAKE-06 首次过账在途时提前显示“结果不确定”警告；FLAKE-07 HashRouter `startTransition` 使 `fromOrder` 被取用两次。根因都在产品代码（不计入 S9 目标；TINV-03 合并后使用第三个名额） | 缺陷修复 | P1 | — | web-ui:trade（`TradeInvoices.tsx` 只改 `fromOrder` 消费 effect，D276 准许与 A 线相交） | done（3 条新增单元测试旧代码失败、新代码通过） | [#180](https://github.com/lingshf/ai-native-erp/pull/180)（`a6d3b86`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44983909701) 12/12） |
 
-**Sprint 评审**：[design/reviews/S9.md](../reviews/S9.md)（main `5c4f932`，建议通过，待协调者确认；裁定接受的事项与遗留项见该文；RC [#182](https://github.com/lingshf/ai-native-erp/pull/182)、Demo [#183](https://github.com/lingshf/ai-native-erp/pull/183)）。
+**Sprint 评审**：[design/reviews/S9.md](../reviews/S9.md)（main `5c4f932`，S9 通过，D302；裁定接受的事项与遗留项见该文；RC [#182](https://github.com/lingshf/ai-native-erp/pull/182)、Demo [#183](https://github.com/lingshf/ai-native-erp/pull/183)）。
 
-**Sprint 回顾**：[design/reviews/S9-retro.md](../reviews/S9-retro.md)（main `5c4f932`；5 个议题、7 条行动项待认可，S8 回顾行动项检查）。
+**Sprint 回顾**：[design/reviews/S9-retro.md](../reviews/S9-retro.md)（main `5c4f932`；5 个议题、7 条行动项（D302 已认可），S8 回顾行动项检查）。
 
 **S9 共同验收**：
 1. UI 任务满足 [UI-1 通用验收标准](#ui-1界面逐步改进) 1–9，PG-05 口径同 S8（基线为 PR 实际 base 的 gzip 列，数字绑定最终送审 head，与取证 head 分开写）；真实 Chrome 证据按[路线图 §5 UI PR 证据清单](../roadmap.md#5-团队流程) 1–8 项（含本计划新增的第 7 项断言对照、第 8 项先 build），请求评审前逐项勾选写入 PR 正文。
