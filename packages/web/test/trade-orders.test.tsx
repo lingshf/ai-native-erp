@@ -1192,12 +1192,19 @@ describe("trade orders", () => {
   });
 
   it.each([
-    ["an empty order", "?company=DEFAULT&order=", "Enter", 0],
-    ["a malformed order", "?company=DEFAULT&order=po%201", " ", 0],
-    ["an order the server rejects (400)", "?company=DEFAULT&order=PO-400", "click", 1],
+    ["an empty order", "?company=DEFAULT&order=", "Enter", 0, "company=DEFAULT"],
+    ["a malformed order", "?company=DEFAULT&order=po%201", " ", 0, "company=DEFAULT"],
+    ["a malformed order without company", "?order=po%201", "Enter", 0, ""],
+    [
+      "an order the server rejects (400)",
+      "?company=DEFAULT&order=PO-400",
+      "click",
+      1,
+      "company=DEFAULT",
+    ],
   ] as const)(
     "reports %s as invalid with one company and goes back to the list (%s)",
-    async (_case, search, how, reads) => {
+    async (_case, search, how, reads, after) => {
       expect(tradeOrderCommandSchema.shape.orderId.safeParse("po 1").success).toBe(false);
       linkTo(search);
       const { calls } = stubApi(
@@ -1215,7 +1222,8 @@ describe("trade orders", () => {
       select.addEventListener("change", changes);
 
       activate(await back(), how);
-      await waitFor(() => expect(address().toString()).toBe("company=DEFAULT"));
+      await waitFor(() => expect(address().has("order")).toBe(false));
+      expect(address().toString()).toBe(after);
       expect(screen.queryByRole("alert")).toBeNull();
       expect(document.activeElement).toBe(listToggle());
       expect(await within(await listTable()).findByRole("button", { name: "PO-1" })).toBeTruthy();
@@ -1225,21 +1233,30 @@ describe("trade orders", () => {
     },
   );
 
-  it("reports an order that does not exist and goes back to the list by Space", async () => {
-    linkTo("?company=DEFAULT&order=PO-9");
-    const { calls } = stubApi(found, () =>
-      response({ items: [summary("PO-1", 11300)], nextCursor: null }),
-    );
-    render(<App />);
-    const alert = await screen.findByRole("alert");
-    expect(alert.querySelector("p")?.textContent).toBe(t("tord.notFound"));
-    expect(orderReads(calls)).toEqual(["GET /api/v1/trade/orders/PO-9"]);
-    activate(await back(), " ");
-    await waitFor(() => expect(address().toString()).toBe("company=DEFAULT"));
-    expect(screen.queryByRole("alert")).toBeNull();
-    expect(document.activeElement).toBe(listToggle());
-    expect(orderReads(calls)).toHaveLength(1);
-  });
+  // Recovery removes only `order`: an absent `company` stays absent.
+  it.each([
+    ["?company=DEFAULT&order=PO-9", "company=DEFAULT"],
+    ["?order=PO-9", ""],
+  ] as const)(
+    "reports an order that does not exist and goes back to the list by Space (%s)",
+    async (search, after) => {
+      linkTo(search);
+      const { calls } = stubApi(found, () =>
+        response({ items: [summary("PO-1", 11300)], nextCursor: null }),
+      );
+      render(<App />);
+      const alert = await screen.findByRole("alert");
+      expect(alert.querySelector("p")?.textContent).toBe(t("tord.notFound"));
+      expect(orderReads(calls)).toEqual(["GET /api/v1/trade/orders/PO-9"]);
+      activate(await back(), " ");
+      await waitFor(() => expect(address().has("order")).toBe(false));
+      expect(address().toString()).toBe(after);
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(document.activeElement).toBe(listToggle());
+      expect(companySelect().value).toBe("DEFAULT");
+      expect(orderReads(calls)).toHaveLength(1);
+    },
+  );
 
   it.each(["click", "Enter", " "] as const)(
     "retries a failed company or order read with the same request (%s)",
@@ -1441,4 +1458,32 @@ describe("trade orders", () => {
       expect(field("tord.orderId").value).toBe("PO-DRAFT");
     },
   );
+
+  it("keeps the target history entry when a real Back is cancelled, so a retried Back reaches it", async () => {
+    window.history.pushState(null, "", "/#/trade-orders?company=DEFAULT&order=PO-1");
+    window.history.pushState(null, "", "/#/trade-orders?company=DEFAULT&order=PO-2");
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { calls } = stubApi(found, emptyList, noneInvoiced);
+    render(<App />);
+    await screen.findByText(t("tord.notFound"));
+    fireEvent.change(field("tord.orderId"), { target: { value: "PO-DRAFT" } });
+
+    window.history.back();
+    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+    expect(address().toString()).toBe("company=DEFAULT&order=PO-2");
+    await act(async () => {});
+    expect(screen.getByText(t("tord.notFound"))).toBeTruthy();
+    expect(field("tord.orderId").value).toBe("PO-DRAFT");
+    expect(orderReads(calls)).toEqual(["GET /api/v1/trade/orders/PO-2"]);
+
+    confirm.mockReturnValue(true);
+    window.history.back();
+    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+    expect(address().toString()).toBe("company=DEFAULT&order=PO-1");
+    expect(orderReads(calls)).toEqual([
+      "GET /api/v1/trade/orders/PO-2",
+      "GET /api/v1/trade/orders/PO-1",
+    ]);
+  });
 });

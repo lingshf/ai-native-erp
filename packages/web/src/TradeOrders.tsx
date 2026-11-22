@@ -145,6 +145,12 @@ function useOrderLeaveGuard(guard: Guard, message: string) {
   // and a cancelled navigation must return to that address, not the one from when the draft began.
   const here = useRef("");
   here.current = window.location.href;
+  const hereState = useRef<unknown>(null);
+  hereState.current = window.history.state;
+  // The address a confirmed Back or Forward goes to: its hashchange follows the popstate before the
+  // page re-renders, and must not ask again.
+  const accepted = useRef("");
+  if (accepted.current === here.current) accepted.current = "";
   useEffect(() => {
     if (!guard.busy && !guard.unsaved) return;
     const mayLeave = () => !latest.current.busy && window.confirm(message);
@@ -167,9 +173,16 @@ function useOrderLeaveGuard(guard: Guard, message: string) {
       }
     };
     const navigation = (event: Event) => {
-      if (window.location.href === here.current || mayLeave()) return;
+      const target = window.location.href;
+      if (target === here.current || target === accepted.current) return;
+      if (mayLeave()) {
+        accepted.current = target;
+        return;
+      }
       event.stopImmediatePropagation();
-      window.history.replaceState(window.history.state, "", here.current);
+      // The browser is already on the target entry: add the current address after it instead of
+      // rewriting it, so a later Back or Forward can still reach the target.
+      window.history.pushState(hereState.current, "", here.current);
     };
     const unload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
@@ -294,6 +307,7 @@ export function TradeOrders({ preferences }: { preferences: Preferences }) {
           onGuard={setGuard}
           linkOrder={linkOrder}
           onLink={(order) => link({ company: company.code, order })}
+          onBack={() => link({ order: null })}
         />
       )}
     </section>
@@ -320,6 +334,7 @@ function OrderWorkspace({
   onGuard,
   linkOrder,
   onLink,
+  onBack,
 }: {
   company: CompanyDto;
   preferences: Preferences;
@@ -327,6 +342,8 @@ function OrderWorkspace({
   onGuard: (guard: Guard) => void;
   linkOrder: string | null;
   onLink: (orderId: string | null) => void;
+  // Recovery from a bad order link removes only `order`; an absent `company` stays absent.
+  onBack: () => void;
 }) {
   const language = preferences.language;
   const [draft, setDraft] = useState(blankDraft);
@@ -860,7 +877,7 @@ function OrderWorkspace({
         t={t}
         request={opened}
         onLookup={(orderId) => open(orderId, false)}
-        onBack={() => onLink(null)}
+        onBack={onBack}
       />
     </>
   );
