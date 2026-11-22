@@ -1,6 +1,6 @@
 # v0.10.0 Demo 执行记录
 
-状态：无浏览器部分已完成；**真实服务演练与真实 Chrome 取图尚未执行**，等待协调者批准独占时段。截图与 `capture-log-main.json` 入库后本文会更新。基线 main `c0189c7`（`packages/` 同 `108684d`）。
+状态：无浏览器部分与真实服务演练、真实 Chrome 取图（D330 时段，一次连续跑）均已完成，24 张截图与 `capture-log-main.json` 已入库（见 §5）。基线 main `c0189c7`（`packages/` 同 `108684d`）。
 
 ## 1. 已执行（无浏览器、无真实服务、无 build；2026-11-22 01:30 前后，PowerShell 5.1 / Node，退出码均为 0）
 
@@ -14,8 +14,9 @@
 
 ## 2. 未实跑（诚实披露）
 
-- 真实服务演练（`run-main.ps1 -SkipCapture`）、build、真实 Chrome 取图：未执行，等待独占时段批准；批准后只跑一次（D308）。
-- `capture.mjs` 没有替身页面路径，断言先对照源码逐条核对（§3），再由真实 Chrome 实跑验证。核对时最可能在真实 Chrome 里出问题的是：筛选后表格行的异步刷新时序（脚本用 poll 等待）、`selectOption("AR")` 后点“应用”的次序、390 宽下筛选条换行后“应用”按钮可点。某条断言失败则按 D234 中止，不放宽语义断言，原断言原文与日志位置记入本文。
+- 真实服务演练、build、真实 Chrome 取图已在 D330 时段一次跑完（见 §5），无失败、无重跑。
+- 下表 §3 中“待真实 Chrome”的各项，以 §5 的取图结果为准：脚本 24 张全部通过各断言，`capture-log-main.json` 的 `errors` 为空，所有 `overflowPx` 为 0。
+- `capture.mjs` 没有替身页面路径，断言先对照源码逐条核对（§3），再由真实 Chrome 实跑验证；筛选时序、`selectOption("AR")` 次序与 390 宽下“应用”按钮可点，均在实跑中通过。
 - 记账日期起止与两种输入错误提示、“加载更多”保持筛选：不在本 Demo 范围，见 README §5。
 
 ## 3. capture.mjs 断言逐条核对（对照 main c0189c7）
@@ -40,4 +41,15 @@
 
 ## 5. 独占时段记录
 
-尚未申请 / 执行。
+D330 批准，2026-11-22 01:33:50 至 01:35:58（-08:00），约 2 分 08 秒，一次连续跑，未重跑。`ERP_E2E_BROWSER_CHANNEL=chrome`，端口 4201，基线 head `9fdb98f`（脚本提交）上的 `c0189c7` 产品代码。
+
+| 步骤 | 结果 |
+|---|---|
+| 预检（6 次采样、间隔 10 秒） | 外部进程数均为 0 |
+| 1) 真实服务演练 `run-main.ps1 -SkipCapture` | 通过：5 张订单、6 张发票的 readiness 均 ok（3 张采购单 none/partial/full + 2 张销售单 partial/full，4 张带来源订单的发票）；`seed-invoicing ok`、`seed-sales ok` |
+| 2) `npm run build` 与 dist 断言 | 通过：dist 晚于 HEAD 提交时间，含 “Accounting date from”“No invoices match the filters” |
+| 3) `run-main.ps1`（取图） | `shots 24`，`capture exit 0`，`port 4201 released`，复制 24 张 |
+
+结果核对：24 张 PNG（6 类 × 4 组合：zh-red-1440、zh-red-390、en-green-1440、en-green-390）；`capture-log-main.json` 中 24 项 `overflowPx` 均为 0，4 个组合的 `errors` 均为 `[]`；390 宽 `scrollWidth` 均为 390。无断言失败，所以没有保留的失败现场；成功后临时 shots 目录已删除。
+
+时段后残留：无本轮启动的 chrome/node 进程；端口 4201 无监听。系统中仍有 6 个 node 进程（启动于 11/15、11/20、11/21，早于本时段，不是本轮启动，未触碰）。日志在本机临时目录（`s10-slot-20261122-013350-12968f`：`preflight.log`、`rehearsal.log`、`build.log`、`capture-block.log`、`all.log`）。

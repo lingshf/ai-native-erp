@@ -1,0 +1,242 @@
+[
+ {
+  "step": "orders-list-sales",
+  "tag": "zh-red-1440"
+ },
+ {
+  "name": "orders-list-sales-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "step": "order-deeplink-ar",
+  "tag": "zh-red-1440",
+  "hash": "#/trade-orders?company=DEFAULT&order=SO-I1"
+ },
+ {
+  "name": "order-deeplink-ar-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "step": "invoice-list-ar",
+  "tag": "zh-red-1440"
+ },
+ {
+  "name": "invoice-list-ar-source-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "step": "invoice-filter-party",
+  "tag": "zh-red-1440"
+ },
+ {
+  "name": "invoice-filter-party-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "step": "invoice-filter-side-ar",
+  "tag": "zh-red-1440"
+ },
+ {
+  "name": "invoice-filter-side-ar-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "step": "invoice-filter-empty",
+  "tag": "zh-red-1440"
+ },
+ {
+  "name": "invoice-filter-empty-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "page": "s10",
+  "tag": "zh-red-1440",
+  "errors": []
+ },
+ {
+  "step": "orders-list-sales",
+  "tag": "zh-red-390"
+ },
+ {
+  "name": "orders-list-sales-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390
+ },
+ {
+  "step": "order-deeplink-ar",
+  "tag": "zh-red-390",
+  "hash": "#/trade-orders?company=DEFAULT&order=SO-I1"
+ },
+ {
+  "name": "order-deeplink-ar-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390
+ },
+ {
+  "step": "invoice-list-ar",
+  "tag": "zh-red-390"
+ },
+ {
+  "name": "invoice-list-ar-source-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390
+ },
+ {
+  "step": "invoice-filter-party",
+  "tag": "zh-red-390"
+ },
+ {
+  "name": "invoice-filter-party-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390
+ },
+ {
+  "step": "invoice-filter-side-ar",
+  "tag": "zh-red-390"
+ },
+ {
+  "name": "invoice-filter-side-ar-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390
+ },
+ {
+  "step": "invoice-filter-empty",
+  "tag": "zh-red-390"
+ },
+ {
+  "name": "invoice-filter-empty-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390
+ },
+ {
+  "page": "s10",
+  "tag": "zh-red-390",
+  "errors": []
+ },
+ {
+  "step": "orders-list-sales",
+  "tag": "en-green-1440"
+ },
+ {
+  "name": "orders-list-sales-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "step": "order-deeplink-ar",
+  "tag": "en-green-1440",
+  "hash": "#/trade-orders?company=DEFAULT&order=SO-I1"
+ },
+ {
+  "name": "order-deeplink-ar-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "step": "invoice-list-ar",
+  "tag": "en-green-1440"
+ },
+ {
+  "name": "invoice-list-ar-source-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "step": "invoice-filter-party",
+  "tag": "en-green-1440"
+ },
+ {
+  "name": "invoice-filter-party-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "step": "invoice-filter-side-ar",
+  "tag": "en-green-1440"
+ },
+ {
+  "name": "invoice-filter-side-ar-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "step": "invoice-filter-empty",
+  "tag": "en-green-1440"
+ },
+ {
+  "name": "invoice-filter-empty-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "page": "s10",
+  "tag": "en-green-1440",
+  "errors": []
+ },
+ {
+  "step": "orders-list-sales",
+  "tag": "en-green-390"
+ },
+ {
+  "name": "orders-list-sales-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390
+ },
+ {
+  "step": "order-deeplink-ar",
+  "tag": "en-green-390",
+  "hash": "#/trade-orders?company=DEFAULT&order=SO-I1"
+ },
+ {
+  "name": "order-deeplink-ar-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390
+ },
+ {
+  "step": "invoice-list-ar",
+  "tag": "en-green-390"
+ },
+ {
+  "name": "invoice-list-ar-source-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390
+ },
+ {
+  "step": "invoice-filter-party",
+  "tag": "en-green-390"
+ },
+ {
+  "name": "invoice-filter-party-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390
+ },
+ {
+  "step": "invoice-filter-side-ar",
+  "tag": "en-green-390"
+ },
+ {
+  "name": "invoice-filter-side-ar-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390
+ },
+ {
+  "step": "invoice-filter-empty",
+  "tag": "en-green-390"
+ },
+ {
+  "name": "invoice-filter-empty-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390
+ },
+ {
+  "page": "s10",
+  "tag": "en-green-390",
+  "errors": []
+ }
+]
