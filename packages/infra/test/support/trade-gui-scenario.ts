@@ -1270,6 +1270,115 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       });
       // After the report totals above, so the new AP invoices do not change them.
       await orderToInvoice();
+      await sourceOrders();
+      await leaveByBack();
+    }
+    // TINV-04: the invoice list's source order column links each invoice to its order detail,
+    // purchase (PO-DEMO, seeded) and sales (SO-DEMO, seeded here); AR-DEMO has none ("—").
+    async function sourceOrders() {
+      const send = httpSend(address);
+      await send("POST", "/api/v1/trade/orders", {
+        company: "DEFAULT",
+        orderId: "SO-DEMO",
+        side: "AR",
+        party: "PARTY",
+        currency: "CNY",
+        orderDate: day,
+        priceIncludesTax: false,
+        rounding: "line",
+        lines: [{ ...seedInvoice("").lines[0], product: "SERVICE" }].map(
+          ({ orderLineId: _, dimensions: __, ...line }) => line,
+        ),
+      });
+      const sale = {
+        ...seedInvoice(randomUUID()),
+        side: "AR",
+        externalInvoice: "AR-FROM-SO",
+        orderId: "SO-DEMO",
+        lines: [{ ...seedInvoice("").lines[0], product: "SERVICE" }],
+      };
+      const preview = await send("POST", "/api/v1/trade/invoices/preview", sale);
+      await send("POST", "/api/v1/trade/invoices", {
+        command: sale,
+        fingerprint: preview.fingerprint,
+        idempotencyKey: randomUUID(),
+        confirmation: "POST",
+      });
+      const list = page.getByRole("table", { name: t("tinv.list"), exact: true });
+      const row = (external: string) => list.locator("tbody tr").filter({ hasText: external });
+      for (const [external, orderId] of [
+        ["AP-DEMO", "PO-DEMO"],
+        ["AR-FROM-SO", "SO-DEMO"],
+      ] as const) {
+        await navigate("trade-invoices");
+        const link = row(external).getByRole("link", { name: orderId, exact: true });
+        await link.waitFor();
+        if (orderId === "PO-DEMO") {
+          const none = row("AR-DEMO").locator("td.tinv-source");
+          expect(await none.locator("a").count()).toBe(0);
+          expect(await none.locator('[aria-hidden="true"]').textContent()).toBe("—");
+          expect(await none.locator(".visually-hidden").textContent()).toBe(
+            t("tinv.noSourceOrder"),
+          );
+          await page.screenshot({ path: join(artifacts, `${name}-invoice-list.png`) });
+          await page.setViewportSize({ width: 390, height: 1100 });
+          await link.scrollIntoViewIfNeeded();
+          await page.screenshot({ path: join(artifacts, `${name}-invoice-list-390.png`) });
+          await page.setViewportSize({ width: 1440, height: 1100 });
+        }
+        expect(await link.getAttribute("href")).toBe(
+          `#/trade-orders?company=DEFAULT&order=${orderId}`,
+        );
+        await activate(page, link);
+        await page.waitForURL(
+          (url) => url.hash === `#/trade-orders?company=DEFAULT&order=${orderId}`,
+        );
+        await page
+          .getByRole("table", { name: `${ordered("tord.lines")} ${orderId}`, exact: true })
+          .waitFor();
+      }
+      expect(failures).toEqual([]);
+    }
+    // TINV-04 acceptance 5a: a real Back from a dirty invoice draft asks exactly once; a cancel
+    // keeps the address, the title and the draft; a confirmed Back reaches the previous page.
+    async function leaveByBack() {
+      await navigate("trade-reports");
+      await navigate("trade-invoices");
+      await type(page, page.locator("#tinv-party"), "PARTY-BACK");
+      let dialogs = 0;
+      let accept = false;
+      const answer = async (dialog: import("playwright").Dialog) => {
+        dialogs += 1;
+        expect(dialog.type()).toBe("confirm");
+        expect(dialog.message()).toBe(t("trade.leaveConfirm"));
+        await (accept ? dialog.accept() : dialog.dismiss());
+      };
+      page.on("dialog", answer);
+      const back = async (count: number) => {
+        // A cancelled same-document traversal may never settle as a navigation.
+        await page.goBack({ waitUntil: "commit", timeout: 2_000 }).catch(() => null);
+        await expect.poll(() => dialogs, { timeout: 10_000 }).toBe(count);
+        await page.waitForTimeout(300);
+        expect(dialogs).toBe(count);
+      };
+      try {
+        for (const count of [1, 2]) {
+          await back(count);
+          expect(new URL(page.url()).hash).toBe("#/trade-invoices");
+          await page.getByRole("heading", { name: t("tinv.title"), exact: true }).waitFor();
+          expect(await page.locator("#tinv-party").inputValue()).toBe("PARTY-BACK");
+          await page
+            .getByRole("textbox", { name: `${t("tinv.product")} L1`, exact: true })
+            .waitFor();
+        }
+        accept = true;
+        await back(3);
+        await page.waitForURL((url) => url.hash === "#/trade-reports");
+        await page.waitForFunction(targetPageShown, navigateTitle(language, "trade-reports"));
+      } finally {
+        page.off("dialog", answer);
+      }
+      expect(failures).toEqual([]);
     }
   }, 180_000);
 }

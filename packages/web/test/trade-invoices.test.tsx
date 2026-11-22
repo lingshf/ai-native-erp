@@ -743,6 +743,7 @@ describe("trade invoices leave guard", () => {
   };
   const stub = (
     post: () => Response | Promise<Response> = () => Promise.reject(new TypeError("network down")),
+    items: unknown[] = [],
   ) =>
     vi.stubGlobal(
       "fetch",
@@ -755,8 +756,7 @@ describe("trade invoices leave guard", () => {
           return response(preview(command.documentId));
         }
         if (url === "/api/v1/trade/invoices" && init?.method === "POST") return post();
-        if (url.startsWith("/api/v1/trade/invoices?"))
-          return response({ items: [], nextCursor: null });
+        if (url.startsWith("/api/v1/trade/invoices?")) return response({ items, nextCursor: null });
         return response({}, 404);
       }),
     );
@@ -781,6 +781,72 @@ describe("trade invoices leave guard", () => {
     expect(confirm).toHaveBeenCalledTimes(3);
   });
 
+  // TINV-04: the list's source order link goes through the same confirmation as any in-app link.
+  const summary = (documentId: string, side: "AP" | "AR", orderId: string | null) => ({
+    documentId,
+    side,
+    party: side === "AP" ? "V1" : "C1",
+    externalNo: `INV-${side}`,
+    accountingDate: "2026-03-31",
+    documentDate: "2026-03-30",
+    dueDate: "2026-04-30",
+    poMatch: orderId === null ? "notApplicable" : "matched",
+    gross: 11300,
+    currency: "CNY",
+    journalId: documentId,
+    orderId,
+    cursor: side === "AP" ? "2" : "1",
+  });
+  const listed = [
+    summary("00000000-0000-4000-8000-000000000001", "AP", "PO:1.A"),
+    summary("00000000-0000-4000-8000-000000000002", "AR", null),
+  ];
+  const target = "#/trade-orders?company=DEFAULT&order=PO%3A1.A";
+  const sourceLink = () => screen.getByRole("link", { name: "PO:1.A" });
+
+  it("shows the source order as a keyboard link to the order page, or a dash read as no source order", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    stub(undefined, listed);
+    render(<App />);
+    const table = await screen.findByRole("table", { name: t("tinv.list") });
+    await within(table).findByRole("link", { name: "PO:1.A" });
+    const headers = within(table)
+      .getAllByRole("columnheader")
+      .map((cell) => cell.textContent);
+    expect(headers).toContain(t("tinv.sourceOrder"));
+    const column = headers.indexOf(t("tinv.sourceOrder"));
+    const [linked, loose] = within(table)
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => within(row).getAllByRole("cell")[column]);
+    const link = within(linked).getByRole("link");
+    expect(link.getAttribute("href")).toBe(target);
+    expect(link.getAttribute("tabindex")).toBeNull();
+    expect(loose.querySelector("a")).toBeNull();
+    expect(loose.querySelector('[aria-hidden="true"]')?.textContent).toBe("—");
+    expect(within(loose).getByText(t("tinv.noSourceOrder")).className).toBe("visually-hidden");
+    pressEnter(link);
+    await waitFor(() => expect(window.location.hash).toBe(target));
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it("asks before the source order link leaves a dirty draft, by click and Enter", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    stub(undefined, listed);
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(t("tinv.party")), { target: { value: "V1" } });
+    fireEvent.click(await screen.findByRole("link", { name: "PO:1.A" }));
+    pressEnter(sourceLink());
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(confirm).toHaveBeenCalledWith(leave);
+    expect(window.location.hash).toBe("#/trade-invoices");
+    expect(party().value).toBe("V1");
+    expect(screen.getByLabelText(`${t("tinv.product")} L1`)).toBeTruthy();
+    confirm.mockReturnValue(true);
+    pressEnter(sourceLink());
+    await waitFor(() => expect(window.location.hash).toBe(target));
+    expect(confirm).toHaveBeenCalledTimes(3);
+  });
   it("leaves a clean draft without asking", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     stub();

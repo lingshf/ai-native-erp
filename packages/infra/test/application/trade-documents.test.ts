@@ -14,6 +14,7 @@ import {
 import {
   openApiDocument,
   tradeOrderInvoicingSchema,
+  tradeInvoicePageSchema,
   tradeOrderPageSchema,
   tradeOrderSchema,
 } from "@erp/core/contracts";
@@ -4163,6 +4164,101 @@ describe("trade invoices on real SQLite", () => {
       expect(plan.some((detail) => /^SCAN (l|ol)\b/u.test(detail))).toBe(false);
     } finally {
       raw.close();
+      await db.release();
+      await backend.close();
+    }
+  });
+
+  // TINV-04: invoice list items carry the source orderId (null without one), AP and AR.
+  it("TINV-04 lists each invoice's source orderId or null over HTTP, AP and AR, on the same SQL", async () => {
+    await service.createOrder(order({ orderId: "PO-1" }));
+    await service.createOrder(
+      order({
+        orderId: "SO:1",
+        side: "AR",
+        party: "C1",
+        lines: [{ ...orderLine("CL1", "10", "10.00"), product: "CONSULT" }],
+      }),
+    );
+    const apLinked = invoice({ orderId: "PO-1", lines: [line({ orderLineId: "OL1" })] });
+    const apLoose = invoice();
+    const arLinked = invoice({
+      side: "AR",
+      party: "C1",
+      orderId: "SO:1",
+      lines: [line({ product: "CONSULT", orderLineId: "CL1" })],
+    });
+    const arLoose = invoice({ side: "AR", party: "C1", lines: [line({ product: "CONSULT" })] });
+    for (const command of [apLinked, apLoose, arLinked, arLoose]) await post(command);
+
+    const executor = await SqliteExecutor.create({ filename, readers: 2 });
+    const api = await createApi({
+      environment: { ERP_PORT: "0" },
+      allowPortZero: true,
+      ...executor.services(),
+      logError: () => undefined,
+    });
+    try {
+      const host = new URL(await api.listen()).host;
+      const page = await api.app.inject({
+        method: "GET",
+        url: "/api/v1/trade/invoices?company=DEFAULT&limit=10",
+        headers: { host },
+      });
+      expect(page.statusCode).toBe(200);
+      const items = tradeInvoicePageSchema.parse(page.json()).items;
+      expect(
+        Object.fromEntries(items.map((item) => [item.documentId, [item.side, item.orderId]])),
+      ).toEqual({
+        [apLinked.documentId]: ["AP", "PO-1"],
+        [apLoose.documentId]: ["AP", null],
+        [arLinked.documentId]: ["AR", "SO:1"],
+        [arLoose.documentId]: ["AR", null],
+      });
+      // The field is present (not omitted) when there is no order.
+      for (const item of page.json().items) expect(item).toHaveProperty("orderId");
+      const listed = (
+        openApiDocument.components.schemas.TradeInvoicePage as unknown as {
+          properties: {
+            items: { items: { required: string[]; properties: Record<string, unknown> } };
+          };
+        }
+      ).properties.items.items;
+      expect(listed.required).toContain("orderId");
+      expect(listed.properties.orderId).toEqual({
+        anyOf: [expect.objectContaining({ type: "string" }), { type: "null" }],
+      });
+    } finally {
+      await api.close();
+      await executor.close();
+    }
+
+    // Storage: only the SELECT list grows; the forced index, WHERE and ORDER BY stay.
+    const backend = sqliteBackend({ filename });
+    const db = await backend.acquire(true, false);
+    const statements: string[] = [];
+    const counting = {
+      ...db,
+      query: (sql: string, values: Parameters<Connection["query"]>[1] = []) => {
+        statements.push(sql);
+        return db.query(sql, values);
+      },
+    } as Connection;
+    try {
+      const counted = new TradeDocumentService(
+        {
+          read: (work) => work(masterDataRepository(counting)),
+          write: () => Promise.reject(new Error("list must not write")),
+        },
+        journals,
+        journalTools,
+      );
+      await counted.list("DEFAULT", { limit: 2 });
+      const pageSql = statements.filter((sql) => sql.includes("FROM trade_documents"));
+      expect(pageSql).toEqual([
+        "SELECT sequence,document_id,side,party_id,external_no,accounting_date,document_date,due_date,po_match,gross_minor,currency,journal_id,order_id FROM trade_documents INDEXED BY trade_documents_company WHERE company_id=? AND sequence<? ORDER BY sequence DESC LIMIT ?",
+      ]);
+    } finally {
       await db.release();
       await backend.close();
     }

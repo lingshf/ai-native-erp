@@ -145,7 +145,7 @@
 .trade-invoices .tinv-total td,
 .trade-invoices .tinv-split > :first-child :is(th, td):nth-child(n + 2),
 .trade-invoices .tinv-split > :nth-child(2) :is(th, td):nth-child(n + 3),
-.trade-invoices .tinv-list :is(th, td):nth-child(7) {
+.trade-invoices .tinv-list :is(th, td):nth-child(8) {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }

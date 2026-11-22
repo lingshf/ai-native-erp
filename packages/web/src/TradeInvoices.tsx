@@ -1092,6 +1092,7 @@ function InvoiceList({
     "tinv.accountingDate",
     "tinv.dueDate",
     "tinv.poMatch",
+    "tinv.sourceOrder",
     "tinv.gross",
   ] as const;
   return (
@@ -1119,7 +1120,11 @@ function InvoiceList({
           <thead>
             <tr>
               {headers.map((key) => (
-                <th key={key} scope="col">
+                <th
+                  key={key}
+                  scope="col"
+                  className={key === "tinv.sourceOrder" ? "tinv-source" : undefined}
+                >
                   {t(key)}
                 </th>
               ))}
@@ -1140,6 +1145,7 @@ function InvoiceList({
                   <td>{row.accountingDate}</td>
                   <td>{row.dueDate}</td>
                   <td>{t(`tinv.${row.poMatch}`)}</td>
+                  <SourceOrderCell company={company.code} orderId={row.orderId} t={t} />
                   <td>{formatMinor(row.gross, preferences.language, company.scale)}</td>
                 </tr>
               ) : null,
