@@ -1306,7 +1306,21 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       // After the report totals above, so the new AP invoices do not change them.
       await orderToInvoice();
       await sourceOrders();
-      await leaveByBack();
+      await leaveByBack(
+        "trade-invoices",
+        "#tinv-party",
+        t("trade.leaveConfirm"),
+        t("tinv.title"),
+        2,
+        () => page.getByRole("textbox", { name: `${t("tinv.product")} L1`, exact: true }).waitFor(),
+      );
+      await leaveByBack(
+        "trade-orders",
+        "#tord-party",
+        ordered("tord.leaveConfirm"),
+        ordered("tord.title"),
+        1,
+      );
     }
     // TINV-04: the invoice list's source order column links each invoice to its order detail,
     // purchase (PO-DEMO, seeded) and sales (SO-DEMO, seeded here); AR-DEMO has none ("—").
@@ -1349,18 +1363,26 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       }
       expect(failures).toEqual([]);
     }
-    // TINV-04 acceptance 5a: a real Back from a dirty invoice draft asks exactly once; a cancel
-    // keeps the address, the title and the draft; a confirmed Back reaches the previous page.
-    async function leaveByBack() {
+    // TINV-04 acceptance 5a: a real Back from a dirty draft asks exactly once; a cancel keeps the
+    // address, the title and the draft; a confirmed Back reaches the previous page. The invoice
+    // page cancels twice; the order page (same leave-guard-history.ts gate) cancels once.
+    async function leaveByBack(
+      path: "trade-invoices" | "trade-orders",
+      field: string,
+      message: string,
+      title: string,
+      cancels: number,
+      kept?: () => Promise<unknown>,
+    ) {
       await navigate("trade-reports");
-      await navigate("trade-invoices");
-      await type(page, page.locator("#tinv-party"), "PARTY-BACK");
+      await navigate(path);
+      await type(page, page.locator(field), "PARTY-BACK");
       let dialogs = 0;
       let accept = false;
       const answer = async (dialog: import("playwright").Dialog) => {
         dialogs += 1;
         expect(dialog.type()).toBe("confirm");
-        expect(dialog.message()).toBe(t("trade.leaveConfirm"));
+        expect(dialog.message()).toBe(message);
         await (accept ? dialog.accept() : dialog.dismiss());
       };
       page.on("dialog", answer);
@@ -1372,17 +1394,15 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         expect(dialogs).toBe(count);
       };
       try {
-        for (const count of [1, 2]) {
+        for (let count = 1; count <= cancels; count += 1) {
           await back(count);
-          expect(new URL(page.url()).hash).toBe("#/trade-invoices");
-          await page.getByRole("heading", { name: t("tinv.title"), exact: true }).waitFor();
-          expect(await page.locator("#tinv-party").inputValue()).toBe("PARTY-BACK");
-          await page
-            .getByRole("textbox", { name: `${t("tinv.product")} L1`, exact: true })
-            .waitFor();
+          expect(new URL(page.url()).hash).toBe(`#/${path}`);
+          await page.getByRole("heading", { name: title, exact: true }).waitFor();
+          expect(await page.locator(field).inputValue()).toBe("PARTY-BACK");
+          await kept?.();
         }
         accept = true;
-        await back(3);
+        await back(cancels + 1);
         await page.waitForURL((url) => url.hash === "#/trade-reports");
         await page.waitForFunction(targetPageShown, navigateTitle(language, "trade-reports"));
       } finally {

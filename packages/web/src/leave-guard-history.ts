@@ -19,8 +19,30 @@ export type HistoryGuard = {
   dispose: () => void;
 };
 
-// Installs capture listeners for popstate and hashchange. `mayLeave` asks once per navigation.
+// One permanent gate per window, installed when this module is first evaluated. App.tsx imports it
+// statically so the gate is registered before HashRouter's own popstate listener: in a real
+// browser the router's listener re-renders synchronously (microtasks run between listeners), and a
+// page that unmounts or settles there would otherwise drop or re-aim its guard before it is asked.
+type Handler = (event: Event) => void;
+const handlers = new Set<Handler>();
+const gate = (event: Event) => {
+  for (const handler of [...handlers]) {
+    handler(event);
+    if (event.cancelBubble) return;
+  }
+};
+const gated = new WeakSet<Window>();
+function installGate() {
+  if (typeof window === "undefined" || gated.has(window)) return;
+  gated.add(window);
+  window.addEventListener("popstate", gate, true);
+  window.addEventListener("hashchange", gate, true);
+}
+installGate();
+
+// Registers with the gate. `mayLeave` asks once per navigation.
 export function guardHistory(mayLeave: () => boolean): HistoryGuard {
+  installGate();
   let here = currentEntry();
   let accepted = "";
   const navigation = (event: Event) => {
@@ -33,8 +55,7 @@ export function guardHistory(mayLeave: () => boolean): HistoryGuard {
     event.stopImmediatePropagation();
     window.history.pushState(here.state, "", here.href);
   };
-  window.addEventListener("popstate", navigation, true);
-  window.addEventListener("hashchange", navigation, true);
+  handlers.add(navigation);
   return {
     here: () => here.href,
     settle: () => {
@@ -42,8 +63,7 @@ export function guardHistory(mayLeave: () => boolean): HistoryGuard {
       if (accepted === here.href) accepted = "";
     },
     dispose: () => {
-      window.removeEventListener("popstate", navigation, true);
-      window.removeEventListener("hashchange", navigation, true);
+      handlers.delete(navigation);
     },
   };
 }
