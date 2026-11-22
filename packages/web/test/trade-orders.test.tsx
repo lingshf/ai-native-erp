@@ -1459,31 +1459,64 @@ describe("trade orders", () => {
     },
   );
 
-  it("keeps the target history entry when a real Back is cancelled, so a retried Back reaches it", async () => {
-    window.history.pushState(null, "", "/#/trade-orders?company=DEFAULT&order=PO-1");
-    window.history.pushState(null, "", "/#/trade-orders?company=DEFAULT&order=PO-2");
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-    const { calls } = stubApi(found, emptyList, noneInvoiced);
-    render(<App />);
-    await screen.findByText(t("tord.notFound"));
-    fireEvent.change(field("tord.orderId"), { target: { value: "PO-DRAFT" } });
+  // D272: history A → B → C is built by real fragment navigations while the page is open, then
+  // real Back / Forward. A cancel must not add or rewrite entries: the order and the forward entries
+  // stay, a retry in the same direction reaches the original target, and each navigation asks once.
+  it.each([
+    ["Back", "PO-2", "PO-1"],
+    ["Forward", "PO-1", "PO-2"],
+  ] as const)(
+    "cancels a real %s without changing the history and retries it in the same direction",
+    async (direction, start, target) => {
+      const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+      stubApi(found, emptyList, noneInvoiced);
+      linkTo("?company=DEFAULT&order=PO-1");
+      render(<App />);
+      await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+      const order = () => address().get("order");
+      const visit = async (id: string) => {
+        window.location.hash = `#/trade-orders?company=DEFAULT&order=${id}`;
+        await waitFor(() => expect(order()).toBe(id));
+        await screen.findByText(t("tord.notFound"));
+      };
+      await visit("PO-2");
+      await visit("PO-3");
+      window.history.back();
+      await waitFor(() => expect(order()).toBe("PO-2"));
+      if (start === "PO-1") {
+        window.history.back();
+        await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+      }
+      expect(confirm).not.toHaveBeenCalled();
+      fireEvent.change(field("tord.orderId"), { target: { value: "PO-DRAFT" } });
+      const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+      const move = (way: "Back" | "Forward") =>
+        way === "Back" ? window.history.back() : window.history.forward();
+      const length = window.history.length;
 
-    window.history.back();
-    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
-    expect(address().toString()).toBe("company=DEFAULT&order=PO-2");
-    await act(async () => {});
-    expect(screen.getByText(t("tord.notFound"))).toBeTruthy();
-    expect(field("tord.orderId").value).toBe("PO-DRAFT");
-    expect(orderReads(calls)).toEqual(["GET /api/v1/trade/orders/PO-2"]);
+      move(direction);
+      await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+      await settle();
+      expect(confirm).toHaveBeenCalledTimes(1);
+      expect(order()).toBe(start);
+      expect(window.history.length).toBe(length);
+      expect(field("tord.orderId").value).toBe("PO-DRAFT");
 
-    confirm.mockReturnValue(true);
-    window.history.back();
-    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
-    expect(address().toString()).toBe("company=DEFAULT&order=PO-1");
-    expect(orderReads(calls)).toEqual([
-      "GET /api/v1/trade/orders/PO-2",
-      "GET /api/v1/trade/orders/PO-1",
-    ]);
-  });
+      confirm.mockReturnValue(true);
+      move(direction);
+      await waitFor(() => expect(order()).toBe(target));
+      await settle();
+      expect(confirm).toHaveBeenCalledTimes(2);
+      // The forward entries are still there, in their order.
+      const rest = direction === "Back" ? ["PO-2", "PO-3"] : ["PO-3"];
+      for (const [step, id] of rest.entries()) {
+        window.history.forward();
+        await waitFor(() => expect(order()).toBe(id));
+        await settle();
+        expect(confirm).toHaveBeenCalledTimes(3 + step);
+      }
+      expect(window.history.length).toBe(length);
+      expect(field("tord.orderId").value).toBe("PO-DRAFT");
+    },
+  );
 });

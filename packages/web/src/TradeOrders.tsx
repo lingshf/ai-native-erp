@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
+import { guardHistory, settleHistoryEntry, type HistoryGuard } from "./leave-guard-history.js";
 import {
   companiesPageSchema,
   tradeOrderCommandSchema,
@@ -141,24 +142,24 @@ const fromMicros = (value: bigint) => {
 function useOrderLeaveGuard(guard: Guard, message: string) {
   const latest = useRef(guard);
   latest.current = guard;
-  // Read on every render: the page rewrites its own address (company, order) while a draft is open,
-  // and a cancelled navigation must return to that address, not the one from when the draft began.
-  const here = useRef("");
-  here.current = window.location.href;
-  const hereState = useRef<unknown>(null);
-  hereState.current = window.history.state;
-  // The address a confirmed Back or Forward goes to: its hashchange follows the popstate before the
-  // page re-renders, and must not ask again.
-  const accepted = useRef("");
-  if (accepted.current === here.current) accepted.current = "";
+  const history = useRef<HistoryGuard | null>(null);
+  // After every render: the page rewrites its own address (company, order) while a draft is open,
+  // and a cancelled navigation must return to that address. Unguarded, this gives the shown history
+  // entry a position so a later Back or Forward knows its direction (leave-guard-history.ts).
+  useEffect(() => {
+    if (history.current) history.current.settle();
+    else settleHistoryEntry();
+  });
   useEffect(() => {
     if (!guard.busy && !guard.unsaved) return;
     const mayLeave = () => !latest.current.busy && window.confirm(message);
+    const guarded = guardHistory(mayLeave);
+    history.current = guarded;
     const click = (event: MouseEvent) => {
       const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
       if (
         !(link instanceof HTMLAnchorElement) ||
-        link.href === here.current ||
+        link.href === guarded.here() ||
         link.target === "_blank" ||
         event.button !== 0 ||
         event.ctrlKey ||
@@ -172,30 +173,16 @@ function useOrderLeaveGuard(guard: Guard, message: string) {
         event.stopImmediatePropagation();
       }
     };
-    const navigation = (event: Event) => {
-      const target = window.location.href;
-      if (target === here.current || target === accepted.current) return;
-      if (mayLeave()) {
-        accepted.current = target;
-        return;
-      }
-      event.stopImmediatePropagation();
-      // The browser is already on the target entry: add the current address after it instead of
-      // rewriting it, so a later Back or Forward can still reach the target.
-      window.history.pushState(hereState.current, "", here.current);
-    };
     const unload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
     document.addEventListener("click", click, true);
-    window.addEventListener("popstate", navigation, true);
-    window.addEventListener("hashchange", navigation, true);
     window.addEventListener("beforeunload", unload);
     return () => {
+      history.current = null;
+      guarded.dispose();
       document.removeEventListener("click", click, true);
-      window.removeEventListener("popstate", navigation, true);
-      window.removeEventListener("hashchange", navigation, true);
       window.removeEventListener("beforeunload", unload);
     };
   }, [guard.busy, guard.unsaved, message]);
