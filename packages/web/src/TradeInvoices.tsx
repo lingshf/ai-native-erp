@@ -292,9 +292,17 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
   const [intake, setIntake] = useState<Intake | null>(null);
   useInvoiceLeaveGuard(guard);
   const fromOrder = params.get("fromOrder");
+  // The router commits the dropped parameter in a transition, so this effect can rerun (e.g. on
+  // guard.busy) while the address still shows the request: take each request only once.
+  const taken = useRef<string | null>(null);
   // Take the request once and drop it from the address (replace), so a refresh never refills.
   useEffect(() => {
-    if (fromOrder === null) return;
+    if (fromOrder === null) {
+      taken.current = null;
+      return;
+    }
+    if (taken.current === fromOrder) return;
+    taken.current = fromOrder;
     const target = params.get("company");
     const orderId = fromOrder.trim();
     setIntake(orderId ? { company: target || null, orderId } : null);
