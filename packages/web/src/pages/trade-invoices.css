@@ -198,3 +198,65 @@
   -webkit-line-clamp: 3;
   line-clamp: 3;
 }
+
+/* TINV-06 发票详情。
+   触发按钮 .trade-invoices .tinv-detail-trigger 特异度 (0,2,0)：只作用于本页列表单元格内的按钮，
+   不与 components.css 的 .btn 系列相交（该按钮不带 .btn），base.css 的 button { font: inherit }
+   为 (0,0,1)，被本规则覆盖的只有本规则列出的属性；外观为链接，line-height 继承单元格，
+   不改变 --row-h（44 px）与列宽（无 padding / border）。 */
+.trade-invoices .tinv-detail-trigger {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-primary);
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+/* 对话框 .trade-invoices .tinv-detail (0,2,0) 覆盖 UA 的 dialog 默认（元素选择器 (0,0,1)）：
+   宽度取 min(94vw, 1100px)，390 px 下不超过视口；内容超出时对话框自身纵向滚动。 */
+.trade-invoices .tinv-detail {
+  width: min(94vw, 1100px);
+  max-height: 85vh;
+  overflow: auto;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-3);
+}
+.trade-invoices .tinv-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.trade-invoices .tinv-detail-head h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.trade-invoices .tinv-detail-body {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.trade-invoices .tinv-detail-body h4 {
+  margin: 0 0 var(--space-2);
+}
+.trade-invoices .tinv-detail-body caption {
+  text-align: left;
+  font-weight: var(--weight-semibold);
+  padding: var(--space-2) var(--space-3);
+}
+/* 数字列右对齐：行表格 3–8 列、核销表 3–5 列、调整表第 3 列。特异度均为 (0,4,1)，
+   只作用于对话框内的表格，与上文列表 / 预览的数字列规则不相交。 */
+.trade-invoices .tinv-detail-lines :is(th, td):nth-child(n + 3):nth-child(-n + 8),
+.trade-invoices .tinv-detail .tinv-detail-settlements :is(th, td):nth-child(n + 3),
+.trade-invoices .tinv-detail .tinv-detail-actions :is(th, td):nth-child(3) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

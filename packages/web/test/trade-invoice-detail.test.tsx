@@ -1,0 +1,590 @@
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { tradeInvoiceDetailSchema, type TradeInvoiceDetailDto } from "@erp/core/contracts";
+import { App } from "../src/App.tsx";
+import { label, preferenceStorageKey, type LabelKey } from "../src/ui/index.ts";
+
+const company = {
+  code: "DEFAULT",
+  name: "Company",
+  currency: "CNY",
+  scale: 2,
+  year: 2026,
+  closeMode: "annual",
+  revision: 1,
+};
+const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+const fingerprint = "a".repeat(64);
+const documentId = uuid(1);
+const itemId = uuid(2);
+const journalId = uuid(3);
+const t = (key: Exclude<LabelKey, "shell.httpError">) => label("zh", key);
+const response = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+const error = (status: number, code: string) =>
+  response(
+    {
+      code,
+      messageKey: "api.error.notFound",
+      params: {},
+      fieldErrors: [],
+      requestId: uuid(99),
+      retryable: false,
+    },
+    status,
+  );
+const amounts = {
+  net: 10000,
+  tax: 1300,
+  gross: 11300,
+  deductibleTax: 1300,
+  nonDeductibleTax: 0,
+  expense: 10000,
+  cashDiscountBase: 11300,
+};
+
+type Options = {
+  side?: "AP" | "AR";
+  orderId?: string | null;
+  remainingGross?: number;
+  status?: "open" | "settled" | "cancelled";
+  settlements?: TradeInvoiceDetailDto["settlements"];
+  actions?: TradeInvoiceDetailDto["actions"];
+};
+function detail(options: Options = {}): TradeInvoiceDetailDto {
+  const side = options.side ?? "AP";
+  const orderId = options.orderId === undefined ? "PO-1" : options.orderId;
+  const remainingGross = options.remainingGross ?? 11300;
+  const item = {
+    kind: "invoice" as const,
+    segments: [{ dimensions: {}, gross: 11300, remainingGross }],
+    discountPercent: "0",
+    allowPartialDiscount: false,
+    itemId,
+    side,
+    party: "V1",
+    externalNo: "INV-1",
+    controlAccount: "2100",
+    dimensions: {},
+    currency: "CNY",
+    accountingDate: "2026-03-31",
+    documentDate: "2026-03-31",
+    dueDate: "2026-04-30",
+    discountDate: "2026-04-07",
+    gross: 11300,
+    net: 10000,
+    tax: 1300,
+    remainingGross,
+    remainingNet: 0,
+    remainingTax: 0,
+    status: options.status ?? "open",
+    revision: 1,
+  };
+  return tradeInvoiceDetailSchema.parse({
+    actions: options.actions ?? [],
+    settlements: options.settlements ?? [],
+    document: {
+      documentId,
+      side,
+      party: "V1",
+      externalNo: "INV-1",
+      externalNoNormalized: "INV-1",
+      currency: "CNY",
+      accountingDate: "2026-03-31",
+      documentDate: "2026-03-30",
+      taxDate: "2026-03-29",
+      dueDate: "2026-04-30",
+      discountDate: "2026-04-07",
+      orderId,
+      poMatch: orderId ? "matched" : "notApplicable",
+      exceptionReason: null,
+      net: 10000,
+      tax: 1300,
+      gross: 11300,
+      journalId,
+      receiptKey: uuid(4),
+      fingerprint,
+      commandHash: fingerprint,
+      postedAt: "2026-03-31T00:00:00.000Z",
+      controlAccount: "2100",
+      controlDimensions: {},
+      lines: [
+        {
+          lineId: "L1",
+          lineNo: 1,
+          product: "RENT",
+          account: "5000",
+          taxCode: "VAT",
+          taxRateId: "VAT13",
+          ratePercent: "13",
+          quantity: "10",
+          unitPrice: "10",
+          discountPercent: "0",
+          taxableCharge: "0",
+          net: 10000,
+          tax: 1300,
+          gross: 11300,
+          deductibleTax: 1300,
+          orderId,
+          orderLineId: orderId ? "OL1" : null,
+          expectedNet: orderId ? 10000 : null,
+          matchStatus: orderId ? "matched" : "notApplicable",
+        },
+      ],
+    },
+    calculation: {
+      ...amounts,
+      algorithm: "trade-v1-half-up-largest-remainder",
+      currency: "CNY",
+      scale: 2,
+      priceMode: "exclusive",
+      rounding: "line",
+      lines: [
+        {
+          ...amounts,
+          id: "L1",
+          taxCode: "VAT",
+          treatment: "standard",
+          roundingSource: {
+            lineIndex: 0,
+            group: ["VAT", "standard", "13", "100"],
+            exactTaxNumerator: "1300",
+            exactTaxDenominator: "1",
+            lineRoundedTax: 1300,
+            adjustment: 0,
+          },
+        },
+      ],
+    },
+    matches: [],
+    receipt: {
+      company: "DEFAULT",
+      documentId,
+      idempotencyKey: uuid(5),
+      fingerprint,
+      sourceRef: `TRADE:${documentId}`,
+      journalIds: [journalId],
+      poMatch: orderId ? "matched" : "notApplicable",
+      gross: 11300,
+      postedAt: "2026-03-31T00:00:00.000Z",
+    },
+    openItem: item,
+  });
+}
+const allocation = (id: string, gross: number, cash: number, discount: number) => ({
+  itemId: id,
+  revision: 1,
+  gross,
+  net: gross,
+  tax: 0,
+  discount,
+  cash,
+  discountAvailable: discount > 0,
+  discountDate: "2026-04-07",
+  settledGross: gross,
+  remainingGross: 0,
+  remainingNet: 0,
+  remainingTax: 0,
+});
+const settlement = (n: number, postedAt: string, allocations: ReturnType<typeof allocation>[]) => ({
+  gross: allocations.reduce((sum, row) => sum + row.gross, 0),
+  cash: allocations.reduce((sum, row) => sum + row.cash, 0),
+  discount: allocations.reduce((sum, row) => sum + row.discount, 0),
+  allocations,
+  company: "DEFAULT",
+  paymentId: uuid(100 + n),
+  idempotencyKey: uuid(200 + n),
+  fingerprint,
+  sourceRef: `PAY-${n}`,
+  journalIds: [uuid(300 + n)],
+  postedAt,
+});
+const action = (
+  n: number,
+  kind: "credit" | "reverse",
+  gross: number,
+  postedAt: string,
+): TradeInvoiceDetailDto["actions"][number] => {
+  const after = detail().openItem;
+  const header = {
+    company: "DEFAULT",
+    actionId: uuid(400 + n),
+    accountingDate: "2026-04-10",
+    documentDate: "2026-04-10",
+    taxDate: "2026-04-10",
+  };
+  return {
+    command:
+      kind === "credit"
+        ? {
+            ...header,
+            kind,
+            invoiceId: documentId,
+            revision: 1,
+            lines: [{ sourceLineId: "L1", quantity: "1" }],
+          }
+        : {
+            ...header,
+            kind,
+            settlementId: uuid(101),
+            reason: "wrong payment",
+            items: [{ itemId, revision: 1 }],
+          },
+    commandHash: fingerprint,
+    receipt: {
+      fingerprint,
+      kind,
+      gross,
+      changes: [{ before: null, after }],
+      creditLines: [],
+      links: [],
+      company: "DEFAULT",
+      actionId: header.actionId,
+      idempotencyKey: uuid(500 + n),
+      sourceRef: `ACT-${n}`,
+      journalIds: [uuid(600 + n)],
+      postedAt,
+    },
+  };
+};
+const row = (value: TradeInvoiceDetailDto) => ({
+  documentId,
+  side: value.document.side,
+  party: "V1",
+  externalNo: "INV-1",
+  accountingDate: "2026-03-31",
+  documentDate: "2026-03-31",
+  dueDate: "2026-04-30",
+  poMatch: value.document.poMatch,
+  gross: 11300,
+  currency: "CNY",
+  journalId,
+  orderId: value.document.orderId,
+  cursor: "1",
+});
+
+const detailPath = `/api/v1/trade/invoices/${documentId}?company=DEFAULT`;
+type Reply = (call: number) => Response | Promise<Response>;
+function serve(value: TradeInvoiceDetailDto, reply?: Reply) {
+  let detailCalls = 0;
+  const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (path) => {
+    const url = String(path);
+    if (url.startsWith("/api/v1/companies"))
+      return response({ items: [company], nextCursor: null });
+    if (url === detailPath) {
+      detailCalls += 1;
+      return reply ? reply(detailCalls) : response(value);
+    }
+    if (url.startsWith("/api/v1/trade/invoices?"))
+      return response({ items: [row(value)], nextCursor: null });
+    return response({}, 404);
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return {
+    fetchMock,
+    detailCalls: () => fetchMock.mock.calls.filter(([path]) => String(path) === detailPath).length,
+    listCalls: () =>
+      fetchMock.mock.calls.filter(([path]) => String(path).startsWith("/api/v1/trade/invoices?"))
+        .length,
+  };
+}
+const trigger = () =>
+  screen.findByRole<HTMLButtonElement>("button", { name: `${t("tinv.detail.open")} INV-1` });
+const dialogTitle = `${t("tinv.detail.title")} · INV-1`;
+async function open() {
+  const button = await trigger();
+  button.focus();
+  fireEvent.click(button);
+  return screen.findByRole("dialog", { name: dialogTitle });
+}
+const money = (minor: number) => (minor / 100).toFixed(2);
+
+const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
+const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
+beforeAll(() => {
+  Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+    configurable: true,
+    value: function (this: HTMLDialogElement) {
+      this.open = true;
+    },
+  });
+  Object.defineProperty(HTMLDialogElement.prototype, "close", {
+    configurable: true,
+    value: function (this: HTMLDialogElement) {
+      this.open = false;
+    },
+  });
+});
+afterAll(() => {
+  if (originalShow) Object.defineProperty(HTMLDialogElement.prototype, "showModal", originalShow);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
+  if (originalClose) Object.defineProperty(HTMLDialogElement.prototype, "close", originalClose);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
+});
+beforeEach(() => window.history.replaceState(null, "", "/#/trade-invoices"));
+afterEach(() => {
+  window.history.replaceState(null, "", "/");
+  window.sessionStorage.clear();
+});
+
+describe("TINV-06 invoice detail dialog", () => {
+  it("AP invoice with a source order: header, the 9 line columns in order, totals, source order as plain text", async () => {
+    serve(detail());
+    render(<App />);
+    const button = await trigger();
+    expect(button.type).toBe("button");
+    expect(button.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(button.textContent).toBe("INV-1");
+    const dialog = await open();
+    const header = await within(dialog).findByRole("region", { name: t("tinv.detail.header") });
+    const fact = (key: Parameters<typeof t>[0]) =>
+      within(header).getByText(t(key)).nextElementSibling?.textContent;
+    expect(fact("tinv.side")).toBe(t("trade.AP"));
+    expect(fact("tinv.party")).toBe("V1");
+    expect(fact("tinv.externalInvoice")).toBe("INV-1");
+    expect(fact("tinv.accountingDate")).toBe("2026-03-31");
+    expect(fact("tinv.documentDate")).toBe("2026-03-30");
+    expect(fact("tinv.taxDate")).toBe("2026-03-29");
+    expect(fact("tinv.dueDate")).toBe("2026-04-30");
+    expect(fact("tinv.detail.currency")).toBe("CNY");
+    expect(fact("tinv.controlAccount")).toBe("2100");
+    expect(fact("tinv.poMatch")).toBe(t("tinv.matched"));
+    expect(fact("tinv.sourceOrder")).toBe("PO-1");
+    expect(within(header).queryByText(t("tinv.exceptionReason"))).toBeNull();
+    expect(dialog.querySelector("a")).toBeNull();
+
+    const lines = within(dialog).getByRole("table", { name: t("tinv.lines") });
+    expect(
+      within(lines)
+        .getAllByRole("columnheader")
+        .map((th) => th.textContent),
+    ).toEqual([
+      t("tinv.detail.lineNo"),
+      t("tinv.product"),
+      t("tinv.quantity"),
+      t("tinv.unitPrice"),
+      t("tinv.discountPercent"),
+      t("tinv.net"),
+      t("tinv.tax"),
+      t("tinv.gross"),
+      t("tinv.detail.matchStatus"),
+    ]);
+    expect(
+      within(lines)
+        .getAllByRole("cell")
+        .map((td) => td.textContent),
+    ).toEqual([
+      "1",
+      "RENT",
+      "10",
+      "10",
+      "0",
+      money(10000),
+      money(1300),
+      money(11300),
+      t("tinv.matched"),
+    ]);
+    const totals = within(dialog).getByRole("region", { name: t("tinv.detail.totals") });
+    expect(within(totals).getByText(t("tinv.gross")).nextElementSibling?.textContent).toBe(
+      money(11300),
+    );
+  });
+
+  it("AR invoice without a source order shows the no-source-order text and empty record states", async () => {
+    serve(detail({ side: "AR", orderId: null }));
+    render(<App />);
+    const dialog = await open();
+    const header = await within(dialog).findByRole("region", { name: t("tinv.detail.header") });
+    expect(within(header).getByText(t("tinv.side")).nextElementSibling?.textContent).toBe(
+      t("trade.AR"),
+    );
+    expect(within(header).getByText(t("tinv.sourceOrder")).nextElementSibling?.textContent).toBe(
+      t("tinv.noSourceOrder"),
+    );
+    expect(dialog.querySelector("a")).toBeNull();
+    expect(within(dialog).getByText(t("tinv.detail.noSettlements"))).toBeTruthy();
+    expect(within(dialog).getByText(t("tinv.detail.noActions"))).toBeTruthy();
+    expect(within(dialog).queryByRole("button", { name: /POST|过账/u })).toBeNull();
+  });
+
+  it("partial settlement: open balance is openItem.remainingGross and records show this invoice's allocation", async () => {
+    serve(
+      detail({
+        remainingGross: 6300,
+        settlements: [
+          settlement(1, "2026-04-05T08:00:00.000Z", [
+            allocation(uuid(77), 9000, 9000, 0),
+            allocation(itemId, 5000, 4900, 100),
+          ]),
+        ],
+      }),
+    );
+    render(<App />);
+    const dialog = await open();
+    const item = await within(dialog).findByRole("region", { name: t("tinv.detail.openItem") });
+    expect(within(item).getByText(t("tadj.status")).nextElementSibling?.textContent).toBe(
+      t("tadj.open"),
+    );
+    expect(within(item).getByText(t("tinv.detail.remaining")).nextElementSibling?.textContent).toBe(
+      money(6300),
+    );
+    const records = within(dialog).getByRole("table", { name: t("tinv.detail.settlements") });
+    expect(
+      within(records)
+        .getAllByRole("cell")
+        .map((td) => td.textContent),
+    ).toEqual(["2026-04-05", "PAY-1", money(5000), money(4900), money(100)]);
+  });
+
+  it("credit and reverse actions list date, kind, amount and source reference by postedAt", async () => {
+    serve(
+      detail({
+        actions: [
+          action(2, "reverse", 5000, "2026-04-12T00:00:00.000Z"),
+          action(1, "credit", 1130, "2026-04-10T00:00:00.000Z"),
+        ],
+      }),
+    );
+    render(<App />);
+    const dialog = await open();
+    const records = await within(dialog).findByRole("table", { name: t("tinv.detail.actions") });
+    expect(
+      within(records)
+        .getAllByRole("row")
+        .slice(1)
+        .map((tr) =>
+          within(tr)
+            .getAllByRole("cell")
+            .map((td) => td.textContent),
+        ),
+    ).toEqual([
+      ["2026-04-10", t("tadj.credit"), money(1130), "ACT-1"],
+      ["2026-04-12", t("tadj.reverse"), money(5000), "ACT-2"],
+    ]);
+  });
+
+  it("404 shows notFound; 500 shows the error and Retry re-sends the same request", async () => {
+    serve(detail(), () => error(404, "NOT_FOUND"));
+    const { unmount } = render(<App />);
+    let dialog = await open();
+    expect((await within(dialog).findByRole("alert")).textContent).toContain(
+      t("tinv.detail.notFound"),
+    );
+    expect(within(dialog).queryByRole("button", { name: t("master.retry") })).toBeNull();
+    unmount();
+
+    const value = detail();
+    const served = serve(value, (call) => (call === 1 ? error(500, "INTERNAL") : response(value)));
+    render(<App />);
+    dialog = await open();
+    expect((await within(dialog).findByRole("alert")).textContent).toContain(
+      t("tinv.detail.error"),
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: t("master.retry") }));
+    expect(await within(dialog).findByRole("table", { name: t("tinv.lines") })).toBeTruthy();
+    expect(within(dialog).queryByRole("alert")).toBeNull();
+    expect(served.detailCalls()).toBe(2);
+    expect(
+      served.fetchMock.mock.calls.filter(([path]) => String(path) === detailPath),
+    ).toHaveLength(2);
+  });
+
+  it("can be closed while loading", async () => {
+    serve(detail(), () => new Promise<Response>(() => {}));
+    render(<App />);
+    const dialog = await open();
+    expect(within(dialog).getByRole("status").textContent).toBe(t("tinv.detail.loading"));
+    fireEvent.click(within(dialog).getByRole("button", { name: t("tinv.detail.close") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(document.activeElement).toBe(await trigger());
+  });
+
+  it("keyboard: focus moves into the dialog, Tab / Shift+Tab cycle, Esc returns focus; no history change or confirm", async () => {
+    serve(detail());
+    const confirm = vi.spyOn(window, "confirm");
+    render(<App />);
+    const button = await trigger();
+    const length = window.history.length;
+    const hash = window.location.hash;
+    const dialog = await open();
+    expect(document.activeElement).toBe(dialog);
+    await within(dialog).findByRole("table", { name: t("tinv.lines") });
+    const close = within(dialog).getByRole("button", { name: t("tinv.detail.close") });
+    const focusables = Array.from(
+      dialog.querySelectorAll<HTMLElement>("button:not(:disabled),[tabindex='0']"),
+    );
+    const last = focusables.at(-1) as HTMLElement;
+    fireEvent.keyDown(dialog, { key: "Tab" });
+    expect(document.activeElement).toBe(close);
+    last.focus();
+    fireEvent.keyDown(dialog, { key: "Tab" });
+    expect(document.activeElement).toBe(close);
+    fireEvent.keyDown(dialog, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(last);
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(document.activeElement).toBe(button);
+    expect(window.history.length).toBe(length);
+    expect(window.location.hash).toBe(hash);
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it("closing keeps the filter values, loaded pages and the draft; each open fetches once", async () => {
+    const served = serve(detail());
+    const confirm = vi.spyOn(window, "confirm");
+    render(<App />);
+    await trigger();
+    fireEvent.change(screen.getByLabelText(t("tinv.filter.party")), { target: { value: "V9" } });
+    fireEvent.change(screen.getByLabelText(t("tinv.party")), { target: { value: "V1" } });
+    const draftKey = "erp.tradeInvoices.v1.DEFAULT";
+    await waitFor(() => expect(window.sessionStorage.getItem(draftKey)).not.toBeNull());
+    const draft = window.sessionStorage.getItem(draftKey);
+    const lists = served.listCalls();
+
+    let dialog = await open();
+    await within(dialog).findByRole("table", { name: t("tinv.lines") });
+    expect(served.detailCalls()).toBe(1);
+    fireEvent.click(within(dialog).getByRole("button", { name: t("tinv.detail.close") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    dialog = await open();
+    await within(dialog).findByRole("table", { name: t("tinv.lines") });
+    expect(served.detailCalls()).toBe(2);
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    expect(screen.getByLabelText<HTMLInputElement>(t("tinv.filter.party")).value).toBe("V9");
+    expect(served.listCalls()).toBe(lists);
+    expect(window.sessionStorage.getItem(draftKey)).toBe(draft);
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it("teaching mode on shows the posting note with the journal and control account; off renders none (en)", async () => {
+    window.localStorage.setItem(
+      preferenceStorageKey,
+      JSON.stringify({ language: "en", theme: "green", teaching: true }),
+    );
+    serve(detail());
+    const { unmount } = render(<App />);
+    const en = (key: Parameters<typeof t>[0]) => label("en", key);
+    let button = await screen.findByRole("button", { name: `${en("tinv.detail.open")} INV-1` });
+    fireEvent.click(button);
+    let dialog = await screen.findByRole("dialog", { name: `${en("tinv.detail.title")} · INV-1` });
+    await within(dialog).findByRole("table", { name: en("tinv.lines") });
+    const tip = within(dialog).getByRole("complementary", { name: en("master.teachingTitle") });
+    expect(tip.textContent).toContain(`${en("tinv.detail.teachingPosting")} ${journalId}`);
+    expect(tip.textContent).toContain(`${en("tinv.detail.teachingControl")} 2100`);
+    expect(tip.textContent).toContain(en("tinv.detail.teachingSettle"));
+    unmount();
+
+    window.localStorage.setItem(
+      preferenceStorageKey,
+      JSON.stringify({ language: "en", theme: "green", teaching: false }),
+    );
+    render(<App />);
+    button = await screen.findByRole("button", { name: `${en("tinv.detail.open")} INV-1` });
+    fireEvent.click(button);
+    dialog = await screen.findByRole("dialog", { name: `${en("tinv.detail.title")} · INV-1` });
+    await within(dialog).findByRole("table", { name: en("tinv.lines") });
+    expect(within(dialog).queryByRole("complementary")).toBeNull();
+    await act(async () => {});
+  });
+});
