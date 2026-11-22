@@ -19,11 +19,17 @@ if ($PSVersionTable.PSEdition -eq 'Core' -and -not $IsWindows) { Write-Host "slo
 # procs.ps1 needs .NET Core ([IO.Path]::GetFullPath(path, base)); see selftest.ps1.
 if ($PSVersionTable.PSVersion.Major -lt 7) { Write-Host "slot-run.ps1 needs PowerShell 7 (pwsh)"; exit 2 }
 $ErrorActionPreference = "Stop"
+# Relative -OutDir / -StepsFile / -BaseRoot are resolved once, here, against the caller's current location; the check
+# below and every write use these absolute paths, so the Set-Location to the repository root further down cannot move
+# the logs (or put them into the worktree).
+$OutDir = [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutDir))
+$StepsFile = [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($StepsFile))
+if ($BaseRoot) { $BaseRoot = [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BaseRoot)) }
 # Candidate pattern, ownership rules and Counted (rule version R1) live in procs.ps1.
 . (Join-Path $PSScriptRoot 'procs.ps1')
 # Logs and slot data never go into the repository (SLOT-01); keep the directory and archive it, do not delete it.
 $repoRoot = [IO.Path]::GetFullPath((git -C $PSScriptRoot rev-parse --show-toplevel)).TrimEnd('\', '/') + '\'
-if (([IO.Path]::GetFullPath($OutDir).TrimEnd('\', '/') + '\').StartsWith($repoRoot, [StringComparison]::OrdinalIgnoreCase)) { Write-Host "-OutDir must be outside the repository ($repoRoot)"; exit 4 }
+if (($OutDir.TrimEnd('\', '/') + '\').StartsWith($repoRoot, [StringComparison]::OrdinalIgnoreCase)) { Write-Host "-OutDir must be outside the repository ($repoRoot)"; exit 4 }
 New-Item -ItemType Directory -Force $OutDir | Out-Null
 $samples = Join-Path $OutDir "processes.tsv"
 $log = Join-Path $OutDir "slot-summary.log"
@@ -72,7 +78,9 @@ if ($BaseRoot) {
   Say "base head=$(git -C $BaseRoot rev-parse HEAD) status=[$(git -C $BaseRoot status --porcelain --untracked-files=all)]"
 }
 # Steps are loaded before the build so a steps file that rejects its inputs stops the run first (kit: exit 4).
-try { $steps = @(& $StepsFile -OutDir $OutDir -Root $root -BaseRoot $BaseRoot) } catch { Say "$($_.Exception.Message)"; exit 4 }
+try { $steps = @(& $StepsFile -OutDir $OutDir -Root $root -BaseRoot $BaseRoot | Where-Object { $null -ne $_ }) } catch { Say "$($_.Exception.Message)"; exit 4 }
+# A steps file that yields no step would otherwise pass the precheck and report success without running anything.
+if ($steps.Count -eq 0) { Say "ABORT: -StepsFile $StepsFile produced no steps"; exit 4 }
 Say "steps from $StepsFile`: $(($steps | ForEach-Object { $_.name }) -join ', ')"
 # Build gate (roadmap §5 item 8): build this tree, then require packages/web/dist/index.html to be strictly
 # newer than the HEAD commit time; otherwise stop before any browser or measurement step runs.

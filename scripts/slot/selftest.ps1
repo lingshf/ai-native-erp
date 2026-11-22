@@ -22,6 +22,9 @@
 # Part 3 (only with -ReferenceProcs, a copy of the D316 kit's procs.ps1 placed inside a worktree of this repository,
 # e.g. artifacts/ci/gate01-ref/procs.ps1, which is git-ignored): every snapshot of parts 1 and 2 is also handed to
 # the kit's Counted; the counted and excluded PID sets must be identical.
+# Part 4 (D354), slot-run.ps1 entry checks: a relative -OutDir is resolved once against the caller's directory (its
+# log does not follow the runner into the repository root), a relative -OutDir inside the repository is refused, and
+# a -StepsFile that yields no step ends the run with exit 4 before the build.
 param([string] $OutDir = "", [string] $ReferenceProcs = "")
 if ($PSVersionTable.PSEdition -eq 'Core' -and -not $IsWindows) { Write-Host "selftest.ps1 只能在 Windows 运行 (Windows only)"; exit 2 }
 # procs.ps1 (as in the D316 kit) uses [IO.Path]::GetFullPath(path, base), which only .NET Core has: under Windows PowerShell 5.1
@@ -31,7 +34,8 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot 'procs.ps1')
 $erpRoot = (git -C $PSScriptRoot rev-parse --show-toplevel) -replace '/', '\'
 if (-not $OutDir) { $OutDir = Join-Path $env:TEMP "slot-selftest-out-$((Get-Date).ToString('yyyyMMdd-HHmmss'))" }
-if (([IO.Path]::GetFullPath($OutDir).TrimEnd('\') + '\').StartsWith($erpRoot.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) { Write-Host "-OutDir must be outside the repository ($erpRoot)"; exit 4 }
+$OutDir = [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutDir))
+if (($OutDir.TrimEnd('\') + '\').StartsWith($erpRoot.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) { Write-Host "-OutDir must be outside the repository ($erpRoot)"; exit 4 }
 New-Item -ItemType Directory -Force $OutDir | Out-Null
 $log = Join-Path $OutDir "selftest.log"
 function Say([string] $text) { $line = "$((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.fffZ')) $text"; Write-Host $line; Add-Content $log $line }
@@ -294,6 +298,49 @@ finally {
   Remove-Item -Recurse -Force $tmp, $erpDir, $apps -ErrorAction SilentlyContinue
 }
 $equivText = if ($ref) { "$($script:equiv) EQUIV vs D316 kit" } else { "EQUIV not checked (no -ReferenceProcs)" }
-Say "summary: $($script:items) checks = $part1 kit cases A-W + $($script:items - $part1 - $script:equiv) SR rule cases + $equivText; $($script:items - $script:fail) PASS, $($script:fail) FAIL"
+
+# Part 4, slot-run.ps1 entry checks (D354). Each run is a child pwsh started here (inside this script's tree) that must
+# stop with exit 4 before the build and before any sample; nothing is left running.
+$part4Start = $script:items
+$pwshExe = (Get-Process -Id $PID).Path
+$runner = Join-Path $PSScriptRoot 'slot-run.ps1'
+$p4 = Join-Path $OutDir 'runner-entry'; New-Item -ItemType Directory -Force $p4 | Out-Null
+function Invoke-Runner([string] $cwd, [string] $outArg, [string] $stepsArg, [string] $tag) {
+  $o = Join-Path $p4 "$tag.out.txt"
+  $proc = Start-Process -FilePath $pwshExe -WorkingDirectory $cwd -NoNewWindow -Wait -PassThru -RedirectStandardOutput $o -RedirectStandardError (Join-Path $p4 "$tag.err.txt") `
+    -ArgumentList @('-NoProfile', '-File', "`"$runner`"", '-OutDir', "`"$outArg`"", '-StepsFile', "`"$stepsArg`"")
+  @{ Code = $proc.ExitCode; Out = (Get-Content -Raw $o -ErrorAction SilentlyContinue) }
+}
+$noSteps = Join-Path $p4 'steps-none.ps1'; Set-Content $noSteps 'param($OutDir, $Root, $BaseRoot)'
+$nullStep = Join-Path $p4 'steps-null.ps1'; Set-Content $nullStep "param(`$OutDir, `$Root, `$BaseRoot)`n`$null"
+$cwd = Join-Path $p4 'cwd'; New-Item -ItemType Directory -Force $cwd | Out-Null
+$rel = "rel-out-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
+# OutDir+: a relative -OutDir is resolved against the caller's directory once; the runner's later Set-Location to the
+# repository root must not move its log there.
+$r = Invoke-Runner $cwd $rel $noSteps 'outdir-relative'
+$inCwd = Join-Path (Join-Path $cwd $rel) 'slot-summary.log'; $inRepo = Join-Path $erpRoot $rel
+$logText = if (Test-Path $inCwd) { Get-Content -Raw $inCwd } else { '' }
+Check 'RUN-OUTDIR+ relative -OutDir: log stays under the caller''s directory, nothing in the worktree' ($r.Code -eq 4 -and $logText -match 'runner start' -and -not (Test-Path $inRepo)) "exit=$($r.Code) log-in-cwd=$(Test-Path $inCwd) in-worktree=$(Test-Path $inRepo)"
+# Archive (never delete) anything a faulty runner wrote into the worktree, so it does not stay there.
+if (Test-Path $inRepo) { Move-Item $inRepo (Join-Path $p4 "leaked-$rel") }
+# OutDir-: a relative -OutDir that resolves inside the repository is refused before anything is written.
+$relIn = "slot-selftest-in-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
+$r = Invoke-Runner $erpRoot $relIn $noSteps 'outdir-in-repo'
+$leak = Join-Path $erpRoot $relIn
+Check 'RUN-OUTDIR- relative -OutDir inside the repository is refused' ($r.Code -eq 4 -and $r.Out -match 'must be outside the repository' -and -not (Test-Path $leak)) "exit=$($r.Code) created=$(Test-Path $leak)"
+if (Test-Path $leak) { Move-Item $leak (Join-Path $p4 "leaked-$relIn") }
+# Steps-: a steps file that yields nothing (or only $null) ends the run with exit 4 instead of a vacuous success.
+foreach ($c in @(@{ Tag = 'steps-none'; File = $noSteps; What = 'no output' }, @{ Tag = 'steps-null'; File = $nullStep; What = 'only $null' })) {
+  $od = Join-Path $p4 "$($c.Tag)-out"
+  $r = Invoke-Runner $cwd $od $c.File $c.Tag
+  $l = if (Test-Path (Join-Path $od 'slot-summary.log')) { Get-Content -Raw (Join-Path $od 'slot-summary.log') } else { '' }
+  Check "RUN-STEPS- steps file with $($c.What) is rejected" ($r.Code -eq 4 -and $l -match 'produced no steps' -and $l -notmatch 'build start') "exit=$($r.Code) no-steps-logged=$($l -match 'produced no steps') build-started=$($l -match 'build start')"
+}
+# Steps+: the example steps file yields steps (evaluated in memory, nothing started).
+$ex = @(& (Join-Path $PSScriptRoot 'steps.example.ps1') -OutDir $p4 -Root $erpRoot -BaseRoot '' | Where-Object { $null -ne $_ })
+Check 'RUN-STEPS+ steps.example.ps1 yields at least one step' ($ex.Count -ge 1) "steps=$(($ex | ForEach-Object { $_.name }) -join ',')"
+$part4 = $script:items - $part4Start
+
+Say "summary: $($script:items) checks = $part1 kit cases A-W + $($script:items - $part1 - $script:equiv - $part4) SR rule cases + $equivText + $part4 runner entry checks; $($script:items - $script:fail) PASS, $($script:fail) FAIL"
 Say "selftest $(if ($script:fail) { "FAILED ($($script:fail))" } else { 'passed' })"
 exit [int]($script:fail -ne 0)

@@ -33,7 +33,7 @@ node scripts/slot/check-manifest.mjs [--roadmap design/roadmap.md] [--code scrip
 
 ## 日志
 
-- 日志与时段现场数据**只写到仓库外的目录**（`-OutDir`，例如 `%TEMP%` 下）；`OutDir` 在仓库内时两个脚本都拒绝运行（退出码 4）。不提交任何日志或采样输出。
+- 日志与时段现场数据**只写到仓库外的目录**（`-OutDir`，例如 `%TEMP%` 下）；`OutDir` 在仓库内时两个脚本都拒绝运行（退出码 4）。`slot-run.ps1` 在入口把相对的 `-OutDir`、`-StepsFile`、`-BaseRoot` 按调用时的当前目录解析成绝对路径，校验与写入都用这个路径（运行器随后切到仓库根，日志也不会移位或写进工作树；D354）。`-StepsFile` 没有产出任何步骤时，构建前以退出码 4 结束（D354）。不提交任何日志或采样输出。
 - 用完**归档，不删除**（S10 回顾行动 1/2）：例如上传到取证 gist 或附到 PR，并在 PR 正文中链接。
 - `slot-run.ps1` 的输出：`slot-summary.log`（每次采样一行 `runner-tree n=…`；每个被排除的 PID 首次出现时一行 `excluded pid=… rule=SR-X… name=… reason=[…]`）、`processes.tsv`（每次采样的计数、计数进程及其规则、排除数、运行器树进程数）、`excluded.tsv`（每次采样的每个排除进程，含 `rule` 列），以及各步骤的输出。SR-R1 只出现在 `runner-tree` 行，不出现在排除日志里。
 - `selftest.ps1` 的输出：`<OutDir>/selftest.log`（缺省 `%TEMP%\slot-selftest-out-<时间>`）。
