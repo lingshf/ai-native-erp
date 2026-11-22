@@ -14,6 +14,7 @@ import {
 import { label, type LabelKey, type Preferences } from "./ui/index.ts";
 import { masterTeaching } from "./ui/trade-master-teaching.ts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
+import { guardHistory } from "./leave-guard-history.ts";
 import { Badge, FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import "./pages/master.css";
 
@@ -26,13 +27,14 @@ const idleGuard: EditorGuard = { open: false, dirty: false, pending: false };
 function useTradeLeaveGuard(guard: EditorGuard, discard: string) {
   useEffect(() => {
     if (!guard.dirty && !guard.pending) return;
-    const current = window.location.href;
     const mayLeave = () => !guard.pending && window.confirm(discard);
+    // Back/Forward: a cancel keeps the address and the draft (leave-guard-history.ts).
+    const guarded = guardHistory(mayLeave);
     const click = (event: MouseEvent) => {
       const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
       if (
         !(link instanceof HTMLAnchorElement) ||
-        link.href === current ||
+        link.href === guarded.here() ||
         link.target === "_blank" ||
         event.button !== 0 ||
         event.ctrlKey ||
@@ -46,23 +48,15 @@ function useTradeLeaveGuard(guard: EditorGuard, discard: string) {
         event.stopImmediatePropagation();
       }
     };
-    const navigation = (event: Event) => {
-      if (window.location.href === current || mayLeave()) return;
-      event.stopImmediatePropagation();
-      window.history.replaceState(window.history.state, "", current);
-    };
     const unload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
     document.addEventListener("click", click, true);
-    window.addEventListener("popstate", navigation, true);
-    window.addEventListener("hashchange", navigation, true);
     window.addEventListener("beforeunload", unload);
     return () => {
+      guarded.dispose();
       document.removeEventListener("click", click, true);
-      window.removeEventListener("popstate", navigation, true);
-      window.removeEventListener("hashchange", navigation, true);
       window.removeEventListener("beforeunload", unload);
     };
   }, [guard.dirty, guard.pending, discard]);

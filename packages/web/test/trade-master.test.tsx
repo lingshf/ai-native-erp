@@ -212,6 +212,50 @@ describe("trade master maintenance", () => {
       false,
     );
   });
+  // D275: a cancelled real Back asks once, never calls history.go, keeps the address and the draft,
+  // and leaves on the next confirmed Back (leave-guard-history.ts).
+  it("cancels a real Back by keeping the address and draft, and leaves on a confirmed Back", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const go = vi.spyOn(window.history, "go");
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockImplementation(async (path) =>
+          String(path).startsWith("/api/v1/companies")
+            ? response({ items: [company], nextCursor: null })
+            : response({ items: [terms], nextCursor: null }),
+        ),
+    );
+    window.history.replaceState(null, "", "/#/accounts");
+    window.history.pushState(null, "", "/#/trade");
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(label("zh", "trade.kind")), {
+      target: { value: "tradeTerms" },
+    });
+    fireEvent.click(
+      await screen.findByRole("button", { name: `${label("zh", "trade.edit")} NET30` }),
+    );
+    const name = () => screen.getByLabelText<HTMLInputElement>(label("zh", "trade.name"));
+    fireEvent.change(name(), { target: { value: "Unfinished" } });
+    const here = window.location.href;
+    const back = async (calls: number) => {
+      await act(async () => window.history.back());
+      await waitFor(() => expect(confirm).toHaveBeenCalledTimes(calls));
+      await act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+      expect(confirm).toHaveBeenCalledTimes(calls);
+    };
+    for (const calls of [1, 2]) {
+      await back(calls);
+      expect(window.location.href).toBe(here);
+      expect(name().value).toBe("Unfinished");
+    }
+    confirm.mockReturnValue(true);
+    await back(3);
+    await waitFor(() => expect(window.location.hash).toBe("#/accounts"));
+    await waitFor(() => expect(screen.queryByLabelText(label("zh", "trade.name"))).toBeNull());
+    expect(go).not.toHaveBeenCalled();
+  });
   it("blocks context, sidebar and browser navigation until a write response settles without aborting it", async () => {
     let finish: ((value: Response) => void) | undefined;
     vi.stubGlobal(

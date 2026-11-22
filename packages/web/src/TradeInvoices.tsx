@@ -19,6 +19,7 @@ import { label, type LabelKey, type Preferences } from "./ui/index.ts";
 import { tradeEn } from "./ui/trade-labels.ts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
+import { guardHistory, type HistoryGuard } from "./leave-guard-history.ts";
 import { Badge, FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import "./pages/trade-invoices.css";
 
@@ -198,39 +199,34 @@ function storeSaved(company: string, saved: Saved): boolean {
 }
 // Shared by the trade pages: busy (a submit in flight or its outcome unknown) blocks in-app links
 // and history; unsaved input asks once per navigation; modified clicks open a new tab untouched.
+// Back/Forward go through leave-guard-history.ts (a cancel keeps the address and the draft).
 export function useInvoiceLeaveGuard(guard: Guard, message: string) {
   // Listeners read the latest guard so a just-finished post never keeps blocking navigation.
   const latest = useRef(guard);
   latest.current = guard;
+  const history = useRef<HistoryGuard | null>(null);
+  // After every render: the page may rewrite its own address while guarded (leave-guard-history.ts).
+  useEffect(() => history.current?.settle());
   useEffect(() => {
     if (!guard.busy && !guard.unsaved) return;
-    const current = window.location.href;
-    // Back/forward may raise popstate and hashchange for one navigation: reuse an accepted answer.
-    let accepted: string | null = null;
-    const mayLeave = (target: string) => {
-      if (latest.current.busy) return false;
-      if (!latest.current.unsaved || accepted === target) return true;
-      if (!window.confirm(message)) return false;
-      accepted = target;
-      return true;
-    };
+    const mayLeave = () =>
+      !latest.current.busy && (!latest.current.unsaved || window.confirm(message));
+    const guarded = guardHistory(mayLeave);
+    history.current = guarded;
     const click = (event: MouseEvent) => {
       const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
-      if (!(link instanceof HTMLAnchorElement) || link.href === current || link.target === "_blank")
+      if (
+        !(link instanceof HTMLAnchorElement) ||
+        link.href === guarded.here() ||
+        link.target === "_blank"
+      )
         return;
       const plain =
         event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey;
       if (!latest.current.busy && !plain) return;
-      if (mayLeave(link.href)) return;
+      if (mayLeave()) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-    };
-    // Restoring the address with replaceState raises no event, so a cancel never asks again.
-    const navigation = (event: Event) => {
-      const target = window.location.href;
-      if (target === current || mayLeave(target)) return;
-      event.stopImmediatePropagation();
-      window.history.replaceState(window.history.state, "", current);
     };
     const unload = (event: BeforeUnloadEvent) => {
       if (!latest.current.busy && !latest.current.unsaved) return;
@@ -238,18 +234,15 @@ export function useInvoiceLeaveGuard(guard: Guard, message: string) {
       event.returnValue = "";
     };
     document.addEventListener("click", click, true);
-    window.addEventListener("popstate", navigation, true);
-    window.addEventListener("hashchange", navigation, true);
     window.addEventListener("beforeunload", unload);
     return () => {
+      history.current = null;
+      guarded.dispose();
       document.removeEventListener("click", click, true);
-      window.removeEventListener("popstate", navigation, true);
-      window.removeEventListener("hashchange", navigation, true);
       window.removeEventListener("beforeunload", unload);
     };
   }, [guard.busy, guard.unsaved, message]);
 }
-
 function isIssueKey(key: string): key is Key {
   return key in tradeEn;
 }

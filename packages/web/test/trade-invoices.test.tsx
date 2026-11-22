@@ -842,6 +842,37 @@ describe("trade invoices leave guard", () => {
     expect(window.location.hash).toBe("#/trade-orders");
   });
 
+  // D275: a cancelled real Back asks once, never calls history.go, and pushes the page's address
+  // again, so the address and the draft stay and the next confirmed Back still reaches the target.
+  it("cancels a real Back by keeping the address and draft, and leaves on a confirmed Back", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const go = vi.spyOn(window.history, "go");
+    stub();
+    window.history.replaceState(null, "", "/#/trade-orders");
+    window.history.pushState(null, "", "/#/trade-invoices");
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(t("tinv.party")), { target: { value: "V1" } });
+    const here = window.location.href;
+    const pause = () => act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+    const back = async (calls: number) => {
+      await act(async () => window.history.back());
+      await waitFor(() => expect(confirm).toHaveBeenCalledTimes(calls));
+      await pause();
+      expect(confirm).toHaveBeenCalledTimes(calls);
+    };
+    for (const calls of [1, 2]) {
+      await back(calls);
+      expect(window.location.href).toBe(here);
+      expect(party().value).toBe("V1");
+    }
+    confirm.mockReturnValue(true);
+    await back(3);
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-orders"));
+    await waitFor(() =>
+      expect(screen.queryByRole("heading", { name: t("tinv.title") })).toBeNull(),
+    );
+    expect(go).not.toHaveBeenCalled();
+  });
   it("blocks links and history without asking while a post is in flight", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     stub(() => new Promise<Response>(() => {}));
