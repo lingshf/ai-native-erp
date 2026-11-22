@@ -573,10 +573,27 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [GATE-01](GATE-01-minimal-resident-gate.md) | 拆出最小常驻闸门（`leave-guard-gate.ts`），入口块 gzip-9 减少 ≥ 75 B；行为不变（S9 遗留 1，D284） | 前端重构 | P2 | — | web-ui:shell（`App.tsx:4–5`）、`leave-guard-history.ts` 及其测试；共享单文件 `trade-gui-scenario.ts`（GATE-01 在前，结案后解除；新增首键后退与真实前进两个步骤） | done（入口块 gzip-9 −82 B） | [#188](https://github.com/lingshf/ai-native-erp/pull/188)（`94f297c`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/45001941732) 12/12） |
 | [CSS-02](CSS-02-tinv-source-min-width.md) | 删除 `.tinv-source` 冗余的 `min-width: 8ch`；先证明（含全部为“—”的列表）像素差为 0，否则保留并经协调者确认不合并结案（S9 遗留 2，D295） | CSS 清理 | P3 | TINV-05（同一 CSS 文件，合并且 main Full 绿后开工） | web-ui:trade（只删 `trade-invoices.css:172`） | 结案（不合并，D325）：保留 `min-width: 8ch`。删除后在“全部为—”的列表、390 px 下表头从 60.4px 缩到 38px 并折行，表格变高（中文卡片高 549→582，英文 564→636）；有来源订单的列表与 1440 下差异为 0。D324 时段证据：head `665ce62`、base `108684d`，16 对截图中 12 对差为 0、(b) 390 的 4 对不为 0；分支未推送 | —（不合并） |
 | [PROC-07](PROC-07-s9-retro-actions.md) | S9 回顾行动 3–6 写入 Demo 模板与发布清单（版本管理，不占开发名额） | 文档 | P2（v0.10.0 RC 之前） | — | docs:release | done | [#187](https://github.com/lingshf/ai-native-erp/pull/187)（`54c94d4`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/44996578796) 12/12） |
-| DEMO-10（无任务书） | v0.10.0 RC 与 Demo，补销售方向截图（S9 遗留 3，D302），验收见 [S10.md](S10.md#demo-10-验收) | 发布 | P1（Sprint 末） | TINV-05、GATE-01、CSS-02 各自结案（合并且 main Full 绿，或经协调者确认的不合并结案，见 [S10.md](S10.md#不合并结案与门禁解锁)）；PROC-07 先合并；覆盖最后一个合并提交的 main Full 绿 | docs:release | todo | — |
+| DEMO-10（无任务书） | v0.10.0 RC 与 Demo，补销售方向截图（S9 遗留 3，D302），验收见 [S10.md](S10.md#demo-10-验收) | 发布 | P1（Sprint 末） | TINV-05、GATE-01、CSS-02 各自结案（合并且 main Full 绿，或经协调者确认的不合并结案，见 [S10.md](S10.md#不合并结案与门禁解锁)）；PROC-07 先合并；覆盖最后一个合并提交的 main Full 绿 | docs:release | done（v0.10.0 已发布，tag → `ae4fbaa`；评审见 [S10 评审](../reviews/S10.md)） | RC [#191](https://github.com/lingshf/ai-native-erp/pull/191)（`c0189c7`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/45007492058) 12/12）；Demo [#192](https://github.com/lingshf/ai-native-erp/pull/192)（`ae4fbaa`，[Full](https://github.com/lingshf/ai-native-erp/actions/runs/45010014104) 12/12）；[v0.10.0](https://github.com/lingshf/ai-native-erp/releases/tag/v0.10.0) |
 
 - **并行**：TINV-05 ∥ GATE-01 ∥ PROC-07 可同时进行；CSS-02 在 TINV-05 之后。S10 只有 TINV-05 含迁移，不得插入其他加迁移的任务与它并行。开发同时在岗不超过 3 人，第三个名额先空着，由协调者决定（约束见 [S10.md](S10.md#泳道)）。
 - **回顾行动项**：行动 1、2、7 与行动 3、4、5 的路线图清单部分由 S10 计划 PR 写入[路线图 §5](../roadmap.md#5-团队流程)与[任务书模板](TEMPLATE.md)；行动 3–6 的模板与清单部分由 PROC-07 完成。落点表见 [S10.md](S10.md#回顾行动项落点s9-回顾d302)。
+
+## S11：发票详情 + 采样器入库 + v0.10.0 回顾行动（草案，v0.11.0）
+
+**计划正文**：[S11.md](S11.md)（草案，计划以 S11 定稿 PR 为准；目标、不在本 Sprint、每个任务的用户可见变化与验收要点、DEMO-11 验收、共同验收、泳道与共享单文件、遗留项与回顾行动项落点，以该文为准）。基线为 v0.10.0 tag 所指提交 `ae4fbaa`；版本号 v0.11.0（D338）。输入见 D336；D338 认可 S10 回顾 8 条行动项，并把第三个开发名额给一个界面小步改进任务（任务书与任务行在定稿 PR 中给出）。任务书在 S11 定稿 PR 中补齐；**包括 PROC-08 在内，所有 S11 任务都在定稿 PR 合并后才派发**（D339）。
+
+**不在本 Sprint**：M2-05 / M2-06（仍待用户授权）；按开票状态筛选订单列表（D263 候选）；发票详情深链接与发票筛选写入地址栏；多订单合并开票、贷项冲减已开票数量、保留前进历史；S7 遗留 3–5；迁移。
+
+| ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| TINV-06 | 发票详情只读对话框：点击或键盘打开外部单号查看抬头、行、合计、未结项余额与核销记录；只用现有 `GET /api/v1/trade/invoices/:documentId`，不改契约、不改地址栏 | 页面 | P1 | S11 定稿 PR | web-ui:trade（`TradeInvoices.tsx`、新增详情组件、`trade-invoices.css`）；共享单文件 `trade-gui-scenario.ts`（S11 仅此任务改） | todo（草案） | — |
+| SLOT-01 | 独占时段进程采样器与自测入库；排除出口带规则编号，正反自测与清单测试（S10 回顾行动 8） | 开发工具 | P2 | S11 定稿 PR | 新目录（不与现有文件重叠） | todo（草案） | — |
+| WEIGHT-01 | 三项手估分片权重按 CI 实测校准（S9 遗留 4） | CI 配置 | P3 | TINV-06、SLOT-01 结案且 main Full 绿 | `scripts/test-shard-weights.json` | todo（草案） | — |
+| PROC-08 | S10 回顾行动 1–4 写入 Demo 模板、发布清单与 `.gitignore`（版本管理，不占开发名额） | 文档 | P2（v0.11.0 RC 之前） | S11 定稿 PR | docs:release、`.gitignore`、`.gitattributes` | todo（草案） | — |
+| DEMO-11（无任务书） | v0.11.0 RC 与 Demo，补演 TINV-05 未演示的分支（S10 遗留 3），验收见 [S11.md](S11.md#demo-11-验收) | 发布 | P1（Sprint 末） | 上面四项结案；PROC-08 先合并；覆盖最后一个合并提交的 main Full 绿 | docs:release、`docs/demo/v0.11.0/` | todo（草案） | — |
+
+- **并行**：定稿 PR 合并后，TINV-06 ∥ SLOT-01 ∥ 界面小步任务 ∥ PROC-08 可同时进行；WEIGHT-01 在 TINV-06、SLOT-01 之后。S11 没有加迁移的任务。开发同时在岗不超过 3 人，第三个名额给界面小步任务（D338，约束见 [S11.md](S11.md#泳道)）。
+- **回顾行动项**：行动 1–3 与行动 4 的模板部分由 PROC-08 完成；行动 4–7 的路线图与任务书模板部分由 S11 定稿 PR 完成；行动 8 由 SLOT-01 完成。落点表见 [S11.md](S11.md#回顾行动项落点s10-回顾)。
 
 ## 派发顺序
 
