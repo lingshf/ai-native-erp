@@ -85,16 +85,23 @@ runner 与 capture 的 stdout / stderr 先完整写入文件，再看输出；�
 
 ```powershell
 . {
-  $log = Join-Path $env:TEMP "demo-run-$(Get-Date -Format yyyyMMdd-HHmmss).log"
+  $log = Join-Path $env:TEMP ("demo-run-{0}-{1}.log" -f (Get-Date -Format yyyyMMdd-HHmmss-fff), [guid]::NewGuid().ToString("N"))
   $cmd = { node docs/demo/v0.4.0/scripts/capture.mjs }   # 换成 runner / capture 的实际命令
-  & $cmd *>&1 | Tee-Object -FilePath $log
-  $code = $LASTEXITCODE
+  $global:LASTEXITCODE = 0
+  $code = 0
+  try {
+    & $cmd *>&1 | Tee-Object -FilePath $log -Append
+    $code = $LASTEXITCODE
+  } catch {
+    $code = 1   # runner 自己 throw（例如监听归属检查失败）：没有原生命令退出码，记为 1
+    "EXCEPTION: $($_ | Out-String)" | Tee-Object -FilePath $log -Append
+  }
   "exit=$code log=$log" | Tee-Object -FilePath $log -Append
   if ($code -ne 0) { throw "失败，退出码 $code；截图目录与日志保留，不清理：$log" }
 }
 ```
 
-- 会话的 `$ErrorActionPreference` 保持默认（Continue）：设为 `Stop` 时，原生命令写 stderr 会在写入日志前就抛错，日志不会生成（替身实测）。
+- 日志名含毫秒和 GUID，同一秒内先后运行 runner 与 capture 也不会互相覆盖；`-Append` 只在同一次运行内追加。runner 抛错与原生命令非 0 退出都会落盘：前者写 `EXCEPTION:` 加原始错误，两者都写 `exit=` 与日志路径。
 - 失败时**先保存现场再做别的**：截图目录（capture 已写出的图）和日志文件原样保留，不跑收尾里的清理，不重试；停服务与释放端口除外（只停本轮的 `$server`）。
 - PR 正文 / 回报写完整错误与退出码、日志路径；断言类中止另写**失败断言的原文**。原文丢失就写“原断言已丢失，根因未知”，不要推测成脚本问题。
 
@@ -209,7 +216,7 @@ async function assertState(page, want) {
 
 宽度为 390 时多一条页面宽度断言：`document.documentElement.scrollWidth <= window.innerWidth`，不满足就抛错，错误信息含实测 `scrollWidth` 与 `innerWidth`（宽表只能在表内滚动，页面不横向滚动）。（S9 回顾行动项 3、D290）
 
-**截断类判定按实测行距与字形盒设容差**：不用 `scrollHeight > clientHeight`（被行数截断的文字仍参与布局，该判定会误报或漏报）。按已布局文字的行数、末字符字形盒底边相对可见框底边的超出量判定，容差取实测的半行距（字形盒高 − 行高）/ 2，再加 1 px 余量。示例：`packages/infra/test/support/trade-gui-scenario.ts:1361–1393`。
+**截断类判定按实测行距与字形盒设容差**：不用 `scrollHeight > clientHeight`（被行数截断的文字仍参与布局，该判定会误报或漏报）。按已布局文字的行数、末字符字形盒底边相对可见框底边的超出量判定，容差为 `max(0, (字形盒高 − 行高) / 2) + 1 px`：半行距取实测值，下限为 0（字形盒小于行高时不能变成负数，否则正常文本会被误报），再加 1 px 余量。示例：`packages/infra/test/support/trade-gui-scenario.ts:1361–1393`。
 
 ### 断言逐条核对表
 
