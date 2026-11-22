@@ -128,14 +128,19 @@ const noneInvoiced: Handler = (url) => {
   const orderId = decodeURIComponent(/\/trade\/orders\/([^/?]+)\/invoicing/u.exec(url)?.[1] ?? "");
   return response(invoicingOf({ ...savedOrder, orderId }, []));
 };
-function stubApi(onOrder: Handler, onList: Handler = emptyList, onInvoicing = noneInvoiced) {
+const oneCompany: Handler = () => response({ items: [company], nextCursor: null });
+function stubApi(
+  onOrder: Handler,
+  onList: Handler = emptyList,
+  onInvoicing = noneInvoiced,
+  onCompanies = oneCompany,
+) {
   const calls: string[] = [];
   const posts: unknown[] = [];
   const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (path, init) => {
     const url = String(path);
     calls.push(`${init?.method ?? "GET"} ${url.split("?")[0]}`);
-    if (url.startsWith("/api/v1/companies"))
-      return response({ items: [company], nextCursor: null });
+    if (url.startsWith("/api/v1/companies")) return onCompanies(url, init);
     if (url.startsWith("/api/v1/trade/tradeParty?"))
       return response({ items: [party], nextCursor: null });
     if (url.startsWith("/api/v1/trade/tradeProduct?"))
@@ -362,7 +367,12 @@ describe("trade orders", () => {
     expect(result.querySelector("input")).toBeNull();
   });
 
-  const summary = (orderId: string, gross: number, lineCount = 1) => ({
+  const summary = (
+    orderId: string,
+    gross: number,
+    lineCount = 1,
+    invoicing: "none" | "partial" | "full" = "none",
+  ) => ({
     orderId,
     side: "AP",
     party: "VENDOR",
@@ -375,6 +385,7 @@ describe("trade orders", () => {
     net: gross,
     tax: 0,
     gross,
+    invoicing,
   });
   const listTable = () => screen.findByRole("table", { name: t("tord.list") });
 
@@ -411,6 +422,7 @@ describe("trade orders", () => {
       "CNY",
       "3",
       formatMinor(2000, "zh", 2),
+      `!${t("tord.invoicing.none")}`,
     ]);
     const gross = within(rows()[0] as HTMLElement).getAllByRole("cell")[6] as HTMLElement;
     expect(gross.className).toBe("num");
@@ -1009,5 +1021,568 @@ describe("trade orders", () => {
       const params = new URL(url, "http://local").searchParams;
       expect(["party", "side", "from", "to"].filter((key) => params.has(key))).toEqual([]);
     }
+  });
+
+  // TINV-03: invoicing status column.
+  it("shows each listed order's invoicing status as a text badge in its own column", async () => {
+    stubApi(
+      () => response({}, 404),
+      () =>
+        response({
+          items: [
+            summary("PO-1", 100, 1, "none"),
+            summary("PO-2", 200, 2, "partial"),
+            summary("PO-3", 300, 1, "full"),
+          ],
+          nextCursor: null,
+        }),
+    );
+    render(<App />);
+    const table = await listTable();
+    await within(table).findByRole("button", { name: "PO-3" });
+    expect(within(table).getAllByRole("columnheader").at(-1)?.textContent).toBe(
+      t("tord.invoicing"),
+    );
+    const badges = within(table)
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => {
+        const cell = within(row).getAllByRole("cell").at(-1) as HTMLElement;
+        const badge = cell.querySelector(".badge") as HTMLElement;
+        return [
+          badge.className,
+          badge.querySelector("[aria-hidden=true]")?.textContent,
+          cell.textContent,
+        ];
+      });
+    // Text, not colour alone: the aria-hidden symbol is decoration and the label carries the state.
+    expect(badges).toEqual([
+      ["badge warning", "!", `!${t("tord.invoicing.none")}`],
+      ["badge info", "i", `i${t("tord.invoicing.partial")}`],
+      ["badge success", "\u2713", `\u2713${t("tord.invoicing.full")}`],
+    ]);
+  });
+
+  // TINV-03: `#/trade-orders?company=&order=` deep links (task table "入口参数与异常").
+  const branch = { ...company, code: "BRANCH", name: "Branch" };
+  const twoCompanies: Handler = () => response({ items: [company, branch], nextCursor: null });
+  const linkTo = (search: string) =>
+    window.history.replaceState(null, "", `/#/trade-orders${search}`);
+  const address = () => new URLSearchParams(window.location.hash.split("?")[1] ?? "");
+  const shownOrder = () =>
+    document.querySelector(".tord-lookup-result h4 .badge")?.textContent ?? null;
+  const companySelect = () => document.getElementById("tord-company") as HTMLSelectElement;
+  const listToggle = () =>
+    document.querySelector<HTMLButtonElement>('[aria-controls="tord-list-body"]');
+  const byOrder =
+    (answers: Readonly<Record<string, () => Response>>): Handler =>
+    (url) => {
+      const id = decodeURIComponent(/\/trade\/orders\/([^/?]*)\?/u.exec(url)?.[1] ?? "");
+      return answers[id]?.() ?? failure(404, "NOT_FOUND", []);
+    };
+  const found = byOrder({ "PO-1": () => response(savedOrder) });
+  const orderReads = (calls: readonly string[]) =>
+    calls.filter((call) => /^GET \/api\/v1\/trade\/orders\/[^/]*$/u.test(call));
+  // jsdom has no default keyboard actions: Tab moves focus to the next tabbable element in
+  // document order, and a focused native button activates as browsers do (Enter on keydown,
+  // Space on keyup). Real keys are checked in Chrome (PR evidence).
+  const tabbables = () =>
+    [
+      ...document.querySelectorAll<HTMLElement>(
+        "a[href], button, input, select, textarea, [tabindex]",
+      ),
+    ].filter(
+      (element) =>
+        element.tabIndex >= 0 &&
+        !(element as HTMLButtonElement).disabled &&
+        !element.closest("[hidden]"),
+    );
+  const tabTo = (target: HTMLElement) => {
+    for (let step = 0; document.activeElement !== target; step++) {
+      const list = tabbables();
+      if (step > list.length) throw new Error("not reachable by Tab");
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: "Tab" });
+      (list[list.indexOf(document.activeElement as HTMLElement) + 1] ?? list[0])?.focus();
+    }
+  };
+  type Activation = "click" | "Enter" | " ";
+  const activate = (button: HTMLElement, how: Activation) => {
+    if (how === "click") {
+      fireEvent.click(button);
+      return;
+    }
+    (document.activeElement as HTMLElement | null)?.blur();
+    tabTo(button);
+    expect(document.activeElement).toBe(button);
+    expect([button.tagName, button.getAttribute("type")]).toEqual(["BUTTON", "button"]);
+    if (fireEvent.keyDown(button, { key: how }) && how === "Enter") fireEvent.click(button);
+    if (fireEvent.keyUp(button, { key: how }) && how === " ") fireEvent.click(button);
+  };
+  const back = async () =>
+    within(await screen.findByRole("alert")).getByRole("button", {
+      name: t("tord.deepLink.back"),
+    });
+
+  it.each([
+    ["is unknown", "?company=MISSING&order=PO-1", "MISSING", twoCompanies, "click"],
+    ["is empty", "?company=&order=PO-1", "", twoCompanies, "Enter"],
+    ["differs in case", "?company=branch", "branch", twoCompanies, " "],
+    [
+      "is not on the loaded first page",
+      "?company=LATER",
+      "LATER",
+      () => response({ items: [company, branch], nextCursor: "BRANCH" }),
+      "Enter",
+    ],
+  ] as const)(
+    "reports a company that %s and goes back to the default list (%s)",
+    async (_case, search, value, companies, how) => {
+      linkTo(search);
+      const lists: string[] = [];
+      const { calls } = stubApi(
+        found,
+        (url) => {
+          lists.push(url);
+          return response({ items: [summary("PO-1", 11300)], nextCursor: null });
+        },
+        noneInvoiced,
+        companies,
+      );
+      render(<App />);
+      const alert = await screen.findByRole("alert");
+      expect(alert.querySelector("p")?.textContent).toBe(
+        `${t("tord.deepLink.company")} · ${value}`,
+      );
+      // No silent fallback: no company's orders, list or lookup is shown or read.
+      expect(screen.queryByRole("table", { name: t("tord.list") })).toBeNull();
+      expect(screen.queryByRole("form", { name: t("tord.entry") })).toBeNull();
+      expect(lists).toEqual([]);
+      expect(orderReads(calls)).toEqual([]);
+
+      activate(await back(), how);
+      await waitFor(() => expect(address().toString()).toBe(""));
+      const table = await listTable();
+      expect(await within(table).findByRole("button", { name: "PO-1" })).toBeTruthy();
+      expect(lists).toEqual(["/api/v1/trade/orders?company=DEFAULT&limit=100"]);
+      expect(companySelect().value).toBe("DEFAULT");
+      expect(document.activeElement).toBe(companySelect());
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(orderReads(calls)).toEqual([]);
+    },
+  );
+
+  it("goes back from an unknown company by keyboard with one company and no select change", async () => {
+    linkTo("?company=OTHER&order=PO-1");
+    const { calls } = stubApi(found, () =>
+      response({ items: [summary("PO-1", 11300)], nextCursor: null }),
+    );
+    render(<App />);
+    await screen.findByRole("alert");
+    const select = companySelect();
+    expect([...select.options].map((option) => option.value)).toEqual(["DEFAULT"]);
+    const changes = vi.fn();
+    select.addEventListener("change", changes);
+    activate(await back(), "Enter");
+    await waitFor(() => expect(address().toString()).toBe(""));
+    expect(await within(await listTable()).findByRole("button", { name: "PO-1" })).toBeTruthy();
+    expect(document.activeElement).toBe(select);
+    expect(select.value).toBe("DEFAULT");
+    expect(changes).not.toHaveBeenCalled();
+    expect(orderReads(calls)).toEqual([]);
+  });
+
+  it.each([
+    ["an empty order", "?company=DEFAULT&order=", "Enter", 0, "company=DEFAULT"],
+    ["a malformed order", "?company=DEFAULT&order=po%201", " ", 0, "company=DEFAULT"],
+    ["a malformed order without company", "?order=po%201", "Enter", 0, ""],
+    [
+      "an order the server rejects (400)",
+      "?company=DEFAULT&order=PO-400",
+      "click",
+      1,
+      "company=DEFAULT",
+    ],
+  ] as const)(
+    "reports %s as invalid with one company and goes back to the list (%s)",
+    async (_case, search, how, reads, after) => {
+      expect(tradeOrderCommandSchema.shape.orderId.safeParse("po 1").success).toBe(false);
+      linkTo(search);
+      const { calls } = stubApi(
+        byOrder({ "PO-400": () => failure(400, "INVALID_REQUEST", []) }),
+        () => response({ items: [summary("PO-1", 11300)], nextCursor: null }),
+      );
+      render(<App />);
+      const alert = await screen.findByRole("alert");
+      expect(alert.querySelector("p")?.textContent).toBe(t("tord.issue.shape"));
+      expect(screen.queryByText(t("tord.notFound"))).toBeNull();
+      expect(orderReads(calls)).toHaveLength(reads);
+      const select = companySelect();
+      expect(select.options).toHaveLength(1);
+      const changes = vi.fn();
+      select.addEventListener("change", changes);
+
+      activate(await back(), how);
+      await waitFor(() => expect(address().has("order")).toBe(false));
+      expect(address().toString()).toBe(after);
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(document.activeElement).toBe(listToggle());
+      expect(await within(await listTable()).findByRole("button", { name: "PO-1" })).toBeTruthy();
+      expect(shownOrder()).toBeNull();
+      expect(changes).not.toHaveBeenCalled();
+      expect(orderReads(calls)).toHaveLength(reads);
+    },
+  );
+
+  // Recovery removes only `order`: an absent `company` stays absent.
+  it.each([
+    ["?company=DEFAULT&order=PO-9", "company=DEFAULT"],
+    ["?order=PO-9", ""],
+  ] as const)(
+    "reports an order that does not exist and goes back to the list by Space (%s)",
+    async (search, after) => {
+      linkTo(search);
+      const { calls } = stubApi(found, () =>
+        response({ items: [summary("PO-1", 11300)], nextCursor: null }),
+      );
+      render(<App />);
+      const alert = await screen.findByRole("alert");
+      expect(alert.querySelector("p")?.textContent).toBe(t("tord.notFound"));
+      expect(orderReads(calls)).toEqual(["GET /api/v1/trade/orders/PO-9"]);
+      activate(await back(), " ");
+      await waitFor(() => expect(address().has("order")).toBe(false));
+      expect(address().toString()).toBe(after);
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(document.activeElement).toBe(listToggle());
+      expect(companySelect().value).toBe("DEFAULT");
+      expect(orderReads(calls)).toHaveLength(1);
+    },
+  );
+
+  it.each(["click", "Enter", " "] as const)(
+    "retries a failed company or order read with the same request (%s)",
+    async (how) => {
+      linkTo("?company=BRANCH&order=PO-1");
+      let companiesFail = true;
+      let orderFails = true;
+      const { calls } = stubApi(
+        byOrder({
+          "PO-1": () => (orderFails ? failure(500, "INTERNAL_ERROR", []) : response(savedOrder)),
+        }),
+        emptyList,
+        noneInvoiced,
+        () => (companiesFail ? failure(500, "INTERNAL_ERROR", []) : twoCompanies("")),
+      );
+      render(<App />);
+      let alert = await screen.findByRole("alert");
+      expect(alert.querySelector("p")?.textContent).toBe(label("zh", "master.error"));
+      companiesFail = false;
+      activate(within(alert).getByRole("button", { name: label("zh", "master.retry") }), how);
+      await waitFor(() => expect(orderReads(calls)).toHaveLength(1));
+      alert = await screen.findByRole("alert");
+      expect(alert.querySelector("p")?.textContent).toBe(label("zh", "master.error"));
+      expect(companySelect().value).toBe("BRANCH");
+      orderFails = false;
+      activate(within(alert).getByRole("button", { name: label("zh", "master.retry") }), how);
+      await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+      expect(orderReads(calls)).toEqual([
+        "GET /api/v1/trade/orders/PO-1",
+        "GET /api/v1/trade/orders/PO-1",
+      ]);
+      expect(calls.filter((call) => call.startsWith("GET /api/v1/trade/orders/PO-1"))).toContain(
+        "GET /api/v1/trade/orders/PO-1",
+      );
+      expect(address().toString()).toBe("company=BRANCH&order=PO-1");
+      expect(screen.queryByRole("alert")).toBeNull();
+    },
+  );
+
+  it("shows loading and does not judge the company before the first company page arrives", async () => {
+    linkTo("?company=BRANCH&order=PO-1");
+    let answer: (value: Response) => void = () => {};
+    const { calls } = stubApi(
+      found,
+      emptyList,
+      noneInvoiced,
+      () => new Promise<Response>((resolve) => (answer = resolve)),
+    );
+    render(<App />);
+    expect(await screen.findByText(label("zh", "master.loading"))).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(orderReads(calls)).toEqual([]);
+    await act(async () => answer(response({ items: [company, branch], nextCursor: null })));
+    await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+    expect(companySelect().value).toBe("BRANCH");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("opens the linked order of the linked company, keeps it on refresh and follows later choices", async () => {
+    linkTo("?company=BRANCH&order=PO-1");
+    const lists: string[] = [];
+    const reads: string[] = [];
+    const stub = () =>
+      stubApi(
+        (url) => {
+          reads.push(url);
+          return found(url);
+        },
+        (url) => {
+          lists.push(url);
+          return response({
+            items: [summary("PO-1", 11300), summary("PO-2", 11300, 1, "partial")],
+            nextCursor: null,
+          });
+        },
+        noneInvoiced,
+        twoCompanies,
+      );
+    stub();
+    const view = render(<App />);
+    const result = await waitFor(() => {
+      const shown = document.querySelector<HTMLElement>(".tord-lookup-result");
+      if (!shown) throw new Error("no result");
+      return shown;
+    });
+    expect(shownOrder()).toMatch(/PO-1$/u);
+    expect(reads).toEqual(["/api/v1/trade/orders/PO-1?company=BRANCH"]);
+    expect(companySelect().value).toBe("BRANCH");
+    // The opened detail is reachable by keyboard: focus moves to it.
+    expect(document.activeElement).toBe(result);
+    expect(address().toString()).toBe("company=BRANCH&order=PO-1");
+
+    // Refresh: a new page load of the same address shows the same view.
+    view.unmount();
+    vi.unstubAllGlobals();
+    stub();
+    render(<App />);
+    await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+    expect(reads).toEqual([
+      "/api/v1/trade/orders/PO-1?company=BRANCH",
+      "/api/v1/trade/orders/PO-1?company=BRANCH",
+    ]);
+    expect(companySelect().value).toBe("BRANCH");
+
+    // Opening another order in the list writes it into the address.
+    const table = await listTable();
+    fireEvent.click(await within(table).findByRole("button", { name: "PO-2" }));
+    await waitFor(() => expect(address().toString()).toBe("company=BRANCH&order=PO-2"));
+    expect(await screen.findByText(t("tord.notFound"))).toBeTruthy();
+    // The lookup form follows the same path.
+    fireEvent.change(screen.getByLabelText(t("tord.lookupId")), { target: { value: "PO-1" } });
+    fireEvent.click(screen.getByRole("button", { name: t("tord.lookupButton") }));
+    await waitFor(() => expect(address().toString()).toBe("company=BRANCH&order=PO-1"));
+    await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+
+    // Choosing another company replaces `company` and drops `order`.
+    fireEvent.change(companySelect(), { target: { value: "DEFAULT" } });
+    await waitFor(() => expect(address().toString()).toBe("company=DEFAULT"));
+    await waitFor(() =>
+      expect(lists.at(-1)).toBe("/api/v1/trade/orders?company=DEFAULT&limit=100"),
+    );
+    expect(shownOrder()).toBeNull();
+  });
+
+  it("opens a linked order in the current company when `company` is absent", async () => {
+    linkTo("?order=PO-1");
+    const reads: string[] = [];
+    stubApi(
+      (url) => {
+        reads.push(url);
+        return found(url);
+      },
+      emptyList,
+      noneInvoiced,
+      twoCompanies,
+    );
+    render(<App />);
+    await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+    expect(reads).toEqual(["/api/v1/trade/orders/PO-1?company=DEFAULT"]);
+    expect(companySelect().value).toBe("DEFAULT");
+    expect(address().toString()).toBe("order=PO-1");
+  });
+
+  it("only switches the company when `order` is absent", async () => {
+    linkTo("?company=BRANCH");
+    const lists: string[] = [];
+    const { calls } = stubApi(
+      found,
+      (url) => {
+        lists.push(url);
+        return response({ items: [summary("PO-1", 11300)], nextCursor: null });
+      },
+      noneInvoiced,
+      twoCompanies,
+    );
+    render(<App />);
+    expect(await within(await listTable()).findByRole("button", { name: "PO-1" })).toBeTruthy();
+    expect(companySelect().value).toBe("BRANCH");
+    expect(lists).toEqual(["/api/v1/trade/orders?company=BRANCH&limit=100"]);
+    expect(orderReads(calls)).toEqual([]);
+    expect(shownOrder()).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it.each([
+    [false, "keeps the draft and the address"],
+    [true, "opens the linked order"],
+  ] as const)(
+    "asks before a deep link replaces an unsaved draft (confirm %s %s)",
+    async (answer, _outcome) => {
+      const confirm = vi.spyOn(window, "confirm").mockReturnValue(answer);
+      const { calls } = stubApi(found, () =>
+        response({ items: [summary("PO-2", 11300)], nextCursor: null }),
+      );
+      render(<App />);
+      await screen.findByRole("form", { name: t("tord.entry") });
+      fireEvent.change(field("tord.orderId"), { target: { value: "PO-DRAFT" } });
+      // The page rewrites its own address while the draft is open; a cancel returns to that address.
+      fireEvent.click(await within(await listTable()).findByRole("button", { name: "PO-2" }));
+      await screen.findByText(t("tord.notFound"));
+      const before = window.location.href;
+      expect(address().toString()).toBe("company=DEFAULT&order=PO-2");
+      expect(confirm).not.toHaveBeenCalled();
+      window.history.pushState(null, "", "/#/trade-orders?company=DEFAULT&order=PO-1");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      expect(confirm).toHaveBeenCalledWith(t("tord.leaveConfirm"));
+      if (answer) {
+        await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+        expect(orderReads(calls)).toEqual([
+          "GET /api/v1/trade/orders/PO-2",
+          "GET /api/v1/trade/orders/PO-1",
+        ]);
+      } else {
+        expect(window.location.href).toBe(before);
+        await act(async () => {});
+        expect(orderReads(calls)).toEqual(["GET /api/v1/trade/orders/PO-2"]);
+        expect(screen.getByText(t("tord.notFound"))).toBeTruthy();
+      }
+      expect(field("tord.orderId").value).toBe("PO-DRAFT");
+    },
+  );
+
+  // Entries as react-router's history writes them ({ usr, key, idx }) on an in-app push.
+  const routerEntry = (idx: number, search: string, push = true) =>
+    window.history[push ? "pushState" : "replaceState"](
+      { usr: null, key: `k${idx}`, idx },
+      "",
+      `/#/trade-orders${search}`,
+    );
+  const pause = () => act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+  // D275: a cancelled Back / Forward never calls history.go; it pushes the page's address again.
+  // It asks once, keeps the address and the draft, and the next confirmed Back leaves the page.
+  const expectCancelled = async (confirm: { mock: { calls: unknown[] } }, here: string) => {
+    const go = vi.spyOn(window.history, "go");
+    await waitFor(() => expect(confirm.mock.calls).toHaveLength(1));
+    await pause();
+    expect(confirm.mock.calls).toHaveLength(1);
+    expect(go).not.toHaveBeenCalled();
+    expect(window.location.href).toBe(here);
+    expect(field("tord.orderId").value).toBe("PO-DRAFT");
+  };
+
+  it.each([
+    ["Back", "PO-2", "PO-1"],
+    ["Forward", "PO-1", "PO-2"],
+  ] as const)(
+    "cancels a real %s by keeping the address and leaves on the next confirmed Back",
+    async (direction, start, target) => {
+      const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+      stubApi(found, emptyList, noneInvoiced);
+      routerEntry(0, "?company=DEFAULT&order=PO-1", false);
+      routerEntry(1, "?company=DEFAULT&order=PO-2");
+      routerEntry(2, "?company=DEFAULT&order=PO-3");
+      render(<App />);
+      const order = () => address().get("order");
+      await waitFor(() => expect(order()).toBe("PO-3"));
+      await screen.findByText(t("tord.notFound"));
+      window.history.back();
+      await waitFor(() => expect(order()).toBe("PO-2"));
+      if (start === "PO-1") {
+        window.history.back();
+        await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+      }
+      expect(confirm).not.toHaveBeenCalled();
+      fireEvent.change(field("tord.orderId"), { target: { value: "PO-DRAFT" } });
+      const here = window.location.href;
+
+      if (direction === "Back") window.history.back();
+      else window.history.forward();
+      await expectCancelled(confirm, here);
+      expect(order()).toBe(start);
+
+      // The pushed entry sits right after the target, so one confirmed Back reaches it.
+      confirm.mockReturnValue(true);
+      window.history.back();
+      await waitFor(() => expect(order()).toBe(target));
+      await pause();
+      expect(confirm).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it.each([
+    // An entry the router did not write (another page reached by a plain fragment link).
+    ["a page without a router position", "#/trade-invoices", false],
+    // A typed hash, after which the router numbers the next in-app push from null (idx 1).
+    ["a typed hash and an in-app link", "#/trade-orders?company=DEFAULT&order=PO-2", true],
+  ] as const)("asks once when a Back crosses %s", async (_, typed, viaLink) => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    stubApi(found, emptyList, noneInvoiced);
+    routerEntry(0, "?company=DEFAULT&order=PO-1", false);
+    render(<App />);
+    await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+    window.location.hash = typed;
+    if (viaLink) {
+      await screen.findByText(t("tord.notFound"));
+      fireEvent.click(screen.getByRole("link", { name: label("zh", "shell.tradeOrders") }));
+      await waitFor(() => expect(address().get("order")).toBeNull());
+      expect(window.history.state).toMatchObject({ idx: 1 });
+    } else {
+      await waitFor(() => expect(screen.queryByLabelText(t("tord.lookupId"))).toBeNull());
+      window.location.hash = "#/trade-orders?company=DEFAULT&order=PO-2";
+      await screen.findByText(t("tord.notFound"));
+    }
+    const here = window.location.href;
+    fireEvent.change(field("tord.orderId"), { target: { value: "PO-DRAFT" } });
+
+    window.history.go(-2);
+    await expectCancelled(confirm, here);
+
+    confirm.mockReturnValue(true);
+    window.history.back();
+    await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+    expect(confirm).toHaveBeenCalledTimes(2);
+  });
+
+  // Review 6009916500: A(0) → D(1) → E(2) → B (typed hash) → C (in-app link, idx 1) → X (another
+  // document). Back at E with a draft, a Forward of two entries to C is cancelled: the position
+  // difference would point at X, so the guard must not call history.go at all.
+  it("cancels a Forward without history.go when the positions would lead out of the document", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    stubApi(found, emptyList, noneInvoiced);
+    routerEntry(0, "?company=DEFAULT&order=PO-1", false);
+    routerEntry(1, "?company=DEFAULT&order=PO-2");
+    routerEntry(2, "?company=DEFAULT&order=PO-3");
+    window.history.pushState(null, "", "/#/trade-orders?company=DEFAULT&order=PO-4");
+    window.history.pushState({ usr: null, key: "c", idx: 1 }, "", "/#/trade-orders");
+    window.history.pushState(null, "", "/elsewhere");
+    const back = new Promise((resolve) =>
+      window.addEventListener("popstate", resolve, { once: true }),
+    );
+    window.history.go(-3);
+    await back;
+    expect(window.history.state).toMatchObject({ key: "k2", idx: 2 });
+    render(<App />);
+    await screen.findByText(t("tord.notFound"));
+    const here = window.location.href;
+    fireEvent.change(field("tord.orderId"), { target: { value: "PO-DRAFT" } });
+
+    window.history.go(2);
+    await expectCancelled(confirm, here);
+    expect(window.location.pathname).toBe("/");
+
+    confirm.mockReturnValue(true);
+    window.history.back();
+    await waitFor(() => expect(address().get("order")).toBeNull());
+    expect(window.location.pathname).toBe("/");
+    expect(confirm).toHaveBeenCalledTimes(2);
   });
 });

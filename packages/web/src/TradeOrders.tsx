@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { guardHistory, type HistoryGuard } from "./leave-guard-history.js";
 import {
   companiesPageSchema,
   tradeOrderCommandSchema,
@@ -41,6 +42,9 @@ type Draft = {
   lines: LineDraft[];
 };
 type Guard = { busy: boolean; unsaved: boolean };
+type Opened = { orderId: string; focus: boolean };
+type Invoicing = "none" | "partial" | "full";
+const invoicingTone = { none: "warning", partial: "info", full: "success" } as const;
 type Issue = { path: string; key: TradeOrderKey };
 type Failure = { message: string; issues: Issue[]; uncertain: boolean };
 const idleGuard: Guard = { busy: false, unsaved: false };
@@ -138,15 +142,20 @@ const fromMicros = (value: bigint) => {
 function useOrderLeaveGuard(guard: Guard, message: string) {
   const latest = useRef(guard);
   latest.current = guard;
+  const history = useRef<HistoryGuard | null>(null);
+  // After every render: the page rewrites its own address (company, order) while a draft is open,
+  // and a cancelled navigation must return to that address (leave-guard-history.ts).
+  useEffect(() => history.current?.settle());
   useEffect(() => {
     if (!guard.busy && !guard.unsaved) return;
-    const current = window.location.href;
     const mayLeave = () => !latest.current.busy && window.confirm(message);
+    const guarded = guardHistory(mayLeave);
+    history.current = guarded;
     const click = (event: MouseEvent) => {
       const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
       if (
         !(link instanceof HTMLAnchorElement) ||
-        link.href === current ||
+        link.href === guarded.here() ||
         link.target === "_blank" ||
         event.button !== 0 ||
         event.ctrlKey ||
@@ -160,23 +169,16 @@ function useOrderLeaveGuard(guard: Guard, message: string) {
         event.stopImmediatePropagation();
       }
     };
-    const navigation = (event: Event) => {
-      if (window.location.href === current || mayLeave()) return;
-      event.stopImmediatePropagation();
-      window.history.replaceState(window.history.state, "", current);
-    };
     const unload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
     document.addEventListener("click", click, true);
-    window.addEventListener("popstate", navigation, true);
-    window.addEventListener("hashchange", navigation, true);
     window.addEventListener("beforeunload", unload);
     return () => {
+      history.current = null;
+      guarded.dispose();
       document.removeEventListener("click", click, true);
-      window.removeEventListener("popstate", navigation, true);
-      window.removeEventListener("hashchange", navigation, true);
       window.removeEventListener("beforeunload", unload);
     };
   }, [guard.busy, guard.unsaved, message]);
@@ -186,6 +188,7 @@ export function TradeOrders({ preferences }: { preferences: Preferences }) {
   const language = preferences.language;
   const t: T = (key, params) => orderLabel(language, key, params);
   const [selected, setSelected] = useState("");
+  const [params, setParams] = useSearchParams();
   const [guard, setGuard] = useState(idleGuard);
   useOrderLeaveGuard(guard, t("tord.leaveConfirm"));
   const companies = useInfiniteQuery({
@@ -201,7 +204,22 @@ export function TradeOrders({ preferences }: { preferences: Preferences }) {
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
   const rows = companies.data?.pages.flatMap((page) => page.items) ?? [];
-  const company = rows.find((row) => row.code === (selected || rows[0]?.code));
+  // A parameter that is absent takes the default; one that is present (even empty) must match.
+  const linkCompany = params.get("company");
+  const linkOrder = params.get("order");
+  const company = rows.find((row) => row.code === (linkCompany ?? (selected || rows[0]?.code)));
+  const companyMissing = linkCompany !== null && companies.isSuccess && !company;
+  const link = (change: Readonly<Record<string, string | null>>) =>
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        for (const [key, value] of Object.entries(change))
+          if (value === null) next.delete(key);
+          else next.set(key, value);
+        return next;
+      },
+      { replace: true },
+    );
   return (
     <section className="page trade-orders">
       <PageHeader
@@ -215,8 +233,10 @@ export function TradeOrders({ preferences }: { preferences: Preferences }) {
               value={company?.code ?? ""}
               disabled={guard.busy}
               onChange={(event) => {
-                if (!guard.unsaved || window.confirm(t("tord.leaveConfirm")))
+                if (!guard.unsaved || window.confirm(t("tord.leaveConfirm"))) {
                   setSelected(event.target.value);
+                  link({ company: event.target.value, order: null });
+                }
               }}
             >
               {rows.map((row) => (
@@ -244,6 +264,23 @@ export function TradeOrders({ preferences }: { preferences: Preferences }) {
           </button>
         </MessageBar>
       )}
+      {companyMissing && (
+        <MessageBar tone="danger" role="alert">
+          <p>
+            {t("tord.deepLink.company")} · {linkCompany}
+          </p>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => {
+              link({ company: null, order: null });
+              document.getElementById("tord-company")?.focus();
+            }}
+          >
+            {t("tord.deepLink.back")}
+          </button>
+        </MessageBar>
+      )}
       {company && (
         <OrderWorkspace
           key={company.code}
@@ -251,6 +288,9 @@ export function TradeOrders({ preferences }: { preferences: Preferences }) {
           preferences={preferences}
           t={t}
           onGuard={setGuard}
+          linkOrder={linkOrder}
+          onLink={(order) => link({ company: company.code, order })}
+          onBack={() => link({ order: null })}
         />
       )}
     </section>
@@ -275,11 +315,18 @@ function OrderWorkspace({
   preferences,
   t,
   onGuard,
+  linkOrder,
+  onLink,
+  onBack,
 }: {
   company: CompanyDto;
   preferences: Preferences;
   t: T;
   onGuard: (guard: Guard) => void;
+  linkOrder: string | null;
+  onLink: (orderId: string | null) => void;
+  // Recovery from a bad order link removes only `order`; an absent `company` stays absent.
+  onBack: () => void;
 }) {
   const language = preferences.language;
   const [draft, setDraft] = useState(blankDraft);
@@ -291,7 +338,21 @@ function OrderWorkspace({
   const [preview, setPreview] = useState<TradeOrderPreviewDto | null>(null);
   // Focus after a preview request ends: the result region on success, the Preview button on failure.
   const [previewFocus, setPreviewFocus] = useState<{ to: "result" | "button" } | null>(null);
-  const [opened, setOpened] = useState<{ orderId: string } | null>(null);
+  const [opened, setOpened] = useState<Opened | null>(null);
+  // The address owns the opened order (TINV-03): a list click or lookup writes `order`, and every
+  // change of `order` (click, deep link, Back) runs the lookup; a link or Back focuses the result.
+  const focusNext = useRef(true);
+  useEffect(() => {
+    setOpened(linkOrder === null ? null : { orderId: linkOrder, focus: focusNext.current });
+    focusNext.current = true;
+  }, [linkOrder]);
+  const open = (orderId: string, focus: boolean) => {
+    if (orderId === linkOrder) setOpened({ orderId, focus });
+    else {
+      focusNext.current = focus;
+      onLink(orderId);
+    }
+  };
   const client = useQueryClient();
   const savedNotice = useRef<HTMLDivElement>(null);
   const previewButton = useRef<HTMLButtonElement>(null);
@@ -790,9 +851,17 @@ function OrderWorkspace({
         language={language}
         money={money}
         t={t}
-        onOpen={(orderId) => setOpened({ orderId })}
+        onOpen={(orderId) => open(orderId, true)}
       />
-      <OrderLookup company={company} language={language} money={money} t={t} request={opened} />
+      <OrderLookup
+        company={company}
+        language={language}
+        money={money}
+        t={t}
+        request={opened}
+        onLookup={(orderId) => open(orderId, false)}
+        onBack={onBack}
+      />
     </>
   );
 }
@@ -954,6 +1023,7 @@ function OrderList({
                 <th scope="col" className="num">
                   {t("tord.gross")}
                 </th>
+                <th scope="col">{t("tord.invoicing")}</th>
               </tr>
             </thead>
             <tbody>
@@ -970,6 +1040,11 @@ function OrderList({
                   <td>{row.currency}</td>
                   <td className="num">{row.lineCount}</td>
                   <td className="num">{money(row.gross)}</td>
+                  <td className="tord-invoicing">
+                    <Badge tone={invoicingTone[row.invoicing]}>
+                      {t(`tord.invoicing.${row.invoicing satisfies Invoicing}`)}
+                    </Badge>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -998,12 +1073,16 @@ function OrderLookup({
   money,
   t,
   request,
+  onLookup,
+  onBack,
 }: {
   company: CompanyDto;
   language: Preferences["language"];
   money: (value: number) => string;
   t: T;
-  request: { orderId: string } | null;
+  request: Opened | null;
+  onLookup: (orderId: string) => void;
+  onBack: () => void;
 }) {
   const [orderId, setOrderId] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1012,16 +1091,24 @@ function OrderLookup({
   const [focusResult, setFocusResult] = useState(false);
   const resultRef = useRef<HTMLElement>(null);
   const latest = useRef(0);
-  // An order number chosen in the list runs the same lookup as the form (TORD-03).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once per list click, not per keystroke.
+  const [failed, setFailed] = useState("");
+  // An order number chosen in the list, the form or the address runs one lookup (TORD-03, TINV-03);
+  // a removed `order` clears the result.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once per request, not per keystroke.
   useEffect(() => {
-    if (!request) return;
+    if (!request) {
+      ++latest.current;
+      setBusy(false);
+      setResult(null);
+      setError(null);
+      return;
+    }
     setOrderId(request.orderId);
     const toggle = document.querySelector<HTMLButtonElement>(
       '[aria-controls="tord-lookup-body"][aria-expanded="false"]',
     );
     toggle?.click();
-    setFocusResult(true);
+    setFocusResult(request.focus);
     void run(request.orderId);
   }, [request]);
   useLayoutEffect(() => {
@@ -1030,19 +1117,18 @@ function OrderLookup({
       setFocusResult(false);
     }
   }, [focusResult, result]);
-  const lookup = async (event: FormEvent) => {
+  const lookup = (event: FormEvent) => {
     event.preventDefault();
     if (busy) return;
-    setFocusResult(false);
-    await run(orderId.trim());
+    onLookup(orderId.trim());
   };
   // The latest selection owns the detail: a list click during a pending lookup supersedes it, and
   // a superseded response is dropped so it can never show beside the newer order number.
   const run = async (id: string) => {
-    if (!id) return;
     const ticket = ++latest.current;
     setResult(null);
     setError(null);
+    setFailed(id);
     if (!tradeOrderCommandSchema.shape.orderId.safeParse(id).success) {
       setBusy(false);
       setError("tord.issue.shape");
@@ -1058,9 +1144,13 @@ function OrderLookup({
     } catch (issue) {
       if (ticket === latest.current)
         setError(
-          issue instanceof MasterDataFailure && issue.status === 404
-            ? "tord.notFound"
-            : "master.error",
+          !(issue instanceof MasterDataFailure)
+            ? "master.error"
+            : issue.status === 400
+              ? "tord.issue.shape"
+              : issue.status === 404 && issue.detail?.code === "NOT_FOUND"
+                ? "tord.notFound"
+                : "master.error",
         );
     } finally {
       if (ticket === latest.current) setBusy(false);
@@ -1068,7 +1158,7 @@ function OrderLookup({
   };
   return (
     <FastTab id="tord-lookup" title={t("tord.lookup")}>
-      <form className="filter-bar tord-lookup" onSubmit={(event) => void lookup(event)}>
+      <form className="filter-bar tord-lookup" onSubmit={lookup}>
         <div className="field">
           <label htmlFor="tord-lookup-id">{t("tord.lookupId")}</label>
           <input
@@ -1089,6 +1179,24 @@ function OrderLookup({
       {error && (
         <MessageBar tone="danger" role="alert">
           <p>{error === "master.error" ? label(language, "master.error") : t(error)}</p>
+          {error === "master.error" ? (
+            <button type="button" className="btn btn-secondary" onClick={() => void run(failed)}>
+              {label(language, "master.retry")}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                onBack();
+                document
+                  .querySelector<HTMLButtonElement>('[aria-controls="tord-list-body"]')
+                  ?.focus();
+              }}
+            >
+              {t("tord.deepLink.back")}
+            </button>
+          )}
         </MessageBar>
       )}
       {result && (

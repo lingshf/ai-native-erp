@@ -512,6 +512,7 @@ export const tradeOrderPageSchema = z.strictObject({
         net: minor,
         tax: minor,
         gross: minor,
+        invoicing: z.enum(["none", "partial", "full"]),
       }),
     )
     .max(500),
