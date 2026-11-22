@@ -2,7 +2,7 @@
 
 - Sprint：S11（[计划](S11.md)，D338 第三个开发名额）　依赖：S11 定稿 PR 合并（D339）　建议分支：`ui-14-nav-groups`
 - 冲突域（逐个列文件）：
-  - web-ui:shell：`packages/web/src/App.tsx`（只改第 211–223 行的导航分组标记）；`packages/web/src/ui/labels.ts`（追加 3 个 `shell.nav.*` 键，中英各一份）；`packages/web/src/ui/journal-labels.ts`（删除不再使用的 `journal.group`，第 2 行与第 98 行）；
+  - web-ui:shell：`packages/web/src/App.tsx`（只改第 205–229 行的导航分组标记：拆分 `:211–223` 的“总账”组，并给现有“基础配置”组 `:205–210` 与“只读报表”组 `:224–229` 的 `div` 加 `role="group"`、给其标题 `span` 加 `id`（D341）；首组 `:199–204`、`NavLink` 元素与 `:198`、`:230` 的 `nav` 不改）；`packages/web/src/ui/labels.ts`（追加 3 个 `shell.nav.*` 键，中英各一份）；`packages/web/src/ui/journal-labels.ts`（删除不再使用的 `journal.group`，第 2 行与第 98 行）；
   - 测试：`packages/web/test/App.test.tsx`（追加导航分组用例）；
   - 共享单文件：无（不改 `trade-gui-scenario.ts`；不新增测试文件，因而不改 `scripts/test-shard-weights.json`）；
   - **不涉及**：`packages/web/src/theme/shell.css`（现有规则已满足，见设计决定 4）；`TradeInvoices.tsx`、`trade-labels.ts`、`trade-invoices.css`（TINV-06 的冲突域）；路由、链接顺序与链接文字；迁移、契约、领域代码。
@@ -12,7 +12,7 @@
 ## 现状（main `ad70189`）
 
 - 侧栏有 4 个 `nav-group`（`packages/web/src/App.tsx:199–229`）。第 3 组标题为 `journal.group`（“总账” / “General ledger”，`ui/journal-labels.ts:98`、`:2`），组内依次 10 个链接（`App.tsx:212–222`）：凭证、业务事件、采购 / 销售订单、采购与销售发票、付款与收款、预付 / 贷项与专用纠错、往来未结项与账龄、总账报表、总账明细、期末结账。其中 5 个是贸易往来页面（`:215–219`），与“总账”标题不符；英文下组标题“General ledger”与组内链接“General ledger”（`ledger.detail`，`ui/ledger-labels.ts:94`）同名。
-- 其他组：首组无标题（运行状态、迁移，`:200–205`）；“基础配置”（`master.group`，`:206–210`）；“只读报表”（`reports.group`，`:224–228`）。
+- 其他组：首组无标题（运行状态、迁移，`:200–205`）；“基础配置”（`master.group`，`:205–210`，标题 `span` 在 `:206`）；“只读报表”（`reports.group`，`:224–229`，标题 `span` 在 `:225`）。两组现在都没有 `role` 与 `aria-labelledby`。
 - `journal.group` 只在 `App.tsx:212` 使用：`git grep -n '"journal.group"\|t("journal.group")' -- packages/web/src` 只命中 `App.tsx:212`、`journal-labels.ts:2`、`:98`。
 - 分组的样式（`packages/web/src/theme/shell.css`）：
   - 宽屏：`.nav-group { margin-top: var(--space-4) }`，首组为 0（`:176–181`）；组标题 `.nav-group > span` 为块级小号灰字（`:182–189`）；侧栏 `position: sticky`、`max-height: calc(100dvh - var(--appbar-h))`、`overflow-y: auto`（`:165–172`）。
@@ -36,7 +36,7 @@
 
 ## 范围
 
-1. `App.tsx:211–223` 拆为三组，加 `role="group"` / `aria-labelledby`（含现有两组带标题的组）。
+1. `App.tsx:211–223` 拆为三组；连同现有“基础配置”（`:205–210`）与“只读报表”（`:224–229`）两组，共 5 个带标题的组都加 `role="group"` / `aria-labelledby` 与标题 `id`。许可改动范围为 `App.tsx:205–229`（D341），范围外 `git diff` 为空；两组现有的链接、顺序与标题键不变。
 2. `ui/labels.ts` 追加 `shell.nav.posting`、`shell.nav.trade`、`shell.nav.ledger` 中英文。
 3. `journal-labels.ts` 删除 `journal.group` 两处。
 4. `App.test.tsx` 追加用例。
