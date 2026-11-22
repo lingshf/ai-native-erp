@@ -1,0 +1,14 @@
+## step e real Chrome on head 2026-11-22T03:27:47.3762388-08:00 ERP_E2E_BROWSER_CHANNEL=chrome
+[before] HEAD a8c496885d7d62758b64bb5524a39d998280862d | commit time 2026-11-22T03:27:04-08:00 | porcelain []
+(the scenario builds packages/web from this tree into its own temp web root at test start: trade-gui-scenario.ts:590)
+
+ RUN  v5.1.0 C:/GithubCopilot/copilot-worktrees/ai-native-erp/lingshf-jubilant-barnacle
+
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  03:27:50
+   Duration  41.78s (tests 88%, import 11%, transform 1%)
+
+exit 0
+[after] HEAD a8c496885d7d62758b64bb5524a39d998280862d | porcelain [] | 2026-11-22T03:28:33.4025857-08:00

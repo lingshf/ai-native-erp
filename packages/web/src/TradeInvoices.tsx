@@ -18,10 +18,12 @@ import {
 } from "@erp/core/contracts";
 import { label, type LabelKey, type Preferences } from "./ui/index.ts";
 import { tradeEn } from "./ui/trade-labels.ts";
+import { detailLabel } from "./ui/trade-invoice-detail-labels.ts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
 import { guardHistory, type HistoryGuard } from "./leave-guard-history.ts";
 import { Badge, FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
+import { TradeInvoiceDetail } from "./TradeInvoiceDetail.tsx";
 import "./pages/trade-invoices.css";
 
 type Key = Exclude<LabelKey, "shell.httpError">;
@@ -1129,6 +1131,18 @@ function InvoiceList({
       ? { "aria-invalid": true as const, "aria-describedby": `tinv-filter-${kind}-error` }
       : {};
   const scroll = useRef<HTMLElement>(null);
+  // TINV-06: the open detail lives only in this state (no address change, no leave guard).
+  const [detail, setDetail] = useState<{ documentId: string; externalNo: string } | null>(null);
+  const closedId = useRef<string | null>(null);
+  // Runs after the dialog's own cleanup has closed it: focus its trigger, or the list if the row
+  // is no longer rendered.
+  useEffect(() => {
+    const id = closedId.current;
+    if (detail || id === null) return;
+    closedId.current = null;
+    const trigger = scroll.current?.querySelector<HTMLElement>(`[data-document-id="${id}"]`);
+    (trigger ?? scroll.current)?.focus();
+  }, [detail]);
   const virtual = rows.length > 100;
   const virtualizer = useVirtualizer({
     count: virtual ? rows.length : 0,
@@ -1268,7 +1282,20 @@ function InvoiceList({
                 <tr key={row.documentId} aria-rowindex={index + 2} style={{ height: 44 }}>
                   <td>{t(`trade.${row.side}`)}</td>
                   <td>{row.party}</td>
-                  <td>{row.externalNo}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="tinv-detail-trigger"
+                      aria-haspopup="dialog"
+                      aria-label={`${detailLabel(preferences.language, "tinv.detail.open")} ${row.externalNo}`}
+                      data-document-id={row.documentId}
+                      onClick={() =>
+                        setDetail({ documentId: row.documentId, externalNo: row.externalNo })
+                      }
+                    >
+                      {row.externalNo}
+                    </button>
+                  </td>
                   <td>{row.accountingDate}</td>
                   <td>{row.dueDate}</td>
                   <td>{t(`tinv.${row.poMatch}`)}</td>
@@ -1299,6 +1326,18 @@ function InvoiceList({
             {t("master.loadMore")}
           </button>
         </div>
+      )}
+      {detail && (
+        <TradeInvoiceDetail
+          company={company}
+          documentId={detail.documentId}
+          externalNo={detail.externalNo}
+          preferences={preferences}
+          close={() => {
+            closedId.current = detail.documentId;
+            setDetail(null);
+          }}
+        />
       )}
     </div>
   );

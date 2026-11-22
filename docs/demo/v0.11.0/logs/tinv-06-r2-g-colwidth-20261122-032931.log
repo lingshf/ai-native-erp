@@ -1,0 +1,37 @@
+## step g 1440 list column widths, base 2a2dca1 vs head a8c4968 2026-11-22T03:29:31.8905328-08:00
+--- en-green: base file C:\Users\shaoling\AppData\Local\Temp\tinv06-base3\artifacts/ci/trade-e2e/en-green-part2-invoice-list-geometry.json (mtime 1795346942) head file C:\GithubCopilot\copilot-worktrees\ai-native-erp\lingshf-jubilant-barnacle\artifacts/ci/trade-e2e/en-green-part2-invoice-list-geometry.json (mtime 1795346891)
+viewport base 1440 head 1440; table base 1128.00 head 1128.00
+  'Subledger'                  base x     0.00 w   156.95 | head x     0.00 w   156.95 | dw +0.00 dx +0.00
+  'Partner code'               base x   156.95 w   106.34 | head x   156.95 w   106.34 | dw +0.00 dx +0.00
+  'External invoice number'    base x   263.30 w   178.05 | head x   263.30 w   178.05 | dw +0.00 dx +0.00
+  'Accounting date (GL period)' base x   441.34 w   204.25 | head x   441.34 w   204.25 | dw +0.00 dx +0.00
+  'Due date'                   base x   645.59 w   102.27 | head x   645.59 w   102.27 | dw +0.00 dx +0.00
+  'Order match'                base x   747.86 w   105.09 | head x   747.86 w   105.09 | dw +0.00 dx +0.00
+  'Source order'               base x   852.95 w   205.66 | head x   852.95 w   205.66 | dw +0.00 dx +0.00
+  'Gross'                      base x  1058.61 w    69.39 | head x  1058.61 w    69.39 | dw +0.00 dx +0.00
+  rows base [44] head [44]; max |dw| 0.00
+--- zh-red: base file C:\Users\shaoling\AppData\Local\Temp\tinv06-base3\artifacts/ci/trade-e2e/zh-red-part2-invoice-list-geometry.json (mtime 1795346941) head file C:\GithubCopilot\copilot-worktrees\ai-native-erp\lingshf-jubilant-barnacle\artifacts/ci/trade-e2e/zh-red-part2-invoice-list-geometry.json (mtime 1795346891)
+viewport base 1440 head 1440; table base 1128.00 head 1128.00
+## re-invocation 2026-11-22T03:29:47.2338312-08:00: the first invocation above crashed printing zh column text to a cp1252 console (UnicodeEncodeError), after en-green completed; same script, PYTHONIOENCODING=utf-8, reads the same two files (no browser, no build)
+--- en-green: viewport base 1440 head 1440; table base 1128.00 head 1128.00
+  [0] Subledger | base x 0.00 w 156.95 | head x 0.00 w 156.95 | dw +0.00 dx +0.00
+  [1] Partner code | base x 156.95 w 106.34 | head x 156.95 w 106.34 | dw +0.00 dx +0.00
+  [2] External invoice number | base x 263.30 w 178.05 | head x 263.30 w 178.05 | dw +0.00 dx +0.00
+  [3] Accounting date (GL period) | base x 441.34 w 204.25 | head x 441.34 w 204.25 | dw +0.00 dx +0.00
+  [4] Due date | base x 645.59 w 102.27 | head x 645.59 w 102.27 | dw +0.00 dx +0.00
+  [5] Order match | base x 747.86 w 105.09 | head x 747.86 w 105.09 | dw +0.00 dx +0.00
+  [6] Source order | base x 852.95 w 205.66 | head x 852.95 w 205.66 | dw +0.00 dx +0.00
+  [7] Gross | base x 1058.61 w 69.39 | head x 1058.61 w 69.39 | dw +0.00 dx +0.00
+  external invoice column [2]: base 178.05 head 178.05 |dw| 0.00 <= 1: True
+  rows base [44] head [44]; max |dw| all columns 0.00
+--- zh-red: viewport base 1440 head 1440; table base 1128.00 head 1128.00
+  [0] 子账 | base x 0.00 w 70.61 | head x 0.00 w 70.61 | dw +0.00 dx +0.00
+  [1] 伙伴代码 | base x 70.61 w 103.20 | head x 70.61 w 103.20 | dw +0.00 dx +0.00
+  [2] 外部发票号 | base x 173.81 w 147.75 | head x 173.81 w 147.75 | dw +0.00 dx +0.00
+  [3] 记账日期（总账期间） | base x 321.56 w 209.14 | head x 321.56 w 209.14 | dw +0.00 dx +0.00
+  [4] 到期日 | base x 530.70 w 129.80 | head x 530.70 w 129.80 | dw +0.00 dx +0.00
+  [5] 订单匹配 | base x 660.50 w 103.20 | head x 660.50 w 103.20 | dw +0.00 dx +0.00
+  [6] 来源订单 | base x 763.70 w 261.00 | head x 763.70 w 261.00 | dw +0.00 dx +0.00
+  [7] 价税合计 | base x 1024.70 w 103.30 | head x 1024.70 w 103.30 | dw +0.00 dx +0.00
+  external invoice column [2]: base 147.75 head 147.75 |dw| 0.00 <= 1: True
+  rows base [44] head [44]; max |dw| all columns 0.00

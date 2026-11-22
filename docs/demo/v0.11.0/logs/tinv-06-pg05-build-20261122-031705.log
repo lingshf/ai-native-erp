@@ -1,0 +1,75 @@
+## PG-05 re-measure 2026-11-22T03:17:05.0099496-08:00 base 4461c0e head 236d85a (+ uncommitted biome format of 2 test files)
+Preparing worktree (detached HEAD 4461c0e)
+Updating files:  53% (728/1356)
+Updating files:  54% (733/1356)
+Updating files:  55% (746/1356)
+Updating files:  56% (760/1356)
+Updating files:  57% (773/1356)
+Updating files:  58% (787/1356)
+Updating files:  59% (801/1356)
+Updating files:  60% (814/1356)
+Updating files:  61% (828/1356)
+Updating files:  62% (841/1356)
+Updating files:  63% (855/1356)
+Updating files:  64% (868/1356)
+Updating files:  65% (882/1356)
+Updating files:  66% (895/1356)
+Updating files:  67% (909/1356)
+Updating files:  68% (923/1356)
+Updating files:  69% (936/1356)
+Updating files:  70% (950/1356)
+Updating files:  71% (963/1356)
+Updating files:  72% (977/1356)
+Updating files:  73% (990/1356)
+Updating files:  74% (1004/1356)
+Updating files:  75% (1017/1356)
+Updating files:  76% (1031/1356)
+Updating files:  77% (1045/1356)
+Updating files:  78% (1058/1356)
+Updating files:  79% (1072/1356)
+Updating files:  80% (1085/1356)
+Updating files:  81% (1099/1356)
+Updating files:  82% (1112/1356)
+Updating files:  83% (1126/1356)
+Updating files:  84% (1140/1356)
+Updating files:  85% (1153/1356)
+Updating files:  86% (1167/1356)
+Updating files:  87% (1180/1356)
+Updating files:  88% (1194/1356)
+Updating files:  89% (1207/1356)
+Updating files:  90% (1221/1356)
+Updating files:  91% (1234/1356)
+Updating files:  92% (1248/1356)
+Updating files:  93% (1262/1356)
+Updating files:  94% (1275/1356)
+Updating files:  95% (1289/1356)
+Updating files:  96% (1302/1356)
+Updating files:  97% (1316/1356)
+Updating files:  98% (1329/1356)
+Updating files:  99% (1343/1356)
+Updating files: 100% (1356/1356)
+Updating files: 100% (1356/1356), done.
+HEAD is now at 4461c0e UI-14: split the sidebar ledger group into three named groups (#197)
+junction node_modules
+junction packages\web\node_modules
+## build base
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[32m✓ built in 408ms[39m
+exit 0
+## build head
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[32m✓ built in 404ms[39m
+exit 0
+## gzip-9
+index-*.js: base [('index-BaTS3IOu.js', 160155)] head [('index-DBXJXN4X.js', 160167)] delta +12 B
+TradeInvoices-*.js: base [('TradeInvoices-kpXPOhqy.js', 7215)] head [('TradeInvoices-ob3ko49O.js', 9656)] delta +2441 B
+TradeInvoices-*.css: base [('TradeInvoices-BOD48ZcD.css', 1014)] head [('TradeInvoices-C9u1PWv2.css', 1242)] delta +228 B
+index-*.css: base [('index-DhcDIMA7.css', 2914)] head [('index-DhcDIMA7.css', 2914)] delta +0 B

@@ -1,0 +1,25 @@
+## step a 2026-11-22T03:24:45.1224962-08:00 pre-HEAD 9d47c31aaf30c54098641d41e864532d66681d76
+ M packages/infra/test/support/trade-gui-scenario.ts
+ M packages/web/src/TradeInvoiceDetail.tsx
+ M packages/web/test/trade-invoice-detail.test.tsx
+?? docs/demo/v0.11.0/logs/tinv-06-r2-a-rebase-20261122-032445.log
+commit exit 0
+From https://github.com/lingshf/ai-native-erp
+   4461c0e..2a2dca1  main       -> origin/main
+origin/main 2a2dca1f562b239b134ecb8c7ea3bdb169cf3329
+Rebasing (1/5)
+Rebasing (2/5)
+Rebasing (3/5)
+Rebasing (4/5)
+Rebasing (5/5)
+Successfully rebased and updated refs/heads/lingshf-tinv-06-invoice-detail-dialog.
+rebase exit 0
+HEAD 588b2a613ba79367f446ae8bb726dca78734d0a7
+588b2a6 TINV-06 review D356: focusable lines region, two-page keep test, keyboard scroll step
+7356ee8 TINV-06: slot run 2 evidence (checks, PG-05 vs 4461c0e, real Chrome post-fix)
+31905d1 TINV-06: move detail labels to route chunk, fix 390 dialog overflow, add run-1 evidence
+5e17345 chore(logs): store TINV-06 verify log with original CRLF bytes (-text, PROC-08)
+85575cd feat(web): TINV-06 invoice detail read-only dialog
+2a2dca1 SLOT-01: 独占时段采样器入库（R1 规则编号、逐条自测、清单检查） (#198)
+status:
+?? docs/demo/v0.11.0/logs/tinv-06-r2-a-rebase-20261122-032445.log

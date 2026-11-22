@@ -1,0 +1,77 @@
+## D359 head: gate then real Chrome 2026-11-22T03:34:45.9285265-08:00 tree C:\Users\shaoling\AppData\Local\Temp\tinv06-r3-head expected a8c496885d7d62758b64bb5524a39d998280862d
+Preparing worktree (detached HEAD a8c4968)
+Updating files:  57% (795/1387)
+Updating files:  58% (805/1387)
+Updating files:  59% (819/1387)
+Updating files:  60% (833/1387)
+Updating files:  61% (847/1387)
+Updating files:  62% (860/1387)
+Updating files:  63% (874/1387)
+Updating files:  64% (888/1387)
+Updating files:  65% (902/1387)
+Updating files:  66% (916/1387)
+Updating files:  67% (930/1387)
+Updating files:  68% (944/1387)
+Updating files:  69% (958/1387)
+Updating files:  70% (971/1387)
+Updating files:  71% (985/1387)
+Updating files:  72% (999/1387)
+Updating files:  73% (1013/1387)
+Updating files:  74% (1027/1387)
+Updating files:  75% (1041/1387)
+Updating files:  76% (1055/1387)
+Updating files:  77% (1068/1387)
+Updating files:  78% (1082/1387)
+Updating files:  79% (1096/1387)
+Updating files:  80% (1110/1387)
+Updating files:  81% (1124/1387)
+Updating files:  82% (1138/1387)
+Updating files:  83% (1152/1387)
+Updating files:  84% (1166/1387)
+Updating files:  85% (1179/1387)
+Updating files:  86% (1193/1387)
+Updating files:  87% (1207/1387)
+Updating files:  88% (1221/1387)
+Updating files:  89% (1235/1387)
+Updating files:  90% (1249/1387)
+Updating files:  91% (1263/1387)
+Updating files:  92% (1277/1387)
+Updating files:  93% (1290/1387)
+Updating files:  94% (1304/1387)
+Updating files:  95% (1318/1387)
+Updating files:  96% (1332/1387)
+Updating files:  97% (1346/1387)
+Updating files:  98% (1360/1387)
+Updating files:  99% (1374/1387)
+Updating files: 100% (1387/1387)
+Updating files: 100% (1387/1387), done.
+HEAD is now at a8c4968 TINV-06 review D356/D358: lines scroll region as named section; step a/b logs
+junctions node_modules, packages\web\node_modules
+## build dist (prepares the gate's dist; no size measurement, not PG-05) 2026-11-22T03:34:47.9337213-08:00
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 396ms[39m
+build exit 0
+## gate 2026-11-22T03:34:50.1950757-08:00
+  [public copy, excluded] favicon.svg mtime 2026-11-22T03:34:47.6939920-08:00
+  [tested] index.html mtime 2026-11-22T03:34:50.0858762-08:00
+  [tested] assets\index-_OqlCMsf.js mtime 2026-11-22T03:34:50.0597580-08:00
+  [tested] assets\index-DhcDIMA7.css mtime 2026-11-22T03:34:50.0814212-08:00
+  [tested] assets\TradeInvoices-B7GcXO2W.js mtime 2026-11-22T03:34:50.0672571-08:00
+  [tested] assets\TradeInvoices-C9u1PWv2.css mtime 2026-11-22T03:34:50.0794151-08:00
+  HEAD a8c496885d7d62758b64bb5524a39d998280862d (expected a8c496885d7d62758b64bb5524a39d998280862d) match True
+  porcelain [] empty True
+  commit time 2026-11-22T03:27:04.0000000-08:00; tested dist files 36 (public copies excluded 1); oldest tested assets\Accounts-CGSQvSd-.js 2026-11-22T03:34:50.0597580-08:00; all tested newer than commit True
+GATE head: True
+## real Chrome 2026-11-22T03:34:57.9160214-08:00 ERP_E2E_BROWSER_CHANNEL=chrome; npx vitest run packages/infra/test/http/trade-gui-en-green-2.slow.test.ts packages/infra/test/http/trade-gui-zh-red-2.slow.test.ts
+
+ RUN  v5.1.0 C:/Users/shaoling/AppData/Local/Temp/tinv06-r3-head
+
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  03:35:00
+   Duration  38.73s (tests 92%, import 5%, transform 3%)
+
+chrome exit 0
+[after] HEAD a8c496885d7d62758b64bb5524a39d998280862d | porcelain [] | 2026-11-22T03:35:39.6005104-08:00

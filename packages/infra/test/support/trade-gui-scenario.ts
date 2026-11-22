@@ -14,6 +14,10 @@ import { SqliteExecutor } from "../../src/workers/executor.ts";
 import { createApi, type LocalApi } from "../../src/http/index.ts";
 import { label, resources } from "../../../web/src/ui/index.ts";
 import { orderLabel, type TradeOrderKey } from "../../../web/src/ui/trade-order-labels.ts";
+import {
+  detailLabel,
+  type TradeInvoiceDetailKey,
+} from "../../../web/src/ui/trade-invoice-detail-labels.ts";
 import { formatMinor } from "../../../web/src/reports-data.ts";
 import { navigateTitle, targetPageShown, type NavigatePath } from "./navigate-ready.ts";
 
@@ -951,6 +955,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
     // TINV-02: the order detail's invoiced / not-invoiced quantities and its Invoice entry, which
     // opens the invoice page with a draft carried in from the order (TINV-01 `fromOrder`).
     const ordered = (key: TradeOrderKey) => orderLabel(language, key);
+    const detailed = (key: TradeInvoiceDetailKey) => detailLabel(language, key);
     async function orderQuantities(orderId: string) {
       const detail = page.getByRole("table", {
         name: `${ordered("tord.lines")} ${orderId}`,
@@ -1326,6 +1331,8 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       await orderToInvoice();
       await sourceOrders();
       await invoiceFilters();
+      await invoiceDetail();
+      await detailBack();
       await leaveByBack(
         "trade-invoices",
         "#tinv-party",
@@ -1588,6 +1595,280 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         page.off("dialog", count);
       }
       expect(dialogs).toBe(0);
+      expect(failures).toEqual([]);
+    }
+    // TINV-06: the external invoice number opens a read-only detail dialog (Enter and Space), at
+    // 1440 and 390. The list's scroll position, the address, the draft and the column widths are
+    // equal before and after; nothing asks to leave; focus returns to the row's button; each open
+    // sends exactly one GET /invoices/:id. AP-DEMO amounts come from seedInvoice / seedSettlement
+    // and the part 2 advance apply (remaining 36.50 = the open-items report above).
+    async function invoiceDetail() {
+      await navigate("trade-invoices");
+      const list = page.getByRole("table", { name: t("tinv.list"), exact: true });
+      const scroller = page.locator("section.tinv-list-scroll");
+      const trigger = list.getByRole("button", {
+        name: `${detailed("tinv.detail.open")} AP-DEMO`,
+        exact: true,
+      });
+      const dialog = page.getByRole("dialog", {
+        name: `${detailed("tinv.detail.title")} · AP-DEMO`,
+        exact: true,
+      });
+      const money = (minor: number) => formatMinor(minor, language);
+      let dialogs = 0;
+      const count = async (event: import("playwright").Dialog) => {
+        dialogs += 1;
+        await event.dismiss();
+      };
+      let details = 0;
+      const detailRequest = (request: import("playwright").Request) => {
+        const url = new URL(request.url());
+        if (
+          request.method() === "GET" &&
+          /^\/api\/v1\/trade\/invoices\/[0-9a-f-]{36}$/.test(url.pathname)
+        )
+          details += 1;
+      };
+      const snapshot = () =>
+        Promise.all([
+          scroller.evaluate((element) => element.scrollTop),
+          page.evaluate(() => window.location.hash),
+          page.evaluate(
+            (prefix) =>
+              JSON.stringify(
+                Object.keys(sessionStorage)
+                  .filter((key) => key.startsWith(prefix))
+                  .sort()
+                  .map((key) => [key, sessionStorage.getItem(key)]),
+              ),
+            draftPrefix,
+          ),
+          list.evaluate((table) =>
+            [...table.querySelectorAll("thead th")].map((th) => th.getBoundingClientRect().width),
+          ),
+        ]);
+      const focused = () => trigger.evaluate((element) => element === document.activeElement);
+      async function open(key: "Enter" | "Space", width: number) {
+        const before = await snapshot();
+        const sent = details;
+        await tabTo(page, trigger);
+        await page.keyboard.press(key);
+        await dialog.waitFor();
+        await dialog.getByRole("table", { name: t("tinv.lines"), exact: true }).waitFor();
+        expect(details - sent).toBe(1);
+        const headers = await dialog
+          .getByRole("table", { name: t("tinv.lines"), exact: true })
+          .locator("thead th")
+          .allTextContents();
+        expect(headers).toEqual([
+          detailed("tinv.detail.lineNo"),
+          t("tinv.product"),
+          t("tinv.quantity"),
+          t("tinv.unitPrice"),
+          t("tinv.discountPercent"),
+          t("tinv.net"),
+          t("tinv.tax"),
+          t("tinv.gross"),
+          detailed("tinv.detail.matchStatus"),
+        ]);
+        const totals = dialog.getByRole("region", {
+          name: detailed("tinv.detail.totals"),
+          exact: true,
+        });
+        expect(await totals.locator("dd").allTextContents()).toEqual([
+          money(10000),
+          money(1300),
+          money(11300),
+        ]);
+        const remaining = dialog.getByRole("region", {
+          name: detailed("tinv.detail.openItem"),
+          exact: true,
+        });
+        expect(await remaining.locator("dd").last().textContent()).toBe(money(3650));
+        const settled = dialog.getByRole("table", {
+          name: detailed("tinv.detail.settlements"),
+          exact: true,
+        });
+        expect(await settled.locator("tbody tr").first().locator("td").nth(2).textContent()).toBe(
+          money(5650),
+        );
+        const geometry = await dialog.evaluate((element) => ({
+          page: document.documentElement.scrollWidth - window.innerWidth,
+          dialog: element.getBoundingClientRect().width,
+          // The dialog itself never scrolls sideways: wide tables scroll inside their own wrap.
+          overflow: element.scrollWidth - element.clientWidth,
+          viewport: window.innerWidth,
+          lines: (() => {
+            const wrap = element.querySelector(".tinv-detail-lines") as HTMLElement;
+            return {
+              scroll: wrap.scrollWidth,
+              client: wrap.clientWidth,
+              width: wrap.getBoundingClientRect().width,
+            };
+          })(),
+        }));
+        console.log(`[tinv06] ${name} ${width} ${key} ${JSON.stringify(geometry)}`);
+        appendFileSync(
+          join(artifacts, `${name}-invoice-detail-geometry.json`),
+          `${JSON.stringify({ width, key, ...geometry })}\n`,
+        );
+        expect(geometry.page).toBeLessThanOrEqual(0);
+        expect(geometry.dialog).toBeLessThanOrEqual(geometry.viewport);
+        expect(geometry.overflow).toBeLessThanOrEqual(0);
+        expect(geometry.lines.width).toBeLessThanOrEqual(geometry.dialog);
+        if (width === 1440)
+          expect(geometry.lines.scroll).toBeLessThanOrEqual(geometry.lines.client);
+        return before;
+      }
+      async function closed(before: Awaited<ReturnType<typeof snapshot>>) {
+        await dialog.waitFor({ state: "detached" });
+        await expect.poll(focused).toBe(true);
+        expect(await snapshot()).toEqual(before);
+      }
+      page.on("dialog", count);
+      page.on("request", detailRequest);
+      try {
+        await trigger.waitFor();
+        // Enter opens, Esc closes.
+        let before = await open("Enter", 1440);
+        await page.screenshot({ path: join(artifacts, `${name}-invoice-detail.png`) });
+        await page.keyboard.press("Escape");
+        await closed(before);
+        // Space opens, the dialog's own Close button closes.
+        before = await open("Space", 1440);
+        await activate(
+          page,
+          dialog.getByRole("button", { name: detailed("tinv.detail.close"), exact: true }),
+        );
+        await closed(before);
+        await page.setViewportSize({ width: 390, height: 1100 });
+        try {
+          before = await open("Enter", 390);
+          await page.screenshot({ path: join(artifacts, `${name}-invoice-detail-390.png`) });
+          // Review D356: the lines' scroll region is a Tab stop inside the modal, and the
+          // keyboard scrolls it until the last column is in view; focus never leaves the dialog.
+          const region = dialog.getByRole("region", { name: t("tinv.lines"), exact: true });
+          const onRegion = () => region.evaluate((element) => element === document.activeElement);
+          for (let count = 0; count < 8 && !(await onRegion()); count++) {
+            await page.keyboard.press("Tab");
+            expect(
+              await dialog.evaluate((element) => element.contains(document.activeElement)),
+            ).toBe(true);
+          }
+          expect(await onRegion()).toBe(true);
+          for (let count = 0; count < 40; count++) {
+            const end = await region.evaluate(
+              (element) => element.scrollLeft + element.clientWidth >= element.scrollWidth - 1,
+            );
+            if (end) break;
+            await page.keyboard.press("ArrowRight");
+          }
+          const scrolled = await region.evaluate((element) => {
+            const wrap = element.getBoundingClientRect();
+            const last = (
+              element.querySelector("thead th:last-child") as HTMLElement
+            ).getBoundingClientRect();
+            return {
+              scrollLeft: element.scrollLeft,
+              max: element.scrollWidth - element.clientWidth,
+              wrap: [wrap.left, wrap.right],
+              lastColumn: [last.left, last.right],
+              focused: element === document.activeElement,
+              inDialog: (element.closest("dialog") as HTMLElement).contains(document.activeElement),
+            };
+          });
+          console.log(`[tinv06] ${name} 390 keyboard scroll ${JSON.stringify(scrolled)}`);
+          appendFileSync(
+            join(artifacts, `${name}-invoice-detail-geometry.json`),
+            `${JSON.stringify({ width: 390, keyboardScroll: scrolled })}\n`,
+          );
+          expect(scrolled.max).toBeGreaterThan(0);
+          expect(scrolled.scrollLeft).toBeGreaterThanOrEqual(scrolled.max - 1);
+          expect(scrolled.lastColumn[0]).toBeGreaterThanOrEqual(scrolled.wrap[0] - 1);
+          expect(scrolled.lastColumn[1]).toBeLessThanOrEqual(scrolled.wrap[1] + 1);
+          expect(scrolled.focused).toBe(true);
+          expect(scrolled.inDialog).toBe(true);
+          await page.screenshot({
+            path: join(artifacts, `${name}-invoice-detail-390-scrolled.png`),
+          });
+          await page.keyboard.press("Escape");
+          await closed(before);
+        } finally {
+          await page.setViewportSize({ width: 1440, height: 1100 });
+        }
+      } finally {
+        page.off("dialog", count);
+        page.off("request", detailRequest);
+      }
+      expect(details).toBe(3);
+      expect(dialogs).toBe(0);
+      expect(failures).toEqual([]);
+    }
+    // TINV-06 acceptance 9: a real Back while the detail dialog is open. A clean draft leaves the
+    // invoice page with no confirmation; a dirty draft asks exactly once per Back (the existing
+    // guardHistory gate): a cancel keeps the address, the page, the draft and the dialog; a
+    // confirmed Back reaches the previous page. The dirty draft is removed afterwards.
+    async function detailBack() {
+      const dialog = page.getByRole("dialog", {
+        name: `${detailed("tinv.detail.title")} · AP-DEMO`,
+        exact: true,
+      });
+      const trigger = page
+        .getByRole("table", { name: t("tinv.list"), exact: true })
+        .getByRole("button", { name: `${detailed("tinv.detail.open")} AP-DEMO`, exact: true });
+      let dialogs = 0;
+      let accept = false;
+      const answer = async (event: import("playwright").Dialog) => {
+        dialogs += 1;
+        expect(event.type()).toBe("confirm");
+        expect(event.message()).toBe(t("trade.leaveConfirm"));
+        await (accept ? event.accept() : event.dismiss());
+      };
+      const back = () => page.goBack({ waitUntil: "commit", timeout: 2_000 }).catch(() => null);
+      const reports = async () => {
+        await page.waitForURL((url) => url.hash === "#/trade-reports");
+        await page.waitForFunction(targetPageShown, navigateTitle(language, "trade-reports"));
+      };
+      page.on("dialog", answer);
+      try {
+        // Clean draft: Back leaves at once, the dialog unmounts with the page.
+        await navigate("trade-reports");
+        await navigate("trade-invoices");
+        await activate(page, trigger);
+        await dialog.waitFor();
+        await back();
+        await reports();
+        await page.waitForTimeout(300);
+        expect(dialogs).toBe(0);
+        expect(await dialog.count()).toBe(0);
+        // Dirty draft: one confirmation per Back.
+        await navigate("trade-invoices");
+        await type(page, page.locator("#tinv-party"), "PARTY-DETAIL");
+        await activate(page, trigger);
+        await dialog.waitFor();
+        const draft = await drafts();
+        await back();
+        await expect.poll(() => dialogs, { timeout: 10_000 }).toBe(1);
+        await page.waitForTimeout(300);
+        expect(dialogs).toBe(1);
+        expect(new URL(page.url()).hash).toBe("#/trade-invoices");
+        await page.getByRole("heading", { name: t("tinv.title"), exact: true }).waitFor();
+        expect(await dialog.isVisible()).toBe(true);
+        expect(await page.locator("#tinv-party").inputValue()).toBe("PARTY-DETAIL");
+        expect(await drafts()).toBe(draft);
+        accept = true;
+        await back();
+        await expect.poll(() => dialogs, { timeout: 10_000 }).toBe(2);
+        await reports();
+        await page.waitForTimeout(300);
+        expect(dialogs).toBe(2);
+        await page.evaluate((prefix) => {
+          for (const key of Object.keys(sessionStorage))
+            if (key.startsWith(prefix)) sessionStorage.removeItem(key);
+        }, draftPrefix);
+      } finally {
+        page.off("dialog", answer);
+      }
       expect(failures).toEqual([]);
     }
     // TINV-04 acceptance 5a: a real Back from a dirty draft asks exactly once; a cancel keeps the

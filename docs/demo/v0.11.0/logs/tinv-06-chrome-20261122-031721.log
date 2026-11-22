@@ -1,0 +1,11 @@
+## real Chrome run 2 (post-fix) 2026-11-22T03:17:21.9865000-08:00 head 236d85a ERP_E2E_BROWSER_CHANNEL=chrome
+
+ RUN  v5.1.0 C:/GithubCopilot/copilot-worktrees/ai-native-erp/lingshf-jubilant-barnacle
+
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  03:17:24
+   Duration  41.26s (tests 93%, import 6%, transform 1%)
+
+exit 0

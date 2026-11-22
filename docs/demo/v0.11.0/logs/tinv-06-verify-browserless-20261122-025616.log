@@ -1,0 +1,1875 @@
+head base 506201e + working tree TINV-06; command: npm run verify
+
+> ai-native-erp@0.1.0 verify
+> npm run check && npm run typecheck && npm run check:boundaries && npm test && npm run build
+
+
+> ai-native-erp@0.1.0 check
+> biome ci
+
+packages\core\generate-openapi.mjs:6:25 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  i Template literals are preferred over string concatenation.
+  
+    4 │ const filename = process.argv[2];
+    5 │ if (!filename) throw new Error("Usage: npm run openapi -- OUTPUT.json");
+  > 6 │ writeFileSync(filename, JSON.stringify(openApiDocument, null, 2) + "\n");
+      │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    7 │ 
+  
+  i Template literals are easier to read than a chain of + operators and quotes, and they avoid mistakes with spaces and escaped quotes.
+  
+  i Unsafe fix: Use a template literal.
+  
+    4 4 │   const filename = process.argv[2];
+    5 5 │   if (!filename) throw new Error("Usage: npm run openapi -- OUTPUT.json");
+    6   │ - writeFileSync(filename,·JSON.stringify(openApiDocument,·null,·2)·+·"\n");
+      6 │ + writeFileSync(filename,·`${JSON.stringify(openApiDocument,·null,·2)}\n`);
+    7 7 │   
+  
+
+packages\core\test\application\legacy-query.test.ts:90:63 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━
+
+  i Template literals are preferred over string concatenation.
+  
+    88 │ test("malformed or stale snapshot identities reject before the reader is called", () => {
+    89 │   const { calls, service, reader } = fixture();
+  > 90 │   for (const snapshot of ["", "A".repeat(64), "a".repeat(63), "a".repeat(64) + "\n"]) {
+       │                                                               ^^^^^^^^^^^^^^^^^^^^^
+    91 │     assert.throws(
+    92 │       () => service.trial(snapshot, "2026-01"),
+  
+  i Template literals are easier to read than a chain of + operators and quotes, and they avoid mistakes with spaces and escaped quotes.
+  
+  i Unsafe fix: Use a template literal.
+  
+     88  88 │   test("malformed or stale snapshot identities reject before the reader is called", () => {
+     89  89 │     const { calls, service, reader } = fixture();
+     90     │ - ··for·(const·snapshot·of·["",·"A".repeat(64),·"a".repeat(63),·"a".repeat(64)·+·"\n"])·{
+         90 │ + ··for·(const·snapshot·of·["",·"A".repeat(64),·"a".repeat(63),·`${"a".repeat(64)}\n`])·{
+     91  91 │       assert.throws(
+     92  92 │         () => service.trial(snapshot, "2026-01"),
+  
+
+packages\infra\test\legacy-snapshot-diagnostics.test.ts:25:26 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━
+
+  i Template literals are preferred over string concatenation.
+  
+    23 │         fs.writeFileSync(f.snapshot, bytes);
+    24 │       } else if (check === "sidecar") {
+  > 25 │         fs.writeFileSync(f.snapshot + "-wal", "independent test sidecar");
+       │                          ^^^^^^^^^^^^^^^^^^^
+    26 │       }
+    27 │       const before = captureDirectory(f.directory, { mtime: true });
+  
+  i Template literals are easier to read than a chain of + operators and quotes, and they avoid mistakes with spaces and escaped quotes.
+  
+  i Unsafe fix: Use a template literal.
+  
+    23 23 │           fs.writeFileSync(f.snapshot, bytes);
+    24 24 │         } else if (check === "sidecar") {
+    25    │ - ········fs.writeFileSync(f.snapshot·+·"-wal",·"independent·test·sidecar");
+       25 │ + ········fs.writeFileSync(`${f.snapshot}-wal`,·"independent·test·sidecar");
+    26 26 │         }
+    27 27 │         const before = captureDirectory(f.directory, { mtime: true });
+  
+
+packages\infra\test\legacy-teaching.test.ts:202:5 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  i Template literals are preferred over string concatenation.
+  
+    200 │     "!",
+    201 │     "x".repeat(1025),
+  > 202 │     first.nextCursor + "=",
+        │     ^^^^^^^^^^^^^^^^^^^^^^
+    203 │     Buffer.from(JSON.stringify({ ...parsed, lineId: 999999 })).toString("base64url"),
+    204 │     Buffer.from(JSON.stringify({ ...parsed, extra: true })).toString("base64url"),
+  
+  i Template literals are easier to read than a chain of + operators and quotes, and they avoid mistakes with spaces and escaped quotes.
+  
+  i Unsafe fix: Use a template literal.
+  
+    200 200 │       "!",
+    201 201 │       "x".repeat(1025),
+    202     │ - ····first.nextCursor·+·"=",
+        202 │ + ····`${first.nextCursor}=`,
+    203 203 │       Buffer.from(JSON.stringify({ ...parsed, lineId: 999999 })).toString("base64url"),
+    204 204 │       Buffer.from(JSON.stringify({ ...parsed, extra: true })).toString("base64url"),
+  
+
+scripts\legacy-snapshot-verifier.mjs:12:31 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━
+
+  i Template literals are preferred over string concatenation.
+  
+    10 │ const jsonHash = (value) => hash(JSON.stringify(value));
+    11 │ const filenames = { teaching: "teaching.sqlite", enterprise: "erp.sqlite" };
+  > 12 │ const quote = (identifier) => '"' + identifier.replaceAll('"', '""') + '"';
+       │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    13 │ const fail = (message) => {
+    14 │   const error = new Error(message);
+  
+  i Template literals are easier to read than a chain of + operators and quotes, and they avoid mistakes with spaces and escaped quotes.
+  
+  i Unsafe fix: Use a template literal.
+  
+     10  10 │   const jsonHash = (value) => hash(JSON.stringify(value));
+     11  11 │   const filenames = { teaching: "teaching.sqlite", enterprise: "erp.sqlite" };
+     12     │ - const·quote·=·(identifier)·=>·'"'·+·identifier.replaceAll('"',·'""')·+·'"';
+         12 │ + const·quote·=·(identifier)·=>·`"${identifier.replaceAll('"',·'""')}"`;
+     13  13 │   const fail = (message) => {
+     14  14 │     const error = new Error(message);
+  
+
+scripts\preview-legacy-snapshot.mjs:91:24 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  i Template literals are preferred over string concatenation.
+  
+    89 │         ? error.name
+    90 │         : "StartupError";
+  > 91 │   runtime.stderr.write(JSON.stringify({ requestId: randomUUID(), errorType }) + "\n");
+       │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    92 │   runtime.exitCode = 1;
+    93 │ }
+  
+  i Template literals are easier to read than a chain of + operators and quotes, and they avoid mistakes with spaces and escaped quotes.
+  
+  i Unsafe fix: Use a template literal.
+  
+     89  89 │           ? error.name
+     90  90 │           : "StartupError";
+     91     │ - ··runtime.stderr.write(JSON.stringify({·requestId:·randomUUID(),·errorType·})·+·"\n");
+         91 │ + ··runtime.stderr.write(`${JSON.stringify({·requestId:·randomUUID(),·errorType·})}\n`);
+     92  92 │     runtime.exitCode = 1;
+     93  93 │   }
+  
+
+scripts\read-legacy-ledger.mjs:123:5 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  i Template literals are preferred over string concatenation.
+  
+    121 │     : { code: "STORAGE_FAILURE", message: "The storage operation failed." };
+    122 │   process.stderr.write(
+  > 123 │     JSON.stringify({ error: { code: failure.code, message: failure.message } }) + "\n",
+        │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    124 │   );
+    125 │   process.exitCode = 1;
+  
+  i Template literals are easier to read than a chain of + operators and quotes, and they avoid mistakes with spaces and escaped quotes.
+  
+  i Unsafe fix: Use a template literal.
+  
+    121 121 │       : { code: "STORAGE_FAILURE", message: "The storage operation failed." };
+    122 122 │     process.stderr.write(
+    123     │ - ····JSON.stringify({·error:·{·code:·failure.code,·message:·failure.message·}·})·+·"\n",
+        123 │ + ····`${JSON.stringify({·error:·{·code:·failure.code,·message:·failure.message·}·})}\n`,
+    124 124 │     );
+    125 125 │     process.exitCode = 1;
+  
+
+packages\core\src\application\business-events.ts:257:9 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━
+
+  ! Change to an optional chain.
+  
+    255 │     const owner = required(await repo.company(company));
+    256 │     const period = await repo.period(company, event.date.slice(0, 7));
+  > 257 │     if (!period || period.status !== "open") journalError("date", "period");
+        │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    258 │     if (event.operation === "journal") {
+    259 │       const current = await this.journals.plan(repo, company, event);
+  
+  i An optional chain is shorter, and it avoids repeating the same expression in each check.
+  
+  i Unsafe fix: Change to an optional chain.
+  
+    255 255 │       const owner = required(await repo.company(company));
+    256 256 │       const period = await repo.period(company, event.date.slice(0, 7));
+    257     │ - ····if·(!period·||·period.status·!==·"open")·journalError("date",·"period");
+        257 │ + ····if·(period?.status·!==·"open")·journalError("date",·"period");
+    258 258 │       if (event.operation === "journal") {
+    259 259 │         const current = await this.journals.plan(repo, company, event);
+  
+
+packages\core\src\domain\business-events.ts:117:69 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    115 │               objectScope === "all" ? "*" : objectScope === "exact" ? service.code : service.group,
+    116 │               partyScope,
+  > 117 │               partyScope === "all" ? "*" : partyScope === "exact" ? party!.code : party!.group,
+        │                                                                     ^^^^^^
+    118 │             ),
+    119 │           );
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    115 115 │                 objectScope === "all" ? "*" : objectScope === "exact" ? service.code : service.group,
+    116 116 │                 partyScope,
+    117     │ - ··············partyScope·===·"all"·?·"*"·:·partyScope·===·"exact"·?·party!.code·:·party!.group,
+        117 │ + ··············partyScope·===·"all"·?·"*"·:·partyScope·===·"exact"·?·party?.code·:·party!.group,
+    118 118 │               ),
+    119 119 │             );
+  
+
+packages\core\src\domain\business-events.ts:117:83 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    115 │               objectScope === "all" ? "*" : objectScope === "exact" ? service.code : service.group,
+    116 │               partyScope,
+  > 117 │               partyScope === "all" ? "*" : partyScope === "exact" ? party!.code : party!.group,
+        │                                                                                   ^^^^^^
+    118 │             ),
+    119 │           );
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    115 115 │                 objectScope === "all" ? "*" : objectScope === "exact" ? service.code : service.group,
+    116 116 │                 partyScope,
+    117     │ - ··············partyScope·===·"all"·?·"*"·:·partyScope·===·"exact"·?·party!.code·:·party!.group,
+        117 │ + ··············partyScope·===·"all"·?·"*"·:·partyScope·===·"exact"·?·party!.code·:·party?.group,
+    118 118 │               ),
+    119 119 │             );
+  
+
+packages\core\src\domain\journals.ts:394:26 lint/complexity/useMathMinMax  FIXABLE  ━━━━━━━━━━━━━━━━
+
+  ! This ternary is selecting the larger of the same two operands, which can be simplified.
+  
+    392 │     if (active.get(original.id)) journalError("originalId", "correction", true);
+    393 │     const latestDate = corrections.reduce(
+  > 394 │       (latest, edge) => (edge.date > latest ? edge.date : latest),
+        │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    395 │       original.date,
+    396 │     );
+  
+  i Dedicated min/max functions like Math.max() are clearer and more concise for this purpose.
+  
+  i Unsafe fix: Use Math.max() instead.
+  
+    392 392 │       if (active.get(original.id)) journalError("originalId", "correction", true);
+    393 393 │       const latestDate = corrections.reduce(
+    394     │ - ······(latest,·edge)·=>·(edge.date·>·latest·?·edge.date·:·latest),
+        394 │ + ······(latest,·edge)·=>·(Math.max(edge.date·,·latest)),
+    395 395 │         original.date,
+    396 396 │       );
+  
+
+packages\infra\bench\journals.ts:51:23 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    49 │     let initialGlRows: number;
+    50 │     try {
+  > 51 │       initialGlRows = db
+       │                       ^^
+  > 52 │         .prepare<[], { n: number }>(
+  > 53 │           "SELECT count(*) AS n FROM journal_lines WHERE company_id='DEFAULT'",
+  > 54 │         )
+  > 55 │         .get()!.n;
+       │         ^^^^^^^
+    56 │     } finally {
+    57 │       db.close();
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+     53  53 │             "SELECT count(*) AS n FROM journal_lines WHERE company_id='DEFAULT'",
+     54  54 │           )
+     55     │ - ········.get()!.n;
+         55 │ + ········.get()?.n;
+     56  56 │       } finally {
+     57  57 │         db.close();
+  
+
+packages\infra\bench\journals.ts:155:21 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    153 │     let finalGlRows: number;
+    154 │     try {
+  > 155 │       finalGlRows = verification
+        │                     ^^^^^^^^^^^^
+  > 156 │         .prepare<[], { n: number }>(
+  > 157 │           "SELECT count(*) AS n FROM journal_lines WHERE company_id='DEFAULT'",
+  > 158 │         )
+  > 159 │         .get()!.n;
+        │         ^^^^^^^
+    160 │       if (finalGlRows - initialGlRows !== 11_000)
+    161 │         throw new Error("Journal benchmark did not persist every measured posting");
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    157 157 │             "SELECT count(*) AS n FROM journal_lines WHERE company_id='DEFAULT'",
+    158 158 │           )
+    159     │ - ········.get()!.n;
+        159 │ + ········.get()?.n;
+    160 160 │         if (finalGlRows - initialGlRows !== 11_000)
+    161 161 │           throw new Error("Journal benchmark did not persist every measured posting");
+  
+
+packages\infra\src\http\errors.ts:90:40 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    88 │   // Unsupported framework statuses still use a documented, strict error DTO.
+    89 │   if (status >= 400 && status < 500 && !(status in errors)) status = 400;
+  > 90 │   const definition = errors[status] ?? errors[500]!;
+       │                                        ^^^^^^^^^^^^
+    91 │   if (!(status in errors)) status = 500;
+    92 │   const requestId = request.id || randomUUID();
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\infra\test\application\business-events.test.ts:201:23 lint/style/noNonNullAssertion ━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    199 │       ["5000", 500, 0],
+    200 │     ]);
+  > 201 │     const strongest = (await events.rules("A", { limit: 100 })).items.find(
+        │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  > 202 │       (rule) => rule.code === "RECEIVE_CASH",
+  > 203 │     )!;
+        │     ^^
+    204 │     const dimensions = new DimensionService(store);
+    205 │     const common = { active: true, revision: 0, from: "2026-01-01", to: "2026-12-31" };
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\infra\test\application\business-events.test.ts:225:23 lint/style/noNonNullAssertion ━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    223 │     ] as const) {
+    224 │       service = await events.saveMaster("A", "service", { ...service, dimensions: serviceMap });
+  > 225 │       const current = (await events.rules("A", { limit: 100 })).items.find(
+        │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  > 226 │         (rule) => rule.code === strongest.code,
+  > 227 │       )!;
+        │       ^^
+    228 │       await events.saveRule("A", { ...current, dimensions: ruleMap });
+    229 │       const preview = await events.preview("A", cash({ party: "P", dimensions: eventMap }));
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\infra\test\application\business-events.test.ts:376:78 lint/style/noNonNullAssertion ━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    374 │     expect(open.items).toHaveLength(1);
+    375 │     expect(
+  > 376 │       (await events.openItems("A", "1280", "2026-01-15", { limit: 1, cursor: open.nextCursor! }))
+        │                                                                              ^^^^^^^^^^^^^^^^
+    377 │         .items[0].entryId,
+    378 │     ).not.toBe(open.items[0].entryId);
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\infra\test\application\business-events.test.ts:494:63 lint/style/noNonNullAssertion ━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    492 │     const page = await events.queue("A", "pending", { limit: 1 });
+    493 │     expect(
+  > 494 │       (await events.queue("A", "pending", { limit: 1, cursor: page.nextCursor! })).items[0].id,
+        │                                                               ^^^^^^^^^^^^^^^^
+    495 │     ).not.toBe(page.items[0].id);
+    496 │   });
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\infra\test\application\reports.test.ts:284:64 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    282 │   ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+    283 │   await expect(
+  > 284 │     reports.ledger("A", "4000", "2026-02", { limit: 1, cursor: first.nextCursor! }),
+        │                                                                ^^^^^^^^^^^^^^^^^
+    285 │   ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+    286 │   await expect(
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\infra\test\application\reports.test.ts:278:15 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    276 │     reports.ledger("A", "1000", "2026-02", {
+    277 │       limit: 1,
+  > 278 │       cursor: first.nextCursor!,
+        │               ^^^^^^^^^^^^^^^^^
+    279 │       watermark: source.watermark,
+    280 │       accountRevision: source.accountRevision,
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\infra\test\application\reports.test.ts:290:15 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    288 │       limit: 1,
+    289 │       stage: "unadjusted",
+  > 290 │       cursor: first.nextCursor!,
+        │               ^^^^^^^^^^^^^^^^^
+    291 │     }),
+    292 │   ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\infra\test\http\business-events.test.ts:47:7 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    45 │     const base = await api.listen();
+    46 │     const post = (path: string, payload: unknown) =>
+  > 47 │       api!.app.inject({ method: "POST", url: `${base}/api/v1/${path}`, payload });
+       │       ^^^^
+    48 │     const service = {
+    49 │       code: "S",
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+     45  45 │       const base = await api.listen();
+     46  46 │       const post = (path: string, payload: unknown) =>
+     47     │ - ······api!.app.inject({·method:·"POST",·url:·`${base}/api/v1/${path}`,·payload·});
+         47 │ + ······api?.app.inject({·method:·"POST",·url:·`${base}/api/v1/${path}`,·payload·});
+     48  48 │       const service = {
+     49  49 │         code: "S",
+  
+
+packages\infra\test\http\journals.test.ts:166:7 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    164 │     const base = await api.listen();
+    165 │     const post = (path: string, payload: unknown) =>
+  > 166 │       api!.app.inject({ method: "POST", url: `${base}/api/v1/journals/${path}`, payload });
+        │       ^^^^
+    167 │     const draft = journalDraftSchema.parse({
+    168 │       id: randomUUID(),
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    164 164 │       const base = await api.listen();
+    165 165 │       const post = (path: string, payload: unknown) =>
+    166     │ - ······api!.app.inject({·method:·"POST",·url:·`${base}/api/v1/journals/${path}`,·payload·});
+        166 │ + ······api?.app.inject({·method:·"POST",·url:·`${base}/api/v1/journals/${path}`,·payload·});
+    167 167 │       const draft = journalDraftSchema.parse({
+    168 168 │         id: randomUUID(),
+  
+
+packages\web\src\Reports.tsx:112:49 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    110 │   const source = context.data?.source;
+    111 │   const periods = context.data?.periods ?? [];
+  > 112 │   const selectedSource = params.has("source") ? params.get("source")! : source?.snapshotSha256;
+        │                                                 ^^^^^^^^^^^^^^^^^^^^^
+    113 │   const month = params.has("month") ? params.get("month")! : periods.at(-1)?.month;
+    114 │   const stage = params.get("stage") ?? "adjusted";
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\src\Reports.tsx:113:39 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    111 │   const periods = context.data?.periods ?? [];
+    112 │   const selectedSource = params.has("source") ? params.get("source")! : source?.snapshotSha256;
+  > 113 │   const month = params.has("month") ? params.get("month")! : periods.at(-1)?.month;
+        │                                       ^^^^^^^^^^^^^^^^^^^^
+    114 │   const stage = params.get("stage") ?? "adjusted";
+    115 │   const invalid =
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\src\Reports.tsx:263:63 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    261 │           search={search}
+    262 │           onStage={(next) =>
+  > 263 │             setParams({ source: source.snapshotSha256, month: month!, stage: next })
+        │                                                               ^^^^^^
+    264 │           }
+    265 │           reload={() => {
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\src\reports-data.ts:46:52 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    44 │   if (!parsed.success) return invalid();
+    45 │   const { periods } = parsed.data;
+  > 46 │   if (periods.some((period, index) => index > 0 && periods[index - 1]!.month >= period.month))
+       │                                                    ^^^^^^^^^^^^^^^^^^^
+    47 │     return invalid();
+    48 │   return parsed.data;
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+     44  44 │     if (!parsed.success) return invalid();
+     45  45 │     const { periods } = parsed.data;
+     46     │ - ··if·(periods.some((period,·index)·=>·index·>·0·&&·periods[index·-·1]!.month·>=·period.month))
+         46 │ + ··if·(periods.some((period,·index)·=>·index·>·0·&&·periods[index·-·1]?.month·>=·period.month))
+     47  47 │       return invalid();
+     48  48 │     return parsed.data;
+  
+
+packages\web\src\theme\base.css:60:29 lint/complexity/noImportantStyles  FIXABLE  ━━━━━━━━━━━━━━━━━━
+
+  ! Avoid the use of the !important style.
+  
+    58 │ @media (prefers-reduced-motion: reduce) {
+    59 │   * {
+  > 60 │     transition-duration: 0s !important;
+       │                             ^^^^^^^^^^
+    61 │     animation-duration: 0s !important;
+    62 │   }
+  
+  i This style reverses the cascade logic, and precedence is reversed. This could lead to having styles with higher specificity being overridden by styles with lower specificity.
+  
+  i Unsafe fix: Remove the style.
+  
+    60 │ ····transition-duration:·0s·!important;
+       │                            ----------- 
+
+packages\web\src\theme\base.css:61:28 lint/complexity/noImportantStyles  FIXABLE  ━━━━━━━━━━━━━━━━━━
+
+  ! Avoid the use of the !important style.
+  
+    59 │   * {
+    60 │     transition-duration: 0s !important;
+  > 61 │     animation-duration: 0s !important;
+       │                            ^^^^^^^^^^
+    62 │   }
+    63 │ }
+  
+  i This style reverses the cascade logic, and precedence is reversed. This could lead to having styles with higher specificity being overridden by styles with lower specificity.
+  
+  i Unsafe fix: Remove the style.
+  
+    61 │ ····animation-duration:·0s·!important;
+       │                           ----------- 
+
+packages\web\src\theme\shell.css:289:3 lint/style/noDescendingSpecificity ━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Descending specificity selector found. This selector specificity is (0, 1, 1)
+  
+    287 │     margin: 0;
+    288 │   }
+  > 289 │   .nav-group > span {
+        │   ^^^^^^^^^^^^^^^^^
+    290 │     display: none;
+    291 │   }
+  
+  i This selector specificity is (0, 2, 1)
+  
+    256 │   .appbar h1,
+    257 │   .appbar-prefs label:not(.checkbox-label),
+  > 258 │   .appbar-prefs .checkbox-label > span {
+        │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    259 │     position: absolute;
+    260 │     width: 1px;
+  
+  i Descending specificity selector may not be applied. Consider rearranging the order of the selectors. See MDN web docs for more details.
+  
+
+packages\web\test\App.test.tsx:35:10 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    34 │ function languageSelect(): HTMLSelectElement {
+  > 35 │   return document.querySelector<HTMLSelectElement>("#workspace-language")!;
+       │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    36 │ }
+    37 │ 
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\App.test.tsx:39:10 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    38 │ function themeSelect(): HTMLSelectElement {
+  > 39 │   return document.querySelector<HTMLSelectElement>("#workspace-theme")!;
+       │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    40 │ }
+    41 │ 
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\App.test.tsx:43:10 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    42 │ function teachingCheckbox(): HTMLInputElement {
+  > 43 │   return document.querySelector<HTMLInputElement>("#workspace-teaching")!;
+       │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    44 │ }
+    45 │ 
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\App.test.tsx:181:23 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    179 │     expect(fetchMock).toHaveBeenCalledTimes(1);
+    180 │     expect(fetchMock.mock.calls[0]?.[1]?.signal?.aborted).toBe(false);
+  > 181 │     expect(JSON.parse(window.localStorage.getItem(preferenceStorageKey)!)).toEqual({
+        │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    182 │       language: "en",
+    183 │       theme: "green",
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\App.test.tsx:198:23 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    196 │     expect(screen.getByText(label("zh", "shell.connected"))).toBeTruthy();
+    197 │     expect(fetchMock).toHaveBeenCalledTimes(1);
+  > 198 │     expect(JSON.parse(window.localStorage.getItem(preferenceStorageKey)!)).toEqual({
+        │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    199 │       language: "zh",
+    200 │       theme: "red",
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\App.test.tsx:335:23 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    333 │     fireEvent.change(themeSelect(), { target: { value: "green" } });
+    334 │     expect(themeSelect().value).toBe("green");
+  > 335 │     expect(JSON.parse(window.localStorage.getItem(preferenceStorageKey)!)).toEqual({
+        │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    336 │       language: "en",
+    337 │       theme: "green",
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\business-events.test.tsx:186:21 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    184 │         };
+    185 │         return response({
+  > 186 │           ...result(event!, id),
+        │                     ^^^^^^
+    187 │           event: source,
+    188 │           status: "withdrawn",
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\business-events.test.tsx:191:23 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    189 │           journalIds: [],
+    190 │           receipt: {
+  > 191 │             ...result(event!, id).receipt,
+        │                       ^^^^^^
+    192 │             draftId: id,
+    193 │             draftRevision: 1,
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\journals.test.tsx:368:17 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    366 │           id: saved!.id,
+    367 │           sourceRef: saved!.sourceRef,
+  > 368 │           date: saved!.date,
+        │                 ^^^^^^
+    369 │           documentDate: saved.documentDate ?? saved.date,
+    370 │           taxDate: saved.taxDate ?? saved.date,
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    366 366 │             id: saved!.id,
+    367 367 │             sourceRef: saved!.sourceRef,
+    368     │ - ··········date:·saved!.date,
+        368 │ + ··········date:·saved?.date,
+    369 369 │             documentDate: saved.documentDate ?? saved.date,
+    370 370 │             taxDate: saved.taxDate ?? saved.date,
+  
+
+packages\web\test\journals.test.tsx:123:24 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    121 │     render(<App />);
+    122 │     if (language === "en")
+  > 123 │       fireEvent.change(document.querySelector("#workspace-language")!, { target: { value: "en" } });
+        │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    124 │     await screen.findByText(empty);
+    125 │     expect(screen.queryByText(label(language, "master.empty"))).toBeNull();
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\journals.test.tsx:290:25 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    288 │               ? [
+    289 │                   {
+  > 290 │                     id: saved!.id,
+        │                         ^^^^^^
+    291 │                     date: saved!.date,
+    292 │                     sourceRef: saved!.sourceRef,
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    288 288 │                 ? [
+    289 289 │                     {
+    290     │ - ····················id:·saved!.id,
+        290 │ + ····················id:·saved?.id,
+    291 291 │                       date: saved!.date,
+    292 292 │                       sourceRef: saved!.sourceRef,
+  
+
+packages\web\test\journals.test.tsx:291:27 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    289 │                   {
+    290 │                     id: saved!.id,
+  > 291 │                     date: saved!.date,
+        │                           ^^^^^^
+    292 │                     sourceRef: saved!.sourceRef,
+    293 │                     memo: saved!.memo,
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    289 289 │                     {
+    290 290 │                       id: saved!.id,
+    291     │ - ····················date:·saved!.date,
+        291 │ + ····················date:·saved?.date,
+    292 292 │                       sourceRef: saved!.sourceRef,
+    293 293 │                       memo: saved!.memo,
+  
+
+packages\web\test\journals.test.tsx:292:32 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    290 │                     id: saved!.id,
+    291 │                     date: saved!.date,
+  > 292 │                     sourceRef: saved!.sourceRef,
+        │                                ^^^^^^
+    293 │                     memo: saved!.memo,
+    294 │                     operation: "journal",
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    290 290 │                       id: saved!.id,
+    291 291 │                       date: saved!.date,
+    292     │ - ····················sourceRef:·saved!.sourceRef,
+        292 │ + ····················sourceRef:·saved?.sourceRef,
+    293 293 │                       memo: saved!.memo,
+    294 294 │                       operation: "journal",
+  
+
+packages\web\test\journals.test.tsx:293:27 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    291 │                     date: saved!.date,
+    292 │                     sourceRef: saved!.sourceRef,
+  > 293 │                     memo: saved!.memo,
+        │                           ^^^^^^
+    294 │                     operation: "journal",
+    295 │                     revision: null,
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    291 291 │                       date: saved!.date,
+    292 292 │                       sourceRef: saved!.sourceRef,
+    293     │ - ····················memo:·saved!.memo,
+        293 │ + ····················memo:·saved?.memo,
+    294 294 │                       operation: "journal",
+    295 295 │                       revision: null,
+  
+
+packages\web\test\journals.test.tsx:307:35 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    305 │           return response({
+    306 │             event: saved,
+  > 307 │             preview: { ...preview(saved!), matches: [], statistics: null, clearing: [] },
+        │                                   ^^^^^^
+    308 │             receipt: {
+    309 │               company: "DEFAULT",
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\journals.test.tsx:310:26 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    308 │             receipt: {
+    309 │               company: "DEFAULT",
+  > 310 │               sourceRef: saved!.sourceRef,
+        │                          ^^^^^^
+    311 │               idempotencyKey: body.idempotencyKey,
+    312 │               draftId: saved!.id,
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    308 308 │               receipt: {
+    309 309 │                 company: "DEFAULT",
+    310     │ - ··············sourceRef:·saved!.sourceRef,
+        310 │ + ··············sourceRef:·saved?.sourceRef,
+    311 311 │                 idempotencyKey: body.idempotencyKey,
+    312 312 │                 draftId: saved!.id,
+  
+
+packages\web\test\journals.test.tsx:312:24 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    310 │               sourceRef: saved!.sourceRef,
+    311 │               idempotencyKey: body.idempotencyKey,
+  > 312 │               draftId: saved!.id,
+        │                        ^^^^^^
+    313 │               draftRevision: saved!.revision,
+    314 │               fingerprint: body.fingerprint,
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    310 310 │                 sourceRef: saved!.sourceRef,
+    311 311 │                 idempotencyKey: body.idempotencyKey,
+    312     │ - ··············draftId:·saved!.id,
+        312 │ + ··············draftId:·saved?.id,
+    313 313 │                 draftRevision: saved!.revision,
+    314 314 │                 fingerprint: body.fingerprint,
+  
+
+packages\web\test\journals.test.tsx:313:30 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    311 │               idempotencyKey: body.idempotencyKey,
+    312 │               draftId: saved!.id,
+  > 313 │               draftRevision: saved!.revision,
+        │                              ^^^^^^
+    314 │               fingerprint: body.fingerprint,
+    315 │               operation: "journal",
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    311 311 │                 idempotencyKey: body.idempotencyKey,
+    312 312 │                 draftId: saved!.id,
+    313     │ - ··············draftRevision:·saved!.revision,
+        313 │ + ··············draftRevision:·saved?.revision,
+    314 314 │                 fingerprint: body.fingerprint,
+    315 315 │                 operation: "journal",
+  
+
+packages\web\test\journals.test.tsx:323:19 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    321 │             journalIds: [],
+    322 │             queue: {
+  > 323 │               id: saved!.id,
+        │                   ^^^^^^
+    324 │               sourceRef: saved!.sourceRef,
+    325 │               date: saved!.date,
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    321 321 │               journalIds: [],
+    322 322 │               queue: {
+    323     │ - ··············id:·saved!.id,
+        323 │ + ··············id:·saved?.id,
+    324 324 │                 sourceRef: saved!.sourceRef,
+    325 325 │                 date: saved!.date,
+  
+
+packages\web\test\journals.test.tsx:324:26 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    322 │             queue: {
+    323 │               id: saved!.id,
+  > 324 │               sourceRef: saved!.sourceRef,
+        │                          ^^^^^^
+    325 │               date: saved!.date,
+    326 │               memo: saved!.memo,
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    322 322 │               queue: {
+    323 323 │                 id: saved!.id,
+    324     │ - ··············sourceRef:·saved!.sourceRef,
+        324 │ + ··············sourceRef:·saved?.sourceRef,
+    325 325 │                 date: saved!.date,
+    326 326 │                 memo: saved!.memo,
+  
+
+packages\web\test\journals.test.tsx:325:21 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    323 │               id: saved!.id,
+    324 │               sourceRef: saved!.sourceRef,
+  > 325 │               date: saved!.date,
+        │                     ^^^^^^
+    326 │               memo: saved!.memo,
+    327 │               status: "pending",
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    323 323 │                 id: saved!.id,
+    324 324 │                 sourceRef: saved!.sourceRef,
+    325     │ - ··············date:·saved!.date,
+        325 │ + ··············date:·saved?.date,
+    326 326 │                 memo: saved!.memo,
+    327 327 │                 status: "pending",
+  
+
+packages\web\test\journals.test.tsx:326:21 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    324 │               sourceRef: saved!.sourceRef,
+    325 │               date: saved!.date,
+  > 326 │               memo: saved!.memo,
+        │                     ^^^^^^
+    327 │               status: "pending",
+    328 │               createdAt: "2026-01-15T10:00:00.000Z",
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    324 324 │                 sourceRef: saved!.sourceRef,
+    325 325 │                 date: saved!.date,
+    326     │ - ··············memo:·saved!.memo,
+        326 │ + ··············memo:·saved?.memo,
+    327 327 │                 status: "pending",
+    328 328 │                 createdAt: "2026-01-15T10:00:00.000Z",
+  
+
+packages\web\test\journals.test.tsx:348:24 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    346 │           return response({
+    347 │             company: "DEFAULT",
+  > 348 │             sourceRef: saved!.sourceRef,
+        │                        ^^^^^^
+    349 │             idempotencyKey: body.idempotencyKey,
+    350 │             draftId: saved!.id,
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    346 346 │             return response({
+    347 347 │               company: "DEFAULT",
+    348     │ - ············sourceRef:·saved!.sourceRef,
+        348 │ + ············sourceRef:·saved?.sourceRef,
+    349 349 │               idempotencyKey: body.idempotencyKey,
+    350 350 │               draftId: saved!.id,
+  
+
+packages\web\test\journals.test.tsx:350:22 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    348 │             sourceRef: saved!.sourceRef,
+    349 │             idempotencyKey: body.idempotencyKey,
+  > 350 │             draftId: saved!.id,
+        │                      ^^^^^^
+    351 │             draftRevision: saved!.revision,
+    352 │             fingerprint: body.fingerprint,
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    348 348 │               sourceRef: saved!.sourceRef,
+    349 349 │               idempotencyKey: body.idempotencyKey,
+    350     │ - ············draftId:·saved!.id,
+        350 │ + ············draftId:·saved?.id,
+    351 351 │               draftRevision: saved!.revision,
+    352 352 │               fingerprint: body.fingerprint,
+  
+
+packages\web\test\journals.test.tsx:351:28 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    349 │             idempotencyKey: body.idempotencyKey,
+    350 │             draftId: saved!.id,
+  > 351 │             draftRevision: saved!.revision,
+        │                            ^^^^^^
+    352 │             fingerprint: body.fingerprint,
+    353 │             operation: "journal",
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    349 349 │               idempotencyKey: body.idempotencyKey,
+    350 350 │               draftId: saved!.id,
+    351     │ - ············draftRevision:·saved!.revision,
+        351 │ + ············draftRevision:·saved?.revision,
+    352 352 │               fingerprint: body.fingerprint,
+    353 353 │               operation: "journal",
+  
+
+packages\web\test\journals.test.tsx:354:26 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    352 │             fingerprint: body.fingerprint,
+    353 │             operation: "journal",
+  > 354 │             journalIds: [saved!.id],
+        │                          ^^^^^^
+    355 │             postedAt: "2026-01-15T10:00:00.000Z",
+    356 │           });
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    352 352 │               fingerprint: body.fingerprint,
+    353 353 │               operation: "journal",
+    354     │ - ············journalIds:·[saved!.id],
+        354 │ + ············journalIds:·[saved?.id],
+    355 355 │               postedAt: "2026-01-15T10:00:00.000Z",
+    356 356 │             });
+  
+
+packages\web\test\journals.test.tsx:365:22 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    363 │         if (!saved) throw new Error("Missing saved mock journal");
+    364 │         const entry: JournalEntryDto = {
+  > 365 │           ...preview(saved!).plan.journals[0],
+        │                      ^^^^^^
+    366 │           id: saved!.id,
+    367 │           sourceRef: saved!.sourceRef,
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\journals.test.tsx:366:15 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    364 │         const entry: JournalEntryDto = {
+    365 │           ...preview(saved!).plan.journals[0],
+  > 366 │           id: saved!.id,
+        │               ^^^^^^
+    367 │           sourceRef: saved!.sourceRef,
+    368 │           date: saved!.date,
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    364 364 │           const entry: JournalEntryDto = {
+    365 365 │             ...preview(saved!).plan.journals[0],
+    366     │ - ··········id:·saved!.id,
+        366 │ + ··········id:·saved?.id,
+    367 367 │             sourceRef: saved!.sourceRef,
+    368 368 │             date: saved!.date,
+  
+
+packages\web\test\journals.test.tsx:367:22 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    365 │           ...preview(saved!).plan.journals[0],
+    366 │           id: saved!.id,
+  > 367 │           sourceRef: saved!.sourceRef,
+        │                      ^^^^^^
+    368 │           date: saved!.date,
+    369 │           documentDate: saved.documentDate ?? saved.date,
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    365 365 │             ...preview(saved!).plan.journals[0],
+    366 366 │             id: saved!.id,
+    367     │ - ··········sourceRef:·saved!.sourceRef,
+        367 │ + ··········sourceRef:·saved?.sourceRef,
+    368 368 │             date: saved!.date,
+    369 369 │             documentDate: saved.documentDate ?? saved.date,
+  
+
+packages\web\test\ledger-reports.test.tsx:391:19 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    389 │   latestWatermark = 2;
+    390 │   const table = await screen.findByRole("table", { name: "试算平衡" });
+  > 391 │   fireEvent.click(within(table).getAllByRole("link", { name: "130.00" }).at(-1)!);
+        │                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    392 │   await screen.findByRole("link", { name: "SYNTHETIC-1 / 1" });
+    393 │   expect(requests.find((path) => path.startsWith("/api/v1/ledger?"))).toContain("stage=unadjusted");
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\overview-shared-ui.test.tsx:79:11 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    77 │   await act(async () => {
+    78 │     gate.current!.reject(new Error("Unable to preload CSS"));
+  > 79 │     await gate.current!.promise.catch(() => undefined);
+       │           ^^^^^^^^^^^^^
+    80 │   });
+    81 │   const exposed = within(page);
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    77 77 │     await act(async () => {
+    78 78 │       gate.current!.reject(new Error("Unable to preload CSS"));
+    79    │ - ····await·gate.current!.promise.catch(()·=>·undefined);
+       79 │ + ····await·gate.current?.promise.catch(()·=>·undefined);
+    80 80 │     });
+    81 81 │     const exposed = within(page);
+  
+
+packages\web\test\overview-shared-ui.test.tsx:78:5 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    76 │   const { page, status } = await renderPending();
+    77 │   await act(async () => {
+  > 78 │     gate.current!.reject(new Error("Unable to preload CSS"));
+       │     ^^^^^^^^^^^^^
+    79 │     await gate.current!.promise.catch(() => undefined);
+    80 │   });
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    76 76 │     const { page, status } = await renderPending();
+    77 77 │     await act(async () => {
+    78    │ - ····gate.current!.reject(new·Error("Unable·to·preload·CSS"));
+       78 │ + ····gate.current?.reject(new·Error("Unable·to·preload·CSS"));
+    79 79 │       await gate.current!.promise.catch(() => undefined);
+    80 80 │     });
+  
+
+packages\web\test\overview-shared-ui.test.tsx:35:16 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    33 │   const { App } = await import("../src/App.tsx");
+    34 │   const view = render(<App />);
+  > 35 │   const page = view.container.querySelector<HTMLElement>(".overview-page")!;
+       │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    36 │   const status = page.querySelector<HTMLElement>(".overview-status")!;
+    37 │   await act(async () => {
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\overview-shared-ui.test.tsx:36:18 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    34 │   const view = render(<App />);
+    35 │   const page = view.container.querySelector<HTMLElement>(".overview-page")!;
+  > 36 │   const status = page.querySelector<HTMLElement>(".overview-status")!;
+       │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    37 │   await act(async () => {
+    38 │     await new Promise((resolve) => setTimeout(resolve, 20));
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\overview-shared-ui.test.tsx:61:5 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    59 │   const actual = await vi.importActual<SharedModule>("../src/ui/components/index.tsx");
+    60 │   await act(async () => {
+  > 61 │     gate.current!.resolve(actual);
+       │     ^^^^^^^^^^^^^
+    62 │     await gate.current!.promise;
+    63 │   });
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    59 59 │     const actual = await vi.importActual<SharedModule>("../src/ui/components/index.tsx");
+    60 60 │     await act(async () => {
+    61    │ - ····gate.current!.resolve(actual);
+       61 │ + ····gate.current?.resolve(actual);
+    62 62 │       await gate.current!.promise;
+    63 63 │     });
+  
+
+packages\web\test\overview-shared-ui.test.tsx:62:11 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    60 │   await act(async () => {
+    61 │     gate.current!.resolve(actual);
+  > 62 │     await gate.current!.promise;
+       │           ^^^^^^^^^^^^^
+    63 │   });
+    64 │   const exposed = within(page);
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    60 60 │     await act(async () => {
+    61 61 │       gate.current!.resolve(actual);
+    62    │ - ····await·gate.current!.promise;
+       62 │ + ····await·gate.current?.promise;
+    63 63 │     });
+    64 64 │     const exposed = within(page);
+  
+
+packages\web\test\reports.test.tsx:80:64 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    78 │     const url = new URL(String(input), "http://localhost");
+    79 │     if (url.pathname.endsWith("/context")) return response(context);
+  > 80 │     if (url.pathname.endsWith("/trial")) return response(trial(url.searchParams.get("month")!));
+       │                                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    81 │     if (url.pathname.endsWith("/ledger")) return ledger(input, init);
+    82 │     return response({
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\reports.test.tsx:127:20 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    125 │       .every((link) => link.getAttribute("href") === "#/ledger-reports"),
+    126 │   ).toBe(true);
+  > 127 │   fireEvent.change(document.querySelector("#workspace-language")!, { target: { value: "en" } });
+        │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    128 │   expect(screen.getByText(label("en", "reports.unconfigured"))).toBeTruthy();
+    129 │   await cycleQueryManagers();
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\reports.test.tsx:326:22 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    324 │     expect(ledgerUrl.searchParams.get("month")).toBe("2025-02");
+    325 │     const count = fetcher.mock.calls.length;
+  > 326 │     fireEvent.change(document.querySelector("#workspace-language")!, { target: { value: "en" } });
+        │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    327 │     fireEvent.change(document.querySelector("#workspace-theme")!, { target: { value: "green" } });
+    328 │     expect(screen.queryByText(label("en", "reports.teaching"))).toBeNull();
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\reports.test.tsx:327:22 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    325 │     const count = fetcher.mock.calls.length;
+    326 │     fireEvent.change(document.querySelector("#workspace-language")!, { target: { value: "en" } });
+  > 327 │     fireEvent.change(document.querySelector("#workspace-theme")!, { target: { value: "green" } });
+        │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    328 │     expect(screen.queryByText(label("en", "reports.teaching"))).toBeNull();
+    329 │     fireEvent.click(document.querySelector("#workspace-teaching")!);
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\reports.test.tsx:329:21 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    327 │     fireEvent.change(document.querySelector("#workspace-theme")!, { target: { value: "green" } });
+    328 │     expect(screen.queryByText(label("en", "reports.teaching"))).toBeNull();
+  > 329 │     fireEvent.click(document.querySelector("#workspace-teaching")!);
+        │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    330 │     expect(screen.getByText(label("en", "reports.teaching"))).toBeTruthy();
+    331 │     const hash = window.location.hash;
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\reports.test.tsx:423:31 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    421 │           return response({ invalid: true });
+    422 │         }
+  > 423 │         return response(trial(url.searchParams.get("month")!));
+        │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    424 │       });
+    425 │       vi.stubGlobal("fetch", fetcher);
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\reports.test.tsx:604:22 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    602 │       throw new Error("private-path");
+    603 │     });
+  > 604 │     fireEvent.change(document.querySelector("#workspace-language")!, { target: { value: "en" } });
+        │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    605 │     expect(screen.getByText(label("zh", "shell.storageWrite"))).toBeTruthy();
+    606 │     expect((document.querySelector("#workspace-language") as HTMLSelectElement).value).toBe("zh");
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\reports.test.tsx:609:22 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    607 │     expect(window.location.hash).toBe(hash);
+    608 │     write.mockRestore();
+  > 609 │     fireEvent.change(document.querySelector("#workspace-language")!, { target: { value: "en" } });
+        │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    610 │     fireEvent.change(document.querySelector("#workspace-theme")!, { target: { value: "green" } });
+    611 │     expect(screen.queryByText(label("en", "shell.storageWrite"))).toBeNull();
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\reports.test.tsx:610:22 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    608 │     write.mockRestore();
+    609 │     fireEvent.change(document.querySelector("#workspace-language")!, { target: { value: "en" } });
+  > 610 │     fireEvent.change(document.querySelector("#workspace-theme")!, { target: { value: "green" } });
+        │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    611 │     expect(screen.queryByText(label("en", "shell.storageWrite"))).toBeNull();
+    612 │     expect(screen.queryByText(label("en", "reports.teaching"))).toBeNull();
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\reports.test.tsx:617:23 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    615 │     expect(screen.getByText(label("en", "reports.unbalanced"))).toBeTruthy();
+    616 │     expect(fetcher).toHaveBeenCalledTimes(2);
+  > 617 │     expect(JSON.parse(window.localStorage.getItem(preferenceStorageKey)!)).toEqual({
+        │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    618 │       language: "en",
+    619 │       theme: "green",
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\reports.test.tsx:665:24 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    663 │         screen.getByRole("alert").querySelector('[aria-hidden="true"]')?.textContent,
+    664 │       ).toContain("!");
+  > 665 │       fireEvent.change(document.querySelector("#workspace-language")!, { target: { value: "en" } });
+        │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    666 │       await cycleQueryManagers();
+    667 │       expect(fetcher).toHaveBeenCalledTimes(2);
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+packages\web\test\trade-invoices.test.tsx:623:23 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    621 │       await waitFor(() => expect(tip.textContent).toContain(t("tinv.fromOrder.teaching")));
+    622 │       expect(tip.textContent).toContain(t("tinv.teaching"));
+  > 623 │       fireEvent.click(document.querySelector<HTMLInputElement>("#workspace-teaching")!);
+        │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    624 │       expect(screen.queryByText(t("tinv.fromOrder.teaching"))).toBeNull();
+    625 │     } finally {
+  
+  i A non-null assertion tells TypeScript to ignore a possible null or undefined value. If the value is missing at runtime, the code fails with an error that the compiler could not catch.
+  
+  i Check that the value is defined before using it, for example with an if statement or optional chaining, instead of asserting it.
+  
+
+scripts\check-boundaries.mjs:80:9 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Change to an optional chain.
+  
+    78 │     violations.push({ file: normalized, line: node.loc.start.line, reason });
+    79 │   const dependency = (node, specifier) => {
+  > 80 │     if (!specifier || specifier.type !== "StringLiteral") {
+       │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    81 │       report(node, "Computed module dependencies are not allowed in checked source.");
+    82 │       return;
+  
+  i An optional chain is shorter, and it avoids repeating the same expression in each check.
+  
+  i Unsafe fix: Change to an optional chain.
+  
+     78  78 │       violations.push({ file: normalized, line: node.loc.start.line, reason });
+     79  79 │     const dependency = (node, specifier) => {
+     80     │ - ····if·(!specifier·||·specifier.type·!==·"StringLiteral")·{
+         80 │ + ····if·(specifier?.type·!==·"StringLiteral")·{
+     81  81 │         report(node, "Computed module dependencies are not allowed in checked source.");
+     82  82 │         return;
+  
+
+scripts\legacy-snapshot-verifier.mjs:177:7 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━━━━━
+
+  ! Change to an optional chain.
+  
+    175 │     const verified = [{ file, before, sha256: hash(manifestBytes) }];
+    176 │     if (
+  > 177 │       !manifest ||
+        │       ^^^^^^^^^^^^
+  > 178 │       manifest.version !== 1 ||
+        │       ^^^^^^^^^^^^^^^^^^^^^^
+    179 │       manifest.status !== "verified" ||
+    180 │       manifest.crossDatabaseAtomic !== false ||
+  
+  i An optional chain is shorter, and it avoids repeating the same expression in each check.
+  
+  i Unsafe fix: Change to an optional chain.
+  
+    175 175 │       const verified = [{ file, before, sha256: hash(manifestBytes) }];
+    176 176 │       if (
+    177     │ - ······!manifest·||
+    178     │ - ······manifest.version·!==·1·||
+        177 │ + ······manifest?.version·!==·1·||
+    179 178 │         manifest.status !== "verified" ||
+    180 179 │         manifest.crossDatabaseAtomic !== false ||
+  
+
+Checked 298 files in 674ms. No fixes applied.
+Found 78 warnings.
+Found 7 infos.
+
+> ai-native-erp@0.1.0 typecheck
+> tsc --noEmit -p tsconfig.json
+
+
+> ai-native-erp@0.1.0 check:boundaries
+> node scripts/check-boundaries.mjs
+
+Import boundaries passed for 139 source files.
+
+> ai-native-erp@0.1.0 test
+> vitest run
+
+
+ RUN  v5.1.0 C:/GithubCopilot/copilot-worktrees/ai-native-erp/lingshf-jubilant-barnacle
+
+ ❯ |infra| packages/infra/test/http/legacy-launcher.slow.test.ts (6 tests | 1 failed) 19648ms
+   × actual CLI opens explicit fixture, serves financial data and terminates after child.kill 7572ms
+ ❯ |infra| packages/infra/test/http/journals.test.ts (2 tests | 1 failed) 18421ms
+   × exposes strict journal DTOs, actionable field errors, immutable methods and an explicit POST confirmation 15008ms
+ ❯ |infra-browser| packages/infra/test/http/migration-gui.slow.test.ts (5 tests | 5 skipped) 1336ms
+stdout | packages/infra/test/http/trade-gui-en-green-1.slow.test.ts > real trade GUI: en/green, keyboard main path and safe confirmation branches (part 1/2: period admission, trade configuration, matched AP invoice and payment)
+{"event":"trade-gui-phase","scenario":"en/green/1","phase":"database","ms":1447}
+
+stdout | packages/infra/test/http/trade-gui-en-green-1.slow.test.ts > real trade GUI: en/green, keyboard main path and safe confirmation branches (part 1/2: period admission, trade configuration, matched AP invoice and payment)
+{"event":"trade-gui-phase","scenario":"en/green/1","phase":"replay-database","ms":1484}
+
+stdout | packages/infra/test/http/trade-gui-en-green-1.slow.test.ts > real trade GUI: en/green, keyboard main path and safe confirmation branches (part 1/2: period admission, trade configuration, matched AP invoice and payment)
+{"event":"trade-gui-phase","scenario":"en/green/1","phase":"replay-api","ms":6148}
+
+stdout | packages/infra/test/http/trade-gui-en-green-1.slow.test.ts > real trade GUI: en/green, keyboard main path and safe confirmation branches (part 1/2: period admission, trade configuration, matched AP invoice and payment)
+{"event":"trade-gui-phase","scenario":"en/green/1","phase":"api","ms":7625}
+
+stdout | packages/infra/test/http/trade-gui-en-green-1.slow.test.ts > real trade GUI: en/green, keyboard main path and safe confirmation branches (part 1/2: period admission, trade configuration, matched AP invoice and payment)
+{"event":"trade-gui-phase","scenario":"en/green/1","phase":"resources","ms":23}
+
+stdout | packages/infra/test/http/trade-gui-en-green-1.slow.test.ts
+{"event":"trade-gui-phase","scenario":"en/green/1","phase":"build","ms":1967}
+
+stdout | packages/infra/test/http/trade-gui-en-green-1.slow.test.ts
+{"event":"trade-gui-phase","scenario":"en/green/1","phase":"browser-close","ms":0}
+
+ ❯ |infra-browser| packages/infra/test/http/trade-gui-en-green-1.slow.test.ts (1 test | 1 failed) 11127ms
+   × real trade GUI: en/green, keyboard main path and safe confirmation branches (part 1/2: period admission, trade configuration, matched AP invoice and payment) 9106ms
+stdout | packages/infra/test/http/trade-gui-zh-red-2.slow.test.ts > real trade GUI: zh/red, keyboard main path and safe confirmation branches (part 2/2: advance, AR credit and cancellations, open-item reports, invoicing an order in two steps)
+{"event":"trade-gui-phase","scenario":"zh/red/2","phase":"database","ms":1241}
+
+stdout | packages/infra/test/http/trade-gui-zh-red-2.slow.test.ts > real trade GUI: zh/red, keyboard main path and safe confirmation branches (part 2/2: advance, AR credit and cancellations, open-item reports, invoicing an order in two steps)
+{"event":"trade-gui-phase","scenario":"zh/red/2","phase":"api","ms":6649}
+
+stdout | packages/infra/test/http/trade-gui-zh-red-2.slow.test.ts > real trade GUI: zh/red, keyboard main path and safe confirmation branches (part 2/2: advance, AR credit and cancellations, open-item reports, invoicing an order in two steps)
+{"event":"trade-gui-phase","scenario":"zh/red/2","phase":"seed","ms":1410}
+
+stdout | packages/infra/test/http/trade-gui-zh-red-2.slow.test.ts > real trade GUI: zh/red, keyboard main path and safe confirmation branches (part 2/2: advance, AR credit and cancellations, open-item reports, invoicing an order in two steps)
+{"event":"trade-gui-phase","scenario":"zh/red/2","phase":"resources","ms":56}
+
+stdout | packages/infra/test/http/trade-gui-zh-red-2.slow.test.ts
+{"event":"trade-gui-phase","scenario":"zh/red/2","phase":"build","ms":1979}
+
+stdout | packages/infra/test/http/trade-gui-zh-red-2.slow.test.ts
+{"event":"trade-gui-phase","scenario":"zh/red/2","phase":"browser-close","ms":0}
+
+ ❯ |infra-browser| packages/infra/test/http/trade-gui-zh-red-2.slow.test.ts (1 test | 1 failed) 11376ms
+   × real trade GUI: zh/red, keyboard main path and safe confirmation branches (part 2/2: advance, AR credit and cancellations, open-item reports, invoicing an order in two steps) 9369ms
+stdout | packages/infra/test/http/trade-gui-zh-red-1.slow.test.ts > real trade GUI: zh/red, keyboard main path and safe confirmation branches (part 1/2: period admission, trade configuration, matched AP invoice and payment)
+{"event":"trade-gui-phase","scenario":"zh/red/1","phase":"replay-database","ms":1391}
+
+stdout | packages/infra/test/http/trade-gui-zh-red-1.slow.test.ts > real trade GUI: zh/red, keyboard main path and safe confirmation branches (part 1/2: period admission, trade configuration, matched AP invoice and payment)
+{"event":"trade-gui-phase","scenario":"zh/red/1","phase":"database","ms":1441}
+
+stdout | packages/infra/test/http/trade-gui-zh-red-1.slow.test.ts > real trade GUI: zh/red, keyboard main path and safe confirmation branches (part 1/2: period admission, trade configuration, matched AP invoice and payment)
+{"event":"trade-gui-phase","scenario":"zh/red/1","phase":"api","ms":6223}
+
+stdout | packages/infra/test/http/trade-gui-zh-red-1.slow.test.ts > real trade GUI: zh/red, keyboard main path and safe confirmation branches (part 1/2: period admission, trade configuration, matched AP invoice and payment)
+{"event":"trade-gui-phase","scenario":"zh/red/1","phase":"replay-api","ms":7999}
+
+stdout | packages/infra/test/http/trade-gui-zh-red-1.slow.test.ts > real trade GUI: zh/red, keyboard main path and safe confirmation branches (part 1/2: period admission, trade configuration, matched AP invoice and payment)
+{"event":"trade-gui-phase","scenario":"zh/red/1","phase":"resources","ms":30}
+
+stdout | packages/infra/test/http/trade-gui-zh-red-1.slow.test.ts
+{"event":"trade-gui-phase","scenario":"zh/red/1","phase":"build","ms":1700}
+
+stdout | packages/infra/test/http/trade-gui-zh-red-1.slow.test.ts
+{"event":"trade-gui-phase","scenario":"zh/red/1","phase":"browser-close","ms":0}
+
+ ❯ |infra-browser| packages/infra/test/http/trade-gui-zh-red-1.slow.test.ts (1 test | 1 failed) 11175ms
+   × real trade GUI: zh/red, keyboard main path and safe confirmation branches (part 1/2: period admission, trade configuration, matched AP invoice and payment) 9430ms
+stdout | packages/infra/test/http/trade-gui-en-green-2.slow.test.ts > real trade GUI: en/green, keyboard main path and safe confirmation branches (part 2/2: advance, AR credit and cancellations, open-item reports, invoicing an order in two steps)
+{"event":"trade-gui-phase","scenario":"en/green/2","phase":"database","ms":1162}
+
+stdout | packages/infra/test/http/trade-gui-en-green-2.slow.test.ts > real trade GUI: en/green, keyboard main path and safe confirmation branches (part 2/2: advance, AR credit and cancellations, open-item reports, invoicing an order in two steps)
+{"event":"trade-gui-phase","scenario":"en/green/2","phase":"api","ms":6821}
+
+stdout | packages/infra/test/http/trade-gui-en-green-2.slow.test.ts > real trade GUI: en/green, keyboard main path and safe confirmation branches (part 2/2: advance, AR credit and cancellations, open-item reports, invoicing an order in two steps)
+{"event":"trade-gui-phase","scenario":"en/green/2","phase":"seed","ms":1520}
+
+stdout | packages/infra/test/http/trade-gui-en-green-2.slow.test.ts > real trade GUI: en/green, keyboard main path and safe confirmation branches (part 2/2: advance, AR credit and cancellations, open-item reports, invoicing an order in two steps)
+{"event":"trade-gui-phase","scenario":"en/green/2","phase":"resources","ms":64}
+
+stdout | packages/infra/test/http/trade-gui-en-green-2.slow.test.ts
+{"event":"trade-gui-phase","scenario":"en/green/2","phase":"build","ms":1702}
+
+stdout | packages/infra/test/http/trade-gui-en-green-2.slow.test.ts
+{"event":"trade-gui-phase","scenario":"en/green/2","phase":"browser-close","ms":0}
+
+ ❯ |infra-browser| packages/infra/test/http/trade-gui-en-green-2.slow.test.ts (1 test | 1 failed) 11343ms
+   × real trade GUI: en/green, keyboard main path and safe confirmation branches (part 2/2: advance, AR credit and cancellations, open-item reports, invoicing an order in two steps) 9586ms
+stdout | packages/infra/test/http/trade-gui-smoke.slow.test.ts
+{"event":"trade-gui-phase","scenario":"smoke","phase":"build","ms":1805}
+
+stdout | packages/infra/test/http/trade-gui-smoke.slow.test.ts
+{"event":"trade-gui-phase","scenario":"smoke","phase":"database","ms":1230}
+
+stdout | packages/infra/test/http/trade-gui-smoke.slow.test.ts
+{"event":"trade-gui-phase","scenario":"smoke","phase":"api","ms":6952}
+
+stdout | packages/infra/test/http/trade-gui-smoke.slow.test.ts
+{"event":"trade-gui-phase","scenario":"smoke","phase":"seed","ms":1531}
+
+stdout | packages/infra/test/http/trade-gui-smoke.slow.test.ts
+{"event":"trade-gui-phase","scenario":"smoke","phase":"browser-close","ms":0}
+
+ ❯ |infra-browser| packages/infra/test/http/trade-gui-smoke.slow.test.ts (4 tests | 4 failed) 11587ms
+   × real trade GUI smoke: zh/red, every trade page loads its data translated with lang and data-theme 6ms
+   × real trade GUI smoke: zh/green, every trade page loads its data translated with lang and data-theme 6ms
+   × real trade GUI smoke: en/red, every trade page loads its data translated with lang and data-theme 5ms
+   × real trade GUI smoke: en/green, every trade page loads its data translated with lang and data-theme 5ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |infra-browser| packages/infra/test/http/migration-gui.slow.test.ts [ packages/infra/test/http/migration-gui.slow.test.ts ]
+Error: browserType.launch: Executable doesn't exist at C:\Users\shaoling\AppData\Local\ms-playwright\chromium_headless_shell-1208\chrome-headless-shell-win64\chrome-headless-shell.exe
+╔═════════════════════════════════════════════════════════════════════════╗
+║ Looks like Playwright Test or Playwright was just installed or updated. ║
+║ Please run the following command to download new browsers:              ║
+║                                                                         ║
+║     npx playwright install                                              ║
+║                                                                         ║
+║ <3 Playwright Team                                                      ║
+╚═════════════════════════════════════════════════════════════════════════╝
+ ❯ packages/infra/test/http/migration-gui.slow.test.ts:30:14
+     28|   const started = performance.now();
+     29|   browser = await timed(log, "launch", () =>
+     30|     chromium.launch({ headless: true, channel: process.env.ERP_E2E_BRO…
+       |              ^
+     31|   );
+     32|   if (log) browser.on("disconnected", () => log("browser-disconnected"…
+ ❯ timed packages/infra/test/support/trade-gui-scenario.ts:60:47
+ ❯ packages/infra/test/http/migration-gui.slow.test.ts:29:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |infra-browser| packages/infra/test/http/trade-gui-en-green-1.slow.test.ts > real trade GUI: en/green, keyboard main path and safe confirmation branches (part 1/2: period admission, trade configuration, matched AP invoice and payment)
+ FAIL  |infra-browser| packages/infra/test/http/trade-gui-en-green-2.slow.test.ts > real trade GUI: en/green, keyboard main path and safe confirmation branches (part 2/2: advance, AR credit and cancellations, open-item reports, invoicing an order in two steps)
+ FAIL  |infra-browser| packages/infra/test/http/trade-gui-smoke.slow.test.ts > real trade GUI smoke: zh/red, every trade page loads its data translated with lang and data-theme
+ FAIL  |infra-browser| packages/infra/test/http/trade-gui-smoke.slow.test.ts > real trade GUI smoke: zh/green, every trade page loads its data translated with lang and data-theme
+ FAIL  |infra-browser| packages/infra/test/http/trade-gui-smoke.slow.test.ts > real trade GUI smoke: en/red, every trade page loads its data translated with lang and data-theme
+ FAIL  |infra-browser| packages/infra/test/http/trade-gui-smoke.slow.test.ts > real trade GUI smoke: en/green, every trade page loads its data translated with lang and data-theme
+ FAIL  |infra-browser| packages/infra/test/http/trade-gui-zh-red-1.slow.test.ts > real trade GUI: zh/red, keyboard main path and safe confirmation branches (part 1/2: period admission, trade configuration, matched AP invoice and payment)
+ FAIL  |infra-browser| packages/infra/test/http/trade-gui-zh-red-2.slow.test.ts > real trade GUI: zh/red, keyboard main path and safe confirmation branches (part 2/2: advance, AR credit and cancellations, open-item reports, invoicing an order in two steps)
+Error: browserType.launch: Executable doesn't exist at C:\Users\shaoling\AppData\Local\ms-playwright\chromium_headless_shell-1208\chrome-headless-shell-win64\chrome-headless-shell.exe
+╔═════════════════════════════════════════════════════════════════════════╗
+║ Looks like Playwright Test or Playwright was just installed or updated. ║
+║ Please run the following command to download new browsers:              ║
+║                                                                         ║
+║     npx playwright install                                              ║
+║                                                                         ║
+║ <3 Playwright Team                                                      ║
+╚═════════════════════════════════════════════════════════════════════════╝
+ ❯ packages/infra/test/support/trade-gui-scenario.ts:572:8
+    570|     log?.("step", { step: "launch", phase: "start" });
+    571|     harness.launching = chromium
+    572|       .launch({ headless: true, channel: process.env.ERP_E2E_BROWSER_C…
+       |        ^
+    573|       .then((launched) => {
+    574|         harness.browser = launched;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  |infra| packages/infra/test/http/journals.test.ts > exposes strict journal DTOs, actionable field errors, immutable methods and an explicit POST confirmation
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ packages/infra/test/http/journals.test.ts:141:1
+    139|   }
+    140| });
+    141| it("exposes strict journal DTOs, actionable field errors, immutable me…
+       | ^
+    142|   const directory = await mkdtemp(join(tmpdir(), "erp-journal-http-"));
+    143|   const config = { filename: join(directory, "ledger.sqlite") };
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+ FAIL  |infra| packages/infra/test/http/legacy-launcher.slow.test.ts > actual CLI opens explicit fixture, serves financial data and terminates after child.kill
+AssertionError: Expected values to be strictly equal:
+
+undefined !== 200
+
+
+simple
+
+ ❯ packages/infra/test/http/legacy-launcher.slow.test.ts:112:10
+    110|     }
+    111|   }
+    112|   assert.equal(response?.status, 200, stderr);
+       |          ^
+    113|   const context = await response.json();
+    114|   assert.equal(context.source.snapshotSha256, f.manifest.ledgers.teach…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯
+
+
+ Test Files  8 failed | 73 passed (81)
+      Tests  10 failed | 725 passed | 19 skipped (754)
+   Start at  02:56:28
+   Duration  127.47s (tests 73%, import 12%, environment 12%, transform 2%, setup 1%)
+
+exit 1

@@ -1,0 +1,11 @@
+head ccab06d0fd5e58a9926e6a6f2e7398c027f4ef6b; ERP_E2E_BROWSER_CHANNEL=chrome; npx vitest run packages/infra/test/http/trade-gui-en-green-2.slow.test.ts packages/infra/test/http/trade-gui-zh-red-2.slow.test.ts
+
+ RUN  v5.1.0 C:/GithubCopilot/copilot-worktrees/ai-native-erp/lingshf-jubilant-barnacle
+
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  03:11:52
+   Duration  43.83s (tests 89%, import 10%, transform 1%)
+
+exit 0

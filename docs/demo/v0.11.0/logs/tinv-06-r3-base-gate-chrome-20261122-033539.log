@@ -1,0 +1,89 @@
+## D359 base: gate then real Chrome 2026-11-22T03:35:39.6057505-08:00 tree C:\Users\shaoling\AppData\Local\Temp\tinv06-r3-base expected 2a2dca1f562b239b134ecb8c7ea3bdb169cf3329
+Preparing worktree (detached HEAD 2a2dca1)
+Updating files:  45% (616/1363)
+Updating files:  46% (627/1363)
+Updating files:  47% (641/1363)
+Updating files:  48% (655/1363)
+Updating files:  49% (668/1363)
+Updating files:  50% (682/1363)
+Updating files:  51% (696/1363)
+Updating files:  52% (709/1363)
+Updating files:  53% (723/1363)
+Updating files:  54% (737/1363)
+Updating files:  55% (750/1363)
+Updating files:  56% (764/1363)
+Updating files:  57% (777/1363)
+Updating files:  58% (791/1363)
+Updating files:  59% (805/1363)
+Updating files:  60% (818/1363)
+Updating files:  61% (832/1363)
+Updating files:  62% (846/1363)
+Updating files:  63% (859/1363)
+Updating files:  64% (873/1363)
+Updating files:  65% (886/1363)
+Updating files:  66% (900/1363)
+Updating files:  67% (914/1363)
+Updating files:  68% (927/1363)
+Updating files:  69% (941/1363)
+Updating files:  70% (955/1363)
+Updating files:  71% (968/1363)
+Updating files:  72% (982/1363)
+Updating files:  73% (995/1363)
+Updating files:  74% (1009/1363)
+Updating files:  75% (1023/1363)
+Updating files:  76% (1036/1363)
+Updating files:  77% (1050/1363)
+Updating files:  78% (1064/1363)
+Updating files:  79% (1077/1363)
+Updating files:  80% (1091/1363)
+Updating files:  81% (1105/1363)
+Updating files:  82% (1118/1363)
+Updating files:  83% (1132/1363)
+Updating files:  84% (1145/1363)
+Updating files:  85% (1159/1363)
+Updating files:  86% (1173/1363)
+Updating files:  87% (1186/1363)
+Updating files:  88% (1200/1363)
+Updating files:  89% (1214/1363)
+Updating files:  90% (1227/1363)
+Updating files:  91% (1241/1363)
+Updating files:  92% (1254/1363)
+Updating files:  93% (1268/1363)
+Updating files:  94% (1282/1363)
+Updating files:  95% (1295/1363)
+Updating files:  96% (1309/1363)
+Updating files:  97% (1323/1363)
+Updating files:  98% (1336/1363)
+Updating files:  99% (1350/1363)
+Updating files: 100% (1363/1363)
+Updating files: 100% (1363/1363), done.
+HEAD is now at 2a2dca1 SLOT-01: 独占时段采样器入库（R1 规则编号、逐条自测、清单检查） (#198)
+junctions node_modules, packages\web\node_modules
+## build dist (prepares the gate's dist; no size measurement, not PG-05) 2026-11-22T03:35:41.8305801-08:00
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 373ms[39m
+build exit 0
+## gate 2026-11-22T03:35:43.9713708-08:00
+  [public copy, excluded] favicon.svg mtime 2026-11-22T03:35:41.6010568-08:00
+  [tested] index.html mtime 2026-11-22T03:35:43.8724629-08:00
+  [tested] assets\index-BaTS3IOu.js mtime 2026-11-22T03:35:43.8424474-08:00
+  [tested] assets\index-DhcDIMA7.css mtime 2026-11-22T03:35:43.8674669-08:00
+  [tested] assets\TradeInvoices-BOD48ZcD.css mtime 2026-11-22T03:35:43.8654748-08:00
+  [tested] assets\TradeInvoices-kpXPOhqy.js mtime 2026-11-22T03:35:43.8514525-08:00
+  HEAD 2a2dca1f562b239b134ecb8c7ea3bdb169cf3329 (expected 2a2dca1f562b239b134ecb8c7ea3bdb169cf3329) match True
+  porcelain [] empty True
+  commit time 2026-11-22T03:23:23.0000000-08:00; tested dist files 36 (public copies excluded 1); oldest tested assets\index-BaTS3IOu.js 2026-11-22T03:35:43.8424474-08:00; all tested newer than commit True
+GATE base: True
+## real Chrome 2026-11-22T03:35:49.7716216-08:00 ERP_E2E_BROWSER_CHANNEL=chrome; npx vitest run packages/infra/test/http/trade-gui-en-green-2.slow.test.ts packages/infra/test/http/trade-gui-zh-red-2.slow.test.ts
+
+ RUN  v5.1.0 C:/Users/shaoling/AppData/Local/Temp/tinv06-r3-base
+
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  03:35:52
+   Duration  35.48s (tests 91%, import 6%, transform 3%)
+
+chrome exit 0
+[after] HEAD 2a2dca1f562b239b134ecb8c7ea3bdb169cf3329 | porcelain [] | 2026-11-22T03:36:28.0944131-08:00
