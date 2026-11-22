@@ -79,6 +79,37 @@
 }
 ```
 
+### 日志完整保留与失败现场（S9 回顾行动项 5）
+
+runner 与 capture 的 stdout / stderr 先完整写入文件，再看输出；不要用 `Select-Object -Last`、`head` 之类截断，也不要只看控制台。把下面的写法套在 runner 与 capture 的命令上（`$log` 放在不会被清理的目录，不放 `$demo` 里）：
+
+```powershell
+. {
+  $log = Join-Path $env:TEMP ("demo-run-{0}-{1}.log" -f (Get-Date -Format yyyyMMdd-HHmmss-fff), [guid]::NewGuid().ToString("N"))
+  $cmd = { node docs/demo/v0.4.0/scripts/capture.mjs }   # 换成 runner / capture 的实际命令
+  $global:LASTEXITCODE = 0
+  $code = 0
+  $prevEap = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"   # Stop 下 5.1 会在第一行 stderr 处终止管道，丢后续 stdout，并把实际退出码记成 1
+  try {
+    & $cmd *>&1 | Tee-Object -FilePath $log -Append
+    $code = $LASTEXITCODE
+  } catch {
+    $code = 1   # runner 自己 throw（例如监听归属检查失败）：没有原生命令退出码，记为 1
+    "EXCEPTION: $($_ | Out-String)" | Tee-Object -FilePath $log -Append
+  } finally {
+    $ErrorActionPreference = $prevEap
+  }
+  "exit=$code log=$log" | Tee-Object -FilePath $log -Append
+  if ($code -ne 0) { throw "失败，退出码 $code；截图目录与日志保留，不清理：$log" }
+}
+```
+
+- 块内把 `$ErrorActionPreference` 设为 `Continue`，结束时恢复原值：原生命令的 stderr 与实际退出码都会落盘（Windows PowerShell 5.1 在 `Stop` 下会因第一条 stderr 提前终止管道，丢掉后续 stdout，并把退出码记成 1）。
+- 日志名含毫秒和 GUID，同一秒内先后运行 runner 与 capture 也不会互相覆盖；`-Append` 只在同一次运行内追加。runner 抛错与原生命令非 0 退出都会落盘：前者写 `EXCEPTION:` 加原始错误，两者都写 `exit=` 与日志路径。
+- 失败时**先保存现场再做别的**：截图目录（capture 已写出的图）和日志文件原样保留，不跑收尾里的清理，不重试；停服务与释放端口除外（只停本轮的 `$server`）。
+- PR 正文 / 回报写完整错误与退出码、日志路径；断言类中止另写**失败断言的原文**。原文丢失就写“原断言已丢失，根因未知”，不要推测成脚本问题。
+
 ## 收尾
 
 只停本轮启动的进程（`$server`），只删本轮生成的目录。变量为空（本轮没有创建）就什么都不做，处理完立刻清空，避免下一轮误用：
@@ -175,23 +206,35 @@ async function assertState(page, want) {
     width: window.innerWidth,
     teaching: document.querySelector("#workspace-teaching")?.checked,
     scrollY: window.scrollY,
+    scrollWidth: document.documentElement.scrollWidth,
   }));
+  const { scrollWidth, ...state } = got;
   const wanted = { scrollY: 0, ...want };
-  const bad = Object.entries(wanted).filter(([key, value]) => got[key] !== value);
-  if (bad.length > 0) throw new Error("截图状态与文件名不符：" + JSON.stringify({ wanted, got }));
+  const bad = Object.entries(wanted).filter(([key, value]) => state[key] !== value);
+  if (bad.length > 0) throw new Error("截图状态与文件名不符：" + JSON.stringify({ wanted, got: state }));
+  if (state.width === 390 && scrollWidth > state.width) {
+    throw new Error(`390 px 页面横向溢出：scrollWidth=${scrollWidth} > innerWidth=${state.width}`);
+  }
 }
 // 用法：await assertState(page, { lang: "en", theme: "green", width: 390, teaching: true });
 ```
+
+宽度为 390 时多一条页面宽度断言：`document.documentElement.scrollWidth <= window.innerWidth`，不满足就抛错，错误信息含实测 `scrollWidth` 与 `innerWidth`（宽表只能在表内滚动，页面不横向滚动）。（S9 回顾行动项 3、D290）
+
+**截断类判定按实测行距与字形盒设容差**：不用 `scrollHeight > clientHeight`（被行数截断的文字仍参与布局，该判定会误报或漏报）。按已布局文字的行数、末字符字形盒底边相对可见框底边的超出量判定，容差为 `max(0, (字形盒高 − 行高) / 2) + 1 px`：半行距取实测值，下限为 0（字形盒小于行高时不能变成负数，否则正常文本会被误报），再加 1 px 余量。示例：`packages/infra/test/support/trade-gui-scenario.ts:1361–1393`。
 
 ### 断言逐条核对表
 
 每条文本 / 状态断言先对照组件的实际渲染，再写进脚本。写成表，放进 `run-through.md`：
 
-| 断言文本 / 状态 | 组件 `file:line` | 装饰符与 `aria-hidden` 内容 | 默认值 | 翻译键（zh / en） | 响应 schema 字段位置 |
-| --- | --- | --- | --- | --- | --- |
-| 例：徽章“已开完” | `packages/web/src/...tsx:行号` | 例：前缀符号在 `aria-hidden` 的 `span` 内，`textContent` 要不要含符号 | 例：读取中显示“…” | 例：键名与两种语言的文案 | 例：`openapi` 或类型定义的 `path:line` |
+| 断言文本 / 状态 | 组件 `file:line` | 装饰符与 `aria-hidden` 内容 | 默认值 | 翻译键（zh / en） | 响应 schema 字段位置 | seed 来源 | 工具判定复核 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 例：徽章“已开完” | `packages/web/src/...tsx:行号` | 例：前缀符号在 `aria-hidden` 的 `span` 内，`textContent` 要不要含符号 | 例：读取中显示“…” | 例：键名与两种语言的文案 | 例：`openapi` 或类型定义的 `path:line` | 例：“发票列表 2 行”对照 `seed-trade.mjs:行号` 产生的发票（含 seed 自带的、无来源订单的行） | 例：中止后改过产品代码，引用该行为的取证判定（截图 / 日志 / 断言）逐条复核：仍成立 / 已作废 |
 
 没有对应项的格子写“无”，不留空。装饰符与 `aria-hidden` 的内容必须对照源码确认，不凭记忆写断言。（S8 回顾行动项 1）
+
+- **seed 来源**：数量 / 行数类断言（“N 行”“只有 1 条”“无来源订单”）对照**产生这些数据的 seed 语句** `file:line`，把其他 seed 脚本自带的数据一并算入；不对照 seed 的数量断言不写。
+- **工具判定复核**：一次中止之后产品代码又改过的，列出所有引用该行为的取证判定（此前的截图、日志、断言结论），逐条复核后再写“仍成立”或“已作废”；没有改过产品代码写“无”。（S9 回顾行动项 4）
 
 选择器取自 `packages/web/src/App.tsx`（`document.documentElement.lang`、`.workspace[data-theme]`、`#workspace-teaching`）；若界面结构改了，先更新这里的选择器再用。
 
@@ -203,7 +246,7 @@ async function assertState(page, want) {
 | 环境 | 临时账套、端口、浏览器 |
 | 命令 | 实际执行的命令（可复制） |
 | 输出摘要 | 退出码与关键输出 |
-| 断言逐条核对 | 断言（文本、字段、状态、请求结果）→ 来源 `file:line` → 结果；并写明走的是替身 / 无头路径还是回退核对，以及状态保留的例外（表见“断言逐条核对表”；演练覆盖不了 capture 时必填） |
+| 断言逐条核对 | 断言（文本、字段、状态、请求结果）→ 来源 `file:line` → 结果；并写明走的是替身 / 无头路径还是回退核对，以及状态保留的例外（表见“断言逐条核对表”，含 seed 来源与工具判定复核两栏；演练覆盖不了 capture 时必填） |
 | 截图 | 路径 |
 | 未实跑 | 列出并说明原因 |
 | 已知控制台错误 | 逐条归因（请求路径、状态、日志类型），预期与非预期分开 |
