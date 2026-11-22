@@ -15,3 +15,6 @@
 *.db binary
 *.woff binary
 *.woff2 binary
+
+# Demo capture logs keep their original bytes (CRLF included); verified by SHA-256 after merge.
+docs/demo/*/logs/*.log -text
