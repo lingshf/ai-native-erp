@@ -1,18 +1,29 @@
-# GATE-01 exclusive-slot runner (one-off, untracked; adapted from TINV-04's slot-run.ps1).
-#   pwsh -File artifacts/ci/gate01/slot-run.ps1 -OutDir DIR -BaseRoot BASE_WORKTREE
+# Exclusive-slot runner (roadmap §5 "E2E 独占时段"; from the D316 GATE-01 kit, gist 4e00af7, SLOT-01).
+#   pwsh -File scripts/slot/slot-run.ps1 -OutDir DIR_OUTSIDE_REPO -StepsFile STEPS.ps1 [-BaseRoot BASE_WORKTREE]
+# Sampling rules: version R1 of roadmap §5 "进程采样规则", implemented in procs.ps1.
 # Counted process: any process outside this runner's own process tree whose image name is applicable
 # (node, cmd, any Chrome or Edge, vite, esbuild, biome, tsc, npm, npx; D314: no command-line prefilter;
 # an unreadable command line counts as unknown ownership), unless procs.ps1 attributes it to a repository
-# other than ai-native-erp (D311; excluded processes are logged in excluded.tsv and slot-summary.log). Precheck: 6 consecutive counts of 0 at 10 s intervals, waiting at most
-# 15 min. Each step runs once; during it the runner samples every 10 s and aborts (exit 2) on any
+# other than ai-native-erp (D311) or a system browser / its cmd.exe (D315, D316, D320). Every excluded process is
+# logged in excluded.tsv and slot-summary.log with its rule id (SR-X1–X5); each sample also logs one
+# "runner-tree n=…" line (SR-R1: this runner's own tree, neither counted nor excluded).
+# Precheck: 6 consecutive counts of 0 at 10 s intervals, waiting at most 15 min. Each step runs once; during it the runner samples every 10 s and aborts (exit 2) on any
 # counted process, or (exit 1) on any non-zero step exit. No step is retried.
-param([Parameter(Mandatory)] [string] $OutDir, [Parameter(Mandatory)] [string] $BaseRoot, [string] $Stub = "")
+param([Parameter(Mandatory)] [string] $OutDir, [Parameter(Mandatory)] [string] $StepsFile, [string] $BaseRoot = "", [string] $Stub = "")
+# -StepsFile: a script called as  & $StepsFile -OutDir $OutDir -Root $root -BaseRoot $BaseRoot  that returns the
+# steps, each @{ name; dir; file; args; env = @{} } (see steps.example.ps1). It replaces the kit's GATE-01 list.
 # -Stub pass | fail:<step>: browserless rehearsal; every step is replaced by a node one-liner (a failing
 # e2e stub writes a vitest-shaped JSON report so the failure-text extraction is exercised). Never set
 # for the real slot.
+if ($PSVersionTable.PSEdition -eq 'Core' -and -not $IsWindows) { Write-Host "slot-run.ps1 只能在 Windows 运行 (Windows only)"; exit 2 }
+# procs.ps1 needs .NET Core ([IO.Path]::GetFullPath(path, base)); see selftest.ps1.
+if ($PSVersionTable.PSVersion.Major -lt 7) { Write-Host "slot-run.ps1 needs PowerShell 7 (pwsh)"; exit 2 }
 $ErrorActionPreference = "Stop"
-# Candidate pattern, ownership rules and Counted (D311) live in procs.ps1.
+# Candidate pattern, ownership rules and Counted (rule version R1) live in procs.ps1.
 . (Join-Path $PSScriptRoot 'procs.ps1')
+# Logs and slot data never go into the repository (SLOT-01); keep the directory and archive it, do not delete it.
+$repoRoot = [IO.Path]::GetFullPath((git -C $PSScriptRoot rev-parse --show-toplevel)).TrimEnd('\', '/') + '\'
+if (([IO.Path]::GetFullPath($OutDir).TrimEnd('\', '/') + '\').StartsWith($repoRoot, [StringComparison]::OrdinalIgnoreCase)) { Write-Host "-OutDir must be outside the repository ($repoRoot)"; exit 4 }
 New-Item -ItemType Directory -Force $OutDir | Out-Null
 $samples = Join-Path $OutDir "processes.tsv"
 $log = Join-Path $OutDir "slot-summary.log"
@@ -34,27 +45,32 @@ function Sample([string] $phase) {
   $hits = Counted
   $at = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
   $detail = ($hits | ForEach-Object { $cl = $_.CommandLine -replace '\s+', ' '; "$($_.ProcessId):$($_.Name):$($cl.Substring(0, [Math]::Min(200, $cl.Length))) [$($_.Owner)]" }) -join " | "
-  Add-Content $samples "$at`t$phase`t$($hits.Count)`t$detail`t$($script:lastExcluded.Count)"
+  Add-Content $samples "$at`t$phase`t$($hits.Count)`t$detail`t$($script:lastExcluded.Count)`t$($script:lastRunnerTree)"
+  # SR-R1 is only ever reported here, never as an exclusion.
+  Say "runner-tree n=$($script:lastRunnerTree) phase=$phase"
   # Every excluded process, every sample, in full; the summary log names each excluded PID once.
   foreach ($x in $script:lastExcluded) {
     $cl = $x.CommandLine -replace '\s+', ' '
-    Add-Content $excluded "$at`t$phase`t$($x.ProcessId)`t$($x.Name)`t$($x.Owner)`t$cl"
-    if (-not $script:excludedSeen.ContainsKey([int]$x.ProcessId)) { $script:excludedSeen[[int]$x.ProcessId] = $true; Say "excluded pid=$($x.ProcessId) name=$($x.Name) reason=[$($x.Owner)] cmdline=[$cl]" }
+    Add-Content $excluded "$at`t$phase`t$($x.ProcessId)`t$($x.Name)`t$($x.Rule)`t$($x.Owner)`t$cl"
+    if (-not $script:excludedSeen.ContainsKey([int]$x.ProcessId)) { $script:excludedSeen[[int]$x.ProcessId] = $true; Say "excluded pid=$($x.ProcessId) rule=$($x.Rule) name=$($x.Name) reason=[$($x.Owner)] cmdline=[$cl]" }
   }
   return $hits.Count
 }
-$script:ever = @{ [int]$PID = $true }
+$script:ever = @{ [int]$PID = $true }  # SR-R1: this runner's tree starts at its own PID (kit slot-run.ps1:46)
 $script:excludedSeen = @{}
 $excluded = Join-Path $OutDir "excluded.tsv"
-if (-not (Test-Path $samples)) { Set-Content $samples "utc`tphase`tcounted`tdetail`texcluded" }
-if (-not (Test-Path $excluded)) { Set-Content $excluded "utc`tphase`tpid`tname`treason`tcmdline" }
+if (-not (Test-Path $samples)) { Set-Content $samples "utc`tphase`tcounted`tdetail`texcluded`trunner-tree" }
+if (-not (Test-Path $excluded)) { Set-Content $excluded "utc`tphase`tpid`tname`trule`treason`tcmdline" }
 
 $root = (git rev-parse --show-toplevel)
 Set-Location $root
 $head = (git rev-parse HEAD)
-Say "runner start head=$head status=[$(git status --porcelain --untracked-files=all)]"
-if (-not (Test-Path (Join-Path $BaseRoot 'artifacts/ci/gate01/compare.ts'))) { Say "missing -BaseRoot tools"; exit 4 }
-Say "base head=$(git -C $BaseRoot rev-parse HEAD) status=[$(git -C $BaseRoot status --porcelain --untracked-files=all)]"
+Say "runner start head=$head rules=$($script:SlotRuleVersion) status=[$(git status --porcelain --untracked-files=all)]"
+if (-not (Test-Path -LiteralPath $StepsFile -PathType Leaf)) { Say "missing -StepsFile $StepsFile"; exit 4 }
+if ($BaseRoot) {
+  if (-not (Test-Path -LiteralPath $BaseRoot -PathType Container)) { Say "missing -BaseRoot $BaseRoot"; exit 4 }
+  Say "base head=$(git -C $BaseRoot rev-parse HEAD) status=[$(git -C $BaseRoot status --porcelain --untracked-files=all)]"
+}
 # Build gate (roadmap §5 item 8): build this tree, then require packages/web/dist/index.html to be strictly
 # newer than the HEAD commit time; otherwise stop before any browser or measurement step runs.
 Say "build start"
@@ -74,18 +90,8 @@ while ($zeros -lt 6) {
   Say "precheck $n counted=$c consecutive-zero=$zeros"
   if ($zeros -lt 6) { Start-Sleep -Seconds 10 }
 }
-$env:ERP_E2E_BROWSER_CHANNEL = "chrome"
-$e2e = "packages/infra/test/http/trade-gui-zh-red-2.slow.test.ts packages/infra/test/http/trade-gui-en-green-2.slow.test.ts"
-$steps = @(
-  # Acceptance 4d: the new steps first pass on the PR's actual base (base + the scenario commit only).
-  @{ name = "e2e-base"; dir = $BaseRoot; file = "cmd.exe"; args = "/d /c npx vitest run --config vitest.config.ts --project=infra-browser $e2e --reporter=default --reporter=json --outputFile=`"$(Join-Path $OutDir 'e2e-base-report.json')`""; env = @{ ERP_E2E_ARTIFACTS = (Join-Path $OutDir "e2e-base-artifacts") } },
-  @{ name = "e2e-head"; dir = $root; file = "cmd.exe"; args = "/d /c npx vitest run --config vitest.config.ts --project=infra-browser $e2e --reporter=default --reporter=json --outputFile=`"$(Join-Path $OutDir 'e2e-head-report.json')`""; env = @{ ERP_E2E_ARTIFACTS = (Join-Path $OutDir "e2e-head-artifacts") } },
-  @{ name = "bytes"; dir = $root; file = "node"; args = "artifacts/ci/gate01/bytes.ts `"$BaseRoot`" `"$root`""; env = @{} },
-  @{ name = "sourcemap"; dir = (Join-Path $root "packages/web"); file = "cmd.exe"; args = "/d /c npx vite build --sourcemap && node ../../artifacts/ci/gate01/mapcheck.ts dist"; env = @{} },
-  @{ name = "base-shots"; dir = $BaseRoot; file = "node"; args = "artifacts/ci/gate01/compare.ts `"$(Join-Path $OutDir 'base')`""; env = @{} },
-  @{ name = "head-shots"; dir = $root; file = "node"; args = "artifacts/ci/gate01/compare.ts `"$(Join-Path $OutDir 'head')`""; env = @{} },
-  @{ name = "pixel-diff"; dir = $root; file = "node"; args = "artifacts/ci/gate01/pixel-diff.ts `"$(Join-Path $OutDir 'base')`" `"$(Join-Path $OutDir 'head')`" `"$(Join-Path $OutDir 'diff')`""; env = @{} }
-)
+$steps = @(& $StepsFile -OutDir $OutDir -Root $root -BaseRoot $BaseRoot)
+Say "steps from $StepsFile`: $(($steps | ForEach-Object { $_.name }) -join ', ')"
 if ($Stub) {
   Say "STUB MODE ${Stub}: no browser, no vitest"
   foreach ($step in $steps) {

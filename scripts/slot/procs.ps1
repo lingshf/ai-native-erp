@@ -1,4 +1,10 @@
-# GATE-01 counted-process logic, dot-sourced by slot-run.ps1 and slot-selftest.ps1 (D311, D314).
+# Exclusive-slot counted-process logic, dot-sourced by slot-run.ps1 and selftest.ps1 (D311, D314).
+# Implements rule version R1 of design/roadmap.md §5 "进程采样规则" (D338, D341): the D316 kit's procs.ps1 (gist
+# lingshf/c437f3d99887d0214ebd05ae9d741cc5 @ 4e00af7, LF SHA-256 906A4B70…90A6F8) including the launcher branch
+# ratified by D320, branch for branch and in the same order. Every decision exit carries its rule id (SR-R1, SR-C1–C3,
+# SR-X1–X5) in a trailing "# exit SR-…" comment; "kit :N" names the line of the D316 file. check-manifest.mjs checks
+# the ids against the roadmap table. Changing any rule needs a decision number and a roadmap edit (R2…) first.
+$script:SlotRuleVersion = 'R1'
 # Candidate (D314): every process outside this runner's tree whose image name is in $names (node, cmd, any Chrome
 # or Edge, vite, esbuild, biome, tsc, npm, npx), whatever its command line; there is no command-line prefilter.
 # A candidate whose command line cannot be read is counted as unknown ownership, without the ownership walk.
@@ -91,13 +97,13 @@ function Get-Owner($p, [hashtable] $byId) {
       elseif ($o.StartsWith('foreign:') -and $e[0] -ne 'cmd-arg' -and -not $foreign) { $foreign = "$($e[0]) $($e[1]) in repo $($o.Substring(8))" }
     }
     $who = if ($depth -eq 0) { 'self' } else { "ancestor pid=$($node.ProcessId) $($node.Name) depth=$depth" }
-    if ($erp) { return @{ Kind = 'erp'; Reason = "${who}: ai-native-erp $erp" } }
-    if ($foreign) { return @{ Kind = 'foreign'; Reason = "${who}: $foreign" } }
+    if ($erp) { return @{ Kind = 'erp'; Rule = 'SR-C2'; Reason = "${who}: ai-native-erp $erp" } }  # exit SR-C2 (kit :94)
+    if ($foreign) { return @{ Kind = 'foreign'; Rule = 'SR-X1'; Reason = "${who}: $foreign" } }  # exit SR-X1 (kit :95)
     $parent = $byId[[int]$node.ParentProcessId]
     if (-not $parent -or ($parent.CreationDate -and $node.CreationDate -and $parent.CreationDate -gt $node.CreationDate)) { break }
     $node = $parent; $depth++
   }
-  return @{ Kind = 'unknown'; Reason = "no repository evidence in process or $depth ancestor(s)" }
+  return @{ Kind = 'unknown'; Rule = 'SR-C3'; Reason = "no repository evidence in process or $depth ancestor(s)" }  # exit SR-C3 (kit :100)
 }
 # D315 system-browser exclusion, for a candidate of unknown ownership only. All of:
 #   (a) executable under C:\Program Files*, C:\Windows or the user's AppData\Local\Programs;
@@ -109,7 +115,7 @@ function Get-Owner($p, [hashtable] $byId) {
 # parent is an excluded browser, or a non-candidate launcher under Program Files* / AppData\Local\Programs that
 # meets (c)-(d), or (D316) its parent has exited, its cwd is readable and outside any repository, and it has at least
 # one live child (conhost aside), every one a non-candidate under Program Files* / AppData\Local\Programs meeting (c)-(d).
-# Returns the rules hit, or $null (counted).
+# Returns @{ Rule = SR-X2 | SR-X3 | SR-X4 | SR-X5; Reason = the conditions met }, or $null (counted).
 $script:automation = '(?i)--remote-debugging-(port|pipe)|--headless|--enable-automation|ms-playwright'
 function Test-SystemExe([string] $exe) {
   if (-not $exe) { return $null }
@@ -149,7 +155,7 @@ function Get-SystemExclusion($p, [hashtable] $byId) {
   if (Test-CleanCmdline $p.CommandLine) { return $null }
   if (Test-NoRepoChain $p $byId) { return $null }
   $rules = "D315 (a) exe under $where; (b) no repository evidence in process or ancestors; (c) command line readable, no ai-native-erp path; (d) no automation marker"
-  if ($isBrowser) { return $rules }
+  if ($isBrowser) { return @{ Rule = 'SR-X2'; Reason = $rules } }  # exit SR-X2 (kit :151)
   $parent = $byId[[int]$p.ParentProcessId]
   if (-not $parent -or ($parent.CreationDate -and $p.CreationDate -and $parent.CreationDate -gt $p.CreationDate)) {
     # D316 orphan cmd.exe (parent exited): judged afresh every sample from its live children, never from /c.
@@ -162,17 +168,19 @@ function Get-SystemExclusion($p, [hashtable] $byId) {
       $kw = Test-SystemExe $k.ExecutablePath
       if (-not $kw -or $kw -eq 'C:\Windows' -or (Test-CleanCmdline $k.CommandLine)) { return $null }
     }
-    return "$rules; D316 orphan cmd.exe (parent pid=$($p.ParentProcessId) gone), cwd $cwd without repository, live children: $(($kids | ForEach-Object { "pid=$($_.ProcessId) $($_.ExecutablePath)" }) -join ', ')"
+    return @{ Rule = 'SR-X5'; Reason = "$rules; D316 orphan cmd.exe (parent pid=$($p.ParentProcessId) gone), cwd $cwd without repository, live children: $(($kids | ForEach-Object { "pid=$($_.ProcessId) $($_.ExecutablePath)" }) -join ', ')" }  # exit SR-X5 (kit :165)
   }
   if ($parent.Name -match $names) {
-    if ($parent.Name -match '(?i)^(msedge|chrome)\.exe$' -and (Get-SystemExclusion $parent $byId)) { return "$rules; parent pid=$($parent.ProcessId) $($parent.Name) is an excluded system browser" }
+    if ($parent.Name -match '(?i)^(msedge|chrome)\.exe$' -and (Get-SystemExclusion $parent $byId)) { return @{ Rule = 'SR-X3'; Reason = "$rules; parent pid=$($parent.ProcessId) $($parent.Name) is an excluded system browser" } }  # exit SR-X3 (kit :168)
     return $null
   }
   $pw = Test-SystemExe $parent.ExecutablePath
-  if ($pw -and $pw -ne 'C:\Windows' -and -not (Test-CleanCmdline $parent.CommandLine)) { return "$rules; parent pid=$($parent.ProcessId) $($parent.Name) is a system launcher under $pw meeting (c)-(d)" }
+  if ($pw -and $pw -ne 'C:\Windows' -and -not (Test-CleanCmdline $parent.CommandLine)) { return @{ Rule = 'SR-X4'; Reason = "$rules; parent pid=$($parent.ProcessId) $($parent.Name) is a system launcher under $pw meeting (c)-(d)" } }  # exit SR-X4 (kit :171–172, D320)
   return $null
 }
-# Counted processes; the excluded ones (other repositories, D315 system browsers) are left in $script:lastExcluded.
+# Counted processes; the excluded ones (SR-X1–X5) are left in $script:lastExcluded. Every judged candidate gets
+# Owner ("<rule> <kind>: <reason>") and Rule. Processes of this runner's tree (SR-R1) are neither counted nor
+# excluded; how many were in this snapshot is left in $script:lastRunnerTree.
 # -All replaces the live process snapshot (self-test only).
 function Counted([object[]] $All) {
   $all = if ($All) { $All } else { Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name, CommandLine, ExecutablePath, CreationDate }
@@ -180,18 +188,23 @@ function Counted([object[]] $All) {
   $mine = $script:ever
   do {
     $grew = $false
-    foreach ($p in $all) { if ($mine.ContainsKey([int]$p.ParentProcessId) -and -not $mine.ContainsKey([int]$p.ProcessId)) { $mine[[int]$p.ProcessId] = $true; $grew = $true } }
+    foreach ($p in $all) { if ($mine.ContainsKey([int]$p.ParentProcessId) -and -not $mine.ContainsKey([int]$p.ProcessId)) { $mine[[int]$p.ProcessId] = $true; $grew = $true } }  # exit SR-R1 (kit :180–184, cumulative)
   } while ($grew)
   $byId = @{}; foreach ($p in $all) { $byId[[int]$p.ProcessId] = $p }
   $script:lastExcluded = [System.Collections.Generic.List[object]]::new()
+  $script:lastRunnerTree = 0
   $hits = [System.Collections.Generic.List[object]]::new()
   foreach ($p in $all) {
-    if ($mine.ContainsKey([int]$p.ProcessId) -or $p.Name -notmatch $names) { continue }
-    $o = if ($p.CommandLine) { Get-Owner $p $byId } else { @{ Kind = 'unknown'; Reason = 'command line unreadable' } }
+    # kit :189 tested both conditions in one "continue"; split only to count the runner tree.
+    if ($mine.ContainsKey([int]$p.ProcessId)) { $script:lastRunnerTree++; continue }  # exit SR-R1 (kit :189)
+    if ($p.Name -notmatch $names) { continue }  # exit SR-C1 (kit :189)
+    $o = if ($p.CommandLine) { Get-Owner $p $byId } else { @{ Kind = 'unknown'; Rule = 'SR-C3'; Reason = 'command line unreadable' } }  # exit SR-C3 (kit :190)
     $sys = if ($o.Kind -eq 'unknown' -and $p.CommandLine) { Get-SystemExclusion $p $byId }
-    $owner = if ($sys) { "system: $sys" } else { "$($o.Kind): $($o.Reason)" }
+    $rule = if ($sys) { $sys.Rule } else { $o.Rule }
+    $owner = if ($sys) { "$rule system: $($sys.Reason)" } else { "$rule $($o.Kind): $($o.Reason)" }
     $p | Add-Member -NotePropertyName Owner -NotePropertyValue $owner -Force
-    if ($o.Kind -eq 'foreign' -or $sys) { $script:lastExcluded.Add($p) } else { $hits.Add($p) }
+    $p | Add-Member -NotePropertyName Rule -NotePropertyValue $rule -Force
+    if ($o.Kind -eq 'foreign' -or $sys) { $script:lastExcluded.Add($p) } else { $hits.Add($p) }  # sink: SR-X1 SR-X2 SR-X3 SR-X4 SR-X5 excluded / SR-C2 SR-C3 counted, verdicts made above (kit :194)
   }
   return , $hits.ToArray()
 }
