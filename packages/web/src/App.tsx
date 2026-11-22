@@ -202,31 +202,39 @@ function Workspace() {
               </NavLink>
               <NavLink to="/migration">{t("migration.title")}</NavLink>
             </div>
-            <div className="nav-group">
-              <span>{t("master.group")}</span>
+            {/* biome-ignore-start lint/a11y/useSemanticElements: UI-14 link groups; fieldset is for form controls and would need new CSS. */}
+            <div className="nav-group" role="group" aria-labelledby="nav-group-master">
+              <span id="nav-group-master">{t("master.group")}</span>
               <NavLink to="/accounts">{t("master.title")}</NavLink>
               <NavLink to="/dimensions">{t("dim.title")}</NavLink>
               <NavLink to="/trade">{t("trade.title")}</NavLink>
             </div>
-            <div className="nav-group">
-              <span>{t("journal.group")}</span>
+            <div className="nav-group" role="group" aria-labelledby="nav-group-posting">
+              <span id="nav-group-posting">{t("shell.nav.posting")}</span>
               <NavLink to="/journals">{t("journal.title")}</NavLink>
               <NavLink to="/events">{t("business.title")}</NavLink>
+            </div>
+            <div className="nav-group" role="group" aria-labelledby="nav-group-trade">
+              <span id="nav-group-trade">{t("shell.nav.trade")}</span>
               <NavLink to="/trade-orders">{t("shell.tradeOrders")}</NavLink>
               <NavLink to="/trade-invoices">{t("tinv.title")}</NavLink>
               <NavLink to="/trade-settlements">{t("tset.title")}</NavLink>
               <NavLink to="/trade-adjustments">{t("tadj.title")}</NavLink>
               <NavLink to="/trade-reports">{t("trpt.title")}</NavLink>
+            </div>
+            <div className="nav-group" role="group" aria-labelledby="nav-group-ledger">
+              <span id="nav-group-ledger">{t("shell.nav.ledger")}</span>
               <NavLink to="/ledger-reports">{t("ledger.title")}</NavLink>
               <NavLink to="/ledger">{t("ledger.detail")}</NavLink>
               <NavLink to="/period-close">{t("close.title")}</NavLink>
             </div>
-            <div className="nav-group">
-              <span>{t("reports.group")}</span>
+            <div className="nav-group" role="group" aria-labelledby="nav-group-reports">
+              <span id="nav-group-reports">{t("reports.group")}</span>
               <NavLink to={{ pathname: "/reports/trial", search: reportSearch }}>
                 {t("reports.trial")}
               </NavLink>
             </div>
+            {/* biome-ignore-end lint/a11y/useSemanticElements: UI-14 link groups. */}
           </nav>
         </aside>
         <div className="shell-body">

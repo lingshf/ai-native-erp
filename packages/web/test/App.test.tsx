@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { label, preferenceStorageKey } from "../src/ui/index.ts";
 import { App } from "../src/App.tsx";
@@ -359,4 +359,60 @@ describe("M01 preferences and state protection", () => {
     expect(screen.queryByText(label("zh", "shell.storageWrite"))).toBeNull();
     expect(await screen.findByText(label("zh", "shell.connected"))).toBeTruthy();
   });
+});
+
+describe("UI-14 sidebar navigation groups", () => {
+  const groups = [
+    ["master.group", ["master.title", "dim.title", "trade.title"]],
+    ["shell.nav.posting", ["journal.title", "business.title"]],
+    [
+      "shell.nav.trade",
+      ["shell.tradeOrders", "tinv.title", "tset.title", "tadj.title", "trpt.title"],
+    ],
+    ["shell.nav.ledger", ["ledger.title", "ledger.detail", "close.title"]],
+    ["reports.group", ["reports.trial"]],
+  ] as const;
+  const sequence = [
+    "shell.overview",
+    "migration.title",
+    "master.title",
+    "dim.title",
+    "trade.title",
+    "journal.title",
+    "business.title",
+    "shell.tradeOrders",
+    "tinv.title",
+    "tset.title",
+    "tadj.title",
+    "trpt.title",
+    "ledger.title",
+    "ledger.detail",
+    "close.title",
+    "reports.trial",
+  ] as const;
+
+  it.each(["zh", "en"] as const)(
+    "exposes named link groups without changing link order (%s)",
+    async (language) => {
+      mockFetch().mockResolvedValue(response(healthy));
+      render(<App />);
+      if (language === "en") fireEvent.change(languageSelect(), { target: { value: "en" } });
+      const nav = screen.getByRole("navigation", { name: label(language, "shell.navigation") });
+      expect(within(nav).getAllByRole("group")).toHaveLength(groups.length);
+      for (const [groupKey, linkKeys] of groups) {
+        const group = within(nav).getByRole("group", { name: label(language, groupKey) });
+        expect(
+          within(group)
+            .getAllByRole("link")
+            .map((link) => link.textContent),
+        ).toEqual(linkKeys.map((key) => label(language, key)));
+      }
+      expect(
+        within(nav)
+          .getAllByRole("link")
+          .map((link) => link.textContent),
+      ).toEqual(sequence.map((key) => label(language, key)));
+      expect(await screen.findByText(label(language, "shell.connected"))).toBeTruthy();
+    },
+  );
 });
