@@ -469,6 +469,41 @@ function httpSend(address: string): Send {
     return result;
   };
 }
+// TINV-04: a sales order and an AR invoice posted against it, through the real HTTP API. A domain
+// rejection fails here at once (httpSend throws on any non-2xx), not later as a missing row.
+export async function seedSourceOrders(send: Send) {
+  const line = seedInvoice("").lines[0];
+  await send("POST", "/api/v1/trade/orders", {
+    company: "DEFAULT",
+    orderId: "SO-DEMO",
+    side: "AR",
+    party: "PARTY",
+    currency: "CNY",
+    orderDate: day,
+    priceIncludesTax: false,
+    rounding: "line",
+    lines: [{ ...line, product: "SERVICE" }].map(
+      ({ orderLineId: _, dimensions: __, ...rest }) => rest,
+    ),
+  });
+  const sale = {
+    ...seedInvoice(randomUUID()),
+    side: "AR",
+    externalInvoice: "AR-FROM-SO",
+    orderId: "SO-DEMO",
+    lines: [{ ...line, product: "SERVICE" }],
+  };
+  const preview = await send("POST", "/api/v1/trade/invoices/preview", sale);
+  if (typeof preview.fingerprint !== "string") throw new Error("No AR-FROM-SO preview fingerprint");
+  const receipt = await send("POST", "/api/v1/trade/invoices", {
+    command: sale,
+    fingerprint: preview.fingerprint,
+    idempotencyKey: randomUUID(),
+    confirmation: "POST",
+  });
+  if (receipt.fingerprint !== preview.fingerprint)
+    throw new Error(`AR-FROM-SO confirmed ${String(receipt.fingerprint)}`);
+}
 // Part 2 starts from the exact state part 1 creates through the GUI. The same commands are
 // replayed through the real HTTP API (preview, then explicit confirmation with the fingerprint
 // that preview returned). Part 1 replays them against a second fresh server with the GUI's own
@@ -1276,34 +1311,9 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
     // TINV-04: the invoice list's source order column links each invoice to its order detail,
     // purchase (PO-DEMO, seeded) and sales (SO-DEMO, seeded here); AR-DEMO has none ("—").
     async function sourceOrders() {
-      const send = httpSend(address);
-      await send("POST", "/api/v1/trade/orders", {
-        company: "DEFAULT",
-        orderId: "SO-DEMO",
-        side: "AR",
-        party: "PARTY",
-        currency: "CNY",
-        orderDate: day,
-        priceIncludesTax: false,
-        rounding: "line",
-        lines: [{ ...seedInvoice("").lines[0], product: "SERVICE" }].map(
-          ({ orderLineId: _, dimensions: __, ...line }) => line,
-        ),
-      });
-      const sale = {
-        ...seedInvoice(randomUUID()),
-        side: "AR",
-        externalInvoice: "AR-FROM-SO",
-        orderId: "SO-DEMO",
-        lines: [{ ...seedInvoice("").lines[0], product: "SERVICE" }],
-      };
-      const preview = await send("POST", "/api/v1/trade/invoices/preview", sale);
-      await send("POST", "/api/v1/trade/invoices", {
-        command: sale,
-        fingerprint: preview.fingerprint,
-        idempotencyKey: randomUUID(),
-        confirmation: "POST",
-      });
+      await seedSourceOrders(httpSend(address));
+      // The GUI caches lists until it writes itself (staleTime: Infinity); load the HTTP writes.
+      await page.reload();
       const list = page.getByRole("table", { name: t("tinv.list"), exact: true });
       const row = (external: string) => list.locator("tbody tr").filter({ hasText: external });
       for (const [external, orderId] of [
