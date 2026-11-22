@@ -1459,23 +1459,31 @@ describe("trade orders", () => {
     },
   );
 
-  // react-router's history writes { usr, key, idx } into history.state on every in-app push; the
-  // guard trusts only such positions (D273). These entries stand for ones the router pushed earlier.
+  // Entries as react-router's history writes them ({ usr, key, idx }) on an in-app push.
   const routerEntry = (idx: number, search: string, push = true) =>
     window.history[push ? "pushState" : "replaceState"](
       { usr: null, key: `k${idx}`, idx },
       "",
       `/#/trade-orders${search}`,
     );
+  const pause = () => act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+  // D275: a cancelled Back / Forward never calls history.go; it pushes the page's address again.
+  // It asks once, keeps the address and the draft, and the next confirmed Back leaves the page.
+  const expectCancelled = async (confirm: { mock: { calls: unknown[] } }, here: string) => {
+    const go = vi.spyOn(window.history, "go");
+    await waitFor(() => expect(confirm.mock.calls).toHaveLength(1));
+    await pause();
+    expect(confirm.mock.calls).toHaveLength(1);
+    expect(go).not.toHaveBeenCalled();
+    expect(window.location.href).toBe(here);
+    expect(field("tord.orderId").value).toBe("PO-DRAFT");
+  };
 
-  // D272: history A → B → C holds router entries, then real Back / Forward. A cancel must not add
-  // or rewrite entries: the order and the forward entries stay, a retry in the same direction
-  // reaches the original target, and each navigation asks once.
   it.each([
     ["Back", "PO-2", "PO-1"],
     ["Forward", "PO-1", "PO-2"],
   ] as const)(
-    "cancels a real %s without changing the history and retries it in the same direction",
+    "cancels a real %s by keeping the address and leaves on the next confirmed Back",
     async (direction, start, target) => {
       const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
       stubApi(found, emptyList, noneInvoiced);
@@ -1494,91 +1502,87 @@ describe("trade orders", () => {
       }
       expect(confirm).not.toHaveBeenCalled();
       fireEvent.change(field("tord.orderId"), { target: { value: "PO-DRAFT" } });
-      const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 30)));
-      const move = (way: "Back" | "Forward") =>
-        way === "Back" ? window.history.back() : window.history.forward();
-      const length = window.history.length;
+      const here = window.location.href;
 
-      move(direction);
-      await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
-      await settle();
-      expect(confirm).toHaveBeenCalledTimes(1);
+      if (direction === "Back") window.history.back();
+      else window.history.forward();
+      await expectCancelled(confirm, here);
       expect(order()).toBe(start);
-      expect(window.history.length).toBe(length);
-      expect(field("tord.orderId").value).toBe("PO-DRAFT");
 
+      // The pushed entry sits right after the target, so one confirmed Back reaches it.
       confirm.mockReturnValue(true);
-      move(direction);
+      window.history.back();
       await waitFor(() => expect(order()).toBe(target));
-      await settle();
+      await pause();
       expect(confirm).toHaveBeenCalledTimes(2);
-      // The forward entries are still there, in their order.
-      const rest = direction === "Back" ? ["PO-2", "PO-3"] : ["PO-3"];
-      for (const [step, id] of rest.entries()) {
-        window.history.forward();
-        await waitFor(() => expect(order()).toBe(id));
-        await settle();
-        expect(confirm).toHaveBeenCalledTimes(3 + step);
-      }
-      expect(window.history.length).toBe(length);
-      expect(field("tord.orderId").value).toBe("PO-DRAFT");
     },
   );
-  // D273: an entry the router did not write (B, another page reached by a plain fragment link)
-  // has no trusted position, and neither has the order page reached from it (C). From C, a Back
-  // across two entries to A must ask once and keep C's address and draft; no position is invented.
-  it("asks once when a Back crosses an entry without a router position", async () => {
+
+  it.each([
+    // An entry the router did not write (another page reached by a plain fragment link).
+    ["a page without a router position", "#/trade-invoices", false],
+    // A typed hash, after which the router numbers the next in-app push from null (idx 1).
+    ["a typed hash and an in-app link", "#/trade-orders?company=DEFAULT&order=PO-2", true],
+  ] as const)("asks once when a Back crosses %s", async (_, typed, viaLink) => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     stubApi(found, emptyList, noneInvoiced);
     routerEntry(0, "?company=DEFAULT&order=PO-1", false);
     render(<App />);
     await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
-    window.location.hash = "#/trade-invoices";
-    await waitFor(() => expect(screen.queryByLabelText(t("tord.lookupId"))).toBeNull());
-    window.location.hash = "#/trade-orders?company=DEFAULT&order=PO-2";
-    await screen.findByText(t("tord.notFound"));
+    window.location.hash = typed;
+    if (viaLink) {
+      await screen.findByText(t("tord.notFound"));
+      fireEvent.click(screen.getByRole("link", { name: label("zh", "shell.tradeOrders") }));
+      await waitFor(() => expect(address().get("order")).toBeNull());
+      expect(window.history.state).toMatchObject({ idx: 1 });
+    } else {
+      await waitFor(() => expect(screen.queryByLabelText(t("tord.lookupId"))).toBeNull());
+      window.location.hash = "#/trade-orders?company=DEFAULT&order=PO-2";
+      await screen.findByText(t("tord.notFound"));
+    }
     const here = window.location.href;
     fireEvent.change(field("tord.orderId"), { target: { value: "PO-DRAFT" } });
 
     window.history.go(-2);
-    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
-    await act(() => new Promise((resolve) => setTimeout(resolve, 30)));
-    expect(confirm).toHaveBeenCalledTimes(1);
-    expect(window.location.href).toBe(here);
-    expect(field("tord.orderId").value).toBe("PO-DRAFT");
+    await expectCancelled(confirm, here);
 
     confirm.mockReturnValue(true);
     window.history.back();
     await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
     expect(confirm).toHaveBeenCalledTimes(2);
   });
-  // D274: after a typed hash (B, no idx), the router writes the next push as idx null + 1 = 1, so
-  // C's idx is wrong. Returning from a cancelled Back to A lands on B; the guard checks the landing
-  // (URL and router key) and, as it is not C, falls back to pushing C without asking again.
-  it("falls back without asking again when a cancel lands on the wrong entry", async () => {
+
+  // Review 6009916500: A(0) → D(1) → E(2) → B (typed hash) → C (in-app link, idx 1) → X (another
+  // document). Back at E with a draft, a Forward of two entries to C is cancelled: the position
+  // difference would point at X, so the guard must not call history.go at all.
+  it("cancels a Forward without history.go when the positions would lead out of the document", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     stubApi(found, emptyList, noneInvoiced);
     routerEntry(0, "?company=DEFAULT&order=PO-1", false);
+    routerEntry(1, "?company=DEFAULT&order=PO-2");
+    routerEntry(2, "?company=DEFAULT&order=PO-3");
+    window.history.pushState(null, "", "/#/trade-orders?company=DEFAULT&order=PO-4");
+    window.history.pushState({ usr: null, key: "c", idx: 1 }, "", "/#/trade-orders");
+    window.history.pushState(null, "", "/elsewhere");
+    const back = new Promise((resolve) =>
+      window.addEventListener("popstate", resolve, { once: true }),
+    );
+    window.history.go(-3);
+    await back;
+    expect(window.history.state).toMatchObject({ key: "k2", idx: 2 });
     render(<App />);
-    await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
-    window.location.hash = "#/trade-orders?company=DEFAULT&order=PO-2";
     await screen.findByText(t("tord.notFound"));
-    fireEvent.click(screen.getByRole("link", { name: label("zh", "shell.tradeOrders") }));
-    await waitFor(() => expect(address().get("order")).toBeNull());
-    expect(window.history.state).toMatchObject({ idx: 1 });
     const here = window.location.href;
     fireEvent.change(field("tord.orderId"), { target: { value: "PO-DRAFT" } });
 
-    window.history.go(-2);
-    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
-    await act(() => new Promise((resolve) => setTimeout(resolve, 60)));
-    expect(confirm).toHaveBeenCalledTimes(1);
-    expect(window.location.href).toBe(here);
-    expect(field("tord.orderId").value).toBe("PO-DRAFT");
+    window.history.go(2);
+    await expectCancelled(confirm, here);
+    expect(window.location.pathname).toBe("/");
 
     confirm.mockReturnValue(true);
     window.history.back();
-    await waitFor(() => expect(address().get("order")).toBe("PO-2"));
+    await waitFor(() => expect(address().get("order")).toBeNull());
+    expect(window.location.pathname).toBe("/");
     expect(confirm).toHaveBeenCalledTimes(2);
   });
 });
