@@ -7,12 +7,12 @@
 | 变化 | PR | 演示 | 截图 |
 |---|---|---|---|
 | 销售（AR）方向：订单列表里销售单也显示“开票状态”（部分开票 / 已开完） | #179（S9 已有，本版补销售方向） | 打开“采购 / 销售订单”，看 SO-I1、SO-I2 两行与采购单并列 | `orders-list-sales-*` |
-| 销售单深链接 `#/trade-orders?company=DEFAULT&order=SO-I1`：只读详情，L1 已开 4 剩余 6，L2 剩余 4 | #179 | 打开 SO-I1 深链接 | `order-deeplink-ar-*` |
+| 销售单详情（从发票列表的来源订单链接点进，地址 `#/trade-orders?company=DEFAULT&order=SO-I1`）：只读详情，L1 已开 4 剩余 6，L2 剩余 4 | #179、#181 | 在发票页点 SO-I1 链接 | `order-from-invoice-ar-*`（真实点击后的截图；脚本断言点击后的实际 hash 与订单行） |
 | 发票列表：销售发票 AR-I1-1、AR-I2-1 的“来源订单”是 SO-I1、SO-I2 链接，点开进入销售单深链接 | #181 | 打开“发票”页看全部 6 张发票 → 点 SO-I1 | `invoice-list-ar-source-*` |
 | 发票列表筛选条（新；请求新增可选参数，迁移 018 只加一条索引）：按伙伴、按方向、记账日期起止；应用 / 清除；无结果有专门提示 | #189 | 伙伴填 `PARTY2` → 应用（3 行，混合方向）；清除；方向选“销售 AR” → 应用（2 行）；再填伙伴 `PARTY` → 应用（无结果） | `invoice-filter-party-*`、`invoice-filter-side-ar-*`、`invoice-filter-empty-*` |
 | GATE-01、PROC-07（门禁与流程） | #188、#187 | 无界面变化，不演示 | — |
 
-文件名后缀 `*` = `zh-red-1440`、`zh-red-390`、`en-green-1440`、`en-green-390`（教学模式开启）。共 6 类 × 4 = 24 张。验收要求“销售方向每项在 zh-red / en-green × 1440 各一张、至少一张 390”：本版 4 个组合全部采集，已覆盖。
+文件名后缀 `*` = `zh-red-1440`、`zh-red-390`、`en-green-1440`、`en-green-390`（教学模式开启）。共 6 类 × 4 = 24 张。详情图来自点击来源链接之后（不是直接打开地址）。验收要求“销售方向每项在 zh-red / en-green × 1440 各一张、至少一张 390”：本版 4 个组合全部采集，已覆盖。
 
 ## 2. 流程图
 
@@ -23,8 +23,8 @@
 预置（全部虚构）：沿用 v0.9.0 的三张采购单与两张采购发票（PO-I1 部分开票、PO-I2 已开完、PO-I3 未开票；AP-I1-1、AP-I2-1），以及 seed-trade 自带的 AP-DEMO（PARTY）、AP-DEMO2（PARTY2），均无来源订单。本版 `seed-sales.mjs` 新增服务类商品 `SERVICE`（收入科目 4000）和两张销售单，往来方都是 PARTY2：`SO-I1` L1 数量 10 单价 30、L2 数量 4 单价 50，发票 `AR-I1-1` 开 L1 的 4 个；`SO-I2` L1 数量 10 单价 30，发票 `AR-I2-1` 开满 10。
 
 1. 打开“采购 / 销售订单”：五张订单，SO-I1“部分开票”、SO-I2“已开完”，与采购单同一列表。
-2. 打开 `#/trade-orders?company=DEFAULT&order=SO-I1`：销售单只读详情，L1 已开 4、剩余 6，L2 已开 0、剩余 4。
-3. 打开“发票”页：6 张发票，AR-I1-1 → SO-I1，AR-I2-1 → SO-I2；点 SO-I1 进入销售单详情。
+2. 打开“发票”页：6 张发票，AR-I1-1 → SO-I1，AR-I2-1 → SO-I2。
+3. 点 SO-I1 链接进入销售单详情（地址变为 `#/trade-orders?company=DEFAULT&order=SO-I1`）：只读，L1 已开 4、剩余 6，L2 已开 0、剩余 4。
 4. 回到发票页，用筛选条：伙伴填 `PARTY2`，点“应用”：3 行（AP-DEMO2、AR-I1-1、AR-I2-1，采购销售混合）；点“清除”：回到 6 行，两个字段都清空；方向选“销售 AR”，点“应用”：2 行；再把伙伴填成 `PARTY`，点“应用”：没有符合条件的发票，表格无数据行，显示“没有符合条件的发票。”。筛选不改地址栏，不弹离开确认。
 
 ## 4. 复跑（从仓库根目录）
@@ -72,30 +72,42 @@ $shots = Join-Path $env:TEMP ("demo-s10-shots-" + [guid]::NewGuid())
 
 ```powershell
 . {
-  $ErrorActionPreference = "Stop"
   $shots = Join-Path $env:TEMP ("demo-s10-shots-" + [guid]::NewGuid())
   $log = "$shots.run.log"   # 完整输出写入文件；失败时保留 $shots 与日志，不清理
   $ok = $false
+  $code = 0
+  $prevEap = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"   # Stop 下 PowerShell 5.1 会在第一行原生 stderr 处终止管道，丢后续输出并改写退出码
   try {
-    npm run build   # 服务托管 packages/web/dist；不重建会演示旧界面
+    $global:LASTEXITCODE = 0
+    npm run build *>&1 | Out-File -FilePath $log -Append -Encoding utf8 -Width 4096   # 服务托管 packages/web/dist；不重建会演示旧界面
     if ($LASTEXITCODE -ne 0) { throw "构建失败，退出码 $LASTEXITCODE" }
     $headTime = [DateTimeOffset]::Parse((git log -1 --format=%cI HEAD)).UtcDateTime
     $index = "packages\web\dist\index.html"
     if (-not (Test-Path $index) -or (Get-Item $index).LastWriteTimeUtc -le $headTime) { throw "dist 缺失，或不晚于 HEAD 提交时间（相等也算失败），中止" }
     $dist = Get-ChildItem packages\web\dist\assets -Filter *.js | Get-Content -Raw
     if (-not ($dist -match "Accounting date from" -and $dist -match "No invoices match the filters")) { throw "dist 里没有 Accounting date from 或 No invoices match the filters，旧界面，中止" }
-    & .\docs\demo\v0.10.0\scripts\run-main.ps1 -Shots $shots *>&1 | Tee-Object -FilePath $log
+    $global:LASTEXITCODE = 0
+    & .\docs\demo\v0.10.0\scripts\run-main.ps1 -Shots $shots *>&1 | Out-File -FilePath $log -Append -Encoding utf8 -Width 4096
+    if ($LASTEXITCODE -ne 0) { throw "run-main 退出码 $LASTEXITCODE" }
     $n = @(Get-ChildItem $shots -Filter *.png).Count
     if ($n -ne 24) { throw "截图数 $n，不是 24，不复制" }
     Copy-Item "$shots\*" docs\demo\v0.10.0\screenshots\
     $ok = $true
+  } catch {
+    $code = if ($LASTEXITCODE) { $LASTEXITCODE } else { 1 }   # 原生命令的真实退出码；runner 自己 throw 时没有，记为 1
+    "EXCEPTION: $($_ | Out-String)" | Out-File -FilePath $log -Append -Encoding utf8 -Width 4096
   } finally {
+    $ErrorActionPreference = $prevEap
+    "exit=$code ok=$ok log=$log" | Out-File -FilePath $log -Append -Encoding utf8 -Width 4096
     if ($ok -and (Split-Path $shots -Leaf) -like "demo-s10-shots-*" -and (Test-Path $shots)) { Remove-Item -Recurse -Force $shots }
-    elseif (-not $ok) { "失败，已保留：$shots 和 $log" }
   }
+  Get-Content -Encoding UTF8 $log
+  if (-not $ok) { throw "失败，退出码 $code；已保留 $shots 和 $log，不清理，不重试" }
 }
 ```
 
+取图块把 build 与 `run-main.ps1` 的 stdout / stderr、异常原文（`EXCEPTION:`）和最终 `exit=` 都追加写进 `$log`（`Out-File -Encoding utf8`，不截断），成功才复制、才清理；失败保留现场并抛出。`ErrorActionPreference` 在块内设为 `Continue`、结束时恢复。无浏览器替身 [orchestration-stub.ps1](scripts/orchestration-stub.ps1) 的 B7 在 Windows PowerShell 5.1 下实际执行这个块，覆盖成功、原生 stderr 之后仍有 stdout 并以退出码 3 失败、runner 抛错三条路径。
 `run-main.ps1` 启动前检查端口 4201 空闲；每个 seed 与 capture 之前都校验监听进程就是本轮服务；`finally` 只停本轮服务、只删本轮 `erp-demo-*` 目录。`screenshots/.gitkeep` 是替身检查的哨兵文件，别删。
 
 脚本入口：[run-main.ps1](scripts/run-main.ps1)、[capture.mjs](scripts/capture.mjs)、[seed-invoicing.mjs](scripts/seed-invoicing.mjs)、[seed-sales.mjs](scripts/seed-sales.mjs)、[stub-check.ps1](scripts/stub-check.ps1)、[proc05-negatives.ps1](scripts/proc05-negatives.ps1)、[orchestration-stub.ps1](scripts/orchestration-stub.ps1)、[seed-invoicing-stub.mjs](scripts/seed-invoicing-stub.mjs)；账套准备与主数据复用 v0.4.0 的 `prepare.mjs`、`seed-trade.mjs`。
@@ -105,5 +117,5 @@ $shots = Join-Path $env:TEMP ("demo-s10-shots-" + [guid]::NewGuid())
 - 未演示：记账日期起止筛选与两种输入错误（伙伴格式不合法、起止倒置）的提示，只对照代码与 #189 的 GUI 场景（`trade-gui-scenario.ts` 的 `invoiceFilters()`），本 Demo 不实跑；分页下“加载更多”保持筛选；筛选条在 1440 en 与 390 的换行布局只在截图里目测，不做几何断言（几何断言在 #189 的测试里）。
 - 筛选不进地址栏、刷新后重置、切换公司后重置（`TradeInvoices.tsx:1077–1078`）；本 Demo 不演示刷新与切换公司。
 - 离开确认、待重试、订单深链接异常提示在 v0.9.0 Demo 已演示，本版不重复。
-- capture 没有用替身页面执行，走“逐条核对”路径（见 [run-through.md](run-through.md) §3）；真实 Chrome 取图待批准的独占时段。发票列表里的 AP-DEMO、AP-DEMO2 来自 seed-trade，来源列显示“—”，属预期。
+- capture 没有用替身页面执行，走“逐条核对”路径（见 [run-through.md](run-through.md) §3）；真实 Chrome 取图已在独占时段完成（D330 首次取图；D331 重取详情图，见 [run-through.md](run-through.md) §5）。发票列表里的 AP-DEMO、AP-DEMO2 来自 seed-trade，来源列显示“—”，属预期。
 - 日志与时段记录见 [run-through.md](run-through.md)。

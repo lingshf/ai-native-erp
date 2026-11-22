@@ -166,19 +166,7 @@ try {
       await context.close();
     }
 
-    // 2 销售单深链接：直接打开 SO-I1 的只读详情（部分开票：L1 已开 4 未开 6，L2 未开 4）
-    {
-      const context = await contextFor(lang, theme, width);
-      const page = await newPage(context, errors);
-      await page.goto(`${base}/#/trade-orders?company=DEFAULT&order=SO-I1`);
-      await page.locator("section.tord-lookup-result table.tord-amounts").waitFor({ timeout: 8000 });
-      await poll(() => orderRows(page), [["L1", "10", "4", "6"], ["L2", "4", "0", "4"]], "深链接 SO-I1 订单行");
-      log.push({ step: "order-deeplink-ar", tag, hash: new URL(page.url()).hash });
-      await shot(page, `order-deeplink-ar-${tag}`, want);
-      await context.close();
-    }
-
-    // 3 发票列表（未筛选）：采购与销售发票并列，销售发票的来源订单是 SO- 开头的链接；点链接进入销售单深链接
+    // 2 发票列表（未筛选）：采购与销售发票并列，销售发票的来源订单是 SO- 开头的链接；真实点击 SO-I1 链接后，断言实际 hash 与订单行，再从这条路径截详情图
     {
       const context = await contextFor(lang, theme, width);
       const page = await newPage(context, errors);
@@ -190,10 +178,13 @@ try {
       await page.locator("td.tinv-source a[title=SO-I1]").click();
       await page.locator("section.tord-lookup-result table.tord-amounts").waitFor({ timeout: 8000 });
       await poll(() => orderRows(page), [["L1", "10", "4", "6"], ["L2", "4", "0", "4"]], "点销售来源订单后的订单行");
+      await poll(() => page.evaluate(() => location.hash), link("SO-I1"), "点销售来源订单后的 hash");
+      log.push({ step: "order-from-invoice-ar", tag, hash: new URL(page.url()).hash, via: "click td.tinv-source a[title=SO-I1]" });
+      await shot(page, `order-from-invoice-ar-${tag}`, want);
       await context.close();
     }
 
-    // 4 发票列表筛选：同一页面内连续做（筛选状态只在组件里，不进地址栏，不触发离开确认）。
+    // 3 发票列表筛选：同一页面内连续做（筛选状态只在组件里，不进地址栏，不触发离开确认）。
     // 按伙伴 PARTY2 → 3 行（混合方向）；清除 → 全部 6 行；按方向 AR → 2 行；伙伴 PARTY + 方向 AR → 无结果空态（已应用筛选时的提示）
     {
       const context = await contextFor(lang, theme, width);

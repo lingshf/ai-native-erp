@@ -183,18 +183,25 @@ try {
 param([Parameter(Mandatory)][string]$Shots, [switch]$SkipCapture)
 "run-main stub: Shots=$Shots SkipCapture=$($SkipCapture.IsPresent)" | Add-Content "$env:SBX\calls.log"
 if ($Shots -notlike "*demo-s10-shots-*") { throw "Shots 目录名不对" }
+$mode = $env:RUNMODE
+"STDOUT-BEFORE"
+if ($mode -in @("fail3", "stderr-ok")) { cmd /c "echo NATIVE-STDERR 1>&2" }
+"STDOUT-AFTER-STDERR"
+if ($mode -eq "throw") { throw "owner mismatch stub" }
 if (-not $SkipCapture) {
   New-Item -ItemType Directory -Force $Shots | Out-Null
-  1..24 | ForEach-Object { [IO.File]::WriteAllText("$Shots\shot-$_.png", "png-$_") }
+  $count = if ($mode -eq "fail3") { 5 } else { 24 }
+  1..$count | ForEach-Object { [IO.File]::WriteAllText("$Shots\shot-$_.png", "png-$_") }
 }
+if ($mode -eq "fail3") { exit 3 }
 '@
   $runBlock = {
-    param($name, $text, $noFromOrder, $gitEq = "0")
+    param($name, $text, $noFromOrder, $gitEq = "0", $mode = "ok")
     $sb = New-Sandbox $name
     & $put "$sb\docs\demo\v0.10.0\scripts\run-main.ps1" $runStub
     & $put "$sb\docs\demo\v0.10.0\screenshots\.gitkeep" ""
     [IO.File]::WriteAllText("$sb\block.ps1", $text, (New-Object Text.UTF8Encoding $true))
-    $env:SBX = $sb; $env:NO_FROMORDER = $noFromOrder; $env:GIT_EQ = $gitEq; $env:TEMP = "$sb\tmp"; $env:TMP = "$sb\tmp"; $env:PATH = "$sb\bin;" + $oldPath
+    $env:RUNMODE = $mode; $env:SBX = $sb; $env:NO_FROMORDER = $noFromOrder; $env:GIT_EQ = $gitEq; $env:TEMP = "$sb\tmp"; $env:TMP = "$sb\tmp"; $env:PATH = "$sb\bin;" + $oldPath
     Push-Location $sb
     try { $ErrorActionPreference = "Continue"; $o = (& powershell -NoProfile -File "$sb\block.ps1" 2>&1 | Out-String); $c = $LASTEXITCODE } finally { $ErrorActionPreference = "Stop"; Pop-Location; $env:TEMP = $oldTemp; $env:TMP = $oldTmp; $env:PATH = $oldPath }
     @{ sb = $sb; out = $o; code = $c; calls = $(if (Test-Path "$sb\calls.log") { Get-Content "$sb\calls.log" -Raw } else { "" }) }
@@ -218,6 +225,26 @@ if (-not $SkipCapture) {
   $copied = @(Get-ChildItem "$($r.sb)\docs\demo\v0.10.0\screenshots" -Filter *.png -ErrorAction SilentlyContinue).Count
   if ($r.code -eq 0 -or $r.out -notmatch "不晚于 HEAD" -or $r.calls -match "run-main stub" -or $copied -ne 0) { $problems.Add("B6 负例（dist 时间等于 HEAD）应中止且不调用 run-main：退出 $($r.code)`n$($r.calls)`n$($r.out)") }
   else { "B6 负例通过：dist 时间与 HEAD 提交时间相等，取图块因严格晚于断言中止（退出 $($r.code)，输出含[不晚于 HEAD]），run-main 替身没有被调用，没有复制截图" }
+
+  # B7 日志完整性（Windows PowerShell 5.1）：取图块把 runner 的 stdout / 原生 stderr / 异常 / 退出码写进日志文件
+  $logOf = { param($r) @(Get-ChildItem "$($r.sb)\tmp" -Filter "demo-s10-shots-*.run.log" -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -Raw -Encoding UTF8 $_.FullName }) -join "`n" }
+  $shotsLeft = { param($r) @(Get-ChildItem "$($r.sb)\tmp" -Directory -Filter "demo-s10-shots-*" -ErrorAction SilentlyContinue).Count }
+  $pngs = { param($r) @(Get-ChildItem "$($r.sb)\docs\demo\v0.10.0\screenshots" -Filter *.png -ErrorAction SilentlyContinue).Count }
+
+  $r = & $runBlock "b7ok" $b6 "0" "0" "stderr-ok"
+  $lg = & $logOf $r
+  if ($r.code -ne 0 -or $lg -notmatch "STDOUT-BEFORE" -or $lg -notmatch "NATIVE-STDERR" -or $lg -notmatch "STDOUT-AFTER-STDERR" -or $lg -notmatch "exit=0 ok=True" -or (& $pngs $r) -ne 24 -or (& $shotsLeft $r) -ne 0) { $problems.Add("B7 成功路径（stderr 之后仍有 stdout）不符：退出 $($r.code)`n$lg") }
+  else { "B7 成功通过：runner 先写 stdout、再写原生 stderr、再写 stdout，三段都在日志里，exit=0；复制 24 张，shots 目录已清，日志保留" }
+
+  $r = & $runBlock "b7fail" $b6 "0" "0" "fail3"
+  $lg = & $logOf $r
+  if ($r.code -eq 0 -or $lg -notmatch "STDOUT-BEFORE" -or $lg -notmatch "NATIVE-STDERR" -or $lg -notmatch "STDOUT-AFTER-STDERR" -or $lg -notmatch "EXCEPTION:.*run-main 退出码 3" -or $lg -notmatch "exit=3 ok=False" -or (& $pngs $r) -ne 0 -or (& $shotsLeft $r) -ne 1) { $problems.Add("B7 失败路径（exit 3）不符：退出 $($r.code)`n$lg") }
+  else { "B7 失败通过：原生 stderr 之后的 stdout 仍落盘；日志记 EXCEPTION 与实际退出码 exit=3（不是 1）；块以失败退出；不复制截图；shots 目录保留（含已写出的 5 张）" }
+
+  $r = & $runBlock "b7throw" $b6 "0" "0" "throw"
+  $lg = & $logOf $r
+  if ($r.code -eq 0 -or $lg -notmatch "STDOUT-BEFORE" -or $lg -notmatch "EXCEPTION:.*owner mismatch stub" -or $lg -notmatch "exit=1 ok=False" -or (& $pngs $r) -ne 0) { $problems.Add("B7 runner 抛错路径不符：退出 $($r.code)`n$lg") }
+  else { "B7 抛错通过：runner 抛错的原始异常（owner mismatch stub）和 exit=1 落盘；块失败退出；不复制截图" }
 } catch {
   $problems.Add("编排替身运行失败：" + $_.Exception.Message)
 } finally {
