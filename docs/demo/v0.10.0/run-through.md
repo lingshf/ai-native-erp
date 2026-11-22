@@ -26,7 +26,7 @@
 | 订单列表 5 行，SO-I1 `i部分开票`（class `badge info`）、SO-I2 `✓已开完`（`badge success`），采购三行同 v0.9.0 | `TradeOrders.tsx:1013`（表）、`:1044`（`td.tord-invoicing`） | Badge 符号在 `aria-hidden` 内（`ui/components/index.tsx`），textContent 为符号 + 文字，断言同时取符号 | 无筛选时列出全部订单 | `tord.invoicing.none/partial/full`（`trade-order-labels.ts:84–93`、`:187–196`） | 订单列表项 `invoicing`：none / partial / full | `seed-invoicing.mjs`（PO-I1..3）、`seed-sales.mjs`（SO-I1 开 L1 的 4、SO-I2 开满） | 替身 1b 校验开票数量与 side AR / party PARTY2；徽章与 class 无（取图未中止，产品代码未改；结果见 §5） |
 | 深链接 SO-I1 行 L1 10/4/6、L2 4/0/4 | `TradeOrders.tsx:1205`（`.tord-lookup-result`）、`:1306`（`table.tord-amounts`） | 已开票列的 `✓` 前缀在比较前去掉 | 深链接直接打开只读详情 | `tord.*`（沿用 v0.9.0） | 开票接口 `invoiced[].invoicedQuantity` | `seed-sales.mjs` SO-I1：L1 10 单价 30、L2 4 单价 50，AR-I1-1 开 L1 的 4 个 | 替身 1b 校验已开票数量 SO-I1/L1 = 4、L2 未开；页面渲染无（取图未中止，产品代码未改；结果见 §5） |
 | 发票列表 6 行（外部号排序）：AP-DEMO、AP-DEMO2 无来源；AP-I1-1→PO-I1、AP-I2-1→PO-I2；AR-I1-1→SO-I1、AR-I2-1→SO-I2；方向列 `应付/应收`（en `Accounts payable/receivable`），伙伴列 | `TradeInvoices.tsx:1145`（列）、`:1269`（方向 `trade.${side}`）、`:1032`（`SourceOrderCell`） | 无 `aria-hidden` 装饰；来源单元格的链接 `title` 为订单号 | 未筛选：全部发票 | `trade.AP/AR`（`trade-labels.ts:111–112`、`:351–352`）、`tinv.sourceOrder` | 发票列表项 `side`、`party`、`externalNo`、`orderId` | seed-trade（AP-DEMO PARTY、AP-DEMO2 PARTY2）、seed-invoicing、seed-sales；方向与伙伴取自各脚本的命令体 | 替身 1b 的请求日志校验 AR 发票 party / orderId；列文字无（取图未中止，产品代码未改；结果见 §5） |
-| 点 SO-I1 链接进入销售单深链接，行同上 | `TradeInvoices.tsx:1032`（链接）；`TradeOrders.tsx:1205` | — | — | — | `orderId` | 同上 | 真实点击后断言实际 hash 为 `#/trade-orders?company=DEFAULT&order=SO-I1` 与订单行，再从点击后的页面截 `order-from-invoice-ar-*`（D331，替换 D330 的直接打开地址图）；工具判定复核：待 D331 重取后填 |
+| 点 SO-I1 链接进入销售单深链接，行同上 | `TradeInvoices.tsx:1032`（链接）；`TradeOrders.tsx:1205` | — | — | — | `orderId` | 同上 | 真实点击后断言实际 hash 为 `#/trade-orders?company=DEFAULT&order=SO-I1` 与订单行，再从点击后的页面截 `order-from-invoice-ar-*`（D331 起，替换 D330 的直接打开地址图；D332 重取已验证，见 §5.2）；工具判定复核：无（D332 重取未中止，产品代码未改） |
 | 筛选条存在：`form[role=search]`，`#tinv-filter-party/-side/-from/-to`，提交按钮与“清除”按钮 | `TradeInvoices.tsx:1163`（`role="search"`）、`:1171`、`:1187`、`:1199`、`:1209`、`:1222`、`:1225` | 标签与控件一对一（`label[for]`） | 草稿与已应用均为空 | `tinv.filter.*`（`trade-labels.ts:201–214`、`:434–447`） | 请求参数 `party`、`side`、`from`、`to`（可选） | 无（页面控件） | 无替身；无（取图未中止，产品代码未改；结果见 §5） |
 | 伙伴 `PARTY2` + 应用 → 3 行：AP-DEMO2、AR-I1-1、AR-I2-1（混合方向） | `TradeInvoices.tsx:1114`（`apply`）、`:1090–1102`（请求带 `party`） | — | 伙伴为空 = 不筛 | `tinv.filter.party` | `party` 精确匹配伙伴代码 | AP-DEMO2 的伙伴 PARTY2（seed-trade）；AR 发票伙伴 PARTY2（seed-sales） | 期望集合由 seed 脚本的 party 参数推出；服务端按 party 过滤由 #189 的测试覆盖，本 Demo 只在真实 Chrome 里观察；无（取图未中止，产品代码未改；结果见 §5） |
 | 清除 → 回到 6 行，伙伴与方向输入为空 | `TradeInvoices.tsx:1124`（`clear`） | — | 清除后草稿 = 已应用 = 空 | `tinv.filter.clear` | — | — | 无（取图未中止，产品代码未改；结果见 §5） |
@@ -62,4 +62,12 @@ D330 批准，2026-11-22 01:33:50 至 01:35:58（-08:00），约 2 分 08 秒，
 
 ### 5.2 D331 重取（详情图改为点击来源链接后截图）
 
-无浏览器替身准备已完成（orchestration-stub B7：PowerShell 5.1 下成功、原生 stderr 后仍有 stdout 并以退出码 3 失败、runner 抛错三条路径均通过）；真实重取时段待批准，结果在批准并跑完后写入本节。
+取证完整 SHA：脚本提交 `587a4cc0a5b4f9adb37d0afef3ceffed75d1815c`（运行时工作树 head；产品代码同 `c0189c7`），其 [verify run 45008826269](https://github.com/lingshf/ai-native-erp/actions/runs/45008826269) 通过。
+
+无浏览器替身准备（时段前，已验证）：orchestration-stub B7 在 Windows PowerShell 5.1 下实跑 README 取图块，成功、原生 stderr 后仍有 stdout 并以退出码 3 失败（日志记 `exit=3`）、runner 抛错三条路径均通过。
+
+D332 批准，2026-11-22 01:43:47 至 01:45:33（-08:00），约 1 分 46 秒，一次连续跑，未重跑。`ERP_E2E_BROWSER_CHANNEL=chrome`，端口 4201，PowerShell 7.6（README 取图块原文执行，从 README 取出）。预检 6 次外部进程均为 0；按 README §4 取图块：build、dist 断言、`run-main.ps1`（seed-trade、seed-invoicing、seed-sales、readiness ok、capture）通过，`shots 24`，`capture exit 0`，`exit=0 ok=True`，端口 4201 已释放；shots 目录已清，日志 `$shots.run.log` 保留在本机临时目录。本次没有重跑演练（D332 只批 1)–2)）。
+
+结果：24 张全部重取并入库；删除 4 张 `order-deeplink-ar-*`，新增 4 张 `order-from-invoice-ar-*`（zh-red / en-green × 1440 / 390）。`capture-log-main.json` 里 4 条 `order-from-invoice-ar` 记录的实际 hash 均为 `#/trade-orders?company=DEFAULT&order=SO-I1`，`via` 为 `click td.tinv-source a[title=SO-I1]`；24 项 `overflowPx` 均为 0，4 个组合 `errors` 均为 `[]`。§3 “工具判定复核”为“无”（未中止，产品代码未改）。
+
+残留：无本轮 chrome / node；系统另有 6 个更早启动的 node（11/15、11/20、11/21），未触碰。

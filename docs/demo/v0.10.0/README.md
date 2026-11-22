@@ -1,6 +1,6 @@
 # v0.10.0 Demo
 
-状态：24 张截图已在 D330 独占时段（2026-11-22 01:33:50–01:35:58，-08:00）采集并入库于 `screenshots/`，同目录有 `capture-log-main.json`。基线 main `c0189c7`（`packages/` 与 TINV-05 合并点 `108684d` 相同，其后只有文档提交）。演示账套是临时目录里的虚构账套，端口 4201；不连接 4173，不碰真实旧账或 `.bak`。
+状态：24 张截图：D330 时段（2026-11-22 01:33:50–01:35:58，-08:00）首次采集；D332 时段（01:43:47–01:45:33）用点击路径重取，全部 24 张入库于 `screenshots/`，同目录有 `capture-log-main.json`。基线 main `c0189c7`（`packages/` 与 TINV-05 合并点 `108684d` 相同，其后只有文档提交）。演示账套是临时目录里的虚构账套，端口 4201；不连接 4173，不碰真实旧账或 `.bak`。
 
 ## 1. S10 用户可见变化与演示点
 
@@ -117,5 +117,5 @@ $shots = Join-Path $env:TEMP ("demo-s10-shots-" + [guid]::NewGuid())
 - 未演示：记账日期起止筛选与两种输入错误（伙伴格式不合法、起止倒置）的提示，只对照代码与 #189 的 GUI 场景（`trade-gui-scenario.ts` 的 `invoiceFilters()`），本 Demo 不实跑；分页下“加载更多”保持筛选；筛选条在 1440 en 与 390 的换行布局只在截图里目测，不做几何断言（几何断言在 #189 的测试里）。
 - 筛选不进地址栏、刷新后重置、切换公司后重置（`TradeInvoices.tsx:1077–1078`）；本 Demo 不演示刷新与切换公司。
 - 离开确认、待重试、订单深链接异常提示在 v0.9.0 Demo 已演示，本版不重复。
-- capture 没有用替身页面执行，走“逐条核对”路径（见 [run-through.md](run-through.md) §3）；真实 Chrome 取图已在独占时段完成（D330 首次取图；D331 重取详情图，见 [run-through.md](run-through.md) §5）。发票列表里的 AP-DEMO、AP-DEMO2 来自 seed-trade，来源列显示“—”，属预期。
+- capture 没有用替身页面执行，走“逐条核对”路径（见 [run-through.md](run-through.md) §3）；真实 Chrome 取图已在独占时段完成（D330 首次取图；D332 重取详情图（已完成），见 [run-through.md](run-through.md) §5）。发票列表里的 AP-DEMO、AP-DEMO2 来自 seed-trade，来源列显示“—”，属预期。
 - 日志与时段记录见 [run-through.md](run-through.md)。

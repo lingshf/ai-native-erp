@@ -9,21 +9,22 @@
   "scrollWidth": 1440
  },
  {
-  "step": "order-deeplink-ar",
-  "tag": "zh-red-1440",
-  "hash": "#/trade-orders?company=DEFAULT&order=SO-I1"
- },
- {
-  "name": "order-deeplink-ar-zh-red-1440",
-  "overflowPx": 0,
-  "scrollWidth": 1440
- },
- {
   "step": "invoice-list-ar",
   "tag": "zh-red-1440"
  },
  {
   "name": "invoice-list-ar-source-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "step": "order-from-invoice-ar",
+  "tag": "zh-red-1440",
+  "hash": "#/trade-orders?company=DEFAULT&order=SO-I1",
+  "via": "click td.tinv-source a[title=SO-I1]"
+ },
+ {
+  "name": "order-from-invoice-ar-zh-red-1440",
   "overflowPx": 0,
   "scrollWidth": 1440
  },
@@ -69,21 +70,22 @@
   "scrollWidth": 390
  },
  {
-  "step": "order-deeplink-ar",
-  "tag": "zh-red-390",
-  "hash": "#/trade-orders?company=DEFAULT&order=SO-I1"
- },
- {
-  "name": "order-deeplink-ar-zh-red-390",
-  "overflowPx": 0,
-  "scrollWidth": 390
- },
- {
   "step": "invoice-list-ar",
   "tag": "zh-red-390"
  },
  {
   "name": "invoice-list-ar-source-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390
+ },
+ {
+  "step": "order-from-invoice-ar",
+  "tag": "zh-red-390",
+  "hash": "#/trade-orders?company=DEFAULT&order=SO-I1",
+  "via": "click td.tinv-source a[title=SO-I1]"
+ },
+ {
+  "name": "order-from-invoice-ar-zh-red-390",
   "overflowPx": 0,
   "scrollWidth": 390
  },
@@ -129,21 +131,22 @@
   "scrollWidth": 1440
  },
  {
-  "step": "order-deeplink-ar",
-  "tag": "en-green-1440",
-  "hash": "#/trade-orders?company=DEFAULT&order=SO-I1"
- },
- {
-  "name": "order-deeplink-ar-en-green-1440",
-  "overflowPx": 0,
-  "scrollWidth": 1440
- },
- {
   "step": "invoice-list-ar",
   "tag": "en-green-1440"
  },
  {
   "name": "invoice-list-ar-source-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440
+ },
+ {
+  "step": "order-from-invoice-ar",
+  "tag": "en-green-1440",
+  "hash": "#/trade-orders?company=DEFAULT&order=SO-I1",
+  "via": "click td.tinv-source a[title=SO-I1]"
+ },
+ {
+  "name": "order-from-invoice-ar-en-green-1440",
   "overflowPx": 0,
   "scrollWidth": 1440
  },
@@ -189,21 +192,22 @@
   "scrollWidth": 390
  },
  {
-  "step": "order-deeplink-ar",
-  "tag": "en-green-390",
-  "hash": "#/trade-orders?company=DEFAULT&order=SO-I1"
- },
- {
-  "name": "order-deeplink-ar-en-green-390",
-  "overflowPx": 0,
-  "scrollWidth": 390
- },
- {
   "step": "invoice-list-ar",
   "tag": "en-green-390"
  },
  {
   "name": "invoice-list-ar-source-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390
+ },
+ {
+  "step": "order-from-invoice-ar",
+  "tag": "en-green-390",
+  "hash": "#/trade-orders?company=DEFAULT&order=SO-I1",
+  "via": "click td.tinv-source a[title=SO-I1]"
+ },
+ {
+  "name": "order-from-invoice-ar-en-green-390",
   "overflowPx": 0,
   "scrollWidth": 390
  },
