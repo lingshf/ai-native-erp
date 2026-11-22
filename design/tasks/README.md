@@ -561,6 +561,23 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | 5 | 改条款时检查上下文，旧口径在原处改掉 | 路线图 §5 设计文档自查第 8 项；任务书模板“设计自查” | 设计（本 PR） |
 | 6 | CHANGELOG 只增不删；“已验证”写明命令与取证 head | `docs/release/README.md` 检查清单 | 版本管理（PROC-06） |
 
+## S10：发票列表筛选 + 最小常驻闸门 + v0.9.0 回顾行动（建议 v0.10.0）
+
+**计划正文**：[S10.md](S10.md)（目标、不在本 Sprint、每个任务的用户可见变化与验收要点、DEMO-10 验收、共同验收、泳道与共享单文件、遗留项与回顾行动项落点，以该文为准）。基线为 v0.9.0 tag 所指提交 `f943b8b`；版本号由协调者定。输入见 D305。
+
+**不在本 Sprint**：M2-05 / M2-06（仍待用户授权）；按开票状态筛选订单列表（D263 候选）；发票筛选写入地址栏；多订单合并开票、贷项冲减已开票数量、发票详情页、保留前进历史；S7 遗留 3–5。
+
+| ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| [TINV-05](TINV-05-invoice-list-filters.md) | 发票列表筛选：伙伴 / 方向 / 记账日期（迁移 018，一条伙伴索引 `trade_documents_party`）；筛选不进地址栏；1 万张发票热读 p95 ≤ 1 s | 迁移（只加索引）+ API（请求 schema 加可选参数，旧请求响应逐字节不变）+ 页面 | P1 | — | 迁移 / schema、存储、trade-docs、contracts、web-ui:trade（`InvoiceList`）、bench；共享单文件见 [S10 泳道](S10.md#泳道) | todo | — |
+| [GATE-01](GATE-01-minimal-resident-gate.md) | 拆出最小常驻闸门（`leave-guard-gate.ts`），入口块 gzip-9 减少 ≥ 75 B；行为不变（S9 遗留 1，D284） | 前端重构 | P2 | — | web-ui:shell（`App.tsx:4–5`）、`leave-guard-history.ts` 及其测试；共享单文件 `trade-gui-scenario.ts`（GATE-01 在前） | todo | — |
+| [CSS-02](CSS-02-tinv-source-min-width.md) | 删除 `.tinv-source` 冗余的 `min-width: 8ch`；先证明（含全部为“—”的列表）像素差为 0，否则保留（S9 遗留 2，D295） | CSS 清理 | P3 | TINV-05（同一 CSS 文件，合并且 main Full 绿后开工） | web-ui:trade（只删 `trade-invoices.css:172`） | todo | — |
+| [PROC-07](PROC-07-s9-retro-actions.md) | S9 回顾行动 3–6 写入 Demo 模板与发布清单（版本管理，不占开发名额） | 文档 | P2（v0.10.0 RC 之前） | — | docs:release | todo | — |
+| DEMO-10（无任务书） | v0.10.0 RC 与 Demo，补销售方向截图（S9 遗留 3，D302），验收见 [S10.md](S10.md#demo-10-验收) | 发布 | P1（Sprint 末） | 以上全部合并、main Full 绿；PROC-07 先合并 | docs:release | todo | — |
+
+- **并行**：TINV-05 ∥ GATE-01 ∥ PROC-07 可同时进行；CSS-02 在 TINV-05 之后。S10 只有 TINV-05 含迁移，不得插入其他加迁移的任务与它并行。开发同时在岗不超过 3 人，第三个名额先空着，由协调者决定（约束见 [S10.md](S10.md#泳道)）。
+- **回顾行动项**：行动 1、2、7 与行动 3、4、5 的路线图清单部分由 S10 计划 PR 写入[路线图 §5](../roadmap.md#5-团队流程)与[任务书模板](TEMPLATE.md)；行动 3–6 的模板与清单部分由 PROC-07 完成。落点表见 [S10.md](S10.md#回顾行动项落点s9-回顾d302)。
+
 ## 派发顺序
 
 1. 第一批（按顺序，同时只开一个以避免 `package.json`/lock 冲突）：M0-01 → M0-02 → M0-03 → M0-04 → M0-05 → M0-06→ M0-07。M0-02 与 M0-03 可并行，后合并者重新生成 lock。
