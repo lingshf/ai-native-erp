@@ -1,8 +1,8 @@
 import { lazy, type ReactNode, Suspense, useEffect, useRef, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, NavLink, Route, Routes, useLocation } from "react-router-dom";
-// Before HashRouter registers its popstate listener (see leave-guard-history.ts).
-import "./leave-guard-history.ts";
+// The resident Back/Forward gate, before HashRouter registers its popstate listener (D280).
+import "./leave-guard-gate.ts";
 import {
   label,
   loadPreferences,

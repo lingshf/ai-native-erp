@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { guardHistory, type HistoryGuard } from "../src/leave-guard-history.ts";
+import { addGateHandler, installGate, removeGateHandler } from "../src/leave-guard-gate.ts";
 
 const pause = () => new Promise((resolve) => setTimeout(resolve, 30));
 
@@ -59,4 +60,56 @@ describe("leave-guard-history behind a router that re-renders first", () => {
       expect(go).not.toHaveBeenCalled();
     });
   }
+});
+
+describe("leave-guard-gate", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test("guards from leave-guard-history.ts share the gate's one registry and installGate registers once", async () => {
+    window.location.hash = "#/from";
+    await pause();
+    window.location.hash = "#/page";
+    await pause();
+    const listen = vi.spyOn(window, "addEventListener");
+    installGate();
+    installGate();
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    const guard = guardHistory(() => window.confirm("leave?"));
+    const later = vi.fn();
+    addGateHandler(later);
+    try {
+      expect(listen).not.toHaveBeenCalled();
+      window.history.back();
+      await pause();
+      expect(window.confirm).toHaveBeenCalledTimes(1);
+      expect(window.location.hash).toBe("#/page");
+      // The guard cancelled the popstate first in the same gate, so the handler registered after it
+      // never saw that event (the hashchange that follows arrives at the kept address).
+      expect(later.mock.calls.map(([event]) => event.type)).not.toContain("popstate");
+    } finally {
+      removeGateHandler(later);
+      guard.dispose();
+    }
+  });
+
+  // Runs last: a fresh module instance adds its own gate to this window.
+  test("importing only leave-guard-gate.ts installs the gate on window", async () => {
+    vi.resetModules();
+    const listen = vi.spyOn(window, "addEventListener");
+    const gate = await import("../src/leave-guard-gate.ts");
+    expect(listen.mock.calls.map(([type, , capture]) => [type, capture])).toEqual([
+      ["popstate", true],
+      ["hashchange", true],
+    ]);
+    const handler = vi.fn();
+    gate.addGateHandler(handler);
+    try {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      expect(handler).toHaveBeenCalledTimes(1);
+    } finally {
+      gate.removeGateHandler(handler);
+    }
+  });
 });
