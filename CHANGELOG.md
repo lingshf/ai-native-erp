@@ -10,7 +10,7 @@
 
 ## [0.9.0] - 2026-11-21
 
-> 产品代码基线为 `main` 6478d10（S9 功能全部合并，Full 12/12，run 44985493365）；自 v0.8.0（tag 所指提交 deb80fc）到 6478d10 共 5 个已合并 PR 的 5 个 squash 提交（#177–#181；`git rev-list --count v0.8.0..6478d10` = 5），其中 #177 是 S9 计划，#178 是流程与文档，#179、#180、#181 是产品与测试提交。之后 main 只有文档提交（RC #182、Demo #183、S9 评审与回顾 #184，main `2df0a17` 为日期 PR 的基线），产品代码与 `6478d10` 相同。按 D21，tag `v0.9.0` 打在本日期 PR 合并后的 squash 提交上，不是 `6478d10`。Demo 记录（基线 `9bbabe7`）：[docs/demo/v0.9.0](docs/demo/v0.9.0/run-through.md)；Sprint 评审与回顾：[S9 评审](design/reviews/S9.md)、[S9 回顾](design/reviews/S9-retro.md)。
+> 产品代码基线为 `main` 6478d10（S9 功能全部合并，Full 12/12，run 44985493365）；自 v0.8.0（tag 所指提交 deb80fc）到 6478d10 共 5 个已合并 PR 的 5 个 squash 提交（#177–#181；`git rev-list --count v0.8.0..6478d10` = 5），其中 #177 是 S9 计划，#178 是流程与文档，#179、#180、#181 是产品与测试提交。之后 main 只有文档提交（RC [#182](https://github.com/lingshf/ai-native-erp/pull/182)、Demo [#183](https://github.com/lingshf/ai-native-erp/pull/183)、S9 评审与回顾 [#184](https://github.com/lingshf/ai-native-erp/pull/184)，main `2df0a17` 为日期 PR 的基线），产品代码与 `6478d10` 相同。按 D21，tag `v0.9.0` 打在本日期 PR 合并后的 squash 提交上，不是 `6478d10`。Demo 记录（基线 `9bbabe7`）：[docs/demo/v0.9.0](docs/demo/v0.9.0/run-through.md)；Sprint 评审与回顾：[S9 评审](design/reviews/S9.md)、[S9 回顾](design/reviews/S9-retro.md)。
 
 S9 Sprint：订单与发票双向可追溯。订单列表显示开票状态并支持深链接；发票列表显示来源订单；五个贸易页统一离开确认，并修复真实 Chrome 中后退不弹确认框的问题。**无新增迁移**（最新仍为 017），无依赖变化，不改过账规则。
 
@@ -373,7 +373,7 @@ M1 贸易里程碑完成（M1-01..07，M1-R 评审通过，无阻塞项）。产
 - 旧快照未配置提示、凭证空列表文案和根 README 迁移版本说明已在 v0.2.0 修复（见 `[0.2.0]`）；v0.1.0 原发布基线不包含这些修复。
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
-[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.9.0...HEAD
 [0.9.0]: https://github.com/lingshf/ai-native-erp/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/lingshf/ai-native-erp/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/lingshf/ai-native-erp/compare/v0.6.0...v0.7.0
