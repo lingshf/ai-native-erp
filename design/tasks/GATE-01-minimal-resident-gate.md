@@ -58,11 +58,27 @@
 3. **模块归属**：用本地临时构建（`npx vite build --sourcemap`，在 `packages/web` 下执行，不提交配置改动）读取入口块 `.map` 的 `sources`：包含 `leave-guard-gate.ts`，不包含 `leave-guard-history.ts`；PR 正文附命令与输出。
 4. **真实 Chrome**（`trade-gui-*.slow.test.ts`，中 / 英两轮，发票页与订单页都跑，附完整日志）：
    - **a. 现有后退**：`leaveByBack()` 一字不改通过（同 #181 D294 的口径：只弹一次确认；取消后地址、页面、草稿不变；继续后到达目标）。
-   - **b. 首键后退（D280 + D282）**：新增 `leaveOnFirstKey()`。`navigate("trade-reports")` → `navigate(path)`（到页面标题出现为止，沿用 `:871–886` 的等待）→ **先**注册对话框处理函数（取消）→ 用 Tab 把焦点移到伙伴字段，按**一个**字符键使草稿 dirty → **紧接着**调用 `page.goBack({ waitUntil: "commit" })`。按键与后退之间不加 `waitForTimeout`、`expect.poll`、Tab 或任何等待页面稳定的步骤。断言：只弹一次确认；地址仍是 `#/<path>`、页面标题不变、字段值为该字符。随后改为接受并再后退一次，只弹一次确认，到达 `#/trade-reports`。
-   - **c. 真实前进**：新增 `leaveByForward()`。
-     - 取消：`navigate(path)` → `navigate("trade-reports")` → `page.goBack()` 回到 `path`（草稿干净，断言 0 次确认）→ `type()` 使草稿 dirty → `page.goForward({ waitUntil: "commit" })`。断言只弹一次确认；取消后地址、页面、草稿不变。
-     - 继续：取消已截断前进历史（D275），所以继续分支重新建立前进条目：改为接受 → `navigate("trade-reports")`（站内跳转，只弹一次确认并接受）→ `page.goBack()` 回到 `path`（0 次确认）→ `type()` → `page.goForward({ waitUntil: "commit" })`。断言只弹一次确认，到达 `#/trade-reports`。
-     - 每次导航后都断言累计确认次数恰好等于预期值。
+   - **干净起点（b、c 每个分支开始前都执行，记作 `cleanStart(path)`）**：
+     1. 位于 `#/trade-reports`，此时发票页、订单页都未挂载。上一分支若停在 dirty 的 `path` 上，先在接受模式下 `navigate("trade-reports")` 离开；这次确认不计入下一分支，离开后把确认计数清零。
+     2. 用 `page.evaluate` 删除 `sessionStorage` 中所有以 `erp.tradeInvoices.v1.` 开头的键，读回并断言该前缀的键为 0 个。
+        - 原因：发票页把 dirty 草稿按账套存于 `erp.tradeInvoices.v1.<company>`，下次进入同一账套时恢复字段与 `dirty`（`TradeInvoices.tsx:146–199`、`:435–438`）。`leaveByBack()` 与前一分支留下的正是这种草稿。
+        - 只在发票页未挂载时删，避免其 layout effect（`:451–453`）回写。
+        - 订单页不持久化草稿（`rg -n sessionStorage packages/web/src` 无 `TradeOrders.tsx` 命中），同样执行本步，不另作区分。
+     3. 进入 `path` 后、注册取消 / 接受处理函数与任何按键之前，断言：
+        - 伙伴字段值为空字符串；
+        - `sessionStorage` 中没有该前缀的键（`storeSaved` 在既不 dirty 也无 pending 时删除键，`:189–191`，键不存在即恢复出的 `dirty` 为 false）；
+        - 确认计数为 0。
+     4. 同一页面、同一 browser context 内完成，不新建 context。`leaveByBack()` 不改，它留下的草稿由下一步的第 2 点清除。
+   - **b. 首键后退（D280 + D282）**：新增 `leaveOnFirstKey()`，取消、确认两个分支各自从干净起点开始，不复用对方的草稿：
+     - 步骤：`cleanStart(path)` → `navigate(path)`（到页面标题出现为止，沿用 `:871–886` 的等待；随后做干净起点第 3 点的断言）→ **先**注册对话框处理函数（取消分支 dismiss，确认分支 accept）→ 用 Tab 把焦点移到伙伴字段 → 按**一个**字符键使草稿 dirty → **紧接着**调用 `page.goBack({ waitUntil: "commit" })`。
+     - 按键与后退之间不加 `waitForTimeout`、`expect.poll`、Tab、读取字段或存储等任何步骤。
+     - 取消分支断言：只弹一次确认；地址仍是 `#/<path>`、页面标题不变、字段值为该字符。
+     - 确认分支断言：只弹一次确认，到达 `#/trade-reports`。
+   - **c. 真实前进**：新增 `leaveByForward()`。取消、确认两个分支各自从干净起点开始，各自重建历史：取消已截断前进历史（D275），所以确认分支不复用取消分支的历史。
+     - 每个分支的步骤：`cleanStart(path)` → `navigate(path)`（干净起点第 3 点断言）→ `navigate("trade-reports")`（0 次确认）→ `page.goBack()` 回到 `path`（0 次确认；再次断言字段为空、无该前缀的键）→ 注册对话框处理函数 → `type()` 使草稿 dirty → `page.goForward({ waitUntil: "commit" })`。
+     - 取消分支断言：只弹一次确认；地址、页面、草稿不变。
+     - 确认分支断言：只弹一次确认，到达 `#/trade-reports`。
+   - b、c 每次导航后都断言累计确认次数恰好等于预期值；干净起点第 1 点的离开确认单独计数，不计入分支。
    - **d. 先在 base 上跑**：b、c 两个新步骤先在 PR 实际 base 上通过，证明它们描述的是现有行为。base 上不通过即为现有缺陷，停下报告设计角色，不在本任务修。PR 正文附 base 与 head 两份日志。
    - **覆盖边界**：真实 Chrome 覆盖两页的后退（a、b）与前进（c）。jsdom 的前进用例（`trade-orders.test.tsx:1484–1520`）保留，作为 `history.go` 未被调用的补充证据（真实 Chrome 不监视 `history.go`）。不覆盖：一次后退跨越多个历史条目，以及取消后保留前进历史（D275 已知限制）。
 5. 无 CSS 变化（CSS 文件 SHA 不变）；无 `package.json` / lock 变化；现有测试与 E2E 不删除、不削弱、不跳过（D11）。
