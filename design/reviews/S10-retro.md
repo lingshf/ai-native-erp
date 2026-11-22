@@ -3,6 +3,7 @@
 - 作者：设计 / 产品负责人。核对时点：main `ae4fbaa`（#192 合并后，= tag `v0.10.0`），核对时间 2026-11-22，PR 状态、评审与 Full 结果以当时 `gh` 输出为准。评审事实见 [S10 Sprint 评审](S10.md)。
 - 格式沿用 [S9 回顾](S9-retro.md)：发生了什么 → 根因 → 改进动作，最后汇总行动项。
 - 区分“观察”（有日志、PR 或评审记录）与“推断”。
+- D338（协调者）：8 条行动项全部认可；S11 第三个开发名额给一个界面小步改进任务；版本号 v0.11.0。行动 1 的验证方式按 D339（#194 评审 [6011654544](https://github.com/lingshf/ai-native-erp/pull/194#pullrequestreview-6011654544) 第 2 点）修订。
 
 ## 做得好
 
@@ -71,13 +72,13 @@
 | 6 | 发布说明与 Demo README 每条描述附出处，范围词逐项枚举 | 部分有效 | `docs/release/README.md`（#187）；#191 第 1 轮仍有 4 处口径问题，见议题 1 |
 | 7 | “现状”否定性断言附代码或检索命令；事实错误走设计 PR | 完成；范围不够 | S10 任务书的否定性断言都附了检索命令；开发 PR 没有改 `design/`。但肯定性断言（“沿用现有断言”）没有覆盖，见议题 2 |
 
-## 行动项汇总（待协调者认可）
+## 行动项汇总（D338 认可）
 
-每一项都写明负责人、落点与可核验的完成标准。设计侧的落点（路线图 §5、任务书模板）在协调者认可后由设计角色在 S11 计划定稿 PR 中写入；`docs/demo/TEMPLATE.md`、`docs/release/README.md` 与 `.gitignore` 由版本管理在 [PROC-08](../tasks/S11.md#任务) 中落地；采样器代码由开发在 [SLOT-01](../tasks/S11.md#任务) 中落地。
+每一项都写明负责人、落点与可核验的完成标准。设计侧的落点（路线图 §5、任务书模板）由设计角色在 S11 计划定稿 PR 中写入；包括 PROC-08 在内的所有 S11 任务都在定稿 PR 合并后才派发；`docs/demo/TEMPLATE.md`、`docs/release/README.md` 与 `.gitignore` 由版本管理在 [PROC-08](../tasks/S11.md#任务) 中落地；采样器代码由开发在 [SLOT-01](../tasks/S11.md#任务) 中落地。
 
 | # | 行动 | 负责人 | 落点 | 完成标准 |
 | --- | --- | --- | --- | --- |
-| 1 | **Demo / RC 日志一律入库且不删**：日志直接写入 `docs/demo/vX/logs/`；提交前运行 `git check-ignore -v <日志路径>`，输出必须为空（为此在 `.gitignore` 加 `!docs/demo/*/logs/*.log` 例外，取代 `git add -f`）；成功路径先记录日志路径、SHA-256 与行数，再清理临时截图目录；日志本身任何路径下都不删 | 版本管理 | `docs/demo/TEMPLATE.md`“启动与检查”与“收尾”；`.gitignore`（PROC-08） | 模板与 `.gitignore` 已改；v0.11.0 `run-through.md` 给出 `git check-ignore` 的空输出、日志链接、SHA-256 与行数，且日志在合并提交中可见 |
+| 1 | **Demo / RC 日志一律入库、字节不变且不删**：日志直接写入 `docs/demo/vX/logs/`；`.gitignore` 加反忽略规则 `!docs/demo/*/logs/*.log`（取代 `git add -f`），`git add` 之前对未跟踪的日志运行 `git check-ignore -v -- <日志>`，输出命中的必须是这条 `!` 规则（输出不为空是正常的；可另用 `git check-ignore -q -- <日志>` 交叉核对：退出码 1 才算通过，0 表示仍被忽略，其他退出码是错误）；根 `.gitattributes` 加作用域限定的 `docs/demo/*/logs/*.log -text`，保留原始字节（根规则 `* text=auto eol=lf` 会改写日志的 CRLF，见 D334；v0.10.0 用的是目录内 `logs/.gitattributes`），`git check-attr text -- <日志>` 输出 `unset`；成功路径先记录日志路径、SHA-256 与行数，再清理临时截图目录；日志本身任何路径下都不删 | 版本管理 | `docs/demo/TEMPLATE.md`“启动与检查”与“收尾”；`.gitignore`；`.gitattributes`（PROC-08） | 模板、`.gitignore` 与 `.gitattributes` 已改；v0.11.0 `run-through.md` 给出 `check-ignore -v` 命中 `!` 规则的输出、`check-attr` 的 `unset`、日志链接、SHA-256 与行数；**合并提交中该日志 blob 的 SHA-256 与写日志时记录的一致**（用 `git cat-file blob <提交>:<路径>` 取原始字节，不经 PowerShell 管道转码，例如 `cmd /c "git cat-file blob <提交>:<路径> > <临时文件>"` 后计算） |
 | 2 | **日志块内的 cmdlet 一律 `-ErrorAction Stop`**：`Continue` 只为原生命令的 stderr 服务，块内 `Copy-Item`、`Remove-Item`、`Move-Item`、`New-Item`、`Out-File` 等逐个显式加 `-ErrorAction Stop`；PROC-05 固定负例组新增第 7 项“非终止错误”：复制目标不可写时块以非零退出、`ok` 不为真、源截图仍在 | 版本管理 | `docs/demo/TEMPLATE.md` 日志块（`:84–111`）；`docs/release/README.md` 固定负例组（PROC-08） | 模板中的日志块逐个 cmdlet 带 `-ErrorAction Stop`；负例组有第 7 项；v0.11.0 Demo 的替身记录有该项的通过输出 |
 | 3 | **RC 正文固定“证据索引”节**：实际核对时间（UTC）、完整 head SHA、该 head 的 verify 链接；每个合并任务的 PR、合并提交、main Full 链接与取证 gist（含 commit）；PROC-05 逐项结果，含从渲染后的 `<pre>` 复制执行的命令与输出；对照计划中“不进发布说明”的清单（如以不合并方式结案的任务）逐项写“未出现” | 版本管理 | `docs/release/README.md` RC PR 清单（PROC-08） | 清单已改；v0.11.0 RC 第 1 轮评审没有“缺证据”类打回 |
 | 4 | **Demo 验收写导航路径**：每类截图写明入口（只有入口页可以 `page.goto`）与到达目标的用户操作（点击 / 键盘）；目标页截图必须由该操作产生，且与其断言来自同一页面实例；capture 日志记录到达后的实际 hash | 设计（验收）、版本管理（模板） | S11 计划 [DEMO-11 验收](../tasks/S11.md#demo-11-验收)“导航路径”列；路线图 §5 设计文档自查新增第 10 项；`docs/demo/TEMPLATE.md` capture 要求（PROC-08） | S11 DEMO-11 验收表每行有导航路径；v0.11.0 `capture-log-main.json` 每张目标页截图有实际 hash 与操作记录 |
