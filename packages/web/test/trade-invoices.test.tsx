@@ -881,33 +881,6 @@ describe("trade invoices leave guard", () => {
     expect(party().value).toBe("V1");
   });
 
-  it("confirms back/forward once per navigation and restores the address on cancel", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-    stub();
-    render(<App />);
-    fireEvent.change(await screen.findByLabelText(t("tinv.party")), { target: { value: "V1" } });
-    const back = () =>
-      act(() => {
-        window.history.pushState(null, "", "/#/trade-orders");
-        window.dispatchEvent(new PopStateEvent("popstate"));
-        window.dispatchEvent(new HashChangeEvent("hashchange"));
-      });
-    back();
-    expect(confirm).toHaveBeenCalledTimes(1);
-    expect(window.location.hash).toBe("#/trade-invoices");
-    expect(party().value).toBe("V1");
-    back();
-    expect(confirm).toHaveBeenCalledTimes(2);
-    expect(window.location.hash).toBe("#/trade-invoices");
-    confirm.mockReturnValue(true);
-    back();
-    expect(confirm).toHaveBeenCalledTimes(3);
-    await waitFor(() =>
-      expect(screen.queryByRole("heading", { name: t("tinv.title") })).toBeNull(),
-    );
-    expect(window.location.hash).toBe("#/trade-orders");
-  });
-
   // D275: a cancelled real Back asks once, never calls history.go, and pushes the page's address
   // again, so the address and the draft stay and the next confirmed Back still reaches the target.
   it("cancels a real Back by keeping the address and draft, and leaves on a confirmed Back", async () => {

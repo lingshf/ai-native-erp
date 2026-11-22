@@ -1045,7 +1045,9 @@ export function SourceOrderCell({
           <span className="visually-hidden">{t("tinv.noSourceOrder")}</span>
         </>
       ) : (
-        <Link to={sourceOrderPath(company, orderId)}>{orderId}</Link>
+        <Link to={sourceOrderPath(company, orderId)} title={orderId}>
+          {orderId}
+        </Link>
       )}
     </td>
   );

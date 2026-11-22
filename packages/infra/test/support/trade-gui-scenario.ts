@@ -469,13 +469,22 @@ function httpSend(address: string): Send {
     return result;
   };
 }
-// TINV-04: a sales order and an AR invoice posted against it, through the real HTTP API. A domain
+// The longest legal order ID (companyCodeSchema: 60 characters) for the 390 px wrap check.
+export const longOrderId = `SO-LONG-REFERENCE-${"0123456789".repeat(5).slice(0, 42)}`;
+// TINV-04: sales orders and AR invoices posted against them, through the real HTTP API. A domain
 // rejection fails here at once (httpSend throws on any non-2xx), not later as a missing row.
 export async function seedSourceOrders(send: Send) {
+  for (const [orderId, externalInvoice] of [
+    ["SO-DEMO", "AR-FROM-SO"],
+    [longOrderId, "AR-LONG-SO"],
+  ] as const)
+    await seedSourceOrder(send, orderId, externalInvoice);
+}
+async function seedSourceOrder(send: Send, orderId: string, externalInvoice: string) {
   const line = seedInvoice("").lines[0];
   await send("POST", "/api/v1/trade/orders", {
     company: "DEFAULT",
-    orderId: "SO-DEMO",
+    orderId,
     side: "AR",
     party: "PARTY",
     currency: "CNY",
@@ -489,12 +498,13 @@ export async function seedSourceOrders(send: Send) {
   const sale = {
     ...seedInvoice(randomUUID()),
     side: "AR",
-    externalInvoice: "AR-FROM-SO",
-    orderId: "SO-DEMO",
+    externalInvoice,
+    orderId,
     lines: [{ ...line, product: "SERVICE" }],
   };
   const preview = await send("POST", "/api/v1/trade/invoices/preview", sale);
-  if (typeof preview.fingerprint !== "string") throw new Error("No AR-FROM-SO preview fingerprint");
+  if (typeof preview.fingerprint !== "string")
+    throw new Error(`No ${externalInvoice} preview fingerprint`);
   const receipt = await send("POST", "/api/v1/trade/invoices", {
     command: sale,
     fingerprint: preview.fingerprint,
@@ -502,7 +512,7 @@ export async function seedSourceOrders(send: Send) {
     confirmation: "POST",
   });
   if (receipt.fingerprint !== preview.fingerprint)
-    throw new Error(`AR-FROM-SO confirmed ${String(receipt.fingerprint)}`);
+    throw new Error(`${externalInvoice} confirmed ${String(receipt.fingerprint)}`);
 }
 // Part 2 starts from the exact state part 1 creates through the GUI. The same commands are
 // replayed through the real HTTP API (preview, then explicit confirmation with the fingerprint
@@ -1346,7 +1356,23 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
           );
           await page.screenshot({ path: join(artifacts, `${name}-invoice-list.png`) });
           await page.setViewportSize({ width: 390, height: 1100 });
-          await link.scrollIntoViewIfNeeded();
+          // The 60-character order ID wraps inside its cell: full text shown (not clipped by
+          // the 3-line clamp), the row keeps the virtual list's 44 px, the cell stays narrow.
+          const long = row("AR-LONG-SO").getByRole("link", { name: longOrderId, exact: true });
+          await long.scrollIntoViewIfNeeded();
+          const box = await long.evaluate((element) => {
+            const cell = element.closest("td") as HTMLElement;
+            return {
+              lines: Math.round(element.clientHeight / 13),
+              clipped: element.scrollHeight > element.clientHeight,
+              row: (cell.parentElement as HTMLElement).getBoundingClientRect().height,
+              cell: cell.getBoundingClientRect().width,
+              title: element.getAttribute("title"),
+            };
+          });
+          expect(box).toMatchObject({ clipped: false, row: 44, title: longOrderId });
+          expect(box.lines).toBeGreaterThan(1);
+          expect(box.cell).toBeLessThanOrEqual(200);
           await page.screenshot({ path: join(artifacts, `${name}-invoice-list-390.png`) });
           await page.setViewportSize({ width: 1440, height: 1100 });
         }
