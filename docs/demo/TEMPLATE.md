@@ -34,7 +34,7 @@
     throw "端口 $port 已被占用：换端口，或先确认占用者归属；不要停止不属于本次演示的进程"
   }
   $demo = Join-Path ([IO.Path]::GetTempPath()) ("erp-demo-" + [guid]::NewGuid())
-  New-Item -ItemType Directory -Path $demo | Out-Null
+  New-Item -ItemType Directory -Path $demo -ErrorAction Stop | Out-Null
   $db = Join-Path $demo "demo.sqlite"
   npm run storage:admin -- migrate --provider sqlite --file $db
   if ($LASTEXITCODE -ne 0) { throw "迁移失败，退出码 $LASTEXITCODE" }
@@ -81,34 +81,69 @@
 
 ### 日志完整保留与失败现场（S9 回顾行动项 5）
 
-runner 与 capture 的 stdout / stderr 先完整写入文件，再看输出；不要用 `Select-Object -Last`、`head` 之类截断，也不要只看控制台。把下面的写法套在 runner 与 capture 的命令上（`$log` 放在不会被清理的目录，不放 `$demo` 里）：
+runner 与 capture 的 stdout / stderr 先完整写入文件，再看输出；不要用 `Select-Object -Last`、`head` 之类截断，也不要只看控制台。把下面的写法套在 runner 与 capture 的命令上。日志写进仓库内 `docs/demo/vX/logs/`（`vX` 换成本次版本；不放 `$env:TEMP`，也不放 `$demo` 里），随 Demo PR 入库，任何路径下都不删（S10 回顾行动 1）：
 
 ```powershell
 . {
-  $log = Join-Path $env:TEMP ("demo-run-{0}-{1}.log" -f (Get-Date -Format yyyyMMdd-HHmmss-fff), [guid]::NewGuid().ToString("N"))
+  $logDir = "docs/demo/v0.11.0/logs"   # 换成本次版本
+  New-Item -ItemType Directory -Path $logDir -Force -ErrorAction Stop | Out-Null
+  $log = Join-Path $logDir ("demo-run-{0}-{1}.log" -f (Get-Date -Format yyyyMMdd-HHmmss-fff), [guid]::NewGuid().ToString("N"))
   $cmd = { node docs/demo/v0.4.0/scripts/capture.mjs }   # 换成 runner / capture 的实际命令
   $global:LASTEXITCODE = 0
   $code = 0
   $prevEap = $ErrorActionPreference
   $ErrorActionPreference = "Continue"   # Stop 下 5.1 会在第一行 stderr 处终止管道，丢后续 stdout，并把实际退出码记成 1
   try {
-    & $cmd *>&1 | Tee-Object -FilePath $log -Append
+    & $cmd *>&1 | Tee-Object -FilePath $log -Append -ErrorAction Stop
     $code = $LASTEXITCODE
   } catch {
     $code = 1   # runner 自己 throw（例如监听归属检查失败）：没有原生命令退出码，记为 1
-    "EXCEPTION: $($_ | Out-String)" | Tee-Object -FilePath $log -Append
+    "EXCEPTION: $($_ | Out-String)" | Tee-Object -FilePath $log -Append -ErrorAction Stop
   } finally {
     $ErrorActionPreference = $prevEap
   }
-  "exit=$code log=$log" | Tee-Object -FilePath $log -Append
+  "exit=$code log=$log" | Tee-Object -FilePath $log -Append -ErrorAction Stop
   if ($code -ne 0) { throw "失败，退出码 $code；截图目录与日志保留，不清理：$log" }
 }
 ```
 
+- **块内的 cmdlet 一律显式 `-ErrorAction Stop`**（`Copy-Item`、`Remove-Item`、`Move-Item`、`New-Item`、`Out-File`、`Set-Content`、`Tee-Object` 等；本模板的其他可执行块同样）。`$ErrorActionPreference = "Continue"` 只为原生命令的 stderr 服务，不能让 cmdlet 的非终止错误被吞掉：缺了 `-ErrorAction Stop`，复制失败也会继续往下执行、把 `ok` 设成真并删掉源截图（v0.10.0 #192 的 `Copy-Item` 事故，S10 回顾行动 2）。
 - 块内把 `$ErrorActionPreference` 设为 `Continue`，结束时恢复原值：原生命令的 stderr 与实际退出码都会落盘（Windows PowerShell 5.1 在 `Stop` 下会因第一条 stderr 提前终止管道，丢掉后续 stdout，并把退出码记成 1）。
 - 日志名含毫秒和 GUID，同一秒内先后运行 runner 与 capture 也不会互相覆盖；`-Append` 只在同一次运行内追加。runner 抛错与原生命令非 0 退出都会落盘：前者写 `EXCEPTION:` 加原始错误，两者都写 `exit=` 与日志路径。
 - 失败时**先保存现场再做别的**：截图目录（capture 已写出的图）和日志文件原样保留，不跑收尾里的清理，不重试；停服务与释放端口除外（只停本轮的 `$server`）。
 - PR 正文 / 回报写完整错误与退出码、日志路径；断言类中止另写**失败断言的原文**。原文丢失就写“原断言已丢失，根因未知”，不要推测成脚本问题。
+
+### 日志入库前后的核对（S10 回顾行动 1，D339）
+
+日志含 CRLF 等原始字节，必须原样入库。仓库规则：`.gitignore` 里 `!docs/demo/*/logs/*.log` 反忽略；根 `.gitattributes` 里 `docs/demo/*/logs/*.log -text` 关闭换行转换。**写完日志后、清理临时截图目录之前**，先记录日志路径、SHA-256 与行数，再做入库前核对（`$log` 为上面的日志路径）：
+
+```powershell
+. {
+  $h = (Get-FileHash -LiteralPath $log -Algorithm SHA256 -ErrorAction Stop).Hash
+  $n = @(Get-Content -LiteralPath $log -ErrorAction Stop).Count
+  "log=$log sha256=$h lines=$n"
+  git check-ignore -v -- $log          # 输出必须命中 .gitignore:<行>:!docs/demo/*/logs/*.log
+  git check-ignore -q -- $log
+  if ($LASTEXITCODE -ne 1) { throw "check-ignore -q 退出码 $LASTEXITCODE：0 表示日志仍被忽略，其他值是命令错误；只有 1 通过" }
+  $attr = git check-attr text -- $log
+  if ($attr -notmatch ": text: unset$") { throw "text 属性不是 unset：$attr" }
+}
+```
+
+日志在任何路径下都不删（成功、失败、中止均保留）。合并后核对 Git blob 的原始字节，不经 PowerShell 管道（管道会改写字节，D334）：
+
+```powershell
+. {
+  $tmp = Join-Path ([IO.Path]::GetTempPath()) ("blob-" + [guid]::NewGuid().ToString("N"))
+  cmd /c "git cat-file blob <提交>:<路径> > $tmp"
+  if ($LASTEXITCODE -ne 0) { throw "git cat-file 失败，退出码 $LASTEXITCODE" }
+  $h = (Get-FileHash -LiteralPath $tmp -Algorithm SHA256 -ErrorAction Stop).Hash
+  Remove-Item -LiteralPath $tmp -ErrorAction Stop
+  "blob sha256=$h"   # 必须与写日志时记录的 SHA-256 一致
+}
+```
+
+`<提交>:<路径>` 换成合并提交与日志路径。
 
 ## 收尾
 
@@ -116,8 +151,8 @@ runner 与 capture 的 stdout / stderr 先完整写入文件，再看输出；�
 
 ```powershell
 . {
-  if ($server -and -not $server.HasExited) { Stop-Process -Id $server.Id }
-  if ($demo -and (Split-Path $demo -Leaf) -like "erp-demo-*") { Remove-Item -Recurse -Force $demo }
+  if ($server -and -not $server.HasExited) { Stop-Process -Id $server.Id -ErrorAction Stop }
+  if ($demo -and (Split-Path $demo -Leaf) -like "erp-demo-*") { Remove-Item -Recurse -Force $demo -ErrorAction Stop }
   if ($port) {
     if (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) { "端口 $port 仍有监听（可能不属于本轮，先确认归属，不要强停）" } else { "端口 $port 已释放" }
   } else { "本轮没有创建任何对象，无需收尾" }
@@ -139,14 +174,16 @@ runner 与 capture 的 stdout / stderr 先完整写入文件，再看输出；�
     $before = @(& $snap $real)
     if ($before.Count -eq 0) { throw "真实产物目录为空，无法证明替身没有触及它：$real" }
     $iso = Join-Path ([IO.Path]::GetTempPath()) ("erp-stub-" + [guid]::NewGuid())
-    New-Item -ItemType Directory -Path $iso | Out-Null
+    New-Item -ItemType Directory -Path $iso -ErrorAction Stop | Out-Null
     $env:TEMP = $iso; $env:TMP = $iso
     # 替身：在这里调用本版脚本的替身，成功分支和失败分支各一次，并逐个场景断言结果
   } catch {
     $problems += "替身或前置检查失败：" + $_.Exception.Message
   } finally {
     $env:TEMP = $oldTemp; $env:TMP = $oldTmp
-    if ($iso -and (Split-Path $iso -Leaf) -like "erp-stub-*") { Remove-Item -Recurse -Force $iso }
+    if ($iso -and (Split-Path $iso -Leaf) -like "erp-stub-*") {
+      try { Remove-Item -Recurse -Force $iso -ErrorAction Stop } catch { $problems += "清理专用目录失败（保留 $iso，手工处理）：" + $_.Exception.Message }
+    }
     if ($null -ne $before) {
       try { $after = @(& $snap $real) } catch { $problems += "后置哈希失败（有文件读不了或目录消失）：" + $_.Exception.Message }
     }
@@ -163,7 +200,7 @@ runner 与 capture 的 stdout / stderr 先完整写入文件，再看输出；�
 
 替身验证的输出（场景、断言、退出码、哈希结论）写进 `run-through.md` 和 PR 正文，成功分支和失败分支都要有。（v0.6.0 回顾行动项 1、2）
 
-替身的失败场景至少覆盖发布流程清单里的“固定负例组”六项（空目录、隐藏文件、不可读文件、中途抛错、归属变化、从渲染文档复制），全文见 `docs/release/README.md`，这里不重复；不适用的项写“不适用”及理由。（S7 回顾行动项 5）
+替身的失败场景至少覆盖发布流程清单里的“固定负例组”七项（空目录、隐藏文件、不可读文件、中途抛错、归属变化、从渲染文档复制、非终止错误），全文见 `docs/release/README.md`，这里不重复；不适用的项写“不适用”及理由。（S7 回顾行动项 5）
 
 ### 写入脚本的替身（要求 11）
 
@@ -222,6 +259,10 @@ async function assertState(page, want) {
 宽度为 390 时多一条页面宽度断言：`document.documentElement.scrollWidth <= window.innerWidth`，不满足就抛错，错误信息含实测 `scrollWidth` 与 `innerWidth`（宽表只能在表内滚动，页面不横向滚动）。（S9 回顾行动项 3、D290）
 
 **截断类判定按实测行距与字形盒设容差**：不用 `scrollHeight > clientHeight`（被行数截断的文字仍参与布局，该判定会误报或漏报）。按已布局文字的行数、末字符字形盒底边相对可见框底边的超出量判定，容差为 `max(0, (字形盒高 − 行高) / 2) + 1 px`：半行距取实测值，下限为 0（字形盒小于行高时不能变成负数，否则正常文本会被误报），再加 1 px 余量。示例：`packages/infra/test/support/trade-gui-scenario.ts:1361–1393`。
+
+### 到达路径（S10 回顾行动 4）
+
+每类截图在 `run-through.md` 写明**入口与到达操作**：只有入口页可以 `page.goto`；目标状态必须由点击 / 键盘操作产生，截图与断言来自同一个页面实例（不得为取图另开页面或直接 `goto` 目标 URL）。capture 日志（如 `capture-log-main.json`）里每张目标截图记录“到达操作”和到达后实际读取的 `location.hash`，并断言与预期一致。直接打开 URL 的图只能标注为“深链接”，不能当作用户操作路径的证据。
 
 ### 断言逐条核对表
 
