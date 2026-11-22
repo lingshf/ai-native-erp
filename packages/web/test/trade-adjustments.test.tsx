@@ -131,7 +131,8 @@ const otherInvoice = {
   party: "V2",
   externalNo: "INV-2",
 };
-function mockApi(unknownFirst = false, paged = false) {
+// `unknownFirst` loses the first post's response; a promise holds that post in flight until it settles.
+function mockApi(unknownFirst: boolean | Promise<void> = false, paged = false) {
   const previews: TradeActionCommandDto[] = [];
   const posts: ReturnType<typeof tradeActionConfirmSchema.parse>[] = [];
   vi.stubGlobal(
@@ -156,7 +157,10 @@ function mockApi(unknownFirst = false, paged = false) {
       if (url === "/api/v1/trade/actions") {
         const envelope = tradeActionConfirmSchema.parse(JSON.parse(String(init?.body)));
         posts.push(envelope);
-        if (unknownFirst && posts.length === 1) throw new TypeError("Fictional lost response");
+        if (unknownFirst && posts.length === 1) {
+          await unknownFirst;
+          throw new TypeError("Fictional lost response");
+        }
         const { journal, ...result } = preview(envelope.command);
         return response(
           {
@@ -479,5 +483,23 @@ describe("typed trade adjustments", () => {
     await screen.findByRole("status");
     expect(posts).toHaveLength(2);
     expect(posts[1]).toEqual(posts[0]);
+  });
+  it("reports an unknown outcome only after the first send fails, never while it is in flight", async () => {
+    let lose = () => {};
+    const { posts } = mockApi(new Promise<void>((resolve) => (lose = resolve)));
+    await open();
+    fireEvent.change(screen.getByLabelText(t("tinv.party")), { target: { value: "V1" } });
+    fireEvent.change(screen.getByLabelText(t("tadj.gross")), { target: { value: "500" } });
+    await plan();
+    fireEvent.click(screen.getByRole("button", { name: t("tadj.confirm") }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(screen.queryByText(t("tinv.uncertain"))).toBeNull();
+    expect(screen.queryByRole("button", { name: t("tinv.retryConfirm") })).toBeNull();
+    lose();
+    const retry = await screen.findByRole<HTMLButtonElement>("button", {
+      name: t("tinv.retryConfirm"),
+    });
+    expect(retry.disabled).toBe(false);
+    expect(screen.getByText(t("tinv.uncertain"))).toBeTruthy();
   });
 });

@@ -117,7 +117,8 @@ function calculation(command: TradeSettlementCommandDto) {
     },
   };
 }
-function mockApi(unknownFirst = false) {
+// `unknownFirst` loses the first post's response; a promise holds that post in flight until it settles.
+function mockApi(unknownFirst: boolean | Promise<void> = false) {
   const previews: TradeSettlementCommandDto[] = [];
   const posts: ReturnType<typeof tradeSettlementConfirmSchema.parse>[] = [];
   let posted = false;
@@ -150,7 +151,10 @@ function mockApi(unknownFirst = false) {
       if (url === "/api/v1/trade/settlements") {
         const envelope = tradeSettlementConfirmSchema.parse(JSON.parse(String(init?.body)));
         posts.push(envelope);
-        if (unknownFirst && posts.length === 1) throw new TypeError("Synthetic lost response");
+        if (unknownFirst && posts.length === 1) {
+          await unknownFirst;
+          throw new TypeError("Synthetic lost response");
+        }
         posted = true;
         const { journal: _, ...amounts } = calculation(envelope.command);
         return response(
@@ -274,6 +278,28 @@ describe("trade payments and receipts", () => {
     await screen.findByRole("status");
     expect(posts).toHaveLength(2);
     expect(posts[1]).toEqual(posts[0]);
+  });
+  it("reports an unknown outcome only after the first send fails, never while it is in flight", async () => {
+    let lose = () => {};
+    const { posts } = mockApi(new Promise<void>((resolve) => (lose = resolve)));
+    render(<App />);
+    await selectPartial();
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.preview") }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: t("tset.confirm") }).matches(":disabled")).toBe(
+        false,
+      ),
+    );
+    fireEvent.click(screen.getByRole("button", { name: t("tset.confirm") }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(screen.queryByText(t("tinv.uncertain"))).toBeNull();
+    expect(screen.queryByRole("button", { name: t("tinv.retryConfirm") })).toBeNull();
+    lose();
+    const retry = await screen.findByRole<HTMLButtonElement>("button", {
+      name: t("tinv.retryConfirm"),
+    });
+    expect(retry.disabled).toBe(false);
+    expect(screen.getByText(t("tinv.uncertain"))).toBeTruthy();
   });
   it("does not derive due or remaining from a refreshed draft before its open items load", async () => {
     mockApi();

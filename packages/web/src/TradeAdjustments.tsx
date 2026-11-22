@@ -219,6 +219,9 @@ function ActionEntry({
   const [receipt, setReceipt] = useState<TradeActionReceiptDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // The outcome is unknown only after a send failed without a server answer (or on reload),
+  // never while the first send is still in flight.
+  const [uncertain, setUncertain] = useState(loaded.saved.pending !== null);
   const sequence = useRef(0),
     running = useRef(false);
   const draft = saved.draft;
@@ -365,6 +368,7 @@ function ActionEntry({
         return;
       }
       if (!preview && !saved.pending) return;
+      if (!saved.pending) setUncertain(false);
       const pending =
         saved.pending ??
         tradeActionConfirmSchema.parse({
@@ -405,7 +409,7 @@ function ActionEntry({
       ) {
         setSaved((saved) => ({ ...saved, pending: null }));
         setPreview(null);
-      }
+      } else if (confirm) setUncertain(true);
     } finally {
       running.current = false;
       if (sequence.current === version) setBusy(false);
@@ -492,7 +496,7 @@ function ActionEntry({
             </MessageBar>
           ),
       )}
-      {saved.pending && (
+      {saved.pending && uncertain && (
         <MessageBar tone="warning" role="alert">
           <p>{t("tinv.uncertain")}</p>
           <button

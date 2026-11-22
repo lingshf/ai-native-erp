@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   tradeInvoiceConfirmSchema,
@@ -581,6 +581,26 @@ describe("trade invoices from an order (TINV-01)", () => {
         { lineId: "L2", orderLineId: "OL3", quantity: "1.5", taxCode: "VAT13" },
       ],
     });
+  });
+
+  it("takes a request once while the router has not yet committed dropping fromOrder", async () => {
+    const reads = mockApi(() => response(invoicing(["4", "2", "0"])));
+    const ask = vi.spyOn(window, "confirm").mockReturnValue(false);
+    enter();
+    // The router commits the address change in a transition: keep fromOrder in the address so
+    // the busy changes of the fill rerun the intake effect against the not-yet-dropped request.
+    vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
+    render(<App />);
+    expect(await screen.findByText(`${t("tinv.fromOrder.loaded")} · PO-1`)).toBeTruthy();
+    const external = screen.getByLabelText(t("tinv.externalInvoice"));
+    await waitFor(() => expect(document.activeElement).toBe(external));
+    // Let the effects that follow the fill (busy back to false) settle before asserting.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(screen.getByLabelText<HTMLInputElement>(t("tinv.party")).disabled).toBe(false);
+    expect(window.location.hash).toContain("fromOrder=PO-1");
+    expect(reads()).toBe(1);
+    expect(ask).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(external);
   });
 
   it("shows the order teaching note only with teaching mode on", async () => {

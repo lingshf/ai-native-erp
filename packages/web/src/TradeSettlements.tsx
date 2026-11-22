@@ -197,6 +197,9 @@ function SettlementEntry({
   const [preview, setPreview] = useState<TradeSettlementPreviewDto | null>(null);
   const [receipt, setReceipt] = useState<TradeSettlementReceiptDto | null>(null);
   const [busy, setBusy] = useState(false);
+  // The outcome is unknown only after a send failed without a server answer (or on reload),
+  // never while the first send is still in flight.
+  const [uncertain, setUncertain] = useState(loaded.saved.pending !== null);
   const running = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const command = saved.command;
@@ -288,6 +291,7 @@ function SettlementEntry({
     let pending = saved.pending;
     if (!pending) {
       if (!preview) return;
+      setUncertain(false);
       pending = {
         command,
         fingerprint: preview.fingerprint,
@@ -335,7 +339,7 @@ function SettlementEntry({
         ) {
           setSaved({ command, pending: null });
           setPreview(null);
-        }
+        } else setUncertain(true);
       }
     } finally {
       running.current = false;
@@ -376,7 +380,7 @@ function SettlementEntry({
             </MessageBar>
           ),
       )}
-      {saved.pending && (
+      {saved.pending && uncertain && (
         <MessageBar tone="warning" role="alert">
           <p>{t("tinv.uncertain")}</p>
           <button
