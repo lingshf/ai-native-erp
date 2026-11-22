@@ -8,6 +8,46 @@
 
 （暂无）
 
+## [0.10.0] - 发布日待定（发布候选）
+
+> 产品代码基线为 `main` 108684d（TINV-05 #189、GATE-01 #188 合并；PROC-07 #187）；本 RC 基于 main `58e8422`（Full run 45006555904 绿）。自 v0.9.0（tag 所指提交 f943b8b）到 58e8422 共 5 个已合并 PR（#186–#190），其中 #186 是 S10 计划，#187 是流程文档，#190 是文档，#188、#189 是产品与测试提交。之后 main 只有文档提交，产品代码与 108684d 相同。按 D21，tag `v0.10.0` 打在日期 PR 合并后的 squash 提交上，不是 108684d。
+
+S10 Sprint：发票列表筛选。发票列表能按伙伴、方向、记账日期筛选；S9 回顾行动落入流程文档。**新增迁移 018**（只加一条索引，不改表、不改数据），无依赖变化，不改过账规则。
+
+### Added（用户可见）
+
+- **发票列表筛选（TINV-05，#189）**：「采购与销售发票」页的发票列表上方新增筛选栏：伙伴（伙伴代码，文本输入）、方向（全部 / 采购 AP / 销售 AR）、记账日期起、记账日期止（闭区间），以及「应用」「清除」；在任一输入框按 Enter 等同「应用」（`packages/web/src/TradeInvoices.tsx:1162–1226`）。「加载更多」沿用当前筛选；过账成功后按当前筛选刷新。起始日期晚于截止日期或伙伴代码格式不对时，在控件旁提示（`aria-describedby` 关联）且不发请求；有筛选但无结果时显示“没有符合条件的发票。” / “No invoices match the filters.”（`:1288`）。中英双语。
+- **筛选不进地址栏**：地址、浏览器历史和离开确认的行为都不变，只改筛选栏不会弹离开确认；刷新、切换账套后筛选清空（`TradeInvoices.tsx:1077–1078`）。
+- **布局**：1440 宽英文界面下四个字段占满一行，Apply / Clear 换到第二行（中文一行）；390 宽（#189 实测的英文绿色主题）下四个字段各占一行，Apply / Clear 在同一行（`TradeInvoices.tsx:1222–1229` 两按钮同在一个容器；截图 `head-en-green-part2-invoice-filter-plain-390.png`）；“来源订单”列宽与行高不变（#189 正文 §6.2）。
+
+### Changed
+
+- **迁移**：最新迁移 017 → **018**，只加索引 `trade_documents_party(company_id, party_id, sequence)`（`packages/infra/migrations/sqlite/018-trade-invoice-filters.sql`）。已有账套须先显式 migrate 到 018；升级前后 `trade_documents`、`trade_document_lines`、`open_items` 的全部行逐字相同（用例 “TINV-05 a 017 ledger with posted invoices upgrades to 018…”）。
+- 发票列表的页面结构：无筛选时请求与响应与 v0.9.0 逐字节相同（见下“面向调用方”）。
+
+### Internal（无用户可见变化）
+
+- **GATE-01（#188）**：新增 `packages/web/src/leave-guard-gate.ts`（最小常驻闸门），`leave-guard-history.ts` 保留按页守卫，`App.tsx` 第 4–5 行改为静态导入闸门；入口块 gzip-9 相对 #188 自己的 base 减少 82 B（160517 → 160435，Node zlib；来源 #188 正文）；离开确认的触发时机、文案和渲染不变；新增 2 条 jsdom 用例。
+- **PROC-07（#187）**：Demo 模板新增 390 px 页面宽度断言（`scrollWidth <= innerWidth`）、截断容差 `max(0, (字形盒高 − 行高) / 2) + 1 px`、核对表“seed 来源”“工具判定复核”两栏、日志完整保留写法；发布清单新增“行为描述有出处”“范围词逐项枚举”两项。
+- **S10 计划（#186）与 #190**：只含设计文档。CSS-02 结案不合并（D325），`min-width: 8ch` 保留。
+- **测试与权重（#188、#189）**：新增迁移测试、契约 / 页面 / 兼容性用例与端到端场景；`scripts/test-shard-weights.json` 增加 `trade-invoice-filters-migration.test.ts: 1000`；`trade-order-filters-migration.test.ts` 按 D307 改为“迁移到 017 为止”（断言值不变）。
+
+### 面向调用方（HTTP API）
+
+- **发票列表** `GET /api/v1/trade/invoices`：请求新增可选参数 `party`、`side`（`AP` / `AR`）、`from`、`to`（闭区间，`from > to` 返回 400，未知参数仍 400；`packages/core/src/contracts/trade-documents.ts:451–464`）。
+- **响应不变**：不带新参数时，首页（`?company=DEFAULT&limit=2`，672 B）与带游标续页（668 B）的未解析响应体在 base（`c175a32`）与 head 上逐字节相同（SHA-256 见 #189 正文 §2；用例 `TINV-05 invoice list compatibility…`，`packages/infra/test/application/trade-documents.test.ts:4593–4642`）。旧客户端不传新参数即与之前相同。
+- **未变**：发票预览 / 过账请求与响应、过账与匹配规则、CLI、日志、端口。`git diff --numstat v0.9.0 58e8422 -- packages/core/src packages/infra/src` 只涉及 trade-documents 的契约、应用、HTTP、存储四个文件和 `migrations.ts`。
+- 无依赖变化。
+
+### 已知限制与已接受的决定
+
+- **筛选不保留**：刷新、切换账套或离开页面再回来都会清空；没有地址栏深链接（TINV-05 任务书决定 5）。
+- **伙伴筛选是精确的伙伴代码**，不是名称搜索。
+- **性能**：1 万张发票下 4 个场景热读 p95 为 12.9–15.5 ms（#189 正文 §3）；只有按伙伴筛选走新索引，按方向、按日期沿用公司索引并过滤。入口 gzip：#189 相对其 base +382 B（159645 → 160027，Python gzip-9；文案 +384 B、契约 +10 B），#188 相对其 base −82 B（160517 → 160435，Node zlib gzip-9）；两者基线与压缩实现不同，不能相加得出版本净值，与 v0.9.0 相比的入口净变化未测量。CSS +44 B（#189）。数字取自 PR 正文，发布前未重测。
+- **取消离开确认会截断前进历史**（D275，沿用 v0.9.0）。
+- 订单列表仍没有按开票状态的筛选 / 排序；发票列表“来源订单”列没有筛选。
+- 真实 Chrome 的验证在 PR 取证 head 上，不是合并后的 squash 提交：#189 为 be9f566（= 最终 head），#188 为 a0bc28a（= 最终 head）。
+- 旧账迁移（M2）仍未完成：M2-05（演练）与 M2-06（切换）未开始，另需用户授权。
 ## [0.9.0] - 2026-11-21
 
 > 产品代码基线为 `main` 6478d10（S9 功能全部合并，Full 12/12，run 44985493365）；自 v0.8.0（tag 所指提交 deb80fc）到 6478d10 共 5 个已合并 PR 的 5 个 squash 提交（#177–#181；`git rev-list --count v0.8.0..6478d10` = 5），其中 #177 是 S9 计划，#178 是流程与文档，#179、#180、#181 是产品与测试提交。之后 main 只有文档提交（RC [#182](https://github.com/lingshf/ai-native-erp/pull/182)、Demo [#183](https://github.com/lingshf/ai-native-erp/pull/183)、S9 评审与回顾 [#184](https://github.com/lingshf/ai-native-erp/pull/184)，main `2df0a17` 为日期 PR 的基线），产品代码与 `6478d10` 相同。按 D21，tag `v0.9.0` 打在本日期 PR 合并后的 squash 提交上，不是 `6478d10`。Demo 记录（基线 `9bbabe7`）：[docs/demo/v0.9.0](docs/demo/v0.9.0/run-through.md)；Sprint 评审与回顾：[S9 评审](design/reviews/S9.md)、[S9 回顾](design/reviews/S9-retro.md)。
@@ -373,7 +413,8 @@ M1 贸易里程碑完成（M1-01..07，M1-R 评审通过，无阻塞项）。产
 - 旧快照未配置提示、凭证空列表文案和根 README 迁移版本说明已在 v0.2.0 修复（见 `[0.2.0]`）；v0.1.0 原发布基线不包含这些修复。
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
-[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/lingshf/ai-native-erp/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/lingshf/ai-native-erp/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/lingshf/ai-native-erp/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/lingshf/ai-native-erp/compare/v0.6.0...v0.7.0
