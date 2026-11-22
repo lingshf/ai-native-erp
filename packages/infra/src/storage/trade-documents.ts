@@ -729,7 +729,7 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
     },
     async tradeDocumentPage(company, query) {
       const rows = await db.query(
-        "SELECT sequence,document_id,side,party_id,external_no,accounting_date,document_date,due_date,po_match,gross_minor,currency,journal_id FROM trade_documents INDEXED BY trade_documents_company WHERE company_id=? AND sequence<? ORDER BY sequence DESC LIMIT ?",
+        "SELECT sequence,document_id,side,party_id,external_no,accounting_date,document_date,due_date,po_match,gross_minor,currency,journal_id,order_id FROM trade_documents INDEXED BY trade_documents_company WHERE company_id=? AND sequence<? ORDER BY sequence DESC LIMIT ?",
         [
           company,
           query.cursor === undefined ? Number.MAX_SAFE_INTEGER : Number(query.cursor),
@@ -748,6 +748,7 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
         gross: int(row.gross_minor),
         currency: str(row.currency),
         journalId: str(row.journal_id),
+        orderId: optional(row.order_id),
         cursor: String(int(row.sequence)),
       }));
       return {

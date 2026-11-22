@@ -348,4 +348,15 @@ describe("trade payments and receipts", () => {
     expect(screen.getByText(label("en", "tset.boundary"))).toBeTruthy();
     expect(screen.getByText("INV-1")).toBeTruthy();
   });
+  it("asks before leaving an unsaved settlement and keeps it on cancel", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    mockApi();
+    render(<App />);
+    await selectPartial();
+    fireEvent.click(screen.getByRole("link", { name: t("tinv.title") }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(confirm).toHaveBeenCalledWith(t("trade.leaveConfirm"));
+    expect(window.location.hash).toBe("#/trade-settlements");
+    expect(screen.getByLabelText<HTMLInputElement>(`${t("tset.amount")} INV-1`).value).toBe("5650");
+  });
 });

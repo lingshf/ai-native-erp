@@ -469,6 +469,52 @@ function httpSend(address: string): Send {
     return result;
   };
 }
+// The longest legal order ID (companyCodeSchema: 60 characters), all wide uppercase letters,
+// for the 390 px wrap check.
+export const longOrderId = `SO-LONG-REFERENCE-${"ABCDEFGHIJKLMNOPQRSTUVWXYZ".repeat(2).slice(0, 42)}`;
+// TINV-04: sales orders and AR invoices posted against them, through the real HTTP API. A domain
+// rejection fails here at once (httpSend throws on any non-2xx), not later as a missing row.
+export async function seedSourceOrders(send: Send) {
+  for (const [orderId, externalInvoice] of [
+    ["SO-DEMO", "AR-FROM-SO"],
+    [longOrderId, "AR-LONG-SO"],
+  ] as const)
+    await seedSourceOrder(send, orderId, externalInvoice);
+}
+async function seedSourceOrder(send: Send, orderId: string, externalInvoice: string) {
+  const line = seedInvoice("").lines[0];
+  await send("POST", "/api/v1/trade/orders", {
+    company: "DEFAULT",
+    orderId,
+    side: "AR",
+    party: "PARTY",
+    currency: "CNY",
+    orderDate: day,
+    priceIncludesTax: false,
+    rounding: "line",
+    lines: [{ ...line, product: "SERVICE" }].map(
+      ({ orderLineId: _, dimensions: __, ...rest }) => rest,
+    ),
+  });
+  const sale = {
+    ...seedInvoice(randomUUID()),
+    side: "AR",
+    externalInvoice,
+    orderId,
+    lines: [{ ...line, product: "SERVICE" }],
+  };
+  const preview = await send("POST", "/api/v1/trade/invoices/preview", sale);
+  if (typeof preview.fingerprint !== "string")
+    throw new Error(`No ${externalInvoice} preview fingerprint`);
+  const receipt = await send("POST", "/api/v1/trade/invoices", {
+    command: sale,
+    fingerprint: preview.fingerprint,
+    idempotencyKey: randomUUID(),
+    confirmation: "POST",
+  });
+  if (receipt.fingerprint !== preview.fingerprint)
+    throw new Error(`${externalInvoice} confirmed ${String(receipt.fingerprint)}`);
+}
 // Part 2 starts from the exact state part 1 creates through the GUI. The same commands are
 // replayed through the real HTTP API (preview, then explicit confirmation with the fingerprint
 // that preview returned). Part 1 replays them against a second fresh server with the GUI's own
@@ -1270,6 +1316,147 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       });
       // After the report totals above, so the new AP invoices do not change them.
       await orderToInvoice();
+      await sourceOrders();
+      await leaveByBack(
+        "trade-invoices",
+        "#tinv-party",
+        t("trade.leaveConfirm"),
+        t("tinv.title"),
+        2,
+        () => page.getByRole("textbox", { name: `${t("tinv.product")} L1`, exact: true }).waitFor(),
+      );
+      await leaveByBack(
+        "trade-orders",
+        "#tord-party",
+        ordered("tord.leaveConfirm"),
+        ordered("tord.title"),
+        1,
+      );
+    }
+    // TINV-04: the invoice list's source order column links each invoice to its order detail,
+    // purchase (PO-DEMO, seeded) and sales (SO-DEMO, seeded here); AR-DEMO has none ("—").
+    async function sourceOrders() {
+      await seedSourceOrders(httpSend(address));
+      // The GUI caches lists until it writes itself (staleTime: Infinity); load the HTTP writes.
+      await page.reload();
+      const list = page.getByRole("table", { name: t("tinv.list"), exact: true });
+      const row = (external: string) => list.locator("tbody tr").filter({ hasText: external });
+      for (const [external, orderId] of [
+        ["AP-DEMO", "PO-DEMO"],
+        ["AR-FROM-SO", "SO-DEMO"],
+      ] as const) {
+        await navigate("trade-invoices");
+        const link = row(external).getByRole("link", { name: orderId, exact: true });
+        await link.waitFor();
+        if (orderId === "PO-DEMO") {
+          const none = row("AR-DEMO").locator("td.tinv-source");
+          expect(await none.locator("a").count()).toBe(0);
+          expect(await none.locator('[aria-hidden="true"]').textContent()).toBe("—");
+          expect(await none.locator(".visually-hidden").textContent()).toBe(
+            t("tinv.noSourceOrder"),
+          );
+          await page.screenshot({ path: join(artifacts, `${name}-invoice-list.png`) });
+          await page.setViewportSize({ width: 390, height: 1100 });
+          // The 60-character order ID wraps inside its cell: full text shown (not clipped by
+          // the 3-line clamp), the row keeps the virtual list's 44 px, the cell stays bounded.
+          const long = row("AR-LONG-SO").getByRole("link", { name: longOrderId, exact: true });
+          await long.scrollIntoViewIfNeeded();
+          // Lines are counted from the laid-out text (a clamped line is still laid out, just
+          // hidden), and the last character must sit inside the link's visible box (1 px slack
+          // beyond the half-leading: a 12 px glyph box is taller than the 13 px line box, so its
+          // rect overhangs the line by (rect height - 13) / 2 even when nothing is clipped; a 4th
+          // line would overhang by a further 13 px). scrollHeight is not used.
+          const box = await long.evaluate((element) => {
+            const cell = element.closest("td") as HTMLElement;
+            const text = element.firstChild as Text;
+            const all = document.createRange();
+            all.selectNodeContents(text);
+            const rects = [...all.getClientRects()].filter((rect) => rect.width > 0);
+            const last = document.createRange();
+            last.setStart(text, text.length - 1);
+            last.setEnd(text, text.length);
+            const glyph = last.getBoundingClientRect();
+            const lineHeight = Number.parseFloat(getComputedStyle(element).lineHeight);
+            const halfLeading = Math.max(0, (glyph.height - lineHeight) / 2);
+            return {
+              lines: new Set(rects.map((rect) => Math.round(rect.top))).size,
+              overhang: glyph.bottom - element.getBoundingClientRect().bottom - halfLeading,
+              row: (cell.parentElement as HTMLElement).getBoundingClientRect().height,
+              cell: cell.getBoundingClientRect().width,
+              title: element.getAttribute("title"),
+            };
+          });
+          expect(box).toMatchObject({ row: 44, title: longOrderId });
+          expect(box.lines).toBeGreaterThanOrEqual(1);
+          expect(box.lines).toBeLessThanOrEqual(3);
+          expect(box.overhang).toBeLessThanOrEqual(1);
+          expect(box.cell).toBeLessThanOrEqual(240);
+          // The wide column scrolls inside the table, never the page.
+          expect(
+            await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
+          ).toBeLessThanOrEqual(0);
+          await page.screenshot({ path: join(artifacts, `${name}-invoice-list-390.png`) });
+          await page.setViewportSize({ width: 1440, height: 1100 });
+        }
+        expect(await link.getAttribute("href")).toBe(
+          `#/trade-orders?company=DEFAULT&order=${orderId}`,
+        );
+        await activate(page, link);
+        await page.waitForURL(
+          (url) => url.hash === `#/trade-orders?company=DEFAULT&order=${orderId}`,
+        );
+        await page
+          .getByRole("table", { name: `${ordered("tord.lines")} ${orderId}`, exact: true })
+          .waitFor();
+      }
+      expect(failures).toEqual([]);
+    }
+    // TINV-04 acceptance 5a: a real Back from a dirty draft asks exactly once; a cancel keeps the
+    // address, the title and the draft; a confirmed Back reaches the previous page. The invoice
+    // page cancels twice; the order page (same leave-guard-history.ts gate) cancels once.
+    async function leaveByBack(
+      path: "trade-invoices" | "trade-orders",
+      field: string,
+      message: string,
+      title: string,
+      cancels: number,
+      kept?: () => Promise<unknown>,
+    ) {
+      await navigate("trade-reports");
+      await navigate(path);
+      await type(page, page.locator(field), "PARTY-BACK");
+      let dialogs = 0;
+      let accept = false;
+      const answer = async (dialog: import("playwright").Dialog) => {
+        dialogs += 1;
+        expect(dialog.type()).toBe("confirm");
+        expect(dialog.message()).toBe(message);
+        await (accept ? dialog.accept() : dialog.dismiss());
+      };
+      page.on("dialog", answer);
+      const back = async (count: number) => {
+        // A cancelled same-document traversal may never settle as a navigation.
+        await page.goBack({ waitUntil: "commit", timeout: 2_000 }).catch(() => null);
+        await expect.poll(() => dialogs, { timeout: 10_000 }).toBe(count);
+        await page.waitForTimeout(300);
+        expect(dialogs).toBe(count);
+      };
+      try {
+        for (let count = 1; count <= cancels; count += 1) {
+          await back(count);
+          expect(new URL(page.url()).hash).toBe(`#/${path}`);
+          await page.getByRole("heading", { name: title, exact: true }).waitFor();
+          expect(await page.locator(field).inputValue()).toBe("PARTY-BACK");
+          await kept?.();
+        }
+        accept = true;
+        await back(cancels + 1);
+        await page.waitForURL((url) => url.hash === "#/trade-reports");
+        await page.waitForFunction(targetPageShown, navigateTitle(language, "trade-reports"));
+      } finally {
+        page.off("dialog", answer);
+      }
+      expect(failures).toEqual([]);
     }
   }, 180_000);
 }

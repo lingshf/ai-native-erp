@@ -63,6 +63,7 @@
   "packages/web/test/dimensions.test.tsx": 740,
   "packages/web/test/fast-tab.test.tsx": 228,
   "packages/web/test/journals.test.tsx": 3187,
+  "packages/web/test/leave-guard-history.test.ts": 150,
   "packages/web/test/ledger-reports.test.tsx": 2300,
   "packages/web/test/migration.test.tsx": 835,
   "packages/web/test/overview-shared-ui.test.tsx": 693,

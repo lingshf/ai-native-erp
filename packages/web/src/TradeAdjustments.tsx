@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import {
   companiesPageSchema,
@@ -126,7 +126,7 @@ export function TradeAdjustments({ preferences }: { preferences: Preferences }) 
     label(preferences.language, key);
   const [selected, setSelected] = useState("");
   const [guard, setGuard] = useState({ busy: false, unsaved: false });
-  useInvoiceLeaveGuard(guard);
+  useInvoiceLeaveGuard(guard, t("trade.leaveConfirm"));
   const companies = useInfiniteQuery({
     queryKey: ["companies"],
     initialPageParam: "",
@@ -240,7 +240,7 @@ function ActionEntry({
       setStorageFailed(true);
     }
   }, [company.code, saved, storageFailed]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     onGuard({
       busy: busy || saved.pending !== null,
       unsaved: !!(

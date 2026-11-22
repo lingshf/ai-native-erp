@@ -145,7 +145,7 @@
 .trade-invoices .tinv-total td,
 .trade-invoices .tinv-split > :first-child :is(th, td):nth-child(n + 2),
 .trade-invoices .tinv-split > :nth-child(2) :is(th, td):nth-child(n + 3),
-.trade-invoices .tinv-list :is(th, td):nth-child(7) {
+.trade-invoices .tinv-list :is(th, td):nth-child(8) {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -162,4 +162,29 @@
   justify-content: center;
   padding: var(--space-3);
   border-top: 1px solid var(--color-border);
+}
+/* 来源订单（390 px 方案：换行，不隐藏）。合法单号最长 60 字符（companyCodeSchema），在固定
+   26ch 宽内任意处断行：大写字母约 1.1ch，60 个约 66ch < 3 × 26ch，12px / 13px 行高 3 行 = 39px，
+   行高仍为 --row-h（虚拟列表 estimateSize 44）。用 width 而非 max-width，自动布局的表格才不会
+   把这一列挤窄。超出 3 行的极端宽字符单号截断，完整单号仍在链接文本与 title 中。
+   特异度 (0,2,0) 高于 .grid td (0,1,1)，覆盖其 white-space: nowrap。 */
+.trade-invoices .tinv-source {
+  min-width: 8ch;
+  white-space: normal;
+}
+/* “—”行的 visually-hidden 文本是绝对定位：以本格为包含块，留在表格滚动容器内，
+   否则其静态位置会溢出成页面横向滚动（390 px）。 */
+.trade-invoices td.tinv-source {
+  position: relative;
+}
+.trade-invoices td.tinv-source > a {
+  display: -webkit-box;
+  width: 26ch;
+  overflow: hidden;
+  font-size: var(--text-xs);
+  line-height: 13px;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }

@@ -102,7 +102,7 @@ function CompanyReports({
   const [input, setInput] = useState({ party, month, side });
   useEffect(() => setInput({ party, month, side }), [party, month, side]);
   const dirty = input.party !== party || input.month !== month || input.side !== side;
-  useInvoiceLeaveGuard({ busy: dirty, unsaved: dirty });
+  useInvoiceLeaveGuard({ busy: false, unsaved: dirty }, t("trade.leaveConfirm"));
   const view = params.get("view") ?? "openItems";
   const valid =
     (!month || /^\d{4}-(0[1-9]|1[0-2])$/u.test(month)) &&

@@ -481,6 +481,7 @@ export const tradeInvoicePageSchema = z.strictObject({
         gross: minor,
         currency,
         journalId: id,
+        orderId: companyCodeSchema.nullable(),
         cursor: z.string().regex(/^[1-9]\d{0,15}$/u),
       }),
     )

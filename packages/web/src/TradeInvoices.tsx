@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   companiesPageSchema,
   tradeInvoiceCommandSchema,
@@ -19,6 +19,7 @@ import { label, type LabelKey, type Preferences } from "./ui/index.ts";
 import { tradeEn } from "./ui/trade-labels.ts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
+import { guardHistory, type HistoryGuard } from "./leave-guard-history.ts";
 import { Badge, FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import "./pages/trade-invoices.css";
 
@@ -196,25 +197,38 @@ function storeSaved(company: string, saved: Saved): boolean {
     return false;
   }
 }
-export function useInvoiceLeaveGuard(guard: Guard) {
+// Shared by the trade pages: busy (a submit in flight or its outcome unknown) blocks in-app links
+// and history; unsaved input asks once per navigation; modified clicks open a new tab untouched.
+// Back/Forward go through leave-guard-history.ts (a cancel keeps the address and the draft).
+export function useInvoiceLeaveGuard(guard: Guard, message: string) {
   // Listeners read the latest guard so a just-finished post never keeps blocking navigation.
   const latest = useRef(guard);
   latest.current = guard;
-  useEffect(() => {
+  const history = useRef<HistoryGuard | null>(null);
+  // After every render: the page may rewrite its own address while guarded (leave-guard-history.ts).
+  useLayoutEffect(() => history.current?.settle());
+  // Layout effects: the guard is armed in the same commit as the input that made the page dirty,
+  // so an immediate Back is asked (passive effects may run after the traversal has begun).
+  useLayoutEffect(() => {
     if (!guard.busy && !guard.unsaved) return;
-    const current = window.location.href;
+    const mayLeave = () =>
+      !latest.current.busy && (!latest.current.unsaved || window.confirm(message));
+    const guarded = guardHistory(mayLeave);
+    history.current = guarded;
     const click = (event: MouseEvent) => {
-      if (!latest.current.busy) return;
       const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
-      if (!(link instanceof HTMLAnchorElement) || link.href === current || link.target === "_blank")
+      if (
+        !(link instanceof HTMLAnchorElement) ||
+        link.href === guarded.here() ||
+        link.target === "_blank"
+      )
         return;
+      const plain =
+        event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey;
+      if (!latest.current.busy && !plain) return;
+      if (mayLeave()) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-    };
-    const navigation = (event: Event) => {
-      if (!latest.current.busy || window.location.href === current) return;
-      event.stopImmediatePropagation();
-      window.history.replaceState(window.history.state, "", current);
     };
     const unload = (event: BeforeUnloadEvent) => {
       if (!latest.current.busy && !latest.current.unsaved) return;
@@ -222,18 +236,15 @@ export function useInvoiceLeaveGuard(guard: Guard) {
       event.returnValue = "";
     };
     document.addEventListener("click", click, true);
-    window.addEventListener("popstate", navigation, true);
-    window.addEventListener("hashchange", navigation, true);
     window.addEventListener("beforeunload", unload);
     return () => {
+      history.current = null;
+      guarded.dispose();
       document.removeEventListener("click", click, true);
-      window.removeEventListener("popstate", navigation, true);
-      window.removeEventListener("hashchange", navigation, true);
       window.removeEventListener("beforeunload", unload);
     };
-  }, [guard.busy, guard.unsaved]);
+  }, [guard.busy, guard.unsaved, message]);
 }
-
 function isIssueKey(key: string): key is Key {
   return key in tradeEn;
 }
@@ -290,7 +301,7 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
   const [selected, setSelected] = useState(() => params.get("company") ?? "");
   const [guard, setGuard] = useState(idleGuard);
   const [intake, setIntake] = useState<Intake | null>(null);
-  useInvoiceLeaveGuard(guard);
+  useInvoiceLeaveGuard(guard, t("trade.leaveConfirm"));
   const fromOrder = params.get("fromOrder");
   // The router commits the dropped parameter in a transition, so this effect can rerun (e.g. on
   // guard.busy) while the address still shows the request: take each request only once.
@@ -440,10 +451,10 @@ function InvoiceEntry({
   useLayoutEffect(() => {
     storeSaved(company.code, { draft, documentId, dirty, pending });
   }, [company.code, draft, documentId, dirty, pending]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     onGuard({ busy, unsaved: dirty || pending !== null });
   }, [onGuard, busy, dirty, pending]);
-  useEffect(() => () => onGuard(idleGuard), [onGuard]);
+  useLayoutEffect(() => () => onGuard(idleGuard), [onGuard]);
   const [receipt, setReceipt] = useState<TradeInvoiceReceiptDto | null>(null);
   const firstField = useRef<HTMLSelectElement>(null);
   const command = toCommand(company, documentId, draft);
@@ -1011,6 +1022,37 @@ function PreviewPanel({
   );
 }
 
+/** Router path of an order's detail on the order page (TINV-03 reads `company` and `order`). */
+export const sourceOrderPath = (company: string, orderId: string) =>
+  `/trade-orders?company=${encodeURIComponent(company)}&order=${encodeURIComponent(orderId)}`;
+
+// A router link: keyboard-activatable and openable in a new tab; leaving a dirty draft is confirmed
+// by the page's leave guard like any other in-app link.
+export function SourceOrderCell({
+  company,
+  orderId,
+  t,
+}: {
+  company: string;
+  orderId: string | null;
+  t: T;
+}) {
+  return (
+    <td className="tinv-source">
+      {orderId === null ? (
+        <>
+          <span aria-hidden="true">—</span>
+          <span className="visually-hidden">{t("tinv.noSourceOrder")}</span>
+        </>
+      ) : (
+        <Link to={sourceOrderPath(company, orderId)} title={orderId}>
+          {orderId}
+        </Link>
+      )}
+    </td>
+  );
+}
+
 function InvoiceList({
   company,
   preferences,
@@ -1054,6 +1096,7 @@ function InvoiceList({
     "tinv.accountingDate",
     "tinv.dueDate",
     "tinv.poMatch",
+    "tinv.sourceOrder",
     "tinv.gross",
   ] as const;
   return (
@@ -1081,7 +1124,11 @@ function InvoiceList({
           <thead>
             <tr>
               {headers.map((key) => (
-                <th key={key} scope="col">
+                <th
+                  key={key}
+                  scope="col"
+                  className={key === "tinv.sourceOrder" ? "tinv-source" : undefined}
+                >
                   {t(key)}
                 </th>
               ))}
@@ -1102,6 +1149,7 @@ function InvoiceList({
                   <td>{row.accountingDate}</td>
                   <td>{row.dueDate}</td>
                   <td>{t(`tinv.${row.poMatch}`)}</td>
+                  <SourceOrderCell company={company.code} orderId={row.orderId} t={t} />
                   <td>{formatMinor(row.gross, preferences.language, company.scale)}</td>
                 </tr>
               ) : null,

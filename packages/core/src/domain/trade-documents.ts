@@ -206,6 +206,7 @@ export interface TradeDocumentSummary {
   readonly gross: number;
   readonly currency: string;
   readonly journalId: string;
+  readonly orderId: string | null;
   readonly cursor: string;
 }
 export interface TradeDocumentRecord {

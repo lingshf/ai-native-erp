@@ -7,6 +7,7 @@ import {
   type TradeOrderInvoicingDto,
 } from "@erp/core/contracts";
 import { App } from "../src/App.tsx";
+import { sourceOrderPath } from "../src/TradeInvoices.tsx";
 import { label, type LabelKey } from "../src/ui/index.ts";
 
 const company = {
@@ -294,7 +295,9 @@ describe("trade invoices", () => {
     await waitFor(() =>
       expect(screen.getByLabelText<HTMLInputElement>(t("tinv.party")).value).toBe("V1"),
     );
+    const leave = vi.spyOn(window, "confirm").mockReturnValue(true);
     fireEvent.click(screen.getByRole("link", { name: t("trade.title") }));
+    expect(leave).toHaveBeenCalledTimes(1);
     expect(window.location.hash).toBe("#/trade");
     fireEvent.click(screen.getByRole("link", { name: t("tinv.title") }));
     expect((await screen.findByLabelText<HTMLInputElement>(t("tinv.party"))).value).toBe("V1");
@@ -323,7 +326,9 @@ describe("trade invoices", () => {
       expect(screen.getByLabelText<HTMLSelectElement>(t("master.company")).disabled).toBe(false),
     );
 
+    leave.mockClear();
     fireEvent.click(screen.getByRole("link", { name: t("trade.title") }));
+    expect(leave).toHaveBeenCalledTimes(1);
     expect(window.location.hash).toBe("#/trade");
     fireEvent.click(screen.getByRole("link", { name: t("tinv.title") }));
     expect(await screen.findByText(t("tinv.uncertain"))).toBeTruthy();
@@ -723,5 +728,256 @@ describe("trade invoices from an order (TINV-01)", () => {
     } finally {
       ask.mockRestore();
     }
+  });
+});
+
+describe("trade invoices leave guard", () => {
+  const leave = t("trade.leaveConfirm");
+  const party = () => screen.getByLabelText<HTMLInputElement>(t("tinv.party"));
+  const ordersLink = () => screen.getByRole("link", { name: t("shell.tradeOrders") });
+  // A keyboard Enter on a focused link makes the browser dispatch a click with detail 0.
+  const pressEnter = (link: HTMLElement) => {
+    link.focus();
+    expect(document.activeElement).toBe(link);
+    if (fireEvent.keyDown(link, { key: "Enter" })) fireEvent.click(link, { detail: 0 });
+  };
+  const stub = (
+    post: () => Response | Promise<Response> = () => Promise.reject(new TypeError("network down")),
+    items: unknown[] = [],
+  ) =>
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockImplementation(async (path, init) => {
+        const url = String(path);
+        if (url.startsWith("/api/v1/companies"))
+          return response({ items: [company], nextCursor: null });
+        if (url === "/api/v1/trade/invoices/preview") {
+          const command = tradeInvoiceCommandSchema.parse(JSON.parse(String(init?.body)));
+          return response(preview(command.documentId));
+        }
+        if (url === "/api/v1/trade/invoices" && init?.method === "POST") return post();
+        if (url.startsWith("/api/v1/trade/invoices?")) return response({ items, nextCursor: null });
+        return response({}, 404);
+      }),
+    );
+
+  it("asks once before leaving a dirty draft by click or Enter, keeping the draft on cancel", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    stub();
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(t("tinv.party")), { target: { value: "V1" } });
+    fireEvent.click(ordersLink());
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(confirm).toHaveBeenCalledWith(leave);
+    pressEnter(ordersLink());
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(window.location.hash).toBe("#/trade-invoices");
+    expect(party().value).toBe("V1");
+    expect(screen.getByLabelText(`${t("tinv.product")} L1`)).toBeTruthy();
+    confirm.mockReturnValue(true);
+    pressEnter(ordersLink());
+    expect(confirm).toHaveBeenCalledTimes(3);
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-orders"));
+    expect(confirm).toHaveBeenCalledTimes(3);
+  });
+
+  // TINV-04: the list's source order link goes through the same confirmation as any in-app link.
+  const summary = (documentId: string, side: "AP" | "AR", orderId: string | null) => ({
+    documentId,
+    side,
+    party: side === "AP" ? "V1" : "C1",
+    externalNo: `INV-${side}`,
+    accountingDate: "2026-03-31",
+    documentDate: "2026-03-30",
+    dueDate: "2026-04-30",
+    poMatch: orderId === null ? "notApplicable" : "matched",
+    gross: 11300,
+    currency: "CNY",
+    journalId: documentId,
+    orderId,
+    cursor: side === "AP" ? "2" : "1",
+  });
+  const listed = [
+    summary("00000000-0000-4000-8000-000000000001", "AP", "PO:1.A"),
+    summary("00000000-0000-4000-8000-000000000002", "AR", null),
+  ];
+  const target = "#/trade-orders?company=DEFAULT&order=PO%3A1.A";
+  const sourceLink = () => screen.getByRole("link", { name: "PO:1.A" });
+
+  it("shows the source order as a keyboard link to the order page, or a dash read as no source order", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    stub(undefined, listed);
+    render(<App />);
+    const table = await screen.findByRole("table", { name: t("tinv.list") });
+    await within(table).findByRole("link", { name: "PO:1.A" });
+    const headers = within(table)
+      .getAllByRole("columnheader")
+      .map((cell) => cell.textContent);
+    expect(headers).toContain(t("tinv.sourceOrder"));
+    const column = headers.indexOf(t("tinv.sourceOrder"));
+    const [linked, loose] = within(table)
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => within(row).getAllByRole("cell")[column]);
+    const link = within(linked).getByRole("link");
+    expect(link.getAttribute("href")).toBe(target);
+    expect(link.getAttribute("tabindex")).toBeNull();
+    expect(loose.querySelector("a")).toBeNull();
+    expect(loose.querySelector('[aria-hidden="true"]')?.textContent).toBe("—");
+    expect(within(loose).getByText(t("tinv.noSourceOrder")).className).toBe("visually-hidden");
+    pressEnter(link);
+    await waitFor(() => expect(window.location.hash).toBe(target));
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it("asks before the source order link leaves a dirty draft, by click and Enter", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    stub(undefined, listed);
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(t("tinv.party")), { target: { value: "V1" } });
+    fireEvent.click(await screen.findByRole("link", { name: "PO:1.A" }));
+    pressEnter(sourceLink());
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(confirm).toHaveBeenCalledWith(leave);
+    expect(window.location.hash).toBe("#/trade-invoices");
+    expect(party().value).toBe("V1");
+    expect(screen.getByLabelText(`${t("tinv.product")} L1`)).toBeTruthy();
+    confirm.mockReturnValue(true);
+    pressEnter(sourceLink());
+    await waitFor(() => expect(window.location.hash).toBe(target));
+    expect(confirm).toHaveBeenCalledTimes(3);
+  });
+  it("leaves a clean draft without asking", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    stub();
+    render(<App />);
+    await screen.findByLabelText(t("tinv.party"));
+    fireEvent.click(ordersLink());
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-orders"));
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it("lets Ctrl/Meta clicks open a new tab without asking", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    stub();
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(t("tinv.party")), { target: { value: "V1" } });
+    // Stands in for the browser opening a new tab: the page itself must not be blocked.
+    const prevented: boolean[] = [];
+    const newTab = (event: Event) => {
+      prevented.push(event.defaultPrevented);
+      event.preventDefault();
+    };
+    document.addEventListener("click", newTab);
+    try {
+      for (const modifier of [{ ctrlKey: true }, { metaKey: true }])
+        fireEvent.click(ordersLink(), modifier);
+    } finally {
+      document.removeEventListener("click", newTab);
+    }
+    expect(prevented).toEqual([false, false]);
+    expect(confirm).not.toHaveBeenCalled();
+    expect(window.location.hash).toBe("#/trade-invoices");
+    expect(party().value).toBe("V1");
+  });
+
+  // D275: a cancelled real Back asks once, never calls history.go, and pushes the page's address
+  // again, so the address and the draft stay and the next confirmed Back still reaches the target.
+  it("cancels a real Back by keeping the address and draft, and leaves on a confirmed Back", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const go = vi.spyOn(window.history, "go");
+    stub();
+    window.history.replaceState(null, "", "/#/trade-orders");
+    window.history.pushState(null, "", "/#/trade-invoices");
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(t("tinv.party")), { target: { value: "V1" } });
+    const here = window.location.href;
+    const pause = () => act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+    const back = async (calls: number) => {
+      await act(async () => window.history.back());
+      await waitFor(() => expect(confirm).toHaveBeenCalledTimes(calls));
+      await pause();
+      expect(confirm).toHaveBeenCalledTimes(calls);
+    };
+    for (const calls of [1, 2]) {
+      await back(calls);
+      expect(window.location.href).toBe(here);
+      expect(party().value).toBe("V1");
+    }
+    confirm.mockReturnValue(true);
+    await back(3);
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-orders"));
+    await waitFor(() =>
+      expect(screen.queryByRole("heading", { name: t("tinv.title") })).toBeNull(),
+    );
+    expect(go).not.toHaveBeenCalled();
+  });
+  it("asks on a Back that arrives right after the first keystroke, before any later task", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    stub();
+    window.history.replaceState(null, "", "/#/trade-orders");
+    window.history.pushState(null, "", "/#/trade-invoices");
+    render(<App />);
+    const input = (await screen.findByLabelText(t("tinv.party"))) as HTMLInputElement;
+    const here = window.location.href;
+    // Outside act(): as in a browser, React renders the keystroke in a microtask. A guard armed
+    // only by passive effects waits for a later task and would miss this Back.
+    const actEnvironment = Reflect.get(globalThis, "IS_REACT_ACT_ENVIRONMENT");
+    Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", false);
+    try {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, "V1");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      for (let turn = 0; turn < 5; turn += 1) await Promise.resolve();
+      window.history.replaceState(null, "", "/#/trade-orders");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      expect(confirm).toHaveBeenCalledTimes(1);
+      expect(window.location.href).toBe(here);
+    } finally {
+      Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", actEnvironment);
+    }
+    await act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+    expect(party().value).toBe("V1");
+    expect(confirm).toHaveBeenCalledTimes(1);
+  });
+  it("blocks links and history without asking while a post is in flight", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    stub(() => new Promise<Response>(() => {}));
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(t("tinv.party")), { target: { value: "V1" } });
+    fireEvent.change(screen.getByLabelText(t("tinv.externalInvoice")), {
+      target: { value: "inv-1" },
+    });
+    fireEvent.change(screen.getByLabelText(`${t("tinv.product")} L1`), {
+      target: { value: "RENT" },
+    });
+    fireEvent.change(screen.getByLabelText(`${t("tinv.unitPrice")} L1`), {
+      target: { value: "10" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.preview") }));
+    await screen.findByRole("region", { name: t("tinv.previewTitle") });
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.confirm") }));
+    await waitFor(() =>
+      expect(screen.getByLabelText<HTMLSelectElement>(t("master.company")).disabled).toBe(true),
+    );
+    fireEvent.click(ordersLink());
+    fireEvent.click(ordersLink(), { ctrlKey: true });
+    expect(window.location.hash).toBe("#/trade-invoices");
+    act(() => {
+      window.history.pushState(null, "", "/#/trade-orders");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(window.location.hash).toBe("#/trade-invoices");
+    expect(confirm).not.toHaveBeenCalled();
+    expect(party().value).toBe("V1");
+  });
+});
+
+describe("source order link", () => {
+  it("addresses the order on the order page with the current company, URL-encoded", () => {
+    expect(sourceOrderPath("DEFAULT", "PO-1")).toBe("/trade-orders?company=DEFAULT&order=PO-1");
+    const path = sourceOrderPath("C&1", "PO 1/#?&=+%");
+    expect(path).toBe("/trade-orders?company=C%261&order=PO%201%2F%23%3F%26%3D%2B%25");
+    const params = new URLSearchParams(path.split("?")[1]);
+    expect([params.get("company"), params.get("order")]).toEqual(["C&1", "PO 1/#?&=+%"]);
   });
 });

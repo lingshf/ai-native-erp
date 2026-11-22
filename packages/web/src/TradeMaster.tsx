@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
@@ -14,6 +14,7 @@ import {
 import { label, type LabelKey, type Preferences } from "./ui/index.ts";
 import { masterTeaching } from "./ui/trade-master-teaching.ts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
+import { guardHistory } from "./leave-guard-history.ts";
 import { Badge, FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import "./pages/master.css";
 
@@ -24,15 +25,17 @@ type Failure = { path: string; key: Exclude<LabelKey, "shell.httpError">; confli
 type EditorGuard = { open: boolean; dirty: boolean; pending: boolean };
 const idleGuard: EditorGuard = { open: false, dirty: false, pending: false };
 function useTradeLeaveGuard(guard: EditorGuard, discard: string) {
-  useEffect(() => {
+  // Layout effect: armed in the commit that made the editor dirty (see TradeInvoices.tsx).
+  useLayoutEffect(() => {
     if (!guard.dirty && !guard.pending) return;
-    const current = window.location.href;
     const mayLeave = () => !guard.pending && window.confirm(discard);
+    // Back/Forward: a cancel keeps the address and the draft (leave-guard-history.ts).
+    const guarded = guardHistory(mayLeave);
     const click = (event: MouseEvent) => {
       const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
       if (
         !(link instanceof HTMLAnchorElement) ||
-        link.href === current ||
+        link.href === guarded.here() ||
         link.target === "_blank" ||
         event.button !== 0 ||
         event.ctrlKey ||
@@ -46,23 +49,15 @@ function useTradeLeaveGuard(guard: EditorGuard, discard: string) {
         event.stopImmediatePropagation();
       }
     };
-    const navigation = (event: Event) => {
-      if (window.location.href === current || mayLeave()) return;
-      event.stopImmediatePropagation();
-      window.history.replaceState(window.history.state, "", current);
-    };
     const unload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
     document.addEventListener("click", click, true);
-    window.addEventListener("popstate", navigation, true);
-    window.addEventListener("hashchange", navigation, true);
     window.addEventListener("beforeunload", unload);
     return () => {
+      guarded.dispose();
       document.removeEventListener("click", click, true);
-      window.removeEventListener("popstate", navigation, true);
-      window.removeEventListener("hashchange", navigation, true);
       window.removeEventListener("beforeunload", unload);
     };
   }, [guard.dirty, guard.pending, discard]);
@@ -428,10 +423,10 @@ function TradeEditor({
   const dirty = JSON.stringify({ code, active, draft }) !== starting.current;
   const pendingCommand = useRef<TradeCommand | null>(null);
   const generation = useRef(0);
-  useEffect(() => {
+  useLayoutEffect(() => {
     lock({ open: true, dirty, pending: busy || uncertain });
   }, [lock, dirty, busy, uncertain]);
-  useEffect(() => () => lock(idleGuard), [lock]);
+  useLayoutEffect(() => () => lock(idleGuard), [lock]);
   useEffect(
     () => () => {
       generation.current++;
