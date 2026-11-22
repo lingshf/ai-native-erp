@@ -266,7 +266,8 @@ const row = (value: TradeInvoiceDetailDto) => ({
 
 const detailPath = `/api/v1/trade/invoices/${documentId}?company=DEFAULT`;
 type Reply = (call: number) => Response | Promise<Response>;
-function serve(value: TradeInvoiceDetailDto, reply?: Reply) {
+// `pages: 2` serves a second list page (INV-2) behind Load more.
+function serve(value: TradeInvoiceDetailDto, reply?: Reply, pages: 1 | 2 = 1) {
   let detailCalls = 0;
   const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (path) => {
     const url = String(path);
@@ -277,7 +278,12 @@ function serve(value: TradeInvoiceDetailDto, reply?: Reply) {
       return reply ? reply(detailCalls) : response(value);
     }
     if (url.startsWith("/api/v1/trade/invoices?"))
-      return response({ items: [row(value)], nextCursor: null });
+      return pages === 2 && url.includes("&cursor=1")
+        ? response({
+            items: [{ ...row(value), documentId: uuid(900), externalNo: "INV-2", cursor: "2" }],
+            nextCursor: null,
+          })
+        : response({ items: [row(value)], nextCursor: pages === 2 ? "1" : null });
     return response({}, 404);
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -487,9 +493,6 @@ describe("TINV-06 invoice detail dialog", () => {
     expect(await within(dialog).findByRole("table", { name: t("tinv.lines") })).toBeTruthy();
     expect(within(dialog).queryByRole("alert")).toBeNull();
     expect(served.detailCalls()).toBe(2);
-    expect(
-      served.fetchMock.mock.calls.filter(([path]) => String(path) === detailPath),
-    ).toHaveLength(2);
   });
 
   it("can be closed while loading", async () => {
@@ -516,7 +519,12 @@ describe("TINV-06 invoice detail dialog", () => {
     const focusables = Array.from(
       dialog.querySelectorAll<HTMLElement>("button:not(:disabled),[tabindex='0']"),
     );
+    // The lines' scroll region is a Tab stop inside the dialog (keyboard sideways scroll at 390).
+    const region = within(dialog).getByRole("region", { name: t("tinv.lines") });
+    expect(region.tabIndex).toBe(0);
+    expect(focusables).toEqual([close, region]);
     const last = focusables.at(-1) as HTMLElement;
+    expect(last).toBe(region);
     fireEvent.keyDown(dialog, { key: "Tab" });
     expect(document.activeElement).toBe(close);
     last.focus();
@@ -533,10 +541,17 @@ describe("TINV-06 invoice detail dialog", () => {
   });
 
   it("closing keeps the filter values, loaded pages and the draft; each open fetches once", async () => {
-    const served = serve(detail());
+    const served = serve(detail(), undefined, 2);
     const confirm = vi.spyOn(window, "confirm");
     render(<App />);
     await trigger();
+    fireEvent.click(screen.getByRole("button", { name: t("master.loadMore") }));
+    const second = `${d("tinv.detail.open")} INV-2`;
+    expect(await screen.findByRole("button", { name: second })).toBeTruthy();
+    const pageCalls = served.fetchMock.mock.calls.filter(([path]) =>
+      String(path).includes("&cursor=1"),
+    );
+    expect(pageCalls).toHaveLength(1);
     fireEvent.change(screen.getByLabelText(t("tinv.filter.party")), { target: { value: "V9" } });
     fireEvent.change(screen.getByLabelText(t("tinv.party")), { target: { value: "V1" } });
     const draftKey = "erp.tradeInvoices.v1.DEFAULT";
@@ -556,6 +571,10 @@ describe("TINV-06 invoice detail dialog", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
     expect(screen.getByLabelText<HTMLInputElement>(t("tinv.filter.party")).value).toBe("V9");
+    // Both loaded pages are still on screen and neither was fetched again.
+    expect(screen.getByRole("button", { name: `${d("tinv.detail.open")} INV-1` })).toBeTruthy();
+    expect(screen.getByRole("button", { name: second })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: t("master.loadMore") })).toBeNull();
     expect(served.listCalls()).toBe(lists);
     expect(window.sessionStorage.getItem(draftKey)).toBe(draft);
     expect(confirm).not.toHaveBeenCalled();

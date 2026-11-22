@@ -1745,6 +1745,51 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         try {
           before = await open("Enter", 390);
           await page.screenshot({ path: join(artifacts, `${name}-invoice-detail-390.png`) });
+          // Review D356: the lines' scroll region is a Tab stop inside the modal, and the
+          // keyboard scrolls it until the last column is in view; focus never leaves the dialog.
+          const region = dialog.getByRole("region", { name: t("tinv.lines"), exact: true });
+          const onRegion = () => region.evaluate((element) => element === document.activeElement);
+          for (let count = 0; count < 8 && !(await onRegion()); count++) {
+            await page.keyboard.press("Tab");
+            expect(
+              await dialog.evaluate((element) => element.contains(document.activeElement)),
+            ).toBe(true);
+          }
+          expect(await onRegion()).toBe(true);
+          for (let count = 0; count < 40; count++) {
+            const end = await region.evaluate(
+              (element) => element.scrollLeft + element.clientWidth >= element.scrollWidth - 1,
+            );
+            if (end) break;
+            await page.keyboard.press("ArrowRight");
+          }
+          const scrolled = await region.evaluate((element) => {
+            const wrap = element.getBoundingClientRect();
+            const last = (element.querySelector("thead th:last-child") as HTMLElement)
+              .getBoundingClientRect();
+            return {
+              scrollLeft: element.scrollLeft,
+              max: element.scrollWidth - element.clientWidth,
+              wrap: [wrap.left, wrap.right],
+              lastColumn: [last.left, last.right],
+              focused: element === document.activeElement,
+              inDialog: (element.closest("dialog") as HTMLElement).contains(document.activeElement),
+            };
+          });
+          console.log(`[tinv06] ${name} 390 keyboard scroll ${JSON.stringify(scrolled)}`);
+          appendFileSync(
+            join(artifacts, `${name}-invoice-detail-geometry.json`),
+            `${JSON.stringify({ width: 390, keyboardScroll: scrolled })}\n`,
+          );
+          expect(scrolled.max).toBeGreaterThan(0);
+          expect(scrolled.scrollLeft).toBeGreaterThanOrEqual(scrolled.max - 1);
+          expect(scrolled.lastColumn[0]).toBeGreaterThanOrEqual(scrolled.wrap[0] - 1);
+          expect(scrolled.lastColumn[1]).toBeLessThanOrEqual(scrolled.wrap[1] + 1);
+          expect(scrolled.focused).toBe(true);
+          expect(scrolled.inDialog).toBe(true);
+          await page.screenshot({
+            path: join(artifacts, `${name}-invoice-detail-390-scrolled.png`),
+          });
           await page.keyboard.press("Escape");
           await closed(before);
         } finally {

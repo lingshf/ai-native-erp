@@ -201,7 +201,15 @@ function DetailBody({
           ))}
         </dl>
       </section>
-      <div className="grid-wrap tinv-detail-lines">
+      {/* A Tab stop so the lines can be scrolled sideways with the keyboard at narrow widths. */}
+      <div
+        className="grid-wrap tinv-detail-lines"
+        // biome-ignore lint/a11y/useSemanticElements: a div scroll region, as in Reports.tsx.
+        role="region"
+        aria-label={t("tinv.lines")}
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: Named scroll regions must stay keyboard-focusable.
+        tabIndex={0}
+      >
         <table className="grid" aria-label={t("tinv.lines")}>
           <caption>{t("tinv.lines")}</caption>
           <thead>
