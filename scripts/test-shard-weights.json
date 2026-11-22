@@ -77,5 +77,6 @@
   "packages/web/test/trade-period-admission.test.tsx": 1527,
   "packages/web/test/trade-reports.test.tsx": 932,
   "packages/web/test/trade-settlements.test.tsx": 713,
-  "packages/web/test/ui.test.ts": 46
+  "packages/web/test/ui.test.ts": 46,
+  "packages/infra/test/trade-invoice-filters-migration.test.ts": 1000
 }

@@ -40,6 +40,14 @@ import { SqliteExecutor } from "../../src/workers/executor.ts";
 import { tradeReportingRepository } from "../../src/storage/trade-reporting.ts";
 import type { Connection } from "../../src/storage/types.ts";
 import { compareWithLegacyReports } from "../support/trade-reporting-legacy.ts";
+import {
+  compatInvoices,
+  compatOrders,
+  compatParties,
+  copyLedgerRows,
+  ledgerAt017,
+  seedInvoiceList,
+} from "../support/trade-invoice-list-fixture.ts";
 
 const window = { name: "Fictional", from: "2026-01-01", to: "2026-12-31" };
 const base = { company: "DEFAULT", active: true, expectedRevision: 0 };
@@ -4261,6 +4269,376 @@ describe("trade invoices on real SQLite", () => {
     } finally {
       await db.release();
       await backend.close();
+    }
+  });
+
+  // TINV-05: invoice-list filters (party / side / accounting date), same keyset on sequence.
+  const invoiceFilterFixture = [
+    { side: "AP", party: "V1", accountingDate: "2026-01-20" },
+    { side: "AR", party: "C1", accountingDate: "2026-02-10" },
+    { side: "AP", party: "V2", accountingDate: "2026-02-15" },
+    { side: "AP", party: "V1", accountingDate: "2026-03-01" },
+    { side: "AR", party: "C1", accountingDate: "2026-03-31" },
+    { side: "AP", party: "V1", accountingDate: "2026-04-15" },
+    { side: "AP", party: "V2", accountingDate: "2026-04-15" },
+  ] as const;
+  /** Posts the fixture in order (sequence ascending); returns the document ids in that order. */
+  async function filterInvoices(): Promise<string[]> {
+    const ids: string[] = [];
+    for (const header of invoiceFilterFixture) {
+      const command = invoice({
+        ...header,
+        ...(header.side === "AR" ? { lines: [line({ product: "CONSULT" })] } : {}),
+      });
+      await post(command);
+      ids.push(command.documentId);
+    }
+    return ids;
+  }
+  const allInvoiceFilters = "party=V1&side=AP&from=2026-03-01&to=2026-04-15";
+  type ListedInvoice = {
+    documentId: string;
+    side: string;
+    party: string;
+    accountingDate: string;
+    cursor: string;
+  };
+
+  it("TINV-05 filters by party, side and inclusive accounting dates over HTTP, alone and combined, with keyset paging", async () => {
+    const ids = await filterInvoices();
+    await seedOtherCompany();
+    await post(invoice({ company: "OTHER" }));
+    const executor = await SqliteExecutor.create({ filename, readers: 2 });
+    const api = await createApi({
+      environment: { ERP_PORT: "0" },
+      allowPortZero: true,
+      ...executor.services(),
+      logError: () => undefined,
+    });
+    try {
+      const host = new URL(await api.listen()).host;
+      const get = (url: string) => api.app.inject({ method: "GET", url, headers: { host } });
+      const all = (await get("/api/v1/trade/invoices?company=DEFAULT&limit=100")).json()
+        .items as ListedInvoice[];
+      expect(all.map((item) => item.documentId)).toEqual([...ids].reverse());
+      const items = async (query: string) => {
+        const response = await get(`/api/v1/trade/invoices?company=DEFAULT&limit=100&${query}`);
+        expect(response.statusCode).toBe(200);
+        const page = tradeInvoicePageSchema.parse(response.json());
+        expect(page.nextCursor).toBeNull();
+        return page.items;
+      };
+      const at = (...indexes: number[]) => indexes.map((index) => ids[index]);
+      for (const [query, keep] of [
+        ["party=V1", (item: ListedInvoice) => item.party === "V1"],
+        ["side=AR", (item: ListedInvoice) => item.side === "AR"],
+        ["from=2026-02-15", (item: ListedInvoice) => item.accountingDate >= "2026-02-15"],
+        ["to=2026-02-15", (item: ListedInvoice) => item.accountingDate <= "2026-02-15"],
+        [
+          allInvoiceFilters,
+          (item: ListedInvoice) =>
+            item.party === "V1" &&
+            item.side === "AP" &&
+            item.accountingDate >= "2026-03-01" &&
+            item.accountingDate <= "2026-04-15",
+        ],
+      ] as const)
+        expect(await items(query)).toEqual(all.filter(keep));
+      expect((await items("from=2026-04-15&to=2026-04-15")).map((item) => item.documentId)).toEqual(
+        at(6, 5),
+      );
+      expect((await items(allInvoiceFilters)).map((item) => item.documentId)).toEqual(at(5, 3));
+      expect(await items("party=NOPE")).toEqual([]);
+      expect(await items("from=2025-01-01&to=2025-12-31")).toEqual([]);
+      const byId = (id: string | undefined) => all.find((item) => item.documentId === id);
+      const first = await get("/api/v1/trade/invoices?company=DEFAULT&party=V1&limit=2");
+      expect(first.json()).toEqual({
+        items: [byId(ids[5]), byId(ids[3])],
+        nextCursor: byId(ids[3])?.cursor,
+      });
+      const second = await get(
+        `/api/v1/trade/invoices?company=DEFAULT&party=V1&limit=2&cursor=${byId(ids[3])?.cursor}`,
+      );
+      expect(second.json()).toEqual({ items: [byId(ids[0])], nextCursor: null });
+      const sideFirst = await get("/api/v1/trade/invoices?company=DEFAULT&side=AP&limit=3");
+      expect(sideFirst.json().items.map((item: ListedInvoice) => item.documentId)).toEqual(
+        at(6, 5, 3),
+      );
+      const sideNext = await get(
+        `/api/v1/trade/invoices?company=DEFAULT&side=AP&limit=3&cursor=${sideFirst.json().nextCursor}`,
+      );
+      expect(sideNext.json().items.map((item: ListedInvoice) => item.documentId)).toEqual(at(2, 0));
+      expect(sideNext.json().nextCursor).toBeNull();
+      expect(
+        (await get("/api/v1/trade/invoices?company=OTHER&party=V1&side=AP&to=2026-01-31"))
+          .json()
+          .items.map((item: ListedInvoice) => [item.party, item.accountingDate]),
+      ).toEqual([["V1", "2026-01-20"]]);
+      for (const query of [
+        "side=XX",
+        "side=ap",
+        "side=",
+        "from=2026-13-01",
+        "to=2026-02-30",
+        "from=20260301",
+        "from=2026-03-02&to=2026-03-01",
+        "party=v1",
+        "party=",
+        "foo=1",
+      ])
+        expect((await get(`/api/v1/trade/invoices?company=DEFAULT&${query}`)).statusCode).toBe(400);
+    } finally {
+      await api.close();
+      await executor.close();
+    }
+  });
+
+  it("TINV-05 list validates filters itself and rejects an inverted date range", async () => {
+    for (const query of [
+      { limit: 2, side: "XX" as "AP" },
+      { limit: 2, from: "2026-13-01" },
+      { limit: 2, to: "2026-02-30" },
+      { limit: 2, from: "2026-03-02", to: "2026-03-01" },
+      { limit: 2, party: "v1" },
+    ])
+      await expect(service.list("DEFAULT", query)).rejects.toMatchObject({
+        code: "INVALID_INPUT",
+      });
+  });
+
+  it("TINV-05 filtered list opens one read transaction, never writes, and leaves every row in place", async () => {
+    const ids = await filterInvoices();
+    const calls = { read: 0, write: 0 };
+    const spy = new TradeDocumentService(
+      {
+        read: (work) => {
+          calls.read++;
+          return store.read(work);
+        },
+        write: (work) => {
+          calls.write++;
+          return store.write(work);
+        },
+      },
+      journals,
+      journalTools,
+    );
+    const page = await spy.list("DEFAULT", {
+      limit: 1,
+      party: "V1",
+      side: "AP",
+      from: "2026-03-01",
+      to: "2026-04-15",
+    });
+    expect(page.items.map((item) => item.documentId)).toEqual([ids[5]]);
+    expect(page.nextCursor).not.toBeNull();
+    expect(calls).toEqual({ read: 1, write: 0 });
+    const executor = await SqliteExecutor.create({ filename, readers: 2 });
+    const api = await createApi({
+      environment: { ERP_PORT: "0" },
+      allowPortZero: true,
+      ...executor.services(),
+      logError: () => undefined,
+    });
+    const observer = new Database(filename, { readonly: true });
+    const snapshot = () => ({
+      tables: userTableSnapshot(observer),
+      documents: observer.prepare("SELECT * FROM trade_documents ORDER BY sequence").all(),
+      lines: observer
+        .prepare("SELECT * FROM trade_document_lines ORDER BY company_id,document_id,line_no")
+        .all(),
+      openItems: observer.prepare("SELECT * FROM open_items ORDER BY company_id,item_id").all(),
+    });
+    try {
+      const host = new URL(await api.listen()).host;
+      const before = snapshot();
+      const response = await api.app.inject({
+        method: "GET",
+        url: `/api/v1/trade/invoices?company=DEFAULT&${allInvoiceFilters}`,
+        headers: { host },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(snapshot()).toEqual(before);
+    } finally {
+      observer.close();
+      await api.close();
+      await executor.close();
+    }
+  });
+
+  it("TINV-05 PG-05: one page statement for every filter combination; party uses trade_documents_party, others trade_documents_company, no temp B-tree", async () => {
+    const ids = await filterInvoices();
+    const backend = sqliteBackend({ filename });
+    const db = await backend.acquire(true, false);
+    const statements: { sql: string; values: readonly unknown[] }[] = [];
+    const counting = {
+      ...db,
+      query: (sql: string, values: Parameters<Connection["query"]>[1] = []) => {
+        statements.push({ sql, values });
+        return db.query(sql, values);
+      },
+    } as Connection;
+    const counted = new TradeDocumentService(
+      {
+        read: (work) => work(masterDataRepository(counting)),
+        write: () => Promise.reject(new Error("list must not write")),
+      },
+      journals,
+      journalTools,
+    );
+    const company =
+      "SEARCH trade_documents USING INDEX trade_documents_company (company_id=? AND sequence<?)";
+    const party =
+      "SEARCH trade_documents USING INDEX trade_documents_party (company_id=? AND party_id=? AND sequence<?)";
+    const raw = new Database(filename, { readonly: true });
+    try {
+      const middle = (await service.list("DEFAULT", { limit: 100 })).items.find(
+        (item) => item.documentId === ids[3],
+      )?.cursor;
+      if (!middle) throw new Error("Missing middle cursor");
+      const filters = [
+        [{}, company],
+        [{ side: "AR" }, company],
+        [{ from: "2026-02-01" }, company],
+        [{ to: "2026-03-31" }, company],
+        [{ from: "2026-02-01", to: "2026-03-31" }, company],
+        [{ side: "AP", from: "2026-02-01", to: "2026-03-31" }, company],
+        [{ party: "V1" }, party],
+        [{ party: "V1", side: "AP" }, party],
+        [{ party: "V1", from: "2026-02-01", to: "2026-04-30" }, party],
+        [{ party: "V1", side: "AP", from: "2026-02-01", to: "2026-04-30" }, party],
+      ] as const;
+      for (const [filter, plan] of filters)
+        for (const page of [
+          { limit: 1 },
+          { limit: 100 },
+          { limit: 1, cursor: middle },
+          { limit: 100, cursor: middle },
+        ]) {
+          statements.length = 0;
+          await counted.list("DEFAULT", { ...page, ...filter });
+          expect(statements.length).toBe(2);
+          const pages = statements.filter((item) => item.sql.includes("FROM trade_documents"));
+          expect(pages).toHaveLength(1);
+          const [statement] = pages;
+          if (!statement) throw new Error("Missing invoice page statement");
+          expect(statement.sql).not.toMatch(/IS NULL/u);
+          const detail = raw
+            .prepare(`EXPLAIN QUERY PLAN ${statement.sql}`)
+            .all(...statement.values)
+            .map((row) => (row as { detail: string }).detail);
+          expect(detail).toEqual([plan]);
+          expect(detail.join("\n")).not.toMatch(/TEMP B-TREE/u);
+        }
+    } finally {
+      raw.close();
+      await db.release();
+      await backend.close();
+    }
+  });
+
+  it("TINV-05 a 017 ledger with posted invoices upgrades to 018 with every trade_documents, trade_document_lines and open_items row unchanged", async () => {
+    await service.createOrder(order({ orderId: "PO-1" }));
+    await filterInvoices();
+    await post(invoice({ orderId: "PO-1", lines: [line({ orderLineId: "OL1" })] }));
+    await store.close();
+    const at017 = join(directory, "at017.sqlite");
+    await ledgerAt017(at017);
+    copyLedgerRows(filename, at017);
+    const rows = () => {
+      const db = new Database(at017, { readonly: true });
+      try {
+        db.defaultSafeIntegers(true);
+        return {
+          documents: db.prepare("SELECT * FROM trade_documents ORDER BY company_id,sequence").all(),
+          lines: db
+            .prepare("SELECT * FROM trade_document_lines ORDER BY company_id,document_id,line_no")
+            .all(),
+          openItems: db.prepare("SELECT * FROM open_items ORDER BY company_id,item_id").all(),
+          versions: db.prepare("SELECT * FROM schema_migrations ORDER BY version").all(),
+          index: db
+            .prepare("SELECT sql FROM sqlite_schema WHERE name='trade_documents_party'")
+            .pluck()
+            .get(),
+        };
+      } finally {
+        db.close();
+      }
+    };
+    const before = rows();
+    expect(before.documents).toHaveLength(8);
+    expect(before.lines.length).toBeGreaterThanOrEqual(8);
+    expect(before.openItems.length).toBeGreaterThanOrEqual(8);
+    expect(before.versions).toHaveLength(17);
+    expect(before.index).toBeUndefined();
+    const storage = createSqliteStorage({ filename: at017 });
+    try {
+      await storage.migrate();
+      await storage.verifySchema();
+    } finally {
+      await storage.close();
+    }
+    const after = rows();
+    expect(after.index).toBe(
+      "CREATE INDEX trade_documents_party ON trade_documents(company_id, party_id, sequence)",
+    );
+    expect(after.documents).toEqual(before.documents);
+    expect(after.lines).toEqual(before.lines);
+    expect(after.openItems).toEqual(before.openItems);
+    expect(after.versions.slice(0, 17)).toEqual(before.versions);
+    expect(after.versions).toHaveLength(18);
+  });
+});
+
+describe("TINV-05 invoice list compatibility: unfiltered pages are byte-identical to base", () => {
+  // Raw HTTP bodies from base c175a3211c12e09085c8fe424851bb0542c9041f (pre-TINV-05 main) for the
+  // shared compat fixture; the head must return the very same bytes, unparsed.
+  const baseResponses = [
+    {
+      path: "/api/v1/trade/invoices?company=DEFAULT&limit=2",
+      length: 672,
+      sha256: "0aee7807defd9a0d4ac61f8b4165212f53b8daeb10990ef7c447d6ab376b0b1f",
+      body: '{"items":[{"documentId":"00000000-0000-4000-8000-000000000005","side":"AP","party":"P02","externalNo":"EXT-000005","accountingDate":"2026-05-14","documentDate":"2026-05-14","dueDate":"2026-05-14","poMatch":"notApplicable","gross":1185,"currency":"CNY","journalId":"00000000-0000-4000-8000-00000000a001","orderId":null,"cursor":"5"},{"documentId":"00000000-0000-4000-8000-000000000004","side":"AR","party":"P03","externalNo":"EXT-000004","accountingDate":"2026-04-13","documentDate":"2026-04-13","dueDate":"2026-04-13","poMatch":"notApplicable","gross":1148,"currency":"CNY","journalId":"00000000-0000-4000-8000-00000000a001","orderId":null,"cursor":"4"}],"nextCursor":"4"}',
+    },
+    {
+      path: "/api/v1/trade/invoices?company=DEFAULT&limit=2&cursor=4",
+      length: 668,
+      sha256: "1c3db884aa8e47831ca6a991d6a256e52e860a342994b5a3cfda73b5eaa403a2",
+      body: '{"items":[{"documentId":"00000000-0000-4000-8000-000000000003","side":"AP","party":"P01","externalNo":"EXT-000003","accountingDate":"2026-03-12","documentDate":"2026-03-12","dueDate":"2026-03-12","poMatch":"matched","gross":1111,"currency":"CNY","journalId":"00000000-0000-4000-8000-00000000a001","orderId":"PO-1","cursor":"3"},{"documentId":"00000000-0000-4000-8000-000000000002","side":"AR","party":"P02","externalNo":"EXT-000002","accountingDate":"2026-02-11","documentDate":"2026-02-11","dueDate":"2026-02-11","poMatch":"notApplicable","gross":1074,"currency":"CNY","journalId":"00000000-0000-4000-8000-00000000a001","orderId":null,"cursor":"2"}],"nextCursor":"2"}',
+    },
+  ] as const;
+  let directory: string;
+  beforeEach(async () => {
+    directory = await mkdtemp(join(tmpdir(), "erp-tinv05-compat-"));
+  });
+  afterEach(async () => {
+    if (directory) await rm(directory, { recursive: true, force: true });
+  });
+
+  it("TINV-05 first page and continuation return the base status, content type and exact body bytes", async () => {
+    const filename = join(directory, "ledger.sqlite");
+    expect(await seedInvoiceList(filename, compatParties, compatInvoices, compatOrders)).toBe(5);
+    const executor = await SqliteExecutor.create({ filename, readers: 2 });
+    const api = await createApi({
+      environment: { ERP_PORT: "0" },
+      allowPortZero: true,
+      ...executor.services(),
+      logError: () => undefined,
+    });
+    try {
+      const origin = new URL(await api.listen()).origin;
+      for (const expected of baseResponses) {
+        const response = await fetch(`${origin}${expected.path}`);
+        const bytes = Buffer.from(await response.arrayBuffer());
+        expect(response.status).toBe(200);
+        expect(response.headers.get("content-type")).toBe("application/json; charset=utf-8");
+        expect(bytes.length).toBe(expected.length);
+        expect(createHash("sha256").update(bytes).digest("hex")).toBe(expected.sha256);
+        expect(bytes.equals(Buffer.from(expected.body, "utf8"))).toBe(true);
+      }
+    } finally {
+      await api.close();
+      await executor.close();
     }
   });
 });

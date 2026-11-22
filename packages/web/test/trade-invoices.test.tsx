@@ -981,3 +981,281 @@ describe("source order link", () => {
     expect([params.get("company"), params.get("order")]).toEqual(["C&1", "PO 1/#?&=+%"]);
   });
 });
+
+describe("trade invoice list filters (TINV-05)", () => {
+  const base = "/api/v1/trade/invoices?company=DEFAULT&limit=100";
+  const summary = (n: number, side: "AP" | "AR" = "AP") => ({
+    documentId: `00000000-0000-4000-8000-00000000000${n}`,
+    side,
+    party: side === "AP" ? "V1" : "C1",
+    externalNo: `INV-${n}`,
+    accountingDate: "2026-03-31",
+    documentDate: "2026-03-30",
+    dueDate: "2026-04-30",
+    poMatch: "notApplicable",
+    gross: 1000 * n,
+    currency: "CNY",
+    journalId: `00000000-0000-4000-8000-00000000000${n}`,
+    orderId: null,
+    cursor: String(n),
+  });
+  const receipt = (documentId: string, key: string) => ({
+    company: "DEFAULT",
+    documentId,
+    idempotencyKey: key,
+    fingerprint,
+    sourceRef: `TRADE:${documentId}`,
+    journalIds: [documentId],
+    poMatch: "notApplicable",
+    gross: 11300,
+    postedAt: "2026-03-31T00:00:00.000Z",
+  });
+  type Requests = { lists: string[]; previews: number; posts: number };
+  const stub = (list: (url: string) => Response, posted?: () => void): Requests => {
+    const requests: Requests = { lists: [], previews: 0, posts: 0 };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockImplementation(async (path, init) => {
+        const url = String(path);
+        if (url.startsWith("/api/v1/companies"))
+          return response({ items: [company], nextCursor: null });
+        if (url === "/api/v1/trade/invoices/preview") {
+          requests.previews++;
+          const command = tradeInvoiceCommandSchema.parse(JSON.parse(String(init?.body)));
+          return response(preview(command.documentId));
+        }
+        if (url === "/api/v1/trade/invoices" && init?.method === "POST") {
+          requests.posts++;
+          const body = tradeInvoiceConfirmSchema.parse(JSON.parse(String(init.body)));
+          posted?.();
+          return response(receipt(body.command.documentId, body.idempotencyKey), 201);
+        }
+        if (url.startsWith("/api/v1/trade/invoices?")) {
+          requests.lists.push(url);
+          return list(url);
+        }
+        return response({}, 404);
+      }),
+    );
+    return requests;
+  };
+  const search = () => screen.findByRole("search", { name: t("tinv.filter") });
+  const field = (key: "party" | "side" | "from" | "to") =>
+    screen.getByLabelText<HTMLInputElement>(t(`tinv.filter.${key}`));
+  const setFilters = (values: Partial<Record<"party" | "side" | "from" | "to", string>>) => {
+    for (const [key, value] of Object.entries(values))
+      fireEvent.change(field(key as "party"), { target: { value } });
+  };
+  const apply = () => fireEvent.click(screen.getByRole("button", { name: t("tinv.filter.apply") }));
+  const clear = () => fireEvent.click(screen.getByRole("button", { name: t("tinv.filter.clear") }));
+  const listTable = () => screen.findByRole("table", { name: t("tinv.list") });
+  const dataRows = (table: HTMLElement) => within(table).queryAllByRole("row").slice(1);
+
+  it("applies filters from the first page, keeps them for load more, applies on Enter and clears, never touching the URL or asking to leave a dirty draft", async () => {
+    const requests = stub((url) => {
+      if (url.includes("side=AR")) return response({ items: [], nextCursor: null });
+      if (url.includes("party=V1"))
+        return url.includes("cursor=")
+          ? response({ items: [summary(1)], nextCursor: null })
+          : response({ items: [summary(3)], nextCursor: "3" });
+      return response({ items: [summary(3), summary(2, "AR")], nextCursor: null });
+    });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<App />);
+    const table = await listTable();
+    await waitFor(() => expect(dataRows(table)).toHaveLength(2));
+    expect(requests.lists).toEqual([base]);
+    // A dirty draft: operating the filter bar is not leaving the page.
+    fireEvent.change(screen.getByLabelText(t("tinv.party")), { target: { value: "V9" } });
+    const href = window.location.href;
+    const push = vi.spyOn(window.history, "pushState");
+    const replace = vi.spyOn(window.history, "replaceState");
+
+    setFilters({ party: " V1 ", side: "AP", from: "2026-01-01", to: "2026-06-30" });
+    expect(requests.lists).toHaveLength(1);
+    apply();
+    const filtered = `${base}&party=V1&side=AP&from=2026-01-01&to=2026-06-30`;
+    await waitFor(() => expect(requests.lists).toEqual([base, filtered]));
+    await waitFor(() => expect(dataRows(table)).toHaveLength(1));
+    fireEvent.click(screen.getByRole("button", { name: t("master.loadMore") }));
+    await waitFor(() =>
+      expect(requests.lists.at(-1)).toBe(
+        `${base}&cursor=3&party=V1&side=AP&from=2026-01-01&to=2026-06-30`,
+      ),
+    );
+    await waitFor(() => expect(dataRows(table)).toHaveLength(2));
+
+    // Enter in a filter input submits only the filter form (implicit submission; real Enter in Chrome).
+    expect(screen.getByRole("button", { name: t("tinv.filter.apply") }).getAttribute("type")).toBe(
+      "submit",
+    );
+    expect(field("party").form).toBe(await search());
+    expect(field("party").form).not.toBe(screen.getByLabelText(t("tinv.party")).closest("form"));
+    setFilters({ party: "", side: "AR", from: "", to: "" });
+    fireEvent.submit(field("party").form as HTMLFormElement);
+    await waitFor(() => expect(requests.lists.at(-1)).toBe(`${base}&side=AR`));
+    expect(await screen.findByText(t("tinv.filter.none"))).toBeTruthy();
+    expect(screen.queryByText(t("tinv.empty"))).toBeNull();
+
+    const count = requests.lists.length;
+    clear();
+    await waitFor(() => expect(requests.lists).toHaveLength(count + 1));
+    expect(requests.lists.at(-1)).toBe(base);
+    expect((["party", "side", "from", "to"] as const).map((key) => field(key).value)).toEqual([
+      "",
+      "",
+      "",
+      "",
+    ]);
+    await waitFor(() => expect(dataRows(table)).toHaveLength(2));
+    expect(screen.queryByText(t("tinv.filter.none"))).toBeNull();
+
+    // Nothing reached the URL, history or the leave confirmation; the draft is untouched and unsent.
+    expect(window.location.href).toBe(href);
+    expect(push).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
+    expect(confirm).not.toHaveBeenCalled();
+    expect(screen.getByLabelText<HTMLInputElement>(t("tinv.party")).value).toBe("V9");
+    expect([requests.previews, requests.posts]).toEqual([0, 0]);
+  });
+
+  it("rejects an inverted date range and a malformed partner code beside the controls without a request", async () => {
+    const requests = stub(() => response({ items: [], nextCursor: null }));
+    render(<App />);
+    expect(await screen.findByText(t("tinv.empty"))).toBeTruthy();
+    expect(screen.queryByText(t("tinv.filter.none"))).toBeNull();
+    setFilters({ from: "2026-06-30", to: "2026-01-01" });
+    apply();
+    const error = await screen.findByText(t("tinv.filter.range"));
+    expect(error.id).toBe("tinv-filter-range-error");
+    for (const key of ["from", "to"] as const) {
+      expect(field(key).getAttribute("aria-describedby")).toBe(error.id);
+      expect(field(key).getAttribute("aria-invalid")).toBe("true");
+    }
+    fireEvent.submit(await search());
+    expect(requests.lists).toEqual([base]);
+    // Equal dates are a valid one-day range; editing removes the error.
+    setFilters({ to: "2026-06-30" });
+    expect(screen.queryByText(t("tinv.filter.range"))).toBeNull();
+    expect(field("from").getAttribute("aria-describedby")).toBeNull();
+
+    setFilters({ party: "v1" });
+    apply();
+    const shape = await screen.findByText(t("tinv.filter.partyInvalid"));
+    expect(shape.id).toBe("tinv-filter-party-error");
+    expect(field("party").getAttribute("aria-describedby")).toBe(shape.id);
+    expect(requests.lists).toEqual([base]);
+
+    setFilters({ party: "NOPE" });
+    apply();
+    await waitFor(() =>
+      expect(requests.lists).toEqual([base, `${base}&party=NOPE&from=2026-06-30&to=2026-06-30`]),
+    );
+    expect(await screen.findByText(t("tinv.filter.none"))).toBeTruthy();
+    expect(screen.queryByText(t("tinv.empty"))).toBeNull();
+    clear();
+    expect(await screen.findByText(t("tinv.empty"))).toBeTruthy();
+  });
+
+  it("refreshes the first page with the current filters after a post", async () => {
+    let posted = false;
+    const requests = stub(
+      () => response({ items: posted ? [summary(1)] : [], nextCursor: null }),
+      () => {
+        posted = true;
+      },
+    );
+    render(<App />);
+    await search();
+    setFilters({ party: "V1" });
+    apply();
+    expect(await screen.findByText(t("tinv.filter.none"))).toBeTruthy();
+    const before = requests.lists.length;
+    fireEvent.change(screen.getByLabelText(t("tinv.party")), { target: { value: "V1" } });
+    fireEvent.change(screen.getByLabelText(t("tinv.externalInvoice")), {
+      target: { value: "inv-1" },
+    });
+    fireEvent.change(screen.getByLabelText(`${t("tinv.product")} L1`), {
+      target: { value: "RENT" },
+    });
+    fireEvent.change(screen.getByLabelText(`${t("tinv.quantity")} L1`), {
+      target: { value: "10" },
+    });
+    fireEvent.change(screen.getByLabelText(`${t("tinv.unitPrice")} L1`), {
+      target: { value: "10" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.preview") }));
+    await screen.findByRole("region", { name: t("tinv.previewTitle") });
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.confirm") }));
+    const table = await listTable();
+    await waitFor(() => expect(dataRows(table)).toHaveLength(1));
+    expect(requests.posts).toBe(1);
+    expect(requests.lists.slice(before)).toEqual([`${base}&party=V1`]);
+    expect(field("party").value).toBe("V1");
+  });
+
+  it("keeps the filter controls in keyboard order before the list scroll area, with zh and en labels", async () => {
+    stub(() => response({ items: [], nextCursor: null }));
+    render(<App />);
+    const form = await search();
+    const card = form.closest(".tinv-list") as HTMLElement;
+    const focusable = [
+      ...card.querySelectorAll<HTMLElement>("input, select, button, a[href], [tabindex]"),
+    ];
+    expect(focusable.every((element) => element.tabIndex === 0)).toBe(true);
+    expect(
+      focusable.map(
+        (element) => element.id || element.getAttribute("aria-label") || element.textContent,
+      ),
+    ).toEqual([
+      "tinv-filter-party",
+      "tinv-filter-side",
+      "tinv-filter-from",
+      "tinv-filter-to",
+      t("tinv.filter.apply"),
+      t("tinv.filter.clear"),
+      t("tinv.list"),
+    ]);
+    expect(
+      [...(field("side") as unknown as HTMLSelectElement).options].map((option) => [
+        option.value,
+        option.textContent,
+      ]),
+    ).toEqual([
+      ["", "全部"],
+      ["AP", "采购 AP"],
+      ["AR", "销售 AR"],
+    ]);
+    const keys = [
+      "tinv.filter",
+      "tinv.filter.party",
+      "tinv.filter.side",
+      "tinv.filter.all",
+      "tinv.filter.ap",
+      "tinv.filter.ar",
+      "tinv.filter.from",
+      "tinv.filter.to",
+      "tinv.filter.apply",
+      "tinv.filter.clear",
+      "tinv.filter.partyInvalid",
+      "tinv.filter.range",
+      "tinv.filter.none",
+    ] as const;
+    for (const key of keys) {
+      expect(label("zh", key)).not.toBe(key);
+      expect(label("en", key)).not.toBe(key);
+      expect(label("en", key)).not.toBe(label("zh", key));
+    }
+  });
+
+  it("does not ask to leave when only the filter bar was edited and no draft exists", async () => {
+    stub(() => response({ items: [], nextCursor: null }));
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<App />);
+    await search();
+    setFilters({ party: "V1", from: "2026-01-01" });
+    fireEvent.click(screen.getByRole("link", { name: t("shell.tradeOrders") }));
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-orders"));
+    expect(confirm).not.toHaveBeenCalled();
+  });
+});

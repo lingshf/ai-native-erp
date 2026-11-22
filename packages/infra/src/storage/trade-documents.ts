@@ -1,6 +1,7 @@
 import {
   StorageError,
   type TradeDocumentRepository,
+  type TradeInvoiceListQuery,
   type TradeOrderListQuery,
 } from "@erp/core/application";
 import type {
@@ -166,6 +167,33 @@ export function tradeOrderInvoicingStatus(
 ): TradeOrderSummary["invoicing"] {
   if (lines.every((line) => line.invoiced === 0n)) return "none";
   return lines.every((line) => line.invoiced >= line.ordered) ? "full" : "partial";
+}
+// TINV-05: one statement per invoice-list page, newest sequence first. The text is assembled only
+// from fixed fragments chosen by which filters are present; every value is bound. With a party the
+// statement SEARCHes trade_documents_party (company_id, party_id, sequence), already in sequence
+// order; otherwise it keeps trade_documents_company. Side and accounting date are filtered row by
+// row on that range. With no filter the text is exactly the pre-TINV-05 statement.
+export function tradeDocumentPageStatement(
+  company: string,
+  query: TradeInvoiceListQuery,
+): { readonly sql: string; readonly values: readonly (string | number)[] } {
+  let sql = `SELECT sequence,document_id,side,party_id,external_no,accounting_date,document_date,due_date,po_match,gross_minor,currency,journal_id,order_id FROM trade_documents INDEXED BY ${query.party === undefined ? "trade_documents_company" : "trade_documents_party"} WHERE company_id=?`;
+  const values: (string | number)[] = [company];
+  const add = (fragment: string, value: string | number | undefined) => {
+    if (value === undefined) return;
+    sql += fragment;
+    values.push(value);
+  };
+  add(" AND party_id=?", query.party);
+  add(
+    " AND sequence<?",
+    query.cursor === undefined ? Number.MAX_SAFE_INTEGER : Number(query.cursor),
+  );
+  add(" AND side=?", query.side);
+  add(" AND accounting_date>=?", query.from);
+  add(" AND accounting_date<=?", query.to);
+  values.push(query.limit + 1);
+  return { sql: `${sql} ORDER BY sequence DESC LIMIT ?`, values };
 }
 
 export function tradeDocumentRepository(db: Connection): TradeDocumentRepository {
@@ -728,14 +756,8 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
       );
     },
     async tradeDocumentPage(company, query) {
-      const rows = await db.query(
-        "SELECT sequence,document_id,side,party_id,external_no,accounting_date,document_date,due_date,po_match,gross_minor,currency,journal_id,order_id FROM trade_documents INDEXED BY trade_documents_company WHERE company_id=? AND sequence<? ORDER BY sequence DESC LIMIT ?",
-        [
-          company,
-          query.cursor === undefined ? Number.MAX_SAFE_INTEGER : Number(query.cursor),
-          query.limit + 1,
-        ],
-      );
+      const statement = tradeDocumentPageStatement(company, query);
+      const rows = await db.query(statement.sql, statement.values);
       const items: TradeDocumentSummary[] = rows.slice(0, query.limit).map((row) => ({
         documentId: str(row.document_id),
         side: str(row.side) as TradeDocumentSummary["side"],

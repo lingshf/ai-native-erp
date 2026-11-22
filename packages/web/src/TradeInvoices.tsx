@@ -4,6 +4,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   companiesPageSchema,
+  companyCodeSchema,
   tradeInvoiceCommandSchema,
   tradeInvoicePageSchema,
   tradeInvoicePreviewSchema,
@@ -1053,6 +1054,16 @@ export function SourceOrderCell({
   );
 }
 
+type InvoiceFilter = { party: string; side: "" | "AP" | "AR"; from: string; to: string };
+const noInvoiceFilter: InvoiceFilter = { party: "", side: "", from: "", to: "" };
+const invoiceFilterKeys = ["party", "side", "from", "to"] as const;
+type InvoiceFilterState = {
+  company: string;
+  draft: InvoiceFilter;
+  applied: InvoiceFilter;
+  invalid: "party" | "range" | null;
+};
+
 function InvoiceList({
   company,
   preferences,
@@ -1062,19 +1073,61 @@ function InvoiceList({
   preferences: Preferences;
   t: T;
 }) {
+  const client = useQueryClient();
+  // TINV-05: filters live only in this component's state, never in the URL (no navigation, so no
+  // leave confirmation); they reset on reload and when the company changes.
+  const fresh = (code: string): InvoiceFilterState => ({
+    company: code,
+    draft: noInvoiceFilter,
+    applied: noInvoiceFilter,
+    invalid: null,
+  });
+  const [filter, setFilter] = useState(() => fresh(company.code));
+  const current = filter.company === company.code ? filter : fresh(company.code);
+  if (current !== filter) setFilter(current);
+  const { draft, applied, invalid } = current;
   const page = useInfiniteQuery({
-    queryKey: ["trade-invoices", company.code],
+    queryKey: ["trade-invoices", company.code, applied],
     initialPageParam: "",
     refetchOnMount: true,
-    queryFn: ({ pageParam, signal }) =>
-      masterRequest(
-        `/api/v1/trade/invoices?company=${encodeURIComponent(company.code)}&limit=100${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}`,
+    queryFn: ({ pageParam, signal }) => {
+      // Load more keeps the applied filters; the unfiltered URL is unchanged from TINV-04.
+      const filters = invoiceFilterKeys
+        .filter((key) => applied[key])
+        .map((key) => `&${key}=${encodeURIComponent(applied[key])}`)
+        .join("");
+      return masterRequest(
+        `/api/v1/trade/invoices?company=${encodeURIComponent(company.code)}&limit=100${pageParam ? `&cursor=${encodeURIComponent(pageParam)}` : ""}${filters}`,
         tradeInvoicePageSchema,
         { signal },
-      ),
+      );
+    },
     getNextPageParam: (value) => value.nextCursor ?? undefined,
   });
   const rows = page.data?.pages.flatMap((value) => value.items) ?? [];
+  const filtered = invoiceFilterKeys.some((key) => applied[key]);
+  // Apply and Clear always reload from the first page, never from pages cached for those filters.
+  const show = (next: InvoiceFilter, nextDraft: InvoiceFilter) => {
+    void client.resetQueries({ queryKey: ["trade-invoices", company.code, next], exact: true });
+    setFilter({ company: company.code, draft: nextDraft, applied: next, invalid: null });
+  };
+  const apply = (event: FormEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const next = { ...draft, party: draft.party.trim() };
+    if (next.party && !companyCodeSchema.safeParse(next.party).success)
+      setFilter({ ...current, invalid: "party" });
+    else if (next.from && next.to && next.from > next.to)
+      setFilter({ ...current, invalid: "range" });
+    else show(next, next);
+  };
+  const clear = () => show(noInvoiceFilter, noInvoiceFilter);
+  const edit = (patch: Partial<InvoiceFilter>) =>
+    setFilter({ ...current, draft: { ...draft, ...patch }, invalid: null });
+  const described = (kind: "party" | "range") =>
+    invalid === kind
+      ? { "aria-invalid": true as const, "aria-describedby": `tinv-filter-${kind}-error` }
+      : {};
   const scroll = useRef<HTMLElement>(null);
   const virtual = rows.length > 100;
   const virtualizer = useVirtualizer({
@@ -1104,6 +1157,76 @@ function InvoiceList({
       <header>
         <h3>{t("tinv.list")}</h3>
       </header>
+      {/* biome-ignore lint/a11y/useSemanticElements: TINV-05 needs a submit form (Enter applies) that is a search landmark. */}
+      <form
+        className="filter-bar tinv-filter"
+        role="search"
+        aria-label={t("tinv.filter")}
+        noValidate
+        onSubmit={apply}
+      >
+        <div className="field">
+          <label htmlFor="tinv-filter-party">{t("tinv.filter.party")}</label>
+          <input
+            id="tinv-filter-party"
+            maxLength={60}
+            autoComplete="off"
+            value={draft.party}
+            onChange={(event) => edit({ party: event.target.value })}
+            {...described("party")}
+          />
+          {invalid === "party" && (
+            <p className="ui-error-text" id="tinv-filter-party-error">
+              {t("tinv.filter.partyInvalid")}
+            </p>
+          )}
+        </div>
+        <div className="field">
+          <label htmlFor="tinv-filter-side">{t("tinv.filter.side")}</label>
+          <select
+            id="tinv-filter-side"
+            value={draft.side}
+            onChange={(event) => edit({ side: event.target.value as InvoiceFilter["side"] })}
+          >
+            <option value="">{t("tinv.filter.all")}</option>
+            <option value="AP">{t("tinv.filter.ap")}</option>
+            <option value="AR">{t("tinv.filter.ar")}</option>
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="tinv-filter-from">{t("tinv.filter.from")}</label>
+          <input
+            id="tinv-filter-from"
+            type="date"
+            value={draft.from}
+            onChange={(event) => edit({ from: event.target.value })}
+            {...described("range")}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="tinv-filter-to">{t("tinv.filter.to")}</label>
+          <input
+            id="tinv-filter-to"
+            type="date"
+            value={draft.to}
+            onChange={(event) => edit({ to: event.target.value })}
+            {...described("range")}
+          />
+          {invalid === "range" && (
+            <p className="ui-error-text" id="tinv-filter-range-error">
+              {t("tinv.filter.range")}
+            </p>
+          )}
+        </div>
+        <div className="actions">
+          <button type="submit" className="btn btn-secondary">
+            {t("tinv.filter.apply")}
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={clear}>
+            {t("tinv.filter.clear")}
+          </button>
+        </div>
+      </form>
       {page.isPending && <p role="status">{t("master.loading")}</p>}
       {page.isError && (
         <MessageBar tone="danger" role="alert">
@@ -1161,7 +1284,9 @@ function InvoiceList({
             )}
           </tbody>
         </table>
-        {page.isSuccess && rows.length === 0 && <p className="empty-state">{t("tinv.empty")}</p>}
+        {page.isSuccess && rows.length === 0 && (
+          <p className="empty-state">{t(filtered ? "tinv.filter.none" : "tinv.empty")}</p>
+        )}
       </section>
       {page.hasNextPage && (
         <div className="tinv-more">
