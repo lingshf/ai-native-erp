@@ -1,0 +1,34 @@
+## step b (rerun, D358) 2026-11-22T03:26:21.5402163-08:00 HEAD 588b2a613ba79367f446ae8bb726dca78734d0a7 + working tree (section fix, scenario biome format)
+## biome --write
+Checked 3 files in 83ms. No fixes applied.
+exit 0
+## biome ci
+    180 179 │         manifest.crossDatabaseAtomic !== false ||
+  
+
+Checked 301 files in 389ms. No fixes applied.
+Found 78 warnings.
+Found 7 infos.
+exit 0
+## typecheck
+exit 0
+## boundaries
+Import boundaries passed for 140 source files.
+exit 0
+## vitest packages/web/test
+
+ RUN  v5.1.0 C:/GithubCopilot/copilot-worktrees/ai-native-erp/lingshf-jubilant-barnacle
+
+
+ Test Files  23 passed (23)
+      Tests  238 passed (238)
+   Start at  03:26:33
+   Duration  18.08s (environment 51%, tests 33%, import 8%, setup 7%, transform 1%)
+
+exit 0
+## status
+ M packages/infra/test/support/trade-gui-scenario.ts
+ M packages/web/src/TradeInvoiceDetail.tsx
+?? docs/demo/v0.11.0/logs/tinv-06-r2-a-rebase-20261122-032445.log
+?? docs/demo/v0.11.0/logs/tinv-06-r2-b-checks-20261122-032457.log
+?? docs/demo/v0.11.0/logs/tinv-06-r2-b2-checks-20261122-032621.log

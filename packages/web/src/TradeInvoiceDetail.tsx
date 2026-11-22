@@ -202,10 +202,8 @@ function DetailBody({
         </dl>
       </section>
       {/* A Tab stop so the lines can be scrolled sideways with the keyboard at narrow widths. */}
-      <div
+      <section
         className="grid-wrap tinv-detail-lines"
-        // biome-ignore lint/a11y/useSemanticElements: a div scroll region, as in Reports.tsx.
-        role="region"
         aria-label={t("tinv.lines")}
         // biome-ignore lint/a11y/noNoninteractiveTabindex: Named scroll regions must stay keyboard-focusable.
         tabIndex={0}
@@ -237,7 +235,7 @@ function DetailBody({
             ))}
           </tbody>
         </table>
-      </div>
+      </section>
       <div className="tinv-split">
         <section aria-label={t("tinv.detail.totals")}>
           <h4>{t("tinv.detail.totals")}</h4>

@@ -1765,8 +1765,9 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
           }
           const scrolled = await region.evaluate((element) => {
             const wrap = element.getBoundingClientRect();
-            const last = (element.querySelector("thead th:last-child") as HTMLElement)
-              .getBoundingClientRect();
+            const last = (
+              element.querySelector("thead th:last-child") as HTMLElement
+            ).getBoundingClientRect();
             return {
               scrollLeft: element.scrollLeft,
               max: element.scrollWidth - element.clientWidth,

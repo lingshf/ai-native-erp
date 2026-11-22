@@ -1,0 +1,70 @@
+## step b 2026-11-22T03:24:57.0983881-08:00 HEAD 588b2a613ba79367f446ae8bb726dca78734d0a7
+## biome --write
+packages\web\src\TradeInvoiceDetail.tsx:207:9 suppressions/unused ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Suppression comment has no effect. Remove the suppression or make sure you are suppressing the correct rule.
+  
+    205 │       <div
+    206 │         className="grid-wrap tinv-detail-lines"
+  > 207 │         // biome-ignore lint/a11y/useSemanticElements: a div scroll region, as in Reports.tsx.
+        │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    208 │         role="region"
+    209 │         aria-label={t("tinv.lines")}
+  
+
+packages\web\src\TradeInvoiceDetail.tsx:208:9 lint/a11y/useSemanticElements ━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × The elements with this role can be changed to the following elements:
+    <section>
+  
+    206 │         className="grid-wrap tinv-detail-lines"
+    207 │         // biome-ignore lint/a11y/useSemanticElements: a div scroll region, as in Reports.tsx.
+  > 208 │         role="region"
+        │         ^^^^^^^^^^^^^
+    209 │         aria-label={t("tinv.lines")}
+    210 │         // biome-ignore lint/a11y/noNoninteractiveTabindex: Named scroll regions must stay keyboard-focusable.
+  
+  i For examples and more information, see WAI-ARIA Roles
+  
+  i Replace with one of these elements:
+  
+  - <section>
+  
+
+Checked 3 files in 102ms. Fixed 1 file.
+Found 1 error.
+Found 1 warning.
+check ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Some errors were emitted while applying fixes.
+  
+
+exit 1
+## biome ci
+Found 7 infos.
+ci ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Some errors were emitted while running checks.
+  
+
+exit 1
+## typecheck
+exit 0
+## boundaries
+Import boundaries passed for 140 source files.
+exit 0
+## vitest packages/web/test
+
+ RUN  v5.1.0 C:/GithubCopilot/copilot-worktrees/ai-native-erp/lingshf-jubilant-barnacle
+
+
+ Test Files  23 passed (23)
+      Tests  238 passed (238)
+   Start at  03:25:11
+   Duration  20.11s (environment 54%, tests 28%, setup 9%, import 7%, transform 1%)
+
+exit 0
+## status
+ M packages/infra/test/support/trade-gui-scenario.ts
+?? docs/demo/v0.11.0/logs/tinv-06-r2-a-rebase-20261122-032445.log
+?? docs/demo/v0.11.0/logs/tinv-06-r2-b-checks-20261122-032457.log
