@@ -578,22 +578,23 @@ M1-R3（#78）、M1-R4（#81）已完成。
 - **并行**：TINV-05 ∥ GATE-01 ∥ PROC-07 可同时进行；CSS-02 在 TINV-05 之后。S10 只有 TINV-05 含迁移，不得插入其他加迁移的任务与它并行。开发同时在岗不超过 3 人，第三个名额先空着，由协调者决定（约束见 [S10.md](S10.md#泳道)）。
 - **回顾行动项**：行动 1、2、7 与行动 3、4、5 的路线图清单部分由 S10 计划 PR 写入[路线图 §5](../roadmap.md#5-团队流程)与[任务书模板](TEMPLATE.md)；行动 3–6 的模板与清单部分由 PROC-07 完成。落点表见 [S10.md](S10.md#回顾行动项落点s9-回顾d302)。
 
-## S11：发票详情 + 采样器入库 + v0.10.0 回顾行动（草案，v0.11.0）
+## S11：发票详情 + 采样器入库 + 导航分组 + v0.10.0 回顾行动（v0.11.0）
 
-**计划正文**：[S11.md](S11.md)（草案，计划以 S11 定稿 PR 为准；目标、不在本 Sprint、每个任务的用户可见变化与验收要点、DEMO-11 验收、共同验收、泳道与共享单文件、遗留项与回顾行动项落点，以该文为准）。基线为 v0.10.0 tag 所指提交 `ae4fbaa`；版本号 v0.11.0（D338）。输入见 D336；D338 认可 S10 回顾 8 条行动项，并把第三个开发名额给一个界面小步改进任务（任务书与任务行在定稿 PR 中给出）。任务书在 S11 定稿 PR 中补齐；**包括 PROC-08 在内，所有 S11 任务都在定稿 PR 合并后才派发**（D339）。
+**计划正文**：[S11.md](S11.md)（定稿；目标、不在本 Sprint、每个任务的用户可见变化与验收要点、DEMO-11 验收、共同验收、泳道与共享单文件、遗留项与回顾行动项落点，以该文为准；各任务细节以任务书为准）。基线为 main `ad70189`；版本号 v0.11.0（D338）。输入见 D336；D338 认可 S10 回顾 8 条行动项，并把第三个开发名额给 UI-14；D340 把 UI-14 纳入 DEMO-11 发布门禁。**包括 PROC-08 在内，所有 S11 任务都在定稿 PR 合并后才派发**（D339）。
 
 **不在本 Sprint**：M2-05 / M2-06（仍待用户授权）；按开票状态筛选订单列表（D263 候选）；发票详情深链接与发票筛选写入地址栏；多订单合并开票、贷项冲减已开票数量、保留前进历史；S7 遗留 3–5；迁移。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| TINV-06 | 发票详情只读对话框：点击或键盘打开外部单号查看抬头、行、合计、未结项余额与核销记录；只用现有 `GET /api/v1/trade/invoices/:documentId`，不改契约、不改地址栏 | 页面 | P1 | S11 定稿 PR | web-ui:trade（`TradeInvoices.tsx`、新增详情组件、`trade-invoices.css`）；共享单文件 `trade-gui-scenario.ts`（S11 仅此任务改） | todo（草案） | — |
-| SLOT-01 | 独占时段进程采样器与自测入库；排除出口带规则编号，正反自测与清单测试（S10 回顾行动 8） | 开发工具 | P2 | S11 定稿 PR | 新目录（不与现有文件重叠） | todo（草案） | — |
-| WEIGHT-01 | 三项手估分片权重按 CI 实测校准（S9 遗留 4） | CI 配置 | P3 | TINV-06、SLOT-01 结案且 main Full 绿 | `scripts/test-shard-weights.json` | todo（草案） | — |
-| PROC-08 | S10 回顾行动 1–4 写入 Demo 模板、发布清单与 `.gitignore`（版本管理，不占开发名额） | 文档 | P2（v0.11.0 RC 之前） | S11 定稿 PR | docs:release、`.gitignore`、`.gitattributes` | todo（草案） | — |
-| DEMO-11（无任务书） | v0.11.0 RC 与 Demo，补演 TINV-05 未演示的分支（S10 遗留 3），验收见 [S11.md](S11.md#demo-11-验收) | 发布 | P1（Sprint 末） | 上面四项结案；PROC-08 先合并；覆盖最后一个合并提交的 main Full 绿 | docs:release、`docs/demo/v0.11.0/` | todo（草案） | — |
+| [TINV-06](TINV-06-invoice-detail-dialog.md) | 发票详情只读对话框：点击或键盘打开外部单号查看抬头、行、合计、未结项余额与核销记录；只用现有 `GET /api/v1/trade/invoices/:documentId`，不改契约、不改地址栏 | 页面 | P1 | S11 定稿 PR | web-ui:trade（`TradeInvoices.tsx`、新增 `TradeInvoiceDetail.tsx`、`trade-invoices.css`、`trade-labels.ts`）；共享单文件 `trade-gui-scenario.ts`（S11 仅此任务改） | todo | — |
+| [SLOT-01](SLOT-01-slot-sampler-in-repo.md) | 独占时段进程采样器与自测入库 `scripts/slot/`；排除出口带规则编号，正反自测与清单检查（S10 回顾行动 8） | 开发工具 | P2 | S11 定稿 PR | `scripts/slot/`（新目录；不进 Vitest / CI） | todo | — |
+| [UI-14](UI-14-nav-groups.md) | 侧栏导航分组：“总账”组拆为“凭证与业务事件”“贸易往来”“总账与结账”三组，链接与顺序不变（界面小步，D338） | 页面 | P2 | S11 定稿 PR | web-ui:shell（`App.tsx`、`ui/labels.ts`、`ui/journal-labels.ts`、`App.test.tsx`） | todo | — |
+| [WEIGHT-01](WEIGHT-01-shard-weight-calibration.md) | 三项手估分片权重按 CI 实测校准（S9 遗留 4）；偏差都 ≤ 25% 时按证据结案 | CI 配置 | P3 | TINV-06、SLOT-01 结案且 main Full 绿 | `scripts/test-shard-weights.json` | todo | — |
+| [PROC-08](PROC-08-s10-retro-actions.md) | S10 回顾行动 1–4 写入 Demo 模板、发布清单与 Git 配置（版本管理，不占开发名额） | 文档 | P2（v0.11.0 RC 之前） | S11 定稿 PR | docs:release、`.gitignore`、`.gitattributes` | todo | — |
+| DEMO-11（无任务书） | v0.11.0 RC 与 Demo，补演 TINV-05 未演示的分支（S10 遗留 3），验收见 [S11.md](S11.md#demo-11-验收) | 发布 | P1（Sprint 末） | 五项门禁（D340）：TINV-06、SLOT-01、PROC-08、UI-14 结案，WEIGHT-01 完成或按证据结案；PROC-08 先合并；覆盖最后一个合并提交的 main Full 绿 | docs:release、`docs/demo/v0.11.0/` | todo | — |
 
-- **并行**：定稿 PR 合并后，TINV-06 ∥ SLOT-01 ∥ 界面小步任务 ∥ PROC-08 可同时进行；WEIGHT-01 在 TINV-06、SLOT-01 之后。S11 没有加迁移的任务。开发同时在岗不超过 3 人，第三个名额给界面小步任务（D338，约束见 [S11.md](S11.md#泳道)）。
-- **回顾行动项**：行动 1–3 与行动 4 的模板部分由 PROC-08 完成；行动 4–7 的路线图与任务书模板部分由 S11 定稿 PR 完成；行动 8 由 SLOT-01 完成。落点表见 [S11.md](S11.md#回顾行动项落点s10-回顾)。
+- **并行**：定稿 PR 合并后，TINV-06 ∥ SLOT-01 ∥ UI-14 ∥ PROC-08 可同时进行；WEIGHT-01 在 TINV-06、SLOT-01 之后。S11 没有加迁移的任务。开发同时在岗不超过 3 人，第三个名额给 UI-14（D338，约束见 [S11.md](S11.md#泳道)）。
+- **回顾行动项**：行动 1–3 与行动 4 的模板部分由 PROC-08 完成；行动 4–7 的路线图与任务书模板部分已由 S11 定稿 PR 写入；行动 8 由 SLOT-01 完成。落点表见 [S11.md](S11.md#回顾行动项落点s10-回顾)。
 
 ## 派发顺序
 
