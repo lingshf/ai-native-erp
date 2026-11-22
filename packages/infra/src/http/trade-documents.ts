@@ -183,9 +183,19 @@ export function registerTradeDocumentRoutes(
     boundary.assert(request, reply, ["GET", "POST"]);
     const app = ready(request);
     if (request.method === "GET") {
-      const { company, limit, cursor } = parse(tradeInvoiceListQuerySchema, request.query);
+      const { company, limit, cursor, party, side, from, to } = parse(
+        tradeInvoiceListQuerySchema,
+        request.query,
+      );
       return tradeInvoicePageSchema.parse(
-        await app.list(company, { limit: Number(limit), ...(cursor ? { cursor } : {}) }),
+        await app.list(company, {
+          limit: Number(limit),
+          ...(cursor ? { cursor } : {}),
+          ...(party ? { party } : {}),
+          ...(side ? { side } : {}),
+          ...(from ? { from } : {}),
+          ...(to ? { to } : {}),
+        }),
       );
     }
     const receipt = await app.confirm(parse(tradeInvoiceConfirmSchema, request.body));

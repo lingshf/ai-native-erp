@@ -74,6 +74,23 @@ export interface TradeOrderListQuery extends PageQuery {
   readonly from?: string;
   readonly to?: string;
 }
+/** TINV-05: optional filters, combined with AND; the keyset stays on the sequence cursor. */
+export interface TradeInvoiceListQuery extends PageQuery {
+  readonly party?: string;
+  readonly side?: TradeSide;
+  /** Inclusive accounting-date range. */
+  readonly from?: string;
+  readonly to?: string;
+}
+function checkedListFilters(query: TradeOrderListQuery | TradeInvoiceListQuery): void {
+  if (query.party !== undefined) checkedCode(query.party);
+  if (query.side !== undefined && query.side !== "AP" && query.side !== "AR")
+    tradeDocumentError("side", "shape");
+  if (query.from !== undefined) checkedOrderDay(query.from, "from");
+  if (query.to !== undefined) checkedOrderDay(query.to, "to");
+  if (query.from !== undefined && query.to !== undefined && query.from > query.to)
+    tradeDocumentError("to", "shape");
+}
 function checkedOrderDay(day: string, path: string): void {
   const time = Date.parse(`${day}T00:00:00.000Z`);
   if (
@@ -131,7 +148,11 @@ export interface TradeDocumentRepository {
     normalized: string,
   ): Promise<string | null>;
   insertTradeDocument(company: string, document: TradeDocumentRecord): Promise<void>;
-  tradeDocumentPage(company: string, query: PageQuery): Promise<Page<TradeDocumentSummary>>;
+  /** One statement per page: sequence keyset (party filter via trade_documents_party). */
+  tradeDocumentPage(
+    company: string,
+    query: TradeInvoiceListQuery,
+  ): Promise<Page<TradeDocumentSummary>>;
   openItem(company: string, itemId: string): Promise<OpenItem | null>;
   openItemPage(company: string, query: OpenItemQuery): Promise<Page<OpenItem>>;
   tradePayment(
@@ -1213,10 +1234,11 @@ export class TradeDocumentService {
     });
   }
 
-  async list(company: string, query: PageQuery): Promise<Page<TradeDocumentSummary>> {
+  async list(company: string, query: TradeInvoiceListQuery): Promise<Page<TradeDocumentSummary>> {
     checkedCode(company);
     checkedPage(query);
     cursorNumber(query.cursor);
+    checkedListFilters(query);
     return this.store.read(async (repo) => {
       required(await repo.company(company));
       return repo.tradeDocumentPage(company, query);
@@ -1273,13 +1295,7 @@ export class TradeDocumentService {
     checkedCode(company);
     checkedPage(query);
     if (query.cursor !== undefined) checkedCode(query.cursor);
-    if (query.party !== undefined) checkedCode(query.party);
-    if (query.side !== undefined && query.side !== "AP" && query.side !== "AR")
-      tradeDocumentError("side", "shape");
-    if (query.from !== undefined) checkedOrderDay(query.from, "from");
-    if (query.to !== undefined) checkedOrderDay(query.to, "to");
-    if (query.from !== undefined && query.to !== undefined && query.from > query.to)
-      tradeDocumentError("to", "shape");
+    checkedListFilters(query);
     return this.store.read(async (repo) => {
       required(await repo.company(company));
       return repo.tradeOrderPage(company, query);

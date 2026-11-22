@@ -154,6 +154,16 @@
 .trade-invoices .tinv-list > :is(p, .message-bar) {
   margin: var(--space-3) var(--space-5);
 }
+/* TINV-05 列表筛选栏：在列表卡片内，外观沿用 components.css 的 .filter-bar（窄屏字段整行换行） */
+.trade-invoices .tinv-filter {
+  padding-top: 0;
+  box-shadow: none;
+}
+.trade-invoices .tinv-filter .ui-error-text {
+  margin: var(--space-1) 0 0;
+  color: var(--color-danger);
+  font-size: var(--text-xs);
+}
 .trade-invoices .tinv-list-scroll {
   max-height: 480px;
 }

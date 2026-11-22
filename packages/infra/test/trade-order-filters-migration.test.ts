@@ -7,7 +7,7 @@ import Database from "better-sqlite3";
 import { afterEach, beforeEach, test } from "vitest";
 import { createSqliteStorage } from "../src/storage/index.ts";
 import { sqliteBackend } from "../src/storage/sqlite.ts";
-import { latestMigrationVersion, migrateConnection } from "../src/storage/migrations.ts";
+import { inspectSchema, migrateConnection } from "../src/storage/migrations.ts";
 import type { Row } from "../src/storage/types.ts";
 
 const definition =
@@ -99,6 +99,31 @@ async function ledgerAt016(filename: string, seed: boolean): Promise<readonly Ro
   }
 }
 
+/** D307: runs the real migrations up to and including 017 and stops before 018. */
+async function ledgerAt017(filename: string): Promise<void> {
+  const backend = sqliteBackend({ filename });
+  const db = await backend.acquire(false, true),
+    stop = Error("stop before 018");
+  try {
+    await db.begin();
+    await assert.rejects(
+      migrateConnection({
+        ...db,
+        async script(sql) {
+          if (sql.includes("trade_documents_party")) throw stop;
+          await db.script(sql);
+        },
+      }),
+      (error) => error === stop,
+    );
+    await db.commit();
+    assert.equal(await inspectSchema(db, true), 17);
+  } finally {
+    await db.release();
+    await backend.close();
+  }
+}
+
 test("017 is one CREATE INDEX statement; a new ledger has exactly that index on top of 016", async () => {
   const sql = await readFile(
     new URL("../migrations/sqlite/017-trade-order-filters.sql", import.meta.url),
@@ -110,13 +135,7 @@ test("017 is one CREATE INDEX statement; a new ledger has exactly that index on 
 
   const fresh = join(directory, "fresh.sqlite"),
     old = join(directory, "016.sqlite");
-  const storage = createSqliteStorage({ filename: fresh });
-  try {
-    await storage.migrate();
-    await storage.verifySchema();
-  } finally {
-    await storage.close();
-  }
+  await ledgerAt017(fresh);
   await ledgerAt016(old, false);
   const added = schemaObjects(fresh).filter(
     (object) => !schemaObjects(old).some((before) => before.name === object.name),
@@ -128,9 +147,8 @@ test("017 is one CREATE INDEX statement; a new ledger has exactly that index on 
   try {
     assert.equal(
       db.prepare("SELECT max(version) AS version FROM schema_migrations").get()?.version,
-      latestMigrationVersion,
+      17,
     );
-    assert.equal(latestMigrationVersion, 17);
   } finally {
     db.close();
   }
@@ -144,13 +162,7 @@ test("a populated 016 ledger upgrades to 017 with every order and order-line col
   source.close();
   assert.equal(before.orders.length, 3);
   assert.equal(before.lines.length, 6);
-  const storage = createSqliteStorage({ filename });
-  try {
-    await storage.migrate();
-    await storage.verifySchema();
-  } finally {
-    await storage.close();
-  }
+  await ledgerAt017(filename);
   const result = new Database(filename, { readonly: true });
   try {
     assert.deepEqual(orderRows(result), before);

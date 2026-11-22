@@ -1325,6 +1325,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       // After the report totals above, so the new AP invoices do not change them.
       await orderToInvoice();
       await sourceOrders();
+      await invoiceFilters();
       await leaveByBack(
         "trade-invoices",
         "#tinv-party",
@@ -1380,6 +1381,12 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
             t("tinv.noSourceOrder"),
           );
           await page.screenshot({ path: join(artifacts, `${name}-invoice-list.png`) });
+          await listGeometry(`${name}-invoice-list-geometry.json`);
+          // TINV-05 (D323): row height and title measured at 1440. The 240 px bound applies only
+          // at 390 (below, unchanged): at 1440 the auto-layout table hands spare width to columns.
+          const wide = await sourceCell(row("AR-LONG-SO"));
+          console.log(`[tinv05] ${name} 1440 source cell ${JSON.stringify(wide)}`);
+          expect(wide).toMatchObject({ row: 44, title: longOrderId });
           await page.setViewportSize({ width: 390, height: 1100 });
           // The 60-character order ID wraps inside its cell: full text shown (not clipped by
           // the 3-line clamp), the row keeps the virtual list's 44 px, the cell stays bounded.
@@ -1420,6 +1427,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
             await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
           ).toBeLessThanOrEqual(0);
           await page.screenshot({ path: join(artifacts, `${name}-invoice-list-390.png`) });
+          await listGeometry(`${name}-invoice-list-geometry-390.json`);
           await page.setViewportSize({ width: 1440, height: 1100 });
         }
         expect(await link.getAttribute("href")).toBe(
@@ -1433,6 +1441,153 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
           .getByRole("table", { name: `${ordered("tord.lines")} ${orderId}`, exact: true })
           .waitFor();
       }
+      expect(failures).toEqual([]);
+    }
+    // TINV-05 (D323): the list's column geometry (x relative to the table, width) and row heights,
+    // logged and written next to the screenshot so the runner compares base and head (±1 px).
+    async function listGeometry(file: string) {
+      const list = page.getByRole("table", { name: t("tinv.list"), exact: true });
+      const geometry = await list.evaluate((table) => {
+        const left = table.getBoundingClientRect().left;
+        return {
+          viewport: window.innerWidth,
+          table: table.getBoundingClientRect().width,
+          columns: [...table.querySelectorAll("thead th")].map((th) => {
+            const rect = th.getBoundingClientRect();
+            return { text: th.textContent, x: rect.left - left, width: rect.width };
+          }),
+          rows: [...table.querySelectorAll("tbody tr")].map(
+            (tr) => tr.getBoundingClientRect().height,
+          ),
+        };
+      });
+      console.log(`[geometry] ${file} ${JSON.stringify(geometry)}`);
+      appendFileSync(join(artifacts, file), `${JSON.stringify(geometry)}\n`);
+    }
+    // The source order cell of an invoice row: the row's laid-out height, the cell's width and the
+    // link's title (the full order ID).
+    async function sourceCell(target: import("playwright").Locator) {
+      const link = target.locator("td.tinv-source a");
+      await link.scrollIntoViewIfNeeded();
+      return link.evaluate((element) => {
+        const cell = element.closest("td") as HTMLElement;
+        return {
+          row: (cell.parentElement as HTMLElement).getBoundingClientRect().height,
+          cell: cell.getBoundingClientRect().width,
+          title: element.getAttribute("title"),
+        };
+      });
+    }
+    // TINV-05: the filter bar narrows the list by keyboard (Apply button and Enter) with teaching
+    // explanations on and off; the address never changes and nothing asks to leave. At 390 px the
+    // bar wraps inside the page. Ends unfiltered at 1440 with teaching restored.
+    async function invoiceFilters() {
+      await navigate("trade-invoices");
+      const hash = new URL(page.url()).hash;
+      const list = page.getByRole("table", { name: t("tinv.list"), exact: true });
+      const bar = page.getByRole("search", { name: t("tinv.filter"), exact: true });
+      const row = (external: string) =>
+        list.locator("tbody tr").filter({ hasText: external }).first();
+      const teaching = page.locator("#workspace-teaching");
+      const party = page.locator("#tinv-filter-party");
+      const initial = await teaching.isChecked();
+      let dialogs = 0;
+      const count = async (dialog: import("playwright").Dialog) => {
+        dialogs += 1;
+        await dialog.dismiss();
+      };
+      const filtered = (query: string) =>
+        page.waitForResponse((response) => {
+          const url = new URL(response.url());
+          return url.pathname === "/api/v1/trade/invoices" && url.search.includes(query);
+        });
+      const unchanged = async () => {
+        await page.waitForTimeout(300);
+        expect(new URL(page.url()).hash).toBe(hash);
+        expect(dialogs).toBe(0);
+      };
+      page.on("dialog", count);
+      try {
+        for (const on of [initial, !initial]) {
+          if ((await teaching.isChecked()) !== on) {
+            await tabTo(page, teaching);
+            await page.keyboard.press("Space");
+          }
+          await expect.poll(() => teaching.isChecked()).toBe(on);
+          await bar.waitFor();
+          await row("AP-DEMO").waitFor();
+          const mode = on ? "teaching" : "plain";
+          // The unfiltered source cell on this page, compared with the filtered one at 1440.
+          const unfiltered = await sourceCell(row("AR-LONG-SO"));
+          // Direction AR through the Apply button: the AP invoice leaves, the AR ones stay.
+          await choose(page, page.locator("#tinv-filter-side"), "AR");
+          const ar = filtered("side=AR");
+          await activate(page, bar.getByRole("button", { name: t("tinv.filter.apply") }));
+          expect((await ar).status()).toBe(200);
+          await expect.poll(() => row("AP-DEMO").count()).toBe(0);
+          await row("AR-DEMO").waitFor();
+          await row("AR-FROM-SO").waitFor();
+          await unchanged();
+          // With the bar applied the source order column keeps the TINV-04 row height; at 1440 its
+          // width equals the unfiltered one, at 390 it keeps the 240 px bound (D323).
+          const filtered1440 = await sourceCell(row("AR-LONG-SO"));
+          console.log(
+            `[tinv05] ${name} ${mode} 1440 source cell unfiltered ${JSON.stringify(unfiltered)} filtered ${JSON.stringify(filtered1440)}`,
+          );
+          expect(filtered1440).toMatchObject({ row: 44, title: longOrderId });
+          expect(filtered1440.cell).toBe(unfiltered.cell);
+          await page.screenshot({ path: join(artifacts, `${name}-invoice-filter-${mode}.png`) });
+          await page.setViewportSize({ width: 390, height: 1100 });
+          const filtered390 = await sourceCell(row("AR-LONG-SO"));
+          console.log(
+            `[tinv05] ${name} ${mode} 390 source cell filtered ${JSON.stringify(filtered390)}`,
+          );
+          expect(filtered390).toMatchObject({ row: 44, title: longOrderId });
+          expect(filtered390.cell).toBeLessThanOrEqual(240);
+          await bar.scrollIntoViewIfNeeded();
+          const layout = await bar.evaluate((element) => {
+            const items = [...element.children].map((child) => child.getBoundingClientRect());
+            return {
+              rows: new Set(items.map((rect) => Math.round(rect.top))).size,
+              right: Math.max(...items.map((rect) => rect.right)),
+              width: window.innerWidth,
+              overflow: document.documentElement.scrollWidth - window.innerWidth,
+            };
+          });
+          expect(layout.rows).toBeGreaterThan(1);
+          expect(layout.right).toBeLessThanOrEqual(layout.width);
+          expect(layout.overflow).toBeLessThanOrEqual(0);
+          await page.screenshot({
+            path: join(artifacts, `${name}-invoice-filter-${mode}-390.png`),
+          });
+          // A party with no invoices through Enter in the field: the filtered empty state.
+          await tabTo(page, party);
+          await page.keyboard.press("ControlOrMeta+A");
+          await page.keyboard.insertText("NOPARTY");
+          const none = filtered("party=NOPARTY");
+          await page.keyboard.press("Enter");
+          expect((await none).status()).toBe(200);
+          await page
+            .locator("p.empty-state")
+            .filter({ hasText: t("tinv.filter.none") })
+            .waitFor();
+          await unchanged();
+          await page.setViewportSize({ width: 1440, height: 1100 });
+          await activate(page, bar.getByRole("button", { name: t("tinv.filter.clear") }));
+          await row("AP-DEMO").waitFor();
+          expect(await party.inputValue()).toBe("");
+          expect(await page.locator("#tinv-filter-side").inputValue()).toBe("");
+          await unchanged();
+        }
+        if ((await teaching.isChecked()) !== initial) {
+          await tabTo(page, teaching);
+          await page.keyboard.press("Space");
+        }
+        await expect.poll(() => teaching.isChecked()).toBe(initial);
+      } finally {
+        page.off("dialog", count);
+      }
+      expect(dialogs).toBe(0);
       expect(failures).toEqual([]);
     }
     // TINV-04 acceptance 5a: a real Back from a dirty draft asks exactly once; a cancel keeps the

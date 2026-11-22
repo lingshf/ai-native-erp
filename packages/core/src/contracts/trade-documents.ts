@@ -448,14 +448,20 @@ const limit = z
   .regex(/^(?:[1-9]\d?|[1-4]\d{2}|500)$/u)
   .default("100");
 export const tradeCompanyQuerySchema = z.strictObject({ company: companyCodeSchema });
-export const tradeInvoiceListQuerySchema = z.strictObject({
-  company: companyCodeSchema,
-  limit,
-  cursor: z
-    .string()
-    .regex(/^[1-9]\d{0,15}$/u)
-    .optional(),
-});
+export const tradeInvoiceListQuerySchema = z
+  .strictObject({
+    company: companyCodeSchema,
+    limit,
+    cursor: z
+      .string()
+      .regex(/^[1-9]\d{0,15}$/u)
+      .optional(),
+    party: companyCodeSchema.optional(),
+    side: side.optional(),
+    from: day.optional(),
+    to: day.optional(),
+  })
+  .refine((query) => !query.from || !query.to || query.from <= query.to, { path: ["to"] });
 export const openItemQuerySchema = z.strictObject({
   company: companyCodeSchema,
   limit,

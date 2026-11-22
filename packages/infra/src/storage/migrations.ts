@@ -100,6 +100,7 @@ const filenames = [
   "015-legacy-reconciliation.sql",
   "016-trade-report-capacity.sql",
   "017-trade-order-filters.sql",
+  "018-trade-invoice-filters.sql",
 ];
 export const latestMigrationVersion = filenames.length;
 
@@ -390,6 +391,7 @@ export async function inspectSchema(
         : []),
       ...(latest >= 16 ? ["index:settlements_report"] : []),
       ...(latest >= 17 ? ["index:trade_orders_party"] : []),
+      ...(latest >= 18 ? ["index:trade_documents_party"] : []),
     ])
   )
     throw new StorageError("SCHEMA_MISMATCH");
