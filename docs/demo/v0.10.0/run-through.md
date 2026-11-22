@@ -80,6 +80,6 @@ README 取图块在 `Copy-Item` 上加 `-ErrorAction Stop`：复制失败进 cat
 
 D333 预批时段，2026-11-22 01:49:52 至 01:51:43（-08:00），约 1 分 51 秒，一次连续跑，未重跑。`ERP_E2E_BROWSER_CHANNEL=chrome`，端口 4201，PowerShell 7.6，README 取图块原文。预检 6 次外部进程均为 0。build、dist 断言、`run-main.ps1`（seed、readiness ok、capture）通过，`shots 24`，`capture exit 0`，`exit=0 ok=True`。
 
-- 完整日志：[`logs/capture-run-d333-20261122-014952.log`](logs/capture-run-d333-20261122-014952.log)（87 行，未截断；含 build、seed、readiness、capture 的 stdout/stderr 与最终 `exit=` 行），SHA-256 `3022eb7083ea1b2fa6bfeab111b912b06de7c85ce595834a40c56556dafa3ca1`（入库副本与原文件一致）。日志里 `log=` 指向的临时文件在入库后已删除。
+- 完整日志：[`logs/capture-run-d333-20261122-014952.log`](logs/capture-run-d333-20261122-014952.log)（87 行，未截断；含 build、seed、readiness、capture 的 stdout/stderr 与最终 `exit=` 行），SHA-256 `3022eb7083ea1b2fa6bfeab111b912b06de7c85ce595834a40c56556dafa3ca1`（入库副本与原文件一致；`.gitignore` 的 `*.log` 忽略该文件，故用 `git add -f` 入库；仓库的 `eol=lf` 会改写换行，所以 `logs/.gitattributes` 对 `*.log` 设 `-text`，Git blob 字节与原文件相同，SHA-256 已核对）。日志里 `log=` 指向的临时文件在入库后已删除。
 - 截图：24 张中只有 4 张 `order-from-invoice-ar-*` 与 §5.2 入库版有字节差异（页面显示“记录时间”，随运行变化），已按本次覆盖入库；其余 20 张与 `capture-log-main.json` 字节相同，无需更新。`overflowPx` 均为 0，`errors` 均为 `[]`。
 - 残留：无本轮 chrome / node；端口 4201 已释放；系统另有 6 个更早启动的 node（11/15、11/20、11/21），未触碰。
