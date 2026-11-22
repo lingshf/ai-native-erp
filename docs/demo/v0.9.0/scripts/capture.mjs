@@ -26,6 +26,7 @@ const text = {
     badge: { none: "!未开票", partial: "i部分开票", full: "✓已开完" },
     invoicingHead: "开票状态",
     sourceHead: "来源订单",
+    noSource: "—无来源订单",
     notFound: "本公司没有该订单号的订单。",
     companyMissing: "公司不在已加载的列表中 · NOPE",
     back: "返回列表",
@@ -35,6 +36,7 @@ const text = {
     badge: { none: "!Not invoiced", partial: "iPartly invoiced", full: "✓Fully invoiced" },
     invoicingHead: "Invoicing",
     sourceHead: "Source order",
+    noSource: "—No source order",
     notFound: "No order with this number exists in this company.",
     companyMissing: "The company is not in the loaded list · NOPE",
     back: "Back to list",
@@ -187,6 +189,8 @@ for (const [lang, theme, width] of combos) {
     await poll(
       () => invoiceRows(page),
       [
+        ["AP-DEMO", t.noSource, null],
+        ["AP-DEMO2", t.noSource, null],
         ["AP-I1-1", "PO-I1", "#/trade-orders?company=DEFAULT&order=PO-I1"],
         ["AP-I2-1", "PO-I2", "#/trade-orders?company=DEFAULT&order=PO-I2"],
       ],
