@@ -4,13 +4,13 @@ E2E 独占时段（[路线图 §5](../../design/roadmap.md#5-团队流程)“E2E
 
 不进 Vitest、不进 CI。
 
-| 文件 | 作用 | 平台 |
-| --- | --- | --- |
-| `procs.ps1` | 候选、归属与排除判定（`Counted`），每个判定出口标注 SR 编号 | Windows |
-| `slot-run.ps1` | 时段运行器：构建门禁、预检（连续 6 次计数为 0）、逐步运行并每 10 s 采样 | Windows |
-| `steps.example.ps1` | `-StepsFile` 示例（步骤列表；kit 中为 GATE-01 专用列表） | Windows |
-| `selftest.ps1` | 自测：kit 原有 27 项 + 每条 SR 规则的正例与反例 + 可选的与 D316 kit 逐 PID 对照 | Windows |
-| `check-manifest.mjs` | 清单检查：判定出口与路线图规则表、规则版本逐一对照 | 任意 OS（Node） |
+| 文件                 | 作用                                                                            | 平台            |
+| -------------------- | ------------------------------------------------------------------------------- | --------------- |
+| `procs.ps1`          | 候选、归属与排除判定（`Counted`），每个判定出口标注 SR 编号                     | Windows         |
+| `slot-run.ps1`       | 时段运行器：构建门禁、预检（连续 6 次计数为 0）、逐步运行并每 10 s 采样         | Windows         |
+| `steps.example.ps1`  | `-StepsFile` 示例（步骤列表；kit 中为 GATE-01 专用列表）                        | Windows         |
+| `selftest.ps1`       | 自测：kit 原有 27 项 + 每条 SR 规则的正例与反例 + 可选的与 D316 kit 逐 PID 对照 | Windows         |
+| `check-manifest.mjs` | 清单检查：判定出口与路线图规则表、规则版本逐一对照                              | 任意 OS（Node） |
 
 ## 运行
 
