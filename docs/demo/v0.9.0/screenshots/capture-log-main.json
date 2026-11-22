@@ -1,0 +1,186 @@
+[
+ {
+  "step": "orders-list",
+  "tag": "zh-red-1440"
+ },
+ {
+  "name": "orders-list-invoicing-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "order-deeplink",
+  "tag": "zh-red-1440",
+  "hash": "#/trade-orders?company=DEFAULT&order=PO-I1"
+ },
+ {
+  "name": "order-deeplink-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "order-deeplink-errors",
+  "tag": "zh-red-1440"
+ },
+ {
+  "step": "invoice-list-source",
+  "tag": "zh-red-1440"
+ },
+ {
+  "name": "invoice-list-source-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "invoice-leave-cancelled",
+  "tag": "zh-red-1440",
+  "dialogs": 2
+ },
+ {
+  "name": "invoice-leave-cancelled-zh-red-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "s9",
+  "tag": "zh-red-1440",
+  "errors": [
+   "HTTP 404 GET /api/v1/trade/orders/PO-MISSING",
+   "Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:4201/#/trade-orders?company=DEFAULT&order=PO-MISSING"
+  ]
+ },
+ {
+  "step": "orders-list",
+  "tag": "zh-red-390"
+ },
+ {
+  "name": "orders-list-invoicing-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "order-deeplink",
+  "tag": "zh-red-390",
+  "hash": "#/trade-orders?company=DEFAULT&order=PO-I1"
+ },
+ {
+  "name": "order-deeplink-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "order-deeplink-errors",
+  "tag": "zh-red-390"
+ },
+ {
+  "step": "invoice-list-source",
+  "tag": "zh-red-390"
+ },
+ {
+  "name": "invoice-list-source-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "invoice-leave-cancelled",
+  "tag": "zh-red-390",
+  "dialogs": 2
+ },
+ {
+  "name": "invoice-leave-cancelled-zh-red-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "s9",
+  "tag": "zh-red-390",
+  "errors": [
+   "HTTP 404 GET /api/v1/trade/orders/PO-MISSING",
+   "Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:4201/#/trade-orders?company=DEFAULT&order=PO-MISSING"
+  ]
+ },
+ {
+  "step": "orders-list",
+  "tag": "en-green-1440"
+ },
+ {
+  "name": "orders-list-invoicing-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "order-deeplink",
+  "tag": "en-green-1440",
+  "hash": "#/trade-orders?company=DEFAULT&order=PO-I1"
+ },
+ {
+  "name": "order-deeplink-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "order-deeplink-errors",
+  "tag": "en-green-1440"
+ },
+ {
+  "step": "invoice-list-source",
+  "tag": "en-green-1440"
+ },
+ {
+  "name": "invoice-list-source-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "step": "invoice-leave-cancelled",
+  "tag": "en-green-1440",
+  "dialogs": 2
+ },
+ {
+  "name": "invoice-leave-cancelled-en-green-1440",
+  "overflowPx": 0
+ },
+ {
+  "page": "s9",
+  "tag": "en-green-1440",
+  "errors": [
+   "HTTP 404 GET /api/v1/trade/orders/PO-MISSING",
+   "Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:4201/#/trade-orders?company=DEFAULT&order=PO-MISSING"
+  ]
+ },
+ {
+  "step": "orders-list",
+  "tag": "en-green-390"
+ },
+ {
+  "name": "orders-list-invoicing-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "order-deeplink",
+  "tag": "en-green-390",
+  "hash": "#/trade-orders?company=DEFAULT&order=PO-I1"
+ },
+ {
+  "name": "order-deeplink-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "order-deeplink-errors",
+  "tag": "en-green-390"
+ },
+ {
+  "step": "invoice-list-source",
+  "tag": "en-green-390"
+ },
+ {
+  "name": "invoice-list-source-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "step": "invoice-leave-cancelled",
+  "tag": "en-green-390",
+  "dialogs": 2
+ },
+ {
+  "name": "invoice-leave-cancelled-en-green-390",
+  "overflowPx": 0
+ },
+ {
+  "page": "s9",
+  "tag": "en-green-390",
+  "errors": [
+   "HTTP 404 GET /api/v1/trade/orders/PO-MISSING",
+   "Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:4201/#/trade-orders?company=DEFAULT&order=PO-MISSING"
+  ]
+ }
+]
