@@ -200,6 +200,7 @@ if ($mode -eq "fail3") { exit 3 }
     $sb = New-Sandbox $name
     & $put "$sb\docs\demo\v0.10.0\scripts\run-main.ps1" $runStub
     & $put "$sb\docs\demo\v0.10.0\screenshots\.gitkeep" ""
+    if ($mode -eq "copyfail") { New-Item -ItemType Directory "$sb\docs\demo\v0.10.0\screenshots\shot-3.png" | Out-Null }
     [IO.File]::WriteAllText("$sb\block.ps1", $text, (New-Object Text.UTF8Encoding $true))
     $env:RUNMODE = $mode; $env:SBX = $sb; $env:NO_FROMORDER = $noFromOrder; $env:GIT_EQ = $gitEq; $env:TEMP = "$sb\tmp"; $env:TMP = "$sb\tmp"; $env:PATH = "$sb\bin;" + $oldPath
     Push-Location $sb
@@ -229,7 +230,8 @@ if ($mode -eq "fail3") { exit 3 }
   # B7 日志完整性（Windows PowerShell 5.1）：取图块把 runner 的 stdout / 原生 stderr / 异常 / 退出码写进日志文件
   $logOf = { param($r) @(Get-ChildItem "$($r.sb)\tmp" -Filter "demo-s10-shots-*.run.log" -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -Raw -Encoding UTF8 $_.FullName }) -join "`n" }
   $shotsLeft = { param($r) @(Get-ChildItem "$($r.sb)\tmp" -Directory -Filter "demo-s10-shots-*" -ErrorAction SilentlyContinue).Count }
-  $pngs = { param($r) @(Get-ChildItem "$($r.sb)\docs\demo\v0.10.0\screenshots" -Filter *.png -ErrorAction SilentlyContinue).Count }
+  $pngs = { param($r) @(Get-ChildItem "$($r.sb)\docs\demo\v0.10.0\screenshots" -File -Filter *.png -ErrorAction SilentlyContinue).Count }
+  $shotsPngs = { param($r) @(Get-ChildItem "$($r.sb)\tmp" -Directory -Filter "demo-s10-shots-*" -ErrorAction SilentlyContinue | ForEach-Object { Get-ChildItem $_.FullName -File -Filter *.png }).Count }
 
   $r = & $runBlock "b7ok" $b6 "0" "0" "stderr-ok"
   $lg = & $logOf $r
@@ -245,6 +247,12 @@ if ($mode -eq "fail3") { exit 3 }
   $lg = & $logOf $r
   if ($r.code -eq 0 -or $lg -notmatch "STDOUT-BEFORE" -or $lg -notmatch "EXCEPTION:.*owner mismatch stub" -or $lg -notmatch "exit=1 ok=False" -or (& $pngs $r) -ne 0) { $problems.Add("B7 runner 抛错路径不符：退出 $($r.code)`n$lg") }
   else { "B7 抛错通过：runner 抛错的原始异常（owner mismatch stub）和 exit=1 落盘；块失败退出；不复制截图" }
+
+  # 复制失败：目标里 shot-3.png 是同名目录，Copy-Item 失败；不得设 ok=True，原图（24 张）必须留在 shots 目录
+  $r = & $runBlock "b7copy" $b6 "0" "0" "copyfail"
+  $lg = & $logOf $r
+  if ($r.code -eq 0 -or $lg -match "ok=True" -or $lg -notmatch "EXCEPTION:" -or $lg -notmatch "ok=False" -or (& $shotsLeft $r) -ne 1 -or (& $shotsPngs $r) -ne 24) { $problems.Add("B7 复制失败路径不符：退出 $($r.code)，shots 目录 $(& $shotsLeft $r)，原图 $(& $shotsPngs $r)`n$lg") }
+  else { "B7 复制失败通过：Copy-Item 失败进入 catch，日志 ok=False 且有 EXCEPTION；块失败退出；shots 目录保留，24 张原图未删" }
 } catch {
   $problems.Add("编排替身运行失败：" + $_.Exception.Message)
 } finally {

@@ -92,7 +92,7 @@ $shots = Join-Path $env:TEMP ("demo-s10-shots-" + [guid]::NewGuid())
     if ($LASTEXITCODE -ne 0) { throw "run-main 退出码 $LASTEXITCODE" }
     $n = @(Get-ChildItem $shots -Filter *.png).Count
     if ($n -ne 24) { throw "截图数 $n，不是 24，不复制" }
-    Copy-Item "$shots\*" docs\demo\v0.10.0\screenshots\
+    Copy-Item "$shots\*" docs\demo\v0.10.0\screenshots\ -ErrorAction Stop   # 复制失败要进 catch：不设 ok、不删 $shots 里的原图
     $ok = $true
   } catch {
     $code = if ($LASTEXITCODE) { $LASTEXITCODE } else { 1 }   # 原生命令的真实退出码；runner 自己 throw 时没有，记为 1
