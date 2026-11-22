@@ -16,9 +16,9 @@ orchestration-stub 相对 v0.8.0 的改动：渲染后的代码块下限由 7 �
 
 | 时段 | head | 范围 | 结果 |
 |---|---|---|---|
-| D298 21:54:26–21:56:42 | fc994e1 | 步骤 1 演练 + 步骤 2 取图 | 演练退出 0；build、dist 断言通过；capture 退出 1。我用 `Select-Object -Last 30` 截断了输出且清掉了 shots 目录，丢失了失败断言原文（我的流程疏漏），未重试 |
+| D298 21:54:26–21:56:42 | fc994e1 | 步骤 1 演练 + 步骤 2 取图 | 演练退出 0；build、dist 断言通过；capture 退出 1。我用 `Select-Object -Last 30` 截断了输出且清掉了 shots 目录，失败断言原文已丢失，**根因未知**（不能确认是脚本问题），未重试；D299 起改为 tee 日志并在失败时保留目录 |
 | D299 21:58:15–21:59:59 | be2ae39 | 步骤 2（输出 tee 到文件、失败保留目录、4b 改用真实 `page.goBack`） | 中止：步骤 3“发票列表来源订单”断言应为 2 行，实际有 4 行，多出 seed-trade 自带的 AP-DEMO、AP-DEMO2（来源列“—无来源订单”）。脚本断言错误，产品正确。步骤 1、2 的 2 张截图已落盘 |
-| D300 22:00:46–22:02:48 | a4f9857 | 步骤 2 | 通过：dist 严格晚于 HEAD 且含 `Partly invoiced`、`Source order`；capture 退出 0；16 张截图；每张 overflowPx 为 0；离开确认每组恰好 2 次 confirm 对话框；结束后 chrome 0、端口 4201 释放、无 `erp-demo-*` 与 shots 残留 |
+| D300 22:00:46–22:02:48 | a4f9857 | 步骤 2 | 通过：dist 严格晚于 HEAD 且含 `Partly invoiced`、`Source order`；capture 退出 0；16 张截图；每张 overflowPx 为 0；离开确认步骤中的 confirm 对话框是累计计数：4a 点链接取消后 1 次，4b 后退取消后累计 2 次（日志 `dialogs=2` 记录的是截图时的累计值），4c 确认离开的链接点击是第 3 次，脚本断言总共 3 次、每次文案为 `trade.leaveConfirm`；结束后 chrome 0、端口 4201 释放、无 `erp-demo-*` 与 shots 残留 |
 
 D300 控制台错误：4 组各只有 `order=PO-MISSING` 的预期 404（HTTP 404 与 Failed to load resource 两条），无其他。
 ## 2. 未实跑（诚实披露）
