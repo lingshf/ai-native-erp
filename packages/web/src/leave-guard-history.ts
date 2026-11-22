@@ -1,26 +1,30 @@
-// Back/Forward guard for a page with unsaved work (TINV-03, D272 / D273). It asks before a history
-// traversal leaves the page's current address; a cancel returns to that entry with history.go and
-// adds or rewrites no entry, so later Back and Forward entries keep their order.
+// Back/Forward guard for a page with unsaved work (TINV-03, D272 / D273 / D274). It asks before a
+// history traversal leaves the page's current address; a cancel tries to return to that entry with
+// history.go, which adds or rewrites no entry, so later Back and Forward entries keep their order.
 //
-// Positions: only the ones react-router's history writes into history.state ({ usr, key, idx }, the
-// idx increasing on every in-app push) are trusted; no position is ever inferred or written here,
-// because an entry the router did not write may sit any distance away. When the current or the
-// target entry has no trusted position, the distance is unknown; a cancel then falls back to pushing
-// the current address after the target, which keeps the address and the draft but drops the
-// entries that were ahead of the target.
+// react-router's history writes { usr, key, idx } into history.state on every in-app push and
+// replace. The idx is only a hint: after an entry the router did not write (a typed address), the
+// router numbers the next push from null, so the distance it gives may be wrong. A return therefore
+// counts only if it lands on the original entry, the same URL and router key. Any other landing, no
+// landing in time, or a missing idx on either side falls back to pushing the original address after
+// wherever history now stands: the address and the draft stay, but the entries that were ahead of
+// it are dropped. Events during a return never ask.
 
-type Entry = { href: string; state: unknown; position: number | null };
+type Entry = { href: string; state: unknown; key: string | null; position: number | null };
 
-const positionOf = (state: unknown) => {
-  if (state === null || typeof state !== "object") return null;
+const RETURN_TIMEOUT_MS = 1000;
+
+const routerState = (state: unknown) => {
+  if (state === null || typeof state !== "object") return { key: null, position: null };
   const { idx, key } = state as { idx?: unknown; key?: unknown };
-  return typeof key === "string" && typeof idx === "number" && Number.isInteger(idx) ? idx : null;
+  if (typeof key !== "string") return { key: null, position: null };
+  return { key, position: typeof idx === "number" && Number.isInteger(idx) ? idx : null };
 };
 
 const currentEntry = (): Entry => ({
   href: window.location.href,
   state: window.history.state,
-  position: positionOf(window.history.state),
+  ...routerState(window.history.state),
 });
 
 export type HistoryGuard = {
@@ -35,40 +39,46 @@ export type HistoryGuard = {
 export function guardHistory(mayLeave: () => boolean): HistoryGuard {
   let here = currentEntry();
   let accepted = "";
-  // The address of a cancelled traversal while history.go returns to `here`; its events are dropped.
-  let cancelled = "";
+  // Set while history.go returns to `here` after a cancel.
+  let returning: ReturnType<typeof setTimeout> | null = null;
+  const restore = () => window.history.pushState(here.state, "", here.href);
+  const land = () => {
+    if (returning !== null) clearTimeout(returning);
+    returning = null;
+    const landed = currentEntry();
+    if (landed.href !== here.href || here.key === null || landed.key !== here.key) restore();
+  };
   const navigation = (event: Event) => {
-    const href = window.location.href;
-    if (cancelled) {
-      if (href === here.href || href === cancelled) {
-        if (href === here.href) cancelled = "";
-        event.stopImmediatePropagation();
-        return;
-      }
-      cancelled = "";
+    if (returning !== null) {
+      event.stopImmediatePropagation();
+      if (event.type === "popstate") land();
+      return;
     }
+    const href = window.location.href;
     if (href === here.href || href === accepted) return;
     if (mayLeave()) {
       accepted = href;
       return;
     }
     event.stopImmediatePropagation();
-    const target = positionOf(window.history.state);
+    const target = routerState(window.history.state).position;
     if (here.position !== null && target !== null && target !== here.position) {
-      cancelled = href;
+      returning = setTimeout(land, RETURN_TIMEOUT_MS);
       window.history.go(here.position - target);
-    } else window.history.pushState(here.state, "", here.href);
+    } else restore();
   };
   window.addEventListener("popstate", navigation, true);
   window.addEventListener("hashchange", navigation, true);
   return {
     here: () => here.href,
     settle: () => {
-      if (cancelled) return;
+      if (returning !== null) return;
       here = currentEntry();
       if (accepted === here.href) accepted = "";
     },
     dispose: () => {
+      if (returning !== null) clearTimeout(returning);
+      returning = null;
       window.removeEventListener("popstate", navigation, true);
       window.removeEventListener("hashchange", navigation, true);
     },

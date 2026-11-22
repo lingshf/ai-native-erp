@@ -1552,4 +1552,33 @@ describe("trade orders", () => {
     await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
     expect(confirm).toHaveBeenCalledTimes(2);
   });
+  // D274: after a typed hash (B, no idx), the router writes the next push as idx null + 1 = 1, so
+  // C's idx is wrong. Returning from a cancelled Back to A lands on B; the guard checks the landing
+  // (URL and router key) and, as it is not C, falls back to pushing C without asking again.
+  it("falls back without asking again when a cancel lands on the wrong entry", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    stubApi(found, emptyList, noneInvoiced);
+    routerEntry(0, "?company=DEFAULT&order=PO-1", false);
+    render(<App />);
+    await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+    window.location.hash = "#/trade-orders?company=DEFAULT&order=PO-2";
+    await screen.findByText(t("tord.notFound"));
+    fireEvent.click(screen.getByRole("link", { name: label("zh", "shell.tradeOrders") }));
+    await waitFor(() => expect(address().get("order")).toBeNull());
+    expect(window.history.state).toMatchObject({ idx: 1 });
+    const here = window.location.href;
+    fireEvent.change(field("tord.orderId"), { target: { value: "PO-DRAFT" } });
+
+    window.history.go(-2);
+    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 60)));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(window.location.href).toBe(here);
+    expect(field("tord.orderId").value).toBe("PO-DRAFT");
+
+    confirm.mockReturnValue(true);
+    window.history.back();
+    await waitFor(() => expect(address().get("order")).toBe("PO-2"));
+    expect(confirm).toHaveBeenCalledTimes(2);
+  });
 });
