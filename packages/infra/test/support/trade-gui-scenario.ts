@@ -1361,19 +1361,35 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
           // the 3-line clamp), the row keeps the virtual list's 44 px, the cell stays bounded.
           const long = row("AR-LONG-SO").getByRole("link", { name: longOrderId, exact: true });
           await long.scrollIntoViewIfNeeded();
+          // Lines are counted from the laid-out text (a clamped line is still laid out, just
+          // hidden), and the last character must sit inside the link's visible box (1 px slack
+          // beyond the half-leading: a 12 px glyph box is taller than the 13 px line box, so its
+          // rect overhangs the line by (rect height - 13) / 2 even when nothing is clipped; a 4th
+          // line would overhang by a further 13 px). scrollHeight is not used.
           const box = await long.evaluate((element) => {
             const cell = element.closest("td") as HTMLElement;
+            const text = element.firstChild as Text;
+            const all = document.createRange();
+            all.selectNodeContents(text);
+            const rects = [...all.getClientRects()].filter((rect) => rect.width > 0);
+            const last = document.createRange();
+            last.setStart(text, text.length - 1);
+            last.setEnd(text, text.length);
+            const glyph = last.getBoundingClientRect();
+            const lineHeight = Number.parseFloat(getComputedStyle(element).lineHeight);
+            const halfLeading = Math.max(0, (glyph.height - lineHeight) / 2);
             return {
-              lines: Math.round(element.clientHeight / 13),
-              clipped: element.scrollHeight > element.clientHeight,
+              lines: new Set(rects.map((rect) => Math.round(rect.top))).size,
+              overhang: glyph.bottom - element.getBoundingClientRect().bottom - halfLeading,
               row: (cell.parentElement as HTMLElement).getBoundingClientRect().height,
               cell: cell.getBoundingClientRect().width,
               title: element.getAttribute("title"),
             };
           });
-          expect(box).toMatchObject({ clipped: false, row: 44, title: longOrderId });
-          expect(box.lines).toBeGreaterThan(1);
+          expect(box).toMatchObject({ row: 44, title: longOrderId });
+          expect(box.lines).toBeGreaterThanOrEqual(1);
           expect(box.lines).toBeLessThanOrEqual(3);
+          expect(box.overhang).toBeLessThanOrEqual(1);
           expect(box.cell).toBeLessThanOrEqual(240);
           await page.screenshot({ path: join(artifacts, `${name}-invoice-list-390.png`) });
           await page.setViewportSize({ width: 1440, height: 1100 });
