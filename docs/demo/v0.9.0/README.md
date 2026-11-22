@@ -74,6 +74,8 @@ $shots = Join-Path $env:TEMP ("demo-s9-shots-" + [guid]::NewGuid())
 . {
   $ErrorActionPreference = "Stop"
   $shots = Join-Path $env:TEMP ("demo-s9-shots-" + [guid]::NewGuid())
+  $log = "$shots.run.log"   # 完整输出写入文件；失败时保留 $shots 与日志，不清理
+  $ok = $false
   try {
     npm run build   # 服务托管 packages/web/dist；不重建会演示旧界面
     if ($LASTEXITCODE -ne 0) { throw "构建失败，退出码 $LASTEXITCODE" }
@@ -82,12 +84,14 @@ $shots = Join-Path $env:TEMP ("demo-s9-shots-" + [guid]::NewGuid())
     if (-not (Test-Path $index) -or (Get-Item $index).LastWriteTimeUtc -le $headTime) { throw "dist 缺失，或不晚于 HEAD 提交时间（相等也算失败），中止" }
     $dist = Get-ChildItem packages\web\dist\assets -Filter *.js | Get-Content -Raw
     if (-not ($dist -match "Partly invoiced" -and $dist -match "Source order")) { throw "dist 里没有 Partly invoiced 或 Source order，旧界面，中止" }
-    & .\docs\demo\v0.9.0\scripts\run-main.ps1 -Shots $shots
+    & .\docs\demo\v0.9.0\scripts\run-main.ps1 -Shots $shots *>&1 | Tee-Object -FilePath $log
     $n = @(Get-ChildItem $shots -Filter *.png).Count
     if ($n -ne 16) { throw "截图数 $n，不是 16，不复制" }
     Copy-Item "$shots\*" docs\demo\v0.9.0\screenshots\
+    $ok = $true
   } finally {
-    if ((Split-Path $shots -Leaf) -like "demo-s9-shots-*" -and (Test-Path $shots)) { Remove-Item -Recurse -Force $shots }
+    if ($ok -and (Split-Path $shots -Leaf) -like "demo-s9-shots-*" -and (Test-Path $shots)) { Remove-Item -Recurse -Force $shots }
+    elseif (-not $ok) { "失败，已保留：$shots 和 $log" }
   }
 }
 ```

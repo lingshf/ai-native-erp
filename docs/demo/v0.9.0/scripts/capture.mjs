@@ -115,6 +115,9 @@ const contextFor = (lang, theme, width) =>
       return context;
     });
 
+// 失败时先把已有日志与错误写入输出目录再抛出，截图已逐张落盘
+let failure = null;
+try {
 for (const [lang, theme, width] of combos) {
   const tag = `${lang}-${theme}-${width}`;
   const want = { lang, theme, width, teaching: true };
@@ -227,8 +230,8 @@ for (const [lang, theme, width] of combos) {
     if ((await page.evaluate(() => location.hash)) !== invoicesHash) throw new Error("取消后应留在发票页");
     if ((await draft()) !== "DRAFT-1") throw new Error("取消后草稿应保留");
 
-    // 4b 浏览器后退，取消：只问一次，留在原地址，草稿还在
-    await page.evaluate(() => history.back());
+    // 4b 真实的浏览器后退（page.goBack，不用合成 pushState），取消：只问一次，留在原地址，草稿还在
+    await page.goBack({ waitUntil: "commit", timeout: 5000 }).catch(() => null);
     await page.waitForTimeout(800);
     if (dialogs.length !== 2 || dialogs[1].message !== t.leave) throw new Error("后退应再弹一次确认框：" + JSON.stringify(dialogs));
     if ((await page.evaluate(() => location.hash)) !== invoicesHash) throw new Error("后退取消后应留在原地址");
@@ -247,7 +250,15 @@ for (const [lang, theme, width] of combos) {
 
   log.push({ page: "s9", tag, errors });
 }
+} catch (e) {
+  failure = e;
+  log.push({ failure: String(e && e.stack ? e.stack : e) });
+}
 await browser.close();
 await writeFile(join(out, "capture-log-main.json"), JSON.stringify(log, null, 1));
 console.log(JSON.stringify(log.filter((l) => (l.overflowPx !== undefined && l.overflowPx > 0) || l.errors?.length)));
 console.log("shots", log.filter((l) => l.name).length);
+if (failure) {
+  console.error("CAPTURE FAILED:", failure.message);
+  process.exit(1);
+}
