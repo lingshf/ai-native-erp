@@ -1,0 +1,87 @@
+
+> ai-native-erp@0.1.0 build
+> npm run build --workspace @erp/web
+
+
+> @erp/web@0.1.0 build
+> vite build
+
+[36mvite v8.3.6 [32mbuilding client environment for production...[36m[39m
+transforming...
+✓ 239 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                0.45 kB │ gzip:   0.29 kB
+dist/assets/Accounts-0Trj-Hyg.css              0.89 kB │ gzip:   0.37 kB
+dist/assets/master-l0PINZ8G.css                1.77 kB │ gzip:   0.73 kB
+dist/assets/TradeReports-B2X2bxpq.css          1.86 kB │ gzip:   0.60 kB
+dist/assets/ledger-BsKUGf7q.css                2.08 kB │ gzip:   0.73 kB
+dist/assets/PeriodClose-Cnfbimgu.css           2.24 kB │ gzip:   0.73 kB
+dist/assets/trade-settlements-KB9rSY3-.css     2.86 kB │ gzip:   0.82 kB
+dist/assets/TradeOrders-Byy8hhk8.css           2.97 kB │ gzip:   0.88 kB
+dist/assets/TradeInvoices-BOD48ZcD.css         3.78 kB │ gzip:   1.00 kB
+dist/assets/Migration-Dt5F-mml.css             5.03 kB │ gzip:   1.15 kB
+dist/assets/Journals-C9RttyBw.css              5.81 kB │ gzip:   1.60 kB
+dist/assets/index-DhcDIMA7.css                10.50 kB │ gzip:   2.92 kB
+dist/assets/components-BSHRe5rS.css           12.42 kB │ gzip:   2.57 kB
+dist/assets/useQuery-DsYzBie2.js               0.09 kB │ gzip:   0.10 kB
+dist/assets/leave-guard-history-DckX-nJV.js    0.39 kB │ gzip:   0.27 kB
+dist/assets/master-data-client-BnVap3Fi.js     0.71 kB │ gzip:   0.45 kB
+dist/assets/useInfiniteQuery-DCYVOcaa.js       1.15 kB │ gzip:   0.49 kB
+dist/assets/components-DO3-MUvz.js             1.68 kB │ gzip:   0.74 kB
+dist/assets/reports-data-BN0JgF3T.js           1.94 kB │ gzip:   0.94 kB
+dist/assets/Migration-D9m-WBRT.js              5.11 kB │ gzip:   1.87 kB
+dist/assets/useBaseQuery-ChvdnLGe.js           7.89 kB │ gzip:   2.90 kB
+dist/assets/Dimensions-C_GZf7Md.js            10.84 kB │ gzip:   3.68 kB
+dist/assets/Reports-DhUh5phR.js               11.75 kB │ gzip:   3.66 kB
+dist/assets/TradeReports-BOfekvdI.js          11.87 kB │ gzip:   3.50 kB
+dist/assets/TradeSettlements-bp1x9NeX.js      12.22 kB │ gzip:   4.34 kB
+dist/assets/PeriodClose-eObDHx2K.js           12.25 kB │ gzip:   4.21 kB
+dist/assets/Accounts-jdKuvDqT.js              12.34 kB │ gzip:   3.70 kB
+dist/assets/TradeMaster-NZx6DEIe.js           12.71 kB │ gzip:   4.61 kB
+dist/assets/esm-C_dnQjB_.js                   12.95 kB │ gzip:   4.28 kB
+dist/assets/TradeAdjustments-DpvPGfw_.js      17.58 kB │ gzip:   5.57 kB
+dist/assets/LedgerReports-DSPvYDdV.js         17.61 kB │ gzip:   4.97 kB
+dist/assets/TradeInvoices-BFYbNcto.js         24.69 kB │ gzip:   7.20 kB
+dist/assets/BusinessEvents-CW8GpqG1.js        29.46 kB │ gzip:   6.73 kB
+dist/assets/Journals-DlKnkeUa.js              32.66 kB │ gzip:   8.55 kB
+dist/assets/TradeOrders-BgXhrCA3.js           36.74 kB │ gzip:  11.15 kB
+dist/assets/index-dyFJ3KCS.js                528.30 kB │ gzip: 162.45 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[32m✓ built in 556ms[39m
+prepared C:\Users\shaoling\AppData\Local\Temp\erp-demo-668340cb-ea6a-4ac2-9e7c-53c5c8364681\demo.sqlite 2026
+ready port=4201 pid=64968 start=01:51:07
+posted PARTY AP-DEMO 11300
+posted PARTY2 AP-DEMO2 11300
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+GET /api/v1/trade/orders/PO-I1/invoicing?company=DEFAULT 200
+GET /api/v1/trade/orders/PO-I2/invoicing?company=DEFAULT 200
+GET /api/v1/trade/orders/PO-I3/invoicing?company=DEFAULT 200
+seed-invoicing ok: PO-I1 L1 4/10 L2 0/4; PO-I2 L1 10/10; PO-I3 L1 0/5
+POST /api/v1/trade/tradeProduct 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+GET /api/v1/trade/orders/SO-I1/invoicing?company=DEFAULT 200
+GET /api/v1/trade/orders/SO-I2/invoicing?company=DEFAULT 200
+seed-sales ok: SO-I1 L1 4/10 L2 0/4; SO-I2 L1 10/10 (AR, PARTY2)
+readiness ok: partner, 5 orders (3 AP none/partial/full + 2 AR partial/full), 4 invoices with source order (2 AP + 2 AR)
+[]
+shots 24
+capture exit 0
+port 4201 released
+exit=0 ok=True log=C:\Users\shaoling\AppData\Local\Temp\demo-s10-shots-b36cb05a-8ceb-4eaa-8921-4f7cd91aab0a.run.log
