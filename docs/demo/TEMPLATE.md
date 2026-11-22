@@ -89,18 +89,23 @@ runner 与 capture 的 stdout / stderr 先完整写入文件，再看输出；�
   $cmd = { node docs/demo/v0.4.0/scripts/capture.mjs }   # 换成 runner / capture 的实际命令
   $global:LASTEXITCODE = 0
   $code = 0
+  $prevEap = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"   # Stop 下 5.1 会在第一行 stderr 处终止管道，丢后续 stdout，并把实际退出码记成 1
   try {
     & $cmd *>&1 | Tee-Object -FilePath $log -Append
     $code = $LASTEXITCODE
   } catch {
     $code = 1   # runner 自己 throw（例如监听归属检查失败）：没有原生命令退出码，记为 1
     "EXCEPTION: $($_ | Out-String)" | Tee-Object -FilePath $log -Append
+  } finally {
+    $ErrorActionPreference = $prevEap
   }
   "exit=$code log=$log" | Tee-Object -FilePath $log -Append
   if ($code -ne 0) { throw "失败，退出码 $code；截图目录与日志保留，不清理：$log" }
 }
 ```
 
+- 块内把 `$ErrorActionPreference` 设为 `Continue`，结束时恢复原值：原生命令的 stderr 与实际退出码都会落盘（Windows PowerShell 5.1 在 `Stop` 下会因第一条 stderr 提前终止管道，丢掉后续 stdout，并把退出码记成 1）。
 - 日志名含毫秒和 GUID，同一秒内先后运行 runner 与 capture 也不会互相覆盖；`-Append` 只在同一次运行内追加。runner 抛错与原生命令非 0 退出都会落盘：前者写 `EXCEPTION:` 加原始错误，两者都写 `exit=` 与日志路径。
 - 失败时**先保存现场再做别的**：截图目录（capture 已写出的图）和日志文件原样保留，不跑收尾里的清理，不重试；停服务与释放端口除外（只停本轮的 `$server`）。
 - PR 正文 / 回报写完整错误与退出码、日志路径；断言类中止另写**失败断言的原文**。原文丢失就写“原断言已丢失，根因未知”，不要推测成脚本问题。
