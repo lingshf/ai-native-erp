@@ -66,7 +66,7 @@ D330 批准，2026-11-22 01:33:50 至 01:35:58（-08:00），约 2 分 08 秒，
 
 无浏览器替身准备（时段前，已验证）：orchestration-stub B7 在 Windows PowerShell 5.1 下实跑 README 取图块，成功、原生 stderr 后仍有 stdout 并以退出码 3 失败（日志记 `exit=3`）、runner 抛错三条路径均通过。
 
-D332 批准，2026-11-22 01:43:47 至 01:45:33（-08:00），约 1 分 46 秒，一次连续跑，未重跑。`ERP_E2E_BROWSER_CHANNEL=chrome`，端口 4201，PowerShell 7.6（README 取图块原文执行，从 README 取出）。预检 6 次外部进程均为 0；按 README §4 取图块：build、dist 断言、`run-main.ps1`（seed-trade、seed-invoicing、seed-sales、readiness ok、capture）通过，`shots 24`，`capture exit 0`，`exit=0 ok=True`，端口 4201 已释放；shots 目录已清，日志 `$shots.run.log` 保留在本机临时目录。本次没有重跑演练（D332 只批 1)–2)）。
+D332 批准，2026-11-22 01:43:47 至 01:45:33（-08:00），约 1 分 46 秒，一次连续跑，未重跑。`ERP_E2E_BROWSER_CHANNEL=chrome`，端口 4201，PowerShell 7.6（README 取图块原文执行，从 README 取出）。预检 6 次外部进程均为 0；按 README §4 取图块：build、dist 断言、`run-main.ps1`（seed-trade、seed-invoicing、seed-sales、readiness ok、capture）通过，`shots 24`，`capture exit 0`，`exit=0 ok=True`，端口 4201 已释放；shots 目录已清；日志 `$shots.run.log` 的内容在时段里完整输出到控制台并据此核对，之后该临时日志文件已被我删除，不再保留。本次没有重跑演练（D332 只批 1)–2)）。
 
 结果：24 张全部重取并入库；删除 4 张 `order-deeplink-ar-*`，新增 4 张 `order-from-invoice-ar-*`（zh-red / en-green × 1440 / 390）。`capture-log-main.json` 里 4 条 `order-from-invoice-ar` 记录的实际 hash 均为 `#/trade-orders?company=DEFAULT&order=SO-I1`，`via` 为 `click td.tinv-source a[title=SO-I1]`；24 项 `overflowPx` 均为 0，4 个组合 `errors` 均为 `[]`。§3 “工具判定复核”为“无”（未中止，产品代码未改）。
 
