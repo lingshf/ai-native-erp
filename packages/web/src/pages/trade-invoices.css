@@ -241,7 +241,14 @@
 }
 .trade-invoices .tinv-detail-body {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
+  min-width: 0;
+}
+/* 网格项默认 min-width: auto 会被行表格的最小内容宽度撑开，使整个对话框横向滚动、右侧字段被裁掉；
+   置 0 后表格只在自身 .grid-wrap 内横向滚动。特异度 (0,3,0) / (0,4,0)，只作用于对话框内。 */
+.trade-invoices .tinv-detail-body > *,
+.trade-invoices .tinv-detail .tinv-split > * {
   min-width: 0;
 }
 .trade-invoices .tinv-detail-body h4 {

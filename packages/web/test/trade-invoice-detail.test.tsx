@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { tradeInvoiceDetailSchema, type TradeInvoiceDetailDto } from "@erp/core/contracts";
 import { App } from "../src/App.tsx";
 import { label, preferenceStorageKey, type LabelKey } from "../src/ui/index.ts";
+import { detailLabel, type TradeInvoiceDetailKey } from "../src/ui/trade-invoice-detail-labels.ts";
 
 const company = {
   code: "DEFAULT",
@@ -19,6 +20,7 @@ const documentId = uuid(1);
 const itemId = uuid(2);
 const journalId = uuid(3);
 const t = (key: Exclude<LabelKey, "shell.httpError">) => label("zh", key);
+const d = (key: TradeInvoiceDetailKey) => detailLabel("zh", key);
 const response = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const error = (status: number, code: string) =>
   response(
@@ -288,8 +290,8 @@ function serve(value: TradeInvoiceDetailDto, reply?: Reply) {
   };
 }
 const trigger = () =>
-  screen.findByRole<HTMLButtonElement>("button", { name: `${t("tinv.detail.open")} INV-1` });
-const dialogTitle = `${t("tinv.detail.title")} · INV-1`;
+  screen.findByRole<HTMLButtonElement>("button", { name: `${d("tinv.detail.open")} INV-1` });
+const dialogTitle = `${d("tinv.detail.title")} · INV-1`;
 async function open() {
   const button = await trigger();
   button.focus();
@@ -335,7 +337,7 @@ describe("TINV-06 invoice detail dialog", () => {
     expect(button.getAttribute("aria-haspopup")).toBe("dialog");
     expect(button.textContent).toBe("INV-1");
     const dialog = await open();
-    const header = await within(dialog).findByRole("region", { name: t("tinv.detail.header") });
+    const header = await within(dialog).findByRole("region", { name: d("tinv.detail.header") });
     const fact = (key: Parameters<typeof t>[0]) =>
       within(header).getByText(t(key)).nextElementSibling?.textContent;
     expect(fact("tinv.side")).toBe(t("trade.AP"));
@@ -345,7 +347,9 @@ describe("TINV-06 invoice detail dialog", () => {
     expect(fact("tinv.documentDate")).toBe("2026-03-30");
     expect(fact("tinv.taxDate")).toBe("2026-03-29");
     expect(fact("tinv.dueDate")).toBe("2026-04-30");
-    expect(fact("tinv.detail.currency")).toBe("CNY");
+    expect(within(header).getByText(d("tinv.detail.currency")).nextElementSibling?.textContent).toBe(
+      "CNY",
+    );
     expect(fact("tinv.controlAccount")).toBe("2100");
     expect(fact("tinv.poMatch")).toBe(t("tinv.matched"));
     expect(fact("tinv.sourceOrder")).toBe("PO-1");
@@ -358,7 +362,7 @@ describe("TINV-06 invoice detail dialog", () => {
         .getAllByRole("columnheader")
         .map((th) => th.textContent),
     ).toEqual([
-      t("tinv.detail.lineNo"),
+      d("tinv.detail.lineNo"),
       t("tinv.product"),
       t("tinv.quantity"),
       t("tinv.unitPrice"),
@@ -366,7 +370,7 @@ describe("TINV-06 invoice detail dialog", () => {
       t("tinv.net"),
       t("tinv.tax"),
       t("tinv.gross"),
-      t("tinv.detail.matchStatus"),
+      d("tinv.detail.matchStatus"),
     ]);
     expect(
       within(lines)
@@ -383,7 +387,7 @@ describe("TINV-06 invoice detail dialog", () => {
       money(11300),
       t("tinv.matched"),
     ]);
-    const totals = within(dialog).getByRole("region", { name: t("tinv.detail.totals") });
+    const totals = within(dialog).getByRole("region", { name: d("tinv.detail.totals") });
     expect(within(totals).getByText(t("tinv.gross")).nextElementSibling?.textContent).toBe(
       money(11300),
     );
@@ -393,7 +397,7 @@ describe("TINV-06 invoice detail dialog", () => {
     serve(detail({ side: "AR", orderId: null }));
     render(<App />);
     const dialog = await open();
-    const header = await within(dialog).findByRole("region", { name: t("tinv.detail.header") });
+    const header = await within(dialog).findByRole("region", { name: d("tinv.detail.header") });
     expect(within(header).getByText(t("tinv.side")).nextElementSibling?.textContent).toBe(
       t("trade.AR"),
     );
@@ -401,8 +405,8 @@ describe("TINV-06 invoice detail dialog", () => {
       t("tinv.noSourceOrder"),
     );
     expect(dialog.querySelector("a")).toBeNull();
-    expect(within(dialog).getByText(t("tinv.detail.noSettlements"))).toBeTruthy();
-    expect(within(dialog).getByText(t("tinv.detail.noActions"))).toBeTruthy();
+    expect(within(dialog).getByText(d("tinv.detail.noSettlements"))).toBeTruthy();
+    expect(within(dialog).getByText(d("tinv.detail.noActions"))).toBeTruthy();
     expect(within(dialog).queryByRole("button", { name: /POST|过账/u })).toBeNull();
   });
 
@@ -420,14 +424,14 @@ describe("TINV-06 invoice detail dialog", () => {
     );
     render(<App />);
     const dialog = await open();
-    const item = await within(dialog).findByRole("region", { name: t("tinv.detail.openItem") });
+    const item = await within(dialog).findByRole("region", { name: d("tinv.detail.openItem") });
     expect(within(item).getByText(t("tadj.status")).nextElementSibling?.textContent).toBe(
       t("tadj.open"),
     );
-    expect(within(item).getByText(t("tinv.detail.remaining")).nextElementSibling?.textContent).toBe(
+    expect(within(item).getByText(d("tinv.detail.remaining")).nextElementSibling?.textContent).toBe(
       money(6300),
     );
-    const records = within(dialog).getByRole("table", { name: t("tinv.detail.settlements") });
+    const records = within(dialog).getByRole("table", { name: d("tinv.detail.settlements") });
     expect(
       within(records)
         .getAllByRole("cell")
@@ -446,7 +450,7 @@ describe("TINV-06 invoice detail dialog", () => {
     );
     render(<App />);
     const dialog = await open();
-    const records = await within(dialog).findByRole("table", { name: t("tinv.detail.actions") });
+    const records = await within(dialog).findByRole("table", { name: d("tinv.detail.actions") });
     expect(
       within(records)
         .getAllByRole("row")
@@ -467,7 +471,7 @@ describe("TINV-06 invoice detail dialog", () => {
     const { unmount } = render(<App />);
     let dialog = await open();
     expect((await within(dialog).findByRole("alert")).textContent).toContain(
-      t("tinv.detail.notFound"),
+      d("tinv.detail.notFound"),
     );
     expect(within(dialog).queryByRole("button", { name: t("master.retry") })).toBeNull();
     unmount();
@@ -477,7 +481,7 @@ describe("TINV-06 invoice detail dialog", () => {
     render(<App />);
     dialog = await open();
     expect((await within(dialog).findByRole("alert")).textContent).toContain(
-      t("tinv.detail.error"),
+      d("tinv.detail.error"),
     );
     fireEvent.click(within(dialog).getByRole("button", { name: t("master.retry") }));
     expect(await within(dialog).findByRole("table", { name: t("tinv.lines") })).toBeTruthy();
@@ -492,8 +496,8 @@ describe("TINV-06 invoice detail dialog", () => {
     serve(detail(), () => new Promise<Response>(() => {}));
     render(<App />);
     const dialog = await open();
-    expect(within(dialog).getByRole("status").textContent).toBe(t("tinv.detail.loading"));
-    fireEvent.click(within(dialog).getByRole("button", { name: t("tinv.detail.close") }));
+    expect(within(dialog).getByRole("status").textContent).toBe(d("tinv.detail.loading"));
+    fireEvent.click(within(dialog).getByRole("button", { name: d("tinv.detail.close") }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(document.activeElement).toBe(await trigger());
   });
@@ -508,7 +512,7 @@ describe("TINV-06 invoice detail dialog", () => {
     const dialog = await open();
     expect(document.activeElement).toBe(dialog);
     await within(dialog).findByRole("table", { name: t("tinv.lines") });
-    const close = within(dialog).getByRole("button", { name: t("tinv.detail.close") });
+    const close = within(dialog).getByRole("button", { name: d("tinv.detail.close") });
     const focusables = Array.from(
       dialog.querySelectorAll<HTMLElement>("button:not(:disabled),[tabindex='0']"),
     );
@@ -543,7 +547,7 @@ describe("TINV-06 invoice detail dialog", () => {
     let dialog = await open();
     await within(dialog).findByRole("table", { name: t("tinv.lines") });
     expect(served.detailCalls()).toBe(1);
-    fireEvent.click(within(dialog).getByRole("button", { name: t("tinv.detail.close") }));
+    fireEvent.click(within(dialog).getByRole("button", { name: d("tinv.detail.close") }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     dialog = await open();
     await within(dialog).findByRole("table", { name: t("tinv.lines") });
@@ -565,14 +569,14 @@ describe("TINV-06 invoice detail dialog", () => {
     serve(detail());
     const { unmount } = render(<App />);
     const en = (key: Parameters<typeof t>[0]) => label("en", key);
-    let button = await screen.findByRole("button", { name: `${en("tinv.detail.open")} INV-1` });
+    let button = await screen.findByRole("button", { name: `${detailLabel("en", "tinv.detail.open")} INV-1` });
     fireEvent.click(button);
-    let dialog = await screen.findByRole("dialog", { name: `${en("tinv.detail.title")} · INV-1` });
+    let dialog = await screen.findByRole("dialog", { name: `${detailLabel("en", "tinv.detail.title")} · INV-1` });
     await within(dialog).findByRole("table", { name: en("tinv.lines") });
     const tip = within(dialog).getByRole("complementary", { name: en("master.teachingTitle") });
-    expect(tip.textContent).toContain(`${en("tinv.detail.teachingPosting")} ${journalId}`);
-    expect(tip.textContent).toContain(`${en("tinv.detail.teachingControl")} 2100`);
-    expect(tip.textContent).toContain(en("tinv.detail.teachingSettle"));
+    expect(tip.textContent).toContain(`${detailLabel("en", "tinv.detail.teachingPosting")} ${journalId}`);
+    expect(tip.textContent).toContain(`${detailLabel("en", "tinv.detail.teachingControl")} 2100`);
+    expect(tip.textContent).toContain(detailLabel("en", "tinv.detail.teachingSettle"));
     unmount();
 
     window.localStorage.setItem(
@@ -580,9 +584,9 @@ describe("TINV-06 invoice detail dialog", () => {
       JSON.stringify({ language: "en", theme: "green", teaching: false }),
     );
     render(<App />);
-    button = await screen.findByRole("button", { name: `${en("tinv.detail.open")} INV-1` });
+    button = await screen.findByRole("button", { name: `${detailLabel("en", "tinv.detail.open")} INV-1` });
     fireEvent.click(button);
-    dialog = await screen.findByRole("dialog", { name: `${en("tinv.detail.title")} · INV-1` });
+    dialog = await screen.findByRole("dialog", { name: `${detailLabel("en", "tinv.detail.title")} · INV-1` });
     await within(dialog).findByRole("table", { name: en("tinv.lines") });
     expect(within(dialog).queryByRole("complementary")).toBeNull();
     await act(async () => {});

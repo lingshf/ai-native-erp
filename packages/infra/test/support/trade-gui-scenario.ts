@@ -14,6 +14,10 @@ import { SqliteExecutor } from "../../src/workers/executor.ts";
 import { createApi, type LocalApi } from "../../src/http/index.ts";
 import { label, resources } from "../../../web/src/ui/index.ts";
 import { orderLabel, type TradeOrderKey } from "../../../web/src/ui/trade-order-labels.ts";
+import {
+  detailLabel,
+  type TradeInvoiceDetailKey,
+} from "../../../web/src/ui/trade-invoice-detail-labels.ts";
 import { formatMinor } from "../../../web/src/reports-data.ts";
 import { navigateTitle, targetPageShown, type NavigatePath } from "./navigate-ready.ts";
 
@@ -951,6 +955,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
     // TINV-02: the order detail's invoiced / not-invoiced quantities and its Invoice entry, which
     // opens the invoice page with a draft carried in from the order (TINV-01 `fromOrder`).
     const ordered = (key: TradeOrderKey) => orderLabel(language, key);
+    const detailed = (key: TradeInvoiceDetailKey) => detailLabel(language, key);
     async function orderQuantities(orderId: string) {
       const detail = page.getByRole("table", {
         name: `${ordered("tord.lines")} ${orderId}`,
@@ -1602,11 +1607,11 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       const list = page.getByRole("table", { name: t("tinv.list"), exact: true });
       const scroller = page.locator("section.tinv-list-scroll");
       const trigger = list.getByRole("button", {
-        name: `${t("tinv.detail.open")} AP-DEMO`,
+        name: `${detailed("tinv.detail.open")} AP-DEMO`,
         exact: true,
       });
       const dialog = page.getByRole("dialog", {
-        name: `${t("tinv.detail.title")} · AP-DEMO`,
+        name: `${detailed("tinv.detail.title")} · AP-DEMO`,
         exact: true,
       });
       const money = (minor: number) => formatMinor(minor, language);
@@ -1656,7 +1661,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
           .locator("thead th")
           .allTextContents();
         expect(headers).toEqual([
-          t("tinv.detail.lineNo"),
+          detailed("tinv.detail.lineNo"),
           t("tinv.product"),
           t("tinv.quantity"),
           t("tinv.unitPrice"),
@@ -1664,21 +1669,21 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
           t("tinv.net"),
           t("tinv.tax"),
           t("tinv.gross"),
-          t("tinv.detail.matchStatus"),
+          detailed("tinv.detail.matchStatus"),
         ]);
-        const totals = dialog.getByRole("region", { name: t("tinv.detail.totals"), exact: true });
+        const totals = dialog.getByRole("region", { name: detailed("tinv.detail.totals"), exact: true });
         expect(await totals.locator("dd").allTextContents()).toEqual([
           money(10000),
           money(1300),
           money(11300),
         ]);
         const remaining = dialog.getByRole("region", {
-          name: t("tinv.detail.openItem"),
+          name: detailed("tinv.detail.openItem"),
           exact: true,
         });
         expect(await remaining.locator("dd").last().textContent()).toBe(money(3650));
         const settled = dialog.getByRole("table", {
-          name: t("tinv.detail.settlements"),
+          name: detailed("tinv.detail.settlements"),
           exact: true,
         });
         expect(await settled.locator("tbody tr").first().locator("td").nth(2).textContent()).toBe(
@@ -1687,10 +1692,16 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         const geometry = await dialog.evaluate((element) => ({
           page: document.documentElement.scrollWidth - window.innerWidth,
           dialog: element.getBoundingClientRect().width,
+          // The dialog itself never scrolls sideways: wide tables scroll inside their own wrap.
+          overflow: element.scrollWidth - element.clientWidth,
           viewport: window.innerWidth,
           lines: (() => {
             const wrap = element.querySelector(".tinv-detail-lines") as HTMLElement;
-            return { scroll: wrap.scrollWidth, client: wrap.clientWidth };
+            return {
+              scroll: wrap.scrollWidth,
+              client: wrap.clientWidth,
+              width: wrap.getBoundingClientRect().width,
+            };
           })(),
         }));
         console.log(`[tinv06] ${name} ${width} ${key} ${JSON.stringify(geometry)}`);
@@ -1700,6 +1711,8 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         );
         expect(geometry.page).toBeLessThanOrEqual(0);
         expect(geometry.dialog).toBeLessThanOrEqual(geometry.viewport);
+        expect(geometry.overflow).toBeLessThanOrEqual(0);
+        expect(geometry.lines.width).toBeLessThanOrEqual(geometry.dialog);
         if (width === 1440)
           expect(geometry.lines.scroll).toBeLessThanOrEqual(geometry.lines.client);
         return before;
@@ -1722,7 +1735,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         before = await open("Space", 1440);
         await activate(
           page,
-          dialog.getByRole("button", { name: t("tinv.detail.close"), exact: true }),
+          dialog.getByRole("button", { name: detailed("tinv.detail.close"), exact: true }),
         );
         await closed(before);
         await page.setViewportSize({ width: 390, height: 1100 });
@@ -1748,12 +1761,12 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
     // confirmed Back reaches the previous page. The dirty draft is removed afterwards.
     async function detailBack() {
       const dialog = page.getByRole("dialog", {
-        name: `${t("tinv.detail.title")} · AP-DEMO`,
+        name: `${detailed("tinv.detail.title")} · AP-DEMO`,
         exact: true,
       });
       const trigger = page
         .getByRole("table", { name: t("tinv.list"), exact: true })
-        .getByRole("button", { name: `${t("tinv.detail.open")} AP-DEMO`, exact: true });
+        .getByRole("button", { name: `${detailed("tinv.detail.open")} AP-DEMO`, exact: true });
       let dialogs = 0;
       let accept = false;
       const answer = async (event: import("playwright").Dialog) => {

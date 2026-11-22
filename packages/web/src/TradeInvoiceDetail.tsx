@@ -6,11 +6,16 @@ import {
   type TradeInvoiceDetailDto,
 } from "@erp/core/contracts";
 import { label, type LabelKey, type Preferences } from "./ui/index.ts";
+import {
+  detailLabel,
+  isDetailKey,
+  type TradeInvoiceDetailKey,
+} from "./ui/trade-invoice-detail-labels.ts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
 import { MessageBar, TeachingTip } from "./ui/components/index.tsx";
 
-type Key = Exclude<LabelKey, "shell.httpError">;
+type Key = Exclude<LabelKey, "shell.httpError"> | TradeInvoiceDetailKey;
 type T = (key: Key) => string;
 
 /** Query key of one invoice's detail; every open fetches it again (staleTime 0, gcTime 0). */
@@ -36,7 +41,8 @@ export function TradeInvoiceDetail({
   preferences: Preferences;
   close: () => void;
 }) {
-  const t: T = (key) => label(preferences.language, key);
+  const t: T = (key) =>
+    isDetailKey(key) ? detailLabel(preferences.language, key) : label(preferences.language, key);
   const ref = useRef<HTMLDialogElement>(null);
   const detail = useQuery({
     queryKey: invoiceDetailKey(company.code, documentId),

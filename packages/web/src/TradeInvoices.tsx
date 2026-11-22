@@ -18,6 +18,7 @@ import {
 } from "@erp/core/contracts";
 import { label, type LabelKey, type Preferences } from "./ui/index.ts";
 import { tradeEn } from "./ui/trade-labels.ts";
+import { detailLabel } from "./ui/trade-invoice-detail-labels.ts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
 import { guardHistory, type HistoryGuard } from "./leave-guard-history.ts";
@@ -1286,7 +1287,7 @@ function InvoiceList({
                       type="button"
                       className="tinv-detail-trigger"
                       aria-haspopup="dialog"
-                      aria-label={`${t("tinv.detail.open")} ${row.externalNo}`}
+                      aria-label={`${detailLabel(preferences.language, "tinv.detail.open")} ${row.externalNo}`}
                       data-document-id={row.documentId}
                       onClick={() =>
                         setDetail({ documentId: row.documentId, externalNo: row.externalNo })
