@@ -469,8 +469,9 @@ function httpSend(address: string): Send {
     return result;
   };
 }
-// The longest legal order ID (companyCodeSchema: 60 characters) for the 390 px wrap check.
-export const longOrderId = `SO-LONG-REFERENCE-${"0123456789".repeat(5).slice(0, 42)}`;
+// The longest legal order ID (companyCodeSchema: 60 characters), all wide uppercase letters,
+// for the 390 px wrap check.
+export const longOrderId = `SO-LONG-REFERENCE-${"ABCDEFGHIJKLMNOPQRSTUVWXYZ".repeat(2).slice(0, 42)}`;
 // TINV-04: sales orders and AR invoices posted against them, through the real HTTP API. A domain
 // rejection fails here at once (httpSend throws on any non-2xx), not later as a missing row.
 export async function seedSourceOrders(send: Send) {
@@ -1357,7 +1358,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
           await page.screenshot({ path: join(artifacts, `${name}-invoice-list.png`) });
           await page.setViewportSize({ width: 390, height: 1100 });
           // The 60-character order ID wraps inside its cell: full text shown (not clipped by
-          // the 3-line clamp), the row keeps the virtual list's 44 px, the cell stays narrow.
+          // the 3-line clamp), the row keeps the virtual list's 44 px, the cell stays bounded.
           const long = row("AR-LONG-SO").getByRole("link", { name: longOrderId, exact: true });
           await long.scrollIntoViewIfNeeded();
           const box = await long.evaluate((element) => {
@@ -1372,7 +1373,8 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
           });
           expect(box).toMatchObject({ clipped: false, row: 44, title: longOrderId });
           expect(box.lines).toBeGreaterThan(1);
-          expect(box.cell).toBeLessThanOrEqual(200);
+          expect(box.lines).toBeLessThanOrEqual(3);
+          expect(box.cell).toBeLessThanOrEqual(240);
           await page.screenshot({ path: join(artifacts, `${name}-invoice-list-390.png`) });
           await page.setViewportSize({ width: 1440, height: 1100 });
         }
