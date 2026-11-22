@@ -1671,7 +1671,10 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
           t("tinv.gross"),
           detailed("tinv.detail.matchStatus"),
         ]);
-        const totals = dialog.getByRole("region", { name: detailed("tinv.detail.totals"), exact: true });
+        const totals = dialog.getByRole("region", {
+          name: detailed("tinv.detail.totals"),
+          exact: true,
+        });
         expect(await totals.locator("dd").allTextContents()).toEqual([
           money(10000),
           money(1300),

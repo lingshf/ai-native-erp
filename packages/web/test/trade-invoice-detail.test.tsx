@@ -347,9 +347,9 @@ describe("TINV-06 invoice detail dialog", () => {
     expect(fact("tinv.documentDate")).toBe("2026-03-30");
     expect(fact("tinv.taxDate")).toBe("2026-03-29");
     expect(fact("tinv.dueDate")).toBe("2026-04-30");
-    expect(within(header).getByText(d("tinv.detail.currency")).nextElementSibling?.textContent).toBe(
-      "CNY",
-    );
+    expect(
+      within(header).getByText(d("tinv.detail.currency")).nextElementSibling?.textContent,
+    ).toBe("CNY");
     expect(fact("tinv.controlAccount")).toBe("2100");
     expect(fact("tinv.poMatch")).toBe(t("tinv.matched"));
     expect(fact("tinv.sourceOrder")).toBe("PO-1");
@@ -569,12 +569,18 @@ describe("TINV-06 invoice detail dialog", () => {
     serve(detail());
     const { unmount } = render(<App />);
     const en = (key: Parameters<typeof t>[0]) => label("en", key);
-    let button = await screen.findByRole("button", { name: `${detailLabel("en", "tinv.detail.open")} INV-1` });
+    let button = await screen.findByRole("button", {
+      name: `${detailLabel("en", "tinv.detail.open")} INV-1`,
+    });
     fireEvent.click(button);
-    let dialog = await screen.findByRole("dialog", { name: `${detailLabel("en", "tinv.detail.title")} · INV-1` });
+    let dialog = await screen.findByRole("dialog", {
+      name: `${detailLabel("en", "tinv.detail.title")} · INV-1`,
+    });
     await within(dialog).findByRole("table", { name: en("tinv.lines") });
     const tip = within(dialog).getByRole("complementary", { name: en("master.teachingTitle") });
-    expect(tip.textContent).toContain(`${detailLabel("en", "tinv.detail.teachingPosting")} ${journalId}`);
+    expect(tip.textContent).toContain(
+      `${detailLabel("en", "tinv.detail.teachingPosting")} ${journalId}`,
+    );
     expect(tip.textContent).toContain(`${detailLabel("en", "tinv.detail.teachingControl")} 2100`);
     expect(tip.textContent).toContain(detailLabel("en", "tinv.detail.teachingSettle"));
     unmount();
@@ -584,9 +590,13 @@ describe("TINV-06 invoice detail dialog", () => {
       JSON.stringify({ language: "en", theme: "green", teaching: false }),
     );
     render(<App />);
-    button = await screen.findByRole("button", { name: `${detailLabel("en", "tinv.detail.open")} INV-1` });
+    button = await screen.findByRole("button", {
+      name: `${detailLabel("en", "tinv.detail.open")} INV-1`,
+    });
     fireEvent.click(button);
-    dialog = await screen.findByRole("dialog", { name: `${detailLabel("en", "tinv.detail.title")} · INV-1` });
+    dialog = await screen.findByRole("dialog", {
+      name: `${detailLabel("en", "tinv.detail.title")} · INV-1`,
+    });
     await within(dialog).findByRole("table", { name: en("tinv.lines") });
     expect(within(dialog).queryByRole("complementary")).toBeNull();
     await act(async () => {});
