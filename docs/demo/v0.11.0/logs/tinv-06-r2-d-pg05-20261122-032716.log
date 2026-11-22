@@ -1,0 +1,24 @@
+## step d PG-05 2026-11-22T03:27:16.2081121-08:00
+HEAD is now at 2a2dca1 SLOT-01: 独占时段采样器入库（R1 规则编号、逐条自测、清单检查） (#198)
+junction node_modules
+junction packages\web\node_modules
+[base before] HEAD 2a2dca1f562b239b134ecb8c7ea3bdb169cf3329 | commit time 2026-11-22T03:23:23-08:00 | porcelain []
+[head before] HEAD a8c496885d7d62758b64bb5524a39d998280862d | commit time 2026-11-22T03:27:04-08:00 | porcelain []
+## build base
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[32m✓ built in 419ms[39m
+exit 0
+## build head
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[32m✓ built in 384ms[39m
+exit 0
+[base after] HEAD 2a2dca1f562b239b134ecb8c7ea3bdb169cf3329 | commit time 2026-11-22T03:23:23-08:00 | porcelain []
+[head after] HEAD a8c496885d7d62758b64bb5524a39d998280862d | commit time 2026-11-22T03:27:04-08:00 | porcelain []
+[base] dist files 37, oldest mtime 2026-11-22T03:27:19.9648862-08:00, commit 2026-11-22T03:23:23.0000000-08:00, dist newer than commit: True
+[head] dist files 37, oldest mtime 2026-11-22T02:44:59.9674348-08:00, commit 2026-11-22T03:27:04.0000000-08:00, dist newer than commit: False
+## gzip-9
+index-*.js: base [('index-BaTS3IOu.js', 160155)] head [('index-_OqlCMsf.js', 160165)] delta +10 B
+TradeInvoices-*.js: base [('TradeInvoices-kpXPOhqy.js', 7215)] head [('TradeInvoices-B7GcXO2W.js', 9662)] delta +2447 B
+TradeInvoices-*.css: base [('TradeInvoices-BOD48ZcD.css', 1014)] head [('TradeInvoices-C9u1PWv2.css', 1242)] delta +228 B
+index-*.css: base [('index-DhcDIMA7.css', 2914)] head [('index-DhcDIMA7.css', 2914)] delta +0 B
+## note (appended after the run): the only dist file not newer than the commit is favicon.svg, copied from packages/web/public with its source mtime preserved (public/favicon.svg 2026-11-22T02:44:59.9674348-08:00). Measured head assets: index-_OqlCMsf.js 03:27:26.4949398, TradeInvoices-B7GcXO2W.js 03:27:26.5051711, TradeInvoices-C9u1PWv2.css 03:27:26.5265815, all newer than commit 03:27:04.

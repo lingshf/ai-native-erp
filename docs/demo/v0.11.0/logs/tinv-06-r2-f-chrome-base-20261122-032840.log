@@ -1,0 +1,13 @@
+## step f real Chrome on base (list geometry) 2026-11-22T03:28:40.1480903-08:00 cwd C:\Users\shaoling\AppData\Local\Temp\tinv06-base3 ERP_E2E_BROWSER_CHANNEL=chrome
+[before] HEAD 2a2dca1f562b239b134ecb8c7ea3bdb169cf3329 | commit time 2026-11-22T03:23:23-08:00 | porcelain []
+
+ RUN  v5.1.0 C:/Users/shaoling/AppData/Local/Temp/tinv06-base3
+
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  03:28:42
+   Duration  36.42s (tests 91%, import 6%, transform 3%)
+
+exit 0
+[after] HEAD 2a2dca1f562b239b134ecb8c7ea3bdb169cf3329 | porcelain [] | 2026-11-22T03:29:20.9059189-08:00
