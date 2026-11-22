@@ -66,8 +66,20 @@ D330 批准，2026-11-22 01:33:50 至 01:35:58（-08:00），约 2 分 08 秒，
 
 无浏览器替身准备（时段前，已验证）：orchestration-stub B7 在 Windows PowerShell 5.1 下实跑 README 取图块，成功、原生 stderr 后仍有 stdout 并以退出码 3 失败（日志记 `exit=3`）、runner 抛错三条路径均通过。
 
-D332 批准，2026-11-22 01:43:47 至 01:45:33（-08:00），约 1 分 46 秒，一次连续跑，未重跑。`ERP_E2E_BROWSER_CHANNEL=chrome`，端口 4201，PowerShell 7.6（README 取图块原文执行，从 README 取出）。预检 6 次外部进程均为 0；按 README §4 取图块：build、dist 断言、`run-main.ps1`（seed-trade、seed-invoicing、seed-sales、readiness ok、capture）通过，`shots 24`，`capture exit 0`，`exit=0 ok=True`，端口 4201 已释放；shots 目录已清；日志 `$shots.run.log` 的内容在时段里完整输出到控制台并据此核对，之后该临时日志文件已被我删除，不再保留。本次没有重跑演练（D332 只批 1)–2)）。
+D332 批准，2026-11-22 01:43:47 至 01:45:33（-08:00），约 1 分 46 秒，一次连续跑，未重跑。`ERP_E2E_BROWSER_CHANNEL=chrome`，端口 4201，PowerShell 7.6（README 取图块原文执行，从 README 取出）。预检 6 次外部进程均为 0；按 README §4 取图块：build、dist 断言、`run-main.ps1`（seed-trade、seed-invoicing、seed-sales、readiness ok、capture）通过，`shots 24`，`capture exit 0`，`exit=0 ok=True`，端口 4201 已释放；shots 目录已清；该次的完整日志文件已不存在（时段后被我删掉，未留原始副本），所以 D333 用同一取图块补跑并把完整日志入库（§5.3）。本次没有重跑演练（D332 只批 1)–2)）。
 
 结果：24 张全部重取并入库；删除 4 张 `order-deeplink-ar-*`，新增 4 张 `order-from-invoice-ar-*`（zh-red / en-green × 1440 / 390）。`capture-log-main.json` 里 4 条 `order-from-invoice-ar` 记录的实际 hash 均为 `#/trade-orders?company=DEFAULT&order=SO-I1`，`via` 为 `click td.tinv-source a[title=SO-I1]`；24 项 `overflowPx` 均为 0，4 个组合 `errors` 均为 `[]`。§3 “工具判定复核”为“无”（未中止，产品代码未改）。
 
 残留：无本轮 chrome / node；系统另有 6 个更早启动的 node（11/15、11/20、11/21），未触碰。
+
+### 5.3 D333 补跑（修好 `Copy-Item -ErrorAction Stop` 后，完整日志入库）
+
+README 取图块在 `Copy-Item` 上加 `-ErrorAction Stop`：复制失败进 catch，不设 `ok`，不删 `$shots` 里的原图。orchestration-stub B7 新增“复制失败保留原图”回归（目标里放同名目录 `shot-3.png` 使复制失败：日志 `ok=False` 且有 `EXCEPTION:`，块失败退出，shots 目录与 24 张原图保留），Windows PowerShell 5.1 下全部通过。
+
+取证完整 SHA：`939fa92c771419409ffda501fe1361759a2b501f`（运行时工作树 head，含修复；产品代码同 `c0189c7`）。
+
+D333 预批时段，2026-11-22 01:49:52 至 01:51:43（-08:00），约 1 分 51 秒，一次连续跑，未重跑。`ERP_E2E_BROWSER_CHANNEL=chrome`，端口 4201，PowerShell 7.6，README 取图块原文。预检 6 次外部进程均为 0。build、dist 断言、`run-main.ps1`（seed、readiness ok、capture）通过，`shots 24`，`capture exit 0`，`exit=0 ok=True`。
+
+- 完整日志：[`logs/capture-run-d333-20261122-014952.log`](logs/capture-run-d333-20261122-014952.log)（87 行，未截断；含 build、seed、readiness、capture 的 stdout/stderr 与最终 `exit=` 行），SHA-256 `3022eb7083ea1b2fa6bfeab111b912b06de7c85ce595834a40c56556dafa3ca1`（入库副本与原文件一致）。日志里 `log=` 指向的临时文件在入库后已删除。
+- 截图：24 张中只有 4 张 `order-from-invoice-ar-*` 与 §5.2 入库版有字节差异（页面显示“记录时间”，随运行变化），已按本次覆盖入库；其余 20 张与 `capture-log-main.json` 字节相同，无需更新。`overflowPx` 均为 0，`errors` 均为 `[]`。
+- 残留：无本轮 chrome / node；端口 4201 已释放；系统另有 6 个更早启动的 node（11/15、11/20、11/21），未触碰。
