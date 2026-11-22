@@ -181,7 +181,9 @@ runner 与 capture 的 stdout / stderr 先完整写入文件，再看输出；�
     $problems += "替身或前置检查失败：" + $_.Exception.Message
   } finally {
     $env:TEMP = $oldTemp; $env:TMP = $oldTmp
-    if ($iso -and (Split-Path $iso -Leaf) -like "erp-stub-*") { Remove-Item -Recurse -Force $iso -ErrorAction Stop }
+    if ($iso -and (Split-Path $iso -Leaf) -like "erp-stub-*") {
+      try { Remove-Item -Recurse -Force $iso -ErrorAction Stop } catch { $problems += "清理专用目录失败（保留 $iso，手工处理）：" + $_.Exception.Message }
+    }
     if ($null -ne $before) {
       try { $after = @(& $snap $real) } catch { $problems += "后置哈希失败（有文件读不了或目录消失）：" + $_.Exception.Message }
     }
