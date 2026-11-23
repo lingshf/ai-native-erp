@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import { App } from "../src/App.tsx";
-import { label } from "../src/ui/index.ts";
+import { label, type LabelKey } from "../src/ui/index.ts";
 import { masterTeaching } from "../src/ui/trade-master-teaching.ts";
 import type { TradeDto } from "@erp/core/contracts";
 
@@ -624,5 +624,110 @@ describe("trade master maintenance", () => {
     fireEvent.click(screen.getByRole("button", { name: label("zh", "dim.save") }));
     fireEvent.click(await screen.findByRole("button", { name: label("zh", "master.reload") }));
     expect(screen.queryByLabelText(label("zh", "trade.name"))).toBeNull();
+  });
+});
+// TLIST-02: "Refresh list" re-reads page one of the current company, kind and search, and no more.
+const zh = (key: Exclude<LabelKey, "shell.httpError">) => label("zh", key);
+const FIRST_PAGE = ["NET01", "NET02"];
+const SECOND_PAGE = ["NET03"];
+const NEXT_CURSOR = "NET02";
+const SEARCH = "NET";
+const REFRESH_TEXT = { zh: "刷新列表", en: "Refresh list" } as const;
+const CODE_CELLS = ".ui-master-scroll td:first-child";
+const listUrl = (kind: string, search = "") =>
+  `/api/v1/trade/${kind}?company=DEFAULT&limit=100${search ? `&search=${search}` : ""}`;
+const termsUrl = listUrl("tradeTerms", SEARCH);
+const listPage = (codes: string[], nextCursor: string | null = null) =>
+  response({ items: codes.map((code) => ({ ...terms, code })), nextCursor });
+const pageFor = (url: string) =>
+  url.includes("cursor=") ? listPage(SECOND_PAGE) : listPage(FIRST_PAGE, NEXT_CURSOR);
+// Lists answer `answer`'s reply, if any, or their page; every list URL and abort signal is recorded.
+function stubTwoPages(answer?: () => Promise<Response> | undefined) {
+  const record = { urls: [] as string[], signals: [] as AbortSignal[] };
+  vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+    if (url.startsWith("/api/v1/companies"))
+      return response({ items: [company], nextCursor: null });
+    record.urls.push(url);
+    record.signals.push(init.signal as AbortSignal);
+    return (await answer?.()) ?? pageFor(url);
+  });
+  return record;
+}
+const shownCodes = () => [...document.querySelectorAll(CODE_CELLS)].map((cell) => cell.textContent);
+const expectCodes = (codes: string[]) => waitFor(() => expect(shownCodes()).toEqual(codes));
+const refreshButton = () =>
+  screen.getByRole<HTMLButtonElement>("button", { name: REFRESH_TEXT.zh });
+const newButton = () => screen.getByRole<HTMLButtonElement>("button", { name: zh("trade.new") });
+const clickRefresh = () => fireEvent.click(refreshButton());
+const selectKind = async (kind: string) =>
+  fireEvent.change(await screen.findByLabelText(zh("trade.kind")), { target: { value: kind } });
+// Runs `trigger`, then expects exactly one more list request, to `url`, showing the first page.
+async function expectOneReread(urls: string[], trigger: () => void, url = termsUrl) {
+  const from = urls.length;
+  trigger();
+  await waitFor(() => expect(urls.slice(from)).toEqual([url]));
+  await expectCodes(FIRST_PAGE);
+}
+async function openTermsSearch(urls: string[]) {
+  render(<App />);
+  await selectKind("tradeTerms");
+  const search = screen.getByLabelText(zh("trade.search"));
+  await expectOneReread(urls, () => fireEvent.change(search, { target: { value: SEARCH } }));
+}
+describe("TLIST-02 trade master refresh list", () => {
+  it("L2: places a secondary Refresh list button after New configuration in zh and en", async () => {
+    stubTwoPages();
+    render(<App />);
+    for (const language of ["zh", "en"] as const) {
+      const languageSelect = await screen.findByLabelText(label("zh", "shell.language"));
+      fireEvent.change(languageSelect, { target: { value: language } });
+      const text = REFRESH_TEXT[language];
+      const refresh = await screen.findByRole("button", { name: text });
+      expect(refresh.parentElement?.textContent).toBe(`${label(language, "trade.new")}${text}`);
+      expect(refresh.outerHTML).toMatch(/^<button type="button" class="btn btn-secondary">/);
+    }
+  });
+  it("L3 / L6: after two pages, re-reads only the first page of the search, then of a switched kind", async () => {
+    const { urls } = stubTwoPages();
+    await openTermsSearch(urls);
+    fireEvent.click(screen.getByRole("button", { name: zh("master.loadMore") }));
+    await expectCodes([...FIRST_PAGE, ...SECOND_PAGE]);
+    await expectOneReread(urls, clickRefresh);
+    await expectOneReread(urls, () => void selectKind("tradeProduct"), listUrl("tradeProduct"));
+    await expectOneReread(urls, clickRefresh, listUrl("tradeProduct"));
+  });
+  it("L5: a second click cancels the first request and shows the winner once; a failure shows the notice", async () => {
+    const held: ((codes: string[]) => void)[] = [];
+    let answer: (() => Promise<Response>) | undefined;
+    const { urls, signals } = stubTwoPages(() => answer?.());
+    await openTermsSearch(urls);
+    answer = () => new Promise((resolve) => held.push((codes) => resolve(listPage(codes))));
+    clickRefresh();
+    await waitFor(() => expect(held).toHaveLength(1));
+    clickRefresh();
+    await waitFor(() => expect(held).toHaveLength(2));
+    expect(signals.slice(-2).map((signal) => signal.aborted)).toEqual([true, false]);
+    held[0]?.(["NET08"]); // The cancelled request answers first; only the winner is listed.
+    held[1]?.(["NET09"]);
+    await expectCodes(["NET09"]);
+    answer = () => Promise.reject(new TypeError("offline"));
+    clickRefresh();
+    within(await screen.findByRole("alert")).getByRole("button", { name: zh("master.retry") });
+  });
+  it("L4 / L7: Refresh list is the native button after New and stays enabled to refresh a dirty draft without asking", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { urls } = stubTwoPages();
+    await openTermsSearch(urls);
+    expect(newButton().nextElementSibling).toBe(refreshButton());
+    expect(refreshButton().hasAttribute("tabindex")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: `${zh("trade.edit")} NET01` }));
+    fireEvent.change(screen.getByLabelText(zh("trade.name")), { target: { value: "Unfinished" } });
+    expect([newButton().disabled, refreshButton().disabled]).toEqual([true, false]);
+    await expectOneReread(urls, clickRefresh);
+    const kept = (["trade.name", "trade.search", "trade.kind", "master.company"] as const).map(
+      (key) => screen.getByLabelText<HTMLInputElement | HTMLSelectElement>(zh(key)).value,
+    );
+    expect(kept).toEqual(["Unfinished", SEARCH, "tradeTerms", "DEFAULT"]);
+    expect(confirm).not.toHaveBeenCalled();
   });
 });
