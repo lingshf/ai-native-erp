@@ -1,0 +1,1520 @@
+[
+ {
+  "readiness": {
+   "apAll": 111,
+   "bigGross": 122011764641,
+   "orderAll": [
+    "PO-D1",
+    "PO-I1",
+    "PO-I2",
+    "PO-I3",
+    "SO-I1",
+    "SO-I2"
+   ],
+   "orderSets": {
+    "none": [
+     "PO-I3"
+    ],
+    "partial": [
+     "PO-I1",
+     "SO-I1"
+    ],
+    "full": [
+     "PO-D1",
+     "PO-I2",
+     "SO-I2"
+    ]
+   }
+  }
+ },
+ {
+  "name": "deeplink-detail-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=3b949749-98f9-40ce-82ad-a0ddc215dd4e",
+  "step": "deeplink-detail",
+  "entryHash": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=3b949749-98f9-40ce-82ad-a0ddc215dd4e",
+  "via": "goto deep link"
+ },
+ {
+  "name": "deeplink-invalid-invoice-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT&invoice=not-a-document-id",
+  "step": "deeplink-invalid-invoice",
+  "entryHash": "#/trade-invoices?company=DEFAULT&invoice=not-a-document-id",
+  "via": "goto deep link",
+  "detailRequests": 0,
+  "controlDetailRequests": 1
+ },
+ {
+  "name": "deeplink-invalid-filter-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT&side=XX",
+  "step": "deeplink-invalid-filter",
+  "entryHash": "#/trade-invoices?company=DEFAULT&side=XX",
+  "via": "goto deep link",
+  "rowcount": 101,
+  "controlRowcount": 3
+ },
+ {
+  "name": "orders-invoicing-none-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-orders?company=DEFAULT",
+  "step": "orders-invoicing-none",
+  "entryHash": "#/trade-orders?company=DEFAULT",
+  "via": "select #tord-filter-invoicing=none, click apply",
+  "before": 6,
+  "after": 1
+ },
+ {
+  "name": "orders-invoicing-partial-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-orders?company=DEFAULT",
+  "step": "orders-invoicing-partial",
+  "entryHash": "#/trade-orders?company=DEFAULT",
+  "via": "select #tord-filter-invoicing=partial, click apply",
+  "before": 6,
+  "after": 2
+ },
+ {
+  "name": "orders-invoicing-full-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-orders?company=DEFAULT",
+  "step": "orders-invoicing-full",
+  "entryHash": "#/trade-orders?company=DEFAULT",
+  "via": "select #tord-filter-invoicing=full, click apply",
+  "before": 6,
+  "after": 3
+ },
+ {
+  "name": "period-close-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/period-close",
+  "step": "page-header-period-close",
+  "entryHash": "#/",
+  "via": "click nav link #/period-close",
+  "badges": "期间贸易模块准入\n!\n贸易\n：未准入\n!\n税务\n：未准入"
+ },
+ {
+  "name": "header-accounts-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/accounts",
+  "step": "page-header-accounts",
+  "entryHash": "#/",
+  "via": "click nav link #/accounts"
+ },
+ {
+  "name": "header-dimensions-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/dimensions",
+  "step": "page-header-dimensions",
+  "entryHash": "#/",
+  "via": "click nav link #/dimensions"
+ },
+ {
+  "name": "header-journals-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/journals",
+  "step": "page-header-journals",
+  "entryHash": "#/",
+  "via": "click nav link #/journals"
+ },
+ {
+  "name": "header-events-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/events",
+  "step": "page-header-events",
+  "entryHash": "#/",
+  "via": "click nav link #/events"
+ },
+ {
+  "name": "invoice-list-filter-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-list-filter",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "none (entry page)",
+  "gaps": {
+   "headToForm": 0,
+   "padding": [
+    "16px",
+    "20px",
+    "16px",
+    "20px"
+   ]
+  }
+ },
+ {
+  "name": "invoice-detail-large-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=e58fefd2-3c7b-4a44-a9d1-73fd81c26908",
+  "step": "invoice-detail-large",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "filter party=PARTY2 side=AP, click AP-BIG-1",
+  "grossMinor": 122011764641,
+  "grouped": [
+   "1,234",
+   "1,000,000.12",
+   "12.5"
+  ],
+  "measure": {
+   "totalsRows": 1,
+   "totalsOverflowing": 0,
+   "dialogScrollWidth": 1098,
+   "dialogClientWidth": 1098,
+   "docScrollWidth": 1440,
+   "innerWidth": 1440
+  }
+ },
+ {
+  "page": "s12",
+  "tag": "zh-red-1440",
+  "errors": []
+ },
+ {
+  "name": "deeplink-detail-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=3b949749-98f9-40ce-82ad-a0ddc215dd4e",
+  "step": "deeplink-detail",
+  "entryHash": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=3b949749-98f9-40ce-82ad-a0ddc215dd4e",
+  "via": "goto deep link"
+ },
+ {
+  "name": "deeplink-invalid-invoice-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT&invoice=not-a-document-id",
+  "step": "deeplink-invalid-invoice",
+  "entryHash": "#/trade-invoices?company=DEFAULT&invoice=not-a-document-id",
+  "via": "goto deep link",
+  "detailRequests": 0,
+  "controlDetailRequests": 1
+ },
+ {
+  "name": "deeplink-invalid-filter-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT&side=XX",
+  "step": "deeplink-invalid-filter",
+  "entryHash": "#/trade-invoices?company=DEFAULT&side=XX",
+  "via": "goto deep link",
+  "rowcount": 101,
+  "controlRowcount": 3
+ },
+ {
+  "name": "orders-invoicing-none-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-orders?company=DEFAULT",
+  "step": "orders-invoicing-none",
+  "entryHash": "#/trade-orders?company=DEFAULT",
+  "via": "select #tord-filter-invoicing=none, click apply",
+  "before": 6,
+  "after": 1
+ },
+ {
+  "name": "orders-invoicing-partial-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-orders?company=DEFAULT",
+  "step": "orders-invoicing-partial",
+  "entryHash": "#/trade-orders?company=DEFAULT",
+  "via": "select #tord-filter-invoicing=partial, click apply",
+  "before": 6,
+  "after": 2
+ },
+ {
+  "name": "orders-invoicing-full-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-orders?company=DEFAULT",
+  "step": "orders-invoicing-full",
+  "entryHash": "#/trade-orders?company=DEFAULT",
+  "via": "select #tord-filter-invoicing=full, click apply",
+  "before": 6,
+  "after": 3
+ },
+ {
+  "name": "period-close-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/period-close",
+  "step": "page-header-period-close",
+  "entryHash": "#/",
+  "via": "click nav link #/period-close",
+  "badges": "期间贸易模块准入\n!\n贸易\n：未准入\n!\n税务\n：未准入"
+ },
+ {
+  "name": "header-accounts-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/accounts",
+  "step": "page-header-accounts",
+  "entryHash": "#/",
+  "via": "click nav link #/accounts"
+ },
+ {
+  "name": "header-dimensions-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/dimensions",
+  "step": "page-header-dimensions",
+  "entryHash": "#/",
+  "via": "click nav link #/dimensions"
+ },
+ {
+  "name": "header-journals-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/journals",
+  "step": "page-header-journals",
+  "entryHash": "#/",
+  "via": "click nav link #/journals"
+ },
+ {
+  "name": "header-events-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/events",
+  "step": "page-header-events",
+  "entryHash": "#/",
+  "via": "click nav link #/events"
+ },
+ {
+  "name": "invoice-list-filter-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-list-filter",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "none (entry page)",
+  "gaps": {
+   "headToForm": 0,
+   "padding": [
+    "16px",
+    "20px",
+    "16px",
+    "20px"
+   ]
+  }
+ },
+ {
+  "name": "invoice-detail-large-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=e58fefd2-3c7b-4a44-a9d1-73fd81c26908",
+  "step": "invoice-detail-large",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "filter party=PARTY2 side=AP, click AP-BIG-1",
+  "grossMinor": 122011764641,
+  "grouped": [
+   "1,234",
+   "1,000,000.12",
+   "12.5"
+  ],
+  "measure": {
+   "totalsRows": 2,
+   "totalsOverflowing": 0,
+   "dialogScrollWidth": 354,
+   "dialogClientWidth": 354,
+   "docScrollWidth": 390,
+   "innerWidth": 390
+  }
+ },
+ {
+  "page": "s12",
+  "tag": "zh-red-390",
+  "errors": []
+ },
+ {
+  "name": "deeplink-detail-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=3b949749-98f9-40ce-82ad-a0ddc215dd4e",
+  "step": "deeplink-detail",
+  "entryHash": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=3b949749-98f9-40ce-82ad-a0ddc215dd4e",
+  "via": "goto deep link"
+ },
+ {
+  "name": "deeplink-invalid-invoice-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT&invoice=not-a-document-id",
+  "step": "deeplink-invalid-invoice",
+  "entryHash": "#/trade-invoices?company=DEFAULT&invoice=not-a-document-id",
+  "via": "goto deep link",
+  "detailRequests": 0,
+  "controlDetailRequests": 1
+ },
+ {
+  "name": "deeplink-invalid-filter-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT&side=XX",
+  "step": "deeplink-invalid-filter",
+  "entryHash": "#/trade-invoices?company=DEFAULT&side=XX",
+  "via": "goto deep link",
+  "rowcount": 101,
+  "controlRowcount": 3
+ },
+ {
+  "name": "orders-invoicing-none-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-orders?company=DEFAULT",
+  "step": "orders-invoicing-none",
+  "entryHash": "#/trade-orders?company=DEFAULT",
+  "via": "select #tord-filter-invoicing=none, click apply",
+  "before": 6,
+  "after": 1
+ },
+ {
+  "name": "orders-invoicing-partial-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-orders?company=DEFAULT",
+  "step": "orders-invoicing-partial",
+  "entryHash": "#/trade-orders?company=DEFAULT",
+  "via": "select #tord-filter-invoicing=partial, click apply",
+  "before": 6,
+  "after": 2
+ },
+ {
+  "name": "orders-invoicing-full-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-orders?company=DEFAULT",
+  "step": "orders-invoicing-full",
+  "entryHash": "#/trade-orders?company=DEFAULT",
+  "via": "select #tord-filter-invoicing=full, click apply",
+  "before": 6,
+  "after": 3
+ },
+ {
+  "name": "period-close-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/period-close",
+  "step": "page-header-period-close",
+  "entryHash": "#/",
+  "via": "click nav link #/period-close",
+  "badges": "Period trade module admission\n!\nTrade\n: not admitted\n!\nTax\n: not admitted"
+ },
+ {
+  "name": "header-accounts-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/accounts",
+  "step": "page-header-accounts",
+  "entryHash": "#/",
+  "via": "click nav link #/accounts"
+ },
+ {
+  "name": "header-dimensions-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/dimensions",
+  "step": "page-header-dimensions",
+  "entryHash": "#/",
+  "via": "click nav link #/dimensions"
+ },
+ {
+  "name": "header-journals-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/journals",
+  "step": "page-header-journals",
+  "entryHash": "#/",
+  "via": "click nav link #/journals"
+ },
+ {
+  "name": "header-events-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/events",
+  "step": "page-header-events",
+  "entryHash": "#/",
+  "via": "click nav link #/events"
+ },
+ {
+  "name": "invoice-list-filter-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-list-filter",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "none (entry page)",
+  "gaps": {
+   "headToForm": 0,
+   "padding": [
+    "16px",
+    "20px",
+    "16px",
+    "20px"
+   ]
+  }
+ },
+ {
+  "name": "invoice-detail-large-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=e58fefd2-3c7b-4a44-a9d1-73fd81c26908",
+  "step": "invoice-detail-large",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "filter party=PARTY2 side=AP, click AP-BIG-1",
+  "grossMinor": 122011764641,
+  "grouped": [
+   "1,234",
+   "1,000,000.12",
+   "12.5"
+  ],
+  "measure": {
+   "totalsRows": 1,
+   "totalsOverflowing": 0,
+   "dialogScrollWidth": 1098,
+   "dialogClientWidth": 1098,
+   "docScrollWidth": 1440,
+   "innerWidth": 1440
+  }
+ },
+ {
+  "page": "s12",
+  "tag": "en-green-1440",
+  "errors": []
+ },
+ {
+  "name": "deeplink-detail-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=3b949749-98f9-40ce-82ad-a0ddc215dd4e",
+  "step": "deeplink-detail",
+  "entryHash": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=3b949749-98f9-40ce-82ad-a0ddc215dd4e",
+  "via": "goto deep link"
+ },
+ {
+  "name": "deeplink-invalid-invoice-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT&invoice=not-a-document-id",
+  "step": "deeplink-invalid-invoice",
+  "entryHash": "#/trade-invoices?company=DEFAULT&invoice=not-a-document-id",
+  "via": "goto deep link",
+  "detailRequests": 0,
+  "controlDetailRequests": 1
+ },
+ {
+  "name": "deeplink-invalid-filter-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT&side=XX",
+  "step": "deeplink-invalid-filter",
+  "entryHash": "#/trade-invoices?company=DEFAULT&side=XX",
+  "via": "goto deep link",
+  "rowcount": 101,
+  "controlRowcount": 3
+ },
+ {
+  "name": "orders-invoicing-none-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-orders?company=DEFAULT",
+  "step": "orders-invoicing-none",
+  "entryHash": "#/trade-orders?company=DEFAULT",
+  "via": "select #tord-filter-invoicing=none, click apply",
+  "before": 6,
+  "after": 1
+ },
+ {
+  "name": "orders-invoicing-partial-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-orders?company=DEFAULT",
+  "step": "orders-invoicing-partial",
+  "entryHash": "#/trade-orders?company=DEFAULT",
+  "via": "select #tord-filter-invoicing=partial, click apply",
+  "before": 6,
+  "after": 2
+ },
+ {
+  "name": "orders-invoicing-full-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-orders?company=DEFAULT",
+  "step": "orders-invoicing-full",
+  "entryHash": "#/trade-orders?company=DEFAULT",
+  "via": "select #tord-filter-invoicing=full, click apply",
+  "before": 6,
+  "after": 3
+ },
+ {
+  "name": "period-close-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/period-close",
+  "step": "page-header-period-close",
+  "entryHash": "#/",
+  "via": "click nav link #/period-close",
+  "badges": "Period trade module admission\n!\nTrade\n: not admitted\n!\nTax\n: not admitted"
+ },
+ {
+  "name": "header-accounts-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/accounts",
+  "step": "page-header-accounts",
+  "entryHash": "#/",
+  "via": "click nav link #/accounts"
+ },
+ {
+  "name": "header-dimensions-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/dimensions",
+  "step": "page-header-dimensions",
+  "entryHash": "#/",
+  "via": "click nav link #/dimensions"
+ },
+ {
+  "name": "header-journals-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/journals",
+  "step": "page-header-journals",
+  "entryHash": "#/",
+  "via": "click nav link #/journals"
+ },
+ {
+  "name": "header-events-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/events",
+  "step": "page-header-events",
+  "entryHash": "#/",
+  "via": "click nav link #/events"
+ },
+ {
+  "name": "invoice-list-filter-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-list-filter",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "none (entry page)",
+  "gaps": {
+   "headToForm": 0,
+   "padding": [
+    "16px",
+    "20px",
+    "16px",
+    "20px"
+   ]
+  }
+ },
+ {
+  "name": "invoice-detail-large-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=e58fefd2-3c7b-4a44-a9d1-73fd81c26908",
+  "step": "invoice-detail-large",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "filter party=PARTY2 side=AP, click AP-BIG-1",
+  "grossMinor": 122011764641,
+  "grouped": [
+   "1,234",
+   "1,000,000.12",
+   "12.5"
+  ],
+  "measure": {
+   "totalsRows": 2,
+   "totalsOverflowing": 0,
+   "dialogScrollWidth": 354,
+   "dialogClientWidth": 354,
+   "docScrollWidth": 390,
+   "innerWidth": 390
+  }
+ },
+ {
+  "page": "s12",
+  "tag": "en-green-390",
+  "errors": []
+ },
+ {
+  "checks": [
+   {
+    "check": "zh-red-1440 深链接对照无对话框/详情请求",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "zh-red-1440 深链接详情合计含 100.00",
+    "ok": true,
+    "detail": "合计\n净额\n100.00\n税额\n13.00\n价税合计\n113.00"
+   },
+   {
+    "check": "zh-red-1440 深链接详情合计含 13.00",
+    "ok": true,
+    "detail": "合计\n净额\n100.00\n税额\n13.00\n价税合计\n113.00"
+   },
+   {
+    "check": "zh-red-1440 深链接详情合计含 113.00",
+    "ok": true,
+    "detail": "合计\n净额\n100.00\n税额\n13.00\n价税合计\n113.00"
+   },
+   {
+    "check": "zh-red-1440 深链接恰好一个详情请求",
+    "ok": true,
+    "detail": [
+     "GET /api/v1/trade/invoices/3b949749-98f9-40ce-82ad-a0ddc215dd4e"
+    ]
+   },
+   {
+    "check": "zh-red-1440 深链接不改写地址栏",
+    "ok": true,
+    "detail": {
+     "entry": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=3b949749-98f9-40ce-82ad-a0ddc215dd4e",
+     "hash": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=3b949749-98f9-40ce-82ad-a0ddc215dd4e"
+    }
+   },
+   {
+    "check": "zh-red-1440 对照（格式正确、不存在）发一个详情请求",
+    "ok": true,
+    "detail": [
+     "GET /api/v1/trade/invoices/00000000-0000-0000-0000-000000000000"
+    ]
+   },
+   {
+    "check": "zh-red-1440 非法 invoice 不发详情请求",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "zh-red-1440 非法 invoice 无重试按钮",
+    "ok": true,
+    "detail": null
+   },
+   {
+    "check": "zh-red-1440 对照（合法 side=AR）无警告",
+    "ok": true,
+    "detail": null
+   },
+   {
+    "check": "zh-red-1440 警告含文案",
+    "ok": true,
+    "detail": "!\n\n链接中的筛选条件无效，已忽略；当前显示全部发票。\n\n清除"
+   },
+   {
+    "check": "zh-red-1440 忽略非法筛选后显示全部发票",
+    "ok": true,
+    "detail": {
+     "rows": 101,
+     "controlRows": 3
+    }
+   },
+   {
+    "check": "zh-red-1440 none 徽标全为 未开票",
+    "ok": true,
+    "detail": [
+     "!\n未开票"
+    ]
+   },
+   {
+    "check": "zh-red-1440 partial 徽标全为 部分开票",
+    "ok": true,
+    "detail": [
+     "i\n部分开票",
+     "i\n部分开票"
+    ]
+   },
+   {
+    "check": "zh-red-1440 full 徽标全为 已开完",
+    "ok": true,
+    "detail": [
+     "✓\n已开完",
+     "✓\n已开完",
+     "✓\n已开完"
+    ]
+   },
+   {
+    "check": "zh-red-1440 #/period-close 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "期末结账",
+     "description": "先预览再确认结账；贸易与税务写入前，先在本页保存期间准入。",
+     "header": "期末结账\n\n先预览再确认结账；贸易与税务写入前，先在本页保存期间准入。"
+    }
+   },
+   {
+    "check": "zh-red-1440 准入徽标可见文本含 贸易",
+    "ok": true,
+    "detail": "期间贸易模块准入\n!\n贸易\n：未准入\n!\n税务\n：未准入"
+   },
+   {
+    "check": "zh-red-1440 准入徽标可见文本含 税务",
+    "ok": true,
+    "detail": "期间贸易模块准入\n!\n贸易\n：未准入\n!\n税务\n：未准入"
+   },
+   {
+    "check": "zh-red-1440 复选框 准入贸易",
+    "ok": true,
+    "detail": null
+   },
+   {
+    "check": "zh-red-1440 复选框 准入税务",
+    "ok": true,
+    "detail": null
+   },
+   {
+    "check": "zh-red-1440 #/accounts 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "科目表",
+     "description": "按公司维护会计科目的类别、报表分组、余额方向与手工录入权限。",
+     "header": "科目表\n\n按公司维护会计科目的类别、报表分组、余额方向与手工录入权限。"
+    }
+   },
+   {
+    "check": "zh-red-1440 #/dimensions 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "财务维度",
+     "description": "配置维度、维度值、科目维度结构、默认值、派生规则与平衡维度。",
+     "header": "财务维度\n\n配置维度、维度值、科目维度结构、默认值、派生规则与平衡维度。"
+    }
+   },
+   {
+    "check": "zh-red-1440 #/journals 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "凭证",
+     "description": "录入手工凭证草稿，预览并确认过账，再查看或反向已过账凭证。",
+     "header": "凭证\n\n录入手工凭证草稿，预览并确认过账，再查看或反向已过账凭证。"
+    }
+   },
+   {
+    "check": "zh-red-1440 #/events 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "业务事件",
+     "description": "维护服务、往来方与过账规则，录入业务事件并处理待转队列。",
+     "header": "业务事件\n\n维护服务、往来方与过账规则，录入业务事件并处理待转队列。"
+    }
+   },
+   {
+    "check": "zh-red-1440 详情行数量/单价/折扣千分位",
+    "ok": true,
+    "detail": {
+     "grouped": [
+      "1,234",
+      "1,000,000.12",
+      "12.5"
+     ],
+     "api": [
+      "1234",
+      "1000000.12",
+      "12.5"
+     ]
+    }
+   },
+   {
+    "check": "zh-red-1440 合计与 API net/tax/gross 一致",
+    "ok": true,
+    "detail": {
+     "dd": [
+      "1,079,750,129.57",
+      "140,367,516.84",
+      "1,220,117,646.41"
+     ],
+     "net": 107975012957,
+     "tax": 14036751684,
+     "gross": 122011764641
+    }
+   },
+   {
+    "check": "zh-red-1440 合计金额不溢出单元格",
+    "ok": true,
+    "detail": {
+     "totalsRows": 1,
+     "totalsOverflowing": 0,
+     "dialogScrollWidth": 1098,
+     "dialogClientWidth": 1098,
+     "docScrollWidth": 1440,
+     "innerWidth": 1440
+    }
+   },
+   {
+    "check": "zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": {
+     "totalsRows": 1,
+     "totalsOverflowing": 0,
+     "dialogScrollWidth": 1098,
+     "dialogClientWidth": 1098,
+     "docScrollWidth": 1440,
+     "innerWidth": 1440
+    }
+   },
+   {
+    "check": "zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "zh-red-390 深链接对照无对话框/详情请求",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "zh-red-390 深链接详情合计含 100.00",
+    "ok": true,
+    "detail": "合计\n净额\n100.00\n税额\n13.00\n价税合计\n113.00"
+   },
+   {
+    "check": "zh-red-390 深链接详情合计含 13.00",
+    "ok": true,
+    "detail": "合计\n净额\n100.00\n税额\n13.00\n价税合计\n113.00"
+   },
+   {
+    "check": "zh-red-390 深链接详情合计含 113.00",
+    "ok": true,
+    "detail": "合计\n净额\n100.00\n税额\n13.00\n价税合计\n113.00"
+   },
+   {
+    "check": "zh-red-390 深链接恰好一个详情请求",
+    "ok": true,
+    "detail": [
+     "GET /api/v1/trade/invoices/3b949749-98f9-40ce-82ad-a0ddc215dd4e"
+    ]
+   },
+   {
+    "check": "zh-red-390 深链接不改写地址栏",
+    "ok": true,
+    "detail": {
+     "entry": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=3b949749-98f9-40ce-82ad-a0ddc215dd4e",
+     "hash": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=3b949749-98f9-40ce-82ad-a0ddc215dd4e"
+    }
+   },
+   {
+    "check": "zh-red-390 对照（格式正确、不存在）发一个详情请求",
+    "ok": true,
+    "detail": [
+     "GET /api/v1/trade/invoices/00000000-0000-0000-0000-000000000000"
+    ]
+   },
+   {
+    "check": "zh-red-390 非法 invoice 不发详情请求",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "zh-red-390 非法 invoice 无重试按钮",
+    "ok": true,
+    "detail": null
+   },
+   {
+    "check": "zh-red-390 对照（合法 side=AR）无警告",
+    "ok": true,
+    "detail": null
+   },
+   {
+    "check": "zh-red-390 警告含文案",
+    "ok": true,
+    "detail": "!\n\n链接中的筛选条件无效，已忽略；当前显示全部发票。\n\n清除"
+   },
+   {
+    "check": "zh-red-390 忽略非法筛选后显示全部发票",
+    "ok": true,
+    "detail": {
+     "rows": 101,
+     "controlRows": 3
+    }
+   },
+   {
+    "check": "zh-red-390 none 徽标全为 未开票",
+    "ok": true,
+    "detail": [
+     "!\n未开票"
+    ]
+   },
+   {
+    "check": "zh-red-390 partial 徽标全为 部分开票",
+    "ok": true,
+    "detail": [
+     "i\n部分开票",
+     "i\n部分开票"
+    ]
+   },
+   {
+    "check": "zh-red-390 full 徽标全为 已开完",
+    "ok": true,
+    "detail": [
+     "✓\n已开完",
+     "✓\n已开完",
+     "✓\n已开完"
+    ]
+   },
+   {
+    "check": "zh-red-390 #/period-close 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "期末结账",
+     "description": "先预览再确认结账；贸易与税务写入前，先在本页保存期间准入。",
+     "header": "期末结账\n\n先预览再确认结账；贸易与税务写入前，先在本页保存期间准入。"
+    }
+   },
+   {
+    "check": "zh-red-390 准入徽标可见文本含 贸易",
+    "ok": true,
+    "detail": "期间贸易模块准入\n!\n贸易\n：未准入\n!\n税务\n：未准入"
+   },
+   {
+    "check": "zh-red-390 准入徽标可见文本含 税务",
+    "ok": true,
+    "detail": "期间贸易模块准入\n!\n贸易\n：未准入\n!\n税务\n：未准入"
+   },
+   {
+    "check": "zh-red-390 复选框 准入贸易",
+    "ok": true,
+    "detail": null
+   },
+   {
+    "check": "zh-red-390 复选框 准入税务",
+    "ok": true,
+    "detail": null
+   },
+   {
+    "check": "zh-red-390 #/accounts 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "科目表",
+     "description": "按公司维护会计科目的类别、报表分组、余额方向与手工录入权限。",
+     "header": "科目表\n\n按公司维护会计科目的类别、报表分组、余额方向与手工录入权限。"
+    }
+   },
+   {
+    "check": "zh-red-390 #/dimensions 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "财务维度",
+     "description": "配置维度、维度值、科目维度结构、默认值、派生规则与平衡维度。",
+     "header": "财务维度\n\n配置维度、维度值、科目维度结构、默认值、派生规则与平衡维度。"
+    }
+   },
+   {
+    "check": "zh-red-390 #/journals 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "凭证",
+     "description": "录入手工凭证草稿，预览并确认过账，再查看或反向已过账凭证。",
+     "header": "凭证\n\n录入手工凭证草稿，预览并确认过账，再查看或反向已过账凭证。"
+    }
+   },
+   {
+    "check": "zh-red-390 #/events 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "业务事件",
+     "description": "维护服务、往来方与过账规则，录入业务事件并处理待转队列。",
+     "header": "业务事件\n\n维护服务、往来方与过账规则，录入业务事件并处理待转队列。"
+    }
+   },
+   {
+    "check": "zh-red-390 详情行数量/单价/折扣千分位",
+    "ok": true,
+    "detail": {
+     "grouped": [
+      "1,234",
+      "1,000,000.12",
+      "12.5"
+     ],
+     "api": [
+      "1234",
+      "1000000.12",
+      "12.5"
+     ]
+    }
+   },
+   {
+    "check": "zh-red-390 合计与 API net/tax/gross 一致",
+    "ok": true,
+    "detail": {
+     "dd": [
+      "1,079,750,129.57",
+      "140,367,516.84",
+      "1,220,117,646.41"
+     ],
+     "net": 107975012957,
+     "tax": 14036751684,
+     "gross": 122011764641
+    }
+   },
+   {
+    "check": "zh-red-390 合计金额不溢出单元格",
+    "ok": true,
+    "detail": {
+     "totalsRows": 2,
+     "totalsOverflowing": 0,
+     "dialogScrollWidth": 354,
+     "dialogClientWidth": 354,
+     "docScrollWidth": 390,
+     "innerWidth": 390
+    }
+   },
+   {
+    "check": "zh-red-390 页面无横向溢出",
+    "ok": true,
+    "detail": {
+     "totalsRows": 2,
+     "totalsOverflowing": 0,
+     "dialogScrollWidth": 354,
+     "dialogClientWidth": 354,
+     "docScrollWidth": 390,
+     "innerWidth": 390
+    }
+   },
+   {
+    "check": "zh-red-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "en-green-1440 深链接对照无对话框/详情请求",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "en-green-1440 深链接详情合计含 100.00",
+    "ok": true,
+    "detail": "Totals\nNet\n100.00\nTax\n13.00\nGross\n113.00"
+   },
+   {
+    "check": "en-green-1440 深链接详情合计含 13.00",
+    "ok": true,
+    "detail": "Totals\nNet\n100.00\nTax\n13.00\nGross\n113.00"
+   },
+   {
+    "check": "en-green-1440 深链接详情合计含 113.00",
+    "ok": true,
+    "detail": "Totals\nNet\n100.00\nTax\n13.00\nGross\n113.00"
+   },
+   {
+    "check": "en-green-1440 深链接恰好一个详情请求",
+    "ok": true,
+    "detail": [
+     "GET /api/v1/trade/invoices/3b949749-98f9-40ce-82ad-a0ddc215dd4e"
+    ]
+   },
+   {
+    "check": "en-green-1440 深链接不改写地址栏",
+    "ok": true,
+    "detail": {
+     "entry": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=3b949749-98f9-40ce-82ad-a0ddc215dd4e",
+     "hash": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=3b949749-98f9-40ce-82ad-a0ddc215dd4e"
+    }
+   },
+   {
+    "check": "en-green-1440 对照（格式正确、不存在）发一个详情请求",
+    "ok": true,
+    "detail": [
+     "GET /api/v1/trade/invoices/00000000-0000-0000-0000-000000000000"
+    ]
+   },
+   {
+    "check": "en-green-1440 非法 invoice 不发详情请求",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "en-green-1440 非法 invoice 无重试按钮",
+    "ok": true,
+    "detail": null
+   },
+   {
+    "check": "en-green-1440 对照（合法 side=AR）无警告",
+    "ok": true,
+    "detail": null
+   },
+   {
+    "check": "en-green-1440 忽略非法筛选后显示全部发票",
+    "ok": true,
+    "detail": {
+     "rows": 101,
+     "controlRows": 3
+    }
+   },
+   {
+    "check": "en-green-1440 none 徽标全为 Not invoiced",
+    "ok": true,
+    "detail": [
+     "!\nNot invoiced"
+    ]
+   },
+   {
+    "check": "en-green-1440 partial 徽标全为 Partly invoiced",
+    "ok": true,
+    "detail": [
+     "i\nPartly invoiced",
+     "i\nPartly invoiced"
+    ]
+   },
+   {
+    "check": "en-green-1440 full 徽标全为 Fully invoiced",
+    "ok": true,
+    "detail": [
+     "✓\nFully invoiced",
+     "✓\nFully invoiced",
+     "✓\nFully invoiced"
+    ]
+   },
+   {
+    "check": "en-green-1440 #/period-close 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "Period close",
+     "description": "Preview, then confirm the close; save the period admission here before trade and tax writes.",
+     "header": "Period close\n\nPreview, then confirm the close; save the period admission here before trade and tax writes."
+    }
+   },
+   {
+    "check": "en-green-1440 准入徽标可见文本含 Trade",
+    "ok": true,
+    "detail": "Period trade module admission\n!\nTrade\n: not admitted\n!\nTax\n: not admitted"
+   },
+   {
+    "check": "en-green-1440 准入徽标可见文本含 Tax",
+    "ok": true,
+    "detail": "Period trade module admission\n!\nTrade\n: not admitted\n!\nTax\n: not admitted"
+   },
+   {
+    "check": "en-green-1440 复选框 Admit trade",
+    "ok": true,
+    "detail": null
+   },
+   {
+    "check": "en-green-1440 复选框 Admit tax",
+    "ok": true,
+    "detail": null
+   },
+   {
+    "check": "en-green-1440 #/accounts 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "Chart of accounts",
+     "description": "Maintain each company's accounts: category, report group, normal side and manual-entry permission.",
+     "header": "Chart of accounts\n\nMaintain each company's accounts: category, report group, normal side and manual-entry permission."
+    }
+   },
+   {
+    "check": "en-green-1440 #/dimensions 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "Financial dimensions",
+     "description": "Configure dimensions, values, account structures, defaults, derivation rules and balancing dimensions.",
+     "header": "Financial dimensions\n\nConfigure dimensions, values, account structures, defaults, derivation rules and balancing dimensions."
+    }
+   },
+   {
+    "check": "en-green-1440 #/journals 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "Journals",
+     "description": "Enter manual journal drafts, preview and confirm posting, then review or reverse posted journals.",
+     "header": "Journals\n\nEnter manual journal drafts, preview and confirm posting, then review or reverse posted journals."
+    }
+   },
+   {
+    "check": "en-green-1440 #/events 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "Business events",
+     "description": "Maintain services, parties and posting rules, record business events and process the transfer queue.",
+     "header": "Business events\n\nMaintain services, parties and posting rules, record business events and process the transfer queue."
+    }
+   },
+   {
+    "check": "en-green-1440 详情行数量/单价/折扣千分位",
+    "ok": true,
+    "detail": {
+     "grouped": [
+      "1,234",
+      "1,000,000.12",
+      "12.5"
+     ],
+     "api": [
+      "1234",
+      "1000000.12",
+      "12.5"
+     ]
+    }
+   },
+   {
+    "check": "en-green-1440 合计与 API net/tax/gross 一致",
+    "ok": true,
+    "detail": {
+     "dd": [
+      "1,079,750,129.57",
+      "140,367,516.84",
+      "1,220,117,646.41"
+     ],
+     "net": 107975012957,
+     "tax": 14036751684,
+     "gross": 122011764641
+    }
+   },
+   {
+    "check": "en-green-1440 合计金额不溢出单元格",
+    "ok": true,
+    "detail": {
+     "totalsRows": 1,
+     "totalsOverflowing": 0,
+     "dialogScrollWidth": 1098,
+     "dialogClientWidth": 1098,
+     "docScrollWidth": 1440,
+     "innerWidth": 1440
+    }
+   },
+   {
+    "check": "en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": {
+     "totalsRows": 1,
+     "totalsOverflowing": 0,
+     "dialogScrollWidth": 1098,
+     "dialogClientWidth": 1098,
+     "docScrollWidth": 1440,
+     "innerWidth": 1440
+    }
+   },
+   {
+    "check": "en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "en-green-390 深链接对照无对话框/详情请求",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "en-green-390 深链接详情合计含 100.00",
+    "ok": true,
+    "detail": "Totals\nNet\n100.00\nTax\n13.00\nGross\n113.00"
+   },
+   {
+    "check": "en-green-390 深链接详情合计含 13.00",
+    "ok": true,
+    "detail": "Totals\nNet\n100.00\nTax\n13.00\nGross\n113.00"
+   },
+   {
+    "check": "en-green-390 深链接详情合计含 113.00",
+    "ok": true,
+    "detail": "Totals\nNet\n100.00\nTax\n13.00\nGross\n113.00"
+   },
+   {
+    "check": "en-green-390 深链接恰好一个详情请求",
+    "ok": true,
+    "detail": [
+     "GET /api/v1/trade/invoices/3b949749-98f9-40ce-82ad-a0ddc215dd4e"
+    ]
+   },
+   {
+    "check": "en-green-390 深链接不改写地址栏",
+    "ok": true,
+    "detail": {
+     "entry": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=3b949749-98f9-40ce-82ad-a0ddc215dd4e",
+     "hash": "#/trade-invoices?company=DEFAULT&party=PARTY2&side=AP&invoice=3b949749-98f9-40ce-82ad-a0ddc215dd4e"
+    }
+   },
+   {
+    "check": "en-green-390 对照（格式正确、不存在）发一个详情请求",
+    "ok": true,
+    "detail": [
+     "GET /api/v1/trade/invoices/00000000-0000-0000-0000-000000000000"
+    ]
+   },
+   {
+    "check": "en-green-390 非法 invoice 不发详情请求",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "en-green-390 非法 invoice 无重试按钮",
+    "ok": true,
+    "detail": null
+   },
+   {
+    "check": "en-green-390 对照（合法 side=AR）无警告",
+    "ok": true,
+    "detail": null
+   },
+   {
+    "check": "en-green-390 忽略非法筛选后显示全部发票",
+    "ok": true,
+    "detail": {
+     "rows": 101,
+     "controlRows": 3
+    }
+   },
+   {
+    "check": "en-green-390 none 徽标全为 Not invoiced",
+    "ok": true,
+    "detail": [
+     "!\nNot invoiced"
+    ]
+   },
+   {
+    "check": "en-green-390 partial 徽标全为 Partly invoiced",
+    "ok": true,
+    "detail": [
+     "i\nPartly invoiced",
+     "i\nPartly invoiced"
+    ]
+   },
+   {
+    "check": "en-green-390 full 徽标全为 Fully invoiced",
+    "ok": true,
+    "detail": [
+     "✓\nFully invoiced",
+     "✓\nFully invoiced",
+     "✓\nFully invoiced"
+    ]
+   },
+   {
+    "check": "en-green-390 #/period-close 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "Period close",
+     "description": "Preview, then confirm the close; save the period admission here before trade and tax writes.",
+     "header": "Period close\n\nPreview, then confirm the close; save the period admission here before trade and tax writes."
+    }
+   },
+   {
+    "check": "en-green-390 准入徽标可见文本含 Trade",
+    "ok": true,
+    "detail": "Period trade module admission\n!\nTrade\n: not admitted\n!\nTax\n: not admitted"
+   },
+   {
+    "check": "en-green-390 准入徽标可见文本含 Tax",
+    "ok": true,
+    "detail": "Period trade module admission\n!\nTrade\n: not admitted\n!\nTax\n: not admitted"
+   },
+   {
+    "check": "en-green-390 复选框 Admit trade",
+    "ok": true,
+    "detail": null
+   },
+   {
+    "check": "en-green-390 复选框 Admit tax",
+    "ok": true,
+    "detail": null
+   },
+   {
+    "check": "en-green-390 #/accounts 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "Chart of accounts",
+     "description": "Maintain each company's accounts: category, report group, normal side and manual-entry permission.",
+     "header": "Chart of accounts\n\nMaintain each company's accounts: category, report group, normal side and manual-entry permission."
+    }
+   },
+   {
+    "check": "en-green-390 #/dimensions 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "Financial dimensions",
+     "description": "Configure dimensions, values, account structures, defaults, derivation rules and balancing dimensions.",
+     "header": "Financial dimensions\n\nConfigure dimensions, values, account structures, defaults, derivation rules and balancing dimensions."
+    }
+   },
+   {
+    "check": "en-green-390 #/journals 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "Journals",
+     "description": "Enter manual journal drafts, preview and confirm posting, then review or reverse posted journals.",
+     "header": "Journals\n\nEnter manual journal drafts, preview and confirm posting, then review or reverse posted journals."
+    }
+   },
+   {
+    "check": "en-green-390 #/events 页头含说明",
+    "ok": true,
+    "detail": {
+     "title": "Business events",
+     "description": "Maintain services, parties and posting rules, record business events and process the transfer queue.",
+     "header": "Business events\n\nMaintain services, parties and posting rules, record business events and process the transfer queue."
+    }
+   },
+   {
+    "check": "en-green-390 详情行数量/单价/折扣千分位",
+    "ok": true,
+    "detail": {
+     "grouped": [
+      "1,234",
+      "1,000,000.12",
+      "12.5"
+     ],
+     "api": [
+      "1234",
+      "1000000.12",
+      "12.5"
+     ]
+    }
+   },
+   {
+    "check": "en-green-390 合计与 API net/tax/gross 一致",
+    "ok": true,
+    "detail": {
+     "dd": [
+      "1,079,750,129.57",
+      "140,367,516.84",
+      "1,220,117,646.41"
+     ],
+     "net": 107975012957,
+     "tax": 14036751684,
+     "gross": 122011764641
+    }
+   },
+   {
+    "check": "en-green-390 合计金额不溢出单元格",
+    "ok": true,
+    "detail": {
+     "totalsRows": 2,
+     "totalsOverflowing": 0,
+     "dialogScrollWidth": 354,
+     "dialogClientWidth": 354,
+     "docScrollWidth": 390,
+     "innerWidth": 390
+    }
+   },
+   {
+    "check": "en-green-390 页面无横向溢出",
+    "ok": true,
+    "detail": {
+     "totalsRows": 2,
+     "totalsOverflowing": 0,
+     "dialogScrollWidth": 354,
+     "dialogClientWidth": 354,
+     "docScrollWidth": 390,
+     "innerWidth": 390
+    }
+   },
+   {
+    "check": "en-green-390 无页面错误",
+    "ok": true,
+    "detail": []
+   }
+  ]
+ }
+]
