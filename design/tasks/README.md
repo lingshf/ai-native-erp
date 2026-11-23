@@ -704,10 +704,10 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [REFAC-07](REFAC-07-action-entry-split.md) | 拆分调整页 `ActionEntry` 函数体，不改行为 | 重构（页面） | P2 | 无 | `TradeAdjustments.tsx` 与新目录 `trade-adjustments/` 下新文件 | 不加 | 不需要 | todo | — |
+| [REFAC-07](REFAC-07-action-entry-split.md) | 拆分调整页 `ActionEntry` 函数体，不改行为 | 重构（页面） | P2 | 无 | `TradeAdjustments.tsx` 与新目录 `trade-adjustments/` 下新文件 | 不加 | 不需要 | done | [#275](https://github.com/lingshf/ai-native-erp/pull/275)（`35df068`） |
 | [REFAC-08](S17.md#refac-08拆分-tradeguismoke不改断言) | 拆分 `tradeGuiSmoke`，不改断言（D469） | 重构（测试支持） | P2 | CI-03 已合并 | infra `trade-gui/smoke.ts` 与新目录 `trade-gui/smoke/` 下新文件 | 不加 | 不需要 | done | [#270](https://github.com/lingshf/ai-native-erp/pull/270)（`adeac52`） |
 | [TLIST-01](S17.md#tlist-01订单列表与发票列表加刷新列表) | 订单列表与发票列表加“刷新列表”（按已应用的筛选重读第一页） | 功能（列表） | P2 | 无 | `trade-orders/order-list.tsx`、`trade-invoices/invoice-list.tsx`、`ui/trade-order-labels.ts`、`ui/trade-labels.ts`；两个既有测试的焦点顺序断言；新测试 `trade-list-refresh.test.tsx` 与一条分片权重 | 不加 | 不需要 | done（D477：`OrderList` 206 → 209、`InvoiceList` 290 → 294） | [#271](https://github.com/lingshf/ai-native-erp/pull/271)（`0ce9940`） |
-| [FIX-TADJ-BUSY](FIX-TADJ-BUSY-stale-preview-busy.md)（补充） | 调整页在途预览被编辑取代后 busy 必须清除（REFAC-07 R4 场景 P 发现的原有缺陷） | 缺陷修复（页面状态） | P3 | REFAC-07 #275 已合并（合并后派发，泳道 A 续） | `trade-adjustments/action-commands.ts`；`packages/web/test/trade-adjustments.test.tsx`（加 2 个用例） | 不加 | 不需要 | todo | — |
+| [FIX-TADJ-BUSY](FIX-TADJ-BUSY-stale-preview-busy.md)（补充） | 调整页在途预览被编辑取代后 busy 必须清除（REFAC-07 R4 场景 P 发现的原有缺陷） | 缺陷修复（页面状态） | P3 | REFAC-07 #275 已合并（`35df068`，满足；泳道 A 续） | `trade-adjustments/action-commands.ts`；`packages/web/test/trade-adjustments.test.tsx`（加 2 个用例） | 不加 | 不需要 | todo | — |
 | DEMO-17（无任务书） | v0.16.0 RC 与 Demo（TLIST-01 未合并则 v0.15.1），验收见 [S17.md](S17.md#demo-17-验收) | 发布 | P1（Sprint 末） | 每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿；DEMO-16 已发布 | docs/release、`docs/user/` | 不加 | 需要（截图） | todo | — |
 
 - **并行**：A ∥ B ∥ C，冲突域两两不相交，开发同时在岗不超过 3 人；只有 C 可能新增一条分片权重；都不申请浏览器时段，服从 D442 时段停用通知；DEMO-17 排在它们结案之后，申请时段附 `-Stub` 记录（D460）。
