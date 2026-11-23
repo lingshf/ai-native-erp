@@ -1,0 +1,256 @@
+[
+ {
+  "name": "trade-orders-list-zh-red-1440",
+  "step": "page",
+  "via": "goto #/trade-orders?company=DEFAULT",
+  "hash": "#/trade-orders?company=DEFAULT",
+  "heading": "采购 / 销售订单",
+  "rowCount": 6,
+  "buttons": {
+   "texts": [
+    "应用",
+    "清除",
+    "刷新列表"
+   ],
+   "types": [
+    "submit",
+    "button",
+    "button"
+   ]
+  }
+ },
+ {
+  "name": "trade-orders-list-en-green-1440",
+  "step": "page",
+  "via": "goto #/trade-orders?company=DEFAULT",
+  "hash": "#/trade-orders?company=DEFAULT",
+  "heading": "Purchase and sales orders",
+  "rowCount": 6,
+  "buttons": {
+   "texts": [
+    "Apply",
+    "Clear",
+    "Refresh list"
+   ],
+   "types": [
+    "submit",
+    "button",
+    "button"
+   ]
+  }
+ },
+ {
+  "name": "accounts-zh-red-1440",
+  "step": "page",
+  "via": "goto #/accounts",
+  "hash": "#/accounts",
+  "heading": "科目表",
+  "rowCount": 14,
+  "buttons": [
+   "新建科目",
+   "刷新列表"
+  ]
+ },
+ {
+  "name": "accounts-en-green-1440",
+  "step": "page",
+  "via": "goto #/accounts",
+  "hash": "#/accounts",
+  "heading": "Chart of accounts",
+  "rowCount": 14,
+  "buttons": [
+   "New account",
+   "Refresh list"
+  ]
+ },
+ {
+  "name": "accounts-zh-red-390",
+  "step": "k7-390",
+  "via": "goto #/accounts",
+  "hash": "#/accounts",
+  "documentScrollWidth": 390,
+  "buttons": [
+   "新建科目",
+   "刷新列表"
+  ],
+  "rects": [
+   {
+    "text": "新建科目",
+    "left": 16,
+    "right": 106,
+    "top": 395
+   },
+   {
+    "text": "刷新列表",
+    "left": 114,
+    "right": 204,
+    "top": 395
+   }
+  ]
+ },
+ {
+  "name": "accounts-en-green-390",
+  "step": "k7-390",
+  "via": "goto #/accounts",
+  "hash": "#/accounts",
+  "documentScrollWidth": 390,
+  "buttons": [
+   "New account",
+   "Refresh list"
+  ],
+  "rects": [
+   {
+    "text": "New account",
+    "left": 16,
+    "right": 132.9,
+    "top": 415
+   },
+   {
+    "text": "Refresh list",
+    "left": 140.9,
+    "right": 244.4,
+    "top": 415
+   }
+  ]
+ },
+ {
+  "name": "accounts-keyboard-record",
+  "step": "keyboard",
+  "via": "#/accounts：page.keyboard.press 的 Tab / Enter / Space",
+  "record": {
+   "lang": "en",
+   "theme": "green",
+   "width": 1440,
+   "focusStart": "New account",
+   "focusAfterTab": "Refresh list",
+   "enterRequests": [
+    "/api/v1/accounts?company=DEFAULT&limit=100"
+   ],
+   "spaceRequests": [
+    "/api/v1/accounts?company=DEFAULT&limit=100"
+   ],
+   "newDisabledWithEditor": false,
+   "refreshDisabledWithEditor": false,
+   "editorOpenFocusAfterTab": "Refresh list",
+   "editorOpenEnterRequests": [
+    "/api/v1/accounts?company=DEFAULT&limit=100"
+   ],
+   "editorStillOpen": true
+  }
+ },
+ {
+  "checks": [
+   {
+    "check": "trade-orders-list-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-orders-list-zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-orders-list-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-orders-list-en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "accounts-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "accounts-zh-red-1440 列表有行",
+    "ok": true,
+    "detail": 14
+   },
+   {
+    "check": "accounts-zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "accounts-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "accounts-en-green-1440 列表有行",
+    "ok": true,
+    "detail": 14
+   },
+   {
+    "check": "accounts-en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "accounts-zh-red-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "accounts-zh-red-390 两个按钮都在视口内（left ≥ 0 且 right ≤ 390）",
+    "ok": true,
+    "detail": [
+     {
+      "text": "新建科目",
+      "left": 16,
+      "right": 106,
+      "top": 395
+     },
+     {
+      "text": "刷新列表",
+      "left": 114,
+      "right": 204,
+      "top": 395
+     }
+    ]
+   },
+   {
+    "check": "accounts-zh-red-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "accounts-en-green-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "accounts-en-green-390 两个按钮都在视口内（left ≥ 0 且 right ≤ 390）",
+    "ok": true,
+    "detail": [
+     {
+      "text": "New account",
+      "left": 16,
+      "right": 132.9,
+      "top": 415
+     },
+     {
+      "text": "Refresh list",
+      "left": 140.9,
+      "right": 244.4,
+      "top": 415
+     }
+    ]
+   },
+   {
+    "check": "accounts-en-green-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "键盘取证 无页面错误",
+    "ok": true,
+    "detail": []
+   }
+  ]
+ }
+]
