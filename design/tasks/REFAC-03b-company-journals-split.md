@@ -69,34 +69,82 @@
 - **P1 范围**：`git diff --name-only <base> <head>` 只含 `packages/web/src/journals/company-journals.tsx` 和 `packages/web/src/journals/` 下的新文件；`Journals.tsx`、`dialogs.tsx`、`virtual-rows.tsx`、`packages/web/test/**`、标签、CSS、`scripts/test-shard-weights.json` 的 diff 为空。不加迁移。
 - **P2 导出不变**：`company-journals.tsx` 的导出集合（名称加类别）与 base 相同，即只有 `CompanyJournals`。用仓库根 devDependency `@babel/parser` 解析，口径同 [REFAC-03 M2c（D433）](S13.md#refac-03拆分-journalstsx只搬移不改行为)。新文件的导出只供 `journals/` 目录内部使用，`packages/web/src/journals/` 以外不得导入它们（PR 正文附 `git grep` 结果）。
 - **P3 既有测试原样通过**：`packages/web/test/journals.test.tsx` 的 5 个用例和 Web 全部 jsdom 测试通过；测试文件 diff 为空。
-- **P4 DOM 与请求等价**（送审证据，脚本不提交）：
-  - 写一个临时的 jsdom 驱动脚本，可以借用 `journals.test.tsx` 的渲染与 `fetch` 桩，在 base 和 head 上按同一序列操作。
-  - 渲染前固定 `crypto.randomUUID`（按调用次序返回确定值）和时钟。
-  - 序列至少包含以下状态：
+- **P4 DOM、表单状态、焦点与请求等价**（送审证据，脚本不提交，不加常驻 CI 用例）：
+  - **驱动**：
+    - 写一个临时的 jsdom 驱动脚本，可以借用 `journals.test.tsx` 的渲染方式、`QueryClient` 配置与 `fetch` 桩，在 base 和 head 上按同一序列操作。
+    - 渲染前固定 `crypto.randomUUID`（按调用次序返回确定值）和时钟。
+    - `fetch` 桩改为**受控响应**：每个请求进入一个待决队列，由脚本按序号显式释放（resolve），也可以显式拒绝；不用 `setTimeout` 或任意 sleep 等待。
+  - **采样边界**（每步都按这一规则，写进脚本）：
+    1. 执行一个用户操作（Testing Library 的 `fireEvent` / `userEvent`）；
+    2. 释放该步约定的全部响应（步骤清单中逐步列出要释放的请求序号）；
+    3. 在 `act` 中等待 React 更新与微任务清空，直到满足以下全部条件：
+       - 待决队列为空，或只剩该步约定不释放的请求；
+       - `queryClient.isFetching() === 0` 与 `isMutating() === 0`，除非该步约定有请求未释放；
+       - 连续两次 `await act(async () => {})` 之后 DOM 快照不再变化；
+    4. 然后采样。
+
+    不满足条件时脚本报错退出，不取样。
+  - **序列**至少包含以下状态：
     - 空列表；
     - 有行的列表与加载更多；
+    - 切换“草稿 / 已过账”筛选；
     - 新建草稿；
+    - 在凭证类型 `select` 中选“调整”，在分录行中改科目；
     - 用 Enter 加行、用 Tab 加行；
     - 填写维度；
+    - 填写单据日期 / 税务日期后再清空；
     - 预览（过账确认 `Modal`）；
-    - 不确定确认后的错误；
+    - 选“排队”确认与选“过账”确认；
+    - 不确定确认后的错误与按原身份重试；
     - 草稿保存提示；
     - 删除确认 `Modal`；
-    - 过账回执；
-    - 已排队提示；
+    - 过账回执与已排队提示；
     - 已过账明细，以及冲销、替换、重分类三种更正；
     - 教学模式开 / 关；
-    - zh / en 两种语言。
-  - 每一步之后记录三项：
-    - `document.body.innerHTML`；
-    - `document.activeElement` 的定位（标签名、`id`、`name`、`data-*`、在父级中的序号）；
-    - 截至该步累计的请求日志（方法、URL、请求体 JSON）。
-  - base 与 head 逐步逐字节相同。PR 正文附脚本全文、步骤清单、两边输出的 SHA-256 和比较结果（差异为 0）。这一项用来弥补 P3 断言覆盖不到的 DOM 细节。
+    - zh / en 两种语言；
+    - P4a 的迟到响应场景。
+  - **每步采样**以下内容：
+    - **DOM**：`document.body.innerHTML`。
+    - **表单即时状态**：按文档顺序，列出 `document.body` 下全部 `input`、`select`、`textarea`、`button`，每个记录：
+      - 稳定定位（见下条）；
+      - `type`；
+      - 属性 `value` 与 DOM 属性 `.value`（两者分开记录，因为 `innerHTML` 只反映属性，不反映用户输入后的当前值）；
+      - `checked`、`disabled`、`readOnly`；
+      - `select` 的 `selectedIndex` 与选中项的 `value` 和文本。
+    - **焦点**：`document.activeElement` 的**稳定定位**，即从 `document.body` 到该元素的完整路径。路径上每一级记录标签名、`id`、`name`、`role`、`aria-label`、`data-*` 属性，以及它在同标签兄弟中的序号。焦点在 `body` 上时记 `body`。
+    - **请求日志**：截至该步累计的全部请求，每条记录序号、方法、URL、请求体 JSON、是否被中止（`signal.aborted`），以及释放或拒绝的结果。
+    - **查询缓存**：`queryClient.getQueryCache().getAll()` 中每个查询的 `queryKey`（JSON）与 `state.status`、`isInvalidated`，按 `queryKey` 排序。
+  - **判定**：base 与 head 逐步、逐项、逐字节相同。PR 正文附：
+    - 脚本全文；
+    - 步骤清单（含每步释放的请求序号）；
+    - 两边输出的 SHA-256 与比较结果（差异为 0）；
+    - 迟到响应场景的逐步输出原文。
+  - **P4a 受控迟到响应**（同一临时脚本内）：
+    - **切换明细**：在已过账列表中点凭证 A 的“查看”，不释放 A 的明细响应，再点凭证 B 的“查看”。然后先释放 B 的响应，等页面显示 B 的明细后采样；再释放 A 的响应，到达采样边界后再采样。
+
+      断言（base 与 head 也须逐字节相同）：
+      - A 的请求 `signal.aborted === true`；
+      - 释放 A 的响应后，页面仍显示 B 的明细，不被 A 覆盖；
+      - 没有因 A 产生的错误提示。
+    - **卸载**：打开凭证 C 的明细，不释放响应，然后卸载 `CompanyJournals`（例如切换公司或卸载渲染树），再释放 C 的响应。
+
+      断言：
+      - C 的请求已中止；
+      - 释放 C 的响应前后，控制台都没有 `error` / `warn` 输出；
+      - 没有未捕获的异常。
 - **P5 结构规则**（静态，评审按代码与 PR 表格核对）：
   - **P5a Hook 序列**：PR 正文列出 base 与 head 的 Hook 调用序列，自定义 Hook 按调用处展开。每行写 Hook 种类和依赖数组源文本（空白归一）。两边逐行相同。
   - **P5b 展示组件无 Hook**：新抽出的组件（首字母大写、返回 JSX 的函数）中没有任何 `use*` 调用。PR 正文附 Babel AST 检查脚本的输出。
   - **P5c 模块级定义**：所有组件与自定义 Hook 都在模块顶层声明，`CompanyJournals` 与 Hook 的函数体内不再声明组件。
   - **P5d 插槽对等**：PR 正文用一张表列出 base 中 `CompanyJournals` 顶层 Fragment 的子表达式，以及编辑表单内部被抽出的子表达式，标出 head 中对应的唯一组件或表达式，两边一一对应。
+  - **P5e 查询键与缓存失效**：PR 正文用一张表逐项对照 base 与 head 的以下内容：
+    - 3 个 `useInfiniteQuery` 的 `queryKey` 表达式、URL 模板、`initialPageParam`、`getNextPageParam`；
+    - 全部 `invalidateQueries` 调用，包括所在函数、调用参数（`queryKey` 表达式及其他选项）、在函数中相对于各 setter 的先后位置。
+
+    main `e8ef434` 中有 4 处 `invalidateQueries`：`save` 中 1 处（`:248`），`confirm` 成功分支中 2 处（`:289` 的 `["business", …]` 与 `:296` 的 `["journals", …]`），删除确认中 1 处（`:887`）。以 PR 实际 base 为准逐项列出。查询键的结构与取值、失效的匹配范围（前缀与 `exact` 等选项）都不得改变。按 ④ 抽出分页样板之后，生成的 `queryKey` 也必须与 base 逐项相同（P4 的查询缓存采样会核对）。
+  - **P5f effect 清理与中止归属**：PR 正文列出 base 中每个 `useEffect` / `useLayoutEffect` 的清理函数，以及每个 `AbortController` / `alive` 标记，在 head 中由哪个 Hook 拥有。要求：
+    - `detailRequest` 的创建、`abort()`（`loadDetail` 开头、`edit` 中、加载 `initialEntryId` 的 effect 清理）和 `alive.current` 的置位与清除，都留在**同一个** Hook 或 `CompanyJournals` 内；不拆到两个 Hook，也不复制成两份；
+    - 读取 `alive.current` 的检查点与 base 一一对应（数量与所在分支），P4a 用运行时证据佐证。
 - **P6 尺寸与可读性**：
   - `CompanyJournals`、每个自定义 Hook、每个新组件与命令函数都满足 ②（≤ 80 行、嵌套 ≤ 3 层）；
   - `company-journals.tsx` ≤ 200 行，`journals/` 下每个新文件 ≤ 400 行；
@@ -104,7 +152,7 @@
 - **P7 打包字节**（构建条件、依赖图、D432 字节口径同 [REFAC-03 M4](S13.md#refac-03拆分-journalstsx只搬移不改行为)）：
   - 首屏集合相同，每块原始字节 ±0，屏蔽哈希后的 gzip-9 字节 ±0；
   - 凭证路由“路由新增”部分的 JS 合计（屏蔽哈希后的 gzip-9）增加不超过 300 B（拆分会新增少量 props 传递代码）；其他四个路由（业务事件、总账报表、期末结账、贸易报表）的“路由新增”部分增加不超过 200 B；
-  - 各路由 CSS 字节不变。
+  - 各路由 CSS 的集合（按清单键）与字节都不变，口径同 REFAC-03 M4。
 
   超出阈值先停下报设计角色。
 - **P8 质量门**：`typecheck`、`lint` 通过；PR CI 绿；合并后覆盖该合并提交的 main Full 绿。
@@ -140,8 +188,8 @@
   P4 在本机运行，须服从协调者的时段停用通知。
 - PR 正文附：
   - P2 导出与 `git grep` 结果；
-  - P4 脚本、步骤清单与比较结果；
-  - P5a Hook 序列表、P5b 检查输出、P5d 插槽对照表；
+  - P4 脚本、步骤清单（含采样边界与释放序号）、比较结果与 P4a 迟到响应输出；
+  - P5a Hook 序列表、P5b 检查输出、P5d 插槽对照表、P5e 查询键与失效对照表、P5f 清理与中止归属表；
   - P6 函数行数表；
   - P7 字节表；
   - 可读性一节。
