@@ -327,10 +327,13 @@ test.each(neutralCopy)(
 
 test.each(neutralCopy)(
   "migration shows neutral failure copy when its request fails ($language)",
-  async ({ language, title, failed }) => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response("{}", { status: 500 }));
+  async ({ language, title, loading, failed }) => {
+    const response = deferred<Response>();
+    const fetchMock = vi.fn<typeof fetch>().mockReturnValue(response.promise);
     const page = await openMigration(language, title, fetchMock);
+    expect(page.getByRole("status").textContent).toBe(loading);
 
+    response.resolve(new Response("{}", { status: 500 }));
     expect((await page.findByRole("alert")).textContent).toBe(failed);
     expect(page.queryByRole("status")).toBeNull();
     expect(requestedUrls(fetchMock)).toContain("/api/v1/migration");
