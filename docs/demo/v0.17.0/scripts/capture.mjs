@@ -245,7 +245,8 @@ try {
 
     // 编辑器打开：“新增配置”禁用，从搜索框 Tab 到“刷新列表”；Enter 触发请求，编辑器保持打开。
     await newButton.click();
-    await page.locator("#trade-editor").waitFor({ timeout: 10000 });
+    // FastTab 只把 id 放在正文 `<id>-body` 上；等编辑器正文可见（编码输入框在其中）。
+    await page.locator("#trade-editor-body #trade-code").waitFor({ state: "visible", timeout: 10000 });
     record.newDisabledWithEditor = await newButton.isDisabled();
     await page.locator("#trade-search").focus();
     await page.keyboard.press("Tab");
@@ -254,7 +255,7 @@ try {
     must(record.editorOpenFocusAfterTab === refreshLabel, `键盘取证：编辑器打开时 Tab 后焦点应到“${refreshLabel}”，实际“${record.editorOpenFocusAfterTab}”`);
     record.editorOpenEnterRequests = await keyAndCountRequests(page, "Enter");
     must(record.editorOpenEnterRequests.length === 1, `键盘取证：编辑器打开时 Enter 应触发 1 次列表请求，实际 ${JSON.stringify(record.editorOpenEnterRequests)}`);
-    record.editorStillOpen = (await page.locator("#trade-editor").count()) === 1;
+    record.editorStillOpen = (await page.locator("#trade-editor-body #trade-code").isVisible());
     must(record.editorStillOpen, "键盘取证：刷新后编辑器应仍然打开");
     check("键盘取证 无页面错误", errors.length === 0, errors);
     log.push({ name: "trade-master-keyboard-record", step: "keyboard", via: `${master.route}：page.keyboard.press 的 Tab / Enter / Space`, record });
