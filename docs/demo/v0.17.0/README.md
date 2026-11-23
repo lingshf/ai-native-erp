@@ -26,10 +26,10 @@
 - **序列**（D489 / D490 / D491 授权，运行器各一次）：两个全新 worktree（app 在 PR 头，tooling 在 main `1638445`）的 `npm ci` 在窗口开始前完成（D489 把步骤 0 并入窗口）（均退出码 0）→ `npm run build`（退出码 0）→ **步骤 0** `run-main.ps1 -SkipCapture -Shots <目录>`（退出码 0）→ capture 干跑（`run-main.ps1`，含 capture，退出码 0）→ 真实 `slot-run.ps1 -Ports 4203`（R3，退出码 0）。
 - `runner start head=319778cc86481d03037b24eb8d978d161ba169cc rules=R3 ports=4203 status=[]`（运行器自己再构建一次，`dist check … newer=True`）；`tooling head=1638445c536467d488f3f455ecdbefbdc4686c7b`。产品代码与 main `1638445` 相同（本分支只改文档）。
 - **D487：run-main 证据**（浏览器外 `-SkipCapture`，[`logs/skipcapture.out.log`](logs/skipcapture.out.log)）：含 `web-dist: ok …dist-index=2026-11-23T22:43:19Z head-commit=2026-11-23T22:40:44Z`，随后迁移、造数、`readiness ok`、`capture skipped (dry-run)`、`port 4203 released`。
-- **D487：capture 证据**（窗口内干跑，TEMPLATE 第 17 条，[`logs/capture-dry-run.out.log`](logs/capture-dry-run.out.log)）：`capture exit 0`，32 项检查无失败（[`logs/capture-log-dry-run.json`](logs/capture-log-dry-run.json)）。
+- **D487：capture 证据**（窗口内干跑，TEMPLATE 第 17 条，[`logs/capture-dry-run.out.log`](logs/capture-dry-run.out.log)）：`capture exit 0`，23 项显式检查全部通过（[`logs/capture-log-dry-run.json`](logs/capture-log-dry-run.json)）。
 - **真实运行**：[`logs/slot-summary-real.log`](logs/slot-summary-real.log)：预检连续 6 次 `counted=0` 才进入步骤，`ports free phase=before-steps`，`step demo-capture exit=0 counted-after=0`，`runner done … status=[]`；端口 4203 事后无监听。输出：[`logs/demo-capture-real.out.log`](logs/demo-capture-real.out.log)、[`logs/processes-real.tsv`](logs/processes-real.tsv)、[`logs/capture-log-real.json`](logs/capture-log-real.json)。
 - **SR-X6 行：0 条**（采样器没有输出 SR-X6 行，`processes-real.tsv` 无计入进程，被排除的进程见 slot-summary 的 SR-X1 / SR-X2 行）。
-- 内容断言全部通过，检查共 32 项、无失败：贸易主数据列表有行（2 行），1440 下无横向溢出，无页面错误。
+- 内容断言全部通过：`capture-log-real.json` 有 10 个条目，其中 1 个条目含 23 项显式 `checks`（全部 `ok`，0 失败），另外 9 个是取证记录（8 个页面 / 390 px 记录、1 个键盘记录），记录不是检查，不计入 23；贸易主数据列表有行（2 行），1440 下无横向溢出，无页面错误。
 - **键盘记录**（TLIST-02，真实 `page.keyboard.press`，`capture-log-real.json` 的 `trade-master-keyboard-record`，en-green 1440）：
   - 焦点从“New configuration”按 Tab 到“Refresh list”；
   - Enter 触发 1 次列表请求（`/api/v1/trade/tradeParty?company=DEFAULT&limit=100`）；
