@@ -55,7 +55,7 @@ pwsh -NoProfile -File <tool>\scripts\slot\slot-run.ps1 -OutDir <新的空目录>
 
 **环境**：Windows 11 Enterprise 10.0.26300，node v26.13.0，npm 11.20.0。lock blob `07c1aee8b9c3392b88c25f9bb670adbbc8f19201`（app 与 tool 相同）。
 
-**清理前记录与入库核对**：窗口内所有产物在清理前记录了路径、SHA-256、字节数、行数（`logs/d492-artifacts-before-cleanup.csv`），入库后用 `git cat-file blob` 重算核对，输出见 PR 正文。`.log` 与 JSON 的 blob 保持窗口内的字节（`.gitattributes` 为 `-text`）。
+**清理前记录与入库核对**：窗口内所有产物在清理前记录了路径、SHA-256、字节数、行数（`logs/d492-artifacts-before-cleanup.csv`），入库后用 `git cat-file blob` 重算核对，输出见 PR 正文：19 个文件（13 个日志与 JSON、6 张截图）中 18 个与清理前的 SHA-256 和字节数完全一致；`.log` 与 JSON 的 blob 保持窗口内的字节（`.gitattributes` 为 `-text`）。**唯一不同的是 `logs/processes-real.tsv`**：窗口内文件 CRLF，550 字节、SHA-256 `3A24F5D5…DB38`；入库 blob 经换行规范化为 LF，539 字节（少 11 个 CR，共 11 行）、SHA-256 `CB10F8D3A64AD5F9C2F88375ABBE21DE43DA486BAA9D8BB7309515EC2D843054`（blob oid `04e83ae95f4fbe4215db637ec7f75211ad6d1ede`）。以 blob 为准，清理前值只作来源记录。
 
 | 入库文件 | 窗口内来源 |
 | --- | --- |
