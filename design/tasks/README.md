@@ -644,7 +644,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 ## S14：共用件直接导入 + 订单页、发票页文件拆分（v0.14.0，草案）
 
-计划与任务书见 [S14.md](S14.md)。基线 main `ef0de69`（S13 五个开发任务均已合并）。S14 计划的决定编号为 D447。
+计划与任务书见 [S14.md](S14.md)。基线 main `ef0de69`（S13 五个开发任务均已合并）。S14 计划的决定编号为 D447。D451 追加 FIX-01 与 S12 回顾行动项；执行期间的决定（D451–D453）见 [S14.md](S14.md#s14-期间决定d451d453)。
 
 **不在本 Sprint**：M2-05 真实演练与 M2-06（仍待决定 A / B / C）；DEMO-12 的 0 px 留白发现（判定不是缺陷，不立任务）；订单页、发票页函数体拆分（REFAC-05b / REFAC-06c）与 `useInvoiceLeaveGuard` 直接导入（REFAC-06b）；多订单合并开票等交易候选；OQ-01 后续域；迁移（三个任务都不加，下一个可用编号仍为 020）。
 
@@ -653,7 +653,8 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [REFAC-04](S14.md#refac-04共用件直接从-journals-导入d439-方案-b) | 业务事件、总账报表、期末结账、贸易报表直接从 `journals/*` 导入共用件，删掉 `Journals.tsx` 的再导出，`CompanyJournals` 不再进入非凭证路由（D439 方案 B） | 重构（页面导入） | P1 | REFAC-03b 已合并；D439 | 12 个文件，改动范围见 [S14 改动清单 L1–L3](S14.md#范围与决定)：`Journals.tsx` 删两条再导出、可删样式导入；`journals/dialogs.tsx`、`journals/virtual-rows.tsx` 各可加一条样式导入和一行注释；business-events 与三个报表页、`ledger-reports.test.tsx` 只改 `import` 语句 | 不加 | 不需要 | todo | — |
 | [REFAC-05](S14.md#refac-05拆分-tradeorderstsx只搬移不改行为) | 拆分 `TradeOrders.tsx`（1483 行）到 `src/trade-orders/`，只搬移不改行为 | 重构（页面） | P2 | 无 | web-ui:trade-orders（`TradeOrders.tsx` 与新目录） | 不加 | 不需要 | todo | — |
 | [REFAC-06](S14.md#refac-06拆分-tradeinvoicestsx只搬移不改行为) | 拆分 `TradeInvoices.tsx`（1465 行）到 `src/trade-invoices/`，导出集合不变，只搬移不改行为 | 重构（页面） | P2 | 无 | web-ui:trade 发票页（`TradeInvoices.tsx` 与新目录）；导入方不改 | 不加 | 不需要 | todo | — |
-| DEMO-14（无任务书） | v0.14.0 RC 与 Demo，验收见 [S14.md](S14.md#demo-14-验收) | 发布 | P1（Sprint 末） | 三个任务结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | 不加 | 需要（截图） | todo | — |
+| [FIX-01](S14.md#fix-01修正期初夹具的类型错误只改测试代码) | 修正 M2-05b 引入的期初夹具 `legacy-opening-fixture.ts` 中的 2 个 tsc 错误，SLOT-02 预检基线外新键回到 0（D451） | 修复（测试代码） | P1 | 无 | tests:infra 夹具（只有 `legacy-opening-fixture.ts`） | 不加 | 不需要 | todo | — |
+| DEMO-14（无任务书） | v0.14.0 RC 与 Demo，验收见 [S14.md](S14.md#demo-14-验收) | 发布 | P1（Sprint 末） | REFAC-04 / 05 / 06 与 FIX-01 结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | 不加 | 需要（截图） | todo | — |
 
 - **并行**：REFAC-04 ∥ REFAC-05 ∥ REFAC-06 冲突域两两不相交，可同时派出；开发同时在岗不超过 3 人。三个任务都不加迁移、不申请浏览器时段，但服从 D442 时段停用通知。时段顺序：DEMO-13 → DEMO-14（DEMO-12 已随 #233 合并），D444 时段内只允许手动单次运行。
 
