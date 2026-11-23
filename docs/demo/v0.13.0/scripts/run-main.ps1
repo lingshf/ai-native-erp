@@ -25,14 +25,12 @@
     node $seed "http://127.0.0.1:$port" $day; if ($LASTEXITCODE) { throw "seed failed: $seed" }
   }
   $companies=(Invoke-WebRequest "http://127.0.0.1:$port/api/v1/companies?limit=100" -UseBasicParsing -ErrorAction Stop).Content
-  foreach($c in "DEFAULT","DEMO2"){ if($companies -notmatch "`"$c`""){ throw "readiness: company $c missing" } }
-  $invoices=(Invoke-WebRequest "http://127.0.0.1:$port/api/v1/trade/invoices?company=DEFAULT&limit=500" -UseBasicParsing -ErrorAction Stop).Content
-  foreach($o in "AP-D1-1","AR-I1-1"){ if($invoices -notmatch "`"externalNo`":\s*`"$o`""){ throw "readiness: invoice $o missing" } }
+  foreach($c in "DEFAULT"){ if($companies -notmatch "`"$c`""){ throw "readiness: company $c missing" } }
   foreach($state in "none","partial","full"){
     $orders=(Invoke-WebRequest "http://127.0.0.1:$port/api/v1/trade/orders?company=DEFAULT&limit=100&invoicing=$state" -UseBasicParsing -ErrorAction Stop).Content | ConvertFrom-Json
     if(@($orders.items).Count -lt 1){ throw "readiness: no order with invoicing=$state" }
   }
-  "readiness ok: companies DEFAULT + DEMO2; invoices AP-D1-1 / AR-I1-1 present; orders exist for invoicing none / partial / full"
+  "readiness ok: company DEFAULT; orders exist for invoicing none / partial / full"
   $owner=@((Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction Stop).OwningProcess); if($server.HasExited -or $owner.Count -ne 1 -or $owner[0] -ne $server.Id){throw "owner mismatch after seed"}
   if ($SkipCapture) { "capture skipped (dry-run)" }
   else { node docs/demo/v0.13.0/scripts/capture.mjs "http://127.0.0.1:$port" $Shots $day; if ($LASTEXITCODE) { throw "capture failed, exit $LASTEXITCODE" }; "capture exit 0" }

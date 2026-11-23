@@ -1,0 +1,245 @@
+[
+ {
+  "readiness": {
+   "all": [
+    "PO-I1",
+    "PO-I2",
+    "PO-I3",
+    "SO-I1",
+    "SO-I2"
+   ],
+   "partial": [
+    "PO-I1",
+    "SO-I1"
+   ]
+  }
+ },
+ {
+  "name": "orders-filter-applied-zh-red-1440",
+  "hash": "#/trade-orders?company=DEFAULT&invoicing=partial",
+  "step": "applied",
+  "entryHash": "#/trade-orders?company=DEFAULT",
+  "via": "select #tord-filter-invoicing=partial, click apply",
+  "before": 5,
+  "after": 2
+ },
+ {
+  "name": "orders-filter-reload-zh-red-1440",
+  "hash": "#/trade-orders?company=DEFAULT&invoicing=partial",
+  "step": "reload",
+  "via": "page.reload()",
+  "rows": 2
+ },
+ {
+  "name": "orders-filter-invalid-link-zh-red-1440",
+  "hash": "#/trade-orders?company=DEFAULT&invoicing=bogus",
+  "step": "invalid-link",
+  "entryHash": "#/trade-orders?company=DEFAULT&invoicing=bogus",
+  "via": "goto deep link",
+  "rows": 5
+ },
+ {
+  "page": "s13",
+  "tag": "zh-red-1440",
+  "errors": []
+ },
+ {
+  "name": "orders-filter-applied-zh-red-390",
+  "hash": "#/trade-orders?company=DEFAULT&invoicing=partial",
+  "step": "applied",
+  "entryHash": "#/trade-orders?company=DEFAULT",
+  "via": "select #tord-filter-invoicing=partial, click apply",
+  "before": 5,
+  "after": 2
+ },
+ {
+  "name": "orders-filter-reload-zh-red-390",
+  "hash": "#/trade-orders?company=DEFAULT&invoicing=partial",
+  "step": "reload",
+  "via": "page.reload()",
+  "rows": 2
+ },
+ {
+  "name": "orders-filter-invalid-link-zh-red-390",
+  "hash": "#/trade-orders?company=DEFAULT&invoicing=bogus",
+  "step": "invalid-link",
+  "entryHash": "#/trade-orders?company=DEFAULT&invoicing=bogus",
+  "via": "goto deep link",
+  "rows": 5
+ },
+ {
+  "page": "s13",
+  "tag": "zh-red-390",
+  "errors": []
+ },
+ {
+  "name": "orders-filter-applied-en-green-1440",
+  "hash": "#/trade-orders?company=DEFAULT&invoicing=partial",
+  "step": "applied",
+  "entryHash": "#/trade-orders?company=DEFAULT",
+  "via": "select #tord-filter-invoicing=partial, click apply",
+  "before": 5,
+  "after": 2
+ },
+ {
+  "name": "orders-filter-reload-en-green-1440",
+  "hash": "#/trade-orders?company=DEFAULT&invoicing=partial",
+  "step": "reload",
+  "via": "page.reload()",
+  "rows": 2
+ },
+ {
+  "name": "orders-filter-invalid-link-en-green-1440",
+  "hash": "#/trade-orders?company=DEFAULT&invoicing=bogus",
+  "step": "invalid-link",
+  "entryHash": "#/trade-orders?company=DEFAULT&invoicing=bogus",
+  "via": "goto deep link",
+  "rows": 5
+ },
+ {
+  "page": "s13",
+  "tag": "en-green-1440",
+  "errors": []
+ },
+ {
+  "name": "orders-filter-applied-en-green-390",
+  "hash": "#/trade-orders?company=DEFAULT&invoicing=partial",
+  "step": "applied",
+  "entryHash": "#/trade-orders?company=DEFAULT",
+  "via": "select #tord-filter-invoicing=partial, click apply",
+  "before": 5,
+  "after": 2
+ },
+ {
+  "name": "orders-filter-reload-en-green-390",
+  "hash": "#/trade-orders?company=DEFAULT&invoicing=partial",
+  "step": "reload",
+  "via": "page.reload()",
+  "rows": 2
+ },
+ {
+  "name": "orders-filter-invalid-link-en-green-390",
+  "hash": "#/trade-orders?company=DEFAULT&invoicing=bogus",
+  "step": "invalid-link",
+  "entryHash": "#/trade-orders?company=DEFAULT&invoicing=bogus",
+  "via": "goto deep link",
+  "rows": 5
+ },
+ {
+  "page": "s13",
+  "tag": "en-green-390",
+  "errors": []
+ },
+ {
+  "checks": [
+   {
+    "check": "zh-red-1440 应用筛选不新增浏览器历史",
+    "ok": true,
+    "detail": {
+     "historyBefore": 2
+    }
+   },
+   {
+    "check": "orders-filter-applied-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "orders-filter-reload-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "orders-filter-invalid-link-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "zh-red-390 应用筛选不新增浏览器历史",
+    "ok": true,
+    "detail": {
+     "historyBefore": 2
+    }
+   },
+   {
+    "check": "orders-filter-applied-zh-red-390 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "orders-filter-reload-zh-red-390 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "orders-filter-invalid-link-zh-red-390 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "zh-red-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "en-green-1440 应用筛选不新增浏览器历史",
+    "ok": true,
+    "detail": {
+     "historyBefore": 2
+    }
+   },
+   {
+    "check": "orders-filter-applied-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "orders-filter-reload-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "orders-filter-invalid-link-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "en-green-390 应用筛选不新增浏览器历史",
+    "ok": true,
+    "detail": {
+     "historyBefore": 2
+    }
+   },
+   {
+    "check": "orders-filter-applied-en-green-390 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "orders-filter-reload-en-green-390 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "orders-filter-invalid-link-en-green-390 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "en-green-390 无页面错误",
+    "ok": true,
+    "detail": []
+   }
+  ]
+ }
+]
