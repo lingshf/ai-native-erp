@@ -6,7 +6,23 @@
 
 ## [Unreleased]
 
-（暂无）
+> **v0.18.0 发布候选**（尚未打 tag，日期待定）。产品代码基线为 `main` `6787f52`（REFAC-10 [#291](https://github.com/lingshf/ai-native-erp/pull/291) 的合并提交；S19 的两项开发任务全部已合并，该提交的 main Full run 45288533288 绿）；文档基线为 `3f8f2ff`（[#292](https://github.com/lingshf/ai-native-erp/pull/292)，main Full run 45288780685 绿）。v0.17.0 打在 `release/v0.17.0` 分支上、不在 main 上（D484），所以 `v0.17.0` 到 main 的范围里含 v0.17.0 已发布的文档提交。对照 `git log --oneline --first-parent v0.17.0..3f8f2ff9fd010ff63fb8d891b4a4b1209d4cd0ee`（**固定在该完整 SHA 上共 7 行**，每行一个 PR；`v0.17.0` 与 main 的合并基是 `1638445`）：
+> - 有条目：[#288](https://github.com/lingshf/ai-native-erp/pull/288)（TLIST-03，新增）、[#291](https://github.com/lingshf/ai-native-erp/pull/291)（REFAC-10，变更，无用户可见变化）。
+> - 已发布、只改日期或只改设计 / 流程文档，**不需要条目**，单列：[#286](https://github.com/lingshf/ai-native-erp/pull/286)（v0.17.0 的 RC 与 Demo，已随 v0.17.0 发布）、[#289](https://github.com/lingshf/ai-native-erp/pull/289)（v0.17.0 发布日与链接，只改日期）、[#287](https://github.com/lingshf/ai-native-erp/pull/287)（S19 计划，设计）、[#290](https://github.com/lingshf/ai-native-erp/pull/290)（S18 评审与回顾，设计）、[#292](https://github.com/lingshf/ai-native-erp/pull/292)（D492 / D493 / D495 写入发布清单与 Demo 模板，流程文档）。
+>
+> 与 `v0.17.0` 相比，`git diff --shortstat v0.17.0 3f8f2ff9fd010ff63fb8d891b4a4b1209d4cd0ee -- packages` 为 8 个文件（+508/−255）；`scripts/` 没有改动；没有迁移，没有 `package.json` / lock 改动。tag 目标按 D484：打在 `release/v0.18.0` 上审核通过的 RC 头，授权前不打。完整版本差异（两点）与合并基对比（三点，D483）的链接和数字在 tag 创建后核对填入。
+>
+> Demo（真实 Chrome，R3 时段，端口 4203）：[docs/demo/v0.18.0](docs/demo/v0.18.0/README.md)；窗口前的数字与 SHA 角色见该目录 README 与 run-through，窗口结果在窗口结束后补入。
+
+S19 Sprint：一项用户可见的小功能（TLIST-03）和一项只拆分文件的重构（REFAC-10）。按 SemVer 取 minor（0.17.0 → 0.18.0），因为科目表页多了一个按钮。**无迁移，无依赖变化**，已有账套不需要 migrate，不改过账规则与任何金额、数量口径。
+
+### Added（用户可见）
+
+- **科目表页多一个“刷新列表”按钮（TLIST-03，[#288](https://github.com/lingshf/ai-native-erp/pull/288)，合并提交 `bd8d71f`）**：“科目表”页的“新建科目”之后多一个“刷新列表”按钮（英文 “Refresh list”）。点它按当前公司从第一页重新读取科目；所选公司和正在编辑的内容保留，不弹确认，编辑器打开时仍可用。Tab 顺序在“新建科目”之后多一站。数字取自 #288 正文：`Accounts` 路由块 gzip-9 3688 → 3775 B（+87 B），首屏 JS 160933 → 160942 B（+9 B）。
+
+### Changed（无用户可见变化）
+
+- **订单列表内部拆分（REFAC-10，[#291](https://github.com/lingshf/ai-native-erp/pull/291)，合并提交 `6787f52`）**：`OrderList` 的函数体拆到 `packages/web/src/trade-orders/` 下的新文件（`order-list.tsx` 278 → 54 行，另有 Hook、筛选栏、表格与消息栏文件），只搬移，DOM、文案、样式、键盘与请求不变。依据 #291 正文的 R4（7 个场景 base 与 head 逐字节相同，jsdom 证明）；订单页路由块 +265 B（预算 +900 B）。
 
 ## [0.17.0] - 2026-11-23
 
