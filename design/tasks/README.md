@@ -655,9 +655,26 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [REFAC-05](S14.md#refac-05拆分-tradeorderstsx只搬移不改行为) | 拆分 `TradeOrders.tsx`（1483 行）到 `src/trade-orders/`，只搬移不改行为 | 重构（页面） | P2 | 无 | web-ui:trade-orders（`TradeOrders.tsx` 与新目录） | 不加 | 不需要 | done | [#238](https://github.com/lingshf/ai-native-erp/pull/238)（`c8add53`） |
 | [REFAC-06](S14.md#refac-06拆分-tradeinvoicestsx只搬移不改行为) | 拆分 `TradeInvoices.tsx`（1465 行）到 `src/trade-invoices/`，导出集合不变，只搬移不改行为 | 重构（页面） | P2 | 无 | web-ui:trade 发票页（`TradeInvoices.tsx` 与新目录）；导入方不改 | 不加 | 不需要 | done | [#242](https://github.com/lingshf/ai-native-erp/pull/242)（`48ba245`） |
 | [FIX-01](S14.md#fix-01修正期初夹具的类型错误只改测试代码) | 修正 M2-05b 引入的期初夹具 `legacy-opening-fixture.ts` 中的 2 个 tsc 错误，SLOT-02 预检基线外新键回到 0（D451） | 修复（测试代码） | P1 | 无 | tests:infra 夹具（只有 `legacy-opening-fixture.ts`） | 不加 | 不需要 | done | [#241](https://github.com/lingshf/ai-native-erp/pull/241)（`69106bd`） |
-| DEMO-14（无任务书） | v0.13.1 RC 与 Demo，验收见 [S14.md](S14.md#demo-14-验收) | 发布 | P1（Sprint 末） | REFAC-04 / 05 / 06 与 FIX-01 结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | 不加 | 需要（截图） | todo | — |
+| DEMO-14（无任务书） | v0.13.1 RC 与 Demo，验收见 [S14.md](S14.md#demo-14-验收) | 发布 | P1（Sprint 末） | REFAC-04 / 05 / 06 与 FIX-01 结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | 不加 | 需要（截图） | done | RC [#243](https://github.com/lingshf/ai-native-erp/pull/243)（`25d1e3c`）；Demo [#245](https://github.com/lingshf/ai-native-erp/pull/245)（`002c237`）；v0.13.1 已发布（tag `5feb803`） |
 
 - **并行**：REFAC-04 ∥ REFAC-05 ∥ REFAC-06 冲突域两两不相交，可同时派出；开发同时在岗不超过 3 人。三个任务都不加迁移、不申请浏览器时段，但服从 D442 时段停用通知。时段顺序：DEMO-13 → DEMO-14（DEMO-12 已随 #233 合并），D444 时段内只允许手动单次运行。
+
+## S15：CI 运行时段预检 + 贷项冲减已开票数量 + 发票页收尾拆分（建议 v0.14.0，草案）
+
+计划与任务书见 [S15.md](S15.md)。基线 main `002c237`（S14 全部合并，v0.13.1 已发布）。决定编号待协调者确定。
+
+**不在本 Sprint**：M2-05 真实演练与 M2-06（仍待决定 A / B / C）；JV-FIX-01 凭证页“重试”改为“刷新列表”（既有行为，不是拆分回归，列入候选池）；REFAC-05b；按开票状态排序、多订单合并开票等交易候选；OQ-01 后续域。
+
+| ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [CI-02](S15.md#ci-02pr-ci-运行-slot-02-静态预检) | PR CI 的 verify 在 typecheck 之后运行 SLOT-02 静态预检（S13 回顾行动 3） | CI | P1 | 无 | bench/CI：`.github/workflows/ci.yml`、`scripts/slot/README.md` | 不加 | 不需要 | todo | — |
+| [TINV-09](S15.md#tinv-09贷项冲减订单的已开票数量) | 贷项冲减订单的已开票数量；被冲回的数量可再开票；开票状态随之重算 | 功能（贸易单据） | P1 | 无 | storage `trade-documents.ts`；migrations(020)+migrations.ts；infra `trade-documents.test.ts`；`ui/trade-order-labels.ts` 教学文案 | **020**（只重算，不改 schema） | 不需要 | todo | — |
+| [REFAC-06b](S15.md#refac-06buseinvoiceleaveguard-直接导入) | 四个页面直接从 `trade-invoices/use-invoice-leave-guard.ts` 导入，删掉 `TradeInvoices.tsx` 的再导出 | 重构（页面导入） | P2 | REFAC-04、REFAC-06 已合并 | 4 个页面的导入行、`TradeInvoices.tsx:21`、2 处注释 | 不加 | 不需要 | todo | — |
+| [REFAC-06c](REFAC-06c-invoice-entry-split.md) | 拆分 `InvoiceEntry` 函数体，不改行为 | 重构（页面） | P2 | REFAC-06 已合并 | `trade-invoices/invoice-entry.tsx` 与 `trade-invoices/` 下新文件 | 不加 | 不需要 | todo | — |
+| DEMO-15（无任务书） | v0.14.0 RC 与 Demo，验收见 [S15.md](S15.md#demo-15-验收) | 发布 | P1（Sprint 末） | 四个任务结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | 不加 | 需要（截图） | todo | — |
+
+- **并行**：泳道 A（CI-02 → REFAC-06b）∥ B（REFAC-06c）∥ C（TINV-09），冲突域两两不相交，开发同时在岗不超过 3 人。只有 TINV-09 带迁移。四个任务都不申请浏览器时段，服从 D442 时段停用通知；DEMO-15 排在四个任务结案之后。
+- **S13 回顾行动（D456）落点**：见 [S15.md](S15.md#回顾行动项落点s13-回顾d456)。
 
 ## 派发顺序
 
