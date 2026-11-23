@@ -1726,7 +1726,7 @@ describe("trade orders", () => {
       waitFor(() => {
         const cells = [...(detail().getAllByRole("row")[1]?.querySelectorAll("td") ?? [])];
         if (cells[5]?.textContent === "\u2026") throw new Error("loading");
-        return cells.slice(4, 9).map((cell) => cell.textContent);
+        return cells.slice(4, 10).map((cell) => cell.textContent);
       });
     linkTo("?company=DEFAULT&order=PO-1");
     stubApi(byOrder({ "PO-1": () => response(large) }), emptyList, () =>
@@ -1737,8 +1737,49 @@ describe("trade orders", () => {
       const view = render(<App />);
       const shown = (value: string) => formatDecimal(value, language);
       const grouped = ["1234.5", "1000.25", "12345.678901", "2500.5"].map(shown);
-      expect(await lineCells()).toEqual([...grouped.slice(0, 2), "234.25", ...grouped.slice(2)]);
+      expect(await lineCells()).toEqual([
+        ...grouped.slice(0, 2),
+        "234.25",
+        shown("0"),
+        ...grouped.slice(2),
+      ]);
 
+      view.unmount();
+    }
+  });
+
+  // TORD-08 K5: credited quantity is the 8th column, "…" while loading and 0 without credits.
+  it("shows the credited quantity after not-invoiced in zh and en", async () => {
+    const credited = (row: number) =>
+      detail().getAllByRole("row")[row]?.querySelectorAll("td")[7]?.textContent;
+    linkTo("?company=DEFAULT&order=PO-1");
+    for (const language of ["zh", "en"] as const) {
+      let release = () => {};
+      stubApi(
+        byOrder({ "PO-1": () => response(twoLines) }),
+        emptyList,
+        () =>
+          new Promise<Response>((resolve) => {
+            release = () => resolve(response(invoicingOf(twoLines, ["6", "0.1"], ["4", "0.2"])));
+          }),
+      );
+      window.localStorage.setItem(
+        preferenceStorageKey,
+        JSON.stringify({ language, theme: "green", teaching: false }),
+      );
+      const view = render(<App />);
+      await waitFor(() => expect(credited(1)).toBe("\u2026"));
+      const headers = detail()
+        .getAllByRole("columnheader")
+        .map((cell) => cell.textContent);
+      expect(headers.slice(6, 8)).toEqual([
+        orderLabel(language, "tord.uninvoicedQuantity"),
+        orderLabel(language, "tord.creditedQuantity"),
+      ]);
+      release();
+      await waitFor(() => expect(credited(1)).toBe("4"));
+      expect([credited(2), credited(3)]).toEqual(["0.2", "0"]);
+      expect(quantities()[0]).toEqual(["10.5", "6", "4.5"]);
       view.unmount();
     }
   });

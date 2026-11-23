@@ -3601,8 +3601,8 @@ describe("trade invoices on real SQLite", () => {
       expect(tradeOrderInvoicingSchema.parse(invoicing.json())).toEqual({
         order: created.json(),
         invoiced: [
-          { lineId: "OL1", invoicedQuantity: "2.5" },
-          { lineId: "OL2", invoicedQuantity: "1" },
+          { lineId: "OL1", invoicedQuantity: "2.5", creditedQuantity: "0" },
+          { lineId: "OL2", invoicedQuantity: "1", creditedQuantity: "0" },
         ],
       });
       for (const [orderUrl, invoicingUrl] of [

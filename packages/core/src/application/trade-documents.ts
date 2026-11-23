@@ -133,12 +133,21 @@ export interface TradeDocumentRepository {
   insertTradeOrder(company: string, order: TradeOrder): Promise<void>;
   /** One statement per page: keyset on orderId (party filter via trade_orders_party), line totals grouped in storage. */
   tradeOrderPage(company: string, query: TradeOrderListQuery): Promise<Page<TradeOrderSummary>>;
-  /** Exact invoiced quantity in micros per requested order line, aggregated in storage. */
+  /**
+   * Exact invoiced quantity in micros per requested order line, aggregated in storage, net of credit
+   * notes; creditedMicros is the credited quantity already subtracted (TORD-08).
+   */
   tradeOrderInvoiced(
     company: string,
     orderId: string,
     orderLineIds: readonly string[],
-  ): Promise<readonly { readonly orderLineId: string; readonly micros: bigint }[]>;
+  ): Promise<
+    readonly {
+      readonly orderLineId: string;
+      readonly micros: bigint;
+      readonly creditedMicros: bigint;
+    }[]
+  >;
   tradeConfigsByCodes<K extends TradeConfig["kind"]>(
     company: string,
     kind: K,
@@ -179,7 +188,11 @@ export interface TradeDocumentRepository {
 }
 export interface TradeOrderInvoicing {
   readonly order: TradeOrder;
-  readonly invoiced: readonly { readonly lineId: string; readonly invoicedQuantity: string }[];
+  readonly invoiced: readonly {
+    readonly lineId: string;
+    readonly invoicedQuantity: string;
+    readonly creditedQuantity: string;
+  }[];
 }
 export interface TradeInvoicePreview {
   readonly fingerprint: string;
@@ -1271,7 +1284,10 @@ export class TradeDocumentService {
     checkedCode(orderId);
     return this.store.read(async (repo) => required(await repo.tradeOrder(company, orderId)));
   }
-  /** TINV-01: invoiced quantity per order line from the same tradeOrderInvoiced used by matching. */
+  /**
+   * TINV-01: invoiced quantity per order line from the same tradeOrderInvoiced used by matching.
+   * TORD-08: plus the credited quantity already netted out of it.
+   */
   async orderInvoicing(company: string, orderId: string): Promise<TradeOrderInvoicing> {
     checkedCode(company);
     checkedCode(orderId);
@@ -1284,14 +1300,18 @@ export class TradeDocumentService {
             order.orderId,
             order.lines.map((line) => line.lineId),
           )
-        ).map((row) => [row.orderLineId, row.micros]),
+        ).map((row) => [row.orderLineId, row]),
       );
       return {
         order,
-        invoiced: order.lines.map((line) => ({
-          lineId: line.lineId,
-          invoicedQuantity: formatMicros(invoiced.get(line.lineId) ?? 0n),
-        })),
+        invoiced: order.lines.map((line) => {
+          const row = invoiced.get(line.lineId);
+          return {
+            lineId: line.lineId,
+            invoicedQuantity: formatMicros(row?.micros ?? 0n),
+            creditedQuantity: formatMicros(row?.creditedMicros ?? 0n),
+          };
+        }),
       };
     });
   }

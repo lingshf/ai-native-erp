@@ -94,7 +94,7 @@
   font-variant-numeric: tabular-nums;
 }
 .trade-orders .tord-amounts {
-  min-width: 920px;
+  min-width: 1040px;
 }
 .trade-orders .tord-invoice-actions {
   display: flex;

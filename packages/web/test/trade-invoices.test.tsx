@@ -463,9 +463,9 @@ describe("trade invoices from an order (TINV-01)", () => {
       lines: [orderLine("OL1", 1, "10"), orderLine("OL2", 2, "2"), orderLine("OL3", 3, "1.5")],
     },
     invoiced: [
-      { lineId: "OL1", invoicedQuantity: invoiced[0] },
-      { lineId: "OL2", invoicedQuantity: invoiced[1] },
-      { lineId: "OL3", invoicedQuantity: invoiced[2] },
+      { lineId: "OL1", invoicedQuantity: invoiced[0], creditedQuantity: "0" },
+      { lineId: "OL2", invoicedQuantity: invoiced[1], creditedQuantity: "0" },
+      { lineId: "OL3", invoicedQuantity: invoiced[2], creditedQuantity: "0" },
     ],
   });
   const invoicingPath = "/api/v1/trade/orders/PO-1/invoicing?company=DEFAULT";
