@@ -37,7 +37,7 @@
 npm run storage:admin -- legacy-snapshot --source-dir <已停写的隔离源目录> --out-dir <WORK>\snapshot
 ```
 
-期望：退出码 0，输出 `{"status":"ok","action":"legacy-snapshot"}`；`<WORK>\snapshot\manifest.json` 记录 `status: "verified"` 与两本账的 SHA-256。源目录被其他进程打开时以 `SOURCE_BUSY` 拒绝。耗时预算 100 万 GL 行 ≤ 60s，由 Windows 每晚工作流 `scripts/bench-legacy-snapshot.mjs` 记录。
+期望：退出码 0，输出 `{"status":"ok","action":"legacy-snapshot"}`；`<WORK>\snapshot\manifest.json` 记录 `status: "verified"` 与两本账的 SHA-256。源目录被其他进程打开时以 `SOURCE_BUSY` 拒绝；复制期间源有变化时以 `SOURCE_CHANGED` 失败，此时停写未生效，须停止并重新快照（见第 7 节）。非 Windows 平台报 `UNSUPPORTED_PLATFORM`。耗时预算 100 万 GL 行 ≤ 60s，由 Windows 每晚工作流 `scripts/bench-legacy-snapshot.mjs` 记录。
 
 ## 3. dry-run（不写任何目标）
 
@@ -109,9 +109,13 @@ npm run storage:admin -- verify --provider sqlite --file <WORK>\target-backup.sq
 
 | 错误码 | 现象 | 原因 | 处理 |
 | --- | --- | --- | --- |
-| `INVALID_INPUT` | 参数被拒、或导入前列出口径 1–5 | 缺/多选项、dry-run 带了 `--target`、明细文件缺失/不可读/合计不符 | 按消息修正参数或明细文件后重跑；目标未创建 |
+| `INVALID_INPUT` | 参数被拒、或导入前列出口径 1–5 | 缺/多选项、dry-run 带了 `--target`、明细文件缺失/不可读/合计不符；快照时源文件是符号链接或非常规文件、输出目录已存在 | 按消息修正参数或明细文件后重跑；目标未创建；快照输出须为新路径 |
+| `UNSUPPORTED_PLATFORM` | 快照立即失败 | `legacy-snapshot` 只在 Windows 上运行（源文件由 Windows 文件锁代理独占打开） | 在旧账所在的 Windows 机器上执行；不要在其他平台直接复制旧账文件代替快照 |
+| `SOURCE_BUSY` | 快照失败 | 源目录仍被进程打开，或无法取得独占访问 | 确认旧服务已停写并隔离后重试 |
+| `SOURCE_CHANGED` | 快照失败，输出目录已被删除 | 复制或校验期间源文件的大小、时间或 SHA 发生变化，即仍有进程在写旧账 | **不是普通的忙**：说明停写没有生效。停止演练，找出写入方并确认停写，再从头重新生成快照；不得重试后继续使用这次或任何部分快照 |
+| `ROLLBACK_JOURNAL` | 快照失败 | 源目录存在 `-journal` 回滚日志，旧账有未完成事务 | 让旧系统正常启动并关闭以完成恢复，确认停写后再快照；不要删除日志文件 |
+| `SNAPSHOT_FAILED` | 快照失败，输出目录已被删除 | 私有副本的 WAL 检查点或备份失败，或其他未分类错误 | 保留源目录不动，记录输出后上报；不要使用残留文件 |
 | `INVALID_SNAPSHOT` | 快照被拒 | manifest 与文件 SHA 不符、快照被改动 | 重新生成快照；不要手改快照 |
-| `SOURCE_BUSY` | 快照失败 | 源目录仍被进程打开 | 确认旧服务已停写并隔离后重试 |
 | `CONFLICT` | 导入或确认被拒 | 目标已存在且不是可续跑的同一 run；明细文件字节变了；确认散列不匹配；确认后 `write_seq` 变化 | 换新目标路径从快照重导；确认文件须复制本次散列 |
 | `SCHEMA_MISMATCH` / `TARGET_SCHEMA_UNSUPPORTED` | 目标被拒 | 目标库结构不是当前迁移版本 | 从同一快照导入新目标 |
 | `BUSY` | 命令被拒 | 维护锁被占用 | 确认没有其他维护进程；遗留锁须人工调查，不得删锁强启 |
@@ -138,7 +142,7 @@ npm run storage:admin -- verify --provider sqlite --file <WORK>\target-backup.sq
 | --- | --- | --- |
 | 快照 100 万 GL 行 | ≤ 60s | Windows 每晚工作流 `scripts/bench-legacy-snapshot.mjs` |
 | dry-run | ≤ 120s，峰值 RSS ≤ 512MB | Bench 工作流 `migration-rehearsal` 作业 |
-| 导入（100 万 GL 行 + 10 万期初未结项） | ≤ 10min；峰值 RSS ≤ 512MB（已知缺口 KG，见下） | 同上（期初所在末批耗时仅记录） |
+| 导入（100 万 GL 行 + 10 万期初未结项） | ≤ 10min；峰值 RSS ≤ 512MB（已知缺口 KG，见下） | 同上；期初验证、期初写入、期初复核、最终提交各自耗时仅记录（D437） |
 | 确认核对 | ≤ 120s | 同上（RSS 仅记录） |
 | 备份 + 校验 | 仅记录 | 同上 |
 

@@ -145,6 +145,17 @@ function assertTradeSubledgerBalanced(report) {
   }
 }
 
+/** J4b: before confirmation a check is read-only and not a pass while known differences exist. */
+function assertCheckBeforeConfirmationIsReadOnly(rehearsal) {
+  const bytesBefore = sha256(rehearsal.target);
+  const checked = reconcile(rehearsal, "--check");
+  assert.equal(checked.exitCode, 1);
+  assert.notEqual(checked.json.verdict, "pass");
+  assert.ok(checked.json.knownDifferences.length > 0);
+  assert.equal(sha256(rehearsal.target), bytesBefore);
+  assert.equal(runStatus(rehearsal.target), "imported");
+}
+
 function rehearse(rehearsal) {
   const { snapshot, target } = rehearsal;
   const untouched = captureDirectory(rehearsal.fixture.directory, { mtime: true });
@@ -156,6 +167,7 @@ function rehearse(rehearsal) {
     true,
   );
   assert.equal(succeeded(importTarget(rehearsal)).status, "imported");
+  assertCheckBeforeConfirmationIsReadOnly(rehearsal);
   writeConfirmation(rehearsal);
   assert.equal(
     succeeded(reconcile(rehearsal, "--confirm", rehearsal.confirmation)).verdict,
@@ -175,12 +187,12 @@ function rehearse(rehearsal) {
 }
 
 test.skipIf(realSnapshotCapture)(
-  "J2/J3 rehearsal from a fictional snapshot: dry-run, import, confirm, backup, verify, check",
+  "J2/J3/J4b rehearsal from a fictional snapshot: dry-run, import, check, confirm, backup, verify, check",
   (t) => rehearse(rehearsalFixture(t)),
 );
 
 test.skipIf(!realSnapshotCapture)(
-  "J2/J3/J5 rehearsal from a real Windows legacy-snapshot of fictional ledgers",
+  "J2/J3/J4b/J5 rehearsal from a real Windows legacy-snapshot of fictional ledgers",
   (t) => rehearse(rehearsalFixture(t, { captureWithCli: true })),
 );
 
@@ -194,16 +206,4 @@ test("J4a an opening-items total that differs from the control balance leaves no
   assert.match(refused.json.error.message, /rule 2 F\/1300/u);
   // Rule 2 is checked before any write, so not even a failed run exists to be opened later.
   assert.equal(existsSync(rehearsal.target), false);
-});
-
-test("J4b check before confirmation is read-only and not a pass while known differences exist", (t) => {
-  const rehearsal = rehearsalFixture(t);
-  succeeded(importTarget(rehearsal));
-  const bytesBefore = sha256(rehearsal.target);
-  const checked = reconcile(rehearsal, "--check");
-  assert.equal(checked.exitCode, 1);
-  assert.notEqual(checked.json.verdict, "pass");
-  assert.ok(checked.json.knownDifferences.length > 0);
-  assert.equal(sha256(rehearsal.target), bytesBefore);
-  assert.equal(runStatus(rehearsal.target), "imported");
 });

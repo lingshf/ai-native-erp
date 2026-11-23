@@ -91,16 +91,25 @@ async function dryRunStep(work) {
   return {};
 }
 
-// The import report has no phase split, so batch-commit hooks bracket the final transaction:
-// last GL batch + 100k opening items + opening recheck (record-only, M2-03b).
+/**
+ * Opening-phase boundaries (M2-03b, D437 hooks), all record-only:
+ * - openingValidationSeconds: the import's own validation of the opening-items file;
+ * - openingWriteSeconds: writeOpening inside the final transaction;
+ * - openingRecheckSeconds: the target-only opening re-check;
+ * - finalCommitSeconds: reconciliation report, final commit and close;
+ * - finalTransactionUntilReconcileSeconds: previous commit to reconcile (kept as a proxy).
+ */
 async function importStep(work) {
   const { LegacyImportSnapshot } = await import("../packages/infra/src/legacy/import-plan.ts");
   const { executeLegacyImport } = await import("../packages/infra/src/storage/legacy-import.ts");
   const { snapshot, target, openingItems } = paths(work);
   const manifest = JSON.parse(readFileSync(join(snapshot, "manifest.json"), "utf8"));
   const source = new LegacyImportSnapshot(snapshot, manifest);
-  let previousCommitAt = performance.now();
-  let finalTransactionSeconds;
+  const at = {};
+  const mark = (name) => () => {
+    at[name] = performance.now();
+  };
+  const seconds = (from, to) => (at[to] - at[from]) / 1000;
   try {
     const result = await executeLegacyImport(
       source,
@@ -110,19 +119,31 @@ async function importStep(work) {
         openingItems: { bytes: readFileSync(openingItems) },
       },
       {
-        beforeBatchCommit: () => {
-          previousCommitAt = performance.now();
-        },
+        beforeOpeningValidation: mark("validationStart"),
+        afterOpeningValidation: mark("validationEnd"),
+        beforeBatchCommit: mark("lastBatchCommit"),
+        beforeOpeningWrite: mark("writeStart"),
+        beforeOpeningRecheck: mark("recheckStart"),
         beforeReconcile: () => {
-          finalTransactionSeconds = (performance.now() - previousCommitAt) / 1000;
+          at.previousCommit = at.lastBatchCommit;
+          mark("reconcileStart")();
         },
       },
     );
+    mark("imported")();
     assert.equal(result.status, "imported");
   } finally {
     source.close();
   }
-  return { recorded: { lastBatchWithOpeningItemsSeconds: finalTransactionSeconds } };
+  return {
+    recorded: {
+      openingValidationSeconds: seconds("validationStart", "validationEnd"),
+      openingWriteSeconds: seconds("writeStart", "recheckStart"),
+      openingRecheckSeconds: seconds("recheckStart", "reconcileStart"),
+      finalCommitSeconds: seconds("reconcileStart", "imported"),
+      finalTransactionUntilReconcileSeconds: seconds("previousCommit", "reconcileStart"),
+    },
+  };
 }
 
 function choicesFrom(options) {

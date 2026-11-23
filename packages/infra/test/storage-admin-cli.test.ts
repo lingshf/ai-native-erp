@@ -186,6 +186,7 @@ test("storage CLI help and invalid configuration never choose an implicit target
   const help = run(["--help"]);
   assert.equal(help.status, 0, help.stderr);
   assert.match(JSON.parse(help.stdout).usage, /--provider sqlite --file FILE/u);
+  assert.match(JSON.parse(help.stdout).legacyImportDryRun, /--dry-run/u);
   for (const args of [
     ["migrate"],
     ["migrate", "--provider", "sqlite"],
@@ -383,9 +384,4 @@ test("legacy-import --dry-run refuses partial options and a target like a non-dr
   assertInvalidInput(dryRun(t, decisionC.slice(0, 4)));
   assertInvalidInput(dryRun(t, [...decisionC, "--target", resolve(tmpdir(), "never.sqlite")]));
   assertInvalidInput(dryRun(t, ["--opening-items", resolve(tmpdir(), "never.json")]));
-});
-
-test("storage CLI usage documents legacy-import --dry-run", () => {
-  const help = run(["--help"]);
-  assert.match(JSON.parse(help.stdout).legacyImportDryRun, /--dry-run/u);
 });

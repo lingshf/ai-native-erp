@@ -565,6 +565,10 @@ export async function executeLegacyImport(
     beforeBatchCommit?: (batch: number) => void;
     beforeReconcile?: (db: Database.Database) => void;
     beforeOpeningRecheck?: (db: Database.Database) => void;
+    /** Test/Bench timing boundaries only (D437); they never change behavior. */
+    beforeOpeningValidation?: () => void;
+    afterOpeningValidation?: () => void;
+    beforeOpeningWrite?: () => void;
   } = {},
 ): Promise<{ runId: string; status: "imported"; batches: number }> {
   const batchLines = request.batchLines ?? 5000;
@@ -594,7 +598,9 @@ export async function executeLegacyImport(
     const bytes = request.openingItems?.bytes;
     const openingSha = bytes === undefined ? null : openingItemsSha256(bytes);
     const validate = () => {
+      hooks.beforeOpeningValidation?.();
       const checked = validateOpeningItems(plan, bytes);
+      hooks.afterOpeningValidation?.();
       if (checked.issues.length) throw openingItemsError(checked.issues);
       return checked.plan;
     };
@@ -706,6 +712,7 @@ export async function executeLegacyImport(
           );
         if (final) {
           // M2-03b: items, the bound SHA/declarations and opening=done commit atomically.
+          hooks.beforeOpeningWrite?.();
           await writeOpening(db, repo, opening, runId, at);
           hooks.beforeOpeningRecheck?.(db);
           openingDifference = openingDifferences(db);
