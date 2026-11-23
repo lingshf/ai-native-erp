@@ -5,7 +5,11 @@ import {
   type TradeInvoiceDetailDto,
   type TradeOrderInvoicingDto,
 } from "@erp/core/contracts";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { HashRouter } from "react-router-dom";
 import { App } from "../src/App.tsx";
+import { TradeInvoices } from "../src/TradeInvoices.tsx";
+import { defaultPreferences } from "../src/ui/preferences.ts";
 import { label, preferenceStorageKey, type LabelKey } from "../src/ui/index.ts";
 import { detailLabel, type TradeInvoiceDetailKey } from "../src/ui/trade-invoice-detail-labels.ts";
 
@@ -821,6 +825,8 @@ describe("TINV-07 invoice links in the address", () => {
     ["abc", "abc"],
     ["35 characters", documentId.slice(1)],
     ["a g", `${documentId.slice(0, -1)}g`],
+    ["with surrounding blanks", `%20${documentId}%20`],
+    ["breaking a CSS selector", "x%22%5D%5B"],
   ])(
     "P6: a malformed invoice (%s) shows not found without a request; Close focuses the list",
     async (_, id) => {
@@ -914,6 +920,50 @@ describe("TINV-07 invoice links in the address", () => {
     expect(served.detailCalls()).toBe(1);
   });
 
+  it("P10: a failed company reload with rows still cached never opens the link in another company; Retry resolves it", async () => {
+    let failed = false;
+    const served = setUp({
+      route: (url) => {
+        if (url.startsWith("/api/v1/companies")) {
+          if (failed) return response({ items: [company, acme], nextCursor: null });
+          failed = true;
+          return error(500, "INTERNAL");
+        }
+        if (url.startsWith("/api/v1/trade/invoices?company=ACME"))
+          return response({ items: [], nextCursor: null });
+        if (url === `/api/v1/trade/invoices/${documentId}?company=ACME`) return response(detail());
+        return undefined;
+      },
+    });
+    // The cache holds only DEFAULT and is stale, so mounting refetches; that refetch fails and
+    // React Query keeps the cached rows (status error, data still present).
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(["companies"], {
+      pages: [{ items: [company], nextCursor: null }],
+      pageParams: [""],
+    });
+    await client.invalidateQueries({ queryKey: ["companies"], refetchType: "none" });
+    at(`?company=ACME&invoice=${documentId}`);
+    render(
+      <QueryClientProvider client={client}>
+        <HashRouter>
+          <TradeInvoices preferences={defaultPreferences} />
+        </HashRouter>
+      </QueryClientProvider>,
+    );
+    const alert = await screen.findByRole("alert");
+    await settle();
+    expect(within(alert).getByRole("button", { name: t("master.retry") })).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByLabelText(t("tinv.party"))).toBeNull();
+    expect(served.lists()).toEqual([]);
+    expect(served.details()).toEqual([]);
+    fireEvent.click(within(alert).getByRole("button", { name: t("master.retry") }));
+    await screen.findByRole("dialog", { name: dialogTitle });
+    expect((screen.getByLabelText(t("master.company")) as HTMLSelectElement).value).toBe("ACME");
+    expect(served.details()).toEqual([`/api/v1/trade/invoices/${documentId}?company=ACME`]);
+    expect(served.lists().every((url) => url.includes("company=ACME"))).toBe(true);
+  });
   const orderInvoicing: TradeOrderInvoicingDto = {
     order: {
       orderId: "PO-1",

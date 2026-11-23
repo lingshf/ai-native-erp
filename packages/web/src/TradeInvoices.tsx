@@ -362,13 +362,19 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
     }
     setParams(next, { replace: true });
   };
-  // An order link names its company: if it is not among the loaded companies, say so and fill
-  // nothing instead of falling back to another company (picking a company drops the request).
+  // An explicit target (an order link's company, or `company` with a link) is resolved apart from
+  // the P1/P3 fallback: it is "missing" only once a fresh company list lacks it, and while the list
+  // is not confirmed (loading, refetching, or failed with rows still cached) a target that is not
+  // among the rows mounts nothing, so it never falls back to another company (P2/P4/P10).
+  const settled = companies.isSuccess && !companies.isFetching;
+  const known = (code: string) => rows.some((row) => row.code === code);
   const wanted = intake?.company;
-  const missing = !!wanted && companies.isSuccess && !rows.some((row) => row.code === wanted);
+  const linkTarget = linked ? linkCompany : null;
+  const missing = !!wanted && settled && !known(wanted);
   // A filter or invoice link for a company that is not loaded never opens another company's data.
-  const linkMissing =
-    linked && !!linkCompany && companies.isSuccess && !rows.some((row) => row.code === linkCompany);
+  const linkMissing = !!linkTarget && settled && !known(linkTarget);
+  const unconfirmed =
+    !settled && ((!!wanted && !known(wanted)) || (!!linkTarget && !known(linkTarget)));
   const backFromLink = () => {
     setIntake(null);
     write({ company: null, invoice: null, party: null, side: null, from: null, to: null });
@@ -409,7 +415,9 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
           </div>
         }
       />
-      {companies.isPending && <p role="status">{t("master.loading")}</p>}
+      {(companies.isPending || (unconfirmed && companies.isFetching)) && (
+        <p role="status">{t("master.loading")}</p>
+      )}
       {missing && (
         <MessageBar tone="danger" role="alert">
           <p>
@@ -442,7 +450,7 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
           </button>
         </MessageBar>
       )}
-      {company && !missing && !linkMissing && (
+      {company && !missing && !linkMissing && !unconfirmed && (
         <>
           <InvoiceEntry
             key={company.code}
@@ -1212,7 +1220,10 @@ function InvoiceList({
   // TINV-06 / TINV-07: the open invoice is the address's `invoice`; opening and closing replace the
   // address (no history entry, no leave guard). A deep link may name an invoice that is not in the
   // loaded rows: its title then comes from the detail response.
-  const invoice = params.get("invoice")?.trim() || null;
+  // Only an empty or blank value means "no invoice" (P5); any other value is passed on as it is and
+  // checked against the server's id rule, so " <id> " is not trimmed into a valid id (P6).
+  const raw = params.get("invoice");
+  const invoice = raw?.trim() ? raw : null;
   const opened = useRef<{ documentId: string; externalNo: string } | null>(null);
   const closedId = useRef<string | null>(null);
   // Runs after the dialog's own cleanup has closed it: focus its trigger, or the list if the row
@@ -1221,7 +1232,10 @@ function InvoiceList({
     const id = closedId.current;
     if (invoice || id === null) return;
     closedId.current = null;
-    const trigger = scroll.current?.querySelector<HTMLElement>(`[data-document-id="${id}"]`);
+    // Compare attribute values rather than building a selector: the id may come from the address.
+    const trigger = Array.from(
+      scroll.current?.querySelectorAll<HTMLElement>("[data-document-id]") ?? [],
+    ).find((node) => node.dataset.documentId === id);
     (trigger ?? scroll.current)?.focus();
   }, [invoice]);
   const virtual = rows.length > 100;
