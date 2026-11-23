@@ -4,9 +4,6 @@ import { useSearchParams } from "react-router-dom";
 import { companiesPageSchema } from "@erp/core/contracts";
 import { label, type Preferences } from "./ui/index.ts";
 import { masterRequest } from "./master-data-client.ts";
-// 本模块不再直接使用 Journals，但保留这条导入：入口模块不直接导入 Journals 时，Rolldown 会把 Journals 块改为命名空间导出，
-// 入口块因此变化（REFAC-02 G4 要求入口块字节不变）；位置同 base，Journals 的求值顺序也与 base 一致。
-import "./Journals.tsx";
 import { PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import { CompanyEvents } from "./business-events/company-events.tsx";
 import { PageControls } from "./business-events/list.tsx";
