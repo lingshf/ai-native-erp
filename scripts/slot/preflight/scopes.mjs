@@ -247,7 +247,8 @@ function walkVariableDeclaration(node, ctx) {
 function walkFunction(node, ctx, name, runsInline) {
   const fn = functionInfo(node, name, ctx.fn, runsInline, ctx.state);
   const inner = { ...ctx, fn, scope: scopeFor(node, ctx.scope, fn, true, ctx.state) };
-  if (node.type === "FunctionExpression" && node.id) declare(node.id, "function", node, node, inner);
+  if (node.type === "FunctionExpression" && node.id)
+    declare(node.id, "function", node, node, inner);
   for (const param of node.params) {
     declarePattern(param, "param", node, inner);
     walkPatternExpressions(param, inner);
@@ -284,7 +285,9 @@ function* patternIdentifiers(pattern) {
       break;
     case "ObjectPattern":
       for (const property of pattern.properties) {
-        yield* patternIdentifiers(property.type === "RestElement" ? property.argument : property.value);
+        yield* patternIdentifiers(
+          property.type === "RestElement" ? property.argument : property.value,
+        );
       }
       break;
     case "ArrayPattern":

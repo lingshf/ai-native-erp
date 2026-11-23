@@ -22,7 +22,8 @@ export function resolveSetup(rootArgument) {
   const baselinePath = join(root, SLOT_DIR, BASELINE_NAME);
   const baseline = parseBaseline(readRequiredFile(baselinePath, "baseline"), baselinePath);
   const tscPath = join(root, TSC_BIN);
-  if (!existsSync(tscPath)) throw new PreflightConfigError(`tsc not found under --root: ${tscPath}`);
+  if (!existsSync(tscPath))
+    throw new PreflightConfigError(`tsc not found under --root: ${tscPath}`);
   return {
     root,
     tsconfigPath,

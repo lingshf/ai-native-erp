@@ -3,7 +3,8 @@
 import { spawnSync } from "node:child_process";
 import { PreflightConfigError } from "./errors.mjs";
 
-const LOCATED_ERROR = /^(?<file>.+)\((?<line>\d+),(?<column>\d+)\): error (?<code>TS\d+): (?<message>.*)$/;
+const LOCATED_ERROR =
+  /^(?<file>.+)\((?<line>\d+),(?<column>\d+)\): error (?<code>TS\d+): (?<message>.*)$/;
 const GLOBAL_ERROR = /^error (?<code>TS\d+): (?<message>.*)$/;
 const CONTINUATION = /^\s+\S/;
 // tsc abbreviates long unions as "... 791 more ..."; the count moves with every new i18n key, so the
@@ -27,7 +28,9 @@ export function runTsc({ root, tscPath, tsconfigPath }) {
     throw new PreflightConfigError(`tsc configuration error: ${globalErrors.join(" | ")}`);
   }
   if (run.status !== 0 && diagnostics.length === 0) {
-    throw new PreflightConfigError(`tsc exit ${run.status} without diagnostics: ${run.stderr.trim()}`);
+    throw new PreflightConfigError(
+      `tsc exit ${run.status} without diagnostics: ${run.stderr.trim()}`,
+    );
   }
   return diagnostics;
 }

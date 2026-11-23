@@ -4,22 +4,29 @@ E2E 独占时段（[路线图 §5](../../design/roadmap.md#5-团队流程)“E2E
 
 不进 Vitest、不进 CI。
 
-| 文件                 | 作用                                                                                                           | 平台            |
-| -------------------- | -------------------------------------------------------------------------------------------------------------- | --------------- |
-| `procs.ps1`          | 候选、归属与排除判定（`Counted`），每个判定出口标注 SR 编号                                                    | Windows         |
-| `slot-run.ps1`       | 时段运行器：构建门禁、预检（连续 6 次计数为 0）、逐步运行并每 10 s 采样                                        | Windows         |
-| `steps.example.ps1`  | `-StepsFile` 示例（步骤列表；kit 中为 GATE-01 专用列表）                                                       | Windows         |
-| `steps.gate01.ps1`   | 原样复现 D316 kit 的 GATE-01 七个步骤（D347）；需要 `-BaseRoot` 下有 `artifacts/ci/gate01/` 工具，否则退出码 4 | Windows         |
-| `selftest.ps1`       | 自测：kit 原有 27 项 + 每条 SR 规则的正例与反例 + 可选的与 D316 kit 逐 PID 对照                                | Windows         |
-| `check-manifest.mjs` | 清单检查：判定出口与路线图规则表、规则版本逐一对照                                                             | 任意 OS（Node） |
-| `preflight.mjs`、`preflight/` | 开跑前静态检查（S12 SLOT-02，D407 / D408）：tsc 与 TDZ，对照基线                                      | 任意 OS（Node） |
-| `tsconfig.preflight.json` | 静态检查的 tsc 范围：`npm run typecheck` 不覆盖的场景与 `*.slow.test.ts` 文件                            | —               |
-| `preflight-baseline.json` | 静态检查基线：既有 tsc 错误与 TDZ 发现的计数，只减不增                                                    | —               |
-| `fixtures/`          | TDZ 回归夹具（`tdz-*.ts.txt`，按内容解析，不进 lint 与 typecheck）与 I1 的 `PSModulePath` 探针               | —               |
-| `tdz-fixtures.mjs`   | TDZ 夹具检查：逐个夹具输出 `PASS` / `FAIL`                                                                     | 任意 OS（Node） |
-| `step-env.ps1`       | 步骤子进程环境：每步重置 `PSModulePath`                                                                        | Windows         |
-| `selftest-preflight.ps1` | `selftest.ps1` 第 5 部分：子进程环境（I1）、TDZ 夹具（I4）、静态检查接入 runner（I5）                      | Windows         |
-| `steps.d387.ps1`     | D387 回归步骤：用 `powershell.exe` 原样运行 v0.11.0 Demo 的三个无浏览器替身                                    | Windows         |
+| 文件                          | 作用                                                                                                           | 平台            |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------- |
+| `procs.ps1`                   | 候选、归属与排除判定（`Counted`），每个判定出口标注 SR 编号                                                    | Windows         |
+| `slot-run.ps1`                | 时段运行器：构建门禁、预检（连续 6 次计数为 0）、逐步运行并每 10 s 采样                                        | Windows         |
+| `steps.example.ps1`           | `-StepsFile` 示例（步骤列表；kit 中为 GATE-01 专用列表）                                                       | Windows         |
+| `steps.gate01.ps1`            | 原样复现 D316 kit 的 GATE-01 七个步骤（D347）；需要 `-BaseRoot` 下有 `artifacts/ci/gate01/` 工具，否则退出码 4 | Windows         |
+| `selftest.ps1`                | 自测：kit 原有 27 项 + 每条 SR 规则的正例与反例 + 可选的与 D316 kit 逐 PID 对照                                | Windows         |
+| `check-manifest.mjs`          | 清单检查：判定出口与路线图规则表、规则版本逐一对照                                                             | 任意 OS（Node） |
+| `preflight.mjs`、`preflight/` | 开跑前静态检查（S12 SLOT-02，D407 / D408）：tsc 与 TDZ，对照基线                                               | 任意 OS（Node） |
+| `tsconfig.preflight.json`     | 静态检查的 tsc 范围：`npm run typecheck` 不覆盖的场景与 `*.slow.test.ts` 文件                                  | —               |
+| `preflight-baseline.json`     | 静态检查基线：既有 tsc 错误与 TDZ 发现的计数，只减不增                                                         | —               |
+| `fixtures/`                   | TDZ 回归夹具（`tdz-*.ts.txt`，按内容解析，不进 lint 与 typecheck）与 I1 的 `PSModulePath` 探针                 | —               |
+| `tdz-fixtures.mjs`            | TDZ 夹具检查：逐个夹具输出 `PASS` / `FAIL`                                                                     | 任意 OS（Node） |
+| `step-env.ps1`                | 步骤子进程环境：每步重置 `PSModulePath`                                                                        | Windows         |
+| `selftest-preflight.ps1`      | `selftest.ps1` 第 5 部分：子进程环境（I1）、TDZ 夹具（I4）、静态检查接入 runner（I5）                          | Windows         |
+| `steps.d387.ps1`              | D387 回归步骤：用 `powershell.exe` 原样运行 v0.11.0 Demo 的三个无浏览器替身                                    | Windows         |
+  const rows = compareWithBaseline(
+    countByKey(findings, (found) => found.key),
+    allowedCounts,
+  );
+    ast = setup.parse(readFileSync(file, "utf8"), {
+      sourceType: "module",
+      plugins: PARSER_PLUGINS,
 
 ## 运行
 

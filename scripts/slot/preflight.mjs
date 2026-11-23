@@ -69,7 +69,10 @@ function checkTsc(setup, allowedCounts) {
 
 function checkTdz(setup, files, allowedCounts) {
   const findings = files.flatMap((file) => findingsInFile(setup, file));
-  const rows = compareWithBaseline(countByKey(findings, (found) => found.key), allowedCounts);
+  const rows = compareWithBaseline(
+    countByKey(findings, (found) => found.key),
+    allowedCounts,
+  );
   const newKeys = new Set(rows.filter((row) => row.status === "new").map((row) => row.key));
   console.log(`tdz files=${files.length} findings=${findings.length}`);
   for (const found of findings) {
@@ -87,7 +90,10 @@ function findingsInFile(setup, file) {
   const shownPath = relative(setup.root, file).replaceAll("\\", "/");
   let ast;
   try {
-    ast = setup.parse(readFileSync(file, "utf8"), { sourceType: "module", plugins: PARSER_PLUGINS });
+    ast = setup.parse(readFileSync(file, "utf8"), {
+      sourceType: "module",
+      plugins: PARSER_PLUGINS,
+    });
   } catch (error) {
     throw new PreflightConfigError(`cannot parse ${shownPath}: ${error.message}`);
   }
@@ -96,7 +102,9 @@ function findingsInFile(setup, file) {
 
 function printRows(part, rows) {
   for (const row of rows) {
-    console.log(`${part} key ${row.status} count=${row.count} baseline=${row.allowed} :: ${row.key}`);
+    console.log(
+      `${part} key ${row.status} count=${row.count} baseline=${row.allowed} :: ${row.key}`,
+    );
   }
 }
 
@@ -105,7 +113,9 @@ function summarize(tscRows, tdzRows) {
   const newCount = all.filter((row) => row.status === "new").length;
   const reducedCount = all.filter((row) => row.status === "reduced").length;
   const exitCode = newCount > 0 ? EXIT_NEW_FINDINGS : EXIT_CLEAN;
-  console.log(`preflight result exit=${exitCode} new-keys=${newCount} reduced-keys=${reducedCount}`);
+  console.log(
+    `preflight result exit=${exitCode} new-keys=${newCount} reduced-keys=${reducedCount}`,
+  );
   return exitCode;
 }
 
@@ -113,7 +123,9 @@ try {
   process.exitCode = main(process.argv.slice(2));
 } catch (error) {
   const kind = error instanceof PreflightConfigError ? "config error" : "internal error";
-  console.log(`preflight ${kind}: ${error instanceof PreflightConfigError ? error.message : error.stack}`);
+  console.log(
+    `preflight ${kind}: ${error instanceof PreflightConfigError ? error.message : error.stack}`,
+  );
   console.log(`preflight result exit=${EXIT_CONFIG_ERROR}`);
   process.exitCode = EXIT_CONFIG_ERROR;
 }

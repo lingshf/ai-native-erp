@@ -20,7 +20,9 @@ export function parseBaseline(text, path) {
     }
     for (const [key, count] of Object.entries(counts)) {
       if (!Number.isInteger(count) || count < 1) {
-        throw new PreflightConfigError(`baseline ${section} count must be a positive integer: ${key}`);
+        throw new PreflightConfigError(
+          `baseline ${section} count must be a positive integer: ${key}`,
+        );
       }
     }
   }

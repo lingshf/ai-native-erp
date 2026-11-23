@@ -25,8 +25,11 @@ function checkFixture(path) {
   const findings = findTdzFindings(ast);
   const found = [...new Set(findings.map((finding) => finding.binding))].sort();
   const passed = found.join(",") === expected.join(",");
-  const detail = findings.map((finding) => `${finding.key}@${finding.line}`).join("; ") || NO_FINDING;
-  console.log(`${passed ? "PASS" : "FAIL"} TDZ-FIXTURE ${name} expected=[${expected}] found=[${detail}]`);
+  const detail =
+    findings.map((finding) => `${finding.key}@${finding.line}`).join("; ") || NO_FINDING;
+  console.log(
+    `${passed ? "PASS" : "FAIL"} TDZ-FIXTURE ${name} expected=[${expected}] found=[${detail}]`,
+  );
   return passed;
 }
 
