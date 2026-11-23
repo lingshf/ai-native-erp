@@ -16,7 +16,7 @@ S16 Sprint：一项用户可见的小功能（TORD-08）、一项只拆分文件
 
 ### Added（用户可见）
 
-- **订单详情多一列“贷项冲回数量”（TORD-08，[#262](https://github.com/lingshf/ai-native-erp/pull/262)）**：订单行表在“未开票数量”之后、“单价”之前多一列，显示该行未作废贷项冲回的数量；没有贷项时显示 `0`，读取中显示“…”。“已开票数量”仍是扣除贷项后的净数（v0.14.0 起，TINV-09）。例（#262 的 jsdom 用例）：订购 10.5、已开票 6、未开票 4.5、冲回 4。不新增 SQL（K4：base 与 head 均为 4 条语句）、不改迁移、不改接口请求。订单行表最小宽 920 → 1040 px，390 px 宽下仍在表格容器内横向滚动，该宽度的实测记录由 DEMO-16 给出。
+- **订单详情多一列“贷项冲回数量”（TORD-08，[#262](https://github.com/lingshf/ai-native-erp/pull/262)）**：订单行表在“未开票数量”之后、“单价”之前多一列，显示该行未作废贷项冲回的数量；没有贷项时显示 `0`，读取中显示“…”。“已开票数量”仍是扣除贷项后的净数（v0.14.0 起，TINV-09）。例（#262 的 jsdom 用例）：订购 10.5、已开票 6、未开票 4.5、冲回 4。不新增 SQL（#262 的 K4：base 与 head 均为 4 条语句）、不改迁移。**面向调用方**：`GET /api/v1/trade/orders/{id}/invoicing` 响应的 `invoiced[]` 每行多了必填字段 `creditedQuantity`（decimal，同 `invoicedQuantity` 格式；契约 `tradeOrderInvoicingSchema` 为严格对象），请求、端点与参数未变（依据：`git diff --stat 94aefc2 00d1ed4 -- packages` 的契约改动只有 `packages/core/src/contracts/trade-documents.ts` 一行）。订单行表最小宽 920 → 1040 px，390 px 宽下仍在表格容器内横向滚动，该宽度的实测记录由 DEMO-16 给出。
 
 ### Changed（仅加载体积，无界面变化）
 
