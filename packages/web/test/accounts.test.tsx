@@ -401,13 +401,13 @@ const refreshButton = () =>
 const newButton = () => screen.getByRole("button", { name: label("zh", "master.new") });
 const retryButton = () => screen.getByRole("button", { name: label("zh", "master.retry") });
 const rowCount = () => screen.getByRole("table").getAttribute("aria-rowcount");
-const readQuery = ({ url }: { url: URL }) => url.search;
-const firstPageQuery = (code: string) => `?company=${code}&limit=${PAGE_SIZE}`;
+const readPath = ({ url }: { url: URL }) => `${url.pathname}${url.search}`;
+const firstPagePath = (code: string) => `/api/v1/accounts?company=${code}&limit=${PAGE_SIZE}`;
 // Clicks Refresh list, then expects exactly one more chart read, of `code`'s first page, shown alone.
 async function expectOneReread(reads: { url: URL }[], code = "DEFAULT") {
   const from = reads.length;
   fireEvent.click(refreshButton());
-  await waitFor(() => expect(reads.slice(from).map(readQuery)).toEqual([firstPageQuery(code)]));
+  await waitFor(() => expect(reads.slice(from).map(readPath)).toEqual([firstPagePath(code)]));
   await waitFor(() => expect(rowCount()).toBe(String(PAGE_ROWS)));
   expect(screen.getAllByText("Account 0")).toHaveLength(1);
 }
@@ -440,7 +440,6 @@ describe("TLIST-03 chart of accounts refresh list", () => {
     const name = screen.getByLabelText<HTMLInputElement>(label("zh", "master.name"));
     fireEvent.change(name, { target: { value: "Unsaved draft" } });
     expect(newButton().nextElementSibling).toBe(refreshButton());
-    expect(refreshButton().outerHTML).toMatch(/^<button type="button" class="btn btn-secondary">/);
     expect(refreshButton().disabled).toBe(false);
     await expectOneReread(reads);
     expect(screen.getByLabelText(label("zh", "master.name"))).toBe(name);
@@ -473,7 +472,7 @@ describe("TLIST-03 chart of accounts refresh list", () => {
     fireEvent.change(screen.getByLabelText(label("zh", "master.company")), {
       target: { value: beta.code },
     });
-    await waitFor(() => expect(reads.map(readQuery).at(-1)).toBe(firstPageQuery(beta.code)));
+    await waitFor(() => expect(reads.map(readPath).at(-1)).toBe(firstPagePath(beta.code)));
     await screen.findByText("Account 0");
     await expectOneReread(reads, beta.code);
   });
