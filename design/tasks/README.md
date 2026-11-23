@@ -737,11 +737,26 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [REFAC-10](REFAC-10-order-list-split.md) | 拆分订单列表 `OrderList` 函数体，不改行为 | 重构（页面） | P2 | 无 | `trade-orders/order-list.tsx` 与同目录新文件 | 不加 | 不需要 | todo | — |
-| [TLIST-03](TLIST-03-accounts-refresh.md) | 科目表加“刷新列表” | 功能（列表） | P2 | 无 | `Accounts.tsx`、`ui/master-labels.ts`、`accounts.test.tsx` | 不加 | 不需要 | todo | — |
-| DEMO-19（无任务书） | v0.18.0 RC 与 Demo（TLIST-03 未合并则 v0.17.1），验收见 [S19.md](S19.md#demo-19-验收) | 发布 | P1（Sprint 末） | v0.17.0 已发布；每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | todo | — |
+| [REFAC-10](REFAC-10-order-list-split.md) | 拆分订单列表 `OrderList` 函数体，不改行为 | 重构（页面） | P2 | 无 | `trade-orders/order-list.tsx` 与同目录新文件 | 不加 | 不需要 | done | [#291](https://github.com/lingshf/ai-native-erp/pull/291)（`6787f52`） |
+| [TLIST-03](TLIST-03-accounts-refresh.md) | 科目表加“刷新列表” | 功能（列表） | P2 | 无 | `Accounts.tsx`、`ui/master-labels.ts`、`accounts.test.tsx` | 不加 | 不需要 | done | [#288](https://github.com/lingshf/ai-native-erp/pull/288)（`bd8d71f`） |
+| DEMO-19（无任务书） | v0.18.0 RC 与 Demo（TLIST-03 未合并则 v0.17.1），验收见 [S19.md](S19.md#demo-19-验收) | 发布 | P1（Sprint 末） | v0.17.0 已发布；每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | 进行中 | — |
 
 - **并行**：A ∥ B，冲突域不相交，没有共享单文件；都不申请浏览器时段，服从 D442 / D480 时段停用通知；DEMO-19 排在它们结案之后。
+
+## S20：测量脚本入库 + 拆分 OrderView + 财务维度“刷新列表”（建议 v0.19.0）
+
+计划与任务书见 [S20.md](S20.md)（S20 新决定自 D496 起）。基线 main `3f8f2ff`（S19 两个开发任务与 DOC-19 都已合并；DEMO-19 / v0.18.0 进行中）。三条泳道 A（MEAS-01）、B（REFAC-11）、C（TLIST-04），都不加迁移，可同时派给 3 名开发。TLIST-04 未合并则发 v0.18.1。
+
+**不在本 Sprint**：M2-05 真实演练与 M2-06（仍待用户决定 A / B / C）；`OrderLookup` 等其他函数体拆分；结算、业务事件等列表的“刷新列表”；`slot-run.ps1` 改用新的 dist 检查脚本；把测量脚本接入 CI 或任务书模板；OQ-01 后续域。
+
+| ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [MEAS-01](MEAS-01-bundle-measure-script.md) | 体积测量脚本入库（S18 回顾行动 4） | 开发工具 | P1 | 无 | `scripts/measure/**`、`packages/infra/test/tooling/bundle-compare.test.ts`、`scripts/test-shard-weights.json`（加一行） | 不加 | 不需要 | todo | — |
+| [REFAC-11](REFAC-11-order-view-split.md) | 拆分订单详情 `OrderView` 函数体，不改行为 | 重构（页面） | P2 | 无 | `trade-orders/order-view.tsx` 与同目录新文件 | 不加 | 不需要 | todo | — |
+| [TLIST-04](TLIST-04-dimensions-refresh.md) | 财务维度加“刷新列表” | 功能（列表） | P2 | 无 | `Dimensions.tsx`、`dimensions.test.tsx` | 不加 | 不需要 | todo | — |
+| DEMO-20（无任务书） | v0.19.0 RC 与 Demo（TLIST-04 未合并则 v0.18.1），验收见 [S20.md](S20.md#demo-20-验收) | 发布 | P1（Sprint 末） | v0.18.0 已发布；每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | todo | — |
+
+- **并行**：A ∥ B ∥ C，冲突域不相交；共享单文件 `scripts/test-shard-weights.json` 只有 A 改；都不申请浏览器时段，服从 D442 / D480 时段停用通知；DEMO-20 排在它们结案之后。体积口径见 [S20.md](S20.md#l10--体积口径)。
 
 ## 派发顺序
 
