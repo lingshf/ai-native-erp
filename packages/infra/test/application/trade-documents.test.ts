@@ -4332,6 +4332,58 @@ describe("trade invoices on real SQLite", () => {
     }
   });
 
+  it("TORD-06 B3: a refused cancellation (settled, credited or opening item) leaves the stored status unchanged", async () => {
+    const cases: [string, (invoiced: TradeInvoiceCommand) => Promise<unknown>][] = [
+      ["PO-S", (invoiced) => settle(payment(invoiced, 1000))],
+      [
+        "PO-C",
+        async (invoiced) =>
+          act({
+            ...actionHeader(),
+            kind: "credit",
+            invoiceId: invoiced.documentId,
+            revision: (await current(invoiced.documentId)).revision,
+            lines: [{ sourceLineId: "L1", quantity: "1" }],
+          }),
+      ],
+      [
+        "PO-O",
+        async (invoiced) => {
+          // D30 marker for a legacy opening item, as written by the M2-03b import.
+          const raw = new Database(filename);
+          try {
+            raw.exec(
+              `INSERT INTO legacy_import_runs(id,tool,snapshot_sha,choices,migration_version,status,created_at)
+               VALUES('RUN-B3','legacy.import.v2','"0"','{}',19,'imported','2026-01-01T00:00:00Z')`,
+            );
+            raw
+              .prepare(
+                "INSERT INTO legacy_refs VALUES('enterprise','opening_items','OI-B3',?,'RUN-B3','{}')",
+              )
+              .run(invoiced.documentId);
+          } finally {
+            raw.close();
+          }
+        },
+      ],
+    ];
+    const expected: Record<string, string> = {};
+    for (const [orderId, refuse] of cases) {
+      await service.createOrder(order({ orderId }));
+      const invoiced = invoiceFor(orderId, [["OL1", "10", "RENT"]]);
+      await post(invoiced);
+      expected[orderId] = "partial";
+      await refuse(invoiced);
+      await expectStored(expected);
+      const before = counts();
+      await expect(cancel(invoiced.documentId), orderId).rejects.toMatchObject({
+        issue: { path: "itemId", rule: "reference" },
+      });
+      expect(counts(), orderId).toEqual(before);
+      await expectStored(expected);
+    }
+  });
+
   it("TORD-06 storage rejects deleting a status row or moving it to another order, and seeds 'none' for every new order", async () => {
     await service.createOrder(order());
     await service.createOrder(order({ orderId: "PO-2" }));
@@ -4441,19 +4493,32 @@ describe("trade invoices on real SQLite", () => {
       expect(second.json().items.map((item: { orderId: string }) => item.orderId)).toEqual([
         "PO-04",
       ]);
-      for (const query of [
-        "invoicing=FULL",
-        "invoicing=",
-        "invoicing=cancelled",
-        "invoicing=all",
-        "invoicing=full&invoicing=none",
+      // S12 B5: one case per row of the Q table.
+      for (const [row, query] of [
+        ["Q1", "invoicing="],
+        ["Q2", "invoicing=NONE"],
+        ["Q2", "invoicing=Full"],
+        ["Q3", "invoicing=invoiced"],
+        ["Q3", "invoicing=open"],
+        ["Q3", "invoicing=cancelled"],
+        ["Q4", "invoicing=none&invoicing=full"],
+        ["Q4", "invoicing=none&invoicing=none"],
+        ["Q5", "invoicing=%20none"],
+        ["Q6a", "invoicing=full&side=ap"],
+        ["Q6b", "invoicing=full&party=v1"],
+        ["Q6c", "invoicing=full&from=2026-13-01"],
+        ["Q6d", "invoicing=full&from=2026-03-02&to=2026-03-01"],
+        ["Q6e", "invoicing=full&cursor=po%201"],
       ]) {
         const response = await get(`/api/v1/trade/orders?company=DEFAULT&${query}`);
-        expect([query, response.statusCode]).toEqual([query, 400]);
-        expect(response.json()).toMatchObject({
-          code: "INVALID_REQUEST",
-          fieldErrors: [{ path: "form", messageKey: "api.error.tradeDocument.shape" }],
-        });
+        expect([row, query, response.statusCode]).toEqual([row, query, 400]);
+        expect([row, response.json()]).toMatchObject([
+          row,
+          {
+            code: "INVALID_REQUEST",
+            fieldErrors: [{ path: "form", messageKey: "api.error.tradeDocument.shape" }],
+          },
+        ]);
       }
       await expect(
         service.listOrders("DEFAULT", { limit: 2, invoicing: "cancelled" as "none" }),
@@ -4546,7 +4611,26 @@ describe("trade invoices on real SQLite", () => {
     const cancelled = invoiceOn("PO-06", "L1", "2");
     await post(cancelled);
     await cancel(cancelled.documentId, undefined, "2026-04-21");
-    await expectStored(invoicingExpected);
+    // S12 B1: several invoices adding up to full, and full followed by a credit note.
+    await post(invoiceOn("PO-02", "L1", "1"));
+    await post(invoiceOn("PO-02", "L1", "1"));
+    await service.createOrder(
+      order({ orderId: "PO-07", orderDate: "2026-04-01", lines: [orderLine("L1", "2", "3.00")] }),
+    );
+    const credited = invoiceOn("PO-07", "L1", "2");
+    await post(credited);
+    await act({
+      ...actionHeader(),
+      kind: "credit",
+      invoiceId: credited.documentId,
+      revision: (await current(credited.documentId)).revision,
+      accountingDate: "2026-04-21",
+      documentDate: "2026-04-21",
+      taxDate: "2026-04-21",
+      lines: [{ sourceLineId: "L1", quantity: "1" }],
+    });
+    const upgraded = { ...invoicingExpected, "PO-02": "full", "PO-07": "full" };
+    await expectStored(upgraded);
     await store.close();
     const at018 = join(directory, "at018.sqlite");
     await ledgerAt018(at018);
@@ -4571,7 +4655,7 @@ describe("trade invoices on real SQLite", () => {
       }
     };
     const before = snapshot();
-    expect(before.trade_documents).toHaveLength(5);
+    expect(before.trade_documents).toHaveLength(8);
     const storage = createSqliteStorage({ filename: at018 });
     try {
       await storage.migrate();
@@ -4582,17 +4666,24 @@ describe("trade invoices on real SQLite", () => {
     const after = snapshot();
     const db = new Database(at018, { readonly: true });
     try {
+      const stored = Object.fromEntries(
+        (
+          db
+            .prepare(
+              "SELECT order_id,status FROM trade_order_invoicing WHERE company_id='DEFAULT' ORDER BY order_id",
+            )
+            .all() as { order_id: string; status: string }[]
+        ).map((row) => [row.order_id, row.status]),
+      );
+      expect(stored).toEqual(upgraded);
+      // Order by order, the backfill equals the status recomputed from the migrated invoice lines.
+      const reader = {
+        query: async (sql: string, values: readonly unknown[] = []) =>
+          db.prepare(sql).all(...values) as Record<string, unknown>[],
+      } as Pick<Connection, "query">;
       expect(
-        Object.fromEntries(
-          (
-            db
-              .prepare(
-                "SELECT order_id,status FROM trade_order_invoicing WHERE company_id='DEFAULT' ORDER BY order_id",
-              )
-              .all() as { order_id: string; status: string }[]
-          ).map((row) => [row.order_id, row.status]),
-        ),
-      ).toEqual(invoicingExpected);
+        Object.fromEntries(await tradeOrderStatuses(reader, "DEFAULT", Object.keys(upgraded))),
+      ).toEqual(stored);
       expect(db.prepare("SELECT count(*) FROM schema_migrations").pluck().get()).toBe(19);
     } finally {
       db.close();

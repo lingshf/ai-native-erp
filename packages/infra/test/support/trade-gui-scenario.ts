@@ -1040,7 +1040,9 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       await purchaseOrder("PO-STATUS");
       expect(await orderQuantities("PO-STATUS")).toEqual(["10", "0", "10"]);
       await invoiceFromOrder("PO-STATUS", "AP-STATUS-1", 4520, "4");
+      let stage = 0;
       const listed = async (status: "none" | "partial" | "full", expected: string[]) => {
+        stage += 1;
         await navigate("trade-orders");
         const hash = new URL(page.url()).hash;
         const form = page.locator("form").filter({ has: page.locator("#tord-filter-invoicing") });
@@ -1060,10 +1062,18 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         expect((await response).status()).toBe(200);
         const rows = () =>
           page.locator("table.tord-list tbody tr").evaluateAll((items) =>
-            items.map((row) => ({
-              orderId: row.querySelector("td button")?.textContent ?? "",
-              badge: row.querySelector("td.tord-invoicing")?.textContent ?? "",
-            })),
+            items.map((row) => {
+              // Badge text only: the aria-hidden tone symbol is decoration, not the label.
+              const badge = row.querySelector("td.tord-invoicing .badge")?.cloneNode(true) as
+                | Element
+                | undefined;
+              for (const mark of badge?.querySelectorAll('[aria-hidden="true"]') ?? [])
+                mark.remove();
+              return {
+                orderId: row.querySelector("td button")?.textContent ?? "",
+                badge: badge?.textContent?.trim() ?? "",
+              };
+            }),
           );
         await expect
           .poll(async () => (await rows()).map((row) => row.orderId).sort(), {
@@ -1076,12 +1086,15 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
             .locator("p.empty-state")
             .filter({ hasText: ordered("tord.listNoMatch") })
             .waitFor();
-        else
-          expect(new Set((await rows()).map((row) => row.badge))).toEqual(
-            new Set([ordered(`tord.invoicing.${status}`)]),
-          );
+        else {
+          const label = ordered(`tord.invoicing.${status}`);
+          const shown = (await rows()).sort((a, b) => a.orderId.localeCompare(b.orderId));
+          expect(shown).toEqual(expected.map((orderId) => ({ orderId, badge: label })));
+        }
         expect(new URL(page.url()).hash).toBe(hash);
-        await page.screenshot({ path: join(artifacts, `${name}-order-invoicing-${status}.png`) });
+        await page.screenshot({
+          path: join(artifacts, `${name}-order-invoicing-${stage}-${status}.png`),
+        });
       };
       await listed("partial", ["PO-STATUS"]);
       await listed("none", ["PO-NONE"]);
