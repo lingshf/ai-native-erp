@@ -41,6 +41,7 @@
 - 第 1 次尝试（21:23–21:38）：预检期间开发在别的工作树跑 vitest，预检 15 分钟超时，exit 3，没有运行任何步骤。目录 `C:\Users\shaoling\slot-s11-demo-recapture-attempt1-precheck-timeout`（本机，未入库）。
 - 第 2 次（21:38:43–21:41:21）：预检 6 次均为 0，唯一一次取图在第 7 步“重置”失败（slot-run exit 1，按 D308 不重跑）。原文：`CAPTURE FAILED: page.waitForResponse: Timeout 30000ms exceeded while waiting for event "response"`。已写出 6 张，端口 4201 已释放，无残留进程。目录 `C:\Users\shaoling\slot-s11-demo-recapture`（本机，未入库）。
 - 原因（读 `TradeInvoices.tsx:1091–1112` 与 `App.tsx:67–70`）：QueryClient 的 `staleTime` 是 `Infinity`，切回 DEFAULT 时未筛选的第一页取自缓存，不发请求，我新增的 `waitForResponse` 因此等不到。`capture.mjs` 已改为：切回 DEFAULT 时不要求有请求，只断言期间发出的任何列表请求都不带筛选参数，再断言筛选条为空、101 行。
+- 第 3 次（D382，最终取图，本机 21:50:29–21:53:31，UTC 05:50:32–05:53:31）：HEAD `0b956d62f7c7e8f1016947f7973650b6790ea2a2`，工作区干净；runner 先 build、做 dist 新鲜度门禁，预检 6 次均为 0，只跑一次；`demo-capture` 退出码 0（UTC 05:51:40–05:53:30），runner exit 0，运行后计数为 0，输出 `shots 32`，端口 4201 已释放。目录 `C:\Users\shaoling\slot-s11-demo-recapture-3`（本机，未入库）；入库的原始输出：`logs/recapture-d382-demo-capture.out.log`（33 行，SHA-256 `0E32C5B5D74BE599F7A47FB4F6054BF7F9C90FCEEDF18ABD92DF99BF52A4DC3E`）、`logs/recapture-d382-build.log`（56 行，`CC214E77EEA889E3CDD347870A564B3632B4A17DB2D6404CCB0FDAA5B9A4D9EA`）。32 张图与 `capture-log-main.json` 已替换 `screenshots/` 中首次取图的版本；核对结果见 `run-through.md` §2b。
 
 ## 3. 限制
 
@@ -67,65 +68,72 @@ powershell -NoProfile -File docs\demo\v0.11.0\scripts\proc05-negatives.ps1
 powershell -NoProfile -File docs\demo\v0.11.0\scripts\orchestration-stub.ps1
 ```
 
-真实服务演练（无浏览器，需协调者批准）：
+**统一步骤块（预演与取图共用，唯一的真实服务入口）**。第一行 `$capture` 决定模式：`$false` 是预演（build → 新鲜度门禁 → 真实服务 → seed → readiness，无浏览器，到 `-SkipCapture` 为止）；`$true` 是取图，只能放在 `slot-run.ps1` 的步骤里运行（见下节）。块先 build，断言 `index.html` 严格晚于 HEAD 提交时间，再断言 dist 里有本版界面文案（“Invoice details”“No invoices match the filters”），任何一步失败就中止。
+
+日志规则：每次写日志都带 `-ErrorAction Stop`（`Out-File`、`Get-ChildItem`、`Get-Content`、`Copy-Item`、`Remove-Item` 全部如此）；写日志失败也进入 `catch`，不会被当成成功；日志落盘并复核（路径、SHA-256、行数）是清理的前置条件，复核没过就不删 `$shots` 里的原图。日志开头记录 HEAD 与工作区状态。
 
 ```powershell
-$shots = Join-Path $env:TEMP ("demo-s11-shots-" + [guid]::NewGuid())
-& .\docs\demo\v0.11.0\scripts\run-main.ps1 -Shots $shots -SkipCapture
-```
-
-真实 Chrome 取图（需独占时段，R1）。正式时段用 `pwsh -File scripts\slot\slot-run.ps1 -OutDir <仓库外目录> -StepsFile <steps>`，它自己做 build 与 dist 新鲜度门禁、6 次预检（间隔 10 秒）和采样；预检不为 0 就不开始。手动预检：
-
-```powershell
-1..6 | ForEach-Object {
-  $n = @(Get-CimInstance Win32_Process | Where-Object {
-    $_.ProcessId -ne $PID -and $_.Name -ne "pwsh.exe" -and $_.Name -ne "powershell.exe" -and
-    ($_.Name -match "^(chrome|biome)" -or $_.CommandLine -match "vitest|playwright|vite\b|tsc\b|main\.ts|capture\.mjs")
-  }).Count
-  "预检 $_ : $n"
-  if ($n -ne 0) { throw "有外部进程，不开始" }
-  if ($_ -lt 6) { Start-Sleep 10 }
-}
-```
-
-取图块：先 build，断言 `index.html` 严格晚于 HEAD 提交时间，再断言 dist 里有本版界面文案（“Invoice details”“No invoices match the filters”），然后取图；任何一步失败就中止：
-
-```powershell
+$capture = $false   # $false = 预演；$true = 取图（仅限 slot-run 的步骤内）
 . {
   $shots = Join-Path $env:TEMP ("demo-s11-shots-" + [guid]::NewGuid())
   $log = "$shots.run.log"   # 完整输出写入文件；失败时保留 $shots 与日志，不清理
+  $W = @{ FilePath = $log; Append = $true; Encoding = "utf8"; Width = 4096; ErrorAction = "Stop" }
+  $runArgs = if ($capture) { @{} } else { @{ SkipCapture = $true } }
   $ok = $false
   $code = 0
   $prevEap = $ErrorActionPreference
-  $ErrorActionPreference = "Continue"   # Stop 下 PowerShell 5.1 会在第一行原生 stderr 处终止管道，丢后续输出并改写退出码
+  $ErrorActionPreference = "Continue"   # Stop 下 PowerShell 5.1 会在第一行原生 stderr 处终止管道，丢后续输出并改写退出码；各 cmdlet 自带 -ErrorAction Stop
   try {
     $global:LASTEXITCODE = 0
-    npm run build *>&1 | Out-File -FilePath $log -Append -Encoding utf8 -Width 4096
+    "mode=$(if ($capture) { 'capture' } else { 'rehearsal' }) head=$(git rev-parse HEAD) status=[$((git status --short) -join ';')]" | Out-File @W
+    npm run build *>&1 | Out-File @W
     if ($LASTEXITCODE -ne 0) { throw "构建失败，退出码 $LASTEXITCODE" }
     $headTime = [DateTimeOffset]::Parse((git log -1 --format=%cI HEAD)).UtcDateTime
     $index = "packages\web\dist\index.html"
-    if (-not (Test-Path $index) -or (Get-Item $index).LastWriteTimeUtc -le $headTime) { throw "dist 缺失，或不晚于 HEAD 提交时间（相等也算失败），中止" }
-    $dist = Get-ChildItem packages\web\dist\assets -Filter *.js | Get-Content -Raw
+    if (-not (Test-Path $index) -or (Get-Item $index -ErrorAction Stop).LastWriteTimeUtc -le $headTime) { throw "dist 缺失，或不晚于 HEAD 提交时间（相等也算失败），中止" }
+    $dist = Get-ChildItem packages\web\dist\assets -Filter *.js -ErrorAction Stop | Get-Content -Raw -ErrorAction Stop
     if (-not ($dist -match "Invoice details" -and $dist -match "No invoices match the filters")) { throw "dist 里没有 Invoice details 或 No invoices match the filters，旧界面，中止" }
+    "gate ok: dist newer than HEAD, UI markers present" | Out-File @W
     $global:LASTEXITCODE = 0
-    & .\docs\demo\v0.11.0\scripts\run-main.ps1 -Shots $shots *>&1 | Out-File -FilePath $log -Append -Encoding utf8 -Width 4096
+    & .\docs\demo\v0.11.0\scripts\run-main.ps1 -Shots $shots @runArgs *>&1 | Out-File @W
     if ($LASTEXITCODE -ne 0) { throw "run-main 退出码 $LASTEXITCODE" }
-    $n = @(Get-ChildItem $shots -Filter *.png).Count
-    if ($n -ne 32) { throw "截图数 $n，不是 32，不复制" }
-    Copy-Item "$shots\*" docs\demo\v0.11.0\screenshots\ -ErrorAction Stop   # 复制失败要进 catch：不设 ok、不删 $shots 里的原图
+    if ($capture) {
+      $n = @(Get-ChildItem $shots -Filter *.png -ErrorAction Stop).Count
+      if ($n -ne 32) { throw "截图数 $n，不是 32，不复制" }
+      Copy-Item "$shots\*" docs\demo\v0.11.0\screenshots\ -ErrorAction Stop   # 复制失败进 catch：不设 ok、不删 $shots 里的原图
+    }
+    $before = @(Get-Content -Encoding UTF8 -LiteralPath $log -ErrorAction Stop).Count   # 先证明此前的日志确实落盘
+    if ($before -lt 1) { throw "日志为空，不能清理原图" }
+    "exit=0 ok=True log=$log" | Out-File @W
+    $sha = (Get-FileHash -Algorithm SHA256 -LiteralPath $log -ErrorAction Stop).Hash
+    $lines = @(Get-Content -Encoding UTF8 -LiteralPath $log -ErrorAction Stop).Count
+    Write-Host "日志已落盘并复核：log=$log sha256=$sha lines=$lines"   # 删原图之前先留下路径、SHA-256、行数
     $ok = $true
   } catch {
     $code = if ($LASTEXITCODE) { $LASTEXITCODE } else { 1 }
-    "EXCEPTION: $($_ | Out-String)" | Out-File -FilePath $log -Append -Encoding utf8 -Width 4096
+    $msg = "EXCEPTION: $($_ | Out-String)`nexit=$code ok=False log=$log"
+    try { $msg | Out-File @W } catch { Write-Host "日志写入失败：$($_.Exception.Message)" }
+    Write-Host $msg
   } finally {
     $ErrorActionPreference = $prevEap
-    "exit=$code ok=$ok log=$log" | Out-File -FilePath $log -Append -Encoding utf8 -Width 4096
-    if ($ok -and (Split-Path $shots -Leaf) -like "demo-s11-shots-*" -and (Test-Path $shots)) { Remove-Item -Recurse -Force $shots }
+    if ($ok -and $capture -and (Split-Path $shots -Leaf) -like "demo-s11-shots-*" -and (Test-Path $shots)) {
+      try { Remove-Item -Recurse -Force -LiteralPath $shots -ErrorAction Stop } catch { $ok = $false; $code = 1; Write-Host "清理 $shots 失败：$($_.Exception.Message)"; try { "cleanup-failed exit=1 ok=False" | Out-File @W } catch { Write-Host "日志写入失败：$($_.Exception.Message)" } }
+    }
   }
-  Get-Content -Encoding UTF8 $log
+  if (Test-Path -LiteralPath $log -PathType Leaf) { Get-Content -Encoding UTF8 -LiteralPath $log }
   if (-not $ok) { throw "失败，退出码 $code；已保留 $shots 和 $log，不清理，不重试" }
 }
 ```
+
+真实服务预演（无浏览器）：把上面块的第一行保持为 `$capture = $false`，在仓库根目录用 `powershell -NoProfile` 运行；与取图同一份 build 与门禁，不另有分支。
+
+**取图的唯一正式入口**是 `scripts\slot\slot-run.ps1`（R1）。它自己做 build 与 dist 新鲜度门禁、6 次预检（间隔 10 秒）、运行中每 10 秒采样，预检不为 0 不开始，有外部进程就中止。仓库里的步骤文件是 [steps-demo11.ps1](scripts/steps-demo11.ps1)（只有一个 `demo-capture` 步骤，调用 `run-main.ps1`，走 Chrome 通道）。输出目录必须在仓库外且是新目录，不要覆盖旧时段：
+
+```powershell
+pwsh -NoProfile -File scripts\slot\slot-run.ps1 -OutDir C:\Users\<user>\slot-s11-demo-<n> -StepsFile docs\demo\v0.11.0\scripts\steps-demo11.ps1
+```
+
+上面的统一步骤块在取图模式（`$capture = $true`）下**只作为槽位内步骤或编排替身的入口**，不要在槽位之外手工运行它；不提供手工预检块，也不要绕过 `slot-run.ps1` 直接调用 `run-main.ps1` 取图。D373 ① 只豁免首次取图，D382 的重取是通过 `slot-run.ps1` 跑的。
 
 `run-main.ps1` 启动前检查端口 4201 空闲（D373 例外）；每个 seed 与 capture 之前都校验监听进程就是本轮服务；`finally` 只停本轮服务、只删本轮 `erp-demo-*` 目录。`screenshots/.gitkeep` 是替身检查的哨兵文件，别删。取图期间不使用 `tinv06-*`（开发提交的文件，不要覆盖）。
 

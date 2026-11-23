@@ -147,13 +147,14 @@ try {
   "== B 渲染结果里的真实服务演练块和取图块 =="
   $html = (& gh api -X POST markdown -f mode=gfm -F text=@$readme | Out-String)
   $pre = [regex]::Matches($html, '<pre.*?</pre>', "Singleline")
-  if ($pre.Count -lt 6) { throw "README 渲染后只有 $($pre.Count) 个代码块" }
+  if ($pre.Count -lt 5) { throw "README 渲染后只有 $($pre.Count) 个代码块" }
   $texts = @($pre | ForEach-Object { [Net.WebUtility]::HtmlDecode([regex]::Replace($_.Value, '<[^>]+>', '')).Trim() })
-  $found3 = @($texts | Where-Object { $_ -match 'run-main\.ps1 -Shots \$shots -SkipCapture' -and $_ -notmatch "npm run build" })
-  $found6 = @($texts | Where-Object { $_ -match "npm run build" -and $_ -match "run-main\.ps1" })
-  if ($found3.Count -ne 1 -or $found6.Count -ne 1) { throw "渲染结果里按内容找不到唯一的真实服务演练块或取图块（演练 $($found3.Count)，取图 $($found6.Count)）" }
-  $b3 = $found3[0]; $b6 = $found6[0]
-  "取到的块：真实服务演练块序号 $([array]::IndexOf($texts, $b3) + 1)，取图块序号 $([array]::IndexOf($texts, $b6) + 1)（共 $($texts.Count) 块）"
+  $blocks = @($texts | Where-Object { $_ -match '^\$capture = \$(false|true)' -and $_ -match "npm run build" -and $_ -match "run-main\.ps1" })
+  if ($blocks.Count -ne 1) { throw "渲染结果里按内容找不到唯一的统一步骤块（找到 $($blocks.Count)）" }
+  $b3 = $blocks[0]                                                   # $capture = $false：预演
+  $b6 = $b3 -replace '^\$capture = \$false', '$capture = $true'     # 取图模式
+  if ($b6 -eq $b3) { throw "取图模式替换失败" }
+  "取到的块：统一步骤块序号 $([array]::IndexOf($texts, $b3) + 1)（共 $($texts.Count) 块）；预演与取图模式各执行一次"
   $runStub = @'
 param([Parameter(Mandatory)][string]$Shots, [switch]$SkipCapture)
 "run-main stub: Shots=$Shots SkipCapture=$($SkipCapture.IsPresent)" | Add-Content "$env:SBX\calls.log"
@@ -169,6 +170,7 @@ if (-not $SkipCapture) {
   1..$count | ForEach-Object { [IO.File]::WriteAllText("$Shots\shot-$_.png", "png-$_") }
 }
 if ($mode -eq "fail3") { exit 3 }
+if ($mode -eq "logro") { Set-ItemProperty "$Shots.run.log" -Name IsReadOnly -Value $true }
 '@
   $shotDir = "docs\demo\v0.11.0\screenshots"
   $runBlock = {
@@ -189,8 +191,8 @@ if ($mode -eq "fail3") { exit 3 }
   $logOf = { param($r) @(Get-ChildItem "$($r.sb)\tmp" -Filter "demo-s11-shots-*.run.log" -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -Raw -Encoding UTF8 $_.FullName }) -join "`n" }
 
   $r = & $runBlock "b3" $b3 "0"
-  if ($r.code -ne 0 -or $r.calls -notmatch "SkipCapture=True" -or $r.calls -match "npm run build") { $problems.Add("B3 真实服务演练块执行结果不符：退出 $($r.code)`n$($r.calls)`n$($r.out)") }
-  else { "B3 通过：真实服务演练块在沙箱里执行，退出 0，替身 run-main 被带 -SkipCapture 调用，没有 build" }
+  if ($r.code -ne 0 -or $r.calls -notmatch "SkipCapture=True" -or $r.calls -notmatch "npm run build" -or (& $pngsIn $r) -ne 0 -or $r.out -notmatch "gate ok") { $problems.Add("B3 预演模式执行结果不符：退出 $($r.code)`n$($r.calls)`n$($r.out)") }
+  else { "B3 通过：统一步骤块预演模式在沙箱里执行，退出 0；build 与门禁先于 run-main 替身，替身被带 -SkipCapture 调用，没有复制截图" }
 
   $r = & $runBlock "b6" $b6 "0"
   if ($r.code -ne 0 -or $r.calls -notmatch "npm run build" -or $r.calls -notmatch "SkipCapture=False" -or (& $pngsIn $r) -ne 32 -or (& $shotsLeft $r) -ne 0) { $problems.Add("B6 取图块执行结果不符：退出 $($r.code)，复制 $(& $pngsIn $r) 张，残留目录 $(& $shotsLeft $r)`n$($r.calls)`n$($r.out)") }
@@ -207,6 +209,16 @@ if ($mode -eq "fail3") { exit 3 }
   $lg = & $logOf $r
   if ($r.code -ne 0 -or $lg -notmatch "STDOUT-BEFORE" -or $lg -notmatch "NATIVE-STDERR" -or $lg -notmatch "STDOUT-AFTER-STDERR" -or $lg -notmatch "exit=0 ok=True" -or (& $pngsIn $r) -ne 32 -or (& $shotsLeft $r) -ne 0) { $problems.Add("B7 成功路径不符：退出 $($r.code)`n$lg") }
   else { "B7 成功通过：stdout、原生 stderr、其后的 stdout 三段都在日志里，exit=0；复制 32 张，shots 目录已清，日志保留" }
+  $logFile = @(Get-ChildItem "$($r.sb)\tmp" -Filter "demo-s11-shots-*.run.log")[0].FullName
+  $shaNow = (Get-FileHash -Algorithm SHA256 -LiteralPath $logFile).Hash
+  $lnNow = @(Get-Content -Encoding UTF8 -LiteralPath $logFile).Count
+  if ($r.out -notmatch "sha256=$shaNow lines=$lnNow") { $problems.Add("B7 成功路径：删原图前打印的日志 SHA-256/行数与落盘日志不一致（落盘 $shaNow / $lnNow）`n$($r.out)") }
+  else { "B7 日志复核通过：删原图前打印 sha256=$shaNow lines=$lnNow，与落盘日志一致" }
+
+  $r = & $runBlock "b7logro" $b6 "0" "0" "logro"
+  $lg = & $logOf $r
+  if ($r.code -eq 0 -or $lg -match "ok=True" -or $r.out -notmatch "日志写入失败" -or (& $shotsLeft $r) -ne 1 -or (& $shotsPngs $r) -ne 32) { $problems.Add("B7 日志写失败路径不符：退出 $($r.code)，shots 目录 $(& $shotsLeft $r)，原图 $(& $shotsPngs $r)`n$($r.out)") }
+  else { "B7 日志写失败通过：复制完成后日志变为只读，最终写入失败；块失败退出，日志里没有 ok=True，输出含[日志写入失败]，shots 目录保留，32 张原图未删" }
 
   $r = & $runBlock "b7fail" $b6 "0" "0" "fail3"
   $lg = & $logOf $r
