@@ -245,7 +245,7 @@ try {
       await page.locator("form.tord-filter button[type=submit]").click();
       await poll(rows, orderSets[state], `开票状态 ${state} 的订单`);
       const badges = await page.locator("table.tord-list td.tord-invoicing").allInnerTexts();
-      if (badges.length === 0 || badges.some((b) => b.trim() !== t.invoicing[state])) throw new Error(`徽标应全为 ${t.invoicing[state]}：${JSON.stringify(badges)}`);
+      if (badges.length === 0 || badges.some((b) => b.trim().split("\n").pop().trim() !== t.invoicing[state])) throw new Error(`徽标应全为 ${t.invoicing[state]}：${JSON.stringify(badges)}`);
       await shot(page, `orders-invoicing-${state}-${tag}`, want, "#/trade-orders", { step: `orders-invoicing-${state}`, entryHash: "#/trade-orders?company=DEFAULT", via: `select #tord-filter-invoicing=${state}, click apply`, before: orderAll.length, after: orderSets[state].length });
       await context.close();
     }
