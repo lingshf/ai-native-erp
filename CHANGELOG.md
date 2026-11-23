@@ -6,7 +6,28 @@
 
 ## [Unreleased]
 
-（暂无）
+> **v0.16.0 发布候选**（尚未打 tag，日期待定）。产品代码基线为 `main` `35df068`（REFAC-07 [#275](https://github.com/lingshf/ai-native-erp/pull/275) 的合并提交；S17 的三项开发任务全部已合并，该提交的 main Full run 45263713443 绿）。v0.15.0 打在 `release/v0.15.0` 分支上、不在 main 上（D482），所以 `v0.15.0` 到 main 的范围里含 v0.15.0 已发布的文档提交。对照 `git log --oneline --first-parent v0.15.0..main`（`35df068` 上共 7 行，每行一个 PR）：
+> - 已发布或只改日期，**不需要 `[Unreleased]` 条目**：[#269](https://github.com/lingshf/ai-native-erp/pull/269)（v0.15.0 的 RC 与 Demo，已随 v0.15.0 发布）、[#272](https://github.com/lingshf/ai-native-erp/pull/272)（v0.15.0 发布日与链接，只改日期）。
+> - 有条目：[#271](https://github.com/lingshf/ai-native-erp/pull/271)（新增）、[#270](https://github.com/lingshf/ai-native-erp/pull/270)、[#275](https://github.com/lingshf/ai-native-erp/pull/275)（变更，无用户可见变化）。
+> - 无用户可见变化，条目在下面“文档与流程”：[#273](https://github.com/lingshf/ai-native-erp/pull/273)（S16 评审与回顾的设计文档）、[#274](https://github.com/lingshf/ai-native-erp/pull/274)（Demo 模板与发布清单）。
+>
+> 与 `v0.15.0` 相比，`git diff --name-only v0.15.0 35df068 -- packages` 共 23 个文件（`--shortstat`：+1698/−962），没有迁移（仍为 020），没有 `package.json` 改动；`scripts/` 只有 1 个文件、1 行（`scripts/test-shard-weights.json`，#271 为新测试文件加的估算权重）。tag 目标由协调者定。完整版本差异（两点）与合并基对比（三点，D483）的链接和数字在 tag 创建后核对填入。
+
+S17 Sprint：一项用户可见的小功能（TLIST-01）、两项只拆分文件的重构（REFAC-07、REFAC-08）。按 SemVer 取 minor（0.15.0 → 0.16.0），因为订单列表与发票列表多了一个按钮。**无迁移，无依赖变化**，已有账套不需要 migrate，不改过账规则与任何金额、数量口径。
+
+### Added（用户可见）
+
+- **订单列表与发票列表的筛选栏多一个“刷新列表”按钮（TLIST-01，[#271](https://github.com/lingshf/ai-native-erp/pull/271)，合并提交 `0ce9940`）**：按钮在“清除”之后（英文 “Refresh list”），点它按当前已应用的筛选从第一页重新读取；筛选栏里还没点“应用”的输入保留，不改地址与浏览器历史，不弹离开确认，不清录入区草稿。Tab 顺序在“清除”之后多一站。无新 CSS、无迁移。依据：#271 正文“用户可见变化”与“验收对照”（U2–U7，七个 jsdom 用例，两个列表各跑一遍）；真实 Chrome 下 1440 / 390 px 的排布见 Demo。
+
+### Changed（无用户可见变化）
+
+- **预付 / 贷项 / 纠错页内部拆分（REFAC-07，[#275](https://github.com/lingshf/ai-native-erp/pull/275)，合并提交 `35df068`）**：`TradeAdjustments.tsx` 中 643 行的 `ActionEntry` 拆成精简后的 73 行（文件共 173 行）和 `trade-adjustments/` 下 9 个新文件，只搬移，页面外观、文案、键盘与焦点、存储与请求都不变。依据：#275 正文 R4 逐步等价表（16/16 场景 base 与 head 逐字节相同，RESULT: PASS）与 R3（Web 全部 jsdom 测试 25 个文件、347 个用例通过，`trade-adjustments.test.tsx` diff 为空）。
+- **`tradeGuiSmoke` 测试支撑代码拆分（REFAC-08，[#270](https://github.com/lingshf/ai-native-erp/pull/270)，合并提交 `adeac52`）**：`smoke.ts` 由 262 行减到 97 行，拆入 `smoke/` 下 5 个模块，只改测试支撑代码，不改断言、等待与浏览器回调。依据：#270 正文 T2：断言调用链 base 与 head 各 11 条，仅 `() => pending` 变为读取函数 `() => pending()`，其余 10 条逐字相同。
+
+### 文档与流程（无用户可见变化）
+
+- **S16 评审与回顾（[#273](https://github.com/lingshf/ai-native-erp/pull/273)，合并提交 `d43fe6d`）**：设计文档，记录 D474、D475、D478–D482。
+- **Demo 模板与发布清单（[#274](https://github.com/lingshf/ai-native-erp/pull/274)，合并提交 `72137e7`）**：S16 回顾行动。Demo 模板要求 17：干跑前先 `npm run build`，标准时段流程，SR-X6 行原样抄录；发布清单：PR 正文顶部“当前状态”、对照 first-parent 日志核对 CHANGELOG、两条 compare 链接。
 
 ## [0.15.0] - 2026-11-23
 
