@@ -6,16 +6,44 @@
 
 ## [Unreleased]
 
-> **v0.13.0 骨架（S13，计划 [#222](https://github.com/lingshf/ai-native-erp/pull/222)，D416–D419）**：以下条目来自任务书，**对应 PR 尚未合并，合并后按 PR 正文改写，不得当作已发布内容**。
+（暂无）
 
-### Added（待合并后确认）
+## [0.13.0] - 待定
 
-- **订单列表筛选写入地址栏（TORD-07）**：应用筛选后地址栏带上筛选条件，刷新或分享链接得到同样结果；链接里的筛选条件不合法时提示并提供“清除”；订单详情的数量、单价、折扣按语言加千分位；订单页教学说明改为“筛选保存在地址中”。
-- **迁移虚构演练（M2-05a）**：新命令 `npm run storage:admin -- legacy-import --snapshot-dir DIR --dry-run`（只在虚构夹具上演练，不连接真实旧账）；新文档 `docs/migration-runbook.md`；Bench 新增迁移链路耗时记录。界面无变化。
+> **发布候选（S13）**：RC PR 合并后，tag 目标与发布日由协调者授权后写定，**尚未打 tag、尚未发布**。产品代码基线为 `main` `ef0de69`（REFAC-01b [#224](https://github.com/lingshf/ai-native-erp/pull/224) 的合并提交，S13 功能全部合并；该提交的 main Full run 45201528305 绿）；其后的 `f1536e1` 只是 v0.12.0 Demo 文档（[#233](https://github.com/lingshf/ai-native-erp/pull/233)），`git diff ef0de69 f1536e1 -- packages scripts` 为空（已核对）。自 v0.12.0 的 tag 目标 `a7e2d99` 到 `f1536e1`，`packages/` 下 43 个文件（+5679/−3385），`scripts/` 下 3 个文件（+421/−45）。**tag 目标**按 D21 / D398：打在 RC PR 的 squash 提交上之前，须核对 `git diff f1536e1 <目标> -- packages scripts` 为空。
 
-### Changed（待合并后确认）
+S13 Sprint：订单筛选写入地址栏、旧账迁移虚构演练与操作手册、导入峰值内存回到预算、三项只搬移的重构。**无迁移**，无依赖变化，不改过账规则。新增用户可见功能，版本号取 minor（0.12.0 → 0.13.0）。
 
-- 无用户可见变化：REFAC-01b（拆分 `tradeGuiScenario` 函数体，测试支撑代码重构）。
+### Added（用户可见）
+
+- **订单列表筛选写入地址栏（TORD-07，[#223](https://github.com/lingshf/ai-native-erp/pull/223)）**：应用筛选后，地址形如 `#/trade-orders?company=…&party=…&side=…&invoicing=…&from=…&to=…`（只写已设置的项），刷新、书签或粘贴链接后筛选与列表还原。只用“替换地址”：应用 / 清除不新增浏览器历史、不弹离开确认、不清掉订单表单草稿；切换账套仍保留原有确认（D423）。地址中的筛选任一项无效则整组忽略、显示全部订单，并提示“链接中的筛选条件无效，已忽略；当前显示全部订单。”和“清除”。订单详情行的数量、已开票数量、单价、折扣按语言加千分位；页面教学说明改为“筛选保存在地址中，刷新或复制链接后保持”。**行为变化：v0.7.0 起“订单筛选不会被记住”不再成立。**
+- **旧账导入演练命令与操作手册（M2-05a，[#227](https://github.com/lingshf/ai-native-erp/pull/227)）**：新命令 `npm run storage:admin -- legacy-import --snapshot-dir DIR --dry-run`：不带选项时输出快照 SHA 和六个导入选项各自的影响条数，带齐六个选项时输出可执行性、对象计数、草稿与原因；**不写任何目标库**，选项不全或同时给 `--target` 按用法错误拒绝。新文档 [`docs/migration-runbook.md`](docs/migration-runbook.md)（授权门槛、各步命令、错误码、回滚、证据、预算），并从 `docs/user/backup-and-legacy.md` 与根 README 链接。**全程只用虚构夹具（D417）**，没有连接真实旧账、4173 或 `.bak`；界面无变化。
+
+### Changed
+
+- **期初未结项校验提速（M2-05a，D430）**：每个（公司, 科目）只查询一次历史凭证，不再每条期初项扫描一遍；100 万行 GL 下 10 万条期初的校验由估算约 9 小时降到约 27 秒，判定结果不变，无迁移、无公开接口变化。
+- **导入期初分批写入（M2-05b，[#232](https://github.com/lingshf/ai-native-erp/pull/232)，D434）**：校验通过的期初项暂存到临时计划库，在仍为**单一写事务**的期初阶段内每批 1000 项写入目标库。Bench（100 万 GL 行 + 10 万期初，Linux CI，run 45196607138）导入峰值 RSS 由 566.3 MiB（M2-05a 的已知缺口，超出 512 MiB 预算）降到 426.8 MiB，导入耗时 120.2 s → 93.5 s。导入结果、命令行参数、错误码不变；操作手册的“已知缺口”改为已关闭。
+
+### Internal（无用户可见变化）
+
+- **REFAC-01b（[#224](https://github.com/lingshf/ai-native-erp/pull/224)，D419）**：测试支撑代码 `tradeGuiScenario` 约 1440 行的函数体拆到 `trade-gui/scenario/` 的阶段模块，只搬移、不改行为。
+- **REFAC-03（[#226](https://github.com/lingshf/ai-native-erp/pull/226)）/ REFAC-03b（[#231](https://github.com/lingshf/ai-native-erp/pull/231)，D438）**：`Journals.tsx` 拆为 `journals/` 下的模块，`CompanyJournals` 再拆为 Hook、命令模块和展示组件（函数由 1025 行降到 76 行），只搬移、不改行为。
+- **测试修正（[#229](https://github.com/lingshf/ai-native-erp/pull/229)，D436）**：TORD-07 合并后，main Full 的两个浏览器分片（`trade-gui-zh-red-2`、`trade-gui-en-green-2`）因 e2e 仍断言“筛选后地址不变”而连续失败，#229 把该断言改为新行为；产品代码不变。
+- **文档与流程**：S13 计划与任务书 [#222](https://github.com/lingshf/ai-native-erp/pull/222)、[#225](https://github.com/lingshf/ai-native-erp/pull/225)、[#228](https://github.com/lingshf/ai-native-erp/pull/228)、[#230](https://github.com/lingshf/ai-native-erp/pull/230)；v0.12.0 Demo [#233](https://github.com/lingshf/ai-native-erp/pull/233)。
+- **测试**：新增 `legacy-opening-batches.test.ts`、`legacy-rehearsal.test.ts`、`trade-orders-fixtures.ts` 等（D425、D443 测试文件例外）；TORD-07 把 TORD-06 的地址断言改为精确值。
+
+### 面向调用方（HTTP API、CLI、迁移）
+
+- **CLI**：新增 `storage-admin legacy-import --snapshot-dir DIR --dry-run`（只读演练）。其余命令、参数、错误码不变。
+- **迁移**：无（仍为 019）。**契约、过账规则、依赖**：无变化。
+
+### 已知限制与已接受的决定
+
+- 订单筛选地址：不记游标与每页条数；筛选任一项无效则整组忽略；切换账套仍弹确认（D423）；开票状态只能单选。
+- **旧账迁移（M2）仍未完成**：演练只在虚构夹具上验证；真实旧账的演练和切换（M2-06）需用户另行授权，未开始。
+- **性能（PG-05，gzip-9，取自 PR 正文）**：TORD-07 入口 +0.034 kB，订单页（含新共享块 `decimal-format.js`）+0.773 kB（预算 ≤ +1.0），CSS 0；发票页 −0.101 kB。两项迁移相关 Bench 为 Linux CI 实测，与 v0.12.0 相比的整体净变化未测量。
+- TORD-07 按 D418 / D375 / D406 以 jsdom 与 CI 验收，没有真实 Chrome 截图；Demo 是否补拍待协调者决定。
+- 刚合并时 main Full 曾因 TORD-07 与 e2e 断言不符失败（#223 到 #229 之间），#229 修复，`ef0de69` 的 Full 为绿。
 
 ## [0.12.0] - 2026-11-23
 
