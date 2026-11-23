@@ -607,10 +607,11 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [TINV-07](S12.md#tinv-07发票详情深链接与筛选写入地址栏) | 发票详情深链接 `?invoice=` 与筛选写入地址栏；只用 replace，切换账套写地址，非法筛选整组忽略并提示，非法 `invoice` 前端判 notFound（D370） | 页面 | P1 | — （D369 先行派发） | web-ui:trade（`TradeInvoices.tsx`、`TradeInvoiceDetail.tsx`、发票 labels 只追加、发票测试、`docs/flows/invoice-*.md`）；共享 `trade-gui-scenario.ts`、`scripts/test-shard-weights.json` 只追加 | in progress | — |
 | [TORD-06](S12.md#tord-06订单按开票状态筛选) | 订单按开票状态筛选：迁移 019 存储状态，过账 / 作废事务内维护，列表列读存储值；`invoicing` 单值（D371） | 迁移 + 页面 | P1 | — （D369 先行派发） | migrations(019)+migrations.ts、domain-posting、storage、contracts（订单列表查询追加）、web-ui:trade-orders；共享文件同上 | in progress | — |
 | [UI-15](S12.md#ui-15期末结账页小步整理) | 期末结账页小步整理：补页头说明，准入徽标与复选框显示本地化模块名（界面小步） | 页面 | P2 | 本 PR | web-ui:period-close（`PeriodClose.tsx`、`TradePeriodAdmission.tsx`、`ui/close-labels.ts`、`ui/trade-report-labels.ts` 中 `trpt.*`、`pages/period-close.css` 及测试） | done | #206 |
-| [UI-16](S12.md#ui-16总账四页补页头说明) | 总账四页（科目表、财务维度、凭证、业务事件）补页头说明（界面小步，D377，不用槽位） | 页面 | P2 | UI-15 合并 | web-ui:master、web-ui:dimensions、web-ui:journals、web-ui:business-events（四个页面、对应 `ui/*-labels.ts` 只追加 `*.description` 及四页测试） | in progress | — |
+| [UI-16](S12.md#ui-16总账四页补页头说明) | 总账四页（科目表、财务维度、凭证、业务事件）补页头说明（界面小步，D377，不用槽位） | 页面 | P2 | UI-15 合并 | web-ui:master、web-ui:dimensions、web-ui:journals、web-ui:business-events（四个页面、对应 `ui/*-labels.ts` 只追加 `*.description` 及四页测试） | done | #210 |
+| [UI-17](S12.md#ui-17通用加载与失败提示去掉主数据字样) | 通用加载与失败提示去掉“主数据”字样：只影响使用这两个共享键的现有提示，专用提示不改；只改 `master.loading` / `master.error` 的中英取值，不改键名（D384，不用槽位，不进截图与门禁） | 页面（文案） | P2 | UI-16 合并 | web-ui:master（`ui/master-labels.ts`）+ web-ui:migration（`test/migration.test.tsx` 只追加） | in progress | — |
 | DEMO-12（无任务书） | v0.12.0 RC 与 Demo，验收见 [S12.md](S12.md#demo-12-验收) | 发布 | P1（Sprint 末） | TINV-07、TORD-06、UI-15 结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | todo | — |
 
-- **并行**：TINV-07 ∥ TORD-06 ∥ UI-15 冲突域不相交，可同时进行（D369）；UI-15 合并后由 UI-16 接替第三个名额（D377）；只有 TORD-06 加迁移（019），其他任务不得新增迁移。开发同时在岗不超过 3 人。共享单文件与槽位规则见 [S12.md](S12.md#泳道)。
+- **并行**：TINV-07 ∥ TORD-06 ∥ UI-15 冲突域不相交，可同时进行（D369）；UI-15 合并后由 UI-16 接替第三个名额（D377），UI-16 合并后由 UI-17 接替（D384）；只有 TORD-06 加迁移（019），其他任务不得新增迁移。开发同时在岗不超过 3 人。共享单文件与槽位规则见 [S12.md](S12.md#泳道)。
 
 ## 派发顺序
 
