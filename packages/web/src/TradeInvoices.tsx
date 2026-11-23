@@ -350,17 +350,18 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
   const linkCompany = params.get("company") || null;
   const linked = linkParamKeys.some((key) => params.has(key));
   const company = rows.find((row) => row.code === (linkCompany ?? selected)) ?? rows[0];
-  const write = (change: LinkChange) =>
-    setParams(
-      (current) => {
-        const next = new URLSearchParams(current);
-        for (const [key, value] of Object.entries(change))
-          if (value) next.set(key, value);
-          else next.delete(key);
-        return next;
-      },
-      { replace: true },
-    );
+  const write = (change: LinkChange) => {
+    // Merge with the address as it is now (an earlier write may not have re-rendered yet). Every
+    // write sets each managed key once (dropping duplicates) and deletes the empty ones; other
+    // keys stay as they are.
+    const next = addressParams();
+    for (const key of managedKeys) {
+      const value = key in change ? change[key] : next.get(key);
+      if (key === "invoice" ? value?.trim() : value) next.set(key, value as string);
+      else next.delete(key);
+    }
+    setParams(next, { replace: true });
+  };
   // An order link names its company: if it is not among the loaded companies, say so and fill
   // nothing instead of falling back to another company (picking a company drops the request).
   const wanted = intake?.company;
@@ -389,15 +390,14 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
                 setSelected(event.target.value);
                 setIntake(null);
                 // Filters and the open invoice belong to the previous company.
-                if (linkCompany !== null || linked)
-                  write({
-                    company: linkCompany === null ? null : event.target.value,
-                    invoice: null,
-                    party: null,
-                    side: null,
-                    from: null,
-                    to: null,
-                  });
+                write({
+                  company: event.target.value,
+                  invoice: null,
+                  party: null,
+                  side: null,
+                  from: null,
+                  to: null,
+                });
               }}
             >
               {rows.map((row) => (
@@ -415,11 +415,7 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
           <p>
             {t("tinv.fromOrder.company")} · {wanted}
           </p>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => (linkMissing ? backFromLink() : setIntake(null))}
-          >
+          <button type="button" className="btn btn-secondary" onClick={backFromLink}>
             {t("master.cancel")}
           </button>
         </MessageBar>
@@ -1116,7 +1112,14 @@ const noInvoiceFilter: InvoiceFilter = { party: "", side: "", from: "", to: "" }
 const invoiceFilterKeys = ["party", "side", "from", "to"] as const;
 // TINV-07: the address parameters this page reads besides `company` and `fromOrder`.
 const linkParamKeys = ["invoice", ...invoiceFilterKeys] as const;
-type LinkChange = Partial<Record<"company" | (typeof linkParamKeys)[number], string | null>>;
+const managedKeys = ["company", ...linkParamKeys] as const;
+type LinkChange = Partial<Record<(typeof managedKeys)[number], string | null>>;
+// The router's search string as it is now (HashRouter: after the `?` in the hash).
+function addressParams() {
+  const hash = window.location.hash;
+  const at = hash.indexOf("?");
+  return new URLSearchParams(at < 0 ? "" : hash.slice(at + 1));
+}
 // The applied filters come from the address. Empty values mean "not given"; if any given value is
 // one the list API would reject (same schema), the whole set is ignored and the page says so.
 function linkFilter(params: URLSearchParams, company: string) {

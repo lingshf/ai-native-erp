@@ -1,6 +1,10 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { tradeInvoiceDetailSchema, type TradeInvoiceDetailDto } from "@erp/core/contracts";
+import {
+  tradeInvoiceDetailSchema,
+  type TradeInvoiceDetailDto,
+  type TradeOrderInvoicingDto,
+} from "@erp/core/contracts";
 import { App } from "../src/App.tsx";
 import { label, preferenceStorageKey, type LabelKey } from "../src/ui/index.ts";
 import { detailLabel, type TradeInvoiceDetailKey } from "../src/ui/trade-invoice-detail-labels.ts";
@@ -623,31 +627,63 @@ describe("TINV-06 invoice detail dialog", () => {
   });
 });
 
-// TINV-07: the open invoice and the applied list filters live in the address, always written by
-// replace (no history entry, never the Back/Forward gate or the leave confirmation).
+// TINV-07 (S12 decisions 1–10, D370): the open invoice and the applied filters live in the
+// address. Every write is a replace from a user action; mounting writes nothing except the
+// existing `fromOrder` removal. One case per row P1–P19, then A5 and A6.
 describe("TINV-07 invoice links in the address", () => {
   const at = (search: string) =>
     window.history.replaceState(null, "", `/#/trade-invoices${search}`);
-  const listUrls = (served: ReturnType<typeof serve>) =>
-    served.fetchMock.mock.calls
-      .map(([path]) => String(path))
-      .filter((path) => path.startsWith("/api/v1/trade/invoices?"));
+  const acme = { ...company, code: "ACME", name: "Acme" };
+  // Address writes (a replace with a URL); the router's own state-only replace is not one.
+  const countWrites = () => {
+    const spy = vi.spyOn(window.history, "replaceState");
+    return () => spy.mock.calls.filter(([, , url]) => typeof url === "string" && url).length;
+  };
+  const query = () => new URLSearchParams(window.location.hash.split("?")[1] ?? "");
+  type Route = (url: string) => Response | Promise<Response> | undefined;
+  function setUp(options: { route?: Route; reply?: Reply; companies?: (typeof company)[] } = {}) {
+    const served = serve(detail(), options.reply);
+    const fallback = served.fetchMock.getMockImplementation() as typeof fetch;
+    served.fetchMock.mockImplementation(async (path, init) => {
+      const url = String(path);
+      const routed = options.route?.(url);
+      if (routed) return routed;
+      if (url.startsWith("/api/v1/companies") && options.companies)
+        return response({ items: options.companies, nextCursor: null });
+      return fallback(path, init);
+    });
+    const calls = () => served.fetchMock.mock.calls.map(([path]) => String(path));
+    return {
+      ...served,
+      lists: () => calls().filter((url) => url.startsWith("/api/v1/trade/invoices?")),
+      details: () => calls().filter((url) => /^\/api\/v1\/trade\/invoices\/[^?]/.test(url)),
+      calls,
+    };
+  }
   const base = "/api/v1/trade/invoices?company=DEFAULT&limit=100";
   const scroller = () => screen.getByRole("region", { name: t("tinv.list") });
+  const close = async (dialog: HTMLElement) => {
+    fireEvent.click(within(dialog).getByRole("button", { name: d("tinv.detail.close") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  };
+  const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 30)));
 
-  it("?invoice= opens the detail on load with one request; closing drops it and focuses the row's button", async () => {
-    const served = serve(detail());
+  it("A1: ?invoice= opens the detail on load with one request; closing drops it and focuses the row's button", async () => {
+    const served = setUp();
     const confirm = vi.spyOn(window, "confirm");
     at(`?company=DEFAULT&invoice=${documentId}`);
+    const writes = countWrites();
     const length = window.history.length;
     render(<App />);
     const dialog = await screen.findByRole("dialog", { name: dialogTitle });
     await within(dialog).findByRole("table", { name: t("tinv.lines") });
-    expect(served.detailCalls()).toBe(1);
     await trigger();
-    fireEvent.click(within(dialog).getByRole("button", { name: d("tinv.detail.close") }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await settle();
+    expect(served.detailCalls()).toBe(1);
+    expect(writes()).toBe(0);
+    await close(dialog);
     expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT");
+    expect(writes()).toBe(1);
     await waitFor(() =>
       expect(document.activeElement).toBe(
         screen.getByRole("button", { name: `${d("tinv.detail.open")} INV-1` }),
@@ -657,22 +693,17 @@ describe("TINV-07 invoice links in the address", () => {
     expect(confirm).not.toHaveBeenCalled();
   });
 
-  it("a deep link outside the loaded rows takes its title from the response; closing focuses the list", async () => {
+  it("A1: an invoice outside the loaded rows takes its title from the response; closing focuses the list", async () => {
     const other = uuid(777);
     const value = detail();
-    const served = serve(value);
-    served.fetchMock.mockImplementation(async (path) => {
-      const url = String(path);
-      if (url.startsWith("/api/v1/companies"))
-        return response({ items: [company], nextCursor: null });
-      if (url === `/api/v1/trade/invoices/${other}?company=DEFAULT`)
-        return response({
-          ...value,
-          document: { ...value.document, documentId: other, externalNo: "INV-77" },
-        });
-      if (url.startsWith("/api/v1/trade/invoices?"))
-        return response({ items: [], nextCursor: null });
-      return response({}, 404);
+    setUp({
+      route: (url) =>
+        url === `/api/v1/trade/invoices/${other}?company=DEFAULT`
+          ? response({
+              ...value,
+              document: { ...value.document, documentId: other, externalNo: "INV-77" },
+            })
+          : undefined,
     });
     at(`?company=DEFAULT&invoice=${other}`);
     render(<App />);
@@ -684,148 +715,488 @@ describe("TINV-07 invoice links in the address", () => {
     await waitFor(() => expect(document.activeElement).toBe(scroller()));
   });
 
-  it("404 and another company's invoice show not found; a malformed id shows not found without a request; empty opens nothing", async () => {
-    const served = serve(detail(), () => error(404, "NOT_FOUND"));
-    at(`?company=DEFAULT&invoice=${documentId}`);
-    const first = render(<App />);
-    let dialog = await screen.findByRole("dialog", { name: d("tinv.detail.title") });
-    expect(await within(dialog).findByText(d("tinv.detail.notFound"))).toBeTruthy();
-    expect(within(dialog).queryByRole("button", { name: t("master.retry") })).toBeNull();
-    expect(served.detailCalls()).toBe(1);
-    first.unmount();
-
-    at("?company=DEFAULT&invoice=not-an-id");
-    const second = render(<App />);
-    dialog = await screen.findByRole("dialog", { name: d("tinv.detail.title") });
-    expect(within(dialog).getByText(d("tinv.detail.notFound"))).toBeTruthy();
-    expect(within(dialog).queryByText(d("tinv.detail.loading"))).toBeNull();
-    fireEvent.click(within(dialog).getByRole("button", { name: d("tinv.detail.close") }));
-    await waitFor(() => expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT"));
-    expect(served.fetchMock.mock.calls.some(([path]) => String(path).includes("not-an-id"))).toBe(
-      false,
-    );
-    second.unmount();
-
-    at("?company=DEFAULT&invoice=");
+  it.each([
+    ["missing", `?invoice=${documentId}`],
+    ["empty", `?company=&invoice=${documentId}`],
+  ])("P1: company %s uses the current company and writes nothing on mount", async (_, search) => {
+    const served = setUp();
+    at(search);
+    const writes = countWrites();
     render(<App />);
-    await trigger();
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(served.detailCalls()).toBe(1);
+    const dialog = await screen.findByRole("dialog", { name: dialogTitle });
+    expect(served.calls()).toContain(detailPath);
+    await settle();
+    expect(writes()).toBe(0);
+    await close(dialog);
+    expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT");
   });
 
-  it("filters in the address are applied on load and shown in the bar", async () => {
-    const served = serve(detail());
-    at("?company=DEFAULT&party=V1&side=AP&from=2026-01-01&to=2026-06-30");
+  it("P2: an unknown company with a link renders no draft or list and sends nothing; Back drops the link once", async () => {
+    const served = setUp();
+    at(`?company=NOPE&party=V1&invoice=${documentId}`);
+    const writes = countWrites();
+    render(<App />);
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain(`${d("tinv.link.company")} · NOPE`);
+    expect(alert.className).toContain("danger");
+    expect(screen.queryByLabelText(t("tinv.party"))).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await settle();
+    expect(served.lists()).toEqual([]);
+    expect(served.details()).toEqual([]);
+    expect(writes()).toBe(0);
+    fireEvent.click(within(alert).getByRole("button", { name: d("tinv.link.back") }));
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-invoices"));
+    expect(writes()).toBe(1);
+    expect(document.activeElement?.id).toBe("tinv-company");
+    await trigger();
+    expect(served.lists()).toEqual([base]);
+    expect(served.details()).toEqual([]);
+  });
+
+  it("P3: an unknown company without a link falls back to the first company as before", async () => {
+    const served = setUp();
+    at("?company=NOPE");
+    const writes = countWrites();
     render(<App />);
     await trigger();
-    expect(listUrls(served)).toEqual([`${base}&party=V1&side=AP&from=2026-01-01&to=2026-06-30`]);
-    const value = (id: string) => (document.getElementById(id) as HTMLInputElement).value;
-    expect(["party", "side", "from", "to"].map((key) => value(`tinv-filter-${key}`))).toEqual([
-      "V1",
-      "AP",
-      "2026-01-01",
-      "2026-06-30",
-    ]);
-    expect(screen.queryByText(d("tinv.filter.linkInvalid"))).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(served.lists()).toEqual([base]);
+    expect(writes()).toBe(0);
+  });
+
+  it("P4: an unknown company with fromOrder and a link: fromOrder dropped once, one alert, nothing sent; cancel drops the link once and never takes the order again", async () => {
+    const served = setUp();
+    at(`?company=NOPE&fromOrder=PO-1&side=AP&invoice=${documentId}`);
+    const writes = countWrites();
+    render(<App />);
+    const alert = await screen.findByRole("alert");
+    await waitFor(() =>
+      expect(window.location.hash).toBe(
+        `#/trade-invoices?company=NOPE&side=AP&invoice=${documentId}`,
+      ),
+    );
+    await settle();
+    expect(writes()).toBe(1);
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(alert.textContent).toContain(`${t("tinv.fromOrder.company")} · NOPE`);
+    expect(screen.queryByLabelText(t("tinv.party"))).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(served.lists()).toEqual([]);
+    expect(served.details()).toEqual([]);
+    fireEvent.click(within(alert).getByRole("button", { name: t("master.cancel") }));
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-invoices"));
+    expect(await screen.findByLabelText(t("tinv.party"))).toBeTruthy();
+    await settle();
+    expect(writes()).toBe(2);
+    expect((screen.getByLabelText(t("tinv.party")) as HTMLInputElement).value).toBe("");
+    expect(served.calls().some((url) => url.includes("/invoicing"))).toBe(false);
+    expect(served.details()).toEqual([]);
   });
 
   it.each([
-    ["party", "?company=DEFAULT&party=v%20x"],
-    ["side", "?company=DEFAULT&side=XX&party=V1"],
-    ["date", "?company=DEFAULT&from=2026-13-01"],
-    ["range", "?company=DEFAULT&from=2026-06-30&to=2026-01-01"],
+    ["empty", ""],
+    ["blank", "%20%20"],
   ])(
-    "an invalid %s in the address ignores all filters and says so; Clear drops them",
-    async (_, search) => {
-      const served = serve(detail());
-      at(search);
+    "P5: an %s invoice opens nothing, is kept on mount and dropped by the next write",
+    async (_, value) => {
+      const served = setUp();
+      at(`?company=DEFAULT&invoice=${value}&side=AP`);
+      const writes = countWrites();
       render(<App />);
       await trigger();
-      expect(listUrls(served)).toEqual([base]);
-      const warning = await screen.findByText(d("tinv.filter.linkInvalid"));
-      const bar = warning.closest("[role=status]") as HTMLElement;
-      fireEvent.click(within(bar).getByRole("button", { name: t("tinv.filter.clear") }));
-      await waitFor(() => expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT"));
-      expect(screen.queryByText(d("tinv.filter.linkInvalid"))).toBeNull();
+      await settle();
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(served.details()).toEqual([]);
+      expect(writes()).toBe(0);
+      fireEvent.change(screen.getByLabelText(t("tinv.filter.side")), { target: { value: "AR" } });
+      fireEvent.click(screen.getByRole("button", { name: t("tinv.filter.apply") }));
+      await waitFor(() =>
+        expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT&side=AR"),
+      );
     },
   );
 
-  it("a link to a company that is not loaded opens nothing; Back to invoices drops the link", async () => {
-    const served = serve(detail());
-    at(`?company=NOPE&party=V1&invoice=${documentId}`);
+  it.each([
+    ["abc", "abc"],
+    ["35 characters", documentId.slice(1)],
+    ["a g", `${documentId.slice(0, -1)}g`],
+  ])(
+    "P6: a malformed invoice (%s) shows not found without a request; Close focuses the list",
+    async (_, id) => {
+      const served = setUp();
+      at(`?company=DEFAULT&invoice=${id}`);
+      render(<App />);
+      const dialog = await screen.findByRole("dialog", { name: d("tinv.detail.title") });
+      expect(within(dialog).getByText(d("tinv.detail.notFound"))).toBeTruthy();
+      expect(within(dialog).queryByText(d("tinv.detail.loading"))).toBeNull();
+      expect(within(dialog).queryByRole("button", { name: t("master.retry") })).toBeNull();
+      await trigger();
+      await close(dialog);
+      expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT");
+      await waitFor(() => expect(document.activeElement).toBe(scroller()));
+      expect(served.details()).toEqual([]);
+    },
+  );
+
+  it("P7: an unknown invoice (404) shows not found once with no retry; Close focuses the list", async () => {
+    const missing = uuid(404);
+    const served = setUp({
+      route: (url) =>
+        url === `/api/v1/trade/invoices/${missing}?company=DEFAULT`
+          ? error(404, "NOT_FOUND")
+          : undefined,
+    });
+    at(`?company=DEFAULT&invoice=${missing}`);
     render(<App />);
-    expect(await screen.findByText(`${d("tinv.link.company")} · NOPE`)).toBeTruthy();
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(listUrls(served)).toEqual([]);
-    fireEvent.click(screen.getByRole("button", { name: d("tinv.link.back") }));
-    await waitFor(() => expect(window.location.hash).toBe("#/trade-invoices"));
+    const dialog = await screen.findByRole("dialog", { name: d("tinv.detail.title") });
+    expect(await within(dialog).findByText(d("tinv.detail.notFound"))).toBeTruthy();
+    expect(within(dialog).queryByRole("button", { name: t("master.retry") })).toBeNull();
+    expect(served.details()).toEqual([`/api/v1/trade/invoices/${missing}?company=DEFAULT`]);
     await trigger();
-    expect(listUrls(served)).toEqual([base]);
-    expect(served.detailCalls()).toBe(0);
+    await close(dialog);
+    expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT");
+    await waitFor(() => expect(document.activeElement).toBe(scroller()));
   });
 
-  it("fromOrder is dropped while the invoice and filters stay", async () => {
-    serve(detail());
-    at(`?company=DEFAULT&fromOrder=PO-1&side=AP&invoice=${documentId}`);
+  it("P8: another company's invoice is not found in the linked company; nothing switches companies", async () => {
+    const served = setUp({
+      companies: [company, acme],
+      route: (url) =>
+        url.startsWith("/api/v1/trade/invoices?company=ACME")
+          ? response({ items: [], nextCursor: null })
+          : url === `/api/v1/trade/invoices/${documentId}?company=ACME`
+            ? error(404, "NOT_FOUND")
+            : undefined,
+    });
+    at(`?company=ACME&invoice=${documentId}`);
+    render(<App />);
+    const dialog = await screen.findByRole("dialog", { name: d("tinv.detail.title") });
+    expect(await within(dialog).findByText(d("tinv.detail.notFound"))).toBeTruthy();
+    expect((screen.getByLabelText(t("master.company")) as HTMLSelectElement).value).toBe("ACME");
+    expect(served.details()).toEqual([`/api/v1/trade/invoices/${documentId}?company=ACME`]);
+    await close(dialog);
+    expect(window.location.hash).toBe("#/trade-invoices?company=ACME");
+  });
+
+  it.each([
+    ["403", () => error(403, "FORBIDDEN")],
+    ["500", () => error(500, "INTERNAL")],
+    ["503", () => error(503, "UNAVAILABLE")],
+    ["network", () => Promise.reject(new TypeError("Failed to fetch"))],
+  ])("P9: a %s failure shows the error with Retry, which reads again", async (_, fail) => {
+    const served = serve(detail(), (call) => (call === 1 ? fail() : response(detail())));
+    at(`?company=DEFAULT&invoice=${documentId}`);
+    render(<App />);
+    const dialog = await screen.findByRole("dialog", { name: dialogTitle });
+    expect(await within(dialog).findByText(d("tinv.detail.error"), { exact: false })).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: t("master.retry") }));
+    await within(dialog).findByRole("table", { name: t("tinv.lines") });
+    expect(served.detailCalls()).toBe(2);
+  });
+
+  it("P10: when companies fail to load the dialog waits; Retry loads them and opens it", async () => {
+    let failed = false;
+    const served = setUp({
+      route: (url) => {
+        if (!url.startsWith("/api/v1/companies") || failed) return undefined;
+        failed = true;
+        return error(500, "INTERNAL");
+      },
+    });
+    at(`?company=DEFAULT&invoice=${documentId}`);
+    render(<App />);
+    const alert = await screen.findByRole("alert");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(served.details()).toEqual([]);
+    fireEvent.click(within(alert).getByRole("button", { name: t("master.retry") }));
+    await screen.findByRole("dialog", { name: dialogTitle });
+    expect(served.detailCalls()).toBe(1);
+  });
+
+  const orderInvoicing: TradeOrderInvoicingDto = {
+    order: {
+      orderId: "PO-1",
+      side: "AR",
+      party: "C1",
+      currency: "CNY",
+      orderDate: "2026-01-10",
+      priceIncludesTax: true,
+      rounding: "document",
+      commandHash: fingerprint,
+      recordedAt: "2026-01-10T00:00:00.000Z",
+      lines: [
+        {
+          lineId: "OL1",
+          lineNo: 1,
+          product: "P-OL1",
+          taxCode: "VAT13",
+          quantity: "10",
+          unitPrice: "12.5",
+          discountPercent: "2",
+          taxableCharge: "0.75",
+          net: 100,
+          tax: 13,
+          gross: 113,
+        },
+      ],
+    },
+    invoiced: [{ lineId: "OL1", invoicedQuantity: "0" }],
+  };
+  it.each([
+    ["given", "company=DEFAULT&"],
+    ["missing", ""],
+  ])(
+    "P11: fromOrder with an invoice (company %s): fromOrder dropped once, the draft filled and the detail open; Close drops only invoice",
+    async (_, prefix) => {
+      const served = setUp({
+        route: (url) =>
+          url === "/api/v1/trade/orders/PO-1/invoicing?company=DEFAULT"
+            ? response(orderInvoicing)
+            : undefined,
+      });
+      at(`?${prefix}fromOrder=PO-1&side=AP&invoice=${documentId}`);
+      const writes = countWrites();
+      render(<App />);
+      const dialog = await screen.findByRole("dialog", { name: dialogTitle });
+      await waitFor(() =>
+        expect(window.location.hash).toBe(
+          `#/trade-invoices?${prefix}side=AP&invoice=${documentId}`,
+        ),
+      );
+      await waitFor(() =>
+        expect((screen.getByLabelText(t("tinv.party")) as HTMLInputElement).value).toBe("C1"),
+      );
+      await settle();
+      expect(writes()).toBe(1);
+      expect(served.detailCalls()).toBe(1);
+      await close(dialog);
+      expect(Object.fromEntries(query())).toEqual({ company: "DEFAULT", side: "AP" });
+      expect(writes()).toBe(2);
+    },
+  );
+
+  it("P12: empty filter values count as not given", async () => {
+    const served = setUp();
+    at("?company=DEFAULT&party=&side=AP&from=&to=");
+    const writes = countWrites();
+    render(<App />);
+    await trigger();
+    await settle();
+    expect(served.lists()).toEqual([`${base}&side=AP`]);
+    expect(screen.queryByText(d("tinv.filter.linkInvalid"))).toBeNull();
+    expect(writes()).toBe(0);
+  });
+
+  it.each([
+    ["P13 party lower case", "party=v1"],
+    ["P13 party with a space", "party=V%201"],
+    ["P13 party with surrounding blanks", "party=%20V1%20"],
+    ["P13 party over 60 characters", `party=${"A".repeat(61)}`],
+    ["P13 party starting with _", "party=_V1"],
+    ["P14 side XX", "side=XX&party=V1"],
+    ["P14 side ap", "side=ap"],
+    ["P15 from 2026-02-30", "from=2026-02-30"],
+    ["P15 from 2026-13-01", "from=2026-13-01"],
+    ["P15 to 2026-2-1", "to=2026-2-1"],
+    ["P15 from with a time", "from=2026-01-01T00:00"],
+    ["P16 from after to", "from=2026-06-30&to=2026-01-01"],
+  ])(
+    "%s: the whole filter set is ignored with a warning; Clear drops the four keys once",
+    async (_, search) => {
+      const served = setUp();
+      at(`?company=DEFAULT&${search}&zzz=1`);
+      const writes = countWrites();
+      render(<App />);
+      await trigger();
+      expect(served.lists()).toEqual([base]);
+      const warning = await screen.findByText(d("tinv.filter.linkInvalid"));
+      expect(
+        ["party", "side", "from", "to"].map(
+          (key) => (document.getElementById(`tinv-filter-${key}`) as HTMLInputElement).value,
+        ),
+      ).toEqual(["", "", "", ""]);
+      await settle();
+      expect(writes()).toBe(0);
+      const bar = warning.closest("[role=status]") as HTMLElement;
+      fireEvent.click(within(bar).getByRole("button", { name: t("tinv.filter.clear") }));
+      await waitFor(() =>
+        expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT&zzz=1"),
+      );
+      expect(writes()).toBe(1);
+      expect(screen.queryByText(d("tinv.filter.linkInvalid"))).toBeNull();
+      expect(served.calls().some((url) => url.includes("tinv") || url.includes("=XX"))).toBe(false);
+    },
+  );
+
+  it("P17: repeated keys use the first value on mount; the next write sets every managed key once and keeps unknown keys", async () => {
+    const served = setUp();
+    at(
+      `?company=DEFAULT&company=ACME&side=AP&side=AR&invoice=${documentId}&invoice=${uuid(9)}&x=1&x=2`,
+    );
+    const writes = countWrites();
+    render(<App />);
+    const dialog = await screen.findByRole("dialog", { name: dialogTitle });
+    await trigger();
+    await settle();
+    expect(served.lists()).toEqual([`${base}&side=AP`]);
+    expect(served.details()).toEqual([detailPath]);
+    expect(writes()).toBe(0);
+    await close(dialog);
+    const after = query();
+    expect(after.getAll("company")).toEqual(["DEFAULT"]);
+    expect(after.getAll("side")).toEqual(["AP"]);
+    expect(after.has("invoice")).toBe(false);
+    expect(after.getAll("x")).toEqual(["1", "2"]);
+  });
+
+  it("A3 + P18: filters in the address are applied on load and shown; an unknown party is an empty filtered page", async () => {
+    const served = setUp({
+      route: (url) =>
+        url.includes("party=NOPARTY") ? response({ items: [], nextCursor: null }) : undefined,
+    });
+    at("?company=DEFAULT&party=NOPARTY&side=AP&from=2026-01-01&to=2026-06-30");
+    const writes = countWrites();
+    render(<App />);
+    expect(await screen.findByText(t("tinv.filter.none"))).toBeTruthy();
+    expect(served.lists()).toEqual([`${base}&party=NOPARTY&side=AP&from=2026-01-01&to=2026-06-30`]);
+    expect(
+      ["party", "side", "from", "to"].map(
+        (key) => (document.getElementById(`tinv-filter-${key}`) as HTMLInputElement).value,
+      ),
+    ).toEqual(["NOPARTY", "AP", "2026-01-01", "2026-06-30"]);
+    expect(writes()).toBe(0);
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.filter.clear") }));
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT"));
+    await trigger();
+  });
+
+  it("P19: cursor, limit and unknown keys are neither read nor removed", async () => {
+    const served = setUp();
+    at("?company=DEFAULT&cursor=5&limit=7&zzz=1&side=AP");
+    const writes = countWrites();
+    render(<App />);
+    await trigger();
+    await settle();
+    expect(served.lists()).toEqual([`${base}&side=AP`]);
+    expect(writes()).toBe(0);
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.filter.clear") }));
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT&cursor=5&limit=7&zzz=1"),
+    );
+  });
+
+  it("A5: switching company keeps only the new company and unknown keys, closes the detail, adds no entry and asks nothing", async () => {
+    setUp({
+      companies: [company, acme],
+      route: (url) =>
+        url.startsWith("/api/v1/trade/invoices?company=ACME")
+          ? response({ items: [], nextCursor: null })
+          : undefined,
+    });
+    const confirm = vi.spyOn(window, "confirm");
+    at(`?company=DEFAULT&side=AP&zzz=1&invoice=${documentId}`);
+    const length = window.history.length;
     render(<App />);
     await screen.findByRole("dialog", { name: dialogTitle });
-    await waitFor(() =>
-      expect(window.location.hash).toBe(
-        `#/trade-invoices?company=DEFAULT&side=AP&invoice=${documentId}`,
-      ),
-    );
-  });
-
-  it("switching company drops the filters and the open invoice from the address", async () => {
-    const served = serve(detail());
-    const acme = { ...company, code: "ACME", name: "Acme" };
-    const original = served.fetchMock.getMockImplementation();
-    served.fetchMock.mockImplementation(async (path, init) =>
-      String(path).startsWith("/api/v1/companies")
-        ? response({ items: [company, acme], nextCursor: null })
-        : (original as typeof fetch)(path, init),
-    );
-    at("?company=DEFAULT&side=AP");
-    render(<App />);
-    await trigger();
     fireEvent.change(screen.getByLabelText(t("master.company")), { target: { value: "ACME" } });
-    await waitFor(() => expect(window.location.hash).toBe("#/trade-invoices?company=ACME"));
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-invoices?company=ACME&zzz=1"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(window.history.length).toBe(length);
+    expect(confirm).not.toHaveBeenCalled();
   });
 
-  it("with a dirty draft, opening, closing and applying never ask or push; a cancelled Back keeps the invoice address", async () => {
-    serve(detail());
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-    const go = vi.spyOn(window.history, "go");
-    window.history.replaceState(null, "", "/#/trade-orders");
-    window.history.pushState(null, "", "/#/trade-invoices");
-    render(<App />);
+  const draftKey = "erp.tradeInvoices.v1.DEFAULT";
+  async function dirty() {
     fireEvent.change(await screen.findByLabelText(t("tinv.party")), { target: { value: "V1" } });
-    const draftKey = "erp.tradeInvoices.v1.DEFAULT";
     await waitFor(() => expect(window.sessionStorage.getItem(draftKey)).not.toBeNull());
-    const draft = window.sessionStorage.getItem(draftKey);
+    return window.sessionStorage.getItem(draftKey);
+  }
+
+  it("A6a: with a dirty draft, opening, closing, applying, clearing and switching company only replace: no confirmation, same draft, same history length", async () => {
+    setUp({
+      companies: [company, acme],
+      route: (url) =>
+        url.startsWith("/api/v1/trade/invoices?company=ACME")
+          ? response({ items: [], nextCursor: null })
+          : undefined,
+    });
+    const confirm = vi.spyOn(window, "confirm");
+    render(<App />);
+    const draft = await dirty();
     const length = window.history.length;
     const push = vi.spyOn(window.history, "pushState");
+    const writes = countWrites();
     fireEvent.change(screen.getByLabelText(t("tinv.filter.side")), { target: { value: "AP" } });
     fireEvent.click(screen.getByRole("button", { name: t("tinv.filter.apply") }));
     await waitFor(() =>
       expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT&side=AP"),
     );
-    let dialog = await open();
-    fireEvent.keyDown(dialog, { key: "Escape" });
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    dialog = await open();
-    const here = window.location.href;
-    expect(here).toContain(`invoice=${documentId}`);
+    const dialog = await open();
+    expect(window.location.hash).toBe(
+      `#/trade-invoices?company=DEFAULT&side=AP&invoice=${documentId}`,
+    );
+    await close(dialog);
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.filter.clear") }));
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT"));
+    fireEvent.change(screen.getByLabelText(t("master.company")), { target: { value: "ACME" } });
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-invoices?company=ACME"));
+    await settle();
+    expect(writes()).toBe(5);
     expect(push).not.toHaveBeenCalled();
     expect(confirm).not.toHaveBeenCalled();
     expect(window.history.length).toBe(length);
+    expect(window.sessionStorage.getItem(draftKey)).toBe(draft);
+  });
 
+  it("A6b: a cancelled sidebar click keeps everything and the forward history; a cancelled Back restores the latest address and truncates it; a confirmed Back leaves", async () => {
+    setUp();
+    const confirm = vi.spyOn(window, "confirm");
+    const go = vi.spyOn(window.history, "go");
+    window.history.replaceState(null, "", "/#/trade-orders");
+    window.history.pushState(null, "", "/#/trade-invoices");
+    window.history.pushState(null, "", "/#/trade-reports");
+    render(<App />);
     await act(async () => window.history.back());
-    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
-    await act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-invoices"));
+    const draft = await dirty();
+    fireEvent.change(screen.getByLabelText(t("tinv.filter.side")), { target: { value: "AP" } });
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.filter.apply") }));
+    await open();
+    const here = window.location.href;
+    expect(here).toContain(`side=AP&invoice=${documentId}`);
+    const length = window.history.length;
+
+    // Sidebar click, cancelled: no traversal, the entry ahead is still there.
+    confirm.mockReturnValueOnce(false);
+    const nav = document.querySelector<HTMLAnchorElement>('nav a[href="#/trade-reports"]');
+    if (!nav) throw new Error("no sidebar link");
+    fireEvent.click(nav);
+    expect(confirm).toHaveBeenCalledTimes(1);
+    await settle();
+    expect(window.location.href).toBe(here);
+    expect(window.history.length).toBe(length);
+    expect(screen.getByRole("dialog", { name: dialogTitle })).toBeTruthy();
+    expect(window.sessionStorage.getItem(draftKey)).toBe(draft);
+
+    // Back, cancelled (D275): the latest address returns and the entries ahead are gone.
+    confirm.mockReturnValueOnce(false);
+    await act(async () => window.history.back());
+    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(2));
+    await settle();
     expect(window.location.href).toBe(here);
     expect(screen.getByRole("dialog", { name: dialogTitle })).toBeTruthy();
     expect(window.sessionStorage.getItem(draftKey)).toBe(draft);
+    await act(async () => window.history.forward());
+    await settle();
+    expect(window.location.href).toBe(here);
+    expect(confirm).toHaveBeenCalledTimes(2);
+
+    // Back, confirmed: the invoice page is left.
+    confirm.mockReturnValueOnce(true);
+    await act(async () => window.history.back());
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-orders"));
+    expect(confirm).toHaveBeenCalledTimes(3);
     expect(go).not.toHaveBeenCalled();
   });
 });
