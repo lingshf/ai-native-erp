@@ -1,5 +1,7 @@
 import { useRef, type ReactNode } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+// Pages that import shared journal parts directly still need journals.css.
+import "../pages/journals.css";
 export function VirtualRows<T>({
   items,
   title,

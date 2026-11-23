@@ -14,7 +14,7 @@ import {
 import { label, type LabelKey, type Preferences } from "./ui/index.ts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
-import { VirtualRows } from "./Journals.tsx";
+import { VirtualRows } from "./journals/virtual-rows.tsx";
 import { Badge, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import "./pages/ledger.css";
 type T = (key: Exclude<LabelKey, "shell.httpError">) => string;

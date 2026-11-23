@@ -7,9 +7,6 @@ import { masterRequest } from "./master-data-client.ts";
 import { MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import { CompanyJournals } from "./journals/company-journals.tsx";
 import type { T } from "./journals/dialogs.tsx";
-export { DimensionFields, Facts, JournalError, LinePlan, Modal } from "./journals/dialogs.tsx";
-export { VirtualRows } from "./journals/virtual-rows.tsx";
-import "./pages/journals.css";
 export function Journals({ preferences }: { preferences: Preferences }) {
   const [params, setParams] = useSearchParams();
   const t: T = (key) => label(preferences.language, key);

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import type { ContractSchema } from "@erp/core/contracts";
 import { masterRequest } from "../master-data-client.ts";
-import { VirtualRows } from "../Journals.tsx";
+import { VirtualRows } from "../journals/virtual-rows.tsx";
 import { BusinessError } from "./business-error.tsx";
 import type { T } from "./types.ts";
 export const companyQuery = (company: string) => `company=${encodeURIComponent(company)}`;

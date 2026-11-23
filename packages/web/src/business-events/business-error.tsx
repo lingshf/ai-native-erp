@@ -1,5 +1,5 @@
 import { MasterDataFailure } from "../master-data-client.ts";
-import { JournalError } from "../Journals.tsx";
+import { JournalError } from "../journals/dialogs.tsx";
 import { MessageBar } from "../ui/components/index.tsx";
 import type { T } from "./types.ts";
 export function BusinessError({
