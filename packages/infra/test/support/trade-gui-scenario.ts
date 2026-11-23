@@ -1438,6 +1438,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       await invoiceFilters();
       await invoiceDetail();
       await detailBack();
+      await invoiceLinks();
       await leaveByBack(
         "trade-invoices",
         "#tinv-party",
@@ -1591,11 +1592,12 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       });
     }
     // TINV-05: the filter bar narrows the list by keyboard (Apply button and Enter) with teaching
-    // explanations on and off; the address never changes and nothing asks to leave. At 390 px the
-    // bar wraps inside the page. Ends unfiltered at 1440 with teaching restored.
+    // explanations on and off; TINV-07: each applied filter is written to the address by replace
+    // (no history entry) and nothing asks to leave. At 390 px the bar wraps inside the page. Ends
+    // unfiltered at 1440 with teaching restored.
     async function invoiceFilters() {
       await navigate("trade-invoices");
-      const hash = new URL(page.url()).hash;
+      const length = await page.evaluate(() => window.history.length);
       const list = page.getByRole("table", { name: t("tinv.list"), exact: true });
       const bar = page.getByRole("search", { name: t("tinv.filter"), exact: true });
       const row = (external: string) =>
@@ -1613,9 +1615,15 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
           const url = new URL(response.url());
           return url.pathname === "/api/v1/trade/invoices" && url.search.includes(query);
         });
-      const unchanged = async () => {
+      const addressed = async (filters: Record<string, string>) => {
         await page.waitForTimeout(300);
-        expect(new URL(page.url()).hash).toBe(hash);
+        const [path, query = ""] = new URL(page.url()).hash.split("?");
+        expect(path).toBe("#/trade-invoices");
+        expect(Object.fromEntries(new URLSearchParams(query))).toEqual({
+          company: "DEFAULT",
+          ...filters,
+        });
+        expect(await page.evaluate(() => window.history.length)).toBe(length);
         expect(dialogs).toBe(0);
       };
       page.on("dialog", count);
@@ -1639,7 +1647,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
           await expect.poll(() => row("AP-DEMO").count()).toBe(0);
           await row("AR-DEMO").waitFor();
           await row("AR-FROM-SO").waitFor();
-          await unchanged();
+          await addressed({ side: "AR" });
           // With the bar applied the source order column keeps the TINV-04 row height; at 1440 its
           // width equals the unfiltered one, at 390 it keeps the 240 px bound (D323).
           const filtered1440 = await sourceCell(row("AR-LONG-SO"));
@@ -1683,13 +1691,13 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
             .locator("p.empty-state")
             .filter({ hasText: t("tinv.filter.none") })
             .waitFor();
-          await unchanged();
+          await addressed({ party: "NOPARTY", side: "AR" });
           await page.setViewportSize({ width: 1440, height: 1100 });
           await activate(page, bar.getByRole("button", { name: t("tinv.filter.clear") }));
           await row("AP-DEMO").waitFor();
           expect(await party.inputValue()).toBe("");
           expect(await page.locator("#tinv-filter-side").inputValue()).toBe("");
-          await unchanged();
+          await addressed({});
         }
         if ((await teaching.isChecked()) !== initial) {
           await tabTo(page, teaching);
@@ -1703,8 +1711,9 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       expect(failures).toEqual([]);
     }
     // TINV-06: the external invoice number opens a read-only detail dialog (Enter and Space), at
-    // 1440 and 390. The list's scroll position, the address, the draft and the column widths are
-    // equal before and after; nothing asks to leave; focus returns to the row's button; each open
+    // 1440 and 390. The list's scroll position, the history length, the draft and the column
+    // widths are equal before and after; TINV-07: the address carries `invoice=` while open and
+    // only `company=` after; nothing asks to leave; focus returns to the row's button; each open
     // sends exactly one GET /invoices/:id. AP-DEMO amounts come from seedInvoice / seedSettlement
     // and the part 2 advance apply (remaining 36.50 = the open-items report above).
     async function invoiceDetail() {
@@ -1737,7 +1746,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       const snapshot = () =>
         Promise.all([
           scroller.evaluate((element) => element.scrollTop),
-          page.evaluate(() => window.location.hash),
+          page.evaluate(() => window.history.length),
           page.evaluate(
             (prefix) =>
               JSON.stringify(
@@ -1761,6 +1770,10 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         await dialog.waitFor();
         await dialog.getByRole("table", { name: t("tinv.lines"), exact: true }).waitFor();
         expect(details - sent).toBe(1);
+        // TINV-07: the open invoice is in the address (replaced, not pushed).
+        expect(new URL(page.url()).hash).toMatch(
+          /^#\/trade-invoices\?company=DEFAULT&invoice=[0-9a-f-]{36}$/,
+        );
         const headers = await dialog
           .getByRole("table", { name: t("tinv.lines"), exact: true })
           .locator("thead th")
@@ -1829,6 +1842,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         await dialog.waitFor({ state: "detached" });
         await expect.poll(focused).toBe(true);
         expect(await snapshot()).toEqual(before);
+        expect(new URL(page.url()).hash).toBe("#/trade-invoices?company=DEFAULT");
       }
       page.on("dialog", count);
       page.on("request", detailRequest);
@@ -2023,7 +2037,8 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
         await expect.poll(() => dialogs, { timeout: 10_000 }).toBe(1);
         await page.waitForTimeout(300);
         expect(dialogs).toBe(1);
-        expect(new URL(page.url()).hash).toBe("#/trade-invoices");
+        const kept = new URL(page.url()).hash;
+        expect(kept).toMatch(/^#\/trade-invoices\?company=DEFAULT&invoice=[0-9a-f-]{36}$/);
         await page.getByRole("heading", { name: t("tinv.title"), exact: true }).waitFor();
         expect(await dialog.isVisible()).toBe(true);
         expect(await page.locator("#tinv-party").inputValue()).toBe("PARTY-DETAIL");
@@ -2041,6 +2056,99 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       } finally {
         page.off("dialog", answer);
       }
+      expect(failures).toEqual([]);
+    }
+    // TINV-07: the address restores the open invoice and the applied filters after a reload, and
+    // a deep link at 390 px keeps the page inside the viewport. Each detail load sends one GET;
+    // nothing asks to leave. Starts and ends with no invoice draft (after detailBack).
+    async function invoiceLinks() {
+      const list = page.getByRole("table", { name: t("tinv.list"), exact: true });
+      const bar = page.getByRole("search", { name: t("tinv.filter"), exact: true });
+      const row = (external: string) =>
+        list.locator("tbody tr").filter({ hasText: external }).first();
+      const trigger = list.getByRole("button", {
+        name: `${detailed("tinv.detail.open")} AP-DEMO`,
+        exact: true,
+      });
+      const dialog = page.getByRole("dialog", {
+        name: `${detailed("tinv.detail.title")} · AP-DEMO`,
+        exact: true,
+      });
+      let dialogs = 0;
+      const count = async (event: import("playwright").Dialog) => {
+        dialogs += 1;
+        await event.dismiss();
+      };
+      let details = 0;
+      const detailRequest = (request: import("playwright").Request) => {
+        if (
+          request.method() === "GET" &&
+          /^\/api\/v1\/trade\/invoices\/[0-9a-f-]{36}$/.test(new URL(request.url()).pathname)
+        )
+          details += 1;
+      };
+      const loaded = async (sent: number) => {
+        await dialog.waitFor();
+        await dialog.getByRole("table", { name: t("tinv.lines"), exact: true }).waitFor();
+        expect(details - sent).toBe(1);
+      };
+      const closed = async () => {
+        await page.keyboard.press("Escape");
+        await dialog.waitFor({ state: "detached" });
+        await expect.poll(() => new URL(page.url()).hash).toBe("#/trade-invoices?company=DEFAULT");
+      };
+      page.on("dialog", count);
+      page.on("request", detailRequest);
+      try {
+        await navigate("trade-invoices");
+        await tabTo(page, trigger);
+        await page.keyboard.press("Enter");
+        await loaded(0);
+        const linked = new URL(page.url()).hash;
+        expect(linked).toMatch(/^#\/trade-invoices\?company=DEFAULT&invoice=[0-9a-f-]{36}$/);
+        // Reload: the same dialog opens from the address alone.
+        await page.reload();
+        await loaded(1);
+        expect(new URL(page.url()).hash).toBe(linked);
+        await page.screenshot({ path: join(artifacts, `${name}-invoice-link.png`) });
+        await closed();
+        await expect
+          .poll(() => trigger.evaluate((element) => element === document.activeElement))
+          .toBe(true);
+        // Applied filters survive a reload and show in the bar.
+        await choose(page, page.locator("#tinv-filter-side"), "AR");
+        await activate(page, bar.getByRole("button", { name: t("tinv.filter.apply") }));
+        await page.waitForURL((url) => url.hash === "#/trade-invoices?company=DEFAULT&side=AR");
+        await page.reload();
+        await row("AR-DEMO").waitFor();
+        expect(await row("AP-DEMO").count()).toBe(0);
+        expect(await page.locator("#tinv-filter-side").inputValue()).toBe("AR");
+        await activate(page, bar.getByRole("button", { name: t("tinv.filter.clear") }));
+        await page.waitForURL((url) => url.hash === "#/trade-invoices?company=DEFAULT");
+        await row("AP-DEMO").waitFor();
+        // A deep link opened at 390 px.
+        await page.setViewportSize({ width: 390, height: 1100 });
+        try {
+          await page.goto(`${address}${linked}`);
+          await page.reload();
+          await loaded(2);
+          const overflow = await page.evaluate(
+            () => document.documentElement.scrollWidth - window.innerWidth,
+          );
+          console.log(`[tinv07] ${name} 390 deep link overflow ${overflow}`);
+          expect(overflow).toBeLessThanOrEqual(0);
+          await page.screenshot({ path: join(artifacts, `${name}-invoice-link-390.png`) });
+          await closed();
+        } finally {
+          await page.setViewportSize({ width: 1440, height: 1100 });
+        }
+      } finally {
+        page.off("dialog", count);
+        page.off("request", detailRequest);
+      }
+      expect(details).toBe(3);
+      expect(dialogs).toBe(0);
+      expect(await drafts()).toBe(0);
       expect(failures).toEqual([]);
     }
     // TINV-04 acceptance 5a: a real Back from a dirty draft asks exactly once; a cancel keeps the

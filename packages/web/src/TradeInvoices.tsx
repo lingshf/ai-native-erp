@@ -6,6 +6,7 @@ import {
   companiesPageSchema,
   companyCodeSchema,
   tradeInvoiceCommandSchema,
+  tradeInvoiceListQuerySchema,
   tradeInvoicePageSchema,
   tradeInvoicePreviewSchema,
   tradeInvoiceReceiptSchema,
@@ -343,11 +344,35 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
   const rows = companies.data?.pages.flatMap((page) => page.items) ?? [];
-  const company = rows.find((row) => row.code === selected) ?? rows[0];
+  // TINV-07: a `company` in the address wins over the picker; filters and the open invoice live
+  // in the address too. Every write replaces the current entry (never push), so it adds no history
+  // entry and never passes the Back/Forward gate or the leave confirmation.
+  const linkCompany = params.get("company") || null;
+  const linked = linkParamKeys.some((key) => params.has(key));
+  const company = rows.find((row) => row.code === (linkCompany ?? selected)) ?? rows[0];
+  const write = (change: LinkChange) =>
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        for (const [key, value] of Object.entries(change))
+          if (value) next.set(key, value);
+          else next.delete(key);
+        return next;
+      },
+      { replace: true },
+    );
   // An order link names its company: if it is not among the loaded companies, say so and fill
   // nothing instead of falling back to another company (picking a company drops the request).
   const wanted = intake?.company;
   const missing = !!wanted && companies.isSuccess && !rows.some((row) => row.code === wanted);
+  // A filter or invoice link for a company that is not loaded never opens another company's data.
+  const linkMissing =
+    linked && !!linkCompany && companies.isSuccess && !rows.some((row) => row.code === linkCompany);
+  const backFromLink = () => {
+    setIntake(null);
+    write({ company: null, invoice: null, party: null, side: null, from: null, to: null });
+    document.getElementById("tinv-company")?.focus();
+  };
   return (
     <section className="page trade-invoices">
       <PageHeader
@@ -363,6 +388,16 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
               onChange={(event) => {
                 setSelected(event.target.value);
                 setIntake(null);
+                // Filters and the open invoice belong to the previous company.
+                if (linkCompany !== null || linked)
+                  write({
+                    company: linkCompany === null ? null : event.target.value,
+                    invoice: null,
+                    party: null,
+                    side: null,
+                    from: null,
+                    to: null,
+                  });
               }}
             >
               {rows.map((row) => (
@@ -380,8 +415,22 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
           <p>
             {t("tinv.fromOrder.company")} · {wanted}
           </p>
-          <button type="button" className="btn btn-secondary" onClick={() => setIntake(null)}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => (linkMissing ? backFromLink() : setIntake(null))}
+          >
             {t("master.cancel")}
+          </button>
+        </MessageBar>
+      )}
+      {linkMissing && !missing && (
+        <MessageBar tone="danger" role="alert">
+          <p>
+            {detailLabel(preferences.language, "tinv.link.company")} · {linkCompany}
+          </p>
+          <button type="button" className="btn btn-secondary" onClick={backFromLink}>
+            {detailLabel(preferences.language, "tinv.link.back")}
           </button>
         </MessageBar>
       )}
@@ -397,7 +446,7 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
           </button>
         </MessageBar>
       )}
-      {company && !missing && (
+      {company && !missing && !linkMissing && (
         <>
           <InvoiceEntry
             key={company.code}
@@ -412,7 +461,13 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
             }
             onIntake={setIntake}
           />
-          <InvoiceList company={company} preferences={preferences} t={t} />
+          <InvoiceList
+            company={company}
+            preferences={preferences}
+            t={t}
+            params={params}
+            write={(change) => write({ company: company.code, ...change })}
+          />
         </>
       )}
     </section>
@@ -1059,10 +1114,27 @@ export function SourceOrderCell({
 type InvoiceFilter = { party: string; side: "" | "AP" | "AR"; from: string; to: string };
 const noInvoiceFilter: InvoiceFilter = { party: "", side: "", from: "", to: "" };
 const invoiceFilterKeys = ["party", "side", "from", "to"] as const;
+// TINV-07: the address parameters this page reads besides `company` and `fromOrder`.
+const linkParamKeys = ["invoice", ...invoiceFilterKeys] as const;
+type LinkChange = Partial<Record<"company" | (typeof linkParamKeys)[number], string | null>>;
+// The applied filters come from the address. Empty values mean "not given"; if any given value is
+// one the list API would reject (same schema), the whole set is ignored and the page says so.
+function linkFilter(params: URLSearchParams, company: string) {
+  const filter = { ...noInvoiceFilter };
+  for (const key of invoiceFilterKeys) {
+    const value = params.get(key) ?? "";
+    if (value) (filter as Record<string, string>)[key] = value;
+  }
+  const query = Object.fromEntries(
+    invoiceFilterKeys.flatMap((key) => (filter[key] ? [[key, filter[key]]] : [])),
+  );
+  return tradeInvoiceListQuerySchema.safeParse({ company, ...query }).success
+    ? { applied: filter, broken: false }
+    : { applied: noInvoiceFilter, broken: true };
+}
 type InvoiceFilterState = {
-  company: string;
+  key: string;
   draft: InvoiceFilter;
-  applied: InvoiceFilter;
   invalid: "party" | "range" | null;
 };
 
@@ -1070,24 +1142,26 @@ function InvoiceList({
   company,
   preferences,
   t,
+  params,
+  write,
 }: {
   company: CompanyDto;
   preferences: Preferences;
   t: T;
+  params: URLSearchParams;
+  write: (change: LinkChange) => void;
 }) {
   const client = useQueryClient();
-  // TINV-05: filters live only in this component's state, never in the URL (no navigation, so no
-  // leave confirmation); they reset on reload and when the company changes.
-  const fresh = (code: string): InvoiceFilterState => ({
-    company: code,
-    draft: noInvoiceFilter,
-    applied: noInvoiceFilter,
-    invalid: null,
-  });
-  const [filter, setFilter] = useState(() => fresh(company.code));
-  const current = filter.company === company.code ? filter : fresh(company.code);
+  // TINV-07: applied filters are read from the address and written with replace (no history entry,
+  // no leave confirmation, see TradeInvoices); the inputs' unapplied values stay in this state and
+  // reset whenever the applied filters or the company change.
+  const { applied, broken } = linkFilter(params, company.code);
+  const key = `${company.code}|${JSON.stringify(applied)}`;
+  const fresh = (): InvoiceFilterState => ({ key, draft: applied, invalid: null });
+  const [filter, setFilter] = useState(fresh);
+  const current = filter.key === key ? filter : fresh();
   if (current !== filter) setFilter(current);
-  const { draft, applied, invalid } = current;
+  const { draft, invalid } = current;
   const page = useInfiniteQuery({
     queryKey: ["trade-invoices", company.code, applied],
     initialPageParam: "",
@@ -1109,9 +1183,10 @@ function InvoiceList({
   const rows = page.data?.pages.flatMap((value) => value.items) ?? [];
   const filtered = invoiceFilterKeys.some((key) => applied[key]);
   // Apply and Clear always reload from the first page, never from pages cached for those filters.
-  const show = (next: InvoiceFilter, nextDraft: InvoiceFilter) => {
+  const show = (next: InvoiceFilter) => {
     void client.resetQueries({ queryKey: ["trade-invoices", company.code, next], exact: true });
-    setFilter({ company: company.code, draft: nextDraft, applied: next, invalid: null });
+    setFilter({ key: `${company.code}|${JSON.stringify(next)}`, draft: next, invalid: null });
+    write(Object.fromEntries(invoiceFilterKeys.map((name) => [name, next[name] || null])));
   };
   const apply = (event: FormEvent) => {
     event.preventDefault();
@@ -1121,9 +1196,9 @@ function InvoiceList({
       setFilter({ ...current, invalid: "party" });
     else if (next.from && next.to && next.from > next.to)
       setFilter({ ...current, invalid: "range" });
-    else show(next, next);
+    else show(next);
   };
-  const clear = () => show(noInvoiceFilter, noInvoiceFilter);
+  const clear = () => show(noInvoiceFilter);
   const edit = (patch: Partial<InvoiceFilter>) =>
     setFilter({ ...current, draft: { ...draft, ...patch }, invalid: null });
   const described = (kind: "party" | "range") =>
@@ -1131,18 +1206,21 @@ function InvoiceList({
       ? { "aria-invalid": true as const, "aria-describedby": `tinv-filter-${kind}-error` }
       : {};
   const scroll = useRef<HTMLElement>(null);
-  // TINV-06: the open detail lives only in this state (no address change, no leave guard).
-  const [detail, setDetail] = useState<{ documentId: string; externalNo: string } | null>(null);
+  // TINV-06 / TINV-07: the open invoice is the address's `invoice`; opening and closing replace the
+  // address (no history entry, no leave guard). A deep link may name an invoice that is not in the
+  // loaded rows: its title then comes from the detail response.
+  const invoice = params.get("invoice")?.trim() || null;
+  const opened = useRef<{ documentId: string; externalNo: string } | null>(null);
   const closedId = useRef<string | null>(null);
   // Runs after the dialog's own cleanup has closed it: focus its trigger, or the list if the row
-  // is no longer rendered.
+  // is no longer rendered (or never was, for a deep link).
   useEffect(() => {
     const id = closedId.current;
-    if (detail || id === null) return;
+    if (invoice || id === null) return;
     closedId.current = null;
     const trigger = scroll.current?.querySelector<HTMLElement>(`[data-document-id="${id}"]`);
     (trigger ?? scroll.current)?.focus();
-  }, [detail]);
+  }, [invoice]);
   const virtual = rows.length > 100;
   const virtualizer = useVirtualizer({
     count: virtual ? rows.length : 0,
@@ -1171,6 +1249,14 @@ function InvoiceList({
       <header>
         <h3>{t("tinv.list")}</h3>
       </header>
+      {broken && (
+        <MessageBar tone="warning" role="status">
+          <p>{detailLabel(preferences.language, "tinv.filter.linkInvalid")}</p>
+          <button type="button" className="btn btn-secondary" onClick={clear}>
+            {t("tinv.filter.clear")}
+          </button>
+        </MessageBar>
+      )}
       {/* biome-ignore lint/a11y/useSemanticElements: TINV-05 needs a submit form (Enter applies) that is a search landmark. */}
       <form
         className="filter-bar tinv-filter"
@@ -1289,9 +1375,10 @@ function InvoiceList({
                       aria-haspopup="dialog"
                       aria-label={`${detailLabel(preferences.language, "tinv.detail.open")} ${row.externalNo}`}
                       data-document-id={row.documentId}
-                      onClick={() =>
-                        setDetail({ documentId: row.documentId, externalNo: row.externalNo })
-                      }
+                      onClick={() => {
+                        opened.current = { documentId: row.documentId, externalNo: row.externalNo };
+                        write({ invoice: row.documentId });
+                      }}
                     >
                       {row.externalNo}
                     </button>
@@ -1327,15 +1414,20 @@ function InvoiceList({
           </button>
         </div>
       )}
-      {detail && (
+      {invoice && (
         <TradeInvoiceDetail
+          key={invoice}
           company={company}
-          documentId={detail.documentId}
-          externalNo={detail.externalNo}
+          documentId={invoice}
+          externalNo={
+            opened.current?.documentId === invoice
+              ? opened.current.externalNo
+              : rows.find((row) => row.documentId === invoice)?.externalNo
+          }
           preferences={preferences}
           close={() => {
-            closedId.current = detail.documentId;
-            setDetail(null);
+            closedId.current = invoice;
+            write({ invoice: null });
           }}
         />
       )}

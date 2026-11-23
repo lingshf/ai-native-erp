@@ -511,8 +511,9 @@ describe("TINV-06 invoice detail dialog", () => {
     render(<App />);
     const button = await trigger();
     const length = window.history.length;
-    const hash = window.location.hash;
     const dialog = await open();
+    // TINV-07: the open invoice is in the address (replace, no history entry).
+    expect(window.location.hash).toBe(`#/trade-invoices?company=DEFAULT&invoice=${documentId}`);
     expect(document.activeElement).toBe(dialog);
     await within(dialog).findByRole("table", { name: t("tinv.lines") });
     const close = within(dialog).getByRole("button", { name: d("tinv.detail.close") });
@@ -536,7 +537,7 @@ describe("TINV-06 invoice detail dialog", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(document.activeElement).toBe(button);
     expect(window.history.length).toBe(length);
-    expect(window.location.hash).toBe(hash);
+    expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT");
     expect(confirm).not.toHaveBeenCalled();
   });
 
@@ -619,5 +620,212 @@ describe("TINV-06 invoice detail dialog", () => {
     await within(dialog).findByRole("table", { name: en("tinv.lines") });
     expect(within(dialog).queryByRole("complementary")).toBeNull();
     await act(async () => {});
+  });
+});
+
+// TINV-07: the open invoice and the applied list filters live in the address, always written by
+// replace (no history entry, never the Back/Forward gate or the leave confirmation).
+describe("TINV-07 invoice links in the address", () => {
+  const at = (search: string) =>
+    window.history.replaceState(null, "", `/#/trade-invoices${search}`);
+  const listUrls = (served: ReturnType<typeof serve>) =>
+    served.fetchMock.mock.calls
+      .map(([path]) => String(path))
+      .filter((path) => path.startsWith("/api/v1/trade/invoices?"));
+  const base = "/api/v1/trade/invoices?company=DEFAULT&limit=100";
+  const scroller = () => screen.getByRole("region", { name: t("tinv.list") });
+
+  it("?invoice= opens the detail on load with one request; closing drops it and focuses the row's button", async () => {
+    const served = serve(detail());
+    const confirm = vi.spyOn(window, "confirm");
+    at(`?company=DEFAULT&invoice=${documentId}`);
+    const length = window.history.length;
+    render(<App />);
+    const dialog = await screen.findByRole("dialog", { name: dialogTitle });
+    await within(dialog).findByRole("table", { name: t("tinv.lines") });
+    expect(served.detailCalls()).toBe(1);
+    await trigger();
+    fireEvent.click(within(dialog).getByRole("button", { name: d("tinv.detail.close") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT");
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: `${d("tinv.detail.open")} INV-1` }),
+      ),
+    );
+    expect(window.history.length).toBe(length);
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it("a deep link outside the loaded rows takes its title from the response; closing focuses the list", async () => {
+    const other = uuid(777);
+    const value = detail();
+    const served = serve(value);
+    served.fetchMock.mockImplementation(async (path) => {
+      const url = String(path);
+      if (url.startsWith("/api/v1/companies"))
+        return response({ items: [company], nextCursor: null });
+      if (url === `/api/v1/trade/invoices/${other}?company=DEFAULT`)
+        return response({
+          ...value,
+          document: { ...value.document, documentId: other, externalNo: "INV-77" },
+        });
+      if (url.startsWith("/api/v1/trade/invoices?"))
+        return response({ items: [], nextCursor: null });
+      return response({}, 404);
+    });
+    at(`?company=DEFAULT&invoice=${other}`);
+    render(<App />);
+    const dialog = await screen.findByRole("dialog", {
+      name: `${d("tinv.detail.title")} · INV-77`,
+    });
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(scroller()));
+  });
+
+  it("404 and another company's invoice show not found; a malformed id shows not found without a request; empty opens nothing", async () => {
+    const served = serve(detail(), () => error(404, "NOT_FOUND"));
+    at(`?company=DEFAULT&invoice=${documentId}`);
+    const first = render(<App />);
+    let dialog = await screen.findByRole("dialog", { name: d("tinv.detail.title") });
+    expect(await within(dialog).findByText(d("tinv.detail.notFound"))).toBeTruthy();
+    expect(within(dialog).queryByRole("button", { name: t("master.retry") })).toBeNull();
+    expect(served.detailCalls()).toBe(1);
+    first.unmount();
+
+    at("?company=DEFAULT&invoice=not-an-id");
+    const second = render(<App />);
+    dialog = await screen.findByRole("dialog", { name: d("tinv.detail.title") });
+    expect(within(dialog).getByText(d("tinv.detail.notFound"))).toBeTruthy();
+    expect(within(dialog).queryByText(d("tinv.detail.loading"))).toBeNull();
+    fireEvent.click(within(dialog).getByRole("button", { name: d("tinv.detail.close") }));
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT"));
+    expect(served.fetchMock.mock.calls.some(([path]) => String(path).includes("not-an-id"))).toBe(
+      false,
+    );
+    second.unmount();
+
+    at("?company=DEFAULT&invoice=");
+    render(<App />);
+    await trigger();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(served.detailCalls()).toBe(1);
+  });
+
+  it("filters in the address are applied on load and shown in the bar", async () => {
+    const served = serve(detail());
+    at("?company=DEFAULT&party=V1&side=AP&from=2026-01-01&to=2026-06-30");
+    render(<App />);
+    await trigger();
+    expect(listUrls(served)).toEqual([`${base}&party=V1&side=AP&from=2026-01-01&to=2026-06-30`]);
+    const value = (id: string) => (document.getElementById(id) as HTMLInputElement).value;
+    expect(["party", "side", "from", "to"].map((key) => value(`tinv-filter-${key}`))).toEqual([
+      "V1",
+      "AP",
+      "2026-01-01",
+      "2026-06-30",
+    ]);
+    expect(screen.queryByText(d("tinv.filter.linkInvalid"))).toBeNull();
+  });
+
+  it.each([
+    ["party", "?company=DEFAULT&party=v%20x"],
+    ["side", "?company=DEFAULT&side=XX&party=V1"],
+    ["date", "?company=DEFAULT&from=2026-13-01"],
+    ["range", "?company=DEFAULT&from=2026-06-30&to=2026-01-01"],
+  ])(
+    "an invalid %s in the address ignores all filters and says so; Clear drops them",
+    async (_, search) => {
+      const served = serve(detail());
+      at(search);
+      render(<App />);
+      await trigger();
+      expect(listUrls(served)).toEqual([base]);
+      const warning = await screen.findByText(d("tinv.filter.linkInvalid"));
+      const bar = warning.closest("[role=status]") as HTMLElement;
+      fireEvent.click(within(bar).getByRole("button", { name: t("tinv.filter.clear") }));
+      await waitFor(() => expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT"));
+      expect(screen.queryByText(d("tinv.filter.linkInvalid"))).toBeNull();
+    },
+  );
+
+  it("a link to a company that is not loaded opens nothing; Back to invoices drops the link", async () => {
+    const served = serve(detail());
+    at(`?company=NOPE&party=V1&invoice=${documentId}`);
+    render(<App />);
+    expect(await screen.findByText(`${d("tinv.link.company")} · NOPE`)).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(listUrls(served)).toEqual([]);
+    fireEvent.click(screen.getByRole("button", { name: d("tinv.link.back") }));
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-invoices"));
+    await trigger();
+    expect(listUrls(served)).toEqual([base]);
+    expect(served.detailCalls()).toBe(0);
+  });
+
+  it("fromOrder is dropped while the invoice and filters stay", async () => {
+    serve(detail());
+    at(`?company=DEFAULT&fromOrder=PO-1&side=AP&invoice=${documentId}`);
+    render(<App />);
+    await screen.findByRole("dialog", { name: dialogTitle });
+    await waitFor(() =>
+      expect(window.location.hash).toBe(
+        `#/trade-invoices?company=DEFAULT&side=AP&invoice=${documentId}`,
+      ),
+    );
+  });
+
+  it("switching company drops the filters and the open invoice from the address", async () => {
+    const served = serve(detail());
+    const acme = { ...company, code: "ACME", name: "Acme" };
+    const original = served.fetchMock.getMockImplementation();
+    served.fetchMock.mockImplementation(async (path, init) =>
+      String(path).startsWith("/api/v1/companies")
+        ? response({ items: [company, acme], nextCursor: null })
+        : (original as typeof fetch)(path, init),
+    );
+    at("?company=DEFAULT&side=AP");
+    render(<App />);
+    await trigger();
+    fireEvent.change(screen.getByLabelText(t("master.company")), { target: { value: "ACME" } });
+    await waitFor(() => expect(window.location.hash).toBe("#/trade-invoices?company=ACME"));
+  });
+
+  it("with a dirty draft, opening, closing and applying never ask or push; a cancelled Back keeps the invoice address", async () => {
+    serve(detail());
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const go = vi.spyOn(window.history, "go");
+    window.history.replaceState(null, "", "/#/trade-orders");
+    window.history.pushState(null, "", "/#/trade-invoices");
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText(t("tinv.party")), { target: { value: "V1" } });
+    const draftKey = "erp.tradeInvoices.v1.DEFAULT";
+    await waitFor(() => expect(window.sessionStorage.getItem(draftKey)).not.toBeNull());
+    const draft = window.sessionStorage.getItem(draftKey);
+    const length = window.history.length;
+    const push = vi.spyOn(window.history, "pushState");
+    fireEvent.change(screen.getByLabelText(t("tinv.filter.side")), { target: { value: "AP" } });
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.filter.apply") }));
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT&side=AP"),
+    );
+    let dialog = await open();
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    dialog = await open();
+    const here = window.location.href;
+    expect(here).toContain(`invoice=${documentId}`);
+    expect(push).not.toHaveBeenCalled();
+    expect(confirm).not.toHaveBeenCalled();
+    expect(window.history.length).toBe(length);
+
+    await act(async () => window.history.back());
+    await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+    expect(window.location.href).toBe(here);
+    expect(screen.getByRole("dialog", { name: dialogTitle })).toBeTruthy();
+    expect(window.sessionStorage.getItem(draftKey)).toBe(draft);
+    expect(go).not.toHaveBeenCalled();
   });
 });
