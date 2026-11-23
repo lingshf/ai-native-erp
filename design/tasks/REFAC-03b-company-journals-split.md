@@ -1,6 +1,6 @@
 # REFAC-03b：拆分 `CompanyJournals` 函数体（不改行为）
 
-- 类型：重构（页面）　优先级：P2　决定：**D 编号待协调者分配**　建议分支：`refac-03b-split-company-journals`
+- 类型：重构（页面）　优先级：P2　决定：**D438**　建议分支：`refac-03b-split-company-journals`
 - 来源：REFAC-03（#226，main `e8ef434`）只搬移、不拆函数体，把“按 ② 拆 `CompanyJournals`（约 1030 行）”登记进候选池（[S13 REFAC-03 范围第 4 条、可读性 ②](S13.md#refac-03拆分-journalstsx只搬移不改行为)）。
 - 排期：S13 追加，#226 合并后空出的名额可以马上派发。不进 DEMO-13 门禁；S13 收尾前未合并则顺延为 S14 项。
 - 迁移：**不加**。浏览器时段：**不需要**（理由见“证据要求”）。

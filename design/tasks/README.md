@@ -633,11 +633,11 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [REFAC-01b](S13.md#refac-01b拆分-tradeguiscenario-函数体不改行为) | 拆分 `tradeGuiScenario` 函数体为按阶段的具名函数，不改行为（S11 回顾行动 7） | 重构（测试） | P2 | REFAC-01 已合并；D419 | tests:trade-e2e（`trade-gui-scenario.ts` 与新目录 `trade-gui/scenario/`），独占 | 不加 | 需要（L5 真实 Chrome；D419：排在 DEMO-12 截图之后） | todo | — |
 | [REFAC-03](S13.md#refac-03拆分-journalstsx只搬移不改行为) | 拆分 `Journals.tsx`：`CompanyJournals` 与共享组件按职责搬到 `src/journals/`，原文件保留全部导出，只搬移不改行为 | 重构（页面） | P2 | TORD-07 合并空出名额；D431 | web-ui:journals（`Journals.tsx` 与新目录 `src/journals/`）；导入方与测试不改 | 不加 | 不需要（比照 REFAC-02） | todo | — |
 | [M2-05b](M2-05b-opening-batched-write.md) | 期初未结项分批写入（单事务 + 内存分批，原子性同 M2-03b），J6 导入峰值 RSS ≤ 512 MiB，关闭 KG 恢复硬判定 | 性能修复（工具链） | P1 | M2-05a 的 PR #227 合并后才派发（同写 Bench 脚本与手册，串行）；D434 | legacy-import（`opening-items.ts`、`legacy-import.ts`、可选新 `opening-staging.ts`、两份现有测试只追加或改写）、bench 开关（`bench-migration-rehearsal.mjs` 只删 KG 一项）、docs/runbook（只改 KG 两处） | 不加 | 不需要 | todo | — |
-| [REFAC-03b](REFAC-03b-company-journals-split.md) | 拆分 `CompanyJournals` 函数体（约 1030 行）为自定义 Hook 与无 Hook 展示组件，按 ② 每函数 ≤ 80 行，不改行为（REFAC-03 候选池） | 重构（页面） | P2 | REFAC-03 已合并（#226，`e8ef434`）；D 编号待分配 | web-ui:journals（只改 `journals/company-journals.tsx`，并在 `journals/` 下新增文件）；`Journals.tsx`、`dialogs.tsx`、`virtual-rows.tsx` 与测试不改 | 不加 | 不需要（jsdom 既有用例 + P4 逐步 DOM / 焦点 / 请求等价） | todo | — |
+| [REFAC-03b](REFAC-03b-company-journals-split.md) | 拆分 `CompanyJournals` 函数体（约 1030 行）为自定义 Hook 与无 Hook 展示组件，按 ② 每函数 ≤ 80 行，不改行为（REFAC-03 候选池） | 重构（页面） | P2 | REFAC-03 已合并（#226，`e8ef434`）；D438 | web-ui:journals（只改 `journals/company-journals.tsx`，并在 `journals/` 下新增文件）；`Journals.tsx`、`dialogs.tsx`、`virtual-rows.tsx` 与测试不改 | 不加 | 不需要（jsdom 既有用例 + P4 逐步 DOM / 焦点 / 请求等价） | todo | — |
 | DEMO-13（无任务书） | v0.13.0 RC 与 Demo，验收见 [S13.md](S13.md#demo-13-验收) | 发布 | P1（Sprint 末） | 四个任务结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | 不加 | 需要（截图） | todo | — |
 
 - **并行**：M2-05a ∥ TORD-07 ∥ REFAC-01b 冲突域不相交，可同时派出；TORD-07 合并后空出的名额给 REFAC-03（web-ui:journals，与另两条不相交）；开发同时在岗不超过 3 人。只有 REFAC-01b 申请浏览器时段；M2-05a 与 TORD-07 不申请，但服从时段停用通知。共享单文件与交界规则见 [S13.md](S13.md#泳道)。
-- **追加 REFAC-03b**：#226 合并后空出的名额可以马上派；冲突域 web-ui:journals 与 M2-05a / M2-05b（legacy-import、Bench、手册）、REFAC-01b（tests:trade-e2e）都不相交；不进 DEMO-13 门禁。
+- **追加 REFAC-03b**（D438）：#226 合并后空出的名额可以马上派；冲突域 web-ui:journals 与 M2-05a / M2-05b（legacy-import、Bench、手册）、REFAC-01b（tests:trade-e2e）都不相交；不进 DEMO-13 门禁。
 - **追加 M2-05b**（D434）：M2-05a 合并后有空名额即派；与 REFAC-01b、REFAC-03 不相交；不进 DEMO-13 门禁，S13 收尾前未派出则顺延为 S14 首项。
 
 ## 派发顺序
