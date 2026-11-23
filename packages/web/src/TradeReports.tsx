@@ -12,7 +12,7 @@ import {
 import { masterRequest } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
 import { label, type Preferences } from "./ui/index.ts";
-import { useInvoiceLeaveGuard } from "./TradeInvoices.tsx";
+import { useInvoiceLeaveGuard } from "./trade-invoices/use-invoice-leave-guard.ts";
 import { VirtualRows } from "./journals/virtual-rows.tsx";
 import { Badge, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import "./pages/trade-reports.css";

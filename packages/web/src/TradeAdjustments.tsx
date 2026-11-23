@@ -17,7 +17,7 @@ import { formatMinor } from "./reports-data.ts";
 import { label, type Preferences } from "./ui/index.ts";
 import { adjustmentTeaching } from "./ui/trade-adjustment-teaching.ts";
 import { partyFilterLabels } from "./ui/trade-adjustment-filter-labels.ts";
-import { useInvoiceLeaveGuard } from "./TradeInvoices.tsx";
+import { useInvoiceLeaveGuard } from "./trade-invoices/use-invoice-leave-guard.ts";
 import { FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import "./pages/trade-settlements.css";
 

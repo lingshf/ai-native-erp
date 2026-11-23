@@ -10,7 +10,7 @@ export function useOrderLeaveGuard(guard: Guard, message: string) {
   // After every render: the page rewrites its own address (company, order) while a draft is open,
   // and a cancelled navigation must return to that address (leave-guard-history.ts).
   useLayoutEffect(() => history.current?.settle());
-  // Layout effect: armed in the commit that made the page dirty (see TradeInvoices.tsx).
+  // Layout effect: armed in the commit that made the page dirty (see trade-invoices/use-invoice-leave-guard.ts).
   useLayoutEffect(() => {
     if (!guard.busy && !guard.unsaved) return;
     const mayLeave = () => !latest.current.busy && window.confirm(message);

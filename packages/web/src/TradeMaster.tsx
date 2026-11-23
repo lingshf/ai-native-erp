@@ -25,7 +25,7 @@ type Failure = { path: string; key: Exclude<LabelKey, "shell.httpError">; confli
 type EditorGuard = { open: boolean; dirty: boolean; pending: boolean };
 const idleGuard: EditorGuard = { open: false, dirty: false, pending: false };
 function useTradeLeaveGuard(guard: EditorGuard, discard: string) {
-  // Layout effect: armed in the commit that made the editor dirty (see TradeInvoices.tsx).
+  // Layout effect: armed in the commit that made the editor dirty (see trade-invoices/use-invoice-leave-guard.ts).
   useLayoutEffect(() => {
     if (!guard.dirty && !guard.pending) return;
     const mayLeave = () => !guard.pending && window.confirm(discard);

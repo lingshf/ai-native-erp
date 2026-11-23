@@ -4,7 +4,7 @@ import { periodCommandSchema, periodSchema, type PeriodDto } from "@erp/core/con
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { label, type Preferences } from "./ui/index.ts";
 import { admissionTeaching } from "./ui/trade-admission-teaching.ts";
-import { useInvoiceLeaveGuard } from "./TradeInvoices.tsx";
+import { useInvoiceLeaveGuard } from "./trade-invoices/use-invoice-leave-guard.ts";
 import { Badge, FastTab, MessageBar, TeachingTip } from "./ui/components/index.tsx";
 
 type Pending = ReturnType<typeof periodCommandSchema.parse>;
