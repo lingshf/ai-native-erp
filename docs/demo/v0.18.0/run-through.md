@@ -21,7 +21,7 @@
 | 2 `run-main.ps1 -SkipCapture -Shots <目录>` | 步骤 1 之后 | 退出码 0；含 `port 4203 released`；`logs/skipcapture.out.log` |
 | 3 capture 干跑（`run-main.ps1 -Shots <目录>`） | 步骤 2 之后 | 退出码 0；6 张截图，17 项显式检查全部通过，7 条取证记录；`logs/capture-dry-run.out.log`、`logs/capture-log-dry-run.json` |
 | 4a `slot-run.ps1`，用 `powershell.exe` 调用 | 步骤 3 之后 | 退出码 2，输出 `slot-run.ps1 needs PowerShell 7 (pwsh)`；主体未运行（D498）；`logs/slot-failed1-powershell5.out.log` |
-| 4b `slot-run.ps1`，`pwsh`，在 tool worktree 内调用 | 2026-11-23T23:33:45Z 起 | demo-capture 退出码 -196608，ABORT；Root 为 tool，找不到 app 里的 `run-main.ps1`；未开端口、未造数（D499）；`logs/slot-failed2-summary.log`、`logs/slot-failed2-demo-capture.err.log` |
+| 4b `slot-run.ps1`，`pwsh`，在 tool worktree 内调用 | 2026-11-23T23:33:45Z 起 | demo-capture 退出码 -196608，ABORT；Root 为 tool，找不到 app 里的 `run-main.ps1`；未起服务、未造数、未开端口；但脚本在失败前已做预检（head/base 各 exit 0）、构建（写入 tool worktree 的 `dist`）和进程采样（D499）；`logs/slot-failed2-summary.log`、`logs/slot-failed2-demo-capture.err.log` |
 | 4c `slot-run.ps1`，`pwsh`，在 app worktree 内调用 tool 的脚本（D499） | 2026-11-23T23:35:51Z 起，23:37:50Z 结束 | 退出码 0；demo-capture 退出码 0；`logs/slot-summary-real.log` |
 | 清理前记录（D492） | 4c 之后 | `logs/d492-artifacts-before-cleanup.csv` |
 | 关窗 | 清理 worktree 之后 | 4203 无监听 |
@@ -47,7 +47,7 @@ pwsh -NoProfile -File <tool>\scripts\slot\slot-run.ps1 -OutDir <新的空目录>
 
 ## 4 复盘与建议（S19 回顾的输入）
 
-- `slot-run.ps1` 有两个易错点：必须用 `pwsh`，并且必须在 app worktree 内调用 tool 的脚本（runner 以当前目录为 Root）。两次失败都是调用错误，没有副作用。已写入 TEMPLATE 第 21 条与发布清单。
+- `slot-run.ps1` 有两个易错点：必须用 `pwsh`，并且必须在 app worktree 内调用 tool 的脚本（runner 以当前目录为 Root）。两次失败都是调用错误。4a 在脚本主体前即因版本检查退出，无任何动作；4b 已执行预检、构建（只写 tool worktree 的 `dist`）与进程采样，但没有起服务、没有造数、没有开端口。这些动作不触及 app worktree 及其 `dist`，也不进入证据（证据只取自 4c 的输出）。已写入 TEMPLATE 第 21 条与发布清单。
 - 建议：窗口申请里放逐字命令，不写“按约定”。
 - 窗口内没有安装（D493 已遵守）；步骤 1 只构建。
 
@@ -70,5 +70,7 @@ pwsh -NoProfile -File <tool>\scripts\slot\slot-run.ps1 -OutDir <新的空目录>
 **未入库的窗口内文件**（路径、SHA-256、字节数、行数都在 CSV 里）：两个 slot 输出目录下的 `excluded.tsv`、`preflight-*.log`、`build.log`、`demo-capture-*-rev.txt`，`out\shots-dry\` 的 5 张干跑截图（与真实运行截图 SHA-256 相同），`slot-console*.log`（与对应 `slot-summary.log` 同字节）。
 
 **临时账套路径清单**（先保存于此，再清理）：每次 `run-main.ps1` 的 `finally` 删除自己的 `erp-demo-<guid>`；窗口内共 3 次 run-main（步骤 2、3、4c），结束后其账套均已删除。清理前 `%TEMP%` 下另有 4 个 `erp-demo-*`，创建时间均早于开窗（本机时间 2026-11-23 00:51、06:15、10:10、10:39），不是本窗口产生，未触碰。
+
+**缺口（D500）**：3 次 run-main 实际使用的 `erp-demo-<guid>` 账套的具体路径，当时没有记录，日志与 slot 输出中也无原文可附，无法事后补全。按 D500 作为缺口接受，不重跑。纠正措施：从 DEMO-20 起，D492 清单必须列出实际的账套路径，并在清理前保存。
 
 **未保留（not retained）**：无。
