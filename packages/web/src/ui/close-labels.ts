@@ -1,5 +1,6 @@
 export const closeZh = {
   "close.title": "期末结账",
+  "close.description": "先预览再确认结账；贸易与税务写入前，先在本页保存期间准入。",
   "close.preview": "预览结账",
   "close.confirm": "确认结账",
   "close.next": "打开下一期间",
@@ -25,6 +26,8 @@ export const closeZh = {
 } as const;
 export const closeEn = {
   "close.title": "Period close",
+  "close.description":
+    "Preview, then confirm the close; save the period admission here before trade and tax writes.",
   "close.preview": "Preview close",
   "close.confirm": "Confirm close",
   "close.next": "Open next period",

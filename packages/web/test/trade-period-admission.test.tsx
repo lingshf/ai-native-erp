@@ -196,3 +196,55 @@ it("asks before leaving unsaved admission input instead of blocking navigation",
   await waitFor(() => expect(window.location.hash).toBe("#/journals"));
   expect(confirm).toHaveBeenCalledTimes(2);
 });
+const admissionBadges = (language: "zh" | "en") =>
+  screen
+    .getByRole("button", { name: label(language, "trpt.admission") })
+    .closest("header")
+    ?.querySelectorAll(".summary .badge") ?? [];
+function assertHeaderAndAdmission(language: "zh" | "en", admitted: boolean) {
+  const l = (key: Exclude<LabelKey, "shell.httpError">) => label(language, key);
+  const description = screen.getByRole("heading", {
+    level: 2,
+    name: l("close.title"),
+  }).nextElementSibling;
+  expect(description?.tagName).toBe("P");
+  expect(description?.textContent).toBe(l("close.description"));
+  const badges = [...admissionBadges(language)];
+  expect(badges).toHaveLength(2);
+  const status = l(admitted ? "trpt.admitted" : "trpt.notAdmitted");
+  (["trade", "tax"] as const).forEach((module, index) => {
+    const badge = badges[index] as HTMLElement;
+    expect(badge.classList.contains(admitted ? "success" : "warning")).toBe(true);
+    expect(badge.textContent).not.toMatch(/trade|tax/);
+    expect(badge.textContent).toContain(l(`trpt.module.${module}`));
+    expect(badge.textContent).toContain(status);
+  });
+  expect(screen.getByLabelText(l("trpt.trade"))).toBeTruthy();
+  expect(screen.getByLabelText(l("trpt.taxModule"))).toBeTruthy();
+  expect([l("trpt.trade"), l("trpt.taxModule")]).toEqual(
+    language === "zh" ? ["准入贸易", "准入税务"] : ["Admit trade", "Admit tax"],
+  );
+}
+it("shows the page description, localized module badges with status, and localized checkboxes in zh and en", async () => {
+  mockApi();
+  render(<App />);
+  await screen.findByLabelText(t("trpt.trade"));
+  const switchTo = (from: "zh" | "en", to: "zh" | "en") =>
+    fireEvent.change(screen.getByLabelText(label(from, "shell.language")), {
+      target: { value: to },
+    });
+  for (const teaching of [false, true]) {
+    if (teaching) fireEvent.click(screen.getByLabelText(t("shell.showTeachingExplanations")));
+    assertHeaderAndAdmission("zh", false);
+    switchTo("zh", "en");
+    assertHeaderAndAdmission("en", false);
+    switchTo("en", "zh");
+  }
+  await enter();
+  fireEvent.click(screen.getByRole("button", { name: t("trpt.save") }));
+  await screen.findByText(t("trpt.saved"));
+  await waitFor(() => expect(admissionBadges("zh")[0]?.classList.contains("success")).toBe(true));
+  assertHeaderAndAdmission("zh", true);
+  switchTo("zh", "en");
+  assertHeaderAndAdmission("en", true);
+});
