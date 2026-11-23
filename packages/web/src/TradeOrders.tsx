@@ -1,5 +1,10 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type QueryClient,
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { guardHistory, type HistoryGuard } from "./leave-guard-history.js";
 import {
@@ -220,9 +225,16 @@ export function TradeOrders({ preferences }: { preferences: Preferences }) {
   const linkOrder = params.get("order");
   const company = rows.find((row) => row.code === (linkCompany ?? (selected || rows[0]?.code)));
   const companyMissing = linkCompany !== null && companies.isSuccess && !company;
-  // TORD-07: every write replaces the entry (no history, no leave confirmation).
+  const client = useQueryClient();
+  // TORD-07: every write replaces the entry (no history, no leave confirmation) and names the
+  // company (rule 3).
   const link = (change: OrderLinkChange) =>
     setParams((current) => nextOrderParams(current, change), { replace: true });
+  // Rule 3: a company change clears the filters and order and restarts that company's list.
+  const switchTo = (code: string) => {
+    restartOrderList(client, code, noOrderFilter);
+    link({ company: code, order: null, ...orderFilterChange(noOrderFilter) });
+  };
   return (
     <section className="page trade-orders">
       <PageHeader
@@ -238,11 +250,7 @@ export function TradeOrders({ preferences }: { preferences: Preferences }) {
               onChange={(event) => {
                 if (!guard.unsaved || window.confirm(t("tord.leaveConfirm"))) {
                   setSelected(event.target.value);
-                  link({
-                    company: event.target.value,
-                    order: null,
-                    ...orderFilterChange(noOrderFilter),
-                  });
+                  switchTo(event.target.value);
                 }
               }}
             >
@@ -280,7 +288,10 @@ export function TradeOrders({ preferences }: { preferences: Preferences }) {
             type="button"
             className="btn btn-secondary"
             onClick={() => {
-              link({ company: null, order: null });
+              // Back to the list the page falls back to, named in the address (rule 3).
+              const fallback = selected || rows[0]?.code;
+              if (fallback) switchTo(fallback);
+              else link({ company: null, order: null });
               document.getElementById("tord-company")?.focus();
             }}
           >
@@ -299,7 +310,7 @@ export function TradeOrders({ preferences }: { preferences: Preferences }) {
           params={params}
           onFilter={(filter) => link({ company: company.code, ...orderFilterChange(filter) })}
           onLink={(order) => link({ company: company.code, order })}
-          onBack={() => link({ order: null })}
+          onBack={() => link({ company: company.code, order: null })}
         />
       )}
     </section>
@@ -881,6 +892,50 @@ function OrderWorkspace({
   );
 }
 
+const orderListKey = (company: string, filter: OrderFilter) =>
+  ["trade-orders", company, filter] as const;
+// K7b: a list shown afresh (apply, clear, company switch) reloads one first page, never pages
+// still cached from an earlier visit (the client keeps them for the whole session).
+const restartOrderList = (client: QueryClient, company: string, filter: OrderFilter) =>
+  void client.resetQueries({ queryKey: orderListKey(company, filter), exact: true });
+
+/**
+ * TORD-07: the applied filters are the address's; the bar's inputs keep unapplied edits and reset
+ * whenever the applied filters change. Apply and Clear restart the list, then write the address.
+ */
+function useOrderFilters(
+  params: URLSearchParams,
+  company: string,
+  onFilter: (filter: OrderFilter) => void,
+) {
+  const client = useQueryClient();
+  const { applied, broken } = readOrderFilter(params, company);
+  const key = JSON.stringify(applied);
+  const fresh = (): FilterState => ({ key, draft: applied, invalid: null });
+  const [state, setState] = useState(fresh);
+  const current = state.key === key ? state : fresh();
+  if (current !== state) setState(current);
+  const { draft, invalid } = current;
+  const show = (next: OrderFilter) => {
+    restartOrderList(client, company, next);
+    setState({ key: JSON.stringify(next), draft: next, invalid: null });
+    onFilter(next);
+  };
+  const apply = (event: FormEvent) => {
+    event.preventDefault();
+    const next = { ...draft, party: draft.party.trim() };
+    if (next.party && !tradeOrderCommandSchema.shape.party.safeParse(next.party).success)
+      setState({ ...current, invalid: "party" });
+    else if (next.from && next.to && next.from > next.to)
+      setState({ ...current, invalid: "range" });
+    else show(next);
+  };
+  const clear = () => show(noOrderFilter);
+  const edit = (patch: Partial<OrderFilter>) =>
+    setState({ ...current, draft: { ...draft, ...patch }, invalid: null });
+  return { applied, broken, draft, invalid, apply, clear, edit };
+}
+
 function OrderList({
   company,
   language,
@@ -898,19 +953,13 @@ function OrderList({
   onFilter: (filter: OrderFilter) => void;
   onOpen: (orderId: string) => void;
 }) {
-  const client = useQueryClient();
-  // TORD-07: the applied filters are the address's; the inputs keep unapplied edits and reset
-  // whenever the applied filters change.
-  const { applied, broken } = readOrderFilter(params, company.code);
-  const key = JSON.stringify(applied);
-  const fresh = (): FilterState => ({ key, draft: applied, invalid: null });
-  const [state, setState] = useState(fresh);
-  const current = state.key === key ? state : fresh();
-  if (current !== state) setState(current);
-  const { draft, invalid } = current;
-  const queryKey = ["trade-orders", company.code, applied] as const;
+  const { applied, broken, draft, invalid, apply, clear, edit } = useOrderFilters(
+    params,
+    company.code,
+    onFilter,
+  );
   const page = useInfiniteQuery({
-    queryKey,
+    queryKey: orderListKey(company.code, applied),
     initialPageParam: "",
     refetchOnMount: true,
     queryFn: ({ pageParam, signal }) => {
@@ -924,24 +973,6 @@ function OrderList({
   });
   const rows = page.data?.pages.flatMap((value) => value.items) ?? [];
   const filtered = orderFilterKeys.some((key) => applied[key]);
-  // Apply and Clear always reload from the first page, never from pages cached for those filters.
-  const show = (next: OrderFilter) => {
-    void client.resetQueries({ queryKey: ["trade-orders", company.code, next], exact: true });
-    setState({ key: JSON.stringify(next), draft: next, invalid: null });
-    onFilter(next);
-  };
-  const apply = (event: FormEvent) => {
-    event.preventDefault();
-    const next = { ...draft, party: draft.party.trim() };
-    if (next.party && !tradeOrderCommandSchema.shape.party.safeParse(next.party).success)
-      setState({ ...current, invalid: "party" });
-    else if (next.from && next.to && next.from > next.to)
-      setState({ ...current, invalid: "range" });
-    else show(next);
-  };
-  const clear = () => show(noOrderFilter);
-  const edit = (patch: Partial<OrderFilter>) =>
-    setState({ ...current, draft: { ...draft, ...patch }, invalid: null });
   const described = (kind: "party" | "range") =>
     invalid === kind
       ? { "aria-invalid": true as const, "aria-describedby": `tord-filter-${kind}-error` }

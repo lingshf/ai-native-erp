@@ -1078,7 +1078,7 @@ describe("trade orders", () => {
       expect(orderReads(calls)).toEqual([]);
 
       activate(await back(), how);
-      await waitFor(() => expect(address().toString()).toBe(""));
+      await waitFor(() => expect(address().toString()).toBe("company=DEFAULT"));
       const table = await listTable();
       expect(await within(table).findByRole("button", { name: "PO-1" })).toBeTruthy();
       expect(lists).toEqual(["/api/v1/trade/orders?company=DEFAULT&limit=100"]);
@@ -1101,7 +1101,7 @@ describe("trade orders", () => {
     const changes = vi.fn();
     select.addEventListener("change", changes);
     activate(await back(), "Enter");
-    await waitFor(() => expect(address().toString()).toBe(""));
+    await waitFor(() => expect(address().toString()).toBe("company=DEFAULT"));
     expect(await within(await listTable()).findByRole("button", { name: "PO-1" })).toBeTruthy();
     expect(document.activeElement).toBe(select);
     expect(select.value).toBe("DEFAULT");
@@ -1112,7 +1112,7 @@ describe("trade orders", () => {
   it.each([
     ["an empty order", "?company=DEFAULT&order=", "Enter", 0, "company=DEFAULT"],
     ["a malformed order", "?company=DEFAULT&order=po%201", " ", 0, "company=DEFAULT"],
-    ["a malformed order without company", "?order=po%201", "Enter", 0, ""],
+    ["a malformed order without company", "?order=po%201", "Enter", 0, "company=DEFAULT"],
     [
       "an order the server rejects (400)",
       "?company=DEFAULT&order=PO-400",
@@ -1151,10 +1151,10 @@ describe("trade orders", () => {
     },
   );
 
-  // Recovery removes only `order`: an absent `company` stays absent.
+  // Recovery removes `order` and names the shown company (TORD-07 rule 3).
   it.each([
     ["?company=DEFAULT&order=PO-9", "company=DEFAULT"],
-    ["?order=PO-9", ""],
+    ["?order=PO-9", "company=DEFAULT"],
   ] as const)(
     "reports an order that does not exist and goes back to the list by Space (%s)",
     async (search, after) => {
@@ -1515,22 +1515,17 @@ describe("trade orders", () => {
   ] as const;
   const filterValues = () => filterInputs.map((key) => filterField(key).value);
   const linkWarning = () => screen.queryByText(t("tord.filterLinkInvalid"));
-  // Rows for every list except partner NOBODY (Q8); records each list URL.
+  // Two pages (PO-1, PO-2 | PO-3) for every list except partner NOBODY (Q8); records each list URL.
   const stubLists = (companies = oneCompany) => {
     const lists: string[] = [];
-    const api = stubApi(
-      found,
-      (url) => {
-        lists.push(url);
-        const items = url.includes("party=NOBODY")
-          ? []
-          : [summary("PO-1", 100), summary("PO-2", 200)];
-        return response({ items, nextCursor: null });
-      },
-      noneInvoiced,
-      companies,
-    );
-    return { lists, ...api };
+    const page = (url: string) => {
+      lists.push(url);
+      if (url.includes("party=NOBODY")) return response({ items: [], nextCursor: null });
+      if (url.includes("cursor="))
+        return response({ items: [summary("PO-3", 300)], nextCursor: null });
+      return response({ items: [summary("PO-1", 100), summary("PO-2", 200)], nextCursor: "PO-2" });
+    };
+    return { lists, ...stubApi(found, page, noneInvoiced, companies) };
   };
   const listShown = async () => within(await listTable()).findByRole("button", { name: "PO-1" });
   const clickClear = (root: HTMLElement = document.body) =>
@@ -1584,27 +1579,19 @@ describe("trade orders", () => {
     },
   );
 
-  // Q1–Q9: [case, filters in the link, list query sent, warning shown].
+  // Q1–Q9, one representative per row (the contract owns value rules): [case, link, query, warning].
   it.each([
     ["Q1 empty values", "party=&side=AP&from=", "side=AP", false],
     ["Q2 lower case partner", "party=vendor", "", true],
-    ["Q2 partner with a space", "party=VEN%20DOR", "", true],
-    ["Q2 partner with outer blanks", "party=%20VENDOR%20", "", true],
-    ["Q2 partner too long", `party=${"V".repeat(61)}`, "", true],
-    ["Q2 partner starting with _", "party=_VENDOR", "", true],
     ["Q3 lower case side", "side=ap", "", true],
-    ["Q3 unknown side", "side=XX", "", true],
-    ["Q4 upper case invoicing", "invoicing=NONE", "", true],
     ["Q4 unknown invoicing", "invoicing=paid", "", true],
     ["Q5 impossible day", "from=2026-02-30", "", true],
-    ["Q5 impossible month", "to=2026-13-01", "", true],
-    ["Q5 unpadded date", "from=2026-2-1", "", true],
-    ["Q5 date with time", "from=2026-01-01T00:00", "", true],
     ["Q6 inverted range", "from=2026-06-30&to=2026-01-01", "", true],
     ["Q7 first value valid", "party=VENDOR&party=bad", "party=VENDOR", false],
     ["Q7 first value invalid", "side=ap&side=AP", "", true],
     ["Q8 unknown partner", "party=NOBODY", "party=NOBODY", false],
     ["Q9 cursor, limit, unknown", "cursor=PO-9&limit=5&x=1&side=AR", "side=AR", false],
+    ["a valid and an invalid key", "party=VENDOR&side=ap", "", true],
   ] as const)("reads a link with %s", async (_case, link, query, broken) => {
     linkTo(`?company=DEFAULT&${link}`);
     const { lists } = stubLists();
@@ -1645,17 +1632,18 @@ describe("trade orders", () => {
   });
 
   it("Q11: opens the linked order with filters and keeps them when opening and closing orders", async () => {
-    linkTo("?company=DEFAULT&party=VENDOR&order=PO-1");
+    linkTo("?party=VENDOR&order=PO-1");
+
     const { lists } = stubLists();
     render(<App />);
     await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
     expect(lists).toEqual([filtered("party=VENDOR")]);
     fireEvent.click(await within(await listTable()).findByRole("button", { name: "PO-2" }));
     await waitFor(() =>
-      expect(address().toString()).toBe("company=DEFAULT&party=VENDOR&order=PO-2"),
+      expect(address().toString()).toBe("party=VENDOR&order=PO-2&company=DEFAULT"),
     );
     fireEvent.click(await back());
-    await waitFor(() => expect(address().toString()).toBe("company=DEFAULT&party=VENDOR"));
+    await waitFor(() => expect(address().toString()).toBe("party=VENDOR&company=DEFAULT"));
     expect(lists).toEqual([filtered("party=VENDOR")]);
   });
 
@@ -1706,20 +1694,27 @@ describe("trade orders", () => {
     expect(writes()[1]).toBe(0);
     expect(window.history.length).toBe(length);
   });
+  it("K7b: switching back to a company whose list had two pages reloads only its first page", async () => {
+    const { lists } = stubLists(twoCompanies);
+    render(<App />);
+    await listShown();
+    fireEvent.click(screen.getByRole("button", { name: label("zh", "master.loadMore") }));
+    await within(await listTable()).findByRole("button", { name: "PO-3" });
+    for (const code of ["BRANCH", "DEFAULT"]) {
+      fireEvent.change(companySelect(), { target: { value: code } });
+      await waitFor(() => expect(address().toString()).toBe(`company=${code}`));
+      await listShown();
+    }
+    await pause();
+    const branchList = base.replace("DEFAULT", "BRANCH");
+    expect(lists).toEqual([base, `${base}&cursor=PO-2`, branchList, base]);
+    expect(within(await listTable()).queryByRole("button", { name: "PO-3" })).toBeNull();
+  });
 
   // K5: the detail groups line decimals by language (formatDecimal); not-invoiced stays exact.
   it("groups the detail's line decimals in zh and en", async () => {
-    const large = {
-      ...savedOrder,
-      lines: [
-        {
-          ...savedOrder.lines[0],
-          quantity: "1234.5",
-          unitPrice: "12345.678901",
-          discountPercent: "2500.5",
-        },
-      ],
-    };
+    const line = { quantity: "1234.5", unitPrice: "12345.678901", discountPercent: "2500.5" };
+    const large = { ...savedOrder, lines: [{ ...savedOrder.lines[0], ...line }] };
     const lineCells = () =>
       waitFor(() => {
         const cells = [...(detail().getAllByRole("row")[1]?.querySelectorAll("td") ?? [])];
