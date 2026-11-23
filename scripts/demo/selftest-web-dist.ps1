@@ -3,6 +3,9 @@
 # runs -Helper in pwsh and powershell.exe child processes. Both hosts must give the expected exit code (hence
 # the same code) and output within $MaxCaseSeconds. One line per scenario and host, then a summary line.
 # Exit 0 when every line passes, else 1. A missing -Helper makes every scenario FAIL (never skipped).
+# G1: the fixture and children run with repository-local GIT_* overrides (GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE,
+# ...) removed and with global/system git config ignored, so a caller inside a git hook cannot have its own repo
+# written. G1 plants decoy overrides inside the temp dir first and checks that git wrote nothing there.
 param([string]$Helper = (Join-Path $PSScriptRoot 'assert-web-dist.ps1'))
 
 $MaxCaseSeconds = 5
@@ -26,17 +29,44 @@ $Scenarios = @(
   @{ Id = 'W6'; Root = 'absent'; DistMinutes = $null; Exit = 2; Expect = @($Undetermined) }
 )
 
+# Decoy repository overrides (relative to the temp dir) that G1 plants before isolation.
+$GitDecoys = @{ GIT_DIR = 'decoy-git-dir'; GIT_WORK_TREE = 'decoy-work-tree'; GIT_INDEX_FILE = 'decoy-index' }
+
+function Set-GitDecoys([string]$Work) {
+  foreach ($name in $GitDecoys.Keys) { Set-Item -Path "Env:$name" -Value (Join-Path $Work $GitDecoys[$name]) }
+}
+
+# Points TEMP/TMP into $Work and detaches git from the caller: no repo overrides, no global/system config.
+function Enter-IsolatedGitEnvironment([string]$Work, [string[]]$RepoOverrides) {
+  $env:TEMP = Join-Path $Work 'tmp'; $env:TMP = $env:TEMP
+  $env:GIT_CEILING_DIRECTORIES = $Work   # keeps git from finding a repo above the plain (non-git) dir
+  $env:GIT_CONFIG_GLOBAL = Join-Path $Work 'empty.gitconfig'
+  $env:GIT_CONFIG_NOSYSTEM = '1'
+  New-Item -ItemType File -Path $env:GIT_CONFIG_GLOBAL | Out-Null
+  foreach ($name in $RepoOverrides) { Remove-Item -Path "Env:$name" -ErrorAction SilentlyContinue }
+}
+
 function New-FixtureRepo([string]$Dir) {
   New-Item -ItemType Directory -Path $Dir | Out-Null
-  git -C $Dir init -q
+  git -C $Dir init -q --template=
   Set-Content -LiteralPath (Join-Path $Dir 'README.md') -Value 'fixture'
   $env:GIT_AUTHOR_DATE = "@$($CommitTimeUtc.ToUnixTimeSeconds()) +0000"
   $env:GIT_COMMITTER_DATE = $env:GIT_AUTHOR_DATE
   git -C $Dir add README.md
-  git -C $Dir -c user.name=selftest -c user.email=selftest@example.invalid -c commit.gpgsign=false commit -q -m fixture
+  git -C $Dir -c user.name=selftest -c user.email=selftest@example.invalid -c commit.gpgsign=false commit -q --no-verify -m fixture
   $code = $LASTEXITCODE
   Remove-Item Env:GIT_AUTHOR_DATE, Env:GIT_COMMITTER_DATE
   if ($code -ne 0) { throw "fixture commit failed in $Dir" }
+}
+
+# G1: builds the fixture under planted decoys; git must write nothing at the decoy paths.
+function Test-FixtureIsolation([string]$Work) {
+  $failure = ''
+  try { New-FixtureRepo (Join-Path $Work 'repo') } catch { $failure = " error=$($_.Exception.Message)" }
+  $leaks = @($GitDecoys.Values | Where-Object { Test-Path -LiteralPath (Join-Path $Work $_) })
+  $commits = git -C (Join-Path $Work 'repo') rev-list --count HEAD 2>$null
+  $verdict = 'PASS'; if ($leaks.Count -or "$commits" -ne '1' -or $failure) { $verdict = 'FAIL' }
+  '{0} G1 fixture-git-isolation decoy-writes={1} [{2}] fixture-commits={3}{4}' -f $verdict, $leaks.Count, ($leaks -join ','), $commits, $failure
 }
 
 # Resets <Root>\packages\web\dist to the scenario state and returns the index.html path.
@@ -95,13 +125,15 @@ function Invoke-Case([hashtable]$Scenario, [string]$Work) {
 }
 
 $work = Join-Path ([IO.Path]::GetTempPath()) ('selftest-web-dist-' + [guid]::NewGuid().ToString('N'))
-$savedEnv = @{ TEMP = $env:TEMP; TMP = $env:TMP; GIT_CEILING_DIRECTORIES = $env:GIT_CEILING_DIRECTORIES }
+$repoOverrides = @(git rev-parse --local-env-vars)
+$isolatedVars = @('TEMP', 'TMP', 'GIT_CEILING_DIRECTORIES', 'GIT_CONFIG_GLOBAL', 'GIT_CONFIG_NOSYSTEM') + $repoOverrides
+$savedEnv = @{}
+foreach ($name in $isolatedVars) { $savedEnv[$name] = [Environment]::GetEnvironmentVariable($name) }
 try {
   New-Item -ItemType Directory -Path (Join-Path $work 'tmp') | Out-Null
-  $env:TEMP = Join-Path $work 'tmp'; $env:TMP = $env:TEMP
-  $env:GIT_CEILING_DIRECTORIES = $work   # keeps git from finding a repo above the plain (non-git) dir
-  New-FixtureRepo (Join-Path $work 'repo')
-  $lines = @(foreach ($scenario in $Scenarios) { Invoke-Case $scenario $work })
+  Set-GitDecoys $work
+  Enter-IsolatedGitEnvironment $work $repoOverrides
+  $lines = @(Test-FixtureIsolation $work) + @(foreach ($scenario in $Scenarios) { Invoke-Case $scenario $work })
 } finally {
   foreach ($name in $savedEnv.Keys) { [Environment]::SetEnvironmentVariable($name, $savedEnv[$name]) }
   if (Test-Path -LiteralPath $work) { Remove-Item -LiteralPath $work -Recurse -Force }
@@ -110,5 +142,5 @@ $lines
 $results = @($lines | Where-Object { $_ -match '^(PASS|FAIL) ' })
 $passed = @($results | Where-Object { $_ -like 'PASS *' }).Count
 Write-Output ("selftest-web-dist: {0}/{1} passed, helper={2}" -f $passed, $results.Count, $Helper)
-if ($results.Count -eq $Scenarios.Count * $ChildHosts.Count -and $passed -eq $results.Count) { exit $ExitAllPassed }
+if ($results.Count -eq 1 + $Scenarios.Count * $ChildHosts.Count -and $passed -eq $results.Count) { exit $ExitAllPassed }
 exit $ExitSomeFailed
