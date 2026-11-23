@@ -274,6 +274,8 @@ npm run storage:admin -- restore new-target.sqlite independent-backup.sqlite
 
 只接受已生成并校验 SHA 的双账快照、显式的新目标路径和全部六项决定 C 选项；不会读取活动旧账、4173 或 `.bak`。导入后须经迁移核对（`legacy-reconcile`，见 [docs/user/backup-and-legacy.md](docs/user/backup-and-legacy.md)）达到 `reconciled` 才能作为活动库；演练（M2-05）与切换（M2-06）尚未交付，另需用户授权。
 
+逐步操作见 [docs/migration-runbook.md](docs/migration-runbook.md)；`legacy-import --snapshot-dir DIR --dry-run` 可先只读列出六项决定 C 及其影响条数。
+
 以下选项仅为合成验收示例，不代表真实数据授权。示例适用于导入范围**不含** AP/AR 控制科目的快照；只要含 AP/AR 控制科目，就必须追加 `--opening-items FILE.json`（期初未结项明细文件，即使每个科目都声明为 `empty`），否则在写入任何目标前以 `INVALID_INPUT` 拒绝。文件格式见 [docs/user/backup-and-legacy.md](docs/user/backup-and-legacy.md) 的“期初未结项”一节：
 
 ```powershell
