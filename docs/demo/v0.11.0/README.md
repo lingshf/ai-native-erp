@@ -50,6 +50,20 @@
 
 ## 4. 复跑（从仓库根目录）
 
+本节分两条路径，不要混用：**4A 正式取图入口（R1，真实 Chrome）**只有 `slot-run.ps1`；**4B 无浏览器的替身与预演入口**不占用槽位里的浏览器，也不能产出正式截图。
+
+### 4A. 正式取图入口（R1，唯一）
+
+`scripts\slot\slot-run.ps1` 自己做 build 与 dist 新鲜度门禁、6 次预检（间隔 10 秒）、运行中每 10 秒采样；预检不为 0 不开始，有外部进程就中止。步骤文件是 [steps-demo11.ps1](scripts/steps-demo11.ps1)（一个 `demo-capture` 步骤，调用 `run-main.ps1`，走 Chrome 通道）。输出目录必须在仓库外且是新目录，不要覆盖旧时段。需要协调者批准独占时段，批准后只跑一次，失败即中止并保留现场：
+
+```powershell
+pwsh -NoProfile -File scripts\slot\slot-run.ps1 -OutDir C:\Users\<user>\slot-s11-demo-<n> -StepsFile docs\demo\v0.11.0\scripts\steps-demo11.ps1
+```
+
+不提供手工预检块，也不要绕过 `slot-run.ps1` 直接调用 `run-main.ps1` 取图。D373 ① 只豁免首次取图；最终图（D382）是通过 `slot-run.ps1` 取的。
+
+### 4B. 无浏览器的替身与预演入口（不是 R1 入口）
+
 无浏览器替身检查（不启动 Chrome / Playwright / Vitest）。`seed-detail` 替身（`seed-detail-stub.mjs`）校验 222 个请求的成功路径，以及缺 AR、超额核销、日期格式错误、缺参数的负例：
 
 ```powershell
@@ -68,12 +82,12 @@ powershell -NoProfile -File docs\demo\v0.11.0\scripts\proc05-negatives.ps1
 powershell -NoProfile -File docs\demo\v0.11.0\scripts\orchestration-stub.ps1
 ```
 
-**统一步骤块（预演与取图共用，唯一的真实服务入口）**。第一行 `$capture` 决定模式：`$false` 是预演（build → 新鲜度门禁 → 真实服务 → seed → readiness，无浏览器，到 `-SkipCapture` 为止）；`$true` 是取图，只能放在 `slot-run.ps1` 的步骤里运行（见下节）。块先 build，断言 `index.html` 严格晚于 HEAD 提交时间，再断言 dist 里有本版界面文案（“Invoice details”“No invoices match the filters”），任何一步失败就中止。
+**统一步骤块（4B 的预演与替身共用）**。第一行 `$capture` 决定模式：`$false` 是真实服务预演（build → 新鲜度门禁 → 真实服务 → seed → readiness，无浏览器，到 `-SkipCapture` 为止）；`$true` 是取图模式，**只供 `orchestration-stub.ps1` 在沙箱里用替身 run-main 验证块的逻辑**，不是正式取图入口（正式取图见 4A）。块先 build，断言 `index.html` 严格晚于 HEAD 提交时间，再断言 dist 里有本版界面文案（“Invoice details”“No invoices match the filters”），任何一步失败就中止。
 
 日志规则：每次写日志都带 `-ErrorAction Stop`（`Out-File`、`Get-ChildItem`、`Get-Content`、`Copy-Item`、`Remove-Item` 全部如此）；写日志失败也进入 `catch`，不会被当成成功；日志落盘并复核（路径、SHA-256、行数）是清理的前置条件，复核没过就不删 `$shots` 里的原图。日志开头记录 HEAD 与工作区状态。
 
 ```powershell
-$capture = $false   # $false = 预演；$true = 取图（仅限 slot-run 的步骤内）
+$capture = $false   # $false = 预演（4B）；$true = 仅供 orchestration-stub 沙箱验证，不是正式取图入口（见 4A）
 . {
   $shots = Join-Path $env:TEMP ("demo-s11-shots-" + [guid]::NewGuid())
   $log = "$shots.run.log"   # 完整输出写入文件；失败时保留 $shots 与日志，不清理
@@ -125,15 +139,7 @@ $capture = $false   # $false = 预演；$true = 取图（仅限 slot-run 的步�
 }
 ```
 
-真实服务预演（无浏览器）：把上面块的第一行保持为 `$capture = $false`，在仓库根目录用 `powershell -NoProfile` 运行；与取图同一份 build 与门禁，不另有分支。
-
-**取图的唯一正式入口**是 `scripts\slot\slot-run.ps1`（R1）。它自己做 build 与 dist 新鲜度门禁、6 次预检（间隔 10 秒）、运行中每 10 秒采样，预检不为 0 不开始，有外部进程就中止。仓库里的步骤文件是 [steps-demo11.ps1](scripts/steps-demo11.ps1)（只有一个 `demo-capture` 步骤，调用 `run-main.ps1`，走 Chrome 通道）。输出目录必须在仓库外且是新目录，不要覆盖旧时段：
-
-```powershell
-pwsh -NoProfile -File scripts\slot\slot-run.ps1 -OutDir C:\Users\<user>\slot-s11-demo-<n> -StepsFile docs\demo\v0.11.0\scripts\steps-demo11.ps1
-```
-
-上面的统一步骤块在取图模式（`$capture = $true`）下**只作为槽位内步骤或编排替身的入口**，不要在槽位之外手工运行它；不提供手工预检块，也不要绕过 `slot-run.ps1` 直接调用 `run-main.ps1` 取图。D373 ① 只豁免首次取图，D382 的重取是通过 `slot-run.ps1` 跑的。
+真实服务预演（无浏览器，4B）：把上面块的第一行保持为 `$capture = $false`，在仓库根目录用 `powershell -NoProfile` 运行；会 build 并启动 node，需要协调者确认没有别人占用槽位。它只验证 build、门禁、seed 和 readiness，不产出截图。
 
 `run-main.ps1` 启动前检查端口 4201 空闲（D373 例外）；每个 seed 与 capture 之前都校验监听进程就是本轮服务；`finally` 只停本轮服务、只删本轮 `erp-demo-*` 目录。`screenshots/.gitkeep` 是替身检查的哨兵文件，别删。取图期间不使用 `tinv06-*`（开发提交的文件，不要覆盖）。
 
