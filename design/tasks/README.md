@@ -591,14 +591,15 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [UI-14](UI-14-nav-groups.md) | 侧栏导航分组：“总账”组拆为“凭证与业务事件”“贸易往来”“总账与结账”三组，链接与顺序不变（界面小步，D338） | 页面 | P2 | S11 定稿 PR | web-ui:shell（`App.tsx`、`ui/labels.ts`、`ui/journal-labels.ts`、`App.test.tsx`） | done | [#197](https://github.com/lingshf/ai-native-erp/pull/197)（`4461c0e`；main Full [45016229881](https://github.com/lingshf/ai-native-erp/actions/runs/45016229881) 绿；取证 gist 9cb12f653762fe2e221ff293e313a642，rev a9f2560） |
 | [WEIGHT-01](WEIGHT-01-shard-weight-calibration.md) | 三项手估分片权重按 CI 实测校准（S9 遗留 4）；偏差都 ≤ 25% 时按证据结案 | CI 配置 | P3 | TINV-06、SLOT-01 结案且 main Full 绿 | `scripts/test-shard-weights.json` | done（完成：三项校准前偏差 +309.9% / +229.2% / +132.0%，合并新值；验收 3 复测偏差都 ≤ 25%） | [#201](https://github.com/lingshf/ai-native-erp/pull/201)（`669a50a`；测量 [Full 45113406623](https://github.com/lingshf/ai-native-erp/actions/runs/45113406623)，head `8f251e1`）；验收 3 复测 [Full 45114023942](https://github.com/lingshf/ai-native-erp/actions/runs/45114023942)（head `669a50a`，`fileWeights` 口径 / 写入值 / 偏差）：`trade-gui-en-green-2` 23998 / 30124 / −20.3%（`vitest-shard-browser-1`），`trade-gui-zh-red-2` 28280 / 25647 / +10.3%（`browser-2`），`leave-guard-history` 343 / 348 / −1.4%（`unit-2`） |
 | [PROC-08](PROC-08-s10-retro-actions.md) | S10 回顾行动 1–4 写入 Demo 模板、发布清单与 Git 配置（版本管理，不占开发名额） | 文档 | P2（v0.11.0 RC 之前） | S11 定稿 PR | docs:release、`.gitignore`、`.gitattributes` | done | [#196](https://github.com/lingshf/ai-native-erp/pull/196)（`913d7c5`；main Full [45014683671](https://github.com/lingshf/ai-native-erp/actions/runs/45014683671) 绿） |
-| DEMO-11（无任务书） | v0.11.0 RC 与 Demo，补演 TINV-05 未演示的分支（S10 遗留 3），验收见 [S11.md](S11.md#demo-11-验收) | 发布 | P1（Sprint 末） | 五项门禁（D340）：TINV-06、SLOT-01、PROC-08、UI-14 结案，WEIGHT-01 完成或按证据结案；PROC-08 先合并；覆盖最后一个合并提交的 main Full 绿 | docs:release、`docs/demo/v0.11.0/` | todo | — |
+| DEMO-11（无任务书） | v0.11.0 RC 与 Demo，补演 TINV-05 未演示的分支（S10 遗留 3），验收见 [S11.md](S11.md#demo-11-验收) | 发布 | P1（Sprint 末） | 五项门禁（D340）：TINV-06、SLOT-01、PROC-08、UI-14 结案，WEIGHT-01 完成或按证据结案；PROC-08 先合并；覆盖最后一个合并提交的 main Full 绿 | docs:release、`docs/demo/v0.11.0/` | done（RC + Demo；tag 目标待定，见 [S11 评审 §5](../reviews/S11.md#5-遗留项均不阻塞-s11-通过) 第 1 项） | RC [#203](https://github.com/lingshf/ai-native-erp/pull/203)（`f5defcc`；main Full [45115520939](https://github.com/lingshf/ai-native-erp/actions/runs/45115520939) 绿）；Demo [#204](https://github.com/lingshf/ai-native-erp/pull/204)（`1d2602d`；main Full [45125136528](https://github.com/lingshf/ai-native-erp/actions/runs/45125136528) 绿） |
 
 - **并行**：定稿 PR 合并后，TINV-06 ∥ SLOT-01 ∥ UI-14 ∥ PROC-08 可同时进行；WEIGHT-01 在 TINV-06、SLOT-01 之后。S11 没有加迁移的任务。开发同时在岗不超过 3 人，第三个名额给 UI-14（D338，约束见 [S11.md](S11.md#泳道)）。
+- **Sprint 评审与回顾**：[S11 评审](../reviews/S11.md)（通过，无阻塞项）、[S11 回顾](../reviews/S11-retro.md)（7 条行动项待协调者认可）。
 - **回顾行动项**：行动 1–3 与行动 4 的模板部分由 PROC-08 完成；行动 4–7 的路线图与任务书模板部分已由 S11 定稿 PR 写入；行动 8 由 SLOT-01 完成。落点表见 [S11.md](S11.md#回顾行动项落点s10-回顾)。
 
 ## S12：发票深链接 + 订单按开票状态筛选 + 期末结账页小步整理（v0.12.0，草案）
 
-**计划正文**：[S12.md](S12.md)（草案；D368 起草，D369 把 TINV-07、TORD-06 排在最前并已先行派发，D370 / D371 决定两者的方案口径；各任务细节以该文为准）。基线 main `f5defcc`；版本号暂定 v0.12.0。S11 的 Sprint 评审与回顾在 v0.11.0 Demo 合并后另开 PR。
+**计划正文**：[S12.md](S12.md)（草案；D368 起草，D369 把 TINV-07、TORD-06 排在最前并已先行派发，D370 / D371 决定两者的方案口径；各任务细节以该文为准）。基线 main `f5defcc`；版本号暂定 v0.12.0。S11 的 Sprint 评审与回顾见 [S11 评审](../reviews/S11.md) 与 [S11 回顾](../reviews/S11-retro.md)。
 
 **不在本 Sprint**：M2-05 / M2-06（仍待用户授权）；多订单合并开票、贷项冲减已开票数量、保留前进历史；订单筛选写入地址栏；按开票状态排序（候选池）；发票列表其余观感问题（TINV-07 之后另起小步任务）。
 
