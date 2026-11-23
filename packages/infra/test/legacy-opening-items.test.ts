@@ -376,6 +376,110 @@ test.for(Object.entries(cases))(
   },
 );
 
+/** The pre-D430 per-item queries, kept as the oracle the precomputed lookup must match. */
+function perItemSourceJournal(
+  plan: Database.Database,
+  company: string,
+  account: string,
+  legacyJournal: string | undefined,
+) {
+  const lines = `FROM planned l JOIN planned j ON j.source=l.source AND j.object='journals' AND j.legacy=l.parent AND j.company=l.company
+    WHERE l.object='lines' AND json_extract(j.target,'$.status')='historical' AND l.company=? AND json_extract(l.target,'$.account_code')=?`;
+  if (legacyJournal !== undefined)
+    return plan
+      .prepare(`SELECT 1 ${lines} AND l.parent=? LIMIT 1`)
+      .get(company, account, legacyJournal)
+      ? legacyJournal
+      : null;
+  const latest = plan
+    .prepare(
+      `SELECT j.legacy ${lines} ORDER BY j.date DESC,length(j.legacy) DESC,j.legacy DESC LIMIT 1`,
+    )
+    .get(company, account) as { legacy: string } | undefined;
+  return latest?.legacy ?? null;
+}
+
+test("D30 source journals from the per-account lookup match the per-item queries item by item", () => {
+  const plan = new Database(":memory:");
+  try {
+    plan.exec(
+      "CREATE TABLE planned(source TEXT,object TEXT,legacy TEXT,company TEXT,parent TEXT,date TEXT,target TEXT,phase INTEGER)",
+    );
+    const insert = plan.prepare("INSERT INTO planned VALUES('enterprise',?,?,?,?,?,?,0)");
+    for (const company of ["F", "G"])
+      insert.run(
+        "companies",
+        company,
+        company,
+        null,
+        null,
+        JSON.stringify({ currency: "EUR", year: 2026 }),
+      );
+    insert.run(
+      "accounts",
+      "1300",
+      "F",
+      null,
+      null,
+      JSON.stringify({
+        code: "1300",
+        name: "Receivables control",
+        category: "ASSET",
+        report_group: "receivables",
+        normal_side: "DEBIT",
+        purpose: "control",
+        control_module: "AR",
+        contra_of: null,
+        manual_allowed: false,
+        active: true,
+      }),
+    );
+    // Same-day journals 9/10/11 test the length-then-value tiebreak; 12 is not historical,
+    // 8 has no line on 1300 and G's 13 is another company's journal on the same account.
+    const journals: [string, string, string, string, string][] = [
+      ["F", "8", "2026-01-18", "historical", "4000"],
+      ["F", "9", "2026-01-20", "historical", "1300"],
+      ["F", "10", "2026-01-20", "historical", "1300"],
+      ["F", "11", "2026-01-20", "historical", "1300"],
+      ["F", "12", "2026-01-25", "draft", "1300"],
+      ["G", "13", "2026-01-30", "historical", "1300"],
+    ];
+    for (const [company, legacy, date, status, account] of journals) {
+      insert.run("journals", legacy, company, null, date, JSON.stringify({ status }));
+      insert.run(
+        "lines",
+        `${legacy}:1`,
+        company,
+        legacy,
+        null,
+        JSON.stringify({ account_code: account, debit_minor: 10, credit_minor: 0 }),
+      );
+    }
+    const given = [undefined, "9", "11", "12", "8", "13", "99"];
+    const { bytes } = openingItemsFile({
+      accounts: ["1300"],
+      items: { "1300": given.map((legacyJournal) => ({ remainingMinor: 1, legacyJournal })) },
+    });
+    const result = validateOpeningItems(plan, bytes);
+    const expected = given.map((legacyJournal) =>
+      perItemSourceJournal(plan, "F", "1300", legacyJournal),
+    );
+    assert.deepEqual(expected, ["11", "9", "11", null, null, null, null]);
+    assert.deepEqual(
+      result.plan.entries.map((entry) => entry.journalLegacyRef.split(":").at(-1)),
+      expected.filter((journal) => journal !== null),
+    );
+    assert.deepEqual(
+      result.issues
+        .filter((issue) => /legacyJournal$/u.test(issue.path))
+        .map((issue) => Number(issue.path.split(".")[2])),
+      expected.flatMap((journal, index) => (journal === null ? [index] : [])),
+    );
+  } finally {
+    plan.close();
+  }
+});
+
 test("rule 5 compares per-party totals with an explicit legacy partner dimension", () => {
   const plan = new Database(":memory:");
   try {

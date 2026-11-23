@@ -123,6 +123,39 @@ function account(target: Fields): Account {
   } as Account;
 }
 
+interface AccountJournals {
+  /** Historical journals with at least one line on the account. */
+  readonly touching: ReadonlySet<string>;
+  /** The D30 default source journal: latest date, then longest and greatest legacy id. */
+  readonly latest: string | undefined;
+}
+/**
+ * Loads the historical journals touching each (company, account) once, on first use, so an
+ * opening item costs a set lookup instead of a scan over every staged line.
+ */
+function historicalJournalsByAccount(
+  plan: ReconciliationConnection,
+  historicalLines: string,
+): (company: string, account: string) => AccountJournals {
+  const query = plan.prepare(
+    `SELECT DISTINCT j.legacy AS legacy ${historicalLines} AND l.company=? AND json_extract(l.target,'$.account_code')=?
+    ORDER BY j.date DESC,length(j.legacy) DESC,j.legacy DESC`,
+  );
+  const loaded = new Map<string, AccountJournals>();
+  return (company, account) => {
+    const key = JSON.stringify([company, account]);
+    let journals = loaded.get(key);
+    if (!journals) {
+      const ordered = (query.all(company, account) as { legacy: string }[]).map((row) =>
+        String(row.legacy),
+      );
+      journals = { touching: new Set(ordered), latest: ordered[0] };
+      loaded.set(key, journals);
+    }
+    return journals;
+  };
+}
+
 /**
  * Validates the explicit opening-items file against the staged import plan (never the target).
  * The same function serves the library dry-run and the import; every blocking issue is listed.
@@ -224,13 +257,7 @@ export function validateOpeningItems(
     .safeIntegers(true)
     .all() as { company: string; account: string; balance: bigint }[])
     balances.set(`${row.company}:${row.account}`, BigInt(row.balance));
-  const touches = plan.prepare(
-    `SELECT 1 ${historicalLines} AND l.company=? AND l.parent=? AND json_extract(l.target,'$.account_code')=? LIMIT 1`,
-  );
-  const latest = plan.prepare(
-    `SELECT j.legacy ${historicalLines} AND l.company=? AND json_extract(l.target,'$.account_code')=?
-    ORDER BY j.date DESC,length(j.legacy) DESC,j.legacy DESC LIMIT 1`,
-  );
+  const journalsOn = historicalJournalsByAccount(plan, historicalLines);
   const empty: OpeningPlan = { sha: null, configs: [], accounts: [], entries: [] };
   if (!bytes) {
     if (controls.length) {
@@ -613,7 +640,7 @@ export function validateOpeningItems(
       if (row.legacyJournal !== undefined) {
         if (typeof row.legacyJournal !== "string" || !row.legacyJournal)
           issue("mapping", `${path}.legacyJournal`, "must be a legacy journal id", scope);
-        else if (!touches.get(company, row.legacyJournal, code))
+        else if (!journalsOn(company, code).touching.has(row.legacyJournal))
           issue(
             "mapping",
             `${path}.legacyJournal`,
@@ -622,8 +649,8 @@ export function validateOpeningItems(
           );
         else journal = row.legacyJournal;
       } else {
-        const found = latest.get(company, code) as { legacy: string } | undefined;
-        if (found) journal = found.legacy;
+        const found = journalsOn(company, code).latest;
+        if (found !== undefined) journal = found;
         else issue("mapping", `${path}.legacyJournal`, `no LEGACY journal touches ${code}`, scope);
       }
       if (!journal) valid = false;
