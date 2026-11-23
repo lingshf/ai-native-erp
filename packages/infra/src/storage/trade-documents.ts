@@ -173,10 +173,45 @@ export function tradeOrderPageStatement(
 
 // TINV-03: the single "invoiced" predicate. Invoice lines of the company that reference an order and
 // whose open item is not cancelled; tradeOrderInvoiced and the status recomputation both append
-// their own order filters. First bound value: company.
-const invoicedOrderLines =
-  "FROM trade_document_lines l JOIN open_items o ON o.company_id=l.company_id AND o.item_id=l.document_id WHERE l.company_id=? AND l.order_id IS NOT NULL AND o.status<>'cancelled'";
+// their own order filters and then subtract credits with subtractCredits (TINV-09). First bound
+// value: company.
+const invoicedLinesFrom =
+  "FROM trade_document_lines l JOIN open_items o ON o.company_id=l.company_id AND o.item_id=l.document_id";
+const invoicedLinesWhere =
+  "WHERE l.company_id=? AND l.order_id IS NOT NULL AND o.status<>'cancelled'";
+const invoicedOrderLines = `${invoicedLinesFrom} ${invoicedLinesWhere}`;
 const placeholders = (count: number) => Array.from({ length: count }, () => "?").join(",");
+type InvoicedLine = {
+  readonly orderId: string;
+  readonly orderLineId: string;
+  readonly micros: bigint;
+};
+const lineKey = (orderId: string, orderLineId: string) => `${orderId}\u0000${orderLineId}`;
+// TINV-09: non-cancelled credit quantities on the invoiced lines of the given orders, one statement.
+// CROSS JOIN + INDEXED BY keep the order-driven plan (trade_document_lines_order, then one
+// trade_credit_lines_source probe per line), never a company-wide range over the credit lines.
+function creditedOrderLinesSql(orders: number): string {
+  return `SELECT l.order_id,l.order_line_id,c.quantity ${invoicedLinesFrom} CROSS JOIN trade_credit_lines c INDEXED BY trade_credit_lines_source ON c.company_id=l.company_id AND c.invoice_id=l.document_id AND c.source_line_id=l.line_id JOIN open_items k ON k.company_id=c.company_id AND k.item_id=c.credit_id ${invoicedLinesWhere} AND k.status<>'cancelled' AND l.order_id IN(${placeholders(orders)})`;
+}
+/** TINV-09: invoiced micros net of credit notes (exact decimal → micros); the one place credits count. */
+async function subtractCredits<Line extends InvoicedLine>(
+  db: Pick<Connection, "query">,
+  company: string,
+  lines: readonly Line[],
+): Promise<Line[]> {
+  const orderIds = [...new Set(lines.map((line) => line.orderId))];
+  if (!orderIds.length) return [];
+  const credited = new Map<string, bigint>();
+  const rows = await db.query(creditedOrderLinesSql(orderIds.length), [company, ...orderIds]);
+  for (const row of rows) {
+    const key = lineKey(str(row.order_id), str(row.order_line_id));
+    credited.set(key, (credited.get(key) ?? 0n) + quantityMicros(str(row.quantity)));
+  }
+  return lines.map((line) => ({
+    ...line,
+    micros: line.micros - (credited.get(lineKey(line.orderId, line.orderLineId)) ?? 0n),
+  }));
+}
 // TINV-03: one statement for a set of orders, whatever its size. Ordered quantity of every line of
 // the orders (trade_order_lines primary key) with its invoiced micros, summed on
 // trade_document_lines_order over the same orders. Values: (company, ...orderIds) twice.
@@ -184,7 +219,7 @@ const placeholders = (count: number) => Array.from({ length: count }, () => "?")
 // migration 019 backfill).
 export function tradeOrderPageInvoicedSql(orders: number): string {
   const ids = placeholders(orders);
-  return `SELECT ol.order_id,ol.quantity,COALESCE(i.micros,'0') AS micros FROM trade_order_lines ol LEFT JOIN (SELECT l.order_id,l.order_line_id,CAST(SUM(l.quantity_micros) AS TEXT) AS micros ${invoicedOrderLines} AND l.order_id IN(${ids}) GROUP BY l.order_id,l.order_line_id) i ON i.order_id=ol.order_id AND i.order_line_id=ol.line_id WHERE ol.company_id=? AND ol.order_id IN(${ids})`;
+  return `SELECT ol.order_id,ol.line_id,ol.quantity,COALESCE(i.micros,'0') AS micros FROM trade_order_lines ol LEFT JOIN (SELECT l.order_id,l.order_line_id,CAST(SUM(l.quantity_micros) AS TEXT) AS micros ${invoicedOrderLines} AND l.order_id IN(${ids}) GROUP BY l.order_id,l.order_line_id) i ON i.order_id=ol.order_id AND i.order_line_id=ol.line_id WHERE ol.company_id=? AND ol.order_id IN(${ids})`;
 }
 /** TINV-03: none = nothing invoiced on any line; full = every line invoiced up to its ordered quantity. */
 export function tradeOrderInvoicingStatus(
@@ -195,7 +230,8 @@ export function tradeOrderInvoicingStatus(
 }
 /**
  * TINV-03 / TORD-06: invoicing status of each given order recomputed from its invoice lines, in one
- * tradeOrderPageInvoicedSql statement. Used to write the stored status (and by tests to check it).
+ * tradeOrderPageInvoicedSql statement, net of credit notes (TINV-09, one more statement). Used to
+ * write the stored status (and by tests to check it).
  */
 export async function tradeOrderStatuses(
   db: Pick<Connection, "query">,
@@ -209,12 +245,21 @@ export async function tradeOrderStatuses(
     company,
     ...orderIds,
   ]);
+  const invoiced = await subtractCredits(
+    db,
+    company,
+    rows.map((row) => ({
+      orderId: str(row.order_id),
+      orderLineId: str(row.line_id),
+      micros: BigInt(str(row.micros)),
+      ordered: quantityMicros(str(row.quantity)),
+    })),
+  );
   const lines = new Map<string, { ordered: bigint; invoiced: bigint }[]>();
-  for (const row of rows) {
-    const orderId = str(row.order_id);
-    const list = lines.get(orderId) ?? [];
-    list.push({ ordered: quantityMicros(str(row.quantity)), invoiced: BigInt(str(row.micros)) });
-    lines.set(orderId, list);
+  for (const line of invoiced) {
+    const list = lines.get(line.orderId) ?? [];
+    list.push({ ordered: line.ordered, invoiced: line.micros });
+    lines.set(line.orderId, list);
   }
   return new Map(orderIds.map((id) => [id, tradeOrderInvoicingStatus(lines.get(id) ?? [])]));
 }
@@ -224,7 +269,7 @@ const refreshChunk = 400;
 /**
  * TORD-06: recomputes the stored status of the given orders with the TINV-03 computation and
  * writes it on the caller's connection, so it commits or rolls back with the caller's transaction
- * (invoice posting, cancellation, migration 019 backfill). Every order must have its row.
+ * (invoice or credit posting, cancellation, migration 019/020 backfill). Every order must have its row.
  */
 export async function refreshTradeOrderInvoicing(
   db: Pick<Connection, "query">,
@@ -241,6 +286,21 @@ export async function refreshTradeOrderInvoicing(
       if (updated.length !== 1) throw new StorageError("STORAGE_FAILURE");
     }
   }
+}
+/**
+ * TINV-09: refreshes the orders whose invoiced quantity an open item counts in: the orders its own
+ * invoice lines reference, and those of the invoice lines it credits as a credit note.
+ */
+async function refreshOrdersOfItem(db: Pick<Connection, "query">, company: string, itemId: string) {
+  const rows = await db.query(
+    "SELECT order_id FROM trade_document_lines WHERE company_id=? AND document_id=? AND order_id IS NOT NULL UNION SELECT l.order_id FROM trade_credit_lines c JOIN trade_document_lines l ON l.company_id=c.company_id AND l.document_id=c.invoice_id AND l.line_id=c.source_line_id WHERE c.company_id=? AND c.credit_id=? AND l.order_id IS NOT NULL ORDER BY 1",
+    [company, itemId, company, itemId],
+  );
+  await refreshTradeOrderInvoicing(
+    db,
+    company,
+    rows.map((row) => str(row.order_id)),
+  );
 }
 // TINV-05: one statement per invoice-list page, newest sequence first. The text is assembled only
 // from fixed fragments chosen by which filters are present; every value is bound. With a party the
@@ -465,19 +525,10 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
         );
         if (updated.length !== 1) throw new StorageError("STORAGE_FAILURE");
       }
-      // TORD-06: cancelling an invoice (or any change into/out of cancelled) changes what the
-      // TINV-03 predicate counts for its order; credits have no trade_documents row.
-      if ((before.status === "cancelled") !== (after.status === "cancelled")) {
-        const linkedOrders = await db.query(
-          "SELECT DISTINCT order_id FROM trade_document_lines WHERE company_id=? AND document_id=? AND order_id IS NOT NULL ORDER BY order_id",
-          [company, after.itemId],
-        );
-        await refreshTradeOrderInvoicing(
-          db,
-          company,
-          linkedOrders.map((row) => str(row.order_id)),
-        );
-      }
+      // TORD-06 / TINV-09: cancelling an invoice or a credit note (or any change into/out of
+      // cancelled) changes what the invoiced predicate counts for the orders behind it.
+      if ((before.status === "cancelled") !== (after.status === "cancelled"))
+        await refreshOrdersOfItem(db, company, after.itemId);
     },
     async insertTradeAction(company, record) {
       const c = record.command,
@@ -509,18 +560,19 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
           c.actionId,
           change.after.itemId,
         ]);
-      if (c.kind === "credit")
-        for (const line of r.creditLines)
-          await db.query("INSERT INTO trade_credit_lines VALUES(?,?,?,?,?,?,?,?)", [
-            company,
-            c.actionId,
-            c.invoiceId,
-            line.sourceLineId,
-            line.quantity,
-            line.net,
-            line.tax,
-            line.deductibleTax,
-          ]);
+      if (c.kind !== "credit") return;
+      for (const line of r.creditLines)
+        await db.query("INSERT INTO trade_credit_lines VALUES(?,?,?,?,?,?,?,?)", [
+          company,
+          c.actionId,
+          c.invoiceId,
+          line.sourceLineId,
+          line.quantity,
+          line.net,
+          line.tax,
+          line.deductibleTax,
+        ]);
+      await refreshOrdersOfItem(db, company, c.actionId);
     },
     async latestSettlementDate(company, itemId) {
       const rows = await db.query(
@@ -694,10 +746,12 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
         `SELECT l.order_line_id,CAST(SUM(l.quantity_micros) AS TEXT) AS micros ${invoicedOrderLines} AND l.order_id=? AND l.order_line_id IN(${placeholders(orderLineIds.length)}) GROUP BY l.order_line_id`,
         [company, orderId, ...orderLineIds],
       );
-      return rows.map((row) => ({
+      const invoiced = rows.map((row) => ({
+        orderId,
         orderLineId: str(row.order_line_id),
         micros: BigInt(str(row.micros)),
       }));
+      return subtractCredits(db, company, invoiced);
     },
     async tradeOrderLatestDate(company, orderId) {
       const rows = await db.query(

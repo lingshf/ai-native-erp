@@ -57,7 +57,8 @@ async function migrate(filename: string) {
 }
 
 test("019 adds only trade_order_invoicing, its status index and three triggers to an 018 ledger", async () => {
-  assert.equal(latestMigrationVersion, 19);
+  // 020 (TINV-09) only recomputes statuses and adds no schema object.
+  assert.equal(latestMigrationVersion, 20);
   const fresh = join(directory, "fresh.sqlite"),
     old = join(directory, "018.sqlite");
   await migrate(fresh);
@@ -81,7 +82,7 @@ test("019 adds only trade_order_invoicing, its status index and three triggers t
   );
 });
 
-test("an 018 ledger is refused until migrated, then upgrades to 019 keeping its 018 version rows", async () => {
+test("an 018 ledger is refused until migrated, then upgrades to latest keeping its 018 version rows", async () => {
   const filename = join(directory, "upgrade.sqlite");
   await ledgerAt018(filename);
   const before = versions(filename);
@@ -94,7 +95,7 @@ test("an 018 ledger is refused until migrated, then upgrades to 019 keeping its 
   }
   await migrate(filename);
   const after = versions(filename);
-  assert.equal(after.length, 19);
+  assert.equal(after.length, 20);
   assert.deepEqual(after.slice(0, 18), before);
   const db = new Database(filename, { readonly: true });
   try {

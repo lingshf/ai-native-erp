@@ -180,6 +180,10 @@ export function ledgerAt017(filename: string): Promise<void> {
 export function ledgerAt018(filename: string): Promise<void> {
   return ledgerBefore(filename, "trade_order_invoicing", 18);
 }
+/** Runs the real migrations up to and including 019 and stops before 020 (TINV-09 recompute). */
+export function ledgerAt019(filename: string): Promise<void> {
+  return ledgerBefore(filename, "TINV-09", 19);
+}
 // Applies every pending migration in order until the first script that mentions `marker`, which
 // is rejected with its whole transaction step; the ledger is left at `version`.
 async function ledgerBefore(filename: string, marker: string, version: number): Promise<void> {
@@ -208,11 +212,12 @@ async function ledgerBefore(filename: string, marker: string, version: number): 
 
 /**
  * Copies every row of every user table except schema_migrations from `source` (a ledger with
- * really posted documents) into `target` (a ledger built by ledgerAt017 or ledgerAt018), in table
- * creation order, then asserts every table of `target` equals `source` row for row (all columns)
- * and that no foreign key is broken. Tables the older target does not have yet (e.g. 019's
- * trade_order_invoicing) are skipped: its upgrade must create them. Rows produced by INSERT
- * triggers in the target are kept only when identical to the copied ones.
+ * really posted documents) into `target` (a ledger built by ledgerAt017, ledgerAt018 or
+ * ledgerAt019), in table creation order, then asserts every table of `target` equals `source` row
+ * for row (all columns) and that no foreign key is broken. Tables the older target does not have
+ * yet (e.g. 019's trade_order_invoicing) are skipped: its upgrade must create them. Rows produced
+ * by INSERT triggers in the target (e.g. 019's 'none' seed per order) are replaced by the copied
+ * ones; REPLACE fires no DELETE trigger while recursive_triggers is off.
  */
 export function copyLedgerRows(source: string, target: string): void {
   const db = new Database(target);
@@ -234,7 +239,7 @@ export function copyLedgerRows(source: string, target: string): void {
       while (pending.length) {
         const failed = pending.filter((table) => {
           try {
-            db.exec(`INSERT OR IGNORE INTO main."${table}" SELECT * FROM src."${table}"`);
+            db.exec(`INSERT OR REPLACE INTO main."${table}" SELECT * FROM src."${table}"`);
             return false;
           } catch {
             return true;
