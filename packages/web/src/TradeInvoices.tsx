@@ -17,7 +17,7 @@ import {
   type TradeInvoiceReceiptDto,
   type TradeOrderInvoicingDto,
 } from "@erp/core/contracts";
-import { label, type LabelKey, type Preferences } from "./ui/index.ts";
+import { label, type Language, type LabelKey, type Preferences } from "./ui/index.ts";
 import { tradeEn } from "./ui/trade-labels.ts";
 import { detailLabel } from "./ui/trade-invoice-detail-labels.ts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
@@ -25,6 +25,8 @@ import { formatMinor } from "./reports-data.ts";
 import { guardHistory, type HistoryGuard } from "./leave-guard-history.ts";
 import { Badge, FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import { TradeInvoiceDetail } from "./TradeInvoiceDetail.tsx";
+import { poMatchTone } from "./trade-invoice-status.ts";
+import { formatDecimal } from "./decimal-format.ts";
 import "./pages/trade-invoices.css";
 
 type Key = Exclude<LabelKey, "shell.httpError">;
@@ -940,7 +942,12 @@ function InvoiceEntry({
           title={t("tinv.previewTitle")}
           summary={t("tinv.previewSummary")}
         >
-          <PreviewPanel preview={preview.value} money={money} t={t} />
+          <PreviewPanel
+            preview={preview.value}
+            money={money}
+            language={preferences.language}
+            t={t}
+          />
         </FastTab>
       )}
     </form>
@@ -950,15 +957,16 @@ function InvoiceEntry({
 function PreviewPanel({
   preview,
   money,
+  language,
   t,
 }: {
   preview: TradeInvoicePreviewDto;
   money: (value: number) => string;
+  language: Language;
   t: T;
 }) {
   const calc = preview.calculation;
   const amountKeys = ["net", "tax", "gross", "deductibleTax", "expense"] as const;
-  const tone = { matched: "success", exception: "warning", notApplicable: "info" } as const;
   return (
     <section className="tinv-preview" aria-label={t("tinv.previewTitle")}>
       <dl className="kpis">
@@ -985,7 +993,7 @@ function PreviewPanel({
         <div>
           <dt>{t("tinv.poMatch")}</dt>
           <dd>
-            <Badge tone={tone[preview.poMatch]}>{t(`tinv.${preview.poMatch}`)}</Badge>
+            <Badge tone={poMatchTone[preview.poMatch]}>{t(`tinv.${preview.poMatch}`)}</Badge>
           </dd>
         </div>
       </dl>
@@ -1067,7 +1075,7 @@ function PreviewPanel({
                   <tr key={match.lineId}>
                     <td>{match.lineId}</td>
                     <td>{match.orderLineId}</td>
-                    <td>{match.quantity}</td>
+                    <td>{formatDecimal(match.quantity, language)}</td>
                     <td>{money(match.expectedNet)}</td>
                     <td>{money(match.invoiceNet)}</td>
                     <td>
@@ -1404,7 +1412,9 @@ function InvoiceList({
                   </td>
                   <td>{row.accountingDate}</td>
                   <td>{row.dueDate}</td>
-                  <td>{t(`tinv.${row.poMatch}`)}</td>
+                  <td>
+                    <Badge tone={poMatchTone[row.poMatch]}>{t(`tinv.${row.poMatch}`)}</Badge>
+                  </td>
                   <SourceOrderCell company={company.code} orderId={row.orderId} t={t} />
                   <td>{formatMinor(row.gross, preferences.language, company.scale)}</td>
                 </tr>
