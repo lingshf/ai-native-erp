@@ -1,0 +1,11 @@
+// TDZ fixture, negative: a function body written before the const references it, but the function is
+// only called after the declaration.
+// expect: none
+export function report(rows: string[]) {
+  const describe = () => `${rows.length} rows, limit ${limit}`;
+  function summary() {
+    return describe();
+  }
+  const limit = 10;
+  return summary();
+}

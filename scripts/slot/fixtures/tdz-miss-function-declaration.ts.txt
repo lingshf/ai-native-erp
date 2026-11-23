@@ -1,0 +1,14 @@
+// TDZ fixture, negative (56dbb31's fix): the helper is a hoisted function declaration, so it has no TDZ.
+// expect: none
+export function scenario(page: { evaluate(code: () => number): Promise<number> }) {
+  run(async () => {
+    await followUp();
+    async function followUp() {
+      await historyLength();
+    }
+    function historyLength() {
+      return page.evaluate(() => window.history.length);
+    }
+  });
+}
+declare function run(body: () => Promise<void>): void;

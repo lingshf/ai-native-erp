@@ -25,6 +25,8 @@
 # Part 4 (D354), slot-run.ps1 entry checks: a relative -OutDir is resolved once against the caller's directory (its
 # log does not follow the runner into the repository root), a relative -OutDir inside the repository is refused, and
 # a -StepsFile that yields no step ends the run with exit 4 before the build.
+# Part 5 (S12 SLOT-02, D407 / D408), in selftest-preflight.ps1: step PSModulePath (I1), TDZ fixtures (I4), and
+# preflight.mjs / slot-run.ps1 exit-code pass-through before the build (I5); runner runs there are -Stub only.
 param([string] $OutDir = "", [string] $ReferenceProcs = "")
 if ($PSVersionTable.PSEdition -eq 'Core' -and -not $IsWindows) { Write-Host "selftest.ps1 只能在 Windows 运行 (Windows only)"; exit 2 }
 # procs.ps1 (as in the D316 kit) uses [IO.Path]::GetFullPath(path, base), which only .NET Core has: under Windows PowerShell 5.1
@@ -341,6 +343,13 @@ $ex = @(& (Join-Path $PSScriptRoot 'steps.example.ps1') -OutDir $p4 -Root $erpRo
 Check 'RUN-STEPS+ steps.example.ps1 yields at least one step' ($ex.Count -ge 1) "steps=$(($ex | ForEach-Object { $_.name }) -join ',')"
 $part4 = $script:items - $part4Start
 
-Say "summary: $($script:items) checks = $part1 kit cases A-W + $($script:items - $part1 - $script:equiv - $part4) SR rule cases + $equivText + $part4 runner entry checks; $($script:items - $script:fail) PASS, $($script:fail) FAIL"
+# Part 5 (S12 SLOT-02): every input is passed explicitly; each result is logged through Check.
+. (Join-Path $PSScriptRoot 'selftest-preflight.ps1')
+$part5Start = $script:items
+Get-PreflightSelftestResults -SlotDir $PSScriptRoot -RepoRoot $erpRoot -WorkDir (Join-Path $OutDir 'preflight') -PwshExe $pwshExe |
+  ForEach-Object { if ($_.Skip) { Say "SKIP $($_.Label) $($_.Detail)" } else { Check $_.Label $_.Ok $_.Detail } }
+$part5 = $script:items - $part5Start
+
+Say "summary: $($script:items) checks = $part1 kit cases A-W + $($script:items - $part1 - $script:equiv - $part4 - $part5) SR rule cases + $equivText + $part4 runner entry checks + $part5 preflight / step environment checks; $($script:items - $script:fail) PASS, $($script:fail) FAIL"
 Say "selftest $(if ($script:fail) { "FAILED ($($script:fail))" } else { 'passed' })"
 exit [int]($script:fail -ne 0)

@@ -1,0 +1,7 @@
+// TDZ fixture, positive: a direct reference to a const before its declaration in the same scope.
+// expect: limit
+export function check(values: number[]) {
+  const ceiling = limit * 2;
+  const limit = 10;
+  return values.filter((value) => value > ceiling);
+}
