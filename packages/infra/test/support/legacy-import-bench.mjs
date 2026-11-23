@@ -1,14 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import {
-  closeSync,
-  mkdtempSync,
-  openSync,
-  readFileSync,
-  readSync,
-  rmSync,
-  statSync,
-} from "node:fs";
+import { mkdtempSync, rmSync, statSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { availableParallelism, tmpdir } from "node:os";
 import { DatabaseSync } from "node:sqlite";
@@ -16,6 +8,11 @@ import { performance } from "node:perf_hooks";
 import { LegacyImportSnapshot, legacyImportPlan } from "../../src/legacy/import-plan.ts";
 import { executeLegacyImport } from "../../src/storage/legacy-import.ts";
 import { openingItemsFile } from "./legacy-fixture.mjs";
+import {
+  MILLION_GL_LINES,
+  snapshotLedgers,
+  writeMillionLineSnapshot,
+} from "./legacy-million-fixture.mjs";
 import Database from "better-sqlite3";
 import { reportRepository } from "../../src/storage/reports.ts";
 import { reportSchema } from "@erp/core/contracts";
@@ -27,7 +24,6 @@ const execute = process.argv.includes("--execute");
 const targetDirectory = execute
   ? mkdtempSync(join(tmpdir(), "erp-legacy-import-target-bench-"))
   : undefined;
-const sourceLines = execute ? 1_000_002 : 1_000_000;
 const target = targetDirectory ? join(targetDirectory, "target.sqlite") : undefined;
 const originalExec = Database.prototype.exec;
 const originalClose = Database.prototype.close;
@@ -153,66 +149,10 @@ if (execute) {
     }
   };
 }
-function metadata(file) {
-  const hash = createHash("sha256");
-  const fd = openSync(join(directory, file), "r");
-  const buffer = Buffer.alloc(65536);
-  try {
-    let length = readSync(fd, buffer, 0, buffer.length, null);
-    while (length) {
-      hash.update(buffer.subarray(0, length));
-      length = readSync(fd, buffer, 0, buffer.length, null);
-    }
-    return { file, bytes: statSync(join(directory, file)).size, sha256: hash.digest("hex") };
-  } finally {
-    closeSync(fd);
-  }
-}
 let snapshot, server;
 memory("loaded");
 try {
-  for (const [file, fixture] of [
-    ["teaching.sqlite", "base.sql"],
-    ["erp.sqlite", "enterprise.sql"],
-  ]) {
-    const db = new DatabaseSync(join(directory, file));
-    try {
-      db.exec(readFileSync(new URL(`./legacy-data/${fixture}`, import.meta.url), "utf8"));
-      if (file === "teaching.sqlite") {
-        db.exec(`
-          DROP TRIGGER immutable_line_insert;
-          PRAGMA cache_size=-8192;
-          BEGIN;
-          WITH RECURSIVE n(i) AS (SELECT 10 UNION ALL SELECT i+1 FROM n WHERE i<${execute ? 50009 : 500005})
-          INSERT INTO journals SELECT i,'2026-01-15','Fictional Bench','normal','posted',NULL FROM n;
-          ${
-            execute
-              ? `WITH RECURSIVE n(i) AS (SELECT 10 UNION ALL SELECT i+1 FROM n WHERE i<50009),
-                l(line) AS (SELECT 0 UNION ALL SELECT line+1 FROM l WHERE line<19)
-                INSERT INTO lines SELECT (i-10)*20+10+line,i,
-                  CASE WHEN line<CASE WHEN i=50009 THEN 7 ELSE 10 END THEN '1000' ELSE '4000' END,
-                  CASE WHEN line<CASE WHEN i=50009 THEN 7 ELSE 10 END THEN 1 ELSE 0 END,
-                  CASE WHEN line<CASE WHEN i=50009 THEN 7 ELSE 10 END THEN 0 ELSE 1 END
-                FROM n CROSS JOIN l WHERE i<50009 OR line<14;`
-              : `WITH RECURSIVE n(i) AS (SELECT 10 UNION ALL SELECT i+1 FROM n WHERE i<500005)
-          INSERT INTO lines SELECT i*2,i,'1000',1,0 FROM n;
-          WITH RECURSIVE n(i) AS (SELECT 10 UNION ALL SELECT i+1 FROM n WHERE i<500005)
-          INSERT INTO lines SELECT i*2+1,i,'4000',0,1 FROM n;`
-          }
-          COMMIT;
-        `);
-        assert.equal(db.prepare("SELECT count(*) AS n FROM lines").get().n, sourceLines);
-      }
-    } finally {
-      db.close();
-    }
-  }
-  const manifest = {
-    version: 1,
-    status: "verified",
-    crossDatabaseAtomic: false,
-    ledgers: { teaching: metadata("teaching.sqlite"), enterprise: metadata("erp.sqlite") },
-  };
+  const { manifest, sourceLines } = writeMillionLineSnapshot(directory, { executable: execute });
   memory("fixture-ready");
   const start = performance.now();
   snapshot = new LegacyImportSnapshot(directory, manifest);
@@ -380,14 +320,11 @@ try {
   const used = process.cpuUsage(cpu);
   snapshot.close();
   snapshot = undefined;
-  assert.deepEqual(
-    { teaching: metadata("teaching.sqlite"), enterprise: metadata("erp.sqlite") },
-    manifest.ledgers,
-  );
+  assert.deepEqual(snapshotLedgers(directory), manifest.ledgers);
   console.log(
     JSON.stringify({
       mode: execute ? "execute" : "dry-run",
-      lines: 1_000_000,
+      lines: MILLION_GL_LINES,
       seconds,
       peakRssMiB,
       limits,

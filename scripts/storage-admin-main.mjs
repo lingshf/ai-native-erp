@@ -6,6 +6,106 @@ class InvalidConfiguration extends Error {
   }
 }
 
+const decisionCOptions = {
+  "--drafts": ["import-as-draft", "skip"],
+  "--receipts": ["import", "archive-only"],
+  "--source-events": ["import", "archive-only"],
+  "--transfer-queue": ["import", "archive-only"],
+  "--seals": ["import", "archive-only"],
+  "--audit": ["import", "archive-only"],
+};
+const legacyImportValuedOptions = [
+  "--snapshot-dir",
+  "--target",
+  "--opening-items",
+  ...Object.keys(decisionCOptions),
+];
+
+function readLegacyImportOptions(tokens) {
+  const options = new Map();
+  for (let index = 0; index < tokens.length; index++) {
+    const key = tokens[index];
+    if (options.has(key)) throw new InvalidConfiguration();
+    if (key === "--dry-run") {
+      options.set(key, true);
+      continue;
+    }
+    const value = tokens[++index];
+    if (!legacyImportValuedOptions.includes(key) || !value || value.startsWith("--"))
+      throw new InvalidConfiguration();
+    options.set(key, value);
+  }
+  return options;
+}
+
+// M2-02: a dry run may omit all decision C options to list them, but never takes half a set,
+// and never names a target, so nobody mistakes it for a run that wrote a database.
+function parseLegacyImportArguments(tokens) {
+  const options = readLegacyImportOptions(tokens);
+  const dryRun = options.has("--dry-run");
+  const givenChoices = Object.keys(decisionCOptions).filter((key) => options.has(key));
+  const completeChoices = givenChoices.length === Object.keys(decisionCOptions).length;
+  const writesTarget = options.has("--target") || options.has("--opening-items");
+  if (
+    !options.has("--snapshot-dir") ||
+    !(completeChoices || (dryRun && givenChoices.length === 0)) ||
+    (dryRun ? writesTarget : !options.has("--target")) ||
+    givenChoices.some((key) => !decisionCOptions[key].includes(options.get(key)))
+  )
+    throw new InvalidConfiguration();
+  const choices = completeChoices
+    ? Object.fromEntries(givenChoices.map((key) => [key.slice(2), options.get(key)]))
+    : undefined;
+  if (dryRun)
+    return {
+      action: "legacy-import",
+      dryRun,
+      snapshot: resolve(options.get("--snapshot-dir")),
+      choices,
+    };
+  return {
+    action: "legacy-import",
+    snapshot: resolve(options.get("--snapshot-dir")),
+    target: resolve(options.get("--target")),
+    choices,
+    openingItems: options.has("--opening-items")
+      ? resolve(options.get("--opening-items"))
+      : undefined,
+  };
+}
+
+function countRecordReasons(reasonsByObject, record) {
+  if (!record.reasons.length) return;
+  const key = `${record.source}.${record.object}`;
+  reasonsByObject[key] ??= {};
+  const reasons = reasonsByObject[key];
+  for (const reason of record.reasons) reasons[reason] = (reasons[reason] ?? 0) + 1;
+}
+
+async function legacyImportDryRun(snapshot, choices) {
+  const { legacyImportPlan } = await import("../packages/infra/src/legacy/import-plan.ts");
+  const plan = legacyImportPlan(snapshot, { dryRun: true, choices, includeTotals: false });
+  const decisions = plan.next().value;
+  const listed = {
+    dryRun: true,
+    snapshotSha256: decisions.snapshotSha256,
+    choices: decisions.choices,
+  };
+  if (!choices) {
+    plan.return();
+    return listed;
+  }
+  const reasons = {};
+  for (const event of plan) {
+    if (event.type === "record") countRecordReasons(reasons, event);
+    if (event.type === "summary") {
+      const { executable, counts, drafts } = event;
+      return { ...listed, executable, counts, drafts, reasons };
+    }
+  }
+  throw new Error("Legacy import plan ended without a summary.");
+}
+
 function parseArguments(args) {
   if (args.length === 1 && args[0] === "--help") return null;
   const [action, ...tokens] = args;
@@ -36,50 +136,7 @@ function parseArguments(args) {
       confirmation: options.get("--confirm"),
     };
   }
-  if (action === "legacy-import") {
-    const options = new Map();
-    const keys = [
-      "--snapshot-dir",
-      "--target",
-      "--drafts",
-      "--receipts",
-      "--source-events",
-      "--transfer-queue",
-      "--seals",
-      "--audit",
-    ];
-    for (let index = 0; index < tokens.length; index += 2) {
-      const key = tokens[index],
-        value = tokens[index + 1];
-      if (
-        (!keys.includes(key) && key !== "--opening-items") ||
-        options.has(key) ||
-        !value ||
-        value.startsWith("--")
-      )
-        throw new InvalidConfiguration();
-      options.set(key, value);
-    }
-    if (options.size !== keys.length + Number(options.has("--opening-items")))
-      throw new InvalidConfiguration();
-    for (const key of keys.slice(2)) {
-      if (
-        !(key === "--drafts" ? ["import-as-draft", "skip"] : ["import", "archive-only"]).includes(
-          options.get(key),
-        )
-      )
-        throw new InvalidConfiguration();
-    }
-    return {
-      action,
-      snapshot: resolve(options.get("--snapshot-dir")),
-      target: resolve(options.get("--target")),
-      choices: Object.fromEntries(keys.slice(2).map((key) => [key.slice(2), options.get(key)])),
-      openingItems: options.has("--opening-items")
-        ? resolve(options.get("--opening-items"))
-        : undefined,
-    };
-  }
+  if (action === "legacy-import") return parseLegacyImportArguments(tokens);
   if (action === "legacy-snapshot") {
     const options = new Map();
     for (let index = 0; index < tokens.length; index += 2) {
@@ -170,6 +227,8 @@ export async function runStorageAdmin(args, { stdout, stderr }) {
             "storage-admin.mjs legacy-snapshot --source-dir DIR --out-dir NEW_DIR (isolated stopped source, Windows only)",
           legacyImport:
             "storage-admin.mjs legacy-import --snapshot-dir DIR --target NEW_DB --drafts import-as-draft|skip --receipts import|archive-only --source-events import|archive-only --transfer-queue import|archive-only --seals import|archive-only --audit import|archive-only [--opening-items FILE.json] (required when AP/AR control accounts are in scope)",
+          legacyImportDryRun:
+            "storage-admin.mjs legacy-import --snapshot-dir DIR --dry-run [all six decision options above] (read-only; without options lists each option and affected count, with all six prints the plan summary; no --target or --opening-items)",
           legacyReconcile:
             "storage-admin.mjs legacy-reconcile --snapshot-dir DIR --target DB --check | --confirm FILE",
           safety:
@@ -193,7 +252,9 @@ export async function runStorageAdmin(args, { stdout, stderr }) {
       const snapshot = new LegacyImportSnapshot(command.snapshot, manifest);
       try {
         let result;
-        if (command.action === "legacy-import") {
+        if (command.dryRun) {
+          result = await legacyImportDryRun(snapshot, command.choices);
+        } else if (command.action === "legacy-import") {
           const { executeLegacyImport } = await import(
             "../packages/infra/src/storage/legacy-import.ts"
           );

@@ -326,3 +326,66 @@ test("storage CLI refuses an existing foreign database without changing its byte
   assert.deepEqual(readFileSync(filename), before);
   assert.deepEqual(readdirSync(directory), names);
 });
+
+// J1 (M2-05a): dry-run lists decision C or summarizes the plan without touching the snapshot.
+const decisionC = [
+  ["--drafts", "skip"],
+  ["--receipts", "archive-only"],
+  ["--source-events", "archive-only"],
+  ["--transfer-queue", "archive-only"],
+  ["--seals", "archive-only"],
+  ["--audit", "archive-only"],
+].flat();
+function dryRun(t, extra: string[]) {
+  const f = legacyFixture(t);
+  const before = captureDirectory(f.directory, { mtime: true });
+  const result = run(["legacy-import", "--snapshot-dir", f.target, "--dry-run", ...extra]);
+  assert.deepEqual(captureDirectory(f.directory, { mtime: true }), before);
+  return result;
+}
+function assertInvalidInput(result) {
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, "");
+  assert.equal(JSON.parse(result.stderr).error.code, "INVALID_INPUT");
+}
+
+test("legacy-import --dry-run without options lists every decision C option and its affected count", (t) => {
+  const result = dryRun(t, []);
+  assert.equal(result.status, 0, result.stderr);
+  const plan = JSON.parse(result.stdout);
+  assert.equal(plan.dryRun, true);
+  assert.deepEqual(
+    plan.choices.map((choice) => [
+      choice.option,
+      choice.selected,
+      Number.isInteger(choice.affected),
+    ]),
+    ["drafts", "receipts", "source-events", "transfer-queue", "seals", "audit"].map((option) => [
+      option,
+      null,
+      true,
+    ]),
+  );
+  assert.equal(plan.counts, undefined);
+});
+
+test("legacy-import --dry-run with all six options prints the plan summary", (t) => {
+  const result = dryRun(t, decisionC);
+  assert.equal(result.status, 0, result.stderr);
+  const plan = JSON.parse(result.stdout);
+  assert.equal(plan.executable, true);
+  assert.equal(plan.choices.find((choice) => choice.option === "drafts").selected, "skip");
+  assert.ok(plan.counts["teaching.lines"].mapped > 0);
+  assert.equal(typeof plan.reasons, "object");
+});
+
+test("legacy-import --dry-run refuses partial options and a target like a non-dry-run usage error", (t) => {
+  assertInvalidInput(dryRun(t, decisionC.slice(0, 4)));
+  assertInvalidInput(dryRun(t, [...decisionC, "--target", resolve(tmpdir(), "never.sqlite")]));
+  assertInvalidInput(dryRun(t, ["--opening-items", resolve(tmpdir(), "never.json")]));
+});
+
+test("storage CLI usage documents legacy-import --dry-run", () => {
+  const help = run(["--help"]);
+  assert.match(JSON.parse(help.stdout).legacyImportDryRun, /--dry-run/u);
+});

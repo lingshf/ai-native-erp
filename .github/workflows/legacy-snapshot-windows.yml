@@ -26,3 +26,5 @@ jobs:
         run: npx vitest run packages/infra/test/legacy-snapshot-producer.test.ts
       - name: Synthetic million-line snapshot benchmark
         run: node scripts/bench-legacy-snapshot.mjs
+      - name: Fictional migration rehearsal from a real Windows snapshot (M2-05a J5)
+        run: npx vitest run packages/infra/test/legacy-rehearsal.test.ts --maxWorkers=2

@@ -133,3 +133,36 @@ jobs:
           path: artifacts/ci/trade*.json
           retention-days: 14
           if-no-files-found: error
+
+  migration-rehearsal:
+    runs-on: ubuntu-latest
+    # M2-05a: fictional 1M GL lines + 100k opening items; hard budgets are in the script.
+    timeout-minutes: 30
+    concurrency:
+      group: bench-migration-${{ inputs.ref || github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "26.x"
+          cache: npm
+      - name: Check recent main activity
+        id: gate
+        run: node scripts/ci.ts gate
+      - name: Install migration benchmark dependencies
+        if: steps.gate.outputs.run == 'true'
+        run: npm ci --no-audit --no-fund
+      - name: Migration chain benchmark (dry-run, import, confirm, backup + verify)
+        if: steps.gate.outputs.run == 'true'
+        run: node scripts/bench-migration-rehearsal.mjs
+      - uses: actions/upload-artifact@v7
+        if: always() && steps.gate.outputs.run == 'true'
+        with:
+          name: migration-rehearsal-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ci/migration-rehearsal.json
+          retention-days: 14
+          if-no-files-found: error

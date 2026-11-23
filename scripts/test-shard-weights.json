@@ -47,6 +47,7 @@
   "packages/infra/test/legacy-opening-items.test.ts": 15000,
   "packages/infra/test/legacy-periods.test.ts": 247,
   "packages/infra/test/legacy-reconciliation.test.ts": 13227,
+  "packages/infra/test/legacy-rehearsal.test.ts": 11000,
   "packages/infra/test/legacy-snapshot-diagnostics.test.ts": 155,
   "packages/infra/test/legacy-snapshot-producer.test.ts": 3311,
   "packages/infra/test/legacy-teaching.test.ts": 1065,
