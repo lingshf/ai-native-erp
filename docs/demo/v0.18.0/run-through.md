@@ -69,8 +69,8 @@ pwsh -NoProfile -File <tool>\scripts\slot\slot-run.ps1 -OutDir <新的空目录>
 
 **未入库的窗口内文件**（路径、SHA-256、字节数、行数都在 CSV 里）：两个 slot 输出目录下的 `excluded.tsv`、`preflight-*.log`、`build.log`、`demo-capture-*-rev.txt`，`out\shots-dry\` 的 5 张干跑截图（与真实运行截图 SHA-256 相同），`slot-console*.log`（与对应 `slot-summary.log` 同字节）。
 
-**临时账套路径清单**（先保存于此，再清理）：每次 `run-main.ps1` 的 `finally` 删除自己的 `erp-demo-<guid>`；窗口内共 3 次 run-main（步骤 2、3、4c），结束后其账套均已删除。清理前 `%TEMP%` 下另有 4 个 `erp-demo-*`，创建时间均早于开窗（本机时间 2026-11-23 00:51、06:15、10:10、10:39），不是本窗口产生，未触碰。
+**临时账套情况**（路径清单未能先保存，见下方缺口）：每次 `run-main.ps1` 的 `finally` 删除自己的 `erp-demo-<guid>`；窗口内共 3 次 run-main（步骤 2、3、4c），结束后其账套均已删除。清理前 `%TEMP%` 下另有 4 个 `erp-demo-*`，创建时间均早于开窗（本机时间 2026-11-23 00:51、06:15、10:10、10:39），不是本窗口产生，未触碰。
 
 **缺口（D500）**：3 次 run-main 实际使用的 `erp-demo-<guid>` 账套的具体路径，当时没有记录，日志与 slot 输出中也无原文可附，无法事后补全。按 D500 作为缺口接受，不重跑。纠正措施：从 DEMO-20 起，D492 清单必须列出实际的账套路径，并在清理前保存。
 
-**未保留（not retained）**：无。
+**未保留（not retained）**：3 次 run-main 实际使用的账套路径（原因见上方缺口 D500）。
