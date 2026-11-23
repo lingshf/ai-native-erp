@@ -49,3 +49,9 @@
 - 真实运行：`runner start head=6b33135…`，`tooling head=26b16b0…`（见 README §3）。
 - 脚本哈希（`git rev-parse 6b33135:<路径>`）：`capture.mjs` `69d5037f…`、`run-main.ps1` `e26a0dd6…`、`steps-demo17.ps1` `0ca17257…`、`seed-credit.mjs` `80ea9253…`，与 §3 的 Stub 列相同（Stub 之后脚本没有改）。
 - FIX-TADJ-BUSY 没有在窗口内运行；按 D484 推迟，不在 v0.16.0。
+
+## 6 已知缺口：TEMPLATE 第 12 条（D486）
+
+- **缺口**：时段前的无浏览器演练只有 `2b696ce` 上的 `-Stub` 运行（§1）。它没有执行 `capture.mjs`，也没有执行 `run-main.ps1`，而这两个脚本在 DEMO-17 里是新写的 / 新改的。第 12 条要求的是能覆盖它们的演练。
+- **处置（协调者 D486）**：作为已知缺口记录，**不重跑**。真实运行（`6b33135`）随后通过，`capture-log-real.json` 的 22 条断言（`checks`）全部 ok（22/22）；干跑和 `-SkipCapture` 也都退出码 0。
+- **S17 回顾输入**：下一次演练必须覆盖新写的 capture 脚本（不只是 `-Stub` 对 runner 编排的演练）。

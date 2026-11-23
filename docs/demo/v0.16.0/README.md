@@ -16,7 +16,7 @@
 ## 2 口径
 
 - 断言是内容断言（按钮文字、数量、请求参数），失败即中止；390 px 的溢出检查（页面 `scrollWidth ≤ 390`，每个按钮 `left ≥ 0` 且 `right ≤ 390`）只记录（D440 / D441）。
-- 本次没有首屏体积数字：#271、#275、#270 的 PR 正文没有构建体积测量，Demo 也不重新测量（D454），所以文档中不写任何体积数字。
+- 体积数字只引用 #275 的测量（trade-adjustments 路由 route-added JS，gzip-9，11774 → 12531 B，+757 B，D476 预算 +900 B，来源：[#275 评论](https://github.com/lingshf/ai-native-erp/pull/275#issuecomment-7113487980)）；#271、#270 没有体积测量；Demo 本身不重新测量（D454）。
 - 每页每语言每宽度一个新 browser context（D457）。
 - 脚本：`scripts/capture.mjs`、`run-main.ps1`、`steps-demo17.ps1`；造数复用 v0.4.0 的 `prepare.mjs`、`seed-trade.mjs`，v0.10.0 的 `seed-invoicing.mjs`、`seed-sales.mjs`，v0.14.0 的 `seed-credit.mjs`。Demo 证据脚本，按 D446 例外，不属于产品与 CI 代码。
 - 运行序列（TEMPLATE 第 17 条）：两个 worktree 的 `npm ci` 在安静时段开始前完成；时段内各一次、不重试：`npm run build`（应用 worktree）→ capture 干跑 → `run-main.ps1 -SkipCapture` → `slot-run.ps1 -Ports 4203`（R3）。
