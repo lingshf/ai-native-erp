@@ -1,4 +1,4 @@
-// Demo v0.13.1 截图脚本（DEMO-14）：证明 S14 拆分后 7 个页面的外观不变，每页 zh-red / en-green 各 1 张（1440 宽），共 14 张。
+// Demo v0.13.1 截图脚本（DEMO-14）：证明 S14 拆分后 7 个页面仍能正常渲染（不是证明外观逐像素不变：没有与 v0.13.0 的对比图），每页 zh-red / en-green 各 1 张（1440 宽），共 14 张。
 //   页面：凭证、业务事件、总账报表、期末结账、贸易报表、订单、发票。
 // 用法：node docs/demo/v0.13.1/scripts/capture.mjs <地址> <输出目录> <day yyyy-mm-dd>
 // 前提：账套已由 seed-trade.mjs、seed-invoicing.mjs、seed-sales.mjs 预置（只有 DEFAULT 账套）。
