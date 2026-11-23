@@ -1756,13 +1756,78 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
             ).toBe(true);
           }
           expect(await onRegion()).toBe(true);
-          for (let count = 0; count < 40; count++) {
-            const end = await region.evaluate(
-              (element) => element.scrollLeft + element.clientWidth >= element.scrollWidth - 1,
+          // D360/D363: each ArrowRight may start a smooth-scroll animation (headless Chromium on
+          // CI), and rapid presses cancel each other. After every press settle() waits until
+          // scrollLeft is unchanged for 3 animation frames ("stable") or a wall-clock cap runs out
+          // while it is still moving / rAF never fires ("timeout", fails at once). Stop pressing at
+          // the end or when a stable press made no progress; the final poll decides. The whole
+          // phase has a 10 s budget: worst case ≈ 10 s, since the deadline is checked before every
+          // press and every settle cap / the poll timeout is clipped to the remaining budget.
+          const budget = 10_000;
+          const deadline = Date.now() + budget;
+          const remaining = () => deadline - Date.now();
+          const geometry = () =>
+            region.evaluate((element) => ({
+              scrollLeft: element.scrollLeft,
+              max: element.scrollWidth - element.clientWidth,
+            }));
+          const settle = (cap: number) =>
+            region.evaluate(
+              (element, limit) =>
+                new Promise<"stable" | "timeout">((resolve) => {
+                  let last = element.scrollLeft;
+                  let same = 0;
+                  let done = false;
+                  const finish = (result: "stable" | "timeout") => {
+                    if (done) return;
+                    done = true;
+                    clearTimeout(timer);
+                    resolve(result);
+                  };
+                  const timer = setTimeout(() => finish("timeout"), limit);
+                  const tick = () => {
+                    if (done) return;
+                    const now = element.scrollLeft;
+                    same = now === last ? same + 1 : 0;
+                    last = now;
+                    if (same >= 3) finish("stable");
+                    else requestAnimationFrame(tick);
+                  };
+                  requestAnimationFrame(tick);
+                }),
+              Math.max(0, Math.min(1000, cap)),
             );
-            if (end) break;
+          let presses = 0;
+          const fail = async (reason: string) => {
+            expect.unreachable(
+              `390 keyboard scroll ${reason}: ${JSON.stringify({ ...(await geometry()), presses, budget })}`,
+            );
+          };
+          if ((await settle(remaining())) === "timeout")
+            await fail("did not settle before the first ArrowRight");
+          let { scrollLeft: position, max } = await geometry();
+          const pressLimit = Math.ceil(max / 40) + 5;
+          while (position < max - 1 && presses < pressLimit) {
+            if (remaining() <= 0) await fail("exceeded the 10 s budget");
             await page.keyboard.press("ArrowRight");
+            presses++;
+            if ((await settle(remaining())) === "timeout")
+              await fail("still moving after the settle cap");
+            const next = await geometry();
+            if (next.scrollLeft === position) break;
+            position = next.scrollLeft;
+            max = next.max;
           }
+          if (remaining() <= 0) await fail("exceeded the 10 s budget");
+          await expect
+            .poll(
+              () =>
+                region.evaluate(
+                  (element) => element.scrollWidth - element.clientWidth - element.scrollLeft,
+                ),
+              { timeout: remaining() },
+            )
+            .toBeLessThanOrEqual(1);
           const scrolled = await region.evaluate((element) => {
             const wrap = element.getBoundingClientRect();
             const last = (
@@ -1777,10 +1842,12 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
               inDialog: (element.closest("dialog") as HTMLElement).contains(document.activeElement),
             };
           });
-          console.log(`[tinv06] ${name} 390 keyboard scroll ${JSON.stringify(scrolled)}`);
+          console.log(
+            `[tinv06] ${name} 390 keyboard scroll ${JSON.stringify({ ...scrolled, presses })}`,
+          );
           appendFileSync(
             join(artifacts, `${name}-invoice-detail-geometry.json`),
-            `${JSON.stringify({ width: 390, keyboardScroll: scrolled })}\n`,
+            `${JSON.stringify({ width: 390, keyboardScroll: { ...scrolled, presses } })}\n`,
           );
           expect(scrolled.max).toBeGreaterThan(0);
           expect(scrolled.scrollLeft).toBeGreaterThanOrEqual(scrolled.max - 1);

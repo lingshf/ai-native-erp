@@ -1,0 +1,15 @@
+## D363 chrome ERP_E2E_BROWSER_CHANNEL='chrome' 2026-11-22T20:39:31.7762756-08:00; npx vitest run packages/infra/test/http/trade-gui-en-green-2.slow.test.ts packages/infra/test/http/trade-gui-zh-red-2.slow.test.ts
+[before] HEAD ef3e9dbf30a856d9af04929910ab1fa21c0ee75c | commit time 2026-11-22T20:38:44-08:00 | porcelain []
+
+ RUN  v5.1.0 C:/GithubCopilot/copilot-worktrees/ai-native-erp/lingshf-jubilant-barnacle
+
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  20:39:35
+   Duration  40.87s (tests 93%, import 6%, transform 1%)
+
+vitest exit 0
+[after] HEAD ef3e9dbf30a856d9af04929910ab1fa21c0ee75c | porcelain [] | 2026-11-22T20:40:16.1626187-08:00
+keyboardScroll en-green (last artifact line): {"width":390,"keyboardScroll":{"scrollLeft":373,"max":373,"wrap":[38,352],"lastColumn":[253.859375,351.390625],"focused":true,"inDialog":true,"presses":10}}
+keyboardScroll zh-red (last artifact line): {"width":390,"keyboardScroll":{"scrollLeft":269,"max":269,"wrap":[38,352],"lastColumn":[274.78125,350.78125],"focused":true,"inDialog":true,"presses":7}}

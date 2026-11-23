@@ -1,0 +1,37 @@
+## D363 checks 2026-11-22T20:38:13.2613698-08:00 branch HEAD 27522fce31d8b1df367c45f8e26d7012ad232e3b + working tree; origin/main 4bf2dccecc4766e74d96c4ff1d49bb65e746b5c4
+packages\infra\test\support\trade-gui-scenario.ts format ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × File content differs from formatting output
+  
+    1804 1804 │               );
+    1805 1805 │             };
+    1806      │ - ··········if·((await·settle(remaining()))·===·"timeout")·await·fail("did·not·settle·before·the·first·ArrowRight");
+         1806 │ + ··········if·((await·settle(remaining()))·===·"timeout")
+         1807 │ + ············await·fail("did·not·settle·before·the·first·ArrowRight");
+    1807 1808 │             let { scrollLeft: position, max } = await geometry();
+    1808 1809 │             const pressLimit = Math.ceil(max / 40) + 5;
+  
+
+Checked 1 file in 66ms. No fixes applied.
+Found 1 error.
+ci ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Some errors were emitted while running checks.
+  
+
+biome exit 1
+
+> ai-native-erp@0.1.0 typecheck
+> tsc --noEmit -p tsconfig.json
+
+typecheck exit 0
+## 2026-11-22T20:38:26.3749174-08:00: biome format --write (line-wrap only, per the diff above), then rerun checks
+Formatted 1 file in 28ms. Fixed 1 file.
+ packages/infra/test/support/trade-gui-scenario.ts | 73 +++++++++++++++--------
+ 1 file changed, 47 insertions(+), 26 deletions(-)
+Checked 1 file in 59ms. No fixes applied.
+biome exit 0
+> ai-native-erp@0.1.0 typecheck
+> tsc --noEmit -p tsconfig.json
+
+typecheck exit 0

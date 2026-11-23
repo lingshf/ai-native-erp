@@ -1,0 +1,13 @@
+## D360 real Chrome ERP_E2E_BROWSER_CHANNEL=chrome 2026-11-22T20:28:55.9894945-08:00; npx vitest run packages/infra/test/http/trade-gui-en-green-2.slow.test.ts packages/infra/test/http/trade-gui-zh-red-2.slow.test.ts
+[before] HEAD 12cc2979eaea76cf351dec11beb7c8608aed4f17 | commit time 2026-11-22T20:27:37-08:00 | porcelain []
+
+ RUN  v5.1.0 C:/GithubCopilot/copilot-worktrees/ai-native-erp/lingshf-jubilant-barnacle
+
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  20:28:58
+   Duration  45.61s (tests 94%, import 5%, transform 1%)
+
+vitest exit 0
+[after] HEAD 12cc2979eaea76cf351dec11beb7c8608aed4f17 | porcelain [] | 2026-11-22T20:29:46.1400563-08:00

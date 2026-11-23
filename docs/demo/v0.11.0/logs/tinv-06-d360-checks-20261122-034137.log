@@ -1,0 +1,28 @@
+## D360 checks 2026-11-22T03:41:37.9354522-08:00 HEAD(base) 4bf2dccecc4766e74d96c4ff1d49bb65e746b5c4 + working tree
+Checked 1 file in 58ms. No fixes applied.
+biome exit 0
+error TS5081: Cannot find a tsconfig.json file at the current directory: C:/GithubCopilot/copilot-worktrees/ai-native-erp/lingshf-jubilant-barnacle/packages/infra/tsconfig.json.
+tsc exit 1
+## (the tsc line above used a wrong project path; rerun via the repo script) npm run typecheck 2026-11-22T03:41:50.5899601-08:00
+
+> ai-native-erp@0.1.0 typecheck
+> tsc --noEmit -p tsconfig.json
+
+typecheck exit 0
+## default Playwright Chromium headless shell 1208 dir was empty (incomplete install); npx playwright install --only-shell chromium 2026-11-22T03:42:04.9953412-08:00
+Removing unused browser at C:\Users\shaoling\AppData\Local\ms-playwright\chromium_headless_shell-1208
+Downloading Chrome Headless Shell 145.0.7632.6 (playwright chromium-headless-shell v1208)[2m from https://cdn.playwright.dev/builds/cft/145.0.7632.6/win64/chrome-headless-shell-win64.zip[22m
+## 2026-11-22T20:16:36.6227182-08:00: the install above hung after 'Downloading ...' (no progress/exit for ~16.5 h; oopDownloadBrowserMain.js pid 90384 still alive at 20:16); stopped its process tree (pids 74704 88584 38512 90384 67216). CDN probe:
+http 307 bytes 0 time 0.176651s
+curl exit 0
+## follow redirect, first 1 MiB:
+http 206 bytes 1048576 time 0.467721s url https://storage.googleapis.com/chrome-for-testing-public/145.0.7632.6/win64/chrome-headless-shell-win64.zip
+curl exit 0
+## retry install once (network OK per probe) 2026-11-22T20:16:49.6764660-08:00
+Removing unused browser at C:\Users\shaoling\AppData\Local\ms-playwright\chromium_headless_shell-1208
+Downloading Chrome Headless Shell 145.0.7632.6 (playwright chromium-headless-shell v1208)[2m from https://cdn.playwright.dev/builds/cft/145.0.7632.6/win64/chrome-headless-shell-win64.zip[22m
+## 2026-11-22T20:27:08.6448824-08:00: retry hung again after 'Downloading ...' (>10 min); stopped. Manual install of the same build: curl the same URL, extract into C:\Users\shaoling\AppData\Local\ms-playwright\chromium_headless_shell-1208, write the INSTALLATION_COMPLETE / DEPENDENCIES_VALIDATED markers (same layout as chromium_headless_shell-1255)
+http 200 bytes 114056639 time 0.803494s
+curl exit 0
+zip sha256 839500DB9E1B0865961CE8B05134BA3D3D71B82BE5DEC236D6C87ECD93E082CD
+exe exists True
