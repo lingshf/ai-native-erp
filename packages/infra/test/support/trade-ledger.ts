@@ -421,29 +421,27 @@ export const invoiceOn = (
     ...changes,
   });
 
-/** Stored-status checks, credit notes and failing status writes on top of `tradeSteps`. */
-export function orderInvoicingSteps(ledger: TradeLedger) {
-  const { counts, act, actionHeader, current, cancel } = tradeSteps(ledger);
-  const storedStatuses = () => {
-    const raw = new Database(ledger.filename, { readonly: true });
-    try {
-      return storedStatusesIn(raw);
-    } finally {
-      raw.close();
-    }
-  };
-  const recomputedStatuses = async () => {
-    const raw = new Database(ledger.filename, { readonly: true });
-    try {
-      const orderIds = raw
-        .prepare("SELECT order_id FROM trade_orders WHERE company_id='DEFAULT' ORDER BY order_id")
-        .pluck()
-        .all() as string[];
-      return await recomputedStatusesIn(raw, orderIds);
-    } finally {
-      raw.close();
-    }
-  };
+/** Runs `read` on a read-only handle to the ledger file and closes it afterwards. */
+export async function withReadonly<T>(
+  filename: string,
+  read: (raw: Database.Database) => T | Promise<T>,
+): Promise<T> {
+  const raw = new Database(filename, { readonly: true });
+  try {
+    return await read(raw);
+  } finally {
+    raw.close();
+  }
+}
+
+const allOrderIds = (raw: Database.Database) =>
+  raw
+    .prepare("SELECT order_id FROM trade_orders WHERE company_id='DEFAULT' ORDER BY order_id")
+    .pluck()
+    .all() as string[];
+
+/** Stored, recomputed and listed statuses all equal `expected`. */
+function statusChecks(ledger: TradeLedger) {
   const listedStatuses = async () =>
     Object.fromEntries(
       (await ledger.service.listOrders("DEFAULT", { limit: 500 })).items.map((item) => [
@@ -451,13 +449,20 @@ export function orderInvoicingSteps(ledger: TradeLedger) {
         item.invoicing,
       ]),
     );
-  /** Stored, recomputed and listed statuses all equal `expected`. */
-  async function expectStored(expected: Record<string, string>) {
-    expect(storedStatuses()).toEqual(expected);
-    expect(await recomputedStatuses()).toEqual(expected);
+  return async function expectStored(expected: Record<string, string>) {
+    expect(await withReadonly(ledger.filename, storedStatusesIn)).toEqual(expected);
+    const recomputed = await withReadonly(ledger.filename, (raw) =>
+      recomputedStatusesIn(raw, allOrderIds(raw)),
+    );
+    expect(recomputed).toEqual(expected);
     expect(await listedStatuses()).toEqual(expected);
-  }
-  /** TINV-09: credit note on line L1 of an invoice, the day after invoiceOn's date. */
+  };
+}
+
+/** TINV-09: posting and cancelling a credit note on line L1 of an invoice. */
+function creditSteps(ledger: TradeLedger) {
+  const { act, actionHeader, current, cancel } = tradeSteps(ledger);
+  /** Credit note dated the day after invoiceOn's date. */
   async function creditOn(invoiceId: string, quantity: string) {
     return act({
       ...actionHeader(),
@@ -472,44 +477,61 @@ export function orderInvoicingSteps(ledger: TradeLedger) {
   }
   const cancelCredit = (credit: Awaited<ReturnType<typeof act>>, invoiceId: string) =>
     cancel(credit.receipt.actionId, invoiceId, "2026-04-22");
-  /** A service on the real store whose stored-status UPDATE fails inside the write transaction. */
-  function blockingStatusWrites() {
-    const backend = sqliteBackend({ filename: ledger.filename });
-    const run = async <T>(
-      write: boolean,
-      work: (repo: ReturnType<typeof masterDataRepository>) => Promise<T>,
-    ) => {
-      const db = await backend.acquire(!write, false);
+  return { creditOn, cancelCredit };
+}
+
+/** The connection with every stored-status UPDATE rejected. */
+const failingStatusWrites = (db: Connection): Connection =>
+  ({
+    ...db,
+    query: (sql: string, values: Parameters<Connection["query"]>[1] = []) =>
+      sql.startsWith("UPDATE trade_order_invoicing")
+        ? Promise.reject(new Error("blocked"))
+        : db.query(sql, values),
+  }) as Connection;
+
+/** One transaction on `backend` whose stored-status writes fail; rolled back on any error. */
+function failingTransactions(backend: ReturnType<typeof sqliteBackend>) {
+  return async <T>(
+    write: boolean,
+    work: (repo: ReturnType<typeof masterDataRepository>) => Promise<T>,
+  ) => {
+    const db = await backend.acquire(!write, false);
+    try {
+      await db.begin();
       try {
-        await db.begin();
-        const failing = {
-          ...db,
-          query: (sql: string, values: Parameters<Connection["query"]>[1] = []) =>
-            sql.startsWith("UPDATE trade_order_invoicing")
-              ? Promise.reject(new Error("blocked"))
-              : db.query(sql, values),
-        } as Connection;
-        try {
-          const result = await work(masterDataRepository(failing));
-          await db.commit();
-          return result;
-        } catch (error) {
-          await db.rollback();
-          throw error;
-        }
-      } finally {
-        await db.release();
+        const result = await work(masterDataRepository(failingStatusWrites(db)));
+        await db.commit();
+        return result;
+      } catch (error) {
+        await db.rollback();
+        throw error;
       }
-    };
-    const blocked = new TradeDocumentService(
-      { read: (work) => run(false, work), write: (work) => run(true, work) },
-      ledger.journals,
-      journalTools,
-    );
-    return { blocked, close: () => backend.close() };
-  }
-  /** Runs `write` through `blocked`: it must fail and leave every counted table unchanged. */
-  async function expectRolledBack(blocked: TradeDocumentService, write: () => Promise<unknown>) {
+    } finally {
+      await db.release();
+    }
+  };
+}
+
+/** A service on the real store whose stored-status UPDATE fails inside the write transaction. */
+function blockingStatusWrites(ledger: TradeLedger) {
+  const backend = sqliteBackend({ filename: ledger.filename });
+  const run = failingTransactions(backend);
+  const blocked = new TradeDocumentService(
+    { read: (work) => run(false, work), write: (work) => run(true, work) },
+    ledger.journals,
+    journalTools,
+  );
+  return { blocked, close: () => backend.close() };
+}
+
+/** Runs `write` through `blocked`: it must fail and leave every counted table unchanged. */
+function rollbackCheck(ledger: TradeLedger) {
+  const { counts } = tradeSteps(ledger);
+  return async function expectRolledBack(
+    blocked: TradeDocumentService,
+    write: () => Promise<unknown>,
+  ) {
     const original = ledger.service;
     const before = counts();
     ledger.service = blocked;
@@ -519,6 +541,15 @@ export function orderInvoicingSteps(ledger: TradeLedger) {
       ledger.service = original;
     }
     expect(counts()).toEqual(before);
-  }
-  return { expectStored, creditOn, cancelCredit, blockingStatusWrites, expectRolledBack };
+  };
+}
+
+/** Stored-status checks, credit notes and failing status writes on top of `tradeSteps`. */
+export function orderInvoicingSteps(ledger: TradeLedger) {
+  return {
+    expectStored: statusChecks(ledger),
+    ...creditSteps(ledger),
+    blockingStatusWrites: () => blockingStatusWrites(ledger),
+    expectRolledBack: rollbackCheck(ledger),
+  };
 }
