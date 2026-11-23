@@ -132,12 +132,41 @@ export function Accounts({ preferences }: { preferences: Preferences }) {
     </section>
   );
 }
+// TLIST-03: "Refresh list" only re-reads the list, so it stays enabled while the editor is open.
+function AccountActions({
+  editing,
+  onNew,
+  onRefresh,
+  t,
+}: {
+  editing: boolean;
+  onNew: () => void;
+  onRefresh: () => void;
+  t: T;
+}) {
+  return (
+    <div className="acct-actions">
+      <button
+        type="button"
+        className={`btn ${editing ? "btn-secondary" : "btn-primary"}`}
+        onClick={onNew}
+      >
+        {t("master.new")}
+      </button>
+      <button type="button" className="btn btn-secondary" onClick={onRefresh}>
+        {t("master.listRefresh")}
+      </button>
+    </div>
+  );
+}
 function CompanyAccounts({ company, language }: { company: CompanyDto; language: Language }) {
   const t: T = (key) => label(language, key);
   const client = useQueryClient();
   const [editing, setEditing] = useState<AccountCommand | null>(null);
+  const queryKey = ["accounts", company.code];
+  const refresh = () => void client.resetQueries({ queryKey, exact: true });
   const accounts = useInfiniteQuery({
-    queryKey: ["accounts", company.code],
+    queryKey,
     refetchOnMount: true,
     initialPageParam: "",
     queryFn: ({ pageParam, signal }) =>
@@ -151,15 +180,12 @@ function CompanyAccounts({ company, language }: { company: CompanyDto; language:
   const rows = accounts.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <>
-      <div className="acct-actions">
-        <button
-          type="button"
-          className={`btn ${editing ? "btn-secondary" : "btn-primary"}`}
-          onClick={() => setEditing(fresh(company.code))}
-        >
-          {t("master.new")}
-        </button>
-      </div>
+      <AccountActions
+        editing={editing !== null}
+        onNew={() => setEditing(fresh(company.code))}
+        onRefresh={refresh}
+        t={t}
+      />
       {accounts.isPending && <p role="status">{t("master.loading")}</p>}
       {accounts.isError && (
         <p role="alert" className="message-bar danger">
@@ -214,7 +240,7 @@ function CompanyAccounts({ company, language }: { company: CompanyDto; language:
           cancel={() => setEditing(null)}
           saved={() => {
             setEditing(null);
-            void client.invalidateQueries({ queryKey: ["accounts", company.code] });
+            void client.invalidateQueries({ queryKey });
           }}
         />
       )}
