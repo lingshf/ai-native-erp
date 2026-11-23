@@ -18,7 +18,6 @@ import { InvoiceEntry } from "./trade-invoices/invoice-entry.tsx";
 import { InvoiceList } from "./trade-invoices/invoice-list.tsx";
 import "./pages/trade-invoices.css";
 
-export { useInvoiceLeaveGuard } from "./trade-invoices/use-invoice-leave-guard.ts";
 export { sourceOrderPath, SourceOrderCell } from "./trade-invoices/source-order.tsx";
 
 // TINV-01: one `fromOrder` request taken from the address; `company` null means the current one.
