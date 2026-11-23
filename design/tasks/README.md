@@ -694,7 +694,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | DEMO-16（无任务书） | v0.15.0 RC 与 Demo（TORD-08 未合并则 v0.14.1），验收见 [S16.md](S16.md#demo-16-验收) | 发布 | P1（Sprint 末） | 每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/user/` | 不加 | 需要（截图） | done（D480 静默窗口，D481 先构建；tag `e66ddd8`，D482） | [#269](https://github.com/lingshf/ai-native-erp/pull/269)（`a131586`） |
 
 - **并行**：A ∥ B ∥ C（CI-03 已结案，由 C′ SLOT-03 接替，D472），冲突域两两不相交，开发同时在岗不超过 3 人；都不申请浏览器时段，服从 D442 时段停用通知；DEMO-16 排在它们结案之后，申请时段附 `-Stub` 记录（D460）。
-- **Sprint 评审与回顾**：[S16 评审](../reviews/S16.md)（通过：四个开发任务与 RC 已合并，v0.15.0 已发布；打回 11、待证据 0，main Full 零失败）、[S16 回顾](../reviews/S16-retro.md)（6 条行动项待协调者认可；DEMO-17 须补 CHANGELOG `[Unreleased]` 的 #271 / #270）。
+- **Sprint 评审与回顾**：[S16 评审](../reviews/S16.md)（通过：四个开发任务与 RC 已合并，v0.15.0 已发布；打回 11、待证据 0，main Full 零失败）、[S16 回顾](../reviews/S16-retro.md)（6 条行动项已认可，设计侧已写入路线图与模板；DEMO-17 须补 CHANGELOG `[Unreleased]` 的 #271 / #270）。
 
 ## S17：调整页函数体拆分 + smoke 拆分 + 订单 / 发票列表“刷新列表”（建议 v0.16.0，草案）
 
