@@ -109,11 +109,16 @@ const field = (key: TradeOrderKey, lineId?: string) =>
 
 type Handler = (url: string, init?: RequestInit) => Response | Promise<Response>;
 const emptyList: Handler = () => response({ items: [], nextCursor: null });
-const invoicingOf = (order: typeof savedOrder, quantities: readonly string[]) => ({
+const invoicingOf = (
+  order: typeof savedOrder,
+  quantities: readonly string[],
+  credited: readonly string[] = [],
+) => ({
   order,
   invoiced: order.lines.map((line, index) => ({
     lineId: line.lineId,
     invoicedQuantity: quantities[index] ?? "0",
+    creditedQuantity: credited[index] ?? "0",
   })),
 });
 // TINV-02: the order detail reads GET /trade/orders/:orderId/invoicing (TINV-01 scope 4 shape).

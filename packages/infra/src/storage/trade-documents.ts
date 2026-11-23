@@ -193,12 +193,15 @@ const lineKey = (orderId: string, orderLineId: string) => `${orderId}\u0000${ord
 function creditedOrderLinesSql(orders: number): string {
   return `SELECT l.order_id,l.order_line_id,c.quantity ${invoicedLinesFrom} CROSS JOIN trade_credit_lines c INDEXED BY trade_credit_lines_source ON c.company_id=l.company_id AND c.invoice_id=l.document_id AND c.source_line_id=l.line_id JOIN open_items k ON k.company_id=c.company_id AND k.item_id=c.credit_id ${invoicedLinesWhere} AND k.status<>'cancelled' AND l.order_id IN(${placeholders(orders)})`;
 }
-/** TINV-09: invoiced micros net of credit notes (exact decimal → micros); the one place credits count. */
+/**
+ * TINV-09: invoiced micros net of credit notes (exact decimal → micros); the one place credits count.
+ * TORD-08: each line also carries the credited micros that were subtracted (0n when none).
+ */
 async function subtractCredits<Line extends InvoicedLine>(
   db: Pick<Connection, "query">,
   company: string,
   lines: readonly Line[],
-): Promise<Line[]> {
+): Promise<(Line & { readonly creditedMicros: bigint })[]> {
   const orderIds = [...new Set(lines.map((line) => line.orderId))];
   if (!orderIds.length) return [];
   const credited = new Map<string, bigint>();
@@ -207,10 +210,10 @@ async function subtractCredits<Line extends InvoicedLine>(
     const key = lineKey(str(row.order_id), str(row.order_line_id));
     credited.set(key, (credited.get(key) ?? 0n) + quantityMicros(str(row.quantity)));
   }
-  return lines.map((line) => ({
-    ...line,
-    micros: line.micros - (credited.get(lineKey(line.orderId, line.orderLineId)) ?? 0n),
-  }));
+  return lines.map((line) => {
+    const creditedMicros = credited.get(lineKey(line.orderId, line.orderLineId)) ?? 0n;
+    return { ...line, micros: line.micros - creditedMicros, creditedMicros };
+  });
 }
 // TINV-03: one statement for a set of orders, whatever its size. Ordered quantity of every line of
 // the orders (trade_order_lines primary key) with its invoiced micros, summed on

@@ -52,6 +52,7 @@ export function OrderView({
   });
   const known = invoicing.isSuccess && !invoicing.isFetching ? invoicing.data : null;
   const invoiced = new Map(known?.invoiced.map((row) => [row.lineId, row.invoicedQuantity]));
+  const credited = new Map(known?.invoiced.map((row) => [row.lineId, row.creditedQuantity]));
   const remaining = (line: Order["lines"][number]) => {
     const done = invoiced.get(line.lineId);
     return done === undefined ? null : micros(line.quantity) - micros(done);
@@ -119,6 +120,7 @@ export function OrderView({
               <th scope="col">{t("tord.quantity")}</th>
               <th scope="col">{t("tord.invoicedQuantity")}</th>
               <th scope="col">{t("tord.uninvoicedQuantity")}</th>
+              <th scope="col">{t("tord.creditedQuantity")}</th>
               <th scope="col">{t("tord.unitPrice")}</th>
               <th scope="col">{t("tord.discountPercent")}</th>
               {amountKeys.map((key) => (
@@ -151,6 +153,7 @@ export function OrderView({
                       </>
                     )}
                   </td>
+                  <td>{decimal(credited.get(line.lineId))}</td>
                   <td>{decimal(line.unitPrice)}</td>
                   <td>{decimal(line.discountPercent)}</td>
                   {amountKeys.map((key) => (

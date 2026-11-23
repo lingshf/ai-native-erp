@@ -28,6 +28,7 @@ export const tradeOrderEn = {
   "tord.quantity": "Quantity",
   "tord.invoicedQuantity": "Invoiced qty",
   "tord.uninvoicedQuantity": "Not invoiced qty",
+  "tord.creditedQuantity": "Credited qty",
   "tord.fullyInvoicedBadge": "Fully invoiced",
   "tord.invoice": "Invoice",
   "tord.fullyInvoiced":
@@ -138,6 +139,7 @@ export const tradeOrderZh: Record<keyof typeof tradeOrderEn, string> = {
   "tord.quantity": "数量",
   "tord.invoicedQuantity": "已开票数量",
   "tord.uninvoicedQuantity": "未开票数量",
+  "tord.creditedQuantity": "贷项冲回数量",
   "tord.fullyInvoicedBadge": "已开完",
   "tord.invoice": "开票",
   "tord.fullyInvoiced": "该订单所有行都已开完发票，没有可开票的数量。",

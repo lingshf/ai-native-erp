@@ -64,13 +64,15 @@ async function invoicedSix() {
   );
   const first = invoiceOn("PO-T", "L1", "6");
   await post(first);
-  await expectTen("6", "partial");
+  await expectTen("6", "partial", "0");
   return first;
 }
 /** Order detail (orderInvoicing) and stored status of PO-T agree after every step. */
-async function expectTen(invoiced: string, status: string) {
+async function expectTen(invoiced: string, status: string, credited: string) {
   const detail = await ledger.service.orderInvoicing("DEFAULT", "PO-T");
-  expect(detail.invoiced).toEqual([{ lineId: "L1", invoicedQuantity: invoiced }]);
+  expect(detail.invoiced).toEqual([
+    { lineId: "L1", invoicedQuantity: invoiced, creditedQuantity: credited },
+  ]);
   await expectStored({ "PO-T": status });
 }
 const onePerStatus = { "PO-F": "full", "PO-N": "none", "PO-P": "partial" };
@@ -114,13 +116,13 @@ describe("TINV-09 credit notes on one order of 10 invoiced 6 (real SQLite)", () 
   it("TINV-09 V1 credits reduce the invoiced quantity down to none, and cancelling one restores it", async () => {
     const first = await invoicedSix();
     await creditOn(first.documentId, "2");
-    await expectTen("4", "partial");
+    await expectTen("4", "partial", "2");
     const rest = await creditOn(first.documentId, "4");
-    await expectTen("0", "none");
+    await expectTen("0", "none", "6");
     const filtered = await ledger.service.listOrders("DEFAULT", { limit: 10, invoicing: "none" });
     expect(filtered.items.map((item) => item.orderId)).toEqual(["PO-T"]);
     await cancelCredit(rest, first.documentId);
-    await expectTen("4", "partial");
+    await expectTen("4", "partial", "2");
   });
 
   it("TINV-09 V2/V3 a credited quantity is invoiced again without a match exception; cancelling the credit then over-invoices", async () => {
@@ -129,9 +131,9 @@ describe("TINV-09 credit notes on one order of 10 invoiced 6 (real SQLite)", () 
     const day = { accountingDate: "2026-04-22", documentDate: "2026-04-22", taxDate: "2026-04-22" };
     const again = await post(invoiceOn("PO-T", "L1", "6", day));
     expect(again.receipt.poMatch).toBe("matched");
-    await expectTen("10", "full");
+    await expectTen("10", "full", "2");
     await cancelCredit(credit, first.documentId);
-    await expectTen("12", "full");
+    await expectTen("12", "full", "0");
   });
 
   it("TINV-09 V4 a failing status write rolls back the whole credit posting or credit cancellation", async () => {
@@ -139,10 +141,10 @@ describe("TINV-09 credit notes on one order of 10 invoiced 6 (real SQLite)", () 
     const { blocked, close } = blockingStatusWrites();
     try {
       await expectRolledBack(blocked, () => creditOn(first.documentId, "2"));
-      await expectTen("6", "partial");
+      await expectTen("6", "partial", "0");
       const credit = await creditOn(first.documentId, "2");
       await expectRolledBack(blocked, () => cancelCredit(credit, first.documentId));
-      await expectTen("4", "partial");
+      await expectTen("4", "partial", "2");
     } finally {
       await close();
     }
@@ -152,11 +154,58 @@ describe("TINV-09 credit notes on one order of 10 invoiced 6 (real SQLite)", () 
     const first = await invoicedSix();
     const credit = await creditOn(first.documentId, "2");
     await expect(cancel(first.documentId, undefined, "2026-04-22")).rejects.toThrow();
-    await expectTen("4", "partial");
+    await expectTen("4", "partial", "2");
     await cancelCredit(credit, first.documentId);
-    await expectTen("6", "partial");
+    await expectTen("6", "partial", "0");
     await cancel(first.documentId, undefined, "2026-04-22");
-    await expectTen("0", "none");
+    await expectTen("0", "none", "0");
+  });
+});
+
+describe("TORD-08 credited quantity in the order detail (real SQLite)", () => {
+  /** PO-C: L1 of 10 invoiced 10 by the returned invoice, L2 of 5 not invoiced. */
+  async function invoicedTen() {
+    await ledger.service.createOrder(
+      order({
+        orderId: "PO-C",
+        orderDate: "2026-04-01",
+        lines: [orderLine("L1", "10", "3.00"), orderLine("L2", "5", "3.00")],
+      }),
+    );
+    const invoiced = invoiceOn("PO-C", "L1", "10");
+    await post(invoiced);
+    return invoiced;
+  }
+  /** orderInvoicing rows of PO-C as [lineId, invoiced, credited]. */
+  const quantities = async () =>
+    (await ledger.service.orderInvoicing("DEFAULT", "PO-C")).invoiced.map((row) => [
+      row.lineId,
+      row.invoicedQuantity,
+      row.creditedQuantity,
+    ]);
+
+  it("TORD-08 K3 a partial credit of 4 on 10 invoiced shows 6 invoiced and 4 credited; the uninvoiced line is 0 / 0", async () => {
+    const invoiced = await invoicedTen();
+    expect(await quantities()).toEqual([
+      ["L1", "10", "0"],
+      ["L2", "0", "0"],
+    ]);
+    await creditOn(invoiced.documentId, "4");
+    expect(await quantities()).toEqual([
+      ["L1", "6", "4"],
+      ["L2", "0", "0"],
+    ]);
+  });
+
+  it("TORD-08 K3 two credits add up exactly and only non-cancelled credits count", async () => {
+    const invoiced = await invoicedTen();
+    const small = await creditOn(invoiced.documentId, "1.5");
+    const large = await creditOn(invoiced.documentId, "2");
+    expect((await quantities())[0]).toEqual(["L1", "6.5", "3.5"]);
+    await cancelCredit(small, invoiced.documentId);
+    expect((await quantities())[0]).toEqual(["L1", "8", "2"]);
+    await cancelCredit(large, invoiced.documentId);
+    expect((await quantities())[0]).toEqual(["L1", "10", "0"]);
   });
 });
 

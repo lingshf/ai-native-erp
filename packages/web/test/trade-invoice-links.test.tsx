@@ -375,7 +375,7 @@ describe("TINV-07 company in the link and the fromOrder entry", () => {
         },
       ],
     },
-    invoiced: [{ lineId: "OL1", invoicedQuantity: "0" }],
+    invoiced: [{ lineId: "OL1", invoicedQuantity: "0", creditedQuantity: "0" }],
   };
   it.each([
     ["given", "company=DEFAULT&"],

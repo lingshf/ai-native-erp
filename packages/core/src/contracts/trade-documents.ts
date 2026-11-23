@@ -54,7 +54,7 @@ export const tradeOrderSchema = z.strictObject({
 });
 export const tradeOrderInvoicingSchema = z.strictObject({
   order: tradeOrderSchema,
-  invoiced: lines(z.strictObject({ lineId, invoicedQuantity: decimal })),
+  invoiced: lines(z.strictObject({ lineId, invoicedQuantity: decimal, creditedQuantity: decimal })),
 });
 export const tradeOrderPreviewSchema = z.strictObject({
   lines: lines(
