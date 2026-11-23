@@ -24,6 +24,8 @@ export const invoiceDetailKey = (company: string, documentId: string) =>
 
 const focusable =
   "button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled),[tabindex='0']";
+// Same shape check as the server (application/trade-documents.ts): anything else cannot exist.
+const documentIdPattern = /^[0-9a-f-]{36}$/;
 
 // TINV-06: read-only modal in the same shape as Journals.tsx `Modal` (showModal, focus on open,
 // Esc / cancel closes, Tab cycles inside), written here so the invoice page does not import
@@ -37,17 +39,21 @@ export function TradeInvoiceDetail({
 }: {
   company: CompanyDto;
   documentId: string;
-  externalNo: string;
+  // Unknown for a deep link to an invoice that is not in the loaded rows (TINV-07).
+  externalNo: string | undefined;
   preferences: Preferences;
   close: () => void;
 }) {
   const t: T = (key) =>
     isDetailKey(key) ? detailLabel(preferences.language, key) : label(preferences.language, key);
   const ref = useRef<HTMLDialogElement>(null);
+  // A malformed id from the address is reported as not found without a request.
+  const wellFormed = documentIdPattern.test(documentId);
   const detail = useQuery({
     queryKey: invoiceDetailKey(company.code, documentId),
     staleTime: 0,
     gcTime: 0,
+    enabled: wellFormed,
     queryFn: ({ signal }) =>
       masterRequest(
         `/api/v1/trade/invoices/${encodeURIComponent(documentId)}?company=${encodeURIComponent(company.code)}`,
@@ -84,8 +90,11 @@ export function TradeInvoiceDetail({
       first.focus();
     }
   };
-  const title = `${t("tinv.detail.title")} · ${externalNo}`;
-  const notFound = detail.error instanceof MasterDataFailure && detail.error.status === 404;
+  const number = externalNo ?? (detail.isSuccess ? detail.data.document.externalNo : undefined);
+  const title =
+    number === undefined ? t("tinv.detail.title") : `${t("tinv.detail.title")} · ${number}`;
+  const notFound =
+    !wellFormed || (detail.error instanceof MasterDataFailure && detail.error.status === 404);
   const code = detail.error instanceof MasterDataFailure ? detail.error.detail?.code : undefined;
   return (
     <dialog
@@ -106,8 +115,8 @@ export function TradeInvoiceDetail({
           {t("tinv.detail.close")}
         </button>
       </header>
-      {detail.isPending && <p role="status">{t("tinv.detail.loading")}</p>}
-      {detail.isError && (
+      {wellFormed && detail.isPending && <p role="status">{t("tinv.detail.loading")}</p>}
+      {(detail.isError || !wellFormed) && (
         <MessageBar tone="danger" role="alert">
           <p>
             {t(notFound ? "tinv.detail.notFound" : "tinv.detail.error")}

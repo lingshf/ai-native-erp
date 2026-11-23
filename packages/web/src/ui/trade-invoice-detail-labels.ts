@@ -28,6 +28,10 @@ export const tradeInvoiceDetailEn = {
   "tinv.detail.teachingControl": "Its debit or credit lands on the control account:",
   "tinv.detail.teachingSettle":
     "It also opened one open item; payments and receipts applied to it reduce the open balance.",
+  "tinv.link.company": "The link's company is not in the loaded list; nothing was opened",
+  "tinv.link.back": "Back to invoices",
+  "tinv.filter.linkInvalid":
+    "The link's filters are not valid and were ignored; all invoices are shown.",
 } as const;
 export const tradeInvoiceDetailZh: Record<keyof typeof tradeInvoiceDetailEn, string> = {
   "tinv.detail.open": "查看发票",
@@ -55,6 +59,9 @@ export const tradeInvoiceDetailZh: Record<keyof typeof tradeInvoiceDetailEn, str
   "tinv.detail.teachingPosting": "发票过账生成一张凭证：",
   "tinv.detail.teachingControl": "借贷落在控制科目：",
   "tinv.detail.teachingSettle": "同时生成一个未结项；付款 / 收款核销减少未结余额。",
+  "tinv.link.company": "链接中的公司不在已加载列表中，未打开",
+  "tinv.link.back": "返回发票页",
+  "tinv.filter.linkInvalid": "链接中的筛选条件无效，已忽略；当前显示全部发票。",
 };
 
 export type TradeInvoiceDetailKey = keyof typeof tradeInvoiceDetailEn;

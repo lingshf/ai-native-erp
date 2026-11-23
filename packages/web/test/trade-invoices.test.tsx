@@ -1051,7 +1051,7 @@ describe("trade invoice list filters (TINV-05)", () => {
   const listTable = () => screen.findByRole("table", { name: t("tinv.list") });
   const dataRows = (table: HTMLElement) => within(table).queryAllByRole("row").slice(1);
 
-  it("applies filters from the first page, keeps them for load more, applies on Enter and clears, never touching the URL or asking to leave a dirty draft", async () => {
+  it("applies filters from the first page, keeps them for load more, applies on Enter and clears, writing them to the address by replace and never asking to leave a dirty draft", async () => {
     const requests = stub((url) => {
       if (url.includes("side=AR")) return response({ items: [], nextCursor: null });
       if (url.includes("party=V1"))
@@ -1067,7 +1067,7 @@ describe("trade invoice list filters (TINV-05)", () => {
     expect(requests.lists).toEqual([base]);
     // A dirty draft: operating the filter bar is not leaving the page.
     fireEvent.change(screen.getByLabelText(t("tinv.party")), { target: { value: "V9" } });
-    const href = window.location.href;
+    const length = window.history.length;
     const push = vi.spyOn(window.history, "pushState");
     const replace = vi.spyOn(window.history, "replaceState");
 
@@ -1076,6 +1076,10 @@ describe("trade invoice list filters (TINV-05)", () => {
     apply();
     const filtered = `${base}&party=V1&side=AP&from=2026-01-01&to=2026-06-30`;
     await waitFor(() => expect(requests.lists).toEqual([base, filtered]));
+    // TINV-07: the applied filters are in the address, written by replace.
+    expect(window.location.hash).toBe(
+      "#/trade-invoices?company=DEFAULT&party=V1&side=AP&from=2026-01-01&to=2026-06-30",
+    );
     await waitFor(() => expect(dataRows(table)).toHaveLength(1));
     fireEvent.click(screen.getByRole("button", { name: t("master.loadMore") }));
     await waitFor(() =>
@@ -1110,10 +1114,12 @@ describe("trade invoice list filters (TINV-05)", () => {
     await waitFor(() => expect(dataRows(table)).toHaveLength(2));
     expect(screen.queryByText(t("tinv.filter.none"))).toBeNull();
 
-    // Nothing reached the URL, history or the leave confirmation; the draft is untouched and unsent.
-    expect(window.location.href).toBe(href);
+    // TINV-07: the filters reached the address only by replace (no history entry); clearing leaves
+    // just the company. Nothing asked to leave; the draft is untouched and unsent.
+    expect(window.location.hash).toBe("#/trade-invoices?company=DEFAULT");
+    expect(window.history.length).toBe(length);
     expect(push).not.toHaveBeenCalled();
-    expect(replace).not.toHaveBeenCalled();
+    expect(replace).toHaveBeenCalled();
     expect(confirm).not.toHaveBeenCalled();
     expect(screen.getByLabelText<HTMLInputElement>(t("tinv.party")).value).toBe("V9");
     expect([requests.previews, requests.posts]).toEqual([0, 0]);
