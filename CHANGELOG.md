@@ -10,7 +10,7 @@
 
 ## [0.14.0] - 发布候选（尚未发布，日期待定）
 
-> **发布候选**：尚未打 tag。产品代码基线暂为 `main` `bfeccb7`（TINV-09 [#250](https://github.com/lingshf/ai-native-erp/pull/250) 的合并提交；main Full run 45227250621 绿）；REFAC-06c [#256](https://github.com/lingshf/ai-native-erp/pull/256) 合并后更新基线与本节。tag 目标按 D21 为本 RC 与 Demo 合并后的提交，发布前核对 `git diff <基线> <tag 目标> -- packages scripts` 为空。
+> **发布候选**：尚未打 tag。产品代码基线为 `main` `94aefc2`（REFAC-06c [#256](https://github.com/lingshf/ai-native-erp/pull/256) 的合并提交，S15 五项全部已合并；该提交的 main Full run 45230507382 起草时尚在运行，未确认绿）；上一个提交 `bfeccb7`（TINV-09 [#250](https://github.com/lingshf/ai-native-erp/pull/250)）的 main Full run 45227250621 绿。tag 目标按 D21 为本 RC 与 Demo 合并后的提交，发布前核对 `git diff <基线> <tag 目标> -- packages scripts` 为空。
 
 S15 Sprint：一项用户可见的功能变化（TINV-09）、一处按钮文案修正（JV-FIX-01）、一项开发流程变化（CI-02）和重构。按 SemVer 取 minor（0.13.1 → 0.14.0），因为 TINV-09 改变订单的已开票数量与开票状态；**有迁移（019 → 020，只重算已保存的开票状态，不改表结构）**，无依赖变化，不改过账规则、贷项金额与数量上限。
 
@@ -26,7 +26,8 @@ S15 Sprint：一项用户可见的功能变化（TINV-09）、一处按钮文案
   - 发票页路由 JS +220 B、CSS ±0（超出任务书 +200 B，按 D462 ① 接受）；
   - 其余路由 JS −3 B 至 +4 B，CSS ±0（D462 视同噪声）；
   - 首屏入口块 `index.js`（测量对象：入口块文件，不是路由新增）：未压缩 −167 B；文件名哈希屏蔽后的 gzip-9 −82 B（D432 方法，base `5803ae8` 与 head `69e15a3`）；来源为 #251 正文 B4 “首屏与 D462 的解释”一节的入口块条目，与上面的逐路由表分开；D462 ② 接受。
-  - 数字取自 #251 正文，发布前未重测；若 REFAC-06c 合并后重测，以重测为准。
+  - 数字取自 #251 正文，发布前未重测（合并基 `5803ae8`）。
+  - **REFAC-06c（[#256](https://github.com/lingshf/ai-native-erp/pull/256)，合并提交 `94aefc2`）**：`InvoiceEntry` 拆成 hooks、命令和展示组件，无界面变化。测量对象为发票页路由 `src/TradeInvoices.tsx` 的“路由新增 JS”，方法为 D432（文件名哈希屏蔽后的 gzip-9），merge base `03f129b` 与 head `50ebfa4` 各在 clean worktree 构建，来源为 #256 正文 P7 节的路由表：JS 21006 → 21896 B（**+890 B**，D461 上限 ≤ +900 B）。其余路由的路由新增 JS、首屏入口（`index.html` 闭包，JS 160872 → 160872 B）和 CSS（两侧都有的 12 个文件，屏蔽哈希后内容摘要相同）均为 ±0。这与上面 06b 的 +220 B 是不同 PR、不同基线的两次测量，不相加。数字取自 #256 正文，发布前未重测（D466：不按新 main 重测）。
 
 ### 内部
 
