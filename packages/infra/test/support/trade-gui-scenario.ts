@@ -414,7 +414,8 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
     // TORD-06 (B8): the invoicing filter follows posting and cancellation. PO-STATUS is invoiced in
     // part, then in full; cancelling the second invoice brings it back to partial. PO-NONE is
     // never invoiced. Runs after orderToInvoice(): PO-DEMO and PO-FROM are then fully invoiced.
-    // Every filtered row's badge shows the filtered status; the address never changes.
+    // Every filtered row's badge shows the filtered status; TORD-07 writes the company and the
+    // applied filter into the address.
     async function orderInvoicingFilter() {
       await purchaseOrder("PO-NONE");
       await purchaseOrder("PO-STATUS");
@@ -424,10 +425,9 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       const listed = async (status: TradeOrderInvoicingStatus, expected: string[]) => {
         stage += 1;
         await navigate("trade-orders");
-        const hash = new URL(page.url()).hash;
         await applyInvoicingFilter(status);
         await expectInvoicingFiltered(status, expected);
-        expect(new URL(page.url()).hash).toBe(hash);
+        expect(new URL(page.url()).hash).toBe(`#/trade-orders?company=DEFAULT&invoicing=${status}`);
         await page.screenshot({
           path: join(artifacts, `${name}-order-invoicing-${stage}-${status}.png`),
         });
