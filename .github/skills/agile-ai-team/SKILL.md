@@ -45,7 +45,7 @@ Model suggestions:
   - new tests ≤ 5 s each;
   - behavior-change table present;
   - "User-visible changes" section present;
-  - readability: the PR body has a "Readability" (可读性) section covering rules ①–⑥ in [roadmap §5](../../../design/roadmap.md#5-团队流程) (naming; functions ≤ 80 lines and nesting ≤ 3; hotspot files over 800 lines grow by ≤ 100 lines per PR; extract on the third repetition; named constants for magic numbers; comments explain why). Reviewers may send the PR back on these grounds;
+  - readability: the PR body has a "Readability" (可读性) section covering rules ①–⑥ of the DoD in [roadmap §5](../../../design/roadmap.md#5-团队流程), which is the single source for the counting rules (lines exclude blanks and comment-only lines; ≤ 80 per function and nesting ≤ 3; hotspots are files over 800 lines at the PR base, net growth ≤ 100 by per-file `git diff --numstat`; extract on the third repetition of the same rule or assertion flow touched by the PR). Reviewers may send the PR back on these grounds;
   - reviewer APPROVED on the exact head.
 - **Sprint close, in order:**
   1. **Release candidate.** The release manager opens a release PR (CHANGELOG, docs, flows, demo, release notes) → review → merge.
