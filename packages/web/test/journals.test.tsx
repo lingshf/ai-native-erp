@@ -646,6 +646,30 @@ describe("journal editor", () => {
   });
 });
 
+it("labels the always-available list reload as refresh, not retry, and still reloads (JV-FIX-01)", async () => {
+  window.history.replaceState(null, "", "/#/journals");
+  let listReads = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn<typeof fetch>().mockImplementation(async (path) => {
+      const { pathname } = new URL(String(path), "http://localhost");
+      if (pathname === "/api/v1/companies") return response({ items: [company], nextCursor: null });
+      if (pathname === "/api/v1/journals") listReads++;
+      return response({ items: [], nextCursor: null });
+    }),
+  );
+  render(<App />);
+  const refresh = await screen.findByRole("button", { name: "刷新列表" });
+  expect(screen.queryByRole("button", { name: label("zh", "master.retry") })).toBeNull();
+  await waitFor(() => expect(listReads).toBe(1));
+  fireEvent.click(refresh);
+  await waitFor(() => expect(listReads).toBe(2));
+  fireEvent.change(screen.getByLabelText(label("zh", "shell.language")), {
+    target: { value: "en" },
+  });
+  expect(await screen.findByRole("button", { name: "Refresh list" })).toBeTruthy();
+});
+
 it("shows the page description verbatim in zh and en whether teaching is off or on (UI-16)", async () => {
   window.history.replaceState(null, "", "/#/journals");
   vi.stubGlobal(

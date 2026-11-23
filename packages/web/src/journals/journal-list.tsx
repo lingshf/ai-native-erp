@@ -40,7 +40,7 @@ export function JournalToolbar({ journal, listing, t }: ListProps) {
         disabled={busy}
         onClick={() => void listing.refetch()}
       >
-        {t("master.retry")}
+        {t("journal.refresh")}
       </button>
     </div>
   );
