@@ -81,3 +81,10 @@
 - 步骤 1 `readme-block-rehearsal`：用 `[regex]` 从 README 取出统一步骤块（`$capture = $false`），以 `[scriptblock]::Create` 在真服务上运行。**exit 0**：build、新鲜度门禁（runner 记录 `dist-index 06:19:29Z` 晚于 HEAD 提交 `06:14:55Z`，`newer=True`）、播种、readiness ok、`capture skipped (dry-run)`、`port 4201 released`；块自己的复核输出 `sha256=5B7F438BE8137790FCE6E092F2D9F2548B8E3565452E6FC9245A23D293E4A3B9 lines=96`，入库日志 `logs/readme-block-d392.run.log` 的 SHA-256 与行数一致；build 日志 `logs/readme-block-d392-build.log`（56 行，`9D7C43B00D77BDD4AB0F9E58EDE51034999E41C6E189DBF16D1A140A44D5E582`）。
 - 步骤 2 `orchestration-stub`：**未运行**。runner 在步骤 1 之后的计数检查发现 3 个外部进程（cmd.exe 67240、node.exe 16464、cmd.exe 76024，命令行不可读，不是本轮启动的），按规则 `ABORT: external counted process after readme-block-rehearsal (counted=3)`。我没有结束任何进程。
 - 待办：stub 仍待一个新时段。
+
+## 6c. D395 槽位运行：orchestration-stub（一次，本地 22:29:17–22:31:47，HEAD `2d0d723494da457b049c97f63a040afd0b69c295`，工作区干净）
+
+- 预检连续 6 次为 0 后开跑；**exit 0，runner `counted-after=0`**，stderr 为空（未入库）。取到的块是 README 渲染结果里的统一步骤块（序号 5/共 5 块）。
+- 全部断言通过：A1–A6 与各对照（owner mismatch 在 seed-invoicing / seed-sales / seed-detail 之前中止，去掉 PID 比较后负例失效）；B3 预演、B6 取图、B6 两个 dist 负例；B7 成功 / 日志只读写失败 / exit 3 / 抛错 / 复制失败；B7 日志复核 `sha256=A446E107…CC57 lines=12` 与落盘一致；结束时端口 4201 空闲，真实截图目录未变（55 个文件）。
+- 日志 `logs/orchestration-stub-d395.out.log`（75 行，SHA-256 `0E9E316A9C0243B307267C748A32E5DA8858382EC32FB49CD3CAD222A9E14660`）。它取代 §5 里旧版 stub 日志，作为当前脚本的证据。
+- 至此 D372/D373/D383 的三项（stub、PROC-05 负例、README 块实跑）均已在当前脚本上跑通。
