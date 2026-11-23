@@ -47,6 +47,8 @@ jobs:
         run: npm run check
       - name: Typecheck
         run: npm run typecheck
+      - name: Slot preflight (tsc + TDZ, baseline)
+        run: node scripts/slot/preflight.mjs --root .
       - name: Import boundaries
         run: npm run check:boundaries
       # Unconditional, unlike the affected tests below: a PR that only adds a test file does

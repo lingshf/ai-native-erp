@@ -2,7 +2,7 @@
 
 E2E 独占时段（[路线图 §5](../../design/roadmap.md#5-团队流程)“E2E 独占时段”）用的运行器与进程采样器，规则见路线图 §5“进程采样规则”。本目录实现规则版本 **R2**（`procs.ps1` 中的 `$script:SlotRuleVersion`）：R1 即 D319 时段所用 D316 版 kit（gist `lingshf/c437f3d99887d0214ebd05ae9d741cc5` @ `4e00af7`）的实际逻辑，含 D320 追认的 launcher 分支，逐分支一致，只多出规则编号；R2 在 R1 上加了 SR-X1 的沿用判定（D411、D412，S12 SLOT-02）：本次运行已判为外仓的进程，之后命令行读不到但创建时间不变时仍判外仓；一旦某次可读采样改判为非外仓，沿用记录即清除（以最新可读判定为准）。来源：[SLOT-01](../../design/tasks/SLOT-01-slot-sampler-in-repo.md)。
 
-不进 Vitest、不进 CI。
+不进 Vitest、不进 CI；唯一例外是开跑前静态检查（`preflight.mjs`），PR CI 的 verify 也运行它（S15 CI-02，见[下文](#开跑前静态检查s12-slot-02d407--d408)）。
 
 | 文件                              | 作用                                                                                                           | 平台            |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------- |
@@ -53,6 +53,8 @@ node scripts/slot/check-manifest.mjs [--roadmap design/roadmap.md] [--code scrip
 ## 开跑前静态检查（S12 SLOT-02，D407 / D408）
 
 `slot-run.ps1` 的顺序：输入检查 → 加载步骤 → **静态检查（先 head，再 base）** → 构建 → dist 检查 → 进程预检 → 逐步运行。`-Stub` 演练同样真跑静态检查。
+
+**PR CI 也运行**（S15 CI-02）：`.github/workflows/ci.yml` 的 verify 在 `Typecheck` 之后运行 `node scripts/slot/preflight.mjs --root .`（不带 `--files`），退出码判定与时段相同：0 通过，4 或 6 让 verify 失败。这样 `test/support/**` 与 `*.slow.test.ts` 的类型错误在合并前暴露。时段 runner 的第一步静态检查不变，不因 CI 已跑而省略。
 
 - **检查内容**：`preflight.mjs --root <checkout>` 用 `<checkout>` 自己的 `node_modules` 下的 tsc 和 `@babel/parser`，读取 `<checkout>/scripts/slot/` 下的 `tsconfig.preflight.json` 与 `preflight-baseline.json`。
   - tsc：检查 `tsconfig.preflight.json` 的 `include`（`packages/infra/test/support/**/*.ts`、`packages/infra/test/http/*.slow.test.ts`）。
