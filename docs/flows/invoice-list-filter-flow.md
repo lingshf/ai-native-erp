@@ -1,6 +1,6 @@
 # 发票列表筛选流程（v0.10.0；地址栏 v0.12.0）
 
-页面：发票页 `#/trade-invoices` 的发票列表。图中按钮和提示名取自界面中文标签；与代码不一致时以代码和测试为准（`packages/web/src/trade-invoices/invoice-list.tsx:23–326`、挂载处 `packages/web/src/TradeInvoices.tsx:195`）。
+页面：发票页 `#/trade-invoices` 的发票列表。图中按钮和提示名取自界面中文标签；与代码不一致时以代码和测试为准（`packages/web/src/trade-invoices/invoice-list.tsx:23–326`）。
 
 ## 总图：筛选与列表
 
