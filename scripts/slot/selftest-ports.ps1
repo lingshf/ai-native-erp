@@ -6,8 +6,9 @@
 #     browser) and logs "ports free" at both checks (before the preflight, before the first step).
 # P3: a run without -Stub and without -Ports ends with exit 4 before the build.
 # P4 / P5 (D475): a wrapper replaces Get-NetTCPConnection with a function that fails. P4 writes a non-terminating
-#     provider error at the first check: exit 8 before the preflight and the build. P5 succeeds once (no listeners) and
-#     throws at the second check: exit 8 before the first step. Both log the full error; neither ends with 7.
+#     provider error at the first check: exit 8 before the preflight and the build. P5 succeeds once (no listeners); at
+#     the second check it writes a non-terminating error and then throws: exit 8 before the first step, with both errors
+#     logged in full. Neither ends with 7.
 # Only processes this script starts are stopped. Exit 0 when every check passes, 1 otherwise.
 param([Parameter(Mandatory)] [string] $OutDir)
 if ($PSVersionTable.PSVersion.Major -lt 7 -or -not $IsWindows) { Write-Host "selftest-ports.ps1 needs PowerShell 7 on Windows"; exit 2 }
@@ -64,7 +65,7 @@ function Get-PortGateResults([string] $PwshExe, [string] $Runner, [string] $Step
 
 # Writes a wrapper that defines a failing global Get-NetTCPConnection (it shadows the cmdlet inside slot-run.ps1),
 # then runs the real runner. -FailMode provider: non-terminating error on every call; throw-second: the first call
-# returns no listeners, the second throws.
+# returns no listeners, the second writes a non-terminating error and then throws.
 function New-FailingLookupWrapper([string] $Runner, [string] $WorkDir) {
   $wrapper = Join-Path $WorkDir 'lookup-fails.ps1'
   Set-Content $wrapper @"
@@ -74,7 +75,10 @@ function global:Get-NetTCPConnection {
   [CmdletBinding()] param([string] `$State)
   `$global:tcpLookupCalls++
   if (`$FailMode -eq 'provider') { Write-Error -Message 'simulated provider error: CIM query failed' -Category ResourceUnavailable -ErrorId 'SimulatedProviderError'; return }
-  if (`$global:tcpLookupCalls -ge 2) { throw [InvalidOperationException]::new('simulated lookup exception') }
+  if (`$global:tcpLookupCalls -ge 2) {
+    Write-Error -Message 'simulated partial provider error' -Category ResourceUnavailable -ErrorId 'SimulatedPartialError'
+    throw [InvalidOperationException]::new('simulated lookup exception')
+  }
 }
 & '$Runner' -OutDir `$OutDir -StepsFile `$StepsFile -Stub `$Stub -Ports `$Ports
 exit `$LASTEXITCODE
@@ -91,10 +95,12 @@ function Get-LookupFailureResults([string] $PwshExe, [string] $Runner, [string] 
   New-CheckResult "P4 provider error at the first check: exit 8 before the preflight and the build, error logged" $ok "exit=$($r.Code) $(($r.Log -split "`n" | Where-Object { $_ -match 'port lookup failed' }) -join ' ')"
 
   $r = Invoke-SlotRunner $PwshExe $wrapper $Root (Join-Path $WorkDir 'run-lookup-throw') @{ StepsFile = $Steps; Stub = 'pass'; Ports = $port; FailMode = 'throw-second' }
+  $partial = "port lookup failed phase=before-steps id=\[SimulatedPartialError,Get-NetTCPConnection\] category=\[ResourceUnavailable.*message=\[simulated partial provider error\]"
   $failed = "port lookup failed phase=before-steps id=\[.*\] category=\[.*exception=\[System\.InvalidOperationException\] message=\[simulated lookup exception\]"
   $stepFiles = @($r.Files | Where-Object { $_ -like '*-start-rev.txt' -or $_ -like '*.out.log' })
-  $ok = $r.Code -eq 8 -and $r.Log -match "ports free phase=before-preflight ports=$port" -and $r.Log -match $failed -and $r.Log -match 'ABORT: port lookup failed \(before-steps\)' -and $stepFiles.Count -eq 0
-  New-CheckResult "P5 exception at the second check: exit 8 before the first step, error logged" $ok "exit=$($r.Code) $(($r.Log -split "`n" | Where-Object { $_ -match 'port lookup failed' }) -join ' ')"
+  $lookupLines = @($r.Log -split "`n" | Where-Object { $_ -match 'port lookup failed phase=' })
+  $ok = $r.Code -eq 8 -and $r.Log -match "ports free phase=before-preflight ports=$port" -and $r.Log -match $partial -and $r.Log -match $failed -and $lookupLines.Count -eq 2 -and $r.Log -match 'ABORT: port lookup failed \(before-steps\)' -and $stepFiles.Count -eq 0
+  New-CheckResult "P5 non-terminating error then exception at the second check: exit 8 before the first step, both errors logged once each" $ok "exit=$($r.Code) $(($r.Log -split "`n" | Where-Object { $_ -match 'port lookup failed' }) -join ' ')"
 }
 
 $pwshExe = (Get-Process -Id $PID).Path

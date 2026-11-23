@@ -91,15 +91,18 @@ function Get-PortOwnerText([int] $owningPid) {
   $verdict = if ($p.Rule) { $p.Owner } elseif ($script:ever.ContainsKey($owningPid)) { 'SR-R1 runner tree' } else { 'SR-C1 not a candidate' }
   "pid=$owningPid name=$($p.Name) cmdline=[$($p.CommandLine -replace '\s+', ' ')] verdict=[$verdict]"
 }
-# Listen-state TCP connections on -Ports. Any lookup error, non-terminating or thrown, is logged in full and ends the
-# run with exit 8: a port that could not be checked is never treated as free (D475). No retry.
+# Listen-state TCP connections on -Ports. Every lookup error is logged in full, including non-terminating errors that a
+# later throw follows, and the run ends with exit 8: a port that could not be checked is never treated as free (D475). No retry.
+# -ErrorVariable keeps the records written before a throw; the catch adds the thrown record. Each exception is logged once.
 function Get-PortListeners([string] $phase) {
   $lookupErrors = @()
   try { $all = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue -ErrorVariable lookupErrors) }
-  catch { $lookupErrors = @($_) }
+  catch { $lookupErrors = @($lookupErrors) + $_ }
   if ($lookupErrors.Count -eq 0) { return @($all | Where-Object { $Ports -contains [int]$_.LocalPort }) }
+  $logged = [Collections.Generic.HashSet[object]]::new([Collections.Generic.ReferenceEqualityComparer]::Instance)
   foreach ($e in $lookupErrors) {
     $record = if ($e -is [Management.Automation.ErrorRecord]) { $e } else { $e.ErrorRecord }
+    if (-not $logged.Add($record.Exception)) { continue }
     Say "port lookup failed phase=$phase id=[$($record.FullyQualifiedErrorId)] category=[$($record.CategoryInfo)] exception=[$($record.Exception.GetType().FullName)] message=[$($record.Exception.Message -replace '\s+', ' ')]"
   }
   Say "ABORT: port lookup failed ($phase)"
