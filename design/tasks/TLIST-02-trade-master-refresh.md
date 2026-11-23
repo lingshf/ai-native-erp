@@ -70,7 +70,7 @@
 | L4 | 编辑器打开并改过内容时点“刷新列表”：编辑器内容不变，`window.confirm` 未被调用，搜索框、类型、公司不变，列表重读 | 失败 | 通过 |
 | L5 | 连续点两次：前一次请求 `signal.aborted`，最终只显示一次第一页、无重复行；请求失败时显示既有 `Notice` 与“重试” | 失败 | 通过 |
 | L6 | 切到另一类（`tradeProduct`）后点刷新：请求 URL 是 `/api/v1/trade/tradeProduct?…` | 失败 | 通过 |
-| L7 | 键盘：Tab 从“新增配置”到“刷新列表”（编辑器打开、“新增配置”禁用时，Tab 仍能到达“刷新列表”）；Enter、空格都触发刷新 | 失败 | 通过 |
+| L7 | 键盘可达的结构前提（jsdom 只证明结构，不模拟原生键盘）：“刷新列表”是原生 `<button type="button">`，DOM 顺序紧跟“新增配置”，编辑器打开、“新增配置”禁用时它仍未禁用，点击它触发刷新 | 失败 | 通过 |
 
 - **base 上的判定方法**：把 head 的 `trade-master.test.tsx` 复制到 base 检出上运行（标签键在 base 上不存在，用例按名称找不到按钮而失败）。PR 正文附 base 与 head 两次运行的未截断汇总行，以及 L2–L7 每个用例在 base 上的失败原因。设计角色已核对 base 一侧：`git grep -n -F "trade.listRefresh" -- packages/web/src` 在 `350e77a` 上无结果（退出码 1）；`TradeMaster.tsx` 中 `listRefresh` 也无结果。发票列表已有的 `tinv.listRefresh` 属于另一个域，不在本页渲染。
 
@@ -117,12 +117,13 @@
 
 ## 证据要求
 
-- 不需要浏览器时段：行为由 jsdom 用例证明（L2–L7）。截图与 390 记录由 DEMO-18 取（见 [DEMO-18 验收](S18.md#demo-18-验收)）：
+- 不需要浏览器时段：行为由 jsdom 用例证明（L2–L7）。原生键盘行为（Tab 从“新增配置”到“刷新列表”，含编辑器打开时；Enter、空格触发刷新）不在 jsdom 中证明，由 DEMO-18 已计划的浏览器运行用真实键盘输入取证（下表最后一行），不另申请时段、不新增必跑 CI 套件。截图与 390 记录也由 DEMO-18 取（见 [DEMO-18 验收](S18.md#demo-18-验收)）：
 
   | 视口 | 测量 | 阈值或比较方式（依据） | 来源 |
   | --- | --- | --- | --- |
   | 390 | 贸易主数据页页面级 `document.documentElement.scrollWidth <= window.innerWidth` | 必须成立（路线图 §5 证据清单 9） | DEMO-18 取证步骤（新增） |
   | 390 | 两个按钮都在视口内：每个按钮 `getBoundingClientRect()` 的 `left >= 0`、`right <= 390` | 必须成立 | DEMO-18 取证步骤（新增） |
   | 1440 | 按钮区截图（中 / 英，红 / 绿主题） | 目视：两个按钮同组，顺序为新增配置、刷新列表 | DEMO-18 截图 |
+  | 1440 | 原生键盘：浏览器键盘输入（如 Playwright `keyboard.press`）Tab 从“新增配置”到“刷新列表”（编辑器打开时同样），Enter 与空格各触发一次列表请求 | 必须成立（L7 的行为部分） | DEMO-18 取证步骤（新增） |
 
 - **可行性**（S13 回顾行动 4）：设计角色已在 `350e77a` 上试改并构建（见“设计试改”）；L3 的“已加载两页”可仿照既有 `fetch` 桩（`trade-master.test.tsx:95–110`）返回带 `nextCursor` 的第一页；L4 的 `confirm` 观测沿用 `:145` 的 `vi.spyOn(window, "confirm")`。

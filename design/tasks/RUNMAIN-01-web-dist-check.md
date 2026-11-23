@@ -88,7 +88,7 @@
 
 ### 真实 worktree 上的对照（送审证据）
 
-- **W8**：在 head 上新建分离 worktree，`npm ci` 后**不构建**，在其根目录运行 `& scripts/demo/assert-web-dist.ps1 -Root (Get-Location).Path; "exit=$LASTEXITCODE"`：退出码 3，≤ 5 秒，输出含该 worktree 的绝对路径与 `npm run build`。再 `npm run build` 后重跑：退出码 0。base 上的对应用户路径（v0.16.0 run-main，33 秒后 `not ready`）见“现状”，开发在同一台机器上重跑一次并附输出。
+- **W8**：在 head 上新建分离 worktree，`npm ci` 后**不构建**，在其根目录运行 `& scripts/demo/assert-web-dist.ps1 -Root (Get-Location).Path; "exit=$LASTEXITCODE"`：退出码 3，≤ 5 秒，输出含该 worktree 的绝对路径与 `npm run build`。再 `npm run build` 后重跑：退出码 0。base 上的对应用户路径（v0.16.0 run-main，33 秒后 `not ready`）以“现状”中设计角色的实测记录与 W1–W6 在 base 上的失败为准，开发**不必重跑**。旧脚本会在固定端口 4203 上启动 Node 监听（即使带 `-SkipCapture`），若有人要重跑，须作为单独协调的无浏览器运行：先申请安静窗口（D478 / D480），运行前确认 4203 空闲，不与其他开发并行。
 
 ### 两侧都须成立的不变量
 
@@ -118,6 +118,6 @@
 
 ## 证据要求
 
-- 不需要浏览器时段，不需要真实 Chrome：W1–W7 由自测证明，W8 在真实 worktree 上运行一次（不启动服务器）。
+- 不需要浏览器时段，不需要真实 Chrome：W1–W7 由自测证明，W8 在真实 worktree 上只运行 `assert-web-dist.ps1`（不启动服务器、不占端口）。
 - **可行性**（S13 回顾行动 4）：设计角色已在 `350e77a` 上实跑 base 的用户路径（见“现状”）；`GIT_COMMITTER_DATE` 固定提交时间、`[IO.File]::SetLastWriteTimeUtc` 设定文件时间在 PowerShell 5.1 与 7 下都可用（.NET Framework 与 .NET 都有该 API）。
 - PR 正文附：base 与 head 两次自测的未截断输出；W8 的命令与输出；W9、W10 的命令与输出；可读性一节。数字（耗时、计数）都附原始输出（S15 回顾行动 1）。
