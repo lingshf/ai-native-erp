@@ -1,6 +1,6 @@
 # DEMO-17 桩演练记录（`slot-run -Stub`，时段前）
 
-状态：**演练已做，真实时段尚未申请批准**。不打 tag。
+状态：**演练与真实时段都已完成**（真实运行见 [`README.md`](README.md) §3）。不打 tag。
 
 ## 1 做了什么
 
@@ -22,7 +22,7 @@
 | 选择器假设 | 页面标题 `.page-header h2`、发票页筛选 `#tinv-filter-*`、方向选项值 `AR`、列表接口的查询参数名 `side` / `party` 来自源码阅读，未在浏览器里验证；真实时段内的 capture 干跑负责验证 |
 | `seed-*.mjs` | 复用旧脚本，未改，本次未重跑 |
 
-按 TEMPLATE 第 12 条，真实时段内先做 capture 干跑（需要浏览器）。
+按 TEMPLATE 第 12 条，真实时段内先做 capture 干跑（需要浏览器）。结果：干跑中 `capture.mjs` 的选择器（标题、发票筛选 id、方向值 `AR`、查询参数 `side`）全部命中，没有修补脚本；见 §5。
 
 ## 3 脚本哈希（取自 git）
 
@@ -42,3 +42,10 @@
 - 规则版本 **R3**，`-Ports 4203`，D444 单次手动、不重试。
 - 序列（TEMPLATE 第 17 条）：两个 worktree 的 `npm ci` 先完成 → 安静时段 → `npm run build`（应用 worktree）→ capture 干跑 → `run-main.ps1 -SkipCapture` → 真实 `slot-run.ps1 -Ports 4203`。任一步失败即停并上报。
 - 只允许 FIX-TADJ-BUSY 在途（尚未派发）。SR-X6 行逐字记录采样器输出的 reason，不自行推断。
+
+## 5 真实时段记录（D484 授权）
+
+- 干跑与 `-SkipCapture` 一次，真实运行一次，均退出码 0，无重试，无 D481 式缺口：`npm run build` 先在 app worktree 做了一次。注意：“capture 干跑”实际是不带 `-SkipCapture` 的 `run-main.ps1`（含 capture，8 张）。
+- 真实运行：`runner start head=6b33135…`，`tooling head=26b16b0…`（见 README §3）。
+- 脚本哈希（`git rev-parse 6b33135:<路径>`）：`capture.mjs` `69d5037f…`、`run-main.ps1` `e26a0dd6…`、`steps-demo17.ps1` `0ca17257…`、`seed-credit.mjs` `80ea9253…`，与 §3 的 Stub 列相同（Stub 之后脚本没有改）。
+- FIX-TADJ-BUSY 没有在窗口内运行；按 D484 推迟，不在 v0.16.0。

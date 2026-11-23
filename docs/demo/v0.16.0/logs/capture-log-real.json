@@ -1,0 +1,384 @@
+[
+ {
+  "name": "trade-orders-list-zh-red-1440",
+  "step": "page",
+  "via": "goto #/trade-orders?company=DEFAULT",
+  "hash": "#/trade-orders?company=DEFAULT",
+  "heading": "采购 / 销售订单",
+  "buttons": {
+   "texts": [
+    "应用",
+    "清除",
+    "刷新列表"
+   ],
+   "types": [
+    "submit",
+    "button",
+    "button"
+   ]
+  }
+ },
+ {
+  "name": "trade-orders-list-en-green-1440",
+  "step": "page",
+  "via": "goto #/trade-orders?company=DEFAULT",
+  "hash": "#/trade-orders?company=DEFAULT",
+  "heading": "Purchase and sales orders",
+  "buttons": {
+   "texts": [
+    "Apply",
+    "Clear",
+    "Refresh list"
+   ],
+   "types": [
+    "submit",
+    "button",
+    "button"
+   ]
+  }
+ },
+ {
+  "name": "trade-invoices-list-zh-red-1440",
+  "step": "page",
+  "via": "goto #/trade-invoices?company=DEFAULT",
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "heading": "采购与销售发票",
+  "buttons": {
+   "texts": [
+    "应用",
+    "清除",
+    "刷新列表"
+   ],
+   "types": [
+    "submit",
+    "button",
+    "button"
+   ]
+  }
+ },
+ {
+  "name": "trade-invoices-list-en-green-1440",
+  "step": "page",
+  "via": "goto #/trade-invoices?company=DEFAULT",
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "heading": "Purchase and sales invoices",
+  "buttons": {
+   "texts": [
+    "Apply",
+    "Clear",
+    "Refresh list"
+   ],
+   "types": [
+    "submit",
+    "button",
+    "button"
+   ]
+  }
+ },
+ {
+  "name": "trade-orders-refresh-record",
+  "step": "refresh",
+  "via": "#/trade-orders?company=DEFAULT：方向选 AR 并点应用，伙伴框输入 ZZZ 不应用，点刷新列表",
+  "record": {
+   "appliedHash": "#/trade-orders?company=DEFAULT&side=AR",
+   "requestQuery": {
+    "company": "DEFAULT",
+    "limit": "100",
+    "side": "AR"
+   },
+   "partyInputAfter": "ZZZ",
+   "sideAfter": "AR",
+   "hashAfter": "#/trade-orders?company=DEFAULT&side=AR",
+   "historyLengthBefore": 2,
+   "historyLengthAfter": 2
+  }
+ },
+ {
+  "name": "trade-invoices-refresh-record",
+  "step": "refresh",
+  "via": "#/trade-invoices?company=DEFAULT：方向选 AR 并点应用，伙伴框输入 ZZZ 不应用，点刷新列表",
+  "record": {
+   "appliedHash": "#/trade-invoices?company=DEFAULT&side=AR",
+   "requestQuery": {
+    "company": "DEFAULT",
+    "limit": "100",
+    "side": "AR"
+   },
+   "partyInputAfter": "ZZZ",
+   "sideAfter": "AR",
+   "hashAfter": "#/trade-invoices?company=DEFAULT&side=AR",
+   "historyLengthBefore": 2,
+   "historyLengthAfter": 2
+  }
+ },
+ {
+  "name": "trade-orders-list-zh-red-390",
+  "step": "k7-390",
+  "via": "goto #/trade-orders?company=DEFAULT",
+  "hash": "#/trade-orders?company=DEFAULT",
+  "documentScrollWidth": 390,
+  "buttons": {
+   "texts": [
+    "应用",
+    "清除",
+    "刷新列表"
+   ],
+   "types": [
+    "submit",
+    "button",
+    "button"
+   ]
+  },
+  "rects": [
+   {
+    "text": "应用",
+    "left": 124,
+    "right": 186,
+    "top": 2059
+   },
+   {
+    "text": "清除",
+    "left": 194,
+    "right": 256,
+    "top": 2059
+   },
+   {
+    "text": "刷新列表",
+    "left": 264,
+    "right": 354,
+    "top": 2059
+   }
+  ]
+ },
+ {
+  "name": "trade-invoices-list-zh-red-390",
+  "step": "k7-390",
+  "via": "goto #/trade-invoices?company=DEFAULT",
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "documentScrollWidth": 390,
+  "buttons": {
+   "texts": [
+    "应用",
+    "清除",
+    "刷新列表"
+   ],
+   "types": [
+    "submit",
+    "button",
+    "button"
+   ]
+  },
+  "rects": [
+   {
+    "text": "应用",
+    "left": 124,
+    "right": 186,
+    "top": 1965
+   },
+   {
+    "text": "清除",
+    "left": 194,
+    "right": 256,
+    "top": 1965
+   },
+   {
+    "text": "刷新列表",
+    "left": 264,
+    "right": 354,
+    "top": 1965
+   }
+  ]
+ },
+ {
+  "name": "trade-adjustments-cancel-zh-red-1440",
+  "step": "page",
+  "via": "goto #/trade-adjustments?company=DEFAULT，动作选 专用取消单据",
+  "hash": "#/trade-adjustments?company=DEFAULT",
+  "heading": "预付、贷项与专用纠错",
+  "selectableItems": 8
+ },
+ {
+  "name": "trade-adjustments-cancel-en-green-1440",
+  "step": "page",
+  "via": "goto #/trade-adjustments?company=DEFAULT，动作选 Cancel document",
+  "hash": "#/trade-adjustments?company=DEFAULT",
+  "heading": "Advances, credits and corrections",
+  "selectableItems": 8
+ },
+ {
+  "checks": [
+   {
+    "check": "trade-orders-list-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-orders-list-zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-orders-list-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-orders-list-en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-invoices-list-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-invoices-list-zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-invoices-list-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-invoices-list-en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-orders-refresh-record 浏览器历史长度不变",
+    "ok": true,
+    "detail": {
+     "appliedHash": "#/trade-orders?company=DEFAULT&side=AR",
+     "requestQuery": {
+      "company": "DEFAULT",
+      "limit": "100",
+      "side": "AR"
+     },
+     "partyInputAfter": "ZZZ",
+     "sideAfter": "AR",
+     "hashAfter": "#/trade-orders?company=DEFAULT&side=AR",
+     "historyLengthBefore": 2,
+     "historyLengthAfter": 2
+    }
+   },
+   {
+    "check": "trade-orders-refresh-record 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-invoices-refresh-record 浏览器历史长度不变",
+    "ok": true,
+    "detail": {
+     "appliedHash": "#/trade-invoices?company=DEFAULT&side=AR",
+     "requestQuery": {
+      "company": "DEFAULT",
+      "limit": "100",
+      "side": "AR"
+     },
+     "partyInputAfter": "ZZZ",
+     "sideAfter": "AR",
+     "hashAfter": "#/trade-invoices?company=DEFAULT&side=AR",
+     "historyLengthBefore": 2,
+     "historyLengthAfter": 2
+    }
+   },
+   {
+    "check": "trade-invoices-refresh-record 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-orders-list-zh-red-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "trade-orders-list-zh-red-390 三个按钮都在视口内（left ≥ 0 且 right ≤ 390）",
+    "ok": true,
+    "detail": [
+     {
+      "text": "应用",
+      "left": 124,
+      "right": 186,
+      "top": 2059
+     },
+     {
+      "text": "清除",
+      "left": 194,
+      "right": 256,
+      "top": 2059
+     },
+     {
+      "text": "刷新列表",
+      "left": 264,
+      "right": 354,
+      "top": 2059
+     }
+    ]
+   },
+   {
+    "check": "trade-orders-list-zh-red-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-invoices-list-zh-red-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "trade-invoices-list-zh-red-390 三个按钮都在视口内（left ≥ 0 且 right ≤ 390）",
+    "ok": true,
+    "detail": [
+     {
+      "text": "应用",
+      "left": 124,
+      "right": 186,
+      "top": 1965
+     },
+     {
+      "text": "清除",
+      "left": 194,
+      "right": 256,
+      "top": 1965
+     },
+     {
+      "text": "刷新列表",
+      "left": 264,
+      "right": 354,
+      "top": 1965
+     }
+    ]
+   },
+   {
+    "check": "trade-invoices-list-zh-red-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-adjustments-cancel-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-adjustments-cancel-zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-adjustments-cancel-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-adjustments-cancel-en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   }
+  ]
+ }
+]

@@ -11,7 +11,7 @@
 > - 有条目：[#271](https://github.com/lingshf/ai-native-erp/pull/271)（新增）、[#270](https://github.com/lingshf/ai-native-erp/pull/270)、[#275](https://github.com/lingshf/ai-native-erp/pull/275)（变更，无用户可见变化）。
 > - 无用户可见变化，条目在下面“文档与流程”：[#273](https://github.com/lingshf/ai-native-erp/pull/273)（S16 评审与回顾的设计文档）、[#274](https://github.com/lingshf/ai-native-erp/pull/274)（Demo 模板与发布清单）。
 >
-> 与 `v0.15.0` 相比，`git diff --name-only v0.15.0 35df068 -- packages` 共 23 个文件（`--shortstat`：+1698/−962），没有迁移（仍为 020），没有 `package.json` 改动；`scripts/` 只有 1 个文件、1 行（`scripts/test-shard-weights.json`，#271 为新测试文件加的估算权重）。tag 目标由协调者定。完整版本差异（两点）与合并基对比（三点，D483）的链接和数字在 tag 创建后核对填入。
+> 与 `v0.15.0` 相比，`git diff --name-only v0.15.0 35df068 -- packages` 共 23 个文件（`--shortstat`：+1698/−962），没有迁移（仍为 020），没有 `package.json` 改动；`scripts/` 只有 1 个文件、1 行（`scripts/test-shard-weights.json`，#271 为新测试文件加的估算权重）。tag 目标按 D484：打在 `release/v0.16.0` 上审核通过的 RC 头，与 v0.14.0、v0.15.0 一致，授权前不打。**FIX-TADJ-BUSY（[#276](https://github.com/lingshf/ai-native-erp/pull/276) 任务书）推迟，不在 v0.16.0 发布。**完整版本差异（两点）与合并基对比（三点，D483）的链接和数字在 tag 创建后核对填入。
 
 S17 Sprint：一项用户可见的小功能（TLIST-01）、两项只拆分文件的重构（REFAC-07、REFAC-08）。按 SemVer 取 minor（0.15.0 → 0.16.0），因为订单列表与发票列表多了一个按钮。**无迁移，无依赖变化**，已有账套不需要 migrate，不改过账规则与任何金额、数量口径。
 
