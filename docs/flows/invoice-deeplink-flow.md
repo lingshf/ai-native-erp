@@ -1,6 +1,6 @@
 # 发票深链接与地址栏筛选流程（v0.12.0，TINV-07 #208）
 
-页面：发票页 `#/trade-invoices`。图中提示名取自界面中文标签；与代码不一致时以代码和测试为准（`packages/web/src/TradeInvoices.tsx`、`TradeInvoiceDetail.tsx`，标签 `ui/trade-labels.ts`）。参数分三组：账套 `company`、详情 `invoice`、筛选 `party / side / from / to`。判定规则的完整逐项表见 `design/tasks/S12.md` 的 P1–P19。
+页面：发票页 `#/trade-invoices`。图中提示名取自界面中文标签；与代码不一致时以代码和测试为准（`packages/web/src/trade-invoices/invoice-list.tsx`、`trade-invoices/invoice-link.ts`、`TradeInvoiceDetail.tsx`，标签 `ui/trade-labels.ts`）。参数分三组：账套 `company`、详情 `invoice`、筛选 `party / side / from / to`。判定规则的完整逐项表见 `design/tasks/S12.md` 的 P1–P19。
 
 ## 总图：打开一个带参数的地址
 

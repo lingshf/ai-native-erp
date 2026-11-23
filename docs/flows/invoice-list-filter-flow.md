@@ -1,6 +1,6 @@
 # 发票列表筛选流程（v0.10.0；地址栏 v0.12.0）
 
-页面：发票页 `#/trade-invoices` 的发票列表。图中按钮和提示名取自界面中文标签；与代码不一致时以代码和测试为准（`packages/web/src/TradeInvoices.tsx:1122–1346`、`:1437`）。
+页面：发票页 `#/trade-invoices` 的发票列表。图中按钮和提示名取自界面中文标签；与代码不一致时以代码和测试为准（`packages/web/src/trade-invoices/invoice-list.tsx:23–326`）。
 
 ## 总图：筛选与列表
 
@@ -59,7 +59,7 @@ flowchart TD
 
 说明：
 
-- 提示通过 `aria-describedby` 与控件关联；校验见 `TradeInvoices.tsx:1204–1213`。
+- 提示通过 `aria-describedby` 与控件关联；校验见 `trade-invoices/invoice-list.tsx:73–89`。
 - 方向没有“无效”状态（只能选下拉项）。
 - 伙伴不存在时服务端返回空页，界面显示“没有符合条件的发票。”。
 

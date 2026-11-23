@@ -8,6 +8,26 @@
 
 （暂无）
 
+## [0.13.1] - 待定
+
+> **发布候选（S14）**：tag 目标与发布日由协调者授权后写定，**尚未打 tag、尚未发布**。产品代码基线为 `main` `48ba245`（REFAC-06 [#242](https://github.com/lingshf/ai-native-erp/pull/242) 的合并提交；main Full run 45211228377 绿）。自 v0.13.0 的 tag（`9866728`）到 `48ba245`，`packages/` 下 29 个文件（+2765/−2651），`scripts/` 下无变化（已核对）。**tag 目标**按 D21 / D398：打在 RC / Demo PR 的 squash 提交上之前，须核对 `git diff 48ba245 <目标> -- packages scripts` 为空。
+
+S14 Sprint：三项只搬移的重构和一项测试夹具类型修正。**没有用户可见的功能变化**；无迁移（仍为 019），无依赖变化，不改过账规则。按 SemVer 取 patch（0.13.0 → 0.13.1）。
+
+### Changed（仅加载体积，无界面变化）
+
+- **业务事件、总账报表、期末结账、贸易报表四页少加载凭证页代码（REFAC-04，[#240](https://github.com/lingshf/ai-native-erp/pull/240)）**：共用件改为直接从 `journals/*` 导入，这四个路由的闭包不再含 `Journals.tsx`。路由新增 JS（屏蔽哈希后的 gzip-9）：业务事件 −7320 B、总账报表 −9145 B、期末结账 −9144 B、贸易报表 −9144 B；其余 10 个路由 ±0。代价（D453 例外）：凭证页 +1017 B，首屏入口 +63 B 原始 / +13 B gzip-9。数字取自 #240 正文，发布前未重测。
+
+### 内部（只搬移，不改行为）
+
+- **订单页拆分（REFAC-05，[#238](https://github.com/lingshf/ai-native-erp/pull/238)）**：`TradeOrders.tsx`（1483 行）按职责拆到 `trade-orders/`；DOM、文案、样式不变。订单路由新增 JS +59 B。
+- **发票页拆分（REFAC-06，[#242](https://github.com/lingshf/ai-native-erp/pull/242)）**：`TradeInvoices.tsx`（1465 行）拆到 `trade-invoices/`，7 个导入方不改；发票页的 5 条路由各 −23 B（gzip-9）；首屏入口 +3 B（文件名哈希屏蔽后经 gzip-9 压缩测得；D454 视同 ±0）。两个数字分开记。
+- **期初夹具类型修正（FIX-01，[#241](https://github.com/lingshf/ai-native-erp/pull/241)）**：只改 `packages/infra/test/support/legacy-opening-fixture.ts` 的类型，产品代码不变。
+
+### 文档
+
+- 用户文档不需要改功能说明；`docs/user` 与 `docs/flows` 里指向拆分前文件的 `file:line` 来源引用已逐条改为 48ba245 上 `trade-invoices/` 的实际位置（D455）。
+
 ## [0.13.0] - 2026-11-23
 
 > **已发布**：tag `v0.13.0`（annotated，tag 对象 `51fc727b…`）打在 `9866728`（Demo [#236](https://github.com/lingshf/ai-native-erp/pull/236) 的 squash 提交），`git diff f1536e1 9866728 -- packages scripts` 为空（已核对，D21 / D398），产品代码与 `f1536e1`、`ef0de69` 相同；发布日 2026-11-23。Release：<https://github.com/lingshf/ai-native-erp/releases/tag/v0.13.0>。完整变更对比：[v0.12.0...v0.13.0](https://github.com/lingshf/ai-native-erp/compare/v0.12.0...v0.13.0)。Demo（真实 Chrome，TORD-07 筛选记忆 12 张）在 tag 内：[docs/demo/v0.13.0](docs/demo/v0.13.0/README.md)。产品代码基线为 `main` `ef0de69`（REFAC-01b [#224](https://github.com/lingshf/ai-native-erp/pull/224) 的合并提交，S13 功能全部合并；该提交的 main Full run 45201528305 绿）；其后的 `f1536e1` 只是 v0.12.0 Demo 文档（[#233](https://github.com/lingshf/ai-native-erp/pull/233)）。自 v0.12.0 的 tag 目标 `a7e2d99` 到 `f1536e1`，`packages/` 下 43 个文件（+5679/−3385），`scripts/` 下 3 个文件（+421/−45）。
