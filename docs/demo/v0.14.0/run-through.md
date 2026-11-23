@@ -56,7 +56,7 @@
 
 | 次序 | 日期（UTC） | 结果 |
 | --- | --- | --- |
-| 1 | 11-22 17:52 | D468：预检超时（15 分钟，68 次采样，每次 counted 3–13，从未连续为 0），未开跑 |
+| 1 | 11-23 17:52 | D468：预检超时（15 分钟，68 次采样，每次 counted 3–13，从未连续为 0），未开跑 |
 | 2 | 11-23 18:09 | 预检通过，demo-capture 开始 12 秒后 `ABORT: external counted process during demo-capture (counted=2)`（同期 `debate-coach\lingshf-reimagined-winner`），无截图 |
 | 3 | 11-23 18:39 | D470：预检通过，3 张 png 后 `ABORT … (counted=1)`（同期 `debate-coach\lingshf-special-memory`），不可用 |
 | 4 | 11-23 19:41 | D478：R3 工具（33d5068）+ `release/v0.14.0` 应用（fa03741），退出码 0，12 张截图，见 README §3 |
