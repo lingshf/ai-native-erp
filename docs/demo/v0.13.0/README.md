@@ -22,6 +22,7 @@ v0.13.0 的 S13 改动里，用户可见的只有 TORD-07（订单筛选写入�
   2. 第 2 次（15:22Z，D449）：跳过 head 静态预检，6 次采样为零后开跑，在 `run-main.ps1` 的就绪检查中失败（`readiness: company DEMO2 missing`，exit 1）。原因是我的脚本写死了不存在的公司 DEMO2，发生在拍任何截图之前，属脚本问题。
   3. 第 3 次（15:24Z，D450，**本 Demo 采用**）：修正就绪检查（只要求 DEFAULT 公司和三种开票状态都有订单，并去掉了我未核实的发票号检查）后运行，`exit=0`、`counted-after=0`，端口 4202 已释放。
 - **跳过的一项**：SLOT-02 的 head 静态预检（tsc 新增键比对）。**原因**：两个新增错误都在 infra 测试夹具中，不影响 web 截图。**依据**：D449。跳过方式：复制 `slot-run.ps1` 为 `scripts/slot-run-d449.ps1`，只把 head 预检两行换成一行日志 `preflight head SKIPPED by D449`，构建、dist 检查和 D308 进程门控不变。夹具类型问题由协调者另行安排修复，不在本 PR 范围。
+- **`slot-run-d449.ps1` 是审计副本**，不能在本目录直接运行：它从 `$PSScriptRoot` 加载 `procs.ps1` 和 `step-env.ps1`，这两个文件在 `scripts/slot/`。复现方法：把它复制到 `scripts/slot/` 下，在 `1bea9fc`（本 Demo 脚本的提交，其 `scripts/slot` 与运行时一致）的检出里运行 `pwsh -NoProfile -File scripts/slot/slot-run-d449.ps1 -OutDir <仓库外目录> -StepsFile docs/demo/v0.13.0/scripts/steps-demo13.ps1`。等价做法：用原 `slot-run.ps1`，把其中 head 预检的两行（`$code = Invoke-Preflight 'head' …` 与 `if ($code -ne 0) { … exit $code }`）换成一行 `Say "preflight head SKIPPED by D449 …"`。副本顶部另有 3 行注释说明，除此之外与运行时的文件逐字相同。
 - 第 3 次的时间线（`logs/slot-summary.log`）：构建 15:24:07Z，dist 比 HEAD 提交新；15:24:12Z–15:25:07Z 6 次预检连续为零；步骤 15:25:07Z–15:25:45Z（约 38 秒）。运行期间每 10 秒采样的 counted 均为 0（`logs/processes.tsv`）。
 - 运行时仓库状态：HEAD `057693f`，工作区有 `run-main.ps1` 的修改（就绪检查）和 `slot-run-d449.ps1`，均已随本 PR 提交（`logs/demo-capture-start-rev.txt`）。
 - 截图从运行输出目录复制到 `screenshots/`，逐文件 SHA-256 比对一致。

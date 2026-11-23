@@ -1,3 +1,6 @@
+# AUDIT COPY (D449) - not runnable from this directory: it dot-sources procs.ps1 and step-env.ps1 from $PSScriptRoot.
+# It is scripts/slot/slot-run.ps1 at 1bea9fc with only the head preflight (2 lines) replaced by a log line. To replay, copy it
+# into scripts/slot/ and run it from there. See ../README.md section 2.
 # Exclusive-slot runner (roadmap §5 "E2E 独占时段"; from the D316 GATE-01 kit, gist 4e00af7, SLOT-01).
 #   pwsh -File scripts/slot/slot-run.ps1 -OutDir DIR_OUTSIDE_REPO -StepsFile STEPS.ps1 [-BaseRoot BASE_WORKTREE] [-PreflightFiles PATH,...]
 # Sampling rules: version R2 of roadmap §5 "进程采样规则", implemented in procs.ps1.
