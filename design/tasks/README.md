@@ -711,7 +711,22 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | DEMO-17（无任务书） | v0.16.0 RC 与 Demo（TLIST-01 未合并则 v0.15.1），验收见 [S17.md](S17.md#demo-17-验收) | 发布 | P1（Sprint 末） | 每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿；DEMO-16 已发布 | docs/release、`docs/user/` | 不加 | 需要（截图） | done（tag → `release/v0.16.0` 的 `ac1c1d4`，D484；D486） | [#277](https://github.com/lingshf/ai-native-erp/pull/277)（`22f3217`） |
 
 - **并行**：A ∥ B ∥ C，冲突域两两不相交，开发同时在岗不超过 3 人；只有 C 可能新增一条分片权重；都不申请浏览器时段，服从 D442 时段停用通知；DEMO-17 排在它们结案之后，申请时段附 `-Stub` 记录（D460）。
-- **Sprint 评审与回顾**：[S17 评审](../reviews/S17.md)（通过：三个开发任务与 RC 已合并，v0.16.0 已发布；打回 8、待证据 1，main Full 零失败）、[S17 回顾](../reviews/S17-retro.md)（4 条行动项待协调者认可；S18 候选见回顾末节；#278 的 `[Unreleased]` 条目已由 #279 写入，下一个 RC 转入 `[0.17.0]`，不重复添加）。
+- **Sprint 评审与回顾**：[S17 评审](../reviews/S17.md)（通过：三个开发任务与 RC 已合并，v0.16.0 已发布；打回 8、待证据 1，main Full 零失败）、[S17 回顾](../reviews/S17-retro.md)（4 条行动项已由协调者认可，由 S18 计划落地；S18 候选见回顾末节；#278 的 `[Unreleased]` 条目已由 #279 写入，下一个 RC 转入 `[0.17.0]`，不重复添加）。
+
+## S18：拆分 InvoiceList + Demo 脚本缺 dist 明确报错 + 贸易主数据列表“刷新列表”（建议 v0.17.0）
+
+计划与任务书见 [S18.md](S18.md)（计划 PR 评审中）。基线 main `350e77a`（S17 回顾 #280 已合并）。三条泳道 A（REFAC-09）、B（RUNMAIN-01）、C（TLIST-02），都不加迁移；S17 回顾行动 1、3、4 由计划 PR 写入路线图 §5 与任务书模板，行动 2 由版本管理写入发布清单。TLIST-02 未合并则发 v0.16.1。
+
+**不在本 Sprint**：M2-05 真实演练与 M2-06（仍待用户决定 A / B / C）；`OrderList` 拆分（S19）与其他函数体拆分；更多列表的“刷新列表”；`slot-run.ps1` 改用新的 dist 检查脚本；OQ-01 后续域。
+
+| ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [REFAC-09](REFAC-09-invoice-list-split.md) | 拆分发票列表 `InvoiceList` 函数体，不改行为 | 重构（页面） | P2 | 无 | `trade-invoices/invoice-list.tsx` 与同目录新文件 | 不加 | 不需要 | todo | — |
+| [RUNMAIN-01](RUNMAIN-01-web-dist-check.md) | Demo 运行脚本缺 dist 时明确报错退出（D481 根因） | 工具（Demo 脚本） | P2 | 无 | 新目录 `scripts/demo/`（两个新文件） | 不加 | 不需要 | todo | — |
+| [TLIST-02](TLIST-02-trade-master-refresh.md) | 贸易主数据列表加“刷新列表” | 功能（列表） | P2 | 无 | `TradeMaster.tsx`、`ui/trade-labels.ts`、`trade-master.test.tsx` | 不加 | 不需要 | todo | — |
+| DEMO-18（无任务书） | v0.17.0 RC 与 Demo（TLIST-02 未合并则 v0.16.1），验收见 [S18.md](S18.md#demo-18-验收) | 发布 | P1（Sprint 末） | 每个开发任务已合并或经协调者决定移出；RUNMAIN-01 已合并；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图） | todo | — |
+
+- **并行**：A ∥ B ∥ C，冲突域两两不相交，开发同时在岗不超过 3 人；没有共享单文件；都不申请浏览器时段，服从 D442 / D480 时段停用通知；DEMO-18 排在它们结案之后，FIX-TADJ-BUSY（#278）的 `[Unreleased]` 条目转入新版本，不重复添加（D484）。
 
 ## 派发顺序
 
