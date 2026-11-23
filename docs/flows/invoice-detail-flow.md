@@ -45,7 +45,7 @@ flowchart TD
   J --> K
   K -- 有 --> L[调整表]
   K -- 无 --> M[该发票没有调整记录]
-``
+```
 
 说明：区块顺序见 `TradeInvoiceDetail.tsx:184–330`；教学卡片 `:186–192`。
 
