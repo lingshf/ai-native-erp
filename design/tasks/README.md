@@ -619,6 +619,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | DEMO-12（无任务书） | v0.12.0 RC 与 Demo，验收见 [S12.md](S12.md#demo-12-验收) | 发布 | P1（Sprint 末） | TINV-07、TORD-06、UI-15 结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | in progress（RC 已合并） | [#221](https://github.com/lingshf/ai-native-erp/pull/221) |
 
 - **并行**：TINV-07 ∥ TORD-06 ∥ UI-15 冲突域不相交，可同时进行（D369）；UI-15 合并后由 UI-16 接替第三个名额（D377），UI-16 合并后由 UI-17 接替（D384）；REFAC-02 合并后空出的 2 个名额给 TINV-08 ∥ SLOT-02，两者与 REFAC-01 的冲突域不相交；只有 TORD-06 加迁移（019），其他任务不得新增迁移。开发同时在岗不超过 3 人。共享单文件与槽位规则见 [S12.md](S12.md#泳道)。
+- **Sprint 评审与回顾**（D445）：[S12 评审](../reviews/S12.md)（通过，无阻塞项）、[S12 回顾](../reviews/S12-retro.md)（7 条行动项，待协调者认可）。
 
 ## S13：迁移虚构演练与操作手册 + 订单筛选写入地址栏 + 场景函数拆分（v0.13.0，D416）
 
