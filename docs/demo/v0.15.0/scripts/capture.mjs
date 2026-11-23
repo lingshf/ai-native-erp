@@ -94,6 +94,9 @@ async function detailPage(page, lang) {
   await page.getByRole("button", { name: "PO-C1", exact: true }).click();
   const table = page.getByRole("table", { name: `${text.lines[lang]} PO-C1`, exact: true });
   await table.waitFor({ timeout: 10000 });
+  // 开票明细异步到达：等首行所有单元格都不再是加载占位“…”，再读数。
+  await table.locator("tbody tr").first().waitFor({ timeout: 10000 });
+  await page.waitForFunction((el) => { const r = el.querySelector("tbody tr"); return !!r && r.querySelectorAll("td").length > 0 && ![...r.querySelectorAll("td")].some((td) => td.textContent.includes("…")); }, await table.elementHandle(), { timeout: 15000 });
   const headers = (await table.locator("thead th").allInnerTexts()).map((h) => h.trim());
   const at = Object.fromEntries(["qtyCol", "invoicedCol", "uninvoicedCol", "creditedCol"].map((k) => [k, headers.indexOf(text[k][lang])]));
   must(Object.values(at).every((i) => i >= 0), `订单行表缺少数量 / 已开票 / 未开票 / 贷项冲回列：${JSON.stringify({ headers, at })}`);

@@ -20,7 +20,7 @@ S16 Sprint：一项用户可见的小功能（TORD-08）、一项只拆分文件
 
 ### Changed（仅加载体积，无界面变化）
 
-- **订单页 `OrderWorkspace` 拆分（REFAC-05b，[#265](https://github.com/lingshf/ai-native-erp/pull/265)，合并提交 `00d1ed4`）**：`order-workspace.tsx` 由 608 行减到 110 行，逻辑拆入 `use-order-entry.ts`、`order-entry-commands.ts` 与若干展示组件，只搬移，界面和行为不变。测量对象为订单页路由 `src/TradeOrders.tsx` 的“路由新增 JS”，方法为 D432（文件名哈希屏蔽后的 gzip-9），base `fe371bf` 与 head `deaac5c` 各在 clean worktree 构建，来源为 #265 正文“P7 打包字节”表：JS 17842 → 18694 B（**+852 B**，上限 ≤ +900 B）。其余路由 ±0；首屏入口块未压缩 530516 → 530516 B（±0），屏蔽哈希后 160904 → 160906 B（+2 B，D454）；CSS ±0。这与 TORD-08 下面的逐文件差值是不同的测量（文件级 vs 路由新增），不相加。数字取自 #265 正文，发布前未重测。
+- **订单页 `OrderWorkspace` 拆分（REFAC-05b，[#265](https://github.com/lingshf/ai-native-erp/pull/265)，合并提交 `00d1ed4`）**：`order-workspace.tsx` 由 608 行减到 110 行，逻辑拆入 `use-order-entry.ts`、`order-entry-commands.ts` 与若干展示组件，只搬移，界面和行为不变。测量对象为订单页路由 `src/TradeOrders.tsx` 的“路由新增 JS”，方法为 D432（文件名哈希屏蔽后的 gzip-9），base `fe371bf` 与 head `deaac5c` 各在 clean worktree 构建，来源为 #265 正文“P7 打包字节”表：JS 17842 → 18694 B（**+852 B**，上限 ≤ +900 B）。其余路由 ±0；首屏（`index.html` 静态 JS 闭包）未压缩 530516 → 530516 B（±0），屏蔽哈希后 160904 → 160906 B（+2 B，D454）；CSS ±0。这与 TORD-08 下面的逐文件差值是不同的测量（文件级 vs 路由新增），不相加。数字取自 #265 正文，发布前未重测。
 - **TORD-08 的体积（#262 正文“构建来源”）**：测量对象为构建产物的各文件，方法为 D432，base `22bd1ce` 与 head `ed3de42`：`TradeOrders` JS 11655 → 11696 B（+41 B）、`TradeOrders` CSS 887 → 888 B（+1 B）、`index` JS 160121 → 160125 B（+4 B），合计 +46 B。数字取自 #262 正文，发布前未重测。
 
 ### 开发流程（无界面变化）
