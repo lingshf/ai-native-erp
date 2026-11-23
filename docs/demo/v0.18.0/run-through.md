@@ -55,7 +55,7 @@ pwsh -NoProfile -File <tool>\scripts\slot\slot-run.ps1 -OutDir <新的空目录>
 
 **环境**：Windows 11 Enterprise 10.0.26300，node v26.13.0，npm 11.20.0。lock blob `07c1aee8b9c3392b88c25f9bb670adbbc8f19201`（app 与 tool 相同）。
 
-**清理前记录与入库核对**：窗口内所有产物在清理前记录了路径、SHA-256、字节数、行数（`logs/d492-artifacts-before-cleanup.csv`），入库后用 `git cat-file blob` 重算核对，输出见 PR 正文：19 个文件（13 个日志与 JSON、6 张截图）中 18 个与清理前的 SHA-256 和字节数完全一致；`.log` 与 JSON 的 blob 保持窗口内的字节（`.gitattributes` 为 `-text`）。**唯一不同的是 `logs/processes-real.tsv`**：窗口内文件 CRLF，550 字节、SHA-256 `3A24F5D5…DB38`；入库 blob 经换行规范化为 LF，539 字节（少 11 个 CR，共 11 行）、SHA-256 `CB10F8D3A64AD5F9C2F88375ABBE21DE43DA486BAA9D8BB7309515EC2D843054`（blob oid `04e83ae95f4fbe4215db637ec7f75211ad6d1ede`）。以 blob 为准，清理前值只作来源记录。
+**清理前记录与入库核对**：窗口内所有产物在清理前记录了路径、SHA-256、字节数、行数（`logs/d492-artifacts-before-cleanup.csv`），入库后用 `git cat-file blob` 重算核对，输出见 PR 正文：19 个文件（13 个日志与 JSON、6 张截图）中 18 个与清理前的 SHA-256 和字节数完全一致；除下述一项外，其余 18 个已逐个核对一致。**唯一不同的是 `logs/processes-real.tsv`**：窗口内文件 CRLF，550 字节、SHA-256 `3A24F5D5…DB38`；入库 blob 经换行规范化为 LF，539 字节（少 11 个 CR，共 11 行）、SHA-256 `CB10F8D3A64AD5F9C2F88375ABBE21DE43DA486BAA9D8BB7309515EC2D843054`（blob oid `04e83ae95f4fbe4215db637ec7f75211ad6d1ede`）。以 blob 为准，清理前值只作来源记录。
 
 | 入库文件 | 窗口内来源 |
 | --- | --- |
@@ -67,7 +67,7 @@ pwsh -NoProfile -File <tool>\scripts\slot\slot-run.ps1 -OutDir <新的空目录>
 | `logs/build-app.log`、`logs/npm-ci-app.log`、`logs/npm-ci-tool.log` | 步骤 1 与窗口前的控制台输出 |
 | `screenshots/*.png`（6 张） | `out\slot-final\shots\` |
 
-**未入库的窗口内文件**（路径、SHA-256、字节数、行数都在 CSV 里）：两个 slot 输出目录下的 `excluded.tsv`、`preflight-*.log`、`build.log`、`demo-capture-*-rev.txt`，`out\shots-dry\` 的 5 张干跑截图（与真实运行截图 SHA-256 相同），`slot-console*.log`（与对应 `slot-summary.log` 同字节）。
+**未入库的窗口内文件**（路径、SHA-256、字节数、行数都在 CSV 里）：两个 slot 输出目录下的 `excluded.tsv`、`preflight-*.log`、`build.log`、`demo-capture-*-rev.txt`，`out\shots-dry\` 的 6 张干跑截图（与真实运行截图 SHA-256 相同），`slot-console*.log`（与对应 `slot-summary.log` 同字节）。
 
 **临时账套情况**（路径清单未能先保存，见下方缺口）：每次 `run-main.ps1` 的 `finally` 删除自己的 `erp-demo-<guid>`；窗口内共 3 次 run-main（步骤 2、3、4c），结束后其账套均已删除。清理前 `%TEMP%` 下另有 4 个 `erp-demo-*`，创建时间均早于开窗（本机时间 2026-11-23 00:51、06:15、10:10、10:39），不是本窗口产生，未触碰。
 
