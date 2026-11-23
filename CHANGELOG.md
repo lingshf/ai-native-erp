@@ -26,7 +26,7 @@ S14 Sprint：三项只搬移的重构和一项测试夹具类型修正。**没�
 
 ### 文档
 
-- 用户文档不需要改功能说明；[用户文档首页](docs/user/README.md)加了“源码引用说明”：文中的 `TradeOrders.tsx` / `TradeInvoices.tsx` / `Journals.tsx` 行号已不对应原位置，行为描述不受影响。
+- 用户文档不需要改功能说明；`docs/user` 与 `docs/flows` 里指向拆分前文件的 `file:line` 来源引用已逐条改为 48ba245 上 `trade-invoices/` 的实际位置（D455）。
 
 ## [0.13.0] - 2026-11-23
 
