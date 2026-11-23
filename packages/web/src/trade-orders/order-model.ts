@@ -1,4 +1,4 @@
-import { tradeOrderSchema } from "@erp/core/contracts";
+import type { tradeOrderSchema } from "@erp/core/contracts";
 import type { TradeOrderKey } from "../ui/trade-order-labels.ts";
 export type T = (key: TradeOrderKey, params?: Readonly<Record<string, string | number>>) => string;
 export type Order = ReturnType<typeof tradeOrderSchema.parse>;

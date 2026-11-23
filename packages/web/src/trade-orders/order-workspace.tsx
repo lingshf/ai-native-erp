@@ -15,13 +15,7 @@ import { masterRequest, MasterDataFailure } from "../master-data-client.ts";
 import { formatMinor } from "../reports-data.ts";
 import type { OrderFilter } from "../trade-order-link.ts";
 import { Badge, FastTab, MessageBar } from "../ui/components/index.tsx";
-import {
-  type T,
-  type Order,
-  type Guard,
-  type Opened,
-  idleGuard,
-} from "./order-model.ts";
+import { type T, type Order, type Guard, type Opened, idleGuard } from "./order-model.ts";
 import {
   type Command,
   type Draft,

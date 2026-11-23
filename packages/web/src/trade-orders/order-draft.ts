@@ -1,4 +1,4 @@
-import { tradeOrderCommandSchema, type CompanyDto } from "@erp/core/contracts";
+import type { tradeOrderCommandSchema, CompanyDto } from "@erp/core/contracts";
 import type { TradeOrderKey } from "../ui/trade-order-labels.ts";
 export type Command = ReturnType<typeof tradeOrderCommandSchema.parse>;
 type LineDraft = {
