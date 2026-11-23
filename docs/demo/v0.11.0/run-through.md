@@ -75,3 +75,9 @@
 - 原因（离线复现）：pwsh 启动的 powershell.exe 继承带 PowerShell 7 目录的 `PSModulePath`，5.1 加载了 7 版 `Microsoft.PowerShell.Utility`；在该环境里逐个探测脚本用到的 55 个 cmdlet，仅 `Get-FileHash`、`New-Guid` 缺失。`New-Guid` 在 demo 脚本里无使用。
 - 修复（仅文档/脚本）：stub 改用 .NET SHA256（`Get-Sha256`）；README 统一步骤块里的 `Get-FileHash` 同样改为 .NET。`proc05-negatives.ps1`、`stub-check.ps1` 仍含 `Get-FileHash`，它们不经 runner 子进程运行（D372 在本机 shell 跑过），未改。
 - 待办：协调者批准新时段后重跑 `orchestration-stub.ps1` 一次，结果记入本节。
+
+## 6b. D392 槽位运行（一次，`slot-run.ps1` + 两步，本地 22:19:24–22:22:28，HEAD `30800e0e1dfc5c5f515d35af99f0e8a030633d73`，工作区干净）
+
+- 步骤 1 `readme-block-rehearsal`：用 `[regex]` 从 README 取出统一步骤块（`$capture = $false`），以 `[scriptblock]::Create` 在真服务上运行。**exit 0**：build、新鲜度门禁（runner 记录 `dist-index 06:19:29Z` 晚于 HEAD 提交 `06:14:55Z`，`newer=True`）、播种、readiness ok、`capture skipped (dry-run)`、`port 4201 released`；块自己的复核输出 `sha256=5B7F438BE8137790FCE6E092F2D9F2548B8E3565452E6FC9245A23D293E4A3B9 lines=96`，入库日志 `logs/readme-block-d392.run.log` 的 SHA-256 与行数一致；build 日志 `logs/readme-block-d392-build.log`（56 行，`9D7C43B00D77BDD4AB0F9E58EDE51034999E41C6E189DBF16D1A140A44D5E582`）。
+- 步骤 2 `orchestration-stub`：**未运行**。runner 在步骤 1 之后的计数检查发现 3 个外部进程（cmd.exe 67240、node.exe 16464、cmd.exe 76024，命令行不可读，不是本轮启动的），按规则 `ABORT: external counted process after readme-block-rehearsal (counted=3)`。我没有结束任何进程。
+- 待办：stub 仍待一个新时段。
