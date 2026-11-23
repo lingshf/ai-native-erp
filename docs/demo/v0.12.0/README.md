@@ -22,7 +22,7 @@ UI-17（入口 −11 B、CSS 0 B）不放截图（D384）。
 ## 2 运行记录
 
 - 脚本：`scripts/seed-large.mjs`（AP-BIG-1，合计 122011764641 分 = 1,220,117,646.41，net 107975012957、tax 14036751684）、`capture.mjs`、`run-main.ps1`、`steps-demo12.ps1`。前序夹具沿用 v0.4.0 / v0.10.0 / v0.11.0 的 seed。
-- 时段：R2（`scripts/slot/slot-run.ps1`），D426 / D441 / D444 批准；最终采用的一次：head `fe54095ab18dd923508a0a31c618a362a70930aa`（提交到 PR 分支并变基到最新 main 后为 `63e547e`，`capture.mjs` 内容相同）2026-11-23 14:53:10Z 开始，14:55:23Z 第 12 次预检达到连续 6 次零，步骤 14:55:23Z–14:57:39Z（约 2 分 16 秒），`exit=0`、`counted-after=0`，端口 4202 已释放。日志：`logs/slot-summary.log`、`logs/demo-capture.out.log`、`logs/capture-log-main.json` 等。
+- 时段：R2（`scripts/slot/slot-run.ps1`）。**最终采用的一次（head `fe54095ab18dd923508a0a31c618a362a70930aa`）的启动未经批准**——它由我漏停的自动重试循环启动（见 §3）；它产出的 52 张截图由 D444 事后采纳。D426 / D441 批准的是手动时段运行，不是这次。该次运行（提交到 PR 分支并变基到最新 main 后为 `63e547e`，`capture.mjs` 内容相同）2026-11-23 14:53:10Z 开始，14:55:23Z 第 12 次预检达到连续 6 次零，步骤 14:55:23Z–14:57:39Z（约 2 分 16 秒），`exit=0`、`counted-after=0`，端口 4202 已释放。日志：`logs/slot-summary.log`、`logs/demo-capture.out.log`、`logs/capture-log-main.json` 等。
 - 截图从运行输出目录复制到 `screenshots/`，逐文件 SHA-256 比对一致。
 - 未做：`slot-run -Stub` 的桩演练；脚本的预演是不开浏览器的真实服务运行（5 个 seed 全过）加源码核对。
 
