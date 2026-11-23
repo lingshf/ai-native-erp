@@ -109,8 +109,7 @@ it.each(pages)(
       expect(description?.textContent).toBe(page.expected[language]);
       expect(label(language, page.description)).toBe(page.expected[language]);
       const tip = [...container.querySelectorAll("aside.teaching-tip")].find(
-        (element) =>
-          element.getAttribute("aria-label") === label(language, page.teaching),
+        (element) => element.getAttribute("aria-label") === label(language, page.teaching),
       );
       expect(Boolean(tip)).toBe(teaching);
     };
@@ -120,9 +119,7 @@ it.each(pages)(
       });
     for (const teaching of [false, true]) {
       if (teaching)
-        fireEvent.click(
-          screen.getByLabelText(label("zh", "shell.showTeachingExplanations")),
-        );
+        fireEvent.click(screen.getByLabelText(label("zh", "shell.showTeachingExplanations")));
       assertHeader("zh", teaching);
       switchTo("zh", "en");
       assertHeader("en", teaching);
