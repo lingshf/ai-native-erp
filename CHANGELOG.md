@@ -10,7 +10,7 @@
 
 ## [0.14.0] - 发布候选（尚未发布，日期待定）
 
-> **发布候选**：尚未打 tag。产品代码基线为 `main` `94aefc2`（REFAC-06c [#256](https://github.com/lingshf/ai-native-erp/pull/256) 的合并提交，S15 五项全部已合并；该提交的 main Full run 45230507382 起草时尚在运行，未确认绿）；上一个提交 `bfeccb7`（TINV-09 [#250](https://github.com/lingshf/ai-native-erp/pull/250)）的 main Full run 45227250621 绿。tag 目标按 D21 为本 RC 与 Demo 合并后的提交，发布前核对 `git diff <基线> <tag 目标> -- packages scripts` 为空。
+> **发布候选**：尚未打 tag。产品代码基线为 `main` `94aefc2`（REFAC-06c [#256](https://github.com/lingshf/ai-native-erp/pull/256) 的合并提交，S15 五项全部已合并；该提交的 main Full run 45230507382 绿）；上一个提交 `bfeccb7`（TINV-09 [#250](https://github.com/lingshf/ai-native-erp/pull/250)）的 main Full run 45227250621 绿。tag 目标按 D21 为本 RC 与 Demo 合并后的提交，发布前核对 `git diff <基线> <tag 目标> -- packages scripts` 为空。
 
 S15 Sprint：一项用户可见的功能变化（TINV-09）、一处按钮文案修正（JV-FIX-01）、一项开发流程变化（CI-02）和重构。按 SemVer 取 minor（0.13.1 → 0.14.0），因为 TINV-09 改变订单的已开票数量与开票状态；**有迁移（019 → 020，只重算已保存的开票状态，不改表结构）**，无依赖变化，不改过账规则、贷项金额与数量上限。
 
