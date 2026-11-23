@@ -55,6 +55,11 @@ import {
   type OpeningIssue,
   type OpeningPlan,
 } from "../legacy/opening-items.ts";
+import {
+  OPENING_WRITE_BATCH,
+  openingEntryBatches,
+  type OpeningEntry,
+} from "../legacy/opening-staging.ts";
 import { TradeMasterService } from "@erp/core/application";
 import type { Connection, Row } from "./types.ts";
 
@@ -82,6 +87,8 @@ function prepared(db: Database.Database, sql: string): Database.Statement {
   return result;
 }
 const quote = (name: string) => `"${name.replaceAll('"', '""')}"`;
+const LEGACY_REF_INSERT =
+  "INSERT INTO legacy_refs(source,object_type,legacy_id,target_id,run_id,evidence) VALUES(?,?,?,?,?,?)";
 function fields(value: string): Fields {
   const parsed: unknown = JSON.parse(value);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
@@ -197,13 +204,17 @@ export function checkLegacyOpeningItems(
     rmSync(temporary, { recursive: true });
   }
 }
-async function writeOpening(
-  db: Database.Database,
-  repo: MasterDataRepository,
-  opening: OpeningPlan,
-  run: string,
-  at: string,
-): Promise<void> {
+type OpeningWrite = {
+  db: Database.Database;
+  plan: Database.Database;
+  repo: MasterDataRepository;
+  opening: OpeningPlan;
+  run: string;
+  at: string;
+  batchItems: number;
+  beforeBatch?: (batch: number) => void;
+};
+async function writeOpeningConfigs({ repo, opening, at }: OpeningWrite): Promise<void> {
   const store: MasterDataStore = {
     read: async (work) => work(repo),
     write: async (work) => work(repo),
@@ -218,19 +229,29 @@ async function writeOpening(
       expectedRevision: 0,
       data: config.data,
     } as Parameters<TradeMasterService["save"]>[0]);
-  const refs = prepared(
-    db,
-    "INSERT INTO legacy_refs(source,object_type,legacy_id,target_id,run_id,evidence) VALUES(?,?,?,?,?,?)",
-  );
-  for (const entry of opening.entries) {
-    await repo.insertTradeItem(
+}
+/** Writes one batch of staged items; nothing about the batch outlives this call. */
+async function writeOpeningBatch(write: OpeningWrite, entries: OpeningEntry[]): Promise<void> {
+  const refs = prepared(write.db, LEGACY_REF_INSERT);
+  for (const entry of entries) {
+    await write.repo.insertTradeItem(
       entry.company,
       entry.item,
       id(entry.source, entry.company, "journals", entry.journalLegacyRef),
       null,
     );
-    refs.run(entry.source, "opening_items", entry.legacyId, entry.item.itemId, run, entry.evidence);
+    refs.run(
+      entry.source,
+      "opening_items",
+      entry.legacyId,
+      entry.item.itemId,
+      write.run,
+      entry.evidence,
+    );
   }
+}
+function writeOpeningAccounts({ db, opening, run }: OpeningWrite): void {
+  const refs = prepared(db, LEGACY_REF_INSERT);
   for (const account of opening.accounts)
     refs.run(
       account.source,
@@ -247,6 +268,20 @@ async function writeOpening(
         side: account.side,
       }),
     );
+}
+/**
+ * Partners, then the staged items in file order, then the account declarations. The caller's
+ * transaction stays open throughout: batches only bound the JS objects in memory, they are
+ * never committed separately (M2-03b §二 atomicity, D434).
+ */
+async function writeOpening(write: OpeningWrite): Promise<void> {
+  await writeOpeningConfigs(write);
+  let batch = 0;
+  for (const entries of openingEntryBatches(write.plan, write.batchItems)) {
+    write.beforeBatch?.(++batch);
+    await writeOpeningBatch(write, entries);
+  }
+  writeOpeningAccounts(write);
 }
 /** Re-derives every target AP/AR control balance from target rows only; any difference blocks. */
 function openingDifferences(db: Database.Database): string[] {
@@ -319,10 +354,7 @@ function reference(
   row: Pick<Planned, "source" | "object" | "legacy" | "target">,
   target: string,
 ): void {
-  prepared(
-    db,
-    "INSERT INTO legacy_refs(source,object_type,legacy_id,target_id,run_id,evidence) VALUES(?,?,?,?,?,?)",
-  ).run(row.source, row.object, row.legacy, target, run, row.target);
+  prepared(db, LEGACY_REF_INSERT).run(row.source, row.object, row.legacy, target, run, row.target);
 }
 function cached<T>(
   values: Map<string, Promise<T>>,
@@ -553,29 +585,47 @@ async function apply(
   reference(db, run, row, target);
 }
 
+type LegacyImportHooks = {
+  beforeBatchCommit?: (batch: number) => void;
+  beforeReconcile?: (db: Database.Database) => void;
+  beforeOpeningRecheck?: (db: Database.Database) => void;
+  /** Test-only fault injection before the n-th (1-based) opening batch is written. */
+  beforeOpeningBatch?: (batch: number) => void;
+  /** Test/Bench timing boundaries only (D437); they never change behavior. */
+  beforeOpeningValidation?: () => void;
+  afterOpeningValidation?: () => void;
+  beforeOpeningWrite?: () => void;
+};
+/** The opening phase inside the final batch transaction; returns the target re-check differences. */
+async function writeCheckedOpening(
+  write: OpeningWrite,
+  hooks: LegacyImportHooks,
+): Promise<string[]> {
+  hooks.beforeOpeningWrite?.();
+  await writeOpening(write);
+  hooks.beforeOpeningRecheck?.(write.db);
+  return openingDifferences(write.db);
+}
+const isBatchSize = (value: number, max: number) =>
+  Number.isInteger(value) && value >= 1 && value <= max;
+
 export async function executeLegacyImport(
   snapshot: LegacyImportSnapshot,
   request: {
     target: string;
     choices: ImportChoices;
     batchLines?: number;
+    /** Test-only: opening items per in-memory batch, 1..OPENING_WRITE_BATCH. */
+    openingBatchItems?: number;
     openingItems?: { bytes: Uint8Array };
   },
-  hooks: {
-    beforeBatchCommit?: (batch: number) => void;
-    beforeReconcile?: (db: Database.Database) => void;
-    beforeOpeningRecheck?: (db: Database.Database) => void;
-    /** Test/Bench timing boundaries only (D437); they never change behavior. */
-    beforeOpeningValidation?: () => void;
-    afterOpeningValidation?: () => void;
-    beforeOpeningWrite?: () => void;
-  } = {},
+  hooks: LegacyImportHooks = {},
 ): Promise<{ runId: string; status: "imported"; batches: number }> {
   const batchLines = request.batchLines ?? 5000;
+  const openingBatchItems = request.openingBatchItems ?? OPENING_WRITE_BATCH;
   if (
-    !Number.isInteger(batchLines) ||
-    batchLines < 1 ||
-    batchLines > 5000 ||
+    !isBatchSize(batchLines, 5000) ||
+    !isBatchSize(openingBatchItems, OPENING_WRITE_BATCH) ||
     !isAbsolute(request.target) ||
     win32.normalize(request.target).startsWith("\\\\") ||
     win32.normalize(request.target).startsWith("\\??\\") ||
@@ -712,10 +762,19 @@ export async function executeLegacyImport(
           );
         if (final) {
           // M2-03b: items, the bound SHA/declarations and opening=done commit atomically.
-          hooks.beforeOpeningWrite?.();
-          await writeOpening(db, repo, opening, runId, at);
-          hooks.beforeOpeningRecheck?.(db);
-          openingDifference = openingDifferences(db);
+          openingDifference = await writeCheckedOpening(
+            {
+              db,
+              plan,
+              repo,
+              opening,
+              run: runId,
+              at,
+              batchItems: openingBatchItems,
+              beforeBatch: hooks.beforeOpeningBatch,
+            },
+            hooks,
+          );
           if (openingDifference.length) throw new StorageError("CONFLICT");
         }
         if (pending.length || (final && opening.accounts.length)) await advanceWriteSequence(raw);

@@ -142,13 +142,13 @@ npm run storage:admin -- verify --provider sqlite --file <WORK>\target-backup.sq
 | --- | --- | --- |
 | 快照 100 万 GL 行 | ≤ 60s | Windows 每晚工作流 `scripts/bench-legacy-snapshot.mjs` |
 | dry-run | ≤ 120s，峰值 RSS ≤ 512MB | Bench 工作流 `migration-rehearsal` 作业 |
-| 导入（100 万 GL 行 + 10 万期初未结项） | ≤ 10min；峰值 RSS ≤ 512MB（已知缺口 KG，见下） | 同上；期初验证、期初写入、期初复核、最终提交各自耗时仅记录（D437） |
+| 导入（100 万 GL 行 + 10 万期初未结项） | ≤ 10min；峰值 RSS ≤ 512MB（KG 已于 M2-05b 关闭，见下） | 同上；期初验证、期初写入、期初复核、最终提交各自耗时仅记录（D437） |
 | 确认核对 | ≤ 120s | 同上（RSS 仅记录） |
 | 备份 + 校验 | 仅记录 | 同上 |
 
 Bench 作业运行 `node scripts/bench-migration-rehearsal.mjs`，结果写入工件 `artifacts/ci/migration-rehearsal.json`，每项指标标明 `hard`（超出则作业失败）、`record-only` 或 `known-gap`（报告预算与是否超出，但不使作业失败）。备份期间热读 p95 由 M0-R5 自己的 Bench 覆盖。
 
-**已知缺口 KG（D434）**：导入峰值 RSS 在 0 条期初时约 373MB，10 万条期初时约 668MB，超出 512MB。原因是期初计划（10 万个未结项）在整个导入期间常驻内存，并在最后一次事务中一次写入。修复方向是分批或流式写期初，由后续任务处理。该缺口集中登记在脚本的 `KNOWN_GAPS` 常量中，关闭时删除该项即恢复硬判定。
+**已知缺口 KG：已于 M2-05b 关闭（D434）**。M2-05a 时导入峰值 RSS 在 10 万条期初时为 566–721MB，超出 512MB，原因是期初计划（10 万个未结项）在整个导入期间常驻内存。M2-05b 把校验通过的期初项暂存在临时计划库中，在仍为单一写事务的期初阶段内每批读出 1000 项写入目标库。Bench 实测导入峰值 RSS 为 427MB（100 万 GL 行 + 10 万期初，Linux CI）。导入峰值 RSS 已恢复为 `hard` 判定，脚本的 `KNOWN_GAPS` 现为空。
 
 ## 命令与测试对照
 

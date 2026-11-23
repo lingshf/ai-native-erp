@@ -6,134 +6,22 @@ import Database from "better-sqlite3";
 import { test } from "vitest";
 import { JournalService, MasterDataService, TradeDocumentService } from "@erp/core/application";
 import type { TradeActionCommand, TradeSettlementCommand } from "@erp/core/domain";
-import { LegacyImportSnapshot, type ImportChoices } from "../src/legacy/import-plan.ts";
 import { validateOpeningItems } from "../src/legacy/opening-items.ts";
+import { OPENING_WRITE_BATCH, openingEntryBatches } from "../src/legacy/opening-staging.ts";
 import { checkLegacyOpeningItems, executeLegacyImport } from "../src/storage/legacy-import.ts";
 import { createMasterDataStore } from "../src/storage/master-data.ts";
 import { journalTools } from "../src/storage/journals.ts";
-import { captureDirectory, legacyFixture, openingItemsFile } from "./support/legacy-fixture.mjs";
+import { captureDirectory, openingItemsFile } from "./support/legacy-fixture.mjs";
+import {
+  accounts,
+  choices,
+  fixture,
+  history,
+  items,
+  opening,
+  rows,
+} from "./support/legacy-opening-fixture.ts";
 
-const choices: ImportChoices = {
-  drafts: "import-as-draft",
-  receipts: "archive-only",
-  "source-events": "archive-only",
-  "transfer-queue": "archive-only",
-  seals: "archive-only",
-  audit: "archive-only",
-};
-const accounts = ["1300", "1400", "2100", "2300"];
-/** Legacy journals 1-5 of company F: 1300 balance 130, 2100 nets to 0 over two journals, 2300 credit 25. */
-const history: [string, [string, number][]][] = [
-  [
-    "2026-01-15",
-    [
-      ["1300", 100],
-      ["4000", -100],
-    ],
-  ],
-  [
-    "2026-01-20",
-    [
-      ["1300", 30],
-      ["4000", -30],
-    ],
-  ],
-  [
-    "2026-01-18",
-    [
-      ["2100", -100],
-      ["5000", 100],
-    ],
-  ],
-  [
-    "2026-01-19",
-    [
-      ["2100", 100],
-      ["1000", -100],
-    ],
-  ],
-  [
-    "2026-01-12",
-    [
-      ["2300", -25],
-      ["1000", 25],
-    ],
-  ],
-];
-const items = {
-  "1300": [
-    { remainingMinor: 100, legacyJournal: "1" },
-    70,
-    { remainingMinor: -40, externalNo: "ADV-1300-1" },
-  ],
-  "2100": [-100, { remainingMinor: 100, externalNo: "ADV-2100-1" }],
-  "2300": [-25],
-};
-function fixture(t, journals = history) {
-  const f = legacyFixture(t, { tradeAdvances: true });
-  const source = new Database(join(f.target, "erp.sqlite"));
-  try {
-    for (const [index, [date, lines]] of journals.entries()) {
-      const reference = `FICT-OPENING-${index + 1}`;
-      source
-        .prepare("INSERT INTO source_events VALUES('F',?,'journal',?,'{}')")
-        .run(reference, date);
-      const journal = source
-        .prepare(`INSERT INTO journals(company,reference,accounting_date,document_date,tax_date,kind,operation,memo,details)
-          VALUES('F',?,?,?,?,'normal','journal','Fictional opening history','{}')`)
-        .run(reference, date, date, date);
-      for (const [line, [account, signed]] of lines.entries()) {
-        const debit = Math.max(0, signed),
-          credit = Math.max(0, -signed);
-        source
-          .prepare(
-            "INSERT INTO lines(company,journal_id,line_no,account,debit,credit,data) VALUES('F',?,?,?,?,?,?)",
-          )
-          .run(
-            journal.lastInsertRowid,
-            line + 1,
-            account,
-            debit,
-            credit,
-            JSON.stringify({
-              account,
-              debit,
-              credit,
-              transactionDebit: debit,
-              transactionCredit: credit,
-              accountingCurrency: "EUR",
-              currency: "EUR",
-              reportingCurrency: "EUR",
-              reportingDebit: debit,
-              reportingCredit: credit,
-              rateRefs: { accounting: null, reporting: null },
-              dimensions: {},
-              dimensionOrigins: {},
-              metadata: {},
-            }),
-          );
-      }
-    }
-  } finally {
-    source.close();
-  }
-  const entry = f.manifest.ledgers.enterprise,
-    bytes = readFileSync(join(f.target, entry.file));
-  entry.bytes = bytes.length;
-  entry.sha256 = createHash("sha256").update(bytes).digest("hex");
-  const snapshot = new LegacyImportSnapshot(f.target, f.manifest);
-  f.readers.push(snapshot);
-  return { ...f, snapshot };
-}
-function rows(file: string, sql: string, ...args: unknown[]) {
-  const db = new Database(file, { readonly: true });
-  try {
-    return db.prepare(sql).all(...args) as Record<string, unknown>[];
-  } finally {
-    db.close();
-  }
-}
-const opening = (extra = {}) => openingItemsFile({ accounts, items, master: true, ...extra });
 const tradeTables = [
   "trade_terms",
   "trade_profiles",
@@ -466,7 +354,9 @@ test("D30 source journals from the per-account lookup match the per-item queries
     );
     assert.deepEqual(expected, ["11", "9", "11", null, null, null, null]);
     assert.deepEqual(
-      result.plan.entries.map((entry) => entry.journalLegacyRef.split(":").at(-1)),
+      [...openingEntryBatches(plan, OPENING_WRITE_BATCH)]
+        .flat()
+        .map((entry) => entry.journalLegacyRef.split(":").at(-1)),
       expected.filter((journal) => journal !== null),
     );
     assert.deepEqual(
