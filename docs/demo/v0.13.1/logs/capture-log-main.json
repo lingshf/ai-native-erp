@@ -1,0 +1,208 @@
+[
+ {
+  "name": "journals-zh-red-1440",
+  "hash": "#/journals?company=DEFAULT",
+  "heading": "凭证",
+  "step": "page",
+  "via": "goto #/journals?company=DEFAULT"
+ },
+ {
+  "name": "business-events-zh-red-1440",
+  "hash": "#/events?company=DEFAULT",
+  "heading": "业务事件",
+  "step": "page",
+  "via": "goto #/events?company=DEFAULT"
+ },
+ {
+  "name": "ledger-reports-zh-red-1440",
+  "hash": "#/ledger-reports?company=DEFAULT",
+  "heading": "总账报表",
+  "step": "page",
+  "via": "goto #/ledger-reports?company=DEFAULT"
+ },
+ {
+  "name": "period-close-zh-red-1440",
+  "hash": "#/period-close?company=DEFAULT",
+  "heading": "期末结账",
+  "step": "page",
+  "via": "goto #/period-close?company=DEFAULT"
+ },
+ {
+  "name": "trade-reports-zh-red-1440",
+  "hash": "#/trade-reports?company=DEFAULT",
+  "heading": "往来未结项与账龄",
+  "step": "page",
+  "via": "goto #/trade-reports?company=DEFAULT"
+ },
+ {
+  "name": "trade-orders-zh-red-1440",
+  "hash": "#/trade-orders?company=DEFAULT",
+  "heading": "采购 / 销售订单",
+  "step": "page",
+  "via": "goto #/trade-orders?company=DEFAULT"
+ },
+ {
+  "name": "trade-invoices-zh-red-1440",
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "heading": "采购与销售发票",
+  "step": "page",
+  "via": "goto #/trade-invoices?company=DEFAULT",
+  "invoiceCardHeaderToFirstLabelPx": 16
+ },
+ {
+  "page": "s14",
+  "lang": "zh",
+  "theme": "red",
+  "errors": []
+ },
+ {
+  "name": "journals-en-green-1440",
+  "hash": "#/journals?company=DEFAULT",
+  "heading": "Journals",
+  "step": "page",
+  "via": "goto #/journals?company=DEFAULT"
+ },
+ {
+  "name": "business-events-en-green-1440",
+  "hash": "#/events?company=DEFAULT",
+  "heading": "Business events",
+  "step": "page",
+  "via": "goto #/events?company=DEFAULT"
+ },
+ {
+  "name": "ledger-reports-en-green-1440",
+  "hash": "#/ledger-reports?company=DEFAULT",
+  "heading": "Ledger reports",
+  "step": "page",
+  "via": "goto #/ledger-reports?company=DEFAULT"
+ },
+ {
+  "name": "period-close-en-green-1440",
+  "hash": "#/period-close?company=DEFAULT",
+  "heading": "Period close",
+  "step": "page",
+  "via": "goto #/period-close?company=DEFAULT"
+ },
+ {
+  "name": "trade-reports-en-green-1440",
+  "hash": "#/trade-reports?company=DEFAULT",
+  "heading": "Trade open items and ageing",
+  "step": "page",
+  "via": "goto #/trade-reports?company=DEFAULT"
+ },
+ {
+  "name": "trade-orders-en-green-1440",
+  "hash": "#/trade-orders?company=DEFAULT",
+  "heading": "Purchase and sales orders",
+  "step": "page",
+  "via": "goto #/trade-orders?company=DEFAULT"
+ },
+ {
+  "name": "trade-invoices-en-green-1440",
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "heading": "Purchase and sales invoices",
+  "step": "page",
+  "via": "goto #/trade-invoices?company=DEFAULT",
+  "invoiceCardHeaderToFirstLabelPx": 16
+ },
+ {
+  "page": "s14",
+  "lang": "en",
+  "theme": "green",
+  "errors": []
+ },
+ {
+  "checks": [
+   {
+    "check": "journals-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "business-events-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "ledger-reports-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "period-close-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-reports-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-orders-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-invoices-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-invoices-zh-red-1440 卡片标题到第一个字段标签 ≥ 16 px（只记录）",
+    "ok": true,
+    "detail": 16
+   },
+   {
+    "check": "zh-red 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "journals-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "business-events-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "ledger-reports-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "period-close-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-reports-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-orders-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-invoices-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-invoices-en-green-1440 卡片标题到第一个字段标签 ≥ 16 px（只记录）",
+    "ok": true,
+    "detail": 16
+   },
+   {
+    "check": "en-green 无页面错误",
+    "ok": true,
+    "detail": []
+   }
+  ]
+ }
+]
