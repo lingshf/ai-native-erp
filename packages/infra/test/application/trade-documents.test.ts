@@ -4354,7 +4354,7 @@ describe("trade invoices on real SQLite", () => {
           try {
             raw.exec(
               `INSERT INTO legacy_import_runs(id,tool,snapshot_sha,choices,migration_version,status,created_at)
-               VALUES('RUN-B3','legacy.import.v2','"0"','{}',19,'imported','2026-01-01T00:00:00Z')`,
+               VALUES('RUN-B3','legacy.import.v2','"0"','{}',19,'reconciled','2026-01-01T00:00:00Z')`,
             );
             raw
               .prepare(
@@ -4611,9 +4611,8 @@ describe("trade invoices on real SQLite", () => {
     const cancelled = invoiceOn("PO-06", "L1", "2");
     await post(cancelled);
     await cancel(cancelled.documentId, undefined, "2026-04-21");
-    // S12 B1: several invoices adding up to full, and full followed by a credit note.
-    await post(invoiceOn("PO-02", "L1", "1"));
-    await post(invoiceOn("PO-02", "L1", "1"));
+    // S12 B1: several invoices adding up to full (PO-04: 0.5 + 1.5 of 2), and full then credited.
+    await post(invoiceOn("PO-04", "L1", "1.5"));
     await service.createOrder(
       order({ orderId: "PO-07", orderDate: "2026-04-01", lines: [orderLine("L1", "2", "3.00")] }),
     );
@@ -4629,7 +4628,7 @@ describe("trade invoices on real SQLite", () => {
       taxDate: "2026-04-21",
       lines: [{ sourceLineId: "L1", quantity: "1" }],
     });
-    const upgraded = { ...invoicingExpected, "PO-02": "full", "PO-07": "full" };
+    const upgraded = { ...invoicingExpected, "PO-04": "full", "PO-07": "full" };
     await expectStored(upgraded);
     await store.close();
     const at018 = join(directory, "at018.sqlite");
@@ -4655,7 +4654,7 @@ describe("trade invoices on real SQLite", () => {
       }
     };
     const before = snapshot();
-    expect(before.trade_documents).toHaveLength(8);
+    expect(before.trade_documents).toHaveLength(7);
     const storage = createSqliteStorage({ filename: at018 });
     try {
       await storage.migrate();
