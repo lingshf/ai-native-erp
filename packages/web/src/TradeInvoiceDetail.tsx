@@ -1,4 +1,4 @@
-import { useEffect, useRef, type KeyboardEvent } from "react";
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   tradeInvoiceDetailSchema,
@@ -13,7 +13,9 @@ import {
 } from "./ui/trade-invoice-detail-labels.ts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
-import { MessageBar, TeachingTip } from "./ui/components/index.tsx";
+import { Badge, MessageBar, TeachingTip } from "./ui/components/index.tsx";
+import { openItemTone, poMatchTone } from "./trade-invoice-status.ts";
+import { formatDecimal } from "./decimal-format.ts";
 
 type Key = Exclude<LabelKey, "shell.httpError"> | TradeInvoiceDetailKey;
 type T = (key: Key) => string;
@@ -163,7 +165,8 @@ function DetailBody({
   const actions = [...value.actions].sort((a, b) =>
     a.receipt.postedAt.localeCompare(b.receipt.postedAt),
   );
-  const facts: [Key, string][] = [
+  const decimal = (value: string) => formatDecimal(value, preferences.language);
+  const facts: [Key, ReactNode][] = [
     ["tinv.side", t(`trade.${invoice.side}`)],
     ["tinv.party", invoice.party],
     ["tinv.externalInvoice", invoice.externalNo],
@@ -173,9 +176,14 @@ function DetailBody({
     ["tinv.dueDate", invoice.dueDate],
     ["tinv.detail.currency", invoice.currency],
     ["tinv.controlAccount", invoice.controlAccount],
-    ["tinv.poMatch", t(`tinv.${invoice.poMatch}`)],
+    [
+      "tinv.poMatch",
+      <Badge key="poMatch" tone={poMatchTone[invoice.poMatch]}>
+        {t(`tinv.${invoice.poMatch}`)}
+      </Badge>,
+    ],
     ...(invoice.exceptionReason
-      ? [["tinv.exceptionReason", invoice.exceptionReason] as [Key, string]]
+      ? [["tinv.exceptionReason", invoice.exceptionReason] as [Key, ReactNode]]
       : []),
     ["tinv.sourceOrder", invoice.orderId ?? t("tinv.noSourceOrder")],
   ];
@@ -233,13 +241,17 @@ function DetailBody({
               <tr key={line.lineId}>
                 <td>{line.lineNo}</td>
                 <td>{line.product}</td>
-                <td>{line.quantity}</td>
-                <td>{line.unitPrice}</td>
-                <td>{line.discountPercent}</td>
+                <td>{decimal(line.quantity)}</td>
+                <td>{decimal(line.unitPrice)}</td>
+                <td>{decimal(line.discountPercent)}</td>
                 <td>{money(line.net)}</td>
                 <td>{money(line.tax)}</td>
                 <td>{money(line.gross)}</td>
-                <td>{t(`tinv.${line.matchStatus}`)}</td>
+                <td>
+                  <Badge tone={poMatchTone[line.matchStatus]}>
+                    {t(`tinv.${line.matchStatus}`)}
+                  </Badge>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -248,7 +260,7 @@ function DetailBody({
       <div className="tinv-split">
         <section aria-label={t("tinv.detail.totals")}>
           <h4>{t("tinv.detail.totals")}</h4>
-          <dl className="tinv-facts">
+          <dl className="tinv-facts tinv-totals">
             <div>
               <dt>{t("tinv.net")}</dt>
               <dd>{money(invoice.net)}</dd>
@@ -268,7 +280,9 @@ function DetailBody({
           <dl className="tinv-facts">
             <div>
               <dt>{t("tadj.status")}</dt>
-              <dd>{t(`tadj.${openItem.status}`)}</dd>
+              <dd>
+                <Badge tone={openItemTone[openItem.status]}>{t(`tadj.${openItem.status}`)}</Badge>
+              </dd>
             </div>
             <div>
               <dt>{t("tinv.detail.remaining")}</dt>

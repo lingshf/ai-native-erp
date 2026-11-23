@@ -122,6 +122,14 @@
   margin: 0;
   font-weight: var(--weight-semibold);
 }
+/* TINV-08 详情合计：三项金额共约 3 × 140px + 2 个列间距，1440 下在约 520px 的半栏内排成一行；
+   390 下可换行，但单个金额不折行。特异度 (0,3,0) 只覆盖合计这一组事实区的列宽。 */
+.trade-invoices .tinv-facts.tinv-totals {
+  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+}
+.trade-invoices .tinv-totals dd {
+  white-space: nowrap;
+}
 .trade-invoices .tinv-total :is(th, td) {
   position: static;
   background: none;
@@ -156,7 +164,6 @@
 }
 /* TINV-05 列表筛选栏：在列表卡片内，外观沿用 components.css 的 .filter-bar（窄屏字段整行换行） */
 .trade-invoices .tinv-filter {
-  padding-top: 0;
   box-shadow: none;
 }
 .trade-invoices .tinv-filter .ui-error-text {

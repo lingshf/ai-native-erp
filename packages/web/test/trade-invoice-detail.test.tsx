@@ -2,7 +2,9 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { describe, expect, it, vi } from "vitest";
 import type { TradeInvoiceDetailDto } from "@erp/core/contracts";
 import { App } from "../src/App.tsx";
-import { label, preferenceStorageKey } from "../src/ui/index.ts";
+import { formatDecimal } from "../src/decimal-format.ts";
+import type { Tone } from "../src/ui/components/index.tsx";
+import { label, preferenceStorageKey, type Language } from "../src/ui/index.ts";
 import { detailLabel } from "../src/ui/trade-invoice-detail-labels.ts";
 import {
   d,
@@ -102,6 +104,19 @@ const action = (
 };
 const money = (minor: number) => (minor / 100).toFixed(2);
 
+// TINV-08: a status is a Badge: `.badge.<tone>`, an aria-hidden symbol first, then the label.
+const visibleText = (element: Element) => {
+  const copy = element.cloneNode(true) as Element;
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+  return copy.textContent;
+};
+function expectBadge(container: Element | null | undefined, tone: Tone, text: string) {
+  const badge = container?.querySelector(".badge");
+  expect(badge?.classList.contains(tone)).toBe(true);
+  expect(badge?.firstElementChild?.getAttribute("aria-hidden")).toBe("true");
+  expect(badge && visibleText(badge)).toBe(text);
+}
+
 describe("TINV-06 invoice detail dialog", () => {
   it("AP invoice with a source order: header, the 9 line columns in order, totals, source order as plain text", async () => {
     serve(detail());
@@ -125,7 +140,11 @@ describe("TINV-06 invoice detail dialog", () => {
       within(header).getByText(d("tinv.detail.currency")).nextElementSibling?.textContent,
     ).toBe("CNY");
     expect(fact("tinv.controlAccount")).toBe("2100");
-    expect(fact("tinv.poMatch")).toBe(t("tinv.matched"));
+    expectBadge(
+      within(header).getByText(t("tinv.poMatch")).nextElementSibling,
+      "success",
+      t("tinv.matched"),
+    );
     expect(fact("tinv.sourceOrder")).toBe("PO-1");
     expect(within(header).queryByText(t("tinv.exceptionReason"))).toBeNull();
     expect(dialog.querySelector("a")).toBeNull();
@@ -146,11 +165,9 @@ describe("TINV-06 invoice detail dialog", () => {
       t("tinv.gross"),
       d("tinv.detail.matchStatus"),
     ]);
-    expect(
-      within(lines)
-        .getAllByRole("cell")
-        .map((td) => td.textContent),
-    ).toEqual([
+    const cells = within(lines).getAllByRole("cell");
+    expectBadge(cells.at(-1), "success", t("tinv.matched"));
+    expect(cells.map(visibleText)).toEqual([
       "1",
       "RENT",
       "10",
@@ -199,7 +216,9 @@ describe("TINV-06 invoice detail dialog", () => {
     render(<App />);
     const dialog = await open();
     const item = await within(dialog).findByRole("region", { name: d("tinv.detail.openItem") });
-    expect(within(item).getByText(t("tadj.status")).nextElementSibling?.textContent).toBe(
+    expectBadge(
+      within(item).getByText(t("tadj.status")).nextElementSibling,
+      "warning",
       t("tadj.open"),
     );
     expect(within(item).getByText(d("tinv.detail.remaining")).nextElementSibling?.textContent).toBe(
@@ -388,5 +407,145 @@ describe("TINV-06 invoice detail dialog", () => {
     await within(dialog).findByRole("table", { name: en("tinv.lines") });
     expect(within(dialog).queryByRole("complementary")).toBeNull();
     await act(async () => {});
+  });
+});
+
+type PoMatch = TradeInvoiceDetailDto["document"]["poMatch"];
+function withPoMatch(value: TradeInvoiceDetailDto, poMatch: PoMatch): TradeInvoiceDetailDto {
+  const exceptionReason = poMatch === "exception" ? "price variance" : null;
+  const lines = value.document.lines.map((line) => ({ ...line, matchStatus: poMatch }));
+  return { ...value, document: { ...value.document, poMatch, exceptionReason, lines } };
+}
+function usePreferences(language: Language) {
+  window.localStorage.setItem(
+    preferenceStorageKey,
+    JSON.stringify({ language, theme: language === "zh" ? "red" : "green", teaching: false }),
+  );
+}
+const tabStops = (container: Element) =>
+  Array.from(container.querySelectorAll("a[href],button:not(:disabled),[tabindex='0']"));
+
+const badgeCases = [
+  { language: "zh", poMatch: "matched", status: "open", poTone: "success", statusTone: "warning" },
+  {
+    language: "en",
+    poMatch: "exception",
+    status: "settled",
+    poTone: "warning",
+    statusTone: "success",
+  },
+  {
+    language: "zh",
+    poMatch: "notApplicable",
+    status: "cancelled",
+    poTone: "info",
+    statusTone: "info",
+  },
+  {
+    language: "en",
+    poMatch: "notApplicable",
+    status: "open",
+    poTone: "info",
+    statusTone: "warning",
+  },
+] as const;
+
+describe("TINV-08 status badges and number formats", () => {
+  it.each(badgeCases)(
+    "$language: $poMatch / $status are badges in the list, header, lines and open item; Tab stops unchanged",
+    async ({ language, poMatch, status, poTone, statusTone }) => {
+      usePreferences(language);
+      const orderId = poMatch === "notApplicable" ? null : "PO-1";
+      serve(withPoMatch(detail({ orderId, status }), poMatch));
+      render(<App />);
+      const tl = (key: Parameters<typeof t>[0]) => label(language, key);
+      const poText = tl(`tinv.${poMatch}`);
+      const trigger = await screen.findByRole("button", {
+        name: `${detailLabel(language, "tinv.detail.open")} INV-1`,
+      });
+      const list = screen.getByRole("table", { name: tl("tinv.list") });
+      const column = within(list)
+        .getAllByRole("columnheader")
+        .findIndex((th) => th.textContent === tl("tinv.poMatch"));
+      const row = trigger.closest("tr") as HTMLTableRowElement;
+      expectBadge(within(row).getAllByRole("cell")[column], poTone, poText);
+      expect(tabStops(row)).toEqual(orderId ? [trigger, within(row).getByRole("link")] : [trigger]);
+
+      fireEvent.click(trigger);
+      const dialog = await screen.findByRole("dialog");
+      const header = await within(dialog).findByRole("region", {
+        name: detailLabel(language, "tinv.detail.header"),
+      });
+      expectBadge(within(header).getByText(tl("tinv.poMatch")).nextElementSibling, poTone, poText);
+      const lines = within(dialog).getByRole("table", { name: tl("tinv.lines") });
+      expectBadge(within(lines).getAllByRole("cell").at(-1), poTone, poText);
+      const item = within(dialog).getByRole("region", {
+        name: detailLabel(language, "tinv.detail.openItem"),
+      });
+      const statusCell = within(item).getByText(tl("tadj.status")).nextElementSibling;
+      expectBadge(statusCell, statusTone, tl(`tadj.${status}`));
+      // The open balance stays the last value of the open item (read by tests:trade-e2e).
+      expect(Array.from(item.querySelectorAll("dd")).at(-1)?.querySelector(".badge")).toBeNull();
+      const close = within(dialog).getByRole("button", {
+        name: detailLabel(language, "tinv.detail.close"),
+      });
+      expect(tabStops(dialog)).toEqual([
+        close,
+        within(dialog).getByRole("region", { name: tl("tinv.lines") }),
+      ]);
+    },
+  );
+
+  it("large invoice: totals use the totals modifier with money text only; lines group quantity and unit price", async () => {
+    const value = detail();
+    const [line] = value.document.lines;
+    if (!line) throw new Error("fixture has one line");
+    const totals = { net: 109_255_565_500, tax: 14_203_223_512, gross: 123_458_789_012 };
+    serve({
+      ...value,
+      document: {
+        ...value.document,
+        ...totals,
+        lines: [
+          { ...line, ...totals, quantity: "1234.5", unitPrice: "88501.25", discountPercent: "0" },
+        ],
+      },
+    });
+    render(<App />);
+    const dialog = await open();
+    const lines = await within(dialog).findByRole("table", { name: t("tinv.lines") });
+    const [, , quantity, unitPrice, discount] = within(lines).getAllByRole("cell");
+    expect(quantity?.textContent).toBe(formatDecimal("1234.5", "zh"));
+    expect(unitPrice?.textContent).toBe(formatDecimal("88501.25", "zh"));
+    expect(discount?.textContent).toBe("0");
+    const region = within(dialog).getByRole("region", { name: d("tinv.detail.totals") });
+    expect(region.querySelector("dl")?.className).toBe("tinv-facts tinv-totals");
+    // innerHTML: each total is plain money text, no badge or other markup (tests:trade-e2e reads it).
+    expect(Array.from(region.querySelectorAll("dd")).map((dd) => dd.innerHTML)).toEqual([
+      `${formatDecimal("1092555655", "zh")}.00`,
+      `${formatDecimal("142032235", "zh")}.12`,
+      `${formatDecimal("1234587890", "zh")}.12`,
+    ]);
+  });
+});
+
+describe("formatDecimal", () => {
+  const separator = (language: Language) => new Intl.NumberFormat(language).format(1000).charAt(1);
+
+  it.each(["zh", "en"] as const)(
+    "groups the integer part by %s and keeps the fraction as written",
+    (language) => {
+      const s = separator(language);
+      expect(formatDecimal("1234567.5", language)).toBe(`1${s}234${s}567.5`);
+      expect(formatDecimal("999999999999.999999", language)).toBe(
+        `999${s}999${s}999${s}999.999999`,
+      );
+      for (const plain of ["0.000001", "0", "12"])
+        expect(formatDecimal(plain, language)).toBe(plain);
+    },
+  );
+
+  it.each(["1e3", "", "-1", "01", "1."])("returns %j unchanged", (invalid) => {
+    expect(formatDecimal(invalid, "en")).toBe(invalid);
   });
 });
