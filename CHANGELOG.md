@@ -6,11 +6,20 @@
 
 ## [Unreleased]
 
-（暂无）
+> **v0.13.0 骨架（S13，计划 [#222](https://github.com/lingshf/ai-native-erp/pull/222)，D416–D419）**：以下条目来自任务书，**对应 PR 尚未合并，合并后按 PR 正文改写，不得当作已发布内容**。
 
-## [0.12.0] - 待定（发布候选；日期、版本和 tag 目标在日期 PR 中写定）
+### Added（待合并后确认）
 
-> **草稿状态**：产品代码基线为 `main` e703971（SLOT-02 [#220](https://github.com/lingshf/ai-native-erp/pull/220) 的合并提交，S12 功能全部合并；该提交的 main Full run 45136789585 绿）。自 v0.11.0 的 tag 目标 `024b7fa` 到 e703971，`packages/` 下 57 个文件（+6255/−3184）（SLOT-02 只改 `scripts/slot/` 与 roadmap，`git diff ab2ba1c e703971 -- packages` 为空，已核对）。**tag 目标待协调者按 D21/D398 的规则确定**：先用 `git diff e703971 <目标> -- packages` 核对，只有为空时才可打在 Demo / 日期 PR 的 squash 提交上；本 RC 分支相对 e703971 的 `packages` 与 `scripts` diff 为空（已核对）。
+- **订单列表筛选写入地址栏（TORD-07）**：应用筛选后地址栏带上筛选条件，刷新或分享链接得到同样结果；链接里的筛选条件不合法时提示并提供“清除”；订单详情的数量、单价、折扣按语言加千分位；订单页教学说明改为“筛选保存在地址中”。
+- **迁移虚构演练（M2-05a）**：新命令 `npm run storage:admin -- legacy-import --snapshot-dir DIR --dry-run`（只在虚构夹具上演练，不连接真实旧账）；新文档 `docs/migration-runbook.md`；Bench 新增迁移链路耗时记录。界面无变化。
+
+### Changed（待合并后确认）
+
+- 无用户可见变化：REFAC-01b（拆分 `tradeGuiScenario` 函数体，测试支撑代码重构）。
+
+## [0.12.0] - 2026-11-23
+
+> **已发布（D414、D415）**：tag `v0.12.0`（annotated，tag 对象 `53867461…`）打在 `a7e2d99`（RC [#221](https://github.com/lingshf/ai-native-erp/pull/221) 的 squash 提交），相对 e703971 仅 1 个提交，`git diff e703971 a7e2d99 -- packages scripts` 为空（已核对），产品代码与 e703971 相同；发布日 2026-11-23。Release：<https://github.com/lingshf/ai-native-erp/releases/tag/v0.12.0>。产品代码基线为 `main` e703971（SLOT-02 [#220](https://github.com/lingshf/ai-native-erp/pull/220) 的合并提交，S12 功能全部合并；该提交的 main Full run 45136789585 绿）。自 v0.11.0 的 tag 目标 `024b7fa` 到 e703971，`packages/` 下 57 个文件（+6255/−3184）（SLOT-02 只改 `scripts/slot/` 与 roadmap，`git diff ab2ba1c e703971 -- packages` 为空，已核对）。Demo（真实 Chrome 截图、大额发票 390 宽实测）在 tag 之后合并：[docs/demo/v0.12.0](docs/demo/v0.12.0/README.md)。
 
 S12 Sprint：发票深链接与地址栏筛选、订单按开票状态筛选、发票页打磨、页头说明、两项只搬移的重构。**含一个迁移（019）**，新增用户可见功能，版本号取 minor（0.11.0 → 0.12.0）。无依赖变化，不改过账规则。
 
@@ -18,7 +27,7 @@ S12 Sprint：发票深链接与地址栏筛选、订单按开票状态筛选、�
 
 - **发票详情深链接与筛选写入地址栏（TINV-07，[#208](https://github.com/lingshf/ai-native-erp/pull/208)）**：打开详情后地址含 `invoice=<编号>`，已应用的筛选写成 `party / side / from / to`；刷新和书签按地址恢复详情与筛选。只用“替换地址”（`history.replaceState`），不新增浏览器历史、不触发离开确认；每次写入都带 `company`，切换账套时去掉 `invoice` 与筛选；游标和每页条数不写地址。链接有误时：`invoice` 格式不对或不存在 / 属于别的账套显示“发票不存在或已不在本公司。”（格式不对不发请求）；筛选任一项无效则整组忽略并提示“链接中的筛选条件无效，已忽略；当前显示全部发票。”和“清除”；`company` 不在账套列表里（且带 `invoice` 或筛选）提示“链接中的公司不在已加载列表中，未打开”和“返回发票页”。**行为变化：v0.10.0 的“筛选刷新后清空”不再成立**（刷新后筛选与详情恢复）。
 - **订单列表按开票状态筛选（TORD-06，[#209](https://github.com/lingshf/ai-native-erp/pull/209)）**：订单筛选栏“方向”之后多了“开票状态”下拉框（全部 / 未开票 / 部分开票 / 已开完），可与其他筛选组合，点“应用”生效，不写地址栏。API `GET /api/v1/trade/orders` 新增可选查询参数 `invoicing=none|partial|full`；非法值或重复键返回 400 `INVALID_REQUEST`。订单列表的“开票状态”列改为读存储值。
-- **发票页打磨（TINV-08，[#219](https://github.com/lingshf/ai-native-erp/pull/219)）**：筛选栏与卡片标题之间多 16 px 留白；列表、详情抬头、详情行明细的匹配状态和详情未结项状态改为带符号的彩色徽标（文字不变，`aria-hidden` 符号）；详情“合计”三项在宽屏排成一行；详情行明细的数量、单价、折扣按语言加千分位（小数位原样）；开票预览的订单匹配表只格式化数量，单价与折扣不变（`TradeInvoices.tsx:1078`）。大额发票在 390 宽下的实际布局尚未实测，留到 Demo 补（D409）。
+- **发票页打磨（TINV-08，[#219](https://github.com/lingshf/ai-native-erp/pull/219)）**：筛选栏与卡片标题之间多 16 px 留白；列表、详情抬头、详情行明细的匹配状态和详情未结项状态改为带符号的彩色徽标（文字不变，`aria-hidden` 符号）；详情“合计”三项在宽屏排成一行；详情行明细的数量、单价、折扣按语言加千分位（小数位原样）；开票预览的订单匹配表只格式化数量，单价与折扣不变（`TradeInvoices.tsx:1078`）。大额发票在 390 宽下已在 Demo 实测：合计 2 行、不溢出，页面无横向溢出（见 [Demo 记录](docs/demo/v0.12.0/README.md)）。
 - **期末结账页整理（UI-15，[#206](https://github.com/lingshf/ai-native-erp/pull/206)）**：页头多一句说明；期间准入摘要徽标显示“贸易 / 税务”（英文 Trade / Tax），读屏另读“已准入 / 未准入”；复选框中文改为“准入贸易 / 准入税务”。
 - **总账四页页头说明（UI-16，[#210](https://github.com/lingshf/ai-native-erp/pull/210)）**：科目表、财务维度、凭证、业务事件页头各一句说明，教学模式关闭时也显示。
 
@@ -49,7 +58,7 @@ S12 Sprint：发票深链接与地址栏筛选、订单按开票状态筛选、�
 - **性能（PG-05，gzip-9，数字取自各 PR 正文，各自的 base 不同，不能相加）**：UI-15 入口 +103 B、期末结账块 +73 B、CSS 0；UI-16 入口 +274 B、CSS 0；TINV-07 入口 +3 B、发票页块 +853 B；TINV-08 入口 0、发票页块 +219 B、发票页 CSS +17 B。UI-17（[#213](https://github.com/lingshf/ai-native-erp/pull/213)）入口 −11 B、CSS 0 B；TORD-06 未测量构建字节数；与 v0.11.0 相比的净变化未测量，发布前未重测。
 - 真实 Chrome 验证在 PR 取证 head 上，不在合并后的 squash 提交上；UI-15 / 16 / 17、TINV-08 按 D375 / D377 / D384 / D406 以 jsdom 验收；视觉由 Demo 截图覆盖 UI-15、UI-16、TINV-08，UI-17 不进截图（D384）。
 - 旧账迁移（M2）仍未完成：M2-05（演练）与 M2-06（切换）未开始，另需用户授权。
-- Demo 记录与截图：Demo PR 合并后补链接（docs/demo/v0.12.0）。
+- Demo 记录与截图：[docs/demo/v0.12.0](docs/demo/v0.12.0/README.md)（真实 Chrome，4 个组合共 52 张）。
 
 ## [0.11.0] - 2026-11-22
 
