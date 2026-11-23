@@ -62,7 +62,8 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 | [M2-03b](M2-03b-legacy-opening-open-items.md) | 旧账 AP/AR 期初未结项导入与核对口径（D25） | M2-03, M1-06 | legacy-import, domain-posting, storage, admin-cli, web-ui:trade | done | [#63](https://github.com/lingshf/ai-native-erp/pull/63) |
 | [M2-04](M2-04-legacy-reconciliation.md) | 迁移核对报告（首批，现行 `tradeReconciliation` + 期初门禁 fail-closed，D26） | M2-03 | — | done | [#59](https://github.com/lingshf/ai-native-erp/pull/59) |
 | [M2-04b](M2-04-legacy-reconciliation.md#跟进-m2-04bd25d26) | M2-04 跟进：贸易子账按 P 公式核对、期初负例（D25/D26） | M2-04, M2-03b | — | done | [#70](https://github.com/lingshf/ai-native-erp/pull/70) |
-| [M2-05](M2-05-migration-rehearsal.md) | 隔离试迁移演练与操作手册 | M2-01, M2-04b（D25 全部完成） | bench/CI, docs/runbook | todo | |
+| [M2-05a](S13.md#m2-05a迁移虚构端到端演练与操作手册) | M2-05 中不需授权的部分：`legacy-import --dry-run` 接入 CLI、虚构端到端演练进 Full、迁移链路 Bench、操作手册（S13） | M2-01, M2-04b | admin-cli（只改 `storage-admin-main.mjs` 参数解析与分派）, bench/CI, docs/runbook | todo | |
+| [M2-05](M2-05-migration-rehearsal.md) | 隔离试迁移演练与操作手册（M2-05a 之后只剩真实演练，待决定 A / C） | M2-05a；决定 A / C | bench/CI, docs/runbook | todo | |
 | [M2-06](M2-06-controlled-cutover.md) | 受控切换与回退 | M2-05 | admin-cli, docs/runbook | todo | |
 | [M2-R](M2-R-milestone-review.md) | M2 里程碑评审 + 测试审计（设计角色） | M2-06 | — | todo | |
 
@@ -614,9 +615,24 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [REFAC-02](S12.md#refac-02拆分-businesseventstsx只搬移不改行为) | 拆分 `BusinessEvents.tsx`：组件按职责搬到 `src/business-events/`，只搬移不改行为 | 重构（页面） | P2 | — （D388：有开发名额空出即派） | web-ui:business-events | done | [#214](https://github.com/lingshf/ai-native-erp/pull/214)（`b5f7129`） |
 | [TINV-08](S12.md#tinv-08发票页小步打磨) | 发票页小步打磨：筛选栏间距、匹配 / 未结项状态徽标、详情合计一行、数量 / 单价 / 折扣按语言分组；不改标签、契约与 tests:trade-e2e | 页面 | P2 | TINV-07 已合并；D406（比照 D375，不占浏览器时段） | web-ui:trade 发票页（`TradeInvoices.tsx`、`TradeInvoiceDetail.tsx`、`trade-invoices.css`、新增 `trade-invoice-status.ts`、`decimal-format.ts` 及发票 jsdom 测试） | done | [#219](https://github.com/lingshf/ai-native-erp/pull/219)（`ab2ba1c`） |
 | [SLOT-02](S12.md#slot-02runner-开跑前静态检查与子进程环境) | runner 开跑前 tsc 与 TDZ 静态检查（退出码 4 输入或配置错误、6 新发现，runner 原样传出）与子进程 `PSModulePath` 修正（S11 回顾行动 2、3；D407 / D408：重置 `PSModulePath`，只有新写与改动的脚本用 .NET） | 开发工具 | P2 | — | `scripts/slot/`（原定不改 `procs.ps1` 与规则 R1；D411 / D412 获准把采样规则升为 R2：SR-X1 外仓判定在命令行读不到时沿用，改动限于 `procs.ps1` 的沿用判定与 roadmap §5 相应行；不进 CI） | done | [#220](https://github.com/lingshf/ai-native-erp/pull/220)（`e703971`） |
-| DEMO-12（无任务书） | v0.12.0 RC 与 Demo，验收见 [S12.md](S12.md#demo-12-验收) | 发布 | P1（Sprint 末） | TINV-07、TORD-06、UI-15 结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | todo | — |
+| DEMO-12（无任务书） | v0.12.0 RC 与 Demo，验收见 [S12.md](S12.md#demo-12-验收) | 发布 | P1（Sprint 末） | TINV-07、TORD-06、UI-15 结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | in progress（RC 已合并） | [#221](https://github.com/lingshf/ai-native-erp/pull/221) |
 
 - **并行**：TINV-07 ∥ TORD-06 ∥ UI-15 冲突域不相交，可同时进行（D369）；UI-15 合并后由 UI-16 接替第三个名额（D377），UI-16 合并后由 UI-17 接替（D384）；REFAC-02 合并后空出的 2 个名额给 TINV-08 ∥ SLOT-02，两者与 REFAC-01 的冲突域不相交；只有 TORD-06 加迁移（019），其他任务不得新增迁移。开发同时在岗不超过 3 人。共享单文件与槽位规则见 [S12.md](S12.md#泳道)。
+
+## S13：迁移虚构演练与操作手册 + 订单筛选写入地址栏 + 场景函数拆分（v0.13.0，D416）
+
+**计划正文**：[S13.md](S13.md)（D416 批准；各任务细节以该文为准）。基线 main `e703971`（S12 功能全部合并）；DEMO-12 的 RC 已随 [#221](https://github.com/lingshf/ai-native-erp/pull/221) 合并，Demo 由版本管理继续推进。版本号 v0.13.0（D416）。
+
+**不在本 Sprint**：M2-05 真实演练与 M2-06（仍待决定 A / B / C）；多订单合并开票、贷项冲减已开票数量、保留前进历史、按开票状态排序；OQ-01 后续域；迁移（三个任务都不加，下一个可用编号仍为 020）。
+
+| ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [M2-05a](S13.md#m2-05a迁移虚构端到端演练与操作手册) | 迁移虚构端到端演练（快照 → dry-run → 导入含期初 → 确认 → 备份校验 → 只读核对，进 Full ≤ 60s）、`legacy-import --dry-run` 接入 CLI、迁移链路 Bench、操作手册 `docs/migration-runbook.md` | 工具 + 测试 + 文档 | P1 | M2-01、M2-04b；D417（限虚构夹具） | admin-cli（`storage-admin-main.mjs`）、bench/CI（`bench.yml`、`legacy-snapshot-windows.yml`、新 Bench 脚本）、docs/runbook（含 `docs/user/backup-and-legacy.md`、根 `README.md` 各一行链接）、新测试 `legacy-rehearsal.test.ts`、`storage-admin-cli.test.ts` 只追加；权重只追加一条 | 不加 | 不需要 | todo | — |
+| [TORD-07](S13.md#tord-07订单筛选写入地址栏与小数格式化) | 订单筛选写入地址栏（只用 replace、非法整组忽略并提示，口径同 TINV-07）+ 订单详情数量 / 单价 / 折扣按语言分组 | 页面 | P2 | D418 | web-ui:trade-orders（`TradeOrders.tsx`、新增 `trade-order-link.ts`、`trade-order-labels.ts`、`trade-orders.css`、`trade-orders.test.tsx`、`docs/flows/trade-order-flow.md`）；不改 tests:trade-e2e 与契约 | 不加 | 不需要（比照 D375 / D406） | todo | — |
+| [REFAC-01b](S13.md#refac-01b拆分-tradeguiscenario-函数体不改行为) | 拆分 `tradeGuiScenario` 函数体为按阶段的具名函数，不改行为（S11 回顾行动 7） | 重构（测试） | P2 | REFAC-01 已合并；D419 | tests:trade-e2e（`trade-gui-scenario.ts` 与新目录 `trade-gui/scenario/`），独占 | 不加 | 需要（L5 真实 Chrome；D419：排在 DEMO-12 截图之后） | todo | — |
+| DEMO-13（无任务书） | v0.13.0 RC 与 Demo，验收见 [S13.md](S13.md#demo-13-验收) | 发布 | P1（Sprint 末） | 三个任务结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | 不加 | 需要（截图） | todo | — |
+
+- **并行**：M2-05a ∥ TORD-07 ∥ REFAC-01b 冲突域不相交，可同时派出；开发同时在岗不超过 3 人。只有 REFAC-01b 申请浏览器时段；M2-05a 与 TORD-07 不申请，但服从时段停用通知。共享单文件与交界规则见 [S13.md](S13.md#泳道)。
 
 ## 派发顺序
 
@@ -656,7 +672,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
      - 改同一张表的两个任务不能并行开发。
    - 公共文件（`package.json`/lockfile、`web/src/App.tsx` 路由与导航、`ui/index.ts`、contracts 汇总导出）：只做追加式小改动，由后合并者 rebase 解决。改 `package.json`/lockfile 的任务同时只开一个。
    - 当前前置状态：基线 main `336c0cd` 已含 M0 全部、M1-01..07（#54、#56）、M2-01..03（#47）；M1-R 随 #57 合并落地（结论通过，见 [design/reviews/M1.md](../reviews/M1.md)）。以上历史派发顺序不代表仍在开发。M1-R1..R4 不阻塞 v0.2.0，可与 M2-03b 按冲突域穿插派发。截至 main `2a23025`（v0.3.0 之后），迁移已到 016；S4 不新增迁移。
-5. M2（草案）：M0-R4、M0-R5 都合并后，M2-01 与 M2-02 可并行（冲突域不重叠）。M2-03 需要 M2-02 和 M0-R1；迁移 014 必须在 M1 的 013 合并之后集成（M2-03 先就绪就等待，不互换编号）；M2-03 与 M1-03、M1-06 同属 `domain-posting`，不能同时开发，这条不因迁移串行集成规则而豁免。M2-01、M2-03、M2-04、M2-06 都改 `admin-cli`，不能同时进行。之后为 M2-04（首批）→ M2-03b → M2-04b → M2-05 → M2-06 → M2-R（D26）；M2-04、M2-03b、M2-04b 都改 `admin-cli`、`legacy-import`，串行。真实操作看决定 A/B/C；D25 已决（导入期初未结项），M2-03b 与 M2-04b 合并前不做真实导入演练。
+5. M2（草案）：M0-R4、M0-R5 都合并后，M2-01 与 M2-02 可并行（冲突域不重叠）。M2-03 需要 M2-02 和 M0-R1；迁移 014 必须在 M1 的 013 合并之后集成（M2-03 先就绪就等待，不互换编号）；M2-03 与 M1-03、M1-06 同属 `domain-posting`，不能同时开发，这条不因迁移串行集成规则而豁免。M2-01、M2-03、M2-04、M2-06 都改 `admin-cli`，不能同时进行。之后为 M2-04（首批）→ M2-03b → M2-04b → M2-05a（S13，虚构部分）→ M2-05（真实演练，待决定 A / C）→ M2-06 → M2-R（D26）；M2-04、M2-03b、M2-04b 都改 `admin-cli`、`legacy-import`，串行。真实操作看决定 A/B/C；D25 已决（导入期初未结项），M2-03b 与 M2-04b 合并前不做真实导入演练。
 
 ## 决定记录
 
