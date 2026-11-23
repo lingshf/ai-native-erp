@@ -51,3 +51,14 @@
 - #256 已合并为 `94aefc2`，本分支已 rebase 到它（产品代码与 `94aefc2` 相同，`git diff 94aefc2 HEAD -- packages scripts` 为空）。
 - 2026-11-23 17:47–17:50（UTC）用 `procs.ps1` 的 `Counted` 只读采样 2 轮（第一轮采样器缺 `\` 初始化，作废；第二轮 12 次、每 10 秒一次）：**12 次全部 counted>0，没有出现连续 6 次 0**。计数进程是其他 ai-native-erp 会话（`lingshf-symmetrical-waddle`、`lingshf-musical-funicular` 等）的 node / vitest / chrome-headless-shell。我没有结束任何进程。
 - 所以**现在不满足 D308**，不能开始真实时段。真实运行由 `slot-run.ps1` 自己的预检等待连续 6 次 0（最多 15 分钟，否则中止且不重试）；请协调者在其他会话停止本地 node 后再批准。采样输出为本机临时文件，按 slot 规则不入库。
+
+## 7 真实时段的历史（D468 → D478）
+
+| 次序 | 日期（UTC） | 结果 |
+| --- | --- | --- |
+| 1 | 11-22 17:52 | D468：预检超时（15 分钟，68 次采样，每次 counted 3–13，从未连续为 0），未开跑 |
+| 2 | 11-23 18:09 | 预检通过，demo-capture 开始 12 秒后 `ABORT: external counted process during demo-capture (counted=2)`（同期 `debate-coach\lingshf-reimagined-winner`），无截图 |
+| 3 | 11-23 18:39 | D470：预检通过，3 张 png 后 `ABORT … (counted=1)`（同期 `debate-coach\lingshf-special-memory`），不可用 |
+| 4 | 11-23 19:41 | D478：R3 工具（33d5068）+ `release/v0.14.0` 应用（fa03741），退出码 0，12 张截图，见 README §3 |
+
+前三次的日志在版本管理本机 `%TEMP%\demo15-slot-*`，未提交（D470 已记录）。第 4 次日志在 `logs/*-real*`。
