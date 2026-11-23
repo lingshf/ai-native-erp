@@ -12,7 +12,7 @@
 >
 > 与 `v0.17.0` 相比，`git diff --shortstat v0.17.0 3f8f2ff9fd010ff63fb8d891b4a4b1209d4cd0ee -- packages` 为 8 个文件（+508/−255）；`scripts/` 没有改动；没有迁移，没有 `package.json` / lock 改动。tag 目标按 D484：打在 `release/v0.18.0` 上审核通过的 RC 头，授权前不打。完整版本差异（两点）与合并基对比（三点，D483）的链接和数字在 tag 创建后核对填入。
 >
-> Demo（真实 Chrome，R3 时段，端口 4203）：[docs/demo/v0.18.0](docs/demo/v0.18.0/README.md)；窗口前的数字与 SHA 角色见该目录 README 与 run-through，窗口结果在窗口结束后补入。
+> Demo（真实 Chrome，R3 时段，端口 4203，6 张截图，含科目表 390 px 实测与 Tab / Enter / 空格的原生键盘记录；17 项显式检查全部通过，另有 7 条取证记录，记录不计入检查数）：[docs/demo/v0.18.0](docs/demo/v0.18.0/README.md)。被测运行器头与工具头见该目录 [run-through.md](docs/demo/v0.18.0/run-through.md) 的 SHA 角色表（被测运行器头不是 RC 头，其后只改文档、日志与截图）；步骤 4 的两次调用失败（D498 / D499，无副作用）也记在那里。
 
 S19 Sprint：一项用户可见的小功能（TLIST-03）和一项只拆分文件的重构（REFAC-10）。按 SemVer 取 minor（0.17.0 → 0.18.0），因为科目表页多了一个按钮。**无迁移，无依赖变化**，已有账套不需要 migrate，不改过账规则与任何金额、数量口径。
 
