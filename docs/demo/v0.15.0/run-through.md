@@ -1,0 +1,67 @@
+# DEMO-16 桩演练记录（`slot-run -Stub`，时段前，D460 行动 4 / TEMPLATE 第 12、16 条）
+
+状态：**演练已做，真实时段尚未申请**。等协调者审阅本记录并安排 D478 式安静时段后再申请；不打 tag。
+
+## 1 做了什么
+
+- 基线：本分支提交 `b485c4f1f603311112a0367f3f3fc6a577291661`（`status=[]`，工作区干净；其上只有 docs 提交，产品代码基线 main `00d1ed4`）。
+- 说明：演练之后本分支 rebase 到了 main `93d5b04`（#268），`b485c4f` 只存在于本机和演练日志中；三个脚本在 rebase 后路径不变，`git rev-parse HEAD:<路径>` 的 blob 与 §3 表一致（已核对），演练用的就是这些文件内容。
+- 命令（外层 `powershell.exe -NoProfile -Command "pwsh -NoProfile -File ... ; exit $LASTEXITCODE"`），**手动 1 次**，无重试：
+  `pwsh -NoProfile -File scripts\slot\slot-run.ps1 -OutDir <临时目录，仓库外> -StepsFile docs\demo\v0.15.0\scripts\steps-demo16.ps1 -Ports 4203 -Stub pass`
+- 结果：退出码 **0**。日志 [`logs/slot-summary-stub.log`](logs/slot-summary-stub.log)（UTC 2026-11-23 19:58）：
+  - 首行 `runner start head=b485c4f… rules=R3 ports=4203 status=[]`；第二行 `tooling head=b485c4f…`（本次工具与应用在同一工作树）。
+  - `ports free phase=before-preflight ports=4203` 与 `phase=before-steps` 各一次，端口 4203 空闲。
+  - head 静态预检 `exit=0 new-keys=0 reduced-keys=0`（`tsc errors=0`，基线 `{}`）；没有 `-BaseRoot`，base 预检按设计跳过。
+  - 构建完成，dist 比 HEAD 提交新（`newer=True`）。
+  - `STUB MODE pass: no browser, no vitest`；步骤 `demo-capture` 实际执行的是桩替换的 `node -e "console.log('stub demo-capture ok')"`，`exit=0`（[`logs/stub-demo-capture.out.log`](logs/stub-demo-capture.out.log)）。**子进程是 node，不是 `powershell.exe`。**
+  - 桩模式的进程预检只采 1 次样且不作门控：`counted=2`；步骤后 `counted=3`。这些是别的 ai-native-erp 会话的 `npm ci` 等进程（规则 SR-C2），不是本会话的 node/vitest；真实运行会在这里以 exit 2 中止，所以**真实时段需要安静时段**。SR-X1 / SR-X5 排除了其他项目与系统进程（完整列表在 runner 的 `excluded.tsv`，本机临时文件，不入库）。
+- 没有碰 4173；没有启动应用服务器；没有启动浏览器；没有打开端口 4203。
+
+## 2 `-Stub` 证明什么、不证明什么（S15 回顾行动 4）
+
+桩只证明 runner 的编排：steps 文件能被加载、`-Ports` 参数与端口空闲检查、预检与构建、日志中的 `runner start head=` / `tooling head=` 行、步骤退出码传递。它**没有**执行 `run-main.ps1` 和 `capture.mjs`，子进程也不是真实路径上的 `powershell.exe`，所以以下**未经实跑验证**：
+
+| 项 | 状态 |
+| --- | --- |
+| `run-main.ps1`：迁移、启动、seed、就绪检查、清理 | 未跑（脚本由 v0.14.0 的 `run-main.ps1` 改来，只改了 `capture.mjs` 的路径和就绪文字；v0.14.0 的版本在 DEMO-15 真实时段跑通过）。启动 node 服务需协调者批准（D442），本次没有申请 `-SkipCapture` 演练。 |
+| `seed-credit.mjs` | 复用 v0.14.0 的脚本，未改（见下）；DEMO-15 真实时段跑通过。本次未重跑。 |
+| `capture.mjs` 的断言 | **全新脚本，没有跑过**。只做了源码对照：标签取自 `packages/web/src/ui/trade-order-labels.ts`（`tord.creditedQuantity`：“贷项冲回数量” / “Credited qty”；`tord.lines`、`tord.preview`、`tord.save`），列顺序取自 `packages/web/src/trade-orders/order-view.tsx`，最小宽 1040 px 取自 `packages/web/src/pages/trade-orders.css:97`。选择器（`div.grid-wrap`、表的 `aria-label`）可能与真实页面有出入，第一次真实运行才会暴露。 |
+
+建议：真实时段前先批准一次**不带浏览器**的 `run-main.ps1 -SkipCapture` 演练（只起服务器和 seed，约 1 分钟，端口 4203），可提前发现 seed 与启动问题；但它也不覆盖 `capture.mjs` 的选择器。
+
+## 2b 第二次 `-Stub` 演练（评审 6028614002 之后）
+
+- 头提交 `42b1191`（`status=[]`），2026-11-23 20:07 UTC，同一命令（`-Stub pass`，`-Ports 4203`），退出码 0，日志 `logs/slot-summary-stub2.log`。
+- 本次 `capture.mjs` 增加了“等首行单元格不再是加载占位 … 再读数”的等待，仅 `node --check` 通过；Stub 不运行它，所以该等待仍未在真实页面上验证，真实时段内先做一次短的 capture-only 试跑更稳妥。
+- 日志里 `counted=0` 但 SR-X1 排除了其他项目（debate-coach `npm ci`、dc-layer-check4 的 headless Chrome）的进程；这些进程在真实时段按 SR-C2 的口径可能计数，需要静默窗口。
+
+## 3 脚本哈希（取自 git）
+
+`git rev-parse <提交>:<路径>`（`git hash-object` 的 blob 哈希，不是 SHA-256 内容摘要；是该路径在对应提交中的对象 ID）。三列分别取自：第一次 `-Stub` 的运行提交 `b485c4f`、第二次 `-Stub` 的运行提交 `42b1191`、真实运行的 `runner start head` `c7dd7cc`。
+
+| 脚本 | 第一次 Stub（b485c4f） | 第二次 Stub（42b1191） | 真实运行（c7dd7cc） |
+| --- | --- | --- | --- |
+| `docs/demo/v0.15.0/scripts/capture.mjs` | `d15742f6d6dd3867b10b05c1487e31965b522d6a` | `18ec7c2e5e745ed3c55b5c1baa838d8125a7de09` | `18ec7c2e5e745ed3c55b5c1baa838d8125a7de09` |
+| `docs/demo/v0.15.0/scripts/run-main.ps1` | `c9d656f60b23739f3880a18aa648e3b8a9753dd1` | `c9d656f60b23739f3880a18aa648e3b8a9753dd1` | `c9d656f60b23739f3880a18aa648e3b8a9753dd1` |
+| `docs/demo/v0.15.0/scripts/steps-demo16.ps1` | `a5860c0b63aae33456e3776deb366c32ce305fcf` | `a5860c0b63aae33456e3776deb366c32ce305fcf` | `a5860c0b63aae33456e3776deb366c32ce305fcf` |
+| `docs/demo/v0.14.0/scripts/seed-credit.mjs`（复用） | `80ea925377eeedf6b254d3d695f22c123f454f59` | `80ea925377eeedf6b254d3d695f22c123f454f59` | `80ea925377eeedf6b254d3d695f22c123f454f59` |
+
+真实运行的脚本与第二次 Stub 的脚本逐个相同；`capture.mjs` 在第一次与第二次 Stub 之间改过（等待开票明细到达），所以第二次 Stub 是对最终脚本的演练。
+## 4 D457 的两项
+
+- 每页（每个语言、每个宽度）一个全新的 browser context：`capture.mjs` 的 `contextFor()` 在每个截图循环里调用，页面结束 `context.close()`。
+- 桩演练：本记录。
+
+## 5 真实时段申请
+
+- 规则版本 **R3**，`-Ports 4203`，D444 单次手动、不重试。
+- 真实运行要求所有 ai-native-erp 会话（含 S17 开发者）安静：SR-C2 仍计入它们的 node / vitest；SR-X6（归属未知的 `node.exe`）不计数但会完整记录。
+- 申请前由 `slot-run.ps1` 自己的预检等待连续 6 次 counted=0（最多 15 分钟，超时则中止不重试）。
+
+## 6 真实运行与 D481 的干跑缺口
+
+- D480 授权的序列：capture 干跑 → `run-main.ps1 -SkipCapture` → 真实 slot-run，各一次，不重试，任一步失败即停。
+- **缺口**：第一次干跑（头 c7dd7cc，直接运行 `run-main.ps1`）在“服务器就绪”处失败（`not ready`），原因是新建的应用 worktree 没有 `packages\web\dist`；`run-main.ps1` 不构建，真实的 `slot-run.ps1` 才构建。这是干跑流程的缺口，不是脚本缺陷；已停下并上报，没有进入后两步。
+- **D481**（协调者授权）：在应用 worktree 先 `npm run build` 一次（算流程修正，不算重试），然后三步各一次：干跑退出码 0、`-SkipCapture` 退出码 0、真实 slot-run 退出码 0。
+- 真实运行的 `runner start head=c7dd7cc3e160f2d29160135a6e8184f99dbc2af8`、`tooling head=93d5b0419bf08289b4193f7ec1d065fcada52485`、SR-X6 行与 390 px 数字见 [`README.md`](README.md) §3；日志在 `logs/*-real.*`。
+- 脚本哈希：真实运行用的是 c7dd7cc 上的三个脚本，`git rev-parse c7dd7cc:<路径>` 与 §3 表一致（capture.mjs 18ec7c2…）。

@@ -1,0 +1,224 @@
+[
+ {
+  "name": "trade-orders-entry-zh-red-1440",
+  "hash": "#/trade-orders?company=DEFAULT",
+  "heading": "采购 / 销售订单",
+  "step": "page",
+  "via": "goto #/trade-orders?company=DEFAULT",
+  "previewButtons": 1,
+  "saveButtons": 1,
+  "entryLineTables": 1
+ },
+ {
+  "name": "trade-orders-detail-zh-red-1440",
+  "hash": "#/trade-orders?company=DEFAULT&order=PO-C1",
+  "heading": "采购 / 销售订单",
+  "step": "page",
+  "via": "goto #/trade-orders?company=DEFAULT，点订单号 PO-C1",
+  "headers": 13,
+  "creditedColumnIndex": 7,
+  "got": {
+   "quantity": 10,
+   "invoiced": 6,
+   "uninvoiced": 4,
+   "credited": 4
+  }
+ },
+ {
+  "name": "trade-orders-entry-en-green-1440",
+  "hash": "#/trade-orders?company=DEFAULT",
+  "heading": "Purchase and sales orders",
+  "step": "page",
+  "via": "goto #/trade-orders?company=DEFAULT",
+  "previewButtons": 1,
+  "saveButtons": 1,
+  "entryLineTables": 1
+ },
+ {
+  "name": "trade-orders-detail-en-green-1440",
+  "hash": "#/trade-orders?company=DEFAULT&order=PO-C1",
+  "heading": "Purchase and sales orders",
+  "step": "page",
+  "via": "goto #/trade-orders?company=DEFAULT，点订单号 PO-C1",
+  "headers": 13,
+  "creditedColumnIndex": 7,
+  "got": {
+   "quantity": 10,
+   "invoiced": 6,
+   "uninvoiced": 4,
+   "credited": 4
+  }
+ },
+ {
+  "name": "trade-orders-detail-zh-red-390",
+  "step": "k7",
+  "via": "goto #/trade-orders?company=DEFAULT，点订单号 PO-C1，再把“贷项冲回数量”表头 scrollIntoView({inline:\"nearest\"})",
+  "hash": "#/trade-orders?company=DEFAULT&order=PO-C1",
+  "detail": {
+   "headers": 13,
+   "creditedColumnIndex": 7,
+   "got": {
+    "quantity": 10,
+    "invoiced": 6,
+    "uninvoiced": 4,
+    "credited": 4
+   }
+  },
+  "beforeScroll": {
+   "documentScrollWidth": 390,
+   "containerScrollWidth": 1040,
+   "containerClientWidth": 316,
+   "scrollLeft": 0,
+   "container": {
+    "left": 36,
+    "right": 354,
+    "top": 3389,
+    "bottom": 3519
+   },
+   "header": {
+    "left": 565.2,
+    "right": 687.9,
+    "top": 3390,
+    "bottom": 3430
+   },
+   "cell": {
+    "left": 565.2,
+    "right": 687.9,
+    "top": 3430,
+    "bottom": 3474
+   }
+  },
+  "afterScroll": {
+   "documentScrollWidth": 390,
+   "containerScrollWidth": 1040,
+   "containerClientWidth": 316,
+   "scrollLeft": 335,
+   "container": {
+    "left": 36,
+    "right": 354,
+    "top": 859,
+    "bottom": 989
+   },
+   "header": {
+    "left": 230.2,
+    "right": 352.9,
+    "top": 860,
+    "bottom": 900
+   },
+   "cell": {
+    "left": 230.2,
+    "right": 352.9,
+    "top": 900,
+    "bottom": 944
+   }
+  }
+ },
+ {
+  "checks": [
+   {
+    "check": "trade-orders-entry-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-orders-entry-zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-orders-detail-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-orders-detail-zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-orders-entry-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-orders-entry-en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-orders-detail-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-orders-detail-en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "390 宽：文档 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "390 宽：容器 scrollWidth > clientWidth（表格在容器内横向滚动）",
+    "ok": true,
+    "detail": {
+     "scrollWidth": 1040,
+     "clientWidth": 316
+    }
+   },
+   {
+    "check": "390 宽：滚到新列后 scrollLeft > 0",
+    "ok": true,
+    "detail": 335
+   },
+   {
+    "check": "390 宽：滚到新列后表头完整落在容器内",
+    "ok": true,
+    "detail": {
+     "header": {
+      "left": 230.2,
+      "right": 352.9,
+      "top": 860,
+      "bottom": 900
+     },
+     "container": {
+      "left": 36,
+      "right": 354,
+      "top": 859,
+      "bottom": 989
+     }
+    }
+   },
+   {
+    "check": "390 宽：滚到新列后 L1 行的单元格完整落在容器内",
+    "ok": true,
+    "detail": {
+     "cell": {
+      "left": 230.2,
+      "right": 352.9,
+      "top": 900,
+      "bottom": 944
+     },
+     "container": {
+      "left": 36,
+      "right": 354,
+      "top": 859,
+      "bottom": 989
+     }
+    }
+   },
+   {
+    "check": "390 宽：滚动后文档仍不溢出",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "390 宽 无页面错误",
+    "ok": true,
+    "detail": []
+   }
+  ]
+ }
+]
