@@ -1756,13 +1756,46 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
             ).toBe(true);
           }
           expect(await onRegion()).toBe(true);
-          for (let count = 0; count < 40; count++) {
-            const end = await region.evaluate(
-              (element) => element.scrollLeft + element.clientWidth >= element.scrollWidth - 1,
+          // D360: each ArrowRight may start a smooth-scroll animation (headless Chromium on CI), and
+          // rapid presses cancel each other. After every press wait until scrollLeft has settled
+          // (unchanged for 3 animation frames, or no movement within 30 frames); stop at the end
+          // or when a press makes no progress, then poll for the final position.
+          const settle = (from: number) =>
+            region.evaluate(
+              (element, start) =>
+                new Promise<number>((resolve) => {
+                  let last = element.scrollLeft;
+                  let same = 0;
+                  let frames = 0;
+                  const tick = () => {
+                    const now = element.scrollLeft;
+                    frames++;
+                    same = now === last ? same + 1 : 0;
+                    last = now;
+                    if ((now !== start && same >= 3) || frames >= 30) resolve(now);
+                    else requestAnimationFrame(tick);
+                  };
+                  requestAnimationFrame(tick);
+                }),
+              from,
             );
-            if (end) break;
+          const maximum = () =>
+            region.evaluate((element) => element.scrollWidth - element.clientWidth);
+          let presses = 0;
+          for (let position = await settle(-1); presses < 100; presses++) {
+            if (position >= (await maximum()) - 1) break;
             await page.keyboard.press("ArrowRight");
+            const next = await settle(position);
+            if (next === position) break;
+            position = next;
           }
+          await expect
+            .poll(() =>
+              region.evaluate(
+                (element) => element.scrollWidth - element.clientWidth - element.scrollLeft,
+              ),
+            )
+            .toBeLessThanOrEqual(1);
           const scrolled = await region.evaluate((element) => {
             const wrap = element.getBoundingClientRect();
             const last = (
@@ -1777,10 +1810,12 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
               inDialog: (element.closest("dialog") as HTMLElement).contains(document.activeElement),
             };
           });
-          console.log(`[tinv06] ${name} 390 keyboard scroll ${JSON.stringify(scrolled)}`);
+          console.log(
+            `[tinv06] ${name} 390 keyboard scroll ${JSON.stringify({ ...scrolled, presses })}`,
+          );
           appendFileSync(
             join(artifacts, `${name}-invoice-detail-geometry.json`),
-            `${JSON.stringify({ width: 390, keyboardScroll: scrolled })}\n`,
+            `${JSON.stringify({ width: 390, keyboardScroll: { ...scrolled, presses } })}\n`,
           );
           expect(scrolled.max).toBeGreaterThan(0);
           expect(scrolled.scrollLeft).toBeGreaterThanOrEqual(scrolled.max - 1);
