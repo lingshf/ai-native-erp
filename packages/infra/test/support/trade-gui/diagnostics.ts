@@ -48,7 +48,7 @@ async function logged<T>(
   step: string,
   run: () => T,
   data: Record<string, unknown>,
-) {
+): Promise<Awaited<T>> {
   const started = performance.now();
   log("step", { ...data, step, phase: "start" });
   try {

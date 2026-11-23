@@ -41,7 +41,9 @@ for (const language of ["zh", "en"] as const)
   for (const theme of ["red", "green"] as const) {
     test(`migration report ${language}/${theme}: actual keyboard disclosure and no write requests`, async (t) => {
       const f = legacyFixture(t);
-      const snapshot = new LegacyImportSnapshot(f.target, f.manifest);
+      // legacy-fixture.mjs is plain JS, so tsc infers its manifest.ledgers as `{}`.
+      const manifest = f.manifest as ConstructorParameters<typeof LegacyImportSnapshot>[1];
+      const snapshot = new LegacyImportSnapshot(f.target, manifest);
       f.readers.push(snapshot);
       const target = join(f.directory, "target.sqlite");
       const choices: ImportChoices = {
