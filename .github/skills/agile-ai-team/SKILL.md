@@ -45,6 +45,7 @@ Model suggestions:
   - new tests ≤ 5 s each;
   - behavior-change table present;
   - "User-visible changes" section present;
+  - readability: the PR body has a "Readability" (可读性) section covering rules ①–⑥ of the DoD in [roadmap §5](../../../design/roadmap.md#5-团队流程). Thresholds and counting rules live only there; do not restate them here. Reviewers may send the PR back on these grounds;
   - reviewer APPROVED on the exact head.
 - **Sprint close, in order:**
   1. **Release candidate.** The release manager opens a release PR (CHANGELOG, docs, flows, demo, release notes) → review → merge.

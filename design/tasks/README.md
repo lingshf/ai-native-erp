@@ -609,6 +609,8 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [UI-15](S12.md#ui-15期末结账页小步整理) | 期末结账页小步整理：补页头说明，准入徽标与复选框显示本地化模块名（界面小步） | 页面 | P2 | 本 PR | web-ui:period-close（`PeriodClose.tsx`、`TradePeriodAdmission.tsx`、`ui/close-labels.ts`、`ui/trade-report-labels.ts` 中 `trpt.*`、`pages/period-close.css` 及测试） | done | #206 |
 | [UI-16](S12.md#ui-16总账四页补页头说明) | 总账四页（科目表、财务维度、凭证、业务事件）补页头说明（界面小步，D377，不用槽位） | 页面 | P2 | UI-15 合并 | web-ui:master、web-ui:dimensions、web-ui:journals、web-ui:business-events（四个页面、对应 `ui/*-labels.ts` 只追加 `*.description` 及四页测试） | done | #210 |
 | [UI-17](S12.md#ui-17通用加载与失败提示去掉主数据字样) | 通用加载与失败提示去掉“主数据”字样：只影响使用这两个共享键的现有提示，专用提示不改；只改 `master.loading` / `master.error` 的中英取值，不改键名（D384，不用槽位，不进截图与门禁） | 页面（文案） | P2 | UI-16 合并 | web-ui:master（`ui/master-labels.ts`）+ web-ui:migration（`test/migration.test.tsx` 只追加） | in progress | — |
+| [REFAC-01](S12.md#refac-01拆分-trade-gui-scenariots只搬移不改行为) | 拆分 `trade-gui-scenario.ts`：把场景函数以外的顶层声明按职责搬到 `test/support/trade-gui/`，原名再导出，只搬移不改行为（2026-11-22 用户要求可读性） | 重构（测试） | P2 | TINV-07、TORD-06 合并且 main Full 绿（D388） | tests:trade-e2e（独占） | todo | — |
+| [REFAC-02](S12.md#refac-02拆分-businesseventstsx只搬移不改行为) | 拆分 `BusinessEvents.tsx`：组件按职责搬到 `src/business-events/`，只搬移不改行为 | 重构（页面） | P2 | — （D388：有开发名额空出即派） | web-ui:business-events | todo | — |
 | DEMO-12（无任务书） | v0.12.0 RC 与 Demo，验收见 [S12.md](S12.md#demo-12-验收) | 发布 | P1（Sprint 末） | TINV-07、TORD-06、UI-15 结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | todo | — |
 
 - **并行**：TINV-07 ∥ TORD-06 ∥ UI-15 冲突域不相交，可同时进行（D369）；UI-15 合并后由 UI-16 接替第三个名额（D377），UI-16 合并后由 UI-17 接替（D384）；只有 TORD-06 加迁移（019），其他任务不得新增迁移。开发同时在岗不超过 3 人。共享单文件与槽位规则见 [S12.md](S12.md#泳道)。
