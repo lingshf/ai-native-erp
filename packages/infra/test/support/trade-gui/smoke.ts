@@ -1,7 +1,7 @@
 // Page-level smoke over every trade page for each language/theme combination.
-import { type ExpectStatic, afterAll, beforeAll, expect, test } from "vitest";
-import type { BrowserContext, Page } from "playwright";
-import { type LabelKey, label, resources } from "../../../../web/src/ui/index.ts";
+import { type TestContext, afterAll, beforeAll, expect, test } from "vitest";
+import type { BrowserContext } from "playwright";
+import { type LabelKey, label } from "../../../../web/src/ui/index.ts";
 import { diagnostics, guiPhase, timed } from "./diagnostics.ts";
 import {
   type Server,
@@ -13,76 +13,9 @@ import {
 } from "./harness.ts";
 import { choose } from "./keyboard.ts";
 import { freshIds, httpSend, seedPartOne } from "./seed.ts";
-
-// Each page's own list query (first load must succeed) and the seeded rows it renders from it.
-// Titles, lang and theme render even when the data request fails, so they prove nothing alone.
-type Label = (key: LabelKey) => string;
-const tradePages: readonly {
-  path: string;
-  title: LabelKey;
-  request: (url: URL) => boolean;
-  loaded: (t: Label) => string;
-  // Read-only keyboard step that makes the page show its loaded rows.
-  reveal?: (page: Page, check: ExpectStatic) => Promise<void>;
-}[] = [
-  {
-    path: "trade",
-    title: "trade.title",
-    request: (url) => url.pathname === "/api/v1/trade/tradeParty",
-    loaded: (t) => `main table[aria-label="${t("trade.tradeParty")}"] tbody tr`,
-  },
-  {
-    path: "trade-invoices",
-    title: "tinv.title",
-    request: (url) => url.pathname === "/api/v1/trade/invoices",
-    loaded: (t) => `main table[aria-label="${t("tinv.list")}"] tbody tr`,
-  },
-  {
-    path: "trade-settlements",
-    title: "tset.title",
-    request: (url) =>
-      url.pathname === "/api/v1/trade/open-items" && url.searchParams.get("status") === "open",
-    loaded: (t) => `main table[aria-label="${t("tset.select")}"] tbody tr`,
-  },
-  {
-    path: "trade-adjustments",
-    title: "tadj.title",
-    request: (url) =>
-      url.pathname === "/api/v1/trade/open-items" && !url.searchParams.has("status"),
-    loaded: () => `#tadj-sourceId option:not([value=""])`,
-    // The default action (advance) lists no items; cancel lists the open items read-only.
-    reveal: (page, check) => choose(page, page.locator("#tadj-kind"), "cancel", check),
-  },
-  {
-    path: "trade-reports",
-    title: "trpt.title",
-    request: (url) => url.pathname === "/api/v1/trade/reports/open-items",
-    loaded: () => "main table tbody tr",
-  },
-  {
-    path: "period-close",
-    title: "close.title",
-    request: (url) => url.pathname === "/api/v1/periods",
-    loaded: () => "#close-month option",
-  },
-];
-
-// Text the other language would show but this one must not: label values (and the literal
-// parts of templates) that differ between the two dictionaries.
-function foreignLabels(language: "zh" | "en") {
-  const own = resources[language] as Record<string, string>;
-  const other = resources[language === "zh" ? "en" : "zh"] as Record<string, string>;
-  const ownValues = new Set(Object.values(own));
-  const foreign = new Set<string>();
-  for (const [key, value] of Object.entries(other)) {
-    if (value === own[key]) continue;
-    for (const part of value.split(/\{[^{}]+\}/u)) {
-      const text = part.trim();
-      if (/\p{L}{2}/u.test(text) && !ownValues.has(text)) foreign.add(text);
-    }
-  }
-  return [...foreign];
-}
+import { checkTradePages } from "./smoke/check-page.ts";
+import { foreignLabels } from "./smoke/foreign-labels.ts";
+import { watchPageTraffic } from "./smoke/watch-page.ts";
 
 // Page-level smoke for every language/theme combination: each trade page loads from the
 // real build and API with the selected `lang` and `data-theme`, shows its translated title and
@@ -113,150 +46,52 @@ export function tradeGuiSmoke(combinations: readonly (readonly ["zh" | "en", "re
     await timed(log, "afterAll:closeAll", () => closeAll(undefined, servers));
   });
 
+  // One combination's test: its own browser context, read-only browsing over the seeded state.
+  async function smokeCombination(
+    language: "zh" | "en",
+    theme: "red" | "green",
+    { onTestFinished, expect }: TestContext,
+  ) {
+    const name = `smoke-${language}-${theme}`;
+    let context: BrowserContext | undefined;
+    log?.("test", { test: name, phase: "start" });
+    onTestFinished(async () => {
+      await timed(log, "onTestFinished:context.close", () => context?.close(), { test: name });
+    });
+    const { page } = await openTracedPage(
+      harness.launching,
+      phase,
+      (created) => {
+        context = created;
+      },
+      log,
+      name,
+    );
+    const started = performance.now();
+    const { failures, pending } = watchPageTraffic(page);
+    const t = (key: LabelKey) => label(language, key);
+    const foreign = foreignLabels(language);
+    const visit = { page, expect, address, language, theme, t, foreign, data, failures, pending };
+    let failed = true;
+    try {
+      await page.goto(address);
+      await choose(page, page.locator("#workspace-language"), language, expect);
+      await choose(page, page.locator("#workspace-theme"), theme, expect);
+      await checkTradePages(visit);
+      expect(failures).toEqual([]);
+      failed = false;
+    } finally {
+      if (context) await finishTrace(context, page, name, failed);
+      log?.("test", { test: name, phase: "end", failed });
+      phase(`${language}/${theme}`, started);
+    }
+  }
+
   // Combinations are independent (own context, read-only browsing), so they run concurrently.
   for (const [language, theme] of combinations)
-    test.concurrent(`real trade GUI smoke: ${language}/${theme}, every trade page loads its data translated with lang and data-theme`, async ({
-      onTestFinished,
-      expect,
-    }) => {
-      const name = `smoke-${language}-${theme}`;
-      let context: BrowserContext | undefined;
-      log?.("test", { test: name, phase: "start" });
-      onTestFinished(async () => {
-        await timed(log, "onTestFinished:context.close", () => context?.close(), { test: name });
-      });
-      const { page } = await openTracedPage(
-        harness.launching,
-        phase,
-        (created) => {
-          context = created;
-        },
-        log,
-        name,
-      );
-      const started = performance.now();
-      const failures: string[] = [];
-      page.on("pageerror", (error) => failures.push(error.message));
-      let pending = 0;
-      page.on("request", (request) => {
-        if (request.url().includes("/api/")) pending++;
-      });
-      const settled = (request: { url(): string }) => {
-        if (request.url().includes("/api/")) pending--;
-      };
-      page.on("requestfinished", settled);
-      page.on("requestfailed", settled);
-      // Any failed API call fails the smoke, even one the page would later retry successfully.
-      page.on("response", (response) => {
-        if (response.url().includes("/api/") && response.status() >= 400)
-          failures.push(`${response.status()} ${response.url()}`);
-      });
-      page.on("requestfailed", (request) => {
-        if (request.url().includes("/api/") && request.failure()?.errorText !== "net::ERR_ABORTED")
-          failures.push(`${request.failure()?.errorText} ${request.url()}`);
-      });
-      const t = (key: LabelKey) => label(language, key);
-      const foreign = foreignLabels(language);
-      let failed = true;
-      try {
-        await page.goto(address);
-        await choose(page, page.locator("#workspace-language"), language, expect);
-        await choose(page, page.locator("#workspace-theme"), theme, expect);
-        for (const { path, title, request, loaded, reveal } of tradePages) {
-          const listed = page.waitForResponse((response) => request(new URL(response.url())), {
-            timeout: 10_000,
-          });
-          await page.goto(`${address}#/${path}`);
-          await page.waitForURL((url) => url.hash === `#/${path}`);
-          expect((await listed).status(), `${path} list request`).toBe(200);
-          await expect
-            .poll(() => page.locator("main h2").first().textContent(), {
-              message: `${path} title`,
-              timeout: 10_000,
-              interval: 20,
-            })
-            .toBe(t(title));
-          await reveal?.(page, expect);
-          await expect
-            .poll(() => page.locator(loaded(t)).count(), {
-              message: `${path} seeded rows loaded`,
-              timeout: 10_000,
-              interval: 20,
-            })
-            .toBeGreaterThan(0);
-          await expect
-            .poll(() => pending, {
-              message: `${path} API requests settle`,
-              timeout: 10_000,
-              interval: 20,
-            })
-            .toBe(0);
-          expect(await page.locator("html").getAttribute("lang"), path).toBe(language);
-          expect(await page.locator(".workspace").getAttribute("data-theme"), path).toBe(theme);
-          const alerts = await page
-            .locator("[role=alert], .message-bar.danger, .message-bar.warning")
-            .filter({ visible: true })
-            .allTextContents();
-          expect(alerts, `${path} error alerts`).toEqual([]);
-          expect(failures, `${path} API or page errors`).toEqual([]);
-          const leaked = await page.evaluate(
-            ({ foreign, english, own, latin }) => {
-              const texts: string[] = [];
-              const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-              for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-                const parent = node.parentElement;
-                if (!parent || parent.closest("script, style, [hidden]")) continue;
-                if (!parent.closest("option") && parent.getClientRects().length === 0) continue;
-                texts.push(node.textContent ?? "");
-              }
-              for (const element of document.body.querySelectorAll(
-                "[placeholder], [aria-label], [title], [alt]",
-              ))
-                for (const name of ["placeholder", "aria-label", "title", "alt"])
-                  texts.push(element.getAttribute(name) ?? "");
-              return [
-                ...new Set(
-                  texts
-                    .map((text) => text.trim())
-                    .filter(
-                      (text) =>
-                        text &&
-                        !own.includes(text) &&
-                        ((english && /\p{Script=Han}/u.test(text)) ||
-                          (!english &&
-                            (text.match(/[A-Za-z]{3,}/gu) ?? []).some(
-                              (word) => word !== word.toUpperCase() && !latin.includes(word),
-                            )) ||
-                          foreign.some(
-                            (value) =>
-                              text === value || (value.length >= 12 && text.includes(value)),
-                          )),
-                    ),
-                ),
-              ];
-            },
-            {
-              foreign,
-              english: language === "en",
-              own: [...Object.values(resources[language]), ...data],
-              // Latin words the zh dictionary or user data itself uses; all-caps words are codes.
-              latin: [
-                ...new Set(
-                  [...Object.values(resources[language]), ...data]
-                    .join(" ")
-                    .match(/[A-Za-z]{3,}/gu) ?? [],
-                ),
-              ],
-            },
-          );
-          expect(leaked, `${language} ${path}: hard-coded or other-language text`).toEqual([]);
-        }
-        expect(failures).toEqual([]);
-        failed = false;
-      } finally {
-        if (context) await finishTrace(context, page, name, failed);
-        log?.("test", { test: name, phase: "end", failed });
-        phase(`${language}/${theme}`, started);
-      }
-    }, 60_000);
+    test.concurrent(
+      `real trade GUI smoke: ${language}/${theme}, every trade page loads its data translated with lang and data-theme`,
+      (context) => smokeCombination(language, theme, context),
+      60_000,
+    );
 }
