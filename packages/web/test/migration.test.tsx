@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { expect, test, vi } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { expect, onTestFinished, test, vi } from "vitest";
 import { App } from "../src/App.tsx";
 import { preferenceStorageKey } from "../src/ui/index.ts";
 
@@ -261,3 +261,78 @@ test("migration details show key-value tables with non-color mismatch marks, raw
   expect(screen.getByText(tip)).toBeTruthy();
   expect(fetchMock).toHaveBeenCalledTimes(1);
 });
+
+const neutralCopy = [
+  {
+    language: "zh",
+    title: "迁移核对",
+    awaiting: "待确认",
+    loading: "正在加载…",
+    failed: "请求失败。请检查连接和目标库配置后重试。",
+  },
+  {
+    language: "en",
+    title: "Migration reconciliation",
+    awaiting: "Awaiting confirmation",
+    loading: "Loading…",
+    failed: "Request failed. Check the connection and target database configuration, then retry.",
+  },
+];
+
+function deferred<T>() {
+  let resolve: (value: T) => void = () => {};
+  let settled = false;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  }).finally(() => {
+    settled = true;
+  });
+  return { promise, resolve, isSettled: () => settled };
+}
+
+const requestedUrls = (fetchMock: ReturnType<typeof vi.fn<typeof fetch>>) =>
+  fetchMock.mock.calls.map(([url]) => url);
+
+// The route Suspense fallback shares the loading copy and role, so scope assertions to the page.
+async function openMigration(language: string, title: string, fetchMock: typeof fetch) {
+  onTestFinished(() => window.history.replaceState(null, "", "/"));
+  window.location.hash = "#/migration";
+  localStorage.setItem(
+    preferenceStorageKey,
+    JSON.stringify({ language, theme: "red", teaching: false }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  render(<App />);
+  const section = await screen.findByRole("region", { name: title });
+  expect(within(section).getByRole("heading", { level: 2 }).textContent).toBe(title);
+  return within(section);
+}
+
+test.each(neutralCopy)(
+  "migration shows neutral loading copy while its request is pending ($language)",
+  async ({ language, title, awaiting, loading }) => {
+    const response = deferred<Response>();
+    const fetchMock = vi.fn<typeof fetch>().mockReturnValue(response.promise);
+    const page = await openMigration(language, title, fetchMock);
+
+    await vi.waitFor(() => expect(requestedUrls(fetchMock)).toContain("/api/v1/migration"));
+    expect(response.isSettled()).toBe(false);
+    expect(page.getByRole("status").textContent).toBe(loading);
+    expect(page.queryByText(awaiting)).toBeNull();
+
+    response.resolve(Response.json({ run: null }));
+    await vi.waitFor(() => expect(page.queryByRole("status")).toBeNull());
+  },
+);
+
+test.each(neutralCopy)(
+  "migration shows neutral failure copy when its request fails ($language)",
+  async ({ language, title, failed }) => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response("{}", { status: 500 }));
+    const page = await openMigration(language, title, fetchMock);
+
+    expect((await page.findByRole("alert")).textContent).toBe(failed);
+    expect(page.queryByRole("status")).toBeNull();
+    expect(requestedUrls(fetchMock)).toContain("/api/v1/migration");
+  },
+);
