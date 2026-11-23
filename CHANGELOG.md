@@ -8,6 +8,42 @@
 
 （暂无）
 
+## [0.11.0] - 发布日待定（发布候选）
+
+> 产品代码基线为 `main` 68620fd（Full run 45114359894 绿）。自 v0.10.0（tag 所指提交 ae4fbaa）到 68620fd 共 10 个已合并 PR（#193–#202）；产品与测试提交是 TINV-06 [#199](https://github.com/lingshf/ai-native-erp/pull/199) + 修复 [#200](https://github.com/lingshf/ai-native-erp/pull/200)、UI-14 [#197](https://github.com/lingshf/ai-native-erp/pull/197)；其余为流程、脚本、权重与文档。tag 目标待 D335 同款规则确定：打在 Demo PR 的 squash 提交上，之后 main 只有文档提交，届时以 `git diff 68620fd <tag 目标> -- packages` 为空为准（本 RC 不预先填写）。
+
+S11 Sprint：发票详情对话框与侧栏分组。**无迁移**（最新仍是 018），无依赖变化，不改 HTTP 契约与过账规则。
+
+### Added（用户可见）
+
+- **发票详情对话框（TINV-06，#199、#200）**：发票列表的“外部单号”变为按钮（`aria-haspopup="dialog"`，`packages/web/src/TradeInvoices.tsx:1286–1297`），点击、Enter 或空格打开只读对话框（`TradeInvoiceDetail.tsx`），含抬头、九列行明细、合计、未结项（状态与未结余额）、核销记录与调整记录；Esc 或“关闭”后焦点回到原按钮，筛选、已加载页和滚动位置保持。读取失败显示错误和“重试”；404 只显示“发票不存在或已不在本公司。”，不提供重试（`TradeInvoiceDetail.tsx:88–126`）。教学开启时显示教学卡片（`:186–192`）。每次打开都重新请求一次 `GET /api/v1/trade/invoices/:id`（`staleTime` 0、`gcTime` 0，`:47–50`）。对话框不写地址栏、不新增深链接、不触发离开确认。
+- **390 宽**：行明细表所在区域是可 Tab 聚焦的滚动区（`<section tabIndex=0>`，`:205–210`），在区域内横向滚动，页面本身不横向溢出（#199 的端到端断言）。
+- **侧栏分组（UI-14，#197）**：原“总账”组拆成“凭证与业务事件”“贸易往来”“总账与结账”三组；链接文字、顺序与目标不变（共 16 个）；5 个有标题的组带 `role="group"` 与 `aria-labelledby`（`packages/web/src/App.tsx:205–237`；标签 `labels.ts:30–32`、`:93–95`）。≤760 px 组标题仍隐藏，样式未改（#197 正文）。
+
+### Changed
+
+- 侧栏“总账”组名不再出现（`journal.group` 标签已删除，`journal-labels.ts`）。
+
+### Internal（无用户可见变化）
+
+- **SLOT-01（#198）**：独占时段采样器入库 `scripts/slot/`（只支持 PowerShell 7，规则版本 R1），开发者本机工具，不进构建产物和 CI。
+- **WEIGHT-01（#201、#202）**：`scripts/test-shard-weights.json` 三行权重按 CI 实测校准；合并后复测偏差 −20.3% / +10.3% / −1.4%，都在 ±25% 内。
+- **PROC-08（#196）**：Demo 模板与发布清单落实 S10 回顾行动（日志入库与 `-text`、`-ErrorAction Stop` 负例、RC 正文证据索引）。
+- **#193、#194、#195**：日期文档、S10 回顾与 S11 计划，只含文档。
+- **测试**：新增 `trade-invoice-detail.test.tsx` 和端到端场景；#200 把 390 键盘滚动断言改为逐键等待滚动稳定（只改测试，产品代码不变）。
+
+### 面向调用方（HTTP API）
+
+- **未变**：`git diff --numstat v0.10.0 68620fd -- packages` 只涉及 `packages/web` 的 App、TradeInvoices、TradeInvoiceDetail（新）、样式、标签与测试，以及 `packages/infra/test/support/trade-gui-scenario.ts`；`packages/core/src`、`packages/infra/src`、`packages/infra/migrations` 无变化，`package.json` 与 lock 无变化。详情对话框使用既有的 `GET /api/v1/trade/invoices/:id`。
+
+### 已知限制与已接受的决定
+
+- **详情对话框是只读的**：没有地址栏深链接，不自动刷新（每次打开才读取）；404 不重试。
+- **390 宽行明细在容器内横向滚动**，不是自动换行。
+- **性能（PG-05，gzip-9，#199 取自 base `2a2dca1` 对 head `a8c4968`）**：入口 +10 B，发票路由块 +2447 B，发票页 CSS +228 B；#197 入口 +128 B（gzip-9），CSS 0 B。两者基线不同，不能相加；与 v0.10.0 相比的净变化未测量，发布前未重测。
+- 真实 Chrome 验证在 PR 取证 head 上，不是合并后的 squash 提交。
+- 旧账迁移（M2）仍未完成：M2-05（演练）与 M2-06（切换）未开始，另需用户授权。
+
 ## [0.10.0] - 2026-11-22
 
 > 产品代码基线为 `main` 108684d（TINV-05 #189、GATE-01 #188 合并；PROC-07 #187）；历史说明：RC [#191](https://github.com/lingshf/ai-native-erp/pull/191) 基于 main `58e8422`（Full run 45006555904 绿），正式版 tag 在 `ae4fbaa`。自 v0.9.0（tag 所指提交 f943b8b）到 58e8422 共 5 个已合并 PR（#186–#190），其中 #186 是 S10 计划，#187 是流程文档，#190 是文档，#188、#189 是产品与测试提交。之后 main 只有文档提交，产品代码与 108684d 相同。按 D335，tag `v0.10.0` 打在 Demo PR [#192](https://github.com/lingshf/ai-native-erp/pull/192) 的 squash 提交 `ae4fbaa` 上（main Full run 45010014104 绿），不是 108684d；`git diff 108684d ae4fbaa -- packages` 为空。Demo 记录：[docs/demo/v0.10.0](docs/demo/v0.10.0/run-through.md)。
@@ -413,7 +449,8 @@ M1 贸易里程碑完成（M1-01..07，M1-R 评审通过，无阻塞项）。产
 - 旧快照未配置提示、凭证空列表文案和根 README 迁移版本说明已在 v0.2.0 修复（见 `[0.2.0]`）；v0.1.0 原发布基线不包含这些修复。
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
-[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/lingshf/ai-native-erp/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/lingshf/ai-native-erp/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/lingshf/ai-native-erp/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/lingshf/ai-native-erp/compare/v0.7.0...v0.8.0
