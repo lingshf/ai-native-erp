@@ -596,6 +596,21 @@ M1-R3（#78）、M1-R4（#81）已完成。
 - **并行**：定稿 PR 合并后，TINV-06 ∥ SLOT-01 ∥ UI-14 ∥ PROC-08 可同时进行；WEIGHT-01 在 TINV-06、SLOT-01 之后。S11 没有加迁移的任务。开发同时在岗不超过 3 人，第三个名额给 UI-14（D338，约束见 [S11.md](S11.md#泳道)）。
 - **回顾行动项**：行动 1–3 与行动 4 的模板部分由 PROC-08 完成；行动 4–7 的路线图与任务书模板部分已由 S11 定稿 PR 写入；行动 8 由 SLOT-01 完成。落点表见 [S11.md](S11.md#回顾行动项落点s10-回顾)。
 
+## S12：发票深链接 + 订单按开票状态筛选 + 期末结账页小步整理（v0.12.0，草案）
+
+**计划正文**：[S12.md](S12.md)（草案；D368 起草，D369 把 TINV-07、TORD-06 排在最前并已先行派发，D370 / D371 决定两者的方案口径；各任务细节以该文为准）。基线 main `f5defcc`；版本号暂定 v0.12.0。S11 的 Sprint 评审与回顾在 v0.11.0 Demo 合并后另开 PR。
+
+**不在本 Sprint**：M2-05 / M2-06（仍待用户授权）；多订单合并开票、贷项冲减已开票数量、保留前进历史；订单筛选写入地址栏；按开票状态排序（候选池）；发票列表其余观感问题（TINV-07 之后另起小步任务）。
+
+| ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| [TINV-07](S12.md#tinv-07发票详情深链接与筛选写入地址栏) | 发票详情深链接 `?invoice=` 与筛选写入地址栏；只用 replace，切换账套写地址，非法筛选整组忽略并提示，非法 `invoice` 前端判 notFound（D370） | 页面 | P1 | — （D369 先行派发） | web-ui:trade（`TradeInvoices.tsx`、`TradeInvoiceDetail.tsx`、发票 labels 只追加、发票测试、`docs/flows/invoice-*.md`）；共享 `trade-gui-scenario.ts`、`scripts/test-shard-weights.json` 只追加 | in progress | — |
+| [TORD-06](S12.md#tord-06订单按开票状态筛选) | 订单按开票状态筛选：迁移 019 存储状态，过账 / 作废事务内维护，列表列读存储值；`invoicing` 单值（D371） | 迁移 + 页面 | P1 | — （D369 先行派发） | migrations(019)+migrations.ts、domain-posting、storage、contracts（订单列表查询追加）、web-ui:trade-orders；共享文件同上 | in progress | — |
+| [UI-15](S12.md#ui-15期末结账页小步整理) | 期末结账页小步整理：补页头说明，准入徽标与复选框显示本地化模块名（界面小步） | 页面 | P2 | 本 PR | web-ui:period-close（`PeriodClose.tsx`、`TradePeriodAdmission.tsx`、`ui/close-labels.ts`、`ui/trade-report-labels.ts` 中 `trpt.*`、`pages/period-close.css` 及测试） | todo | — |
+| DEMO-12（无任务书） | v0.12.0 RC 与 Demo，验收见 [S12.md](S12.md#demo-12-验收) | 发布 | P1（Sprint 末） | TINV-07、TORD-06、UI-15 结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | todo | — |
+
+- **并行**：TINV-07 ∥ TORD-06 ∥ UI-15 冲突域不相交，可同时进行（D369）；只有 TORD-06 加迁移（019），其他任务不得新增迁移。开发同时在岗不超过 3 人。共享单文件与槽位规则见 [S12.md](S12.md#泳道)。
+
 ## 派发顺序
 
 1. 第一批（按顺序，同时只开一个以避免 `package.json`/lock 冲突）：M0-01 → M0-02 → M0-03 → M0-04 → M0-05 → M0-06→ M0-07。M0-02 与 M0-03 可并行，后合并者重新生成 lock。
