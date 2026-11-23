@@ -117,12 +117,15 @@ function browserBack(page: Page) {
 
 /**
  * Counts every native dialog; `accept` decides the answer, `check` inspects it first. The dialog
- * is always answered, even when `check` throws: a modal left open would block every later history
- * step and the run would only show a navigation timeout. The original assertion error instead
- * rejects `guard(work)`, so the phase being awaited fails with it.
+ * is answered before any failure is reported, even when `check` throws: a modal left open would
+ * block every later history step and the run would only show a navigation timeout. Only after the
+ * answer settles is the failure recorded: the original assertion error or, if the check passed,
+ * the error of a failed accept/dismiss. `guard(work)` then rejects with it, whether it arrives
+ * while the phase is still running or was recorded by the time the phase finished.
  */
 function watchDialogs(page: Page, check?: (dialog: Dialog) => void) {
   const state = { count: 0, accept: false };
+  let failure: { error: unknown } | undefined;
   let reject: (error: unknown) => void = () => {};
   const failed = new Promise<never>((_, fail) => {
     reject = fail;
@@ -131,20 +134,29 @@ function watchDialogs(page: Page, check?: (dialog: Dialog) => void) {
   failed.catch(() => {});
   const answer = async (dialog: Dialog) => {
     state.count += 1;
+    let error: { error: unknown } | undefined;
     try {
       check?.(dialog);
-    } catch (error) {
-      reject(error);
-    } finally {
+    } catch (thrown) {
+      error = { error: thrown };
+    }
+    try {
       await (state.accept ? dialog.accept() : dialog.dismiss());
+    } catch (thrown) {
+      error ??= { error: thrown };
+    }
+    if (error && !failure) {
+      failure = error;
+      reject(error.error);
     }
   };
-  page.on("dialog", answer);
-  return {
-    state,
-    guard: <T>(work: Promise<T>) => Promise.race([work, failed]),
-    stop: () => page.off("dialog", answer),
+  const guard = async <T>(work: Promise<T>) => {
+    const value = await Promise.race([work, failed]);
+    if (failure) throw failure.error;
+    return value;
   };
+  page.on("dialog", answer);
+  return { state, guard, stop: () => page.off("dialog", answer) };
 }
 
 /** Counts the invoice detail GETs (one per dialog load). */
@@ -421,16 +433,17 @@ async function coldDeepLinkAt390(
 export async function invoiceLinks(ctx: InvoiceLinkContext) {
   const ui = invoicePage(ctx);
   const confirms = watchDialogs(ctx.page);
+  const { guard } = confirms;
   const details = watchDetailRequests(ctx.page);
   try {
-    await startCleanOnReports(ctx);
-    await ctx.navigate("trade-invoices");
-    await ui.trigger.waitFor();
-    const entries = await historyLength(ctx.page);
-    const linked = await openReloadClose(ctx, ui, details.state, entries);
-    await applyReloadClear(ctx, ui, entries);
+    await guard(startCleanOnReports(ctx));
+    await guard(ctx.navigate("trade-invoices"));
+    await guard(ui.trigger.waitFor());
+    const entries = await guard(historyLength(ctx.page));
+    const linked = await guard(openReloadClose(ctx, ui, details.state, entries));
+    await guard(applyReloadClear(ctx, ui, entries));
     expect(confirms.state.count).toBe(0);
-    await coldDeepLinkAt390(ctx, ui, details.state, linked);
+    await guard(coldDeepLinkAt390(ctx, ui, details.state, linked));
   } finally {
     confirms.stop();
     details.stop();
