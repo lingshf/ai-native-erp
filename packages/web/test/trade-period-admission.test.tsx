@@ -215,9 +215,23 @@ function assertHeaderAndAdmission(language: "zh" | "en", admitted: boolean) {
   (["trade", "tax"] as const).forEach((module, index) => {
     const badge = badges[index] as HTMLElement;
     expect(badge.classList.contains(admitted ? "success" : "warning")).toBe(true);
-    expect(badge.textContent).not.toMatch(/trade|tax/);
-    expect(badge.textContent).toContain(l(`trpt.module.${module}`));
-    expect(badge.textContent).toContain(status);
+    const ownText = [...badge.childNodes]
+      .filter((node) => node.nodeType === Node.TEXT_NODE)
+      .map((node) => node.textContent)
+      .join("");
+    expect(ownText).toBe(l(`trpt.module.${module}`));
+    expect(ownText).not.toMatch(/trade|tax/);
+    const hidden = badge.querySelector(".visually-hidden");
+    expect(hidden?.getAttribute("aria-hidden")).toBeNull();
+    expect(hidden?.textContent?.trim()).toMatch(new RegExp(`${status}$`));
+    const decoration = badge.querySelector('[aria-hidden="true"]');
+    expect(decoration?.textContent).toBe(admitted ? "✓" : "!");
+    const readable = [...badge.childNodes]
+      .filter((node) => !(node instanceof Element && node.getAttribute("aria-hidden") === "true"))
+      .map((node) => node.textContent)
+      .join("");
+    expect(readable).toBe(`${ownText}${hidden?.textContent}`);
+    expect(readable).not.toMatch(/[✓!]/);
   });
   expect(screen.getByLabelText(l("trpt.trade"))).toBeTruthy();
   expect(screen.getByLabelText(l("trpt.taxModule"))).toBeTruthy();
