@@ -8,6 +8,25 @@
 
 （暂无）
 
+## [0.15.0] - 发布候选（尚未发布，日期待定）
+
+> **发布候选**：尚未打 tag。产品代码基线为 `main` `00d1ed4`（REFAC-05b [#265](https://github.com/lingshf/ai-native-erp/pull/265) 的合并提交；S16 的四项开发任务全部已合并，该提交的 main Full run 45247858180 绿）。其后 main 只有文档与工具提交（#266 SLOT-03 的工具脚本、#267、#258）；SLOT-03 只改 `scripts/slot`，不改 `packages/`。tag 目标按 D21 / D398 为本 RC 与 Demo 合并后的提交，发布前核对 `git diff 00d1ed4 <tag 目标> -- packages` 为空，并如实报告 `scripts` 的差异；经协调者授权后才打 tag。
+
+S16 Sprint：一项用户可见的小功能（TORD-08）、一项只拆分文件的重构（REFAC-05b）和两项开发流程变化（CI-03、SLOT-03）。按 SemVer 取 minor（0.14.0 → 0.15.0），因为订单详情多了一列。**无迁移（仍为 020），无依赖变化**，已有账套不需要 migrate，不改过账规则与任何金额、数量口径。
+
+### Added（用户可见）
+
+- **订单详情多一列“贷项冲回数量”（TORD-08，[#262](https://github.com/lingshf/ai-native-erp/pull/262)）**：订单行表在“未开票数量”之后、“单价”之前多一列，显示该行未作废贷项冲回的数量；没有贷项时显示 `0`，读取中显示“…”。“已开票数量”仍是扣除贷项后的净数（v0.14.0 起，TINV-09）。例（#262 的 jsdom 用例）：订购 10.5、已开票 6、未开票 4.5、冲回 4。不新增 SQL（K4：base 与 head 均为 4 条语句）、不改迁移、不改接口请求。订单行表最小宽 920 → 1040 px，390 px 宽下仍在表格容器内横向滚动，该宽度的实测记录由 DEMO-16 给出。
+
+### Changed（仅加载体积，无界面变化）
+
+- **订单页 `OrderWorkspace` 拆分（REFAC-05b，[#265](https://github.com/lingshf/ai-native-erp/pull/265)，合并提交 `00d1ed4`）**：`order-workspace.tsx` 由 608 行减到 110 行，逻辑拆入 `use-order-entry.ts`、`order-entry-commands.ts` 与若干展示组件，只搬移，界面和行为不变。测量对象为订单页路由 `src/TradeOrders.tsx` 的“路由新增 JS”，方法为 D432（文件名哈希屏蔽后的 gzip-9），base `fe371bf` 与 head `deaac5c` 各在 clean worktree 构建，来源为 #265 正文“P7 打包字节”表：JS 17842 → 18694 B（**+852 B**，上限 ≤ +900 B）。其余路由 ±0；首屏入口块未压缩 530516 → 530516 B（±0），屏蔽哈希后 160904 → 160906 B（+2 B，D454）；CSS ±0。这与 TORD-08 下面的逐文件差值是不同的测量（文件级 vs 路由新增），不相加。数字取自 #265 正文，发布前未重测。
+- **TORD-08 的体积（#262 正文“构建来源”）**：测量对象为构建产物的各文件，方法为 D432，base `22bd1ce` 与 head `ed3de42`：`TradeOrders` JS 11655 → 11696 B（+41 B）、`TradeOrders` CSS 887 → 888 B（+1 B）、`index` JS 160121 → 160125 B（+4 B），合计 +46 B。数字取自 #262 正文，发布前未重测。
+
+### 开发流程（无界面变化）
+
+- **测试支撑代码的类型错误改为 PR CI 失败（CI-03，[#261](https://github.com/lingshf/ai-native-erp/pull/261)，合并提交 `22bd1ce`）**：修掉测试支撑代码里的 11 个 tsc 错误，并把 SLOT-02 预检的 tsc 基线设为 `{}`；此后这类类型错误会使 PR CI 失败。只改 5 个文件，不含产品代码。有一处行为变化（D469）：`smoke.ts` 里 3 处原先被忽略的 `intervals: [20]` 改为实际生效的 `interval: 20`。合并后耗时（#261 评论“CI-03 决定 3”，测量对象为 main Full browser shard 3，方法为比较 base `94aefc2` run 45230507382 与合并后 `22bd1ce` run 45234362498）：smoke 文件（4 tests）6605 ms → 6799 ms（+2.9%）、shard 3 vitest `Duration` 8.20 s → 8.41 s（+2.6%）、shard 3 作业 31 s → 31 s（0%）。
+- **slot 采样规则 R3（SLOT-03，[#266](https://github.com/lingshf/ai-native-erp/pull/266)，合并提交 `1a7f2d7`）**：SR-X6（归属未知的 `node.exe` 不计数但完整记录）；`slot-run.ps1` 新增 `-Ports` 参数（非 `-Stub` 时缺省退出码 4，端口已被监听退出码 7，查询失败退出码 8）；日志新增 `tooling head=` 行，`processes.tsv` 新增 `sr-x6` 列，新增 `selftest-ports.ps1`；`check-manifest.mjs` 一行改动（超出原范围，已在 PR 中披露）。只改 `scripts/slot` 与路线图 §5，不改 `packages/`。
 ## [0.14.0] - 2026-11-23
 
 > **已发布**：tag `v0.14.0`（annotated，tag 对象 `8fd8940635cc821c0e60e7cdd42e74c481704844`）打在 `f325792`（#264：`release/v0.14.0` 上的 DEMO-15 文档与截图，D473 / D479），不在 main 上；发布日 2026-11-23。Release：<https://github.com/lingshf/ai-native-erp/releases/tag/v0.14.0>。完整变更对比：[v0.13.1...v0.14.0](https://github.com/lingshf/ai-native-erp/compare/v0.13.1...v0.14.0)。`git diff 94aefc2 f325792 -- packages scripts` 为空（已核对），tag 提交以 `072a575` 为祖先（退出码 0），不含 TORD-08（`fe371bf`，退出码 1）与 SLOT-03（`33d5068`，退出码 1）。产品代码基线为 `main` `94aefc2`（REFAC-06c [#256](https://github.com/lingshf/ai-native-erp/pull/256) 的合并提交，S15 五项全部已合并；该提交的 main Full run 45230507382 绿）；上一个提交 `bfeccb7`（TINV-09 [#250](https://github.com/lingshf/ai-native-erp/pull/250)）的 main Full run 45227250621 绿。Demo（12 张截图，6 页 × 中英文，证明页面正常渲染，非逐像素对比）在 tag 内：[docs/demo/v0.14.0](https://github.com/lingshf/ai-native-erp/blob/v0.14.0/docs/demo/v0.14.0/README.md)。
