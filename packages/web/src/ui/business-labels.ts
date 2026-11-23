@@ -1,5 +1,7 @@
 export const businessEn = {
   "business.title": "Business events",
+  "business.description":
+    "Maintain services, parties and posting rules, record business events and process the transfer queue.",
   "business.teachingTitle": "How business events post",
   "business.settings": "Services, parties and rules",
   "business.queue": "Transfer queue",
@@ -95,6 +97,7 @@ export const businessEn = {
 } as const;
 export const businessZh: Record<keyof typeof businessEn, string> = {
   "business.title": "业务事件",
+  "business.description": "维护服务、往来方与过账规则，录入业务事件并处理待转队列。",
   "business.teachingTitle": "业务事件说明",
   "business.settings": "服务、往来及规则",
   "business.queue": "待转队列",

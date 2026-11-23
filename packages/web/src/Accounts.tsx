@@ -93,6 +93,7 @@ export function Accounts({ preferences }: { preferences: Preferences }) {
     <section className="page accounts">
       <PageHeader
         title={t("master.title")}
+        description={t("master.description")}
         context={
           <>
             <div className="field">

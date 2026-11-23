@@ -1,6 +1,7 @@
 export const masterZh = {
   "master.group": "基础配置",
   "master.title": "科目表",
+  "master.description": "按公司维护会计科目的类别、报表分组、余额方向与手工录入权限。",
   "master.company": "公司",
   "master.loading": "正在读取主数据…",
   "master.empty": "没有科目。",
@@ -79,6 +80,8 @@ export const masterZh = {
 export const masterEn = {
   "master.group": "Master data",
   "master.title": "Chart of accounts",
+  "master.description":
+    "Maintain each company's accounts: category, report group, normal side and manual-entry permission.",
   "master.company": "Company",
   "master.loading": "Loading master data…",
   "master.empty": "No accounts.",
