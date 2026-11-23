@@ -119,7 +119,7 @@ $capture = $false   # $false = 预演（4B）；$true = 仅供 orchestration-stu
     $before = @(Get-Content -Encoding UTF8 -LiteralPath $log -ErrorAction Stop).Count   # 先证明此前的日志确实落盘
     if ($before -lt 1) { throw "日志为空，不能清理原图" }
     "exit=0 ok=True log=$log" | Out-File @W
-    $sha = (Get-FileHash -Algorithm SHA256 -LiteralPath $log -ErrorAction Stop).Hash
+    $sha = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash([IO.File]::ReadAllBytes($log))).Replace("-", "")   # .NET：slot 子进程里 Get-FileHash 不可用
     $lines = @(Get-Content -Encoding UTF8 -LiteralPath $log -ErrorAction Stop).Count
     Write-Host "日志已落盘并复核：log=$log sha256=$sha lines=$lines"   # 删原图之前先留下路径、SHA-256、行数
     $ok = $true

@@ -67,6 +67,11 @@
 
 三份日志的 `-text` 与未被忽略已用 `git check-attr text` / `git check-ignore -v` 核对。`orchestration-stub.log` 是 PowerShell 5.1 `Tee-Object` 写出的原文（编码为该命令默认编码）。
 
-## 6. 待办
+## 6. D387 槽位运行（一次，经 `slot-run.ps1` + `steps-rehearsal.ps1`，本地 22:10:23–22:12:49）
 
-- 最终取图已成功（§2b）。仍需在最终 head 上按 README 统一步骤块做一次真实服务预演（build → 门禁 → `-SkipCapture`）并重跑 `orchestration-stub.ps1`，结果记入本节；这两步需要启动 node/build，D385 把槽位交给 TINV-07 期间不做，等协调者通知释放后执行。
+- 起止 HEAD 均为 `4d41a7d536eec69aeed56c1ef321a3a4b7459b4e`，工作区干净。
+- **真服务预演（run-main.ps1 -SkipCapture，端口 4201 为 D373 例外）exit 0**：播种、readiness ok，`capture skipped (dry-run)`，`port 4201 released`。日志 `logs/rehearsal-d387.out.log`（31 行，SHA-256 `8E99307BA56EA7A65ABC542301EE46C1D0B7576B472EF01033208EEC32C8A2AC`）、`logs/rehearsal-d387-build.log`（56 行，`CD73B752578FBCB90F45AF5B163ADEAE8C6D9B28D2697A1D3B024A7FB60D3C84`）。注意：这次直接跑 run-main，**没有**走 README 统一步骤块（块里的新鲜度门禁与日志复核未在真服务上验证，仍待补）。
+- **orchestration-stub exit 1，runner 按规则中止**：第 15 行 `Get-FileHash` 在 runner 子进程里不可用（原文见 `logs/orchestration-stub-d387-abort.err.log`，SHA-256 `259F96C9CA55012C089F19D87FE0A9E82C6B7DA0DD563A712CEC81E345529470`），尚未执行任何断言。
+- 原因（离线复现）：pwsh 启动的 powershell.exe 继承带 PowerShell 7 目录的 `PSModulePath`，5.1 加载了 7 版 `Microsoft.PowerShell.Utility`；在该环境里逐个探测脚本用到的 55 个 cmdlet，仅 `Get-FileHash`、`New-Guid` 缺失。`New-Guid` 在 demo 脚本里无使用。
+- 修复（仅文档/脚本）：stub 改用 .NET SHA256（`Get-Sha256`）；README 统一步骤块里的 `Get-FileHash` 同样改为 .NET。`proc05-negatives.ps1`、`stub-check.ps1` 仍含 `Get-FileHash`，它们不经 runner 子进程运行（D372 在本机 shell 跑过），未改。
+- 待办：协调者批准新时段后重跑 `orchestration-stub.ps1` 一次，结果记入本节。

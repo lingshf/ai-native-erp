@@ -12,7 +12,9 @@ $root = (Get-Location).Path
 $realRun = Join-Path $root "docs\demo\v0.11.0\scripts\run-main.ps1"
 $readme = Join-Path $root "docs\demo\v0.11.0\README.md"
 $realShots = Join-Path $root "docs\demo\v0.11.0\screenshots"
-$snap = { param($dir) @(Get-ChildItem -LiteralPath $dir -Recurse -File -Force -ErrorAction Stop | Sort-Object FullName | ForEach-Object { (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256 -ErrorAction Stop).Hash + "  " + $_.Name }) }
+# 哈希用 .NET 实现：slot-run 子进程里 Get-FileHash 不可用（D387 实测），不依赖 Microsoft.PowerShell.Utility 的该 cmdlet
+function Get-Sha256 { param($path) $s = [IO.File]::OpenRead($path); try { $h = [Security.Cryptography.SHA256]::Create(); try { ([BitConverter]::ToString($h.ComputeHash($s))).Replace("-", "") } finally { $h.Dispose() } } finally { $s.Dispose() } }
+$snap = { param($dir) @(Get-ChildItem -LiteralPath $dir -Recurse -File -Force -ErrorAction Stop | Sort-Object FullName | ForEach-Object { (Get-Sha256 $_.FullName) + "  " + $_.Name }) }
 $problems = New-Object System.Collections.Generic.List[string]
 $oldTemp = $env:TEMP; $oldTmp = $env:TMP; $oldPath = $env:PATH; $iso = $null
 $realBefore = @(& $snap $realShots)
@@ -210,7 +212,7 @@ if ($mode -eq "logro") { Set-ItemProperty "$Shots.run.log" -Name IsReadOnly -Val
   if ($r.code -ne 0 -or $lg -notmatch "STDOUT-BEFORE" -or $lg -notmatch "NATIVE-STDERR" -or $lg -notmatch "STDOUT-AFTER-STDERR" -or $lg -notmatch "exit=0 ok=True" -or (& $pngsIn $r) -ne 32 -or (& $shotsLeft $r) -ne 0) { $problems.Add("B7 成功路径不符：退出 $($r.code)`n$lg") }
   else { "B7 成功通过：stdout、原生 stderr、其后的 stdout 三段都在日志里，exit=0；复制 32 张，shots 目录已清，日志保留" }
   $logFile = @(Get-ChildItem "$($r.sb)\tmp" -Filter "demo-s11-shots-*.run.log")[0].FullName
-  $shaNow = (Get-FileHash -Algorithm SHA256 -LiteralPath $logFile).Hash
+  $shaNow = (Get-Sha256 $logFile)
   $lnNow = @(Get-Content -Encoding UTF8 -LiteralPath $logFile).Count
   if ($r.out -notmatch "sha256=$shaNow lines=$lnNow") { $problems.Add("B7 成功路径：删原图前打印的日志 SHA-256/行数与落盘日志不一致（落盘 $shaNow / $lnNow）`n$($r.out)") }
   else { "B7 日志复核通过：删原图前打印 sha256=$shaNow lines=$lnNow，与落盘日志一致" }
