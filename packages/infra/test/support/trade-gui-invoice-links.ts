@@ -115,16 +115,36 @@ function browserBack(page: Page) {
   return page.goBack({ waitUntil: "commit", timeout: 2_000 }).catch(() => null);
 }
 
-/** Counts every native dialog; `accept` decides the answer, `check` inspects it first. */
+/**
+ * Counts every native dialog; `accept` decides the answer, `check` inspects it first. The dialog
+ * is always answered, even when `check` throws: a modal left open would block every later history
+ * step and the run would only show a navigation timeout. The original assertion error instead
+ * rejects `guard(work)`, so the phase being awaited fails with it.
+ */
 function watchDialogs(page: Page, check?: (dialog: Dialog) => void) {
   const state = { count: 0, accept: false };
+  let reject: (error: unknown) => void = () => {};
+  const failed = new Promise<never>((_, fail) => {
+    reject = fail;
+  });
+  // Observed through guard(); this only keeps an early failure from being reported as unhandled.
+  failed.catch(() => {});
   const answer = async (dialog: Dialog) => {
     state.count += 1;
-    check?.(dialog);
-    await (state.accept ? dialog.accept() : dialog.dismiss());
+    try {
+      check?.(dialog);
+    } catch (error) {
+      reject(error);
+    } finally {
+      await (state.accept ? dialog.accept() : dialog.dismiss());
+    }
   };
   page.on("dialog", answer);
-  return { state, stop: () => page.off("dialog", answer) };
+  return {
+    state,
+    guard: <T>(work: Promise<T>) => Promise.race([work, failed]),
+    stop: () => page.off("dialog", answer),
+  };
 }
 
 /** Counts the invoice detail GETs (one per dialog load). */
@@ -280,11 +300,12 @@ export async function detailBack(ctx: InvoiceLinkContext) {
     expect(dialog.message()).toBe(ctx.t("trade.leaveConfirm"));
   });
   try {
-    await cleanBackLeaves(ctx, ui, confirms.state);
-    const entries = await withForwardEntry(ctx, ui, confirms.state);
-    const dirty = await dirtyFilterAndOpen(ctx, ui, confirms.state, entries);
-    await cancelledBackKeepsAll(ctx, ui, confirms.state, dirty);
-    await confirmedBackLeaves(ctx, confirms.state);
+    const { state, guard } = confirms;
+    await guard(cleanBackLeaves(ctx, ui, state));
+    const entries = await guard(withForwardEntry(ctx, ui, state));
+    const dirty = await guard(dirtyFilterAndOpen(ctx, ui, state, entries));
+    await guard(cancelledBackKeepsAll(ctx, ui, state, dirty));
+    await guard(confirmedBackLeaves(ctx, state));
   } finally {
     confirms.stop();
   }
