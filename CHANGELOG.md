@@ -11,6 +11,8 @@
 > - 已发布、只改日期或只改设计 / 流程文档，**不需要 `[Unreleased]` 条目**，单列：[#277](https://github.com/lingshf/ai-native-erp/pull/277)（v0.16.0 的 RC 与 Demo，已随 v0.16.0 发布）、[#279](https://github.com/lingshf/ai-native-erp/pull/279)（v0.16.0 发布日与链接，只改日期）、[#276](https://github.com/lingshf/ai-native-erp/pull/276)（FIX-TADJ-BUSY 任务书，设计）、[#280](https://github.com/lingshf/ai-native-erp/pull/280)（S17 评审与回顾，设计）、[#281](https://github.com/lingshf/ai-native-erp/pull/281)（Demo 模板要求 18–19 与发布清单，D487，流程文档）、[#282](https://github.com/lingshf/ai-native-erp/pull/282)（S18 计划，设计）。
 >
 > 与 `v0.16.0` 相比，`git diff --shortstat v0.16.0 1638445 -- packages` 为 10 个文件（+655/−303）；`scripts/` 只新增 `scripts/demo/assert-web-dist.ps1` 与 `scripts/demo/selftest-web-dist.ps1` 两个文件（+204）；没有迁移，没有 `package.json` / lock 改动（`git diff --name-only v0.16.0 1638445 -- package.json package-lock.json '**/migrations/**'` 无输出）。tag 目标按 D484：打在 `release/v0.17.0` 上审核通过的 RC 头，与 v0.14.0 至 v0.16.0 一致，授权前不打。完整版本差异（两点）与合并基对比（三点，D483）的链接和数字在 tag 创建后核对填入。
+>
+> Demo（真实 Chrome，R3 时段，端口 4203，8 张截图，含 Tab / Enter / 空格的原生键盘记录与 390 px 实测；检查 32 项无失败）：[docs/demo/v0.17.0](docs/demo/v0.17.0/README.md)，RC 头 `319778c`。
 
 S18 Sprint：一项用户可见的小功能（TLIST-02）、一项只拆分文件的重构（REFAC-09）和一项 Demo 工具（RUNMAIN-01），加上 v0.16.0 之后合并的 FIX-TADJ-BUSY。按 SemVer 取 minor（0.16.0 → 0.17.0），因为贸易主数据页多了一个按钮。**无迁移，无依赖变化**，已有账套不需要 migrate，不改过账规则与任何金额、数量口径。
 

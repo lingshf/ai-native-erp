@@ -1,0 +1,401 @@
+[
+ {
+  "name": "trade-invoices-list-zh-red-1440",
+  "step": "page",
+  "via": "goto #/trade-invoices?company=DEFAULT",
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "heading": "采购与销售发票",
+  "rowCount": 8,
+  "buttons": {
+   "texts": [
+    "应用",
+    "清除",
+    "刷新列表"
+   ],
+   "types": [
+    "submit",
+    "button",
+    "button"
+   ]
+  }
+ },
+ {
+  "name": "trade-invoices-list-en-green-1440",
+  "step": "page",
+  "via": "goto #/trade-invoices?company=DEFAULT",
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "heading": "Purchase and sales invoices",
+  "rowCount": 8,
+  "buttons": {
+   "texts": [
+    "Apply",
+    "Clear",
+    "Refresh list"
+   ],
+   "types": [
+    "submit",
+    "button",
+    "button"
+   ]
+  }
+ },
+ {
+  "name": "trade-master-zh-red-1440",
+  "step": "page",
+  "via": "goto #/trade",
+  "hash": "#/trade",
+  "heading": "贸易主数据",
+  "rowCount": 2,
+  "buttons": [
+   "新增配置",
+   "刷新列表"
+  ]
+ },
+ {
+  "name": "trade-master-en-green-1440",
+  "step": "page",
+  "via": "goto #/trade",
+  "hash": "#/trade",
+  "heading": "Trade master data",
+  "rowCount": 2,
+  "buttons": [
+   "New configuration",
+   "Refresh list"
+  ]
+ },
+ {
+  "name": "trade-orders-list-en-green-390",
+  "step": "k7-390",
+  "via": "goto #/trade-orders?company=DEFAULT",
+  "hash": "#/trade-orders?company=DEFAULT",
+  "documentScrollWidth": 390,
+  "buttons": {
+   "texts": [
+    "Apply",
+    "Clear",
+    "Refresh list"
+   ],
+   "types": [
+    "submit",
+    "button",
+    "button"
+   ]
+  },
+  "rects": [
+   {
+    "text": "Apply",
+    "left": 97.1,
+    "right": 168.2,
+    "top": 2199
+   },
+   {
+    "text": "Clear",
+    "left": 176.2,
+    "right": 242.4,
+    "top": 2199
+   },
+   {
+    "text": "Refresh list",
+    "left": 250.4,
+    "right": 354,
+    "top": 2199
+   }
+  ]
+ },
+ {
+  "name": "trade-invoices-list-en-green-390",
+  "step": "k7-390",
+  "via": "goto #/trade-invoices?company=DEFAULT",
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "documentScrollWidth": 390,
+  "buttons": {
+   "texts": [
+    "Apply",
+    "Clear",
+    "Refresh list"
+   ],
+   "types": [
+    "submit",
+    "button",
+    "button"
+   ]
+  },
+  "rects": [
+   {
+    "text": "Apply",
+    "left": 97.1,
+    "right": 168.2,
+    "top": 2057
+   },
+   {
+    "text": "Clear",
+    "left": 176.2,
+    "right": 242.4,
+    "top": 2057
+   },
+   {
+    "text": "Refresh list",
+    "left": 250.4,
+    "right": 354,
+    "top": 2057
+   }
+  ]
+ },
+ {
+  "name": "trade-master-zh-red-390",
+  "step": "k7-390",
+  "via": "goto #/trade",
+  "hash": "#/trade",
+  "documentScrollWidth": 390,
+  "buttons": [
+   "新增配置",
+   "刷新列表"
+  ],
+  "rects": [
+   {
+    "text": "新增配置",
+    "left": 16,
+    "right": 106,
+    "top": 583
+   },
+   {
+    "text": "刷新列表",
+    "left": 114,
+    "right": 204,
+    "top": 583
+   }
+  ]
+ },
+ {
+  "name": "trade-master-en-green-390",
+  "step": "k7-390",
+  "via": "goto #/trade",
+  "hash": "#/trade",
+  "documentScrollWidth": 390,
+  "buttons": [
+   "New configuration",
+   "Refresh list"
+  ],
+  "rects": [
+   {
+    "text": "New configuration",
+    "left": 16,
+    "right": 168.6,
+    "top": 623
+   },
+   {
+    "text": "Refresh list",
+    "left": 176.6,
+    "right": 280.1,
+    "top": 623
+   }
+  ]
+ },
+ {
+  "name": "trade-master-keyboard-record",
+  "step": "keyboard",
+  "via": "#/trade：page.keyboard.press 的 Tab / Enter / Space",
+  "record": {
+   "lang": "en",
+   "theme": "green",
+   "width": 1440,
+   "focusStart": "New configuration",
+   "focusAfterTab": "Refresh list",
+   "enterRequests": [
+    "/api/v1/trade/tradeParty?company=DEFAULT&limit=100"
+   ],
+   "spaceRequests": [
+    "/api/v1/trade/tradeParty?company=DEFAULT&limit=100"
+   ],
+   "newDisabledWithEditor": true,
+   "editorOpenFocusAfterTab": "Refresh list",
+   "editorOpenEnterRequests": [
+    "/api/v1/trade/tradeParty?company=DEFAULT&limit=100"
+   ],
+   "editorStillOpen": true
+  }
+ },
+ {
+  "checks": [
+   {
+    "check": "trade-invoices-list-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-invoices-list-zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-invoices-list-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-invoices-list-en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-master-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-master-zh-red-1440 列表有行",
+    "ok": true,
+    "detail": 2
+   },
+   {
+    "check": "trade-master-zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-master-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-master-en-green-1440 列表有行",
+    "ok": true,
+    "detail": 2
+   },
+   {
+    "check": "trade-master-en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-orders-list-en-green-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "trade-orders-list-en-green-390 三个按钮都在视口内（left ≥ 0 且 right ≤ 390）",
+    "ok": true,
+    "detail": [
+     {
+      "text": "Apply",
+      "left": 97.1,
+      "right": 168.2,
+      "top": 2199
+     },
+     {
+      "text": "Clear",
+      "left": 176.2,
+      "right": 242.4,
+      "top": 2199
+     },
+     {
+      "text": "Refresh list",
+      "left": 250.4,
+      "right": 354,
+      "top": 2199
+     }
+    ]
+   },
+   {
+    "check": "trade-orders-list-en-green-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-invoices-list-en-green-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "trade-invoices-list-en-green-390 三个按钮都在视口内（left ≥ 0 且 right ≤ 390）",
+    "ok": true,
+    "detail": [
+     {
+      "text": "Apply",
+      "left": 97.1,
+      "right": 168.2,
+      "top": 2057
+     },
+     {
+      "text": "Clear",
+      "left": 176.2,
+      "right": 242.4,
+      "top": 2057
+     },
+     {
+      "text": "Refresh list",
+      "left": 250.4,
+      "right": 354,
+      "top": 2057
+     }
+    ]
+   },
+   {
+    "check": "trade-invoices-list-en-green-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-master-zh-red-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "trade-master-zh-red-390 两个按钮都在视口内（left ≥ 0 且 right ≤ 390）",
+    "ok": true,
+    "detail": [
+     {
+      "text": "新增配置",
+      "left": 16,
+      "right": 106,
+      "top": 583
+     },
+     {
+      "text": "刷新列表",
+      "left": 114,
+      "right": 204,
+      "top": 583
+     }
+    ]
+   },
+   {
+    "check": "trade-master-zh-red-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-master-en-green-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "trade-master-en-green-390 两个按钮都在视口内（left ≥ 0 且 right ≤ 390）",
+    "ok": true,
+    "detail": [
+     {
+      "text": "New configuration",
+      "left": 16,
+      "right": 168.6,
+      "top": 623
+     },
+     {
+      "text": "Refresh list",
+      "left": 176.6,
+      "right": 280.1,
+      "top": 623
+     }
+    ]
+   },
+   {
+    "check": "trade-master-en-green-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "键盘取证 无页面错误",
+    "ok": true,
+    "detail": []
+   }
+  ]
+ }
+]

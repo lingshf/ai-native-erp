@@ -1,0 +1,12 @@
+utc	phase	counted	detail	excluded	runner-tree	sr-x6
+2026-11-23T22:46:47.476Z	precheck-1	0		30	1	0
+2026-11-23T22:46:58.825Z	precheck-2	0		30	1	0
+2026-11-23T22:47:10.055Z	precheck-3	0		30	1	0
+2026-11-23T22:47:21.253Z	precheck-4	0		30	1	0
+2026-11-23T22:47:32.463Z	precheck-5	0		30	1	0
+2026-11-23T22:47:43.658Z	precheck-6	0		30	1	0
+2026-11-23T22:47:56.142Z	run-demo-capture	0		30	4	0
+2026-11-23T22:48:07.563Z	run-demo-capture	0		30	6	0
+2026-11-23T22:48:19.285Z	run-demo-capture	0		30	13	0
+2026-11-23T22:48:30.834Z	run-demo-capture	0		30	1	0
+2026-11-23T22:48:32.381Z	after-demo-capture	0		30	1	0
