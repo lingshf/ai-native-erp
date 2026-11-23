@@ -211,33 +211,39 @@ function assertHeaderAndAdmission(language: "zh" | "en", admitted: boolean) {
   expect(description?.textContent).toBe(l("close.description"));
   const badges = [...admissionBadges(language)];
   expect(badges).toHaveLength(2);
-  const status = l(admitted ? "trpt.admitted" : "trpt.notAdmitted");
-  (["trade", "tax"] as const).forEach((module, index) => {
-    const badge = badges[index] as HTMLElement;
-    expect(badge.classList.contains(admitted ? "success" : "warning")).toBe(true);
+  const expected = {
+    zh: {
+      modules: ["贸易", "税务"],
+      status: admitted ? "：已准入" : "：未准入",
+      checkboxes: ["准入贸易", "准入税务"],
+    },
+    en: {
+      modules: ["Trade", "Tax"],
+      status: admitted ? ": admitted" : ": not admitted",
+      checkboxes: ["Admit trade", "Admit tax"],
+    },
+  }[language];
+  badges.forEach((element, index) => {
+    const badge = element as HTMLElement;
+    expect(badge.className).toBe(admitted ? "badge success" : "badge warning");
     const ownText = [...badge.childNodes]
       .filter((node) => node.nodeType === Node.TEXT_NODE)
       .map((node) => node.textContent)
       .join("");
-    expect(ownText).toBe(l(`trpt.module.${module}`));
-    expect(ownText).not.toMatch(/trade|tax/);
+    expect(ownText).toBe(expected.modules[index]);
     const hidden = badge.querySelector(".visually-hidden");
     expect(hidden?.getAttribute("aria-hidden")).toBeNull();
-    expect(hidden?.textContent?.trim()).toMatch(new RegExp(`${status}$`));
+    expect(hidden?.textContent).toBe(expected.status);
     const decoration = badge.querySelector('[aria-hidden="true"]');
     expect(decoration?.textContent).toBe(admitted ? "✓" : "!");
     const readable = [...badge.childNodes]
       .filter((node) => !(node instanceof Element && node.getAttribute("aria-hidden") === "true"))
       .map((node) => node.textContent)
       .join("");
-    expect(readable).toBe(`${ownText}${hidden?.textContent}`);
-    expect(readable).not.toMatch(/[✓!]/);
+    expect(readable).toBe(`${expected.modules[index]}${expected.status}`);
   });
-  expect(screen.getByLabelText(l("trpt.trade"))).toBeTruthy();
-  expect(screen.getByLabelText(l("trpt.taxModule"))).toBeTruthy();
-  expect([l("trpt.trade"), l("trpt.taxModule")]).toEqual(
-    language === "zh" ? ["准入贸易", "准入税务"] : ["Admit trade", "Admit tax"],
-  );
+  for (const name of expected.checkboxes)
+    expect(screen.getByRole("checkbox", { name })).toBeTruthy();
 }
 it("shows the page description, localized module badges with status, and localized checkboxes in zh and en", async () => {
   mockApi();
