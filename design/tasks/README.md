@@ -689,7 +689,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [REFAC-05b](REFAC-05b-order-workspace-split.md) | 拆分 `OrderWorkspace` 函数体，不改行为 | 重构（页面） | P2 | REFAC-05 已合并 | `trade-orders/order-workspace.tsx` 与 `trade-orders/` 下新文件 | 不加 | 不需要 | todo | — |
 | [TORD-08](S16.md#tord-08订单详情显示贷项冲回数量) | 订单详情新增“贷项冲回数量”列（只读，口径不变） | 功能（贸易单据） | P2 | TINV-09 已合并 | core 契约与应用层；storage `trade-documents.ts`；`order-view.tsx`、`ui/trade-order-labels.ts`、`pages/trade-orders.css`；既有测试补字段 | 不加 | 不需要 | todo | — |
 | [CI-03](S16.md#ci-03清空-slot-02-预检的-tsc-基线) | 修掉预检基线中的 11 个 tsc 错误，基线 `tsc` 清空 | CI / 测试类型 | P2 | CI-02 已合并 | infra `test/http/` 两个慢测、`trade-gui/diagnostics.ts`、`trade-gui/smoke.ts`；`scripts/slot/preflight-baseline.json` | 不加 | 不需要 | todo | — |
-| DEMO-16（无任务书） | v0.15.0 RC 与 Demo，验收见 [S16.md](S16.md#demo-16-验收) | 发布 | P1（Sprint 末） | 三个开发任务结案；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/user/` | 不加 | 需要（截图） | todo | — |
+| DEMO-16（无任务书） | v0.15.0 RC 与 Demo（TORD-08 未合并则 v0.14.1），验收见 [S16.md](S16.md#demo-16-验收) | 发布 | P1（Sprint 末） | 每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/user/` | 不加 | 需要（截图） | todo | — |
 
 - **并行**：A ∥ B ∥ C，冲突域两两不相交，开发同时在岗不超过 3 人；都不申请浏览器时段，服从 D442 时段停用通知；DEMO-16 排在它们结案之后，申请时段附 `-Stub` 记录（D460）。
 
