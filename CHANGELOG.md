@@ -10,7 +10,7 @@
 
 ## [0.12.0] - 待定（发布候选；日期、版本和 tag 目标在日期 PR 中写定）
 
-> **草稿状态**：产品代码基线暂为 `main` ab2ba1c（#219，main Full run 45133620436 绿）；SLOT-02 [#220](https://github.com/lingshf/ai-native-erp/pull/220) 仍在评审，合并后再定 RC 的目标提交，届时更新本段。自 v0.11.0 的 tag 目标 `024b7fa` 到 ab2ba1c，`packages/` 下 57 个文件（+6255/−3184）。**tag 目标待协调者按 D21/D398 的规则确定**：先用 `git diff <基线> <目标> -- packages` 核对，只有产品代码与基线一致时才可打在 Demo / 日期 PR 的 squash 提交上。
+> **草稿状态**：产品代码基线为 `main` e703971（SLOT-02 [#220](https://github.com/lingshf/ai-native-erp/pull/220) 的合并提交，S12 功能全部合并；该提交的 main Full run 45136789585 绿）。自 v0.11.0 的 tag 目标 `024b7fa` 到 e703971，`packages/` 下 57 个文件（+6255/−3184）（SLOT-02 只改 `scripts/slot/` 与 roadmap，`git diff ab2ba1c e703971 -- packages` 为空，已核对）。**tag 目标待协调者按 D21/D398 的规则确定**：先用 `git diff e703971 <目标> -- packages` 核对，只有为空时才可打在 Demo / 日期 PR 的 squash 提交上；本 RC 分支相对 e703971 的 `packages` 与 `scripts` diff 为空（已核对）。
 
 S12 Sprint：发票深链接与地址栏筛选、订单按开票状态筛选、发票页打磨、页头说明、两项只搬移的重构。**含一个迁移（019）**，新增用户可见功能，版本号取 minor（0.11.0 → 0.12.0）。无依赖变化，不改过账规则。
 
@@ -31,7 +31,7 @@ S12 Sprint：发票深链接与地址栏筛选、订单按开票状态筛选、�
 
 - **REFAC-02（[#214](https://github.com/lingshf/ai-native-erp/pull/214)）**：`BusinessEvents.tsx` 拆为 `business-events/` 下的模块，只搬移、不改行为。
 - **REFAC-01（[#217](https://github.com/lingshf/ai-native-erp/pull/217)）**：端到端场景支撑代码 `trade-gui-scenario.ts` 拆到 `trade-gui/`，只搬移、不改行为。
-- **SLOT-02（[#220](https://github.com/lingshf/ai-native-erp/pull/220)，评审中，合并后补入）**：runner 开跑前静态检查（tsc + TDZ）与步骤子进程 `PSModulePath` 重置，开发者本机工具。
+- **SLOT-02（[#220](https://github.com/lingshf/ai-native-erp/pull/220)，`e703971`）**：独占时段 runner（`scripts/slot/`）开跑前先做静态检查（tsc + TDZ，退出码 0 / 4 / 6，基线只减不增），并在每个步骤子进程重置 `PSModulePath`，修复 D387 的 `Get-FileHash` 缺失；采样规则升为 R2（D411：SR-X1 外仓判定在命令行读不到时沿用）。开发者本机工具，不影响产品。
 - **文档与流程**：S12 计划与任务书 [#205](https://github.com/lingshf/ai-native-erp/pull/205)、[#207](https://github.com/lingshf/ai-native-erp/pull/207)、[#211](https://github.com/lingshf/ai-native-erp/pull/211)、[#212](https://github.com/lingshf/ai-native-erp/pull/212)（含可读性 DoD）、[#218](https://github.com/lingshf/ai-native-erp/pull/218)；S11 评审与回顾 [#216](https://github.com/lingshf/ai-native-erp/pull/216)；v0.11.0 Demo [#204](https://github.com/lingshf/ai-native-erp/pull/204) 与日期 [#215](https://github.com/lingshf/ai-native-erp/pull/215)。
 - **测试**：新增 `trade-invoice-links.test.tsx`、`trade-order-invoicing-migration.test.ts` 等；按任务书授权改写 TINV-05 / TINV-06 中 4 处“地址不变”的断言（TINV-07 D370）和 3 处徽标相关断言（TINV-08）。
 
