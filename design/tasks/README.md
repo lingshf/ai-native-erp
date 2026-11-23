@@ -711,7 +711,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | DEMO-17（无任务书） | v0.16.0 RC 与 Demo（TLIST-01 未合并则 v0.15.1），验收见 [S17.md](S17.md#demo-17-验收) | 发布 | P1（Sprint 末） | 每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿；DEMO-16 已发布 | docs/release、`docs/user/` | 不加 | 需要（截图） | done（tag → `release/v0.16.0` 的 `ac1c1d4`，D484；D486） | [#277](https://github.com/lingshf/ai-native-erp/pull/277)（`22f3217`） |
 
 - **并行**：A ∥ B ∥ C，冲突域两两不相交，开发同时在岗不超过 3 人；只有 C 可能新增一条分片权重；都不申请浏览器时段，服从 D442 时段停用通知；DEMO-17 排在它们结案之后，申请时段附 `-Stub` 记录（D460）。
-- **Sprint 评审与回顾**：[S17 评审](../reviews/S17.md)（通过：三个开发任务与 RC 已合并，v0.16.0 已发布；打回 8、待证据 1，main Full 零失败）、[S17 回顾](../reviews/S17-retro.md)（4 条行动项待协调者认可；S18 候选见回顾末节；下一个 RC 须为 #278 写 `[Unreleased]` 条目）。
+- **Sprint 评审与回顾**：[S17 评审](../reviews/S17.md)（通过：三个开发任务与 RC 已合并，v0.16.0 已发布；打回 8、待证据 1，main Full 零失败）、[S17 回顾](../reviews/S17-retro.md)（4 条行动项待协调者认可；S18 候选见回顾末节；#278 的 `[Unreleased]` 条目已由 #279 写入，下一个 RC 转入 `[0.17.0]`，不重复添加）。
 
 ## 派发顺序
 
