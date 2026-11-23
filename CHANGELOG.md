@@ -21,7 +21,7 @@ S14 Sprint：三项只搬移的重构和一项测试夹具类型修正。**没�
 ### 内部（只搬移，不改行为）
 
 - **订单页拆分（REFAC-05，[#238](https://github.com/lingshf/ai-native-erp/pull/238)）**：`TradeOrders.tsx`（1483 行）按职责拆到 `trade-orders/`；DOM、文案、样式不变。订单路由新增 JS +59 B。
-- **发票页拆分（REFAC-06，[#242](https://github.com/lingshf/ai-native-erp/pull/242)）**：`TradeInvoices.tsx`（1465 行）拆到 `trade-invoices/`，7 个导入方不改；发票页的 5 条路由各 −23 B（gzip-9）；首屏入口 +3 B（被 gzip-9 掩盖，按 D454 视同 ±0）。两个数字分开记。
+- **发票页拆分（REFAC-06，[#242](https://github.com/lingshf/ai-native-erp/pull/242)）**：`TradeInvoices.tsx`（1465 行）拆到 `trade-invoices/`，7 个导入方不改；发票页的 5 条路由各 −23 B（gzip-9）；首屏入口 +3 B（文件名哈希屏蔽后经 gzip-9 压缩测得；D454 视同 ±0）。两个数字分开记。
 - **期初夹具类型修正（FIX-01，[#241](https://github.com/lingshf/ai-native-erp/pull/241)）**：只改 `packages/infra/test/support/legacy-opening-fixture.ts` 的类型，产品代码不变。
 
 ### 文档
