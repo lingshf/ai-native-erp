@@ -29,6 +29,12 @@
 
 建议：真实时段前先批准一次**不带浏览器**的 `run-main.ps1 -SkipCapture` 演练（只起服务器和 seed，约 1 分钟，端口 4203），可提前发现 seed 与启动问题；但它也不覆盖 `capture.mjs` 的选择器。
 
+## 2b 第二次 `-Stub` 演练（评审 6028614002 之后）
+
+- 头提交 `42b1191`（`status=[]`），2026-11-23 20:07 UTC，同一命令（`-Stub pass`，`-Ports 4203`），退出码 0，日志 `logs/slot-summary-stub2.log`。
+- 本次 `capture.mjs` 增加了“等首行单元格不再是加载占位 … 再读数”的等待，仅 `node --check` 通过；Stub 不运行它，所以该等待仍未在真实页面上验证，真实时段内先做一次短的 capture-only 试跑更稳妥。
+- 日志里 `counted=0` 但 SR-X1 排除了其他项目（debate-coach `npm ci`、dc-layer-check4 的 headless Chrome）的进程；这些进程在真实时段按 SR-C2 的口径可能计数，需要静默窗口。
+
 ## 3 脚本哈希（取自 git）
 
 `git rev-parse b485c4f:<路径>`（`git hash-object` 的 blob 哈希，不是 SHA-256 内容摘要；这是该路径在运行提交中的对象 ID）：
