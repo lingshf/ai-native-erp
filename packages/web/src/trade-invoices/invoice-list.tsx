@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { companyCodeSchema, tradeInvoicePageSchema, type CompanyDto } from "@erp/core/contracts";
 import type { Preferences } from "../ui/index.ts";
@@ -19,6 +19,12 @@ import {
   type LinkChange,
 } from "./invoice-link.ts";
 import { SourceOrderCell } from "./source-order.tsx";
+
+const invoiceListKey = (company: string, filter: InvoiceFilter) =>
+  ["trade-invoices", company, filter] as const;
+// Apply, Clear and Refresh list always reload from the first page, never from cached pages.
+const restartInvoiceList = (client: QueryClient, company: string, filter: InvoiceFilter) =>
+  void client.resetQueries({ queryKey: invoiceListKey(company, filter), exact: true });
 
 export function InvoiceList({
   company,
@@ -45,7 +51,7 @@ export function InvoiceList({
   if (current !== filter) setFilter(current);
   const { draft, invalid } = current;
   const page = useInfiniteQuery({
-    queryKey: ["trade-invoices", company.code, applied],
+    queryKey: invoiceListKey(company.code, applied),
     initialPageParam: "",
     refetchOnMount: true,
     queryFn: ({ pageParam, signal }) => {
@@ -64,9 +70,8 @@ export function InvoiceList({
   });
   const rows = page.data?.pages.flatMap((value) => value.items) ?? [];
   const filtered = invoiceFilterKeys.some((key) => applied[key]);
-  // Apply and Clear always reload from the first page, never from pages cached for those filters.
   const show = (next: InvoiceFilter) => {
-    void client.resetQueries({ queryKey: ["trade-invoices", company.code, next], exact: true });
+    restartInvoiceList(client, company.code, next);
     setFilter({ key: `${company.code}|${JSON.stringify(next)}`, draft: next, invalid: null });
     write(Object.fromEntries(invoiceFilterKeys.map((name) => [name, next[name] || null])));
   };
@@ -81,6 +86,7 @@ export function InvoiceList({
     else show(next);
   };
   const clear = () => show(noInvoiceFilter);
+  const refresh = () => restartInvoiceList(client, company.code, applied);
   const edit = (patch: Partial<InvoiceFilter>) =>
     setFilter({ ...current, draft: { ...draft, ...patch }, invalid: null });
   const described = (kind: "party" | "range") =>
@@ -212,6 +218,9 @@ export function InvoiceList({
           </button>
           <button type="button" className="btn btn-secondary" onClick={clear}>
             {t("tinv.filter.clear")}
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={refresh}>
+            {t("tinv.listRefresh")}
           </button>
         </div>
       </form>

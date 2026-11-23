@@ -208,6 +208,7 @@ export const tradeEn = {
   "tinv.filter.to": "Accounting date to",
   "tinv.filter.apply": "Apply",
   "tinv.filter.clear": "Clear",
+  "tinv.listRefresh": "Refresh list",
   "tinv.filter.partyInvalid":
     "Use uppercase letters, digits and _ . : - (up to 60 characters, starting with a letter or digit).",
   "tinv.filter.range": "The start date must not be later than the end date.",
@@ -441,6 +442,7 @@ export const tradeZh: Record<keyof typeof tradeEn, string> = {
   "tinv.filter.to": "记账日期止",
   "tinv.filter.apply": "应用",
   "tinv.filter.clear": "清除",
+  "tinv.listRefresh": "刷新列表",
   "tinv.filter.partyInvalid":
     "请使用大写字母、数字及 _ . : -（以字母或数字开头，最多 60 个字符）。",
   "tinv.filter.range": "起始日期不能晚于截止日期。",

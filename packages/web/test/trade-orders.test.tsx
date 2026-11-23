@@ -570,6 +570,7 @@ describe("trade orders", () => {
       "tord-filter-to",
       t("tord.filterApply"),
       t("tord.filterClear"),
+      t("tord.listRefresh"),
       "PO-1",
     ]);
     expect(

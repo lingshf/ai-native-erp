@@ -75,6 +75,7 @@
   "packages/web/test/shell-targets.test.ts": 7,
   "packages/web/test/trade-adjustments.test.tsx": 2532,
   "packages/web/test/trade-invoices.test.tsx": 1482,
+  "packages/web/test/trade-list-refresh.test.tsx": 1200,
   "packages/web/test/trade-master.test.tsx": 1675,
   "packages/web/test/trade-orders.test.tsx": 3586,
   "packages/web/test/trade-period-admission.test.tsx": 1527,
