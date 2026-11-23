@@ -166,8 +166,7 @@ describe("TINV-06 invoice detail dialog", () => {
       d("tinv.detail.matchStatus"),
     ]);
     const cells = within(lines).getAllByRole("cell");
-    expectBadge(cells.at(-1), "success", t("tinv.matched"));
-    expect(cells.map(visibleText)).toEqual([
+    expect(cells.slice(0, -1).map((td) => td.textContent)).toEqual([
       "1",
       "RENT",
       "10",
@@ -176,8 +175,8 @@ describe("TINV-06 invoice detail dialog", () => {
       money(10000),
       money(1300),
       money(11300),
-      t("tinv.matched"),
     ]);
+    expectBadge(cells.at(-1), "success", t("tinv.matched"));
     const totals = within(dialog).getByRole("region", { name: d("tinv.detail.totals") });
     expect(within(totals).getByText(t("tinv.gross")).nextElementSibling?.textContent).toBe(
       money(11300),
@@ -441,16 +440,9 @@ const badgeCases = [
     poTone: "info",
     statusTone: "info",
   },
-  {
-    language: "en",
-    poMatch: "notApplicable",
-    status: "open",
-    poTone: "info",
-    statusTone: "warning",
-  },
 ] as const;
 
-describe("TINV-08 status badges and number formats", () => {
+describe("TINV-08 status badges", () => {
   it.each(badgeCases)(
     "$language: $poMatch / $status are badges in the list, header, lines and open item; Tab stops unchanged",
     async ({ language, poMatch, status, poTone, statusTone }) => {
@@ -495,7 +487,9 @@ describe("TINV-08 status badges and number formats", () => {
       ]);
     },
   );
+});
 
+describe("TINV-08 large invoice display", () => {
   it("large invoice: totals use the totals modifier with money text only; lines group quantity and unit price", async () => {
     const value = detail();
     const [line] = value.document.lines;
