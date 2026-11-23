@@ -21,6 +21,7 @@ import {
 } from "../../../web/src/ui/trade-invoice-detail-labels.ts";
 import { formatMinor } from "../../../web/src/reports-data.ts";
 import { navigateTitle, targetPageShown, type NavigatePath } from "./navigate-ready.ts";
+import { detailBack, invoiceLinks, type InvoiceLinkContext } from "./trade-gui-invoice-links.ts";
 
 const root = fileURLToPath(new URL("../../../../", import.meta.url));
 const artifacts = resolve(process.env.ERP_E2E_ARTIFACTS ?? join(root, "artifacts/ci/trade-e2e"));
@@ -1437,8 +1438,21 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       await sourceOrders();
       await invoiceFilters();
       await invoiceDetail();
-      await detailBack();
-      await invoiceLinks();
+      const invoiceLinkContext: InvoiceLinkContext = {
+        page,
+        language,
+        name,
+        address,
+        artifacts,
+        failures,
+        draftPrefix,
+        t,
+        detailed,
+        navigate,
+        keys: { tabTo, type, choose, activate },
+      };
+      await detailBack(invoiceLinkContext);
+      await invoiceLinks(invoiceLinkContext);
       await leaveByBack(
         "trade-invoices",
         "#tinv-party",
@@ -1990,255 +2004,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       expect(dialogs).toBe(0);
       expect(failures).toEqual([]);
     }
-    // TINV-07 A7: every segment starts like GATE-01 4b/4c: on #/trade-reports (the invoice page not
-    // mounted), the invoice drafts dropped and asserted clean.
-    async function invoiceCleanStart() {
-      if (new URL(page.url()).hash !== "#/trade-reports") await navigate("trade-reports");
-      await page.evaluate((prefix) => {
-        for (const key of Object.keys(sessionStorage))
-          if (key.startsWith(prefix)) sessionStorage.removeItem(key);
-      }, draftPrefix);
-      expect(await drafts()).toBe(0);
-    }
-    // Function declarations, not consts: followUp() runs from the step loop above, before this line.
-    function historyLength() {
-      return page.evaluate(() => window.history.length);
-    }
-    function hashNow() {
-      return new URL(page.url()).hash;
-    }
-    // TINV-06 acceptance 9: a real Back while the detail dialog is open. A clean draft leaves the
-    // invoice page with no confirmation. TINV-07 A7 dirty segment (③④, decision 10, D275): with a
-    // dirty draft, applying a filter and opening the detail only replace (no confirmation, same
-    // history length); Back asks exactly once; a cancel restores the latest address (filter and
-    // invoice), keeps the list, the dialog and the draft and truncates the known forward entry; a
-    // confirmed Back reaches the previous page. The dirty draft is removed afterwards.
-    async function detailBack() {
-      const list = page.getByRole("table", { name: t("tinv.list"), exact: true });
-      const bar = page.getByRole("search", { name: t("tinv.filter"), exact: true });
-      const dialog = page.getByRole("dialog", {
-        name: `${detailed("tinv.detail.title")} · AP-DEMO`,
-        exact: true,
-      });
-      const trigger = list.getByRole("button", {
-        name: `${detailed("tinv.detail.open")} AP-DEMO`,
-        exact: true,
-      });
-      const listed = () => list.locator("tbody tr").allInnerTexts();
-      const draftState = () =>
-        page.evaluate(
-          (prefix) =>
-            JSON.stringify(
-              Object.keys(sessionStorage)
-                .filter((key) => key.startsWith(prefix))
-                .sort()
-                .map((key) => [key, sessionStorage.getItem(key)]),
-            ),
-          draftPrefix,
-        );
-      let dialogs = 0;
-      let accept = false;
-      const answer = async (event: import("playwright").Dialog) => {
-        dialogs += 1;
-        expect(event.type()).toBe("confirm");
-        expect(event.message()).toBe(t("trade.leaveConfirm"));
-        await (accept ? event.accept() : event.dismiss());
-      };
-      const back = () => page.goBack({ waitUntil: "commit", timeout: 2_000 }).catch(() => null);
-      const reports = async () => {
-        await page.waitForURL((url) => url.hash === "#/trade-reports");
-        await page.waitForFunction(targetPageShown, navigateTitle(language, "trade-reports"));
-      };
-      page.on("dialog", answer);
-      try {
-        // Clean segment (draft cleared first): Back leaves at once, the dialog unmounts with the page.
-        await invoiceCleanStart();
-        await navigate("trade-invoices");
-        await activate(page, trigger);
-        await dialog.waitFor();
-        await back();
-        await reports();
-        await page.waitForTimeout(300);
-        expect(dialogs).toBe(0);
-        expect(await dialog.count()).toBe(0);
-        // Dirty segment (draft cleared first). Leave a known forward entry after the invoice page:
-        // invoices → reports → Back (the reports page asks nothing) → invoices, forward = reports.
-        await invoiceCleanStart();
-        await navigate("trade-invoices");
-        await navigate("trade-reports");
-        await back();
-        await page.waitForURL((url) => url.hash === "#/trade-invoices");
-        await page.getByRole("heading", { name: t("tinv.title"), exact: true }).waitFor();
-        await trigger.waitFor();
-        expect(dialogs).toBe(0);
-        expect(await drafts()).toBe(0);
-        const entries = await historyLength();
-        // ③ Dirty draft, then apply a filter and open the detail: replace only.
-        await type(page, page.locator("#tinv-party"), "PARTY-DETAIL");
-        await expect.poll(drafts).toBe(1);
-        await choose(page, page.locator("#tinv-filter-side"), "AP");
-        await activate(page, bar.getByRole("button", { name: t("tinv.filter.apply") }));
-        await page.waitForURL((url) => url.hash === "#/trade-invoices?company=DEFAULT&side=AP");
-        await trigger.waitFor();
-        await activate(page, trigger);
-        await dialog.waitFor();
-        await expect
-          .poll(hashNow)
-          .toMatch(/^#\/trade-invoices\?company=DEFAULT&side=AP&invoice=[0-9a-f-]{36}$/);
-        await page.waitForTimeout(300);
-        expect(dialogs).toBe(0);
-        expect(await historyLength()).toBe(entries);
-        const latest = hashNow();
-        const rows = await listed();
-        const draft = await draftState();
-        expect(await page.locator("#tinv-party").inputValue()).toBe("PARTY-DETAIL");
-        // ④ Back asks once; the cancel keeps everything as it was just before the Back.
-        await back();
-        await expect.poll(() => dialogs, { timeout: 10_000 }).toBe(1);
-        await page.waitForTimeout(300);
-        expect(dialogs).toBe(1);
-        expect(hashNow()).toBe(latest);
-        await page.getByRole("heading", { name: t("tinv.title"), exact: true }).waitFor();
-        expect(await dialog.isVisible()).toBe(true);
-        expect(await listed()).toEqual(rows);
-        expect(await page.locator("#tinv-party").inputValue()).toBe("PARTY-DETAIL");
-        expect(await page.locator("#tinv-filter-side").inputValue()).toBe("AP");
-        expect(await draftState()).toBe(draft);
-        // D275: the cancel truncated the forward entry, so Forward goes nowhere and asks nothing.
-        await page.goForward({ waitUntil: "commit", timeout: 2_000 }).catch(() => null);
-        await page.waitForTimeout(300);
-        expect(dialogs).toBe(1);
-        expect(hashNow()).toBe(latest);
-        expect(await dialog.isVisible()).toBe(true);
-        expect(await draftState()).toBe(draft);
-        accept = true;
-        await back();
-        await expect.poll(() => dialogs, { timeout: 10_000 }).toBe(2);
-        await reports();
-        await page.waitForTimeout(300);
-        expect(dialogs).toBe(2);
-        await page.evaluate((prefix) => {
-          for (const key of Object.keys(sessionStorage))
-            if (key.startsWith(prefix)) sessionStorage.removeItem(key);
-        }, draftPrefix);
-      } finally {
-        page.off("dialog", answer);
-      }
-      expect(failures).toEqual([]);
-    }
-    // TINV-07 A7 clean segment (①②⑤, draft cleared first): the address restores the open invoice
-    // and the applied filters after a reload; every in-page replace keeps history.length; a deep
-    // link opened cold at 390 px keeps the page inside the viewport. Each detail load sends one
-    // GET; nothing asks to leave. Ends with no invoice draft.
-    async function invoiceLinks() {
-      const list = page.getByRole("table", { name: t("tinv.list"), exact: true });
-      const bar = page.getByRole("search", { name: t("tinv.filter"), exact: true });
-      const row = (external: string) =>
-        list.locator("tbody tr").filter({ hasText: external }).first();
-      const trigger = list.getByRole("button", {
-        name: `${detailed("tinv.detail.open")} AP-DEMO`,
-        exact: true,
-      });
-      const dialog = page.getByRole("dialog", {
-        name: `${detailed("tinv.detail.title")} · AP-DEMO`,
-        exact: true,
-      });
-      let dialogs = 0;
-      const count = async (event: import("playwright").Dialog) => {
-        dialogs += 1;
-        await event.dismiss();
-      };
-      let details = 0;
-      const detailRequest = (request: import("playwright").Request) => {
-        if (
-          request.method() === "GET" &&
-          /^\/api\/v1\/trade\/invoices\/[0-9a-f-]{36}$/.test(new URL(request.url()).pathname)
-        )
-          details += 1;
-      };
-      const loaded = async (sent: number) => {
-        await dialog.waitFor();
-        await dialog.getByRole("table", { name: t("tinv.lines"), exact: true }).waitFor();
-        expect(details - sent).toBe(1);
-      };
-      const closed = async () => {
-        await page.keyboard.press("Escape");
-        await dialog.waitFor({ state: "detached" });
-        await expect.poll(hashNow).toBe("#/trade-invoices?company=DEFAULT");
-      };
-      page.on("dialog", count);
-      page.on("request", detailRequest);
-      try {
-        await invoiceCleanStart();
-        await navigate("trade-invoices");
-        await trigger.waitFor();
-        const entries = await historyLength();
-        // ① Open (replace), reload: the same dialog opens from the address alone; close (replace).
-        await tabTo(page, trigger);
-        await page.keyboard.press("Enter");
-        await loaded(0);
-        const linked = hashNow();
-        expect(linked).toMatch(/^#\/trade-invoices\?company=DEFAULT&invoice=[0-9a-f-]{36}$/);
-        expect(await historyLength()).toBe(entries);
-        await page.reload();
-        await loaded(1);
-        expect(hashNow()).toBe(linked);
-        expect(await historyLength()).toBe(entries);
-        await page.screenshot({ path: join(artifacts, `${name}-invoice-link.png`) });
-        await closed();
-        expect(await historyLength()).toBe(entries);
-        await expect
-          .poll(() => trigger.evaluate((element) => element === document.activeElement))
-          .toBe(true);
-        // ② Apply (replace), reload: the filter and the list come back; clear (replace).
-        await choose(page, page.locator("#tinv-filter-side"), "AR");
-        await activate(page, bar.getByRole("button", { name: t("tinv.filter.apply") }));
-        await page.waitForURL((url) => url.hash === "#/trade-invoices?company=DEFAULT&side=AR");
-        await row("AR-DEMO").waitFor();
-        await expect.poll(() => row("AP-DEMO").count()).toBe(0);
-        expect(await historyLength()).toBe(entries);
-        const filtered = await list.locator("tbody tr").allInnerTexts();
-        await page.reload();
-        await row("AR-DEMO").waitFor();
-        expect(await row("AP-DEMO").count()).toBe(0);
-        expect(await list.locator("tbody tr").allInnerTexts()).toEqual(filtered);
-        expect(await page.locator("#tinv-filter-side").inputValue()).toBe("AR");
-        expect(hashNow()).toBe("#/trade-invoices?company=DEFAULT&side=AR");
-        expect(await historyLength()).toBe(entries);
-        await activate(page, bar.getByRole("button", { name: t("tinv.filter.clear") }));
-        await page.waitForURL((url) => url.hash === "#/trade-invoices?company=DEFAULT");
-        await row("AP-DEMO").waitFor();
-        expect(await historyLength()).toBe(entries);
-        expect(dialogs).toBe(0);
-        // ⑤ The deep link opened once, cold, at 390 px (a new document from about:blank, so the
-        // single detail GET belongs to this load).
-        await page.setViewportSize({ width: 390, height: 1100 });
-        try {
-          await page.goto("about:blank");
-          await page.goto(`${address}${linked}`);
-          await loaded(2);
-          expect(hashNow()).toBe(linked);
-          const opened = await historyLength();
-          const overflow = await page.evaluate(
-            () => document.documentElement.scrollWidth - window.innerWidth,
-          );
-          console.log(`[tinv07] ${name} 390 deep link overflow ${overflow}`);
-          expect(overflow).toBeLessThanOrEqual(0);
-          await page.screenshot({ path: join(artifacts, `${name}-invoice-link-390.png`) });
-          await closed();
-          expect(await historyLength()).toBe(opened);
-        } finally {
-          await page.setViewportSize({ width: 1440, height: 1100 });
-        }
-      } finally {
-        page.off("dialog", count);
-        page.off("request", detailRequest);
-      }
-      expect(details).toBe(3);
-      expect(dialogs).toBe(0);
-      expect(await drafts()).toBe(0);
-      expect(failures).toEqual([]);
-    } // TINV-04 acceptance 5a: a real Back from a dirty draft asks exactly once; a cancel keeps the
+    // TINV-04 acceptance 5a: a real Back from a dirty draft asks exactly once; a cancel keeps the
     // address, the title and the draft; a confirmed Back reaches the previous page. The invoice
     // page cancels twice; the order page (same leave-guard-history.ts gate) cancels once.
     async function leaveByBack(
