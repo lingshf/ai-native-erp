@@ -8,9 +8,9 @@
 
 （暂无）
 
-## [0.11.0] - 发布日待定（发布候选）
+## [0.11.0] - 2026-11-22
 
-> 产品代码基线为 `main` 68620fd（Full run 45114359894 绿）。自 v0.10.0（tag 所指提交 ae4fbaa）到 68620fd 共 10 个已合并 PR（#193–#202）；产品与测试提交是 TINV-06 [#199](https://github.com/lingshf/ai-native-erp/pull/199) + 修复 [#200](https://github.com/lingshf/ai-native-erp/pull/200)、UI-14 [#197](https://github.com/lingshf/ai-native-erp/pull/197)；其余为流程、脚本、权重与文档。tag 目标待 D335 同款规则确定：打在 Demo PR 的 squash 提交上，之后 main 只有文档提交，届时以 `git diff 68620fd <tag 目标> -- packages` 为空为准（本 RC 不预先填写）。
+> 产品代码基线为 `main` 68620fd（Full run 45114359894 绿）。自 v0.10.0（tag 所指提交 ae4fbaa）到 68620fd 共 10 个已合并 PR（#193–#202）；产品与测试提交是 TINV-06 [#199](https://github.com/lingshf/ai-native-erp/pull/199) + 修复 [#200](https://github.com/lingshf/ai-native-erp/pull/200)、UI-14 [#197](https://github.com/lingshf/ai-native-erp/pull/197)；其余为流程、脚本、权重与文档。**tag 目标（D335 的做法无法照搬）**：基线之后 main 上有 S12 的三个产品提交 UI-15 [#206](https://github.com/lingshf/ai-native-erp/pull/206)、UI-16 [#210](https://github.com/lingshf/ai-native-erp/pull/210)、UI-17 [#213](https://github.com/lingshf/ai-native-erp/pull/213)（`git diff --stat 68620fd origin/main -- packages` 为 19 个文件、389 行增、15 行删），它们在 Demo PR [#204](https://github.com/lingshf/ai-native-erp/pull/204)（squash 提交 `1d2602d`）之前合并，所以 `git diff 68620fd 1d2602d -- packages` 不为空，tag 不能打在 `1d2602d` 或本日期 PR 的 squash 提交上，否则 v0.11.0 会带入未做 Sprint 评审的 S12 改动。建议 tag `v0.11.0` 打在 RC [#203](https://github.com/lingshf/ai-native-erp/pull/203) 之后、S12 产品提交之前的最后一个提交 `024b7fa`（S12 计划 [#205](https://github.com/lingshf/ai-native-erp/pull/205)），`git diff 68620fd 024b7fa -- packages` 为空（已核对）；Demo 在该产品代码上取图，记录见 [docs/demo/v0.11.0](docs/demo/v0.11.0/run-through.md)（Demo 文档在 tag 之后合并，tag 内不含）。
 
 S11 Sprint：发票详情对话框与侧栏分组。**无迁移**（最新仍是 018），无依赖变化，不改 HTTP 契约与过账规则。
 
