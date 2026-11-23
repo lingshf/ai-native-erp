@@ -132,7 +132,12 @@ const otherInvoice = {
   externalNo: "INV-2",
 };
 // `unknownFirst` loses the first post's response; a promise holds that post in flight until it settles.
-function mockApi(unknownFirst: boolean | Promise<void> = false, paged = false) {
+// `holdPreview` holds the first preview in flight until it settles with the HTTP status to answer.
+function mockApi(
+  unknownFirst: boolean | Promise<void> = false,
+  paged = false,
+  holdPreview?: Promise<number>,
+) {
   const previews: TradeActionCommandDto[] = [];
   const posts: ReturnType<typeof tradeActionConfirmSchema.parse>[] = [];
   vi.stubGlobal(
@@ -152,6 +157,8 @@ function mockApi(unknownFirst: boolean | Promise<void> = false, paged = false) {
       if (url === "/api/v1/trade/actions/preview") {
         const command = tradeActionCommandSchema.parse(JSON.parse(String(init?.body)));
         previews.push(command);
+        const status = holdPreview && previews.length === 1 ? await holdPreview : 200;
+        if (status !== 200) return response({ message: "Fictional failure" }, status);
         return response(preview(command));
       }
       if (url === "/api/v1/trade/actions") {
@@ -191,6 +198,36 @@ async function plan() {
       false,
     ),
   );
+}
+const enabled = (element: HTMLElement) => !element.matches(":disabled");
+// Edits the gross while the first preview is in flight, then settles that preview with `status`;
+// the page must drop the stale outcome, leave busy, preview the edited draft and clear it.
+async function supersedePreview(status: number) {
+  let settle: (status: number) => void = () => {};
+  const { previews } = mockApi(false, false, new Promise((resolve) => (settle = resolve)));
+  await open();
+  fireEvent.change(screen.getByLabelText(t("trade.side")), { target: { value: "AR" } });
+  fireEvent.change(screen.getByLabelText(t("tinv.party")), { target: { value: "C1" } });
+  const gross = screen.getByLabelText<HTMLInputElement>(t("tadj.gross"));
+  fireEvent.change(gross, { target: { value: "1234" } });
+  const previewButton = screen.getByRole("button", { name: t("tinv.preview") });
+  fireEvent.click(previewButton);
+  await waitFor(() => expect(previews).toHaveLength(1));
+  expect(enabled(gross)).toBe(false);
+  // fireEvent.change ignores `disabled` on purpose: it stands for any edit entry that bypasses the lock.
+  fireEvent.change(gross, { target: { value: "1235" } });
+  settle(status);
+  await waitFor(() => expect(enabled(previewButton)).toBe(true));
+  expect(screen.queryByRole("region", { name: t("tadj.result") })).toBeNull();
+  expect(enabled(screen.getByRole("button", { name: t("tadj.confirm") }))).toBe(false);
+  expect(gross.value).toBe("1235");
+  expect(screen.queryByRole("alert")).toBeNull();
+  await plan();
+  expect(previews[1]).toMatchObject({ gross: 1235 });
+  fireEvent.click(screen.getByRole("button", { name: t("tadj.clear") }));
+  expect(gross.value).toBe("");
+  // The company select also stays locked while the draft is unsaved, so only an empty draft shows busy is gone.
+  expect(enabled(screen.getByLabelText(t("master.company")))).toBe(true);
 }
 beforeEach(() => {
   localStorage.clear();
@@ -501,5 +538,11 @@ describe("typed trade adjustments", () => {
     });
     expect(retry.disabled).toBe(false);
     expect(screen.getByText(t("tinv.uncertain"))).toBeTruthy();
+  });
+  it("clears busy after an edit supersedes an in-flight preview and ignores its late result", async () => {
+    await supersedePreview(200);
+  });
+  it("clears busy when a superseded preview fails and shows no stale error", async () => {
+    await supersedePreview(500);
   });
 });

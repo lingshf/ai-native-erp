@@ -200,6 +200,7 @@ export async function runAction(entry: ActionEntryContext, confirm: boolean) {
     failAction(entry, error, confirm);
   } finally {
     running.current = false;
-    if (sequence.current === version) entry.setBusy(false);
+    // `running` allows one request in flight, so busy ends with it even when an edit superseded it.
+    entry.setBusy(false);
   }
 }
