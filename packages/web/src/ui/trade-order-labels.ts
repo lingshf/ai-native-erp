@@ -80,6 +80,7 @@ export const tradeOrderEn = {
   "tord.filterTo": "Order date to",
   "tord.filterApply": "Apply",
   "tord.filterClear": "Clear",
+  "tord.listRefresh": "Refresh list",
   "tord.filterRange": "The start date must not be later than the end date.",
   "tord.filterLinkInvalid":
     "The filters in the link are not valid and were ignored; all orders are shown.",
@@ -186,6 +187,7 @@ export const tradeOrderZh: Record<keyof typeof tradeOrderEn, string> = {
   "tord.filterTo": "订单日期止",
   "tord.filterApply": "应用",
   "tord.filterClear": "清除",
+  "tord.listRefresh": "刷新列表",
   "tord.filterRange": "起始日期不能晚于截止日期。",
   "tord.filterLinkInvalid": "链接中的筛选条件无效，已忽略；当前显示全部订单。",
   "tord.lineCountColumn": "行数",

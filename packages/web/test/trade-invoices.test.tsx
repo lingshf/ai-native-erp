@@ -1220,6 +1220,7 @@ describe("trade invoice list filters (TINV-05)", () => {
       "tinv-filter-to",
       t("tinv.filter.apply"),
       t("tinv.filter.clear"),
+      t("tinv.listRefresh"),
       t("tinv.list"),
     ]);
     expect(
@@ -1243,6 +1244,7 @@ describe("trade invoice list filters (TINV-05)", () => {
       "tinv.filter.to",
       "tinv.filter.apply",
       "tinv.filter.clear",
+      "tinv.listRefresh",
       "tinv.filter.partyInvalid",
       "tinv.filter.range",
       "tinv.filter.none",

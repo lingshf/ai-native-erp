@@ -59,9 +59,11 @@ function useOrderFilters(
     else show(next);
   };
   const clear = () => show(noOrderFilter);
+  // TLIST-01: re-read the applied filters' first page; the bar's unapplied inputs stay as they are.
+  const refresh = () => restartOrderList(client, company, applied);
   const edit = (patch: Partial<OrderFilter>) =>
     setState({ ...current, draft: { ...draft, ...patch }, invalid: null });
-  return { applied, broken, draft, invalid, apply, clear, edit };
+  return { applied, broken, draft, invalid, apply, clear, refresh, edit };
 }
 
 export function OrderList({
@@ -81,7 +83,7 @@ export function OrderList({
   onFilter: (filter: OrderFilter) => void;
   onOpen: (orderId: string) => void;
 }) {
-  const { applied, broken, draft, invalid, apply, clear, edit } = useOrderFilters(
+  const { applied, broken, draft, invalid, apply, clear, refresh, edit } = useOrderFilters(
     params,
     company.code,
     onFilter,
@@ -197,6 +199,9 @@ export function OrderList({
           </button>
           <button type="button" className="btn btn-secondary" onClick={clear}>
             {t("tord.filterClear")}
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={refresh}>
+            {t("tord.listRefresh")}
           </button>
         </div>
       </form>
