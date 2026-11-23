@@ -58,6 +58,7 @@
   "packages/infra/test/storage-sqlite.test.ts": 9616,
   "packages/infra/test/trade-order-filters-migration.test.ts": 1530,
   "packages/infra/test/tooling/boundaries.test.ts": 1595,
+  "packages/infra/test/tooling/bundle-compare.test.ts": 1400,
   "packages/infra/test/tooling/ci.test.ts": 6,
   "packages/web/test/App.test.tsx": 1294,
   "packages/web/test/accounts.test.tsx": 1244,
