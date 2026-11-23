@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { ReconciliationConnection } from "../storage/reconciliation.ts";
+import { createOpeningStaging, type OpeningStaging } from "./opening-staging.ts";
 import { StorageError } from "@erp/core/application";
 import {
   DomainError,
@@ -12,7 +13,6 @@ import {
   type Account,
   type DimensionConfig,
   type DimensionMap,
-  type OpenItem,
   type TradeAccountRole,
   type TradeConfig,
 } from "@erp/core/domain";
@@ -36,19 +36,12 @@ export interface OpeningAccount {
   readonly declaration: "detail" | "empty";
   readonly rows: number;
 }
-export interface OpeningEntry {
-  readonly source: string;
-  readonly company: string;
-  readonly legacyId: string;
-  readonly journalLegacyRef: string;
-  readonly item: OpenItem;
-  readonly evidence: string;
-}
+/** The items themselves are staged in `opening_entries` of the plan database, not held here. */
 export interface OpeningPlan {
   readonly sha: string | null;
   readonly configs: readonly { readonly company: string; readonly config: TradeConfig }[];
   readonly accounts: readonly OpeningAccount[];
-  readonly entries: readonly OpeningEntry[];
+  readonly entryCount: number;
 }
 
 type Fields = Record<string, unknown>;
@@ -159,10 +152,18 @@ function historicalJournalsByAccount(
 /**
  * Validates the explicit opening-items file against the staged import plan (never the target).
  * The same function serves the library dry-run and the import; every blocking issue is listed.
+ * Valid items are staged in file order in `opening_entries` of the plan database.
  */
 export function validateOpeningItems(
   plan: ReconciliationConnection,
   bytes: Uint8Array | undefined,
+): { plan: OpeningPlan; issues: OpeningIssue[] } {
+  return plan.transaction(() => checkOpeningItems(plan, bytes, createOpeningStaging(plan)))();
+}
+function checkOpeningItems(
+  plan: ReconciliationConnection,
+  bytes: Uint8Array | undefined,
+  staging: OpeningStaging,
 ): { plan: OpeningPlan; issues: OpeningIssue[] } {
   const issues: OpeningIssue[] = [];
   const issue = (
@@ -258,7 +259,7 @@ export function validateOpeningItems(
     .all() as { company: string; account: string; balance: bigint }[])
     balances.set(`${row.company}:${row.account}`, BigInt(row.balance));
   const journalsOn = historicalJournalsByAccount(plan, historicalLines);
-  const empty: OpeningPlan = { sha: null, configs: [], accounts: [], entries: [] };
+  const empty: OpeningPlan = { sha: null, configs: [], accounts: [], entryCount: 0 };
   if (!bytes) {
     if (controls.length) {
       issue(
@@ -507,7 +508,6 @@ export function validateOpeningItems(
     declarations.set(key, { declaration: row.declaration, rows: items as Fields[] });
   }
   const result: OpeningAccount[] = [];
-  const entries: OpeningEntry[] = [];
   const seen = new Set<string>();
   const partySums = new Map<string, Map<string, bigint>>();
   for (const c of controls) {
@@ -673,7 +673,7 @@ export function validateOpeningItems(
         side,
         sha,
       };
-      entries.push({
+      staging.append({
         source: c.account.source,
         company,
         legacyId: `${company}:${side}:${partyCode}:${normalized}`,
@@ -766,7 +766,7 @@ export function validateOpeningItems(
           a.config.code.localeCompare(b.config.code),
       ),
       accounts: result,
-      entries,
+      entryCount: staging.count(),
     },
     issues,
   };

@@ -26,10 +26,7 @@ const PEAK_RSS_BUDGET_MIB = 512;
  * Known gaps (D434): budgets still reported with their limit but not failing the job.
  * Delete an entry when its gap closes to restore the hard gate.
  */
-const KNOWN_GAPS = {
-  "import.peakRssMiB":
-    "KG (D434): the opening plan of 100k items stays resident through the import (373 MiB with 0 items, 668 MiB with 100k); fix by writing opening items in batches or streaming",
-};
+const KNOWN_GAPS = {};
 const STEP_TIMEOUT_MS = 30 * 60 * 1000;
 const STEP_OUTPUT_BYTES = 64 * 1024 * 1024;
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
