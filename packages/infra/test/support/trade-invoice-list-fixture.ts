@@ -180,7 +180,10 @@ export function ledgerAt017(filename: string): Promise<void> {
 export function ledgerAt018(filename: string): Promise<void> {
   return ledgerBefore(filename, "trade_order_invoicing", 18);
 }
-/** Runs the real migrations up to and including 019 and stops before 020 (TINV-09 recompute). */
+/**
+ * Runs the real migrations (with their backfill hooks) up to and including 019 and stops before
+ * 020 (TINV-09 recompute), on a new file or an older ledger already at `filename`.
+ */
 export function ledgerAt019(filename: string): Promise<void> {
   return ledgerBefore(filename, "TINV-09", 19);
 }
