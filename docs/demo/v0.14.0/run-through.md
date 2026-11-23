@@ -45,3 +45,9 @@
 - **桩重跑一次**（提交后的干净树，HEAD `3cb3fbf`，`status=[]`，退出码 0，`logs/slot-summary-stub2.log`）：head 预检 exit=0 new-keys=0 reduced-keys=0，构建后 dist 新于 HEAD，桩步骤 exit=0，precheck counted=0、步骤后 counted=0。子进程同样是 node 桩。哈希见 §1，与提交一致。
 - **D467 的确切调用**（`logs/run-main-skipcapture.log`）：在仓库根目录、由本会话的 PowerShell 宿主执行 `powershell.exe -NoProfile -File docs\demo\v0.14.0\scripts\run-main.ps1 -Shots <TEMP>\demo15-dry-d9275520\shots -SkipCapture`（输出 `*>&1` 经 Tee-Object 写日志），`exit 0`，日期 2026-11-23 09:35 本地；工作区干净，HEAD `ec97664`（运行前未提交日志）。
 - **是否经生产子 shell**：**部分是**。子 shell 的可执行文件和参数与 `steps-demo15.ps1` 配置的相同（`powershell.exe -NoProfile -File run-main.ps1 -Shots <目录>`，多了 `-SkipCapture`），所以 `run-main.ps1` 在 Windows PowerShell 5.1 的 `powershell.exe` 下跑通了；但它**不是经 slot-run 启动的**：没有 runner 的环境变量（`ERP_E2E_BROWSER_CHANNEL`）、没有 runner 的进程采样与超时、`-Shots` 目录不同，也没有带浏览器。真实时段仍是首次经 runner 走这条路径。
+
+## 6 真实时段申请前的采样（D308）
+
+- #256 已合并为 `94aefc2`，本分支已 rebase 到它（产品代码与 `94aefc2` 相同，`git diff 94aefc2 HEAD -- packages scripts` 为空）。
+- 2026-11-23 17:47–17:50（UTC）用 `procs.ps1` 的 `Counted` 只读采样 2 轮（第一轮采样器缺 `\` 初始化，作废；第二轮 12 次、每 10 秒一次）：**12 次全部 counted>0，没有出现连续 6 次 0**。计数进程是其他 ai-native-erp 会话（`lingshf-symmetrical-waddle`、`lingshf-musical-funicular` 等）的 node / vitest / chrome-headless-shell。我没有结束任何进程。
+- 所以**现在不满足 D308**，不能开始真实时段。真实运行由 `slot-run.ps1` 自己的预检等待连续 6 次 0（最多 15 分钟，否则中止且不重试）；请协调者在其他会话停止本地 node 后再批准。采样输出为本机临时文件，按 slot 规则不入库。
