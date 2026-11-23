@@ -1,21 +1,23 @@
 # Exclusive-slot counted-process logic, dot-sourced by slot-run.ps1 and selftest.ps1 (D311, D314).
-# Implements rule version R2 of design/roadmap.md §5 "进程采样规则": R1 (D338, D341) plus the SR-X1 carry-over of
-# D411 (Get-UnreadableOwner). R1 is the D316 kit's procs.ps1 (gist
+# Implements rule version R3 of design/roadmap.md §5 "进程采样规则": R1 (D338, D341) plus the SR-X1 carry-over of
+# D411 (Get-UnreadableOwner) = R2, plus SR-X6 (D472): a candidate of unknown ownership is excluded and logged in
+# full, no longer counted (R2 counted it). R1 is the D316 kit's procs.ps1 (gist
 # lingshf/c437f3d99887d0214ebd05ae9d741cc5 @ 4e00af7, LF SHA-256 906A4B70…90A6F8) including the launcher branch
-# ratified by D320, branch for branch and in the same order. Every decision exit carries its rule id (SR-R1, SR-C1–C3,
-# SR-X1–X5) in a trailing "# exit SR-…" comment; "kit :N" names the line of the D316 file. check-manifest.mjs checks
-# the ids against the roadmap table. Changing any rule needs a decision number and a roadmap edit (R2…) first.
-$script:SlotRuleVersion = 'R2'
+# ratified by D320, branch for branch and in the same order. Every decision exit carries its rule id (SR-R1, SR-C1–C2,
+# SR-X1–X6) in a trailing "# exit SR-…" comment; "kit :N" names the line of the D316 file. check-manifest.mjs checks
+# the ids against the roadmap table. Changing any rule needs a decision number and a roadmap edit (R3…) first.
+$script:SlotRuleVersion = 'R3'
 # Candidate (D314): every process outside this runner's tree whose image name is in $names (node, cmd, any Chrome
 # or Edge, vite, esbuild, biome, tsc, npm, npx), whatever its command line; there is no command-line prefilter.
-# A candidate whose command line cannot be read is counted as unknown ownership, without the ownership walk.
+# A candidate whose command line cannot be read is of unknown ownership (SR-X6), without the ownership walk.
 # D315: an unknown-ownership system browser (and its cmd.exe helpers) may be excluded; see Get-SystemExclusion.
 # Ownership (D311): walk the process, then its parents (a parent must not be younger than its child). At each
 # level the evidence is the executable path, the working directory (read from the process's PEB) and absolute
 # paths on the command line; cmd.exe command lines (its /c argument) are never used to exclude. Each path is
 # mapped to the git repository containing it (.git file or directory; repository identity = git common dir, or a
 # config naming ai-native-erp). The nearest level with any repository evidence decides: any ai-native-erp path ->
-# counted; only other-repository paths -> excluded, with the reason logged; no evidence anywhere -> counted.
+# counted; only other-repository paths -> excluded, with the reason logged; no evidence anywhere -> unknown
+# (SR-X6 unless a system rule SR-X2–X5 applies; excluded either way, R3).
 $names = '(?i)^(node|cmd|chrome|chrome-headless-shell|msedge|vite|esbuild|biome|tsc|npx|npm)(\.exe)?$'
 if (-not ('Gate01Cwd' -as [type])) {
   Add-Type -TypeDefinition @'
@@ -82,13 +84,21 @@ function Get-PathOwner([string] $path) {
   $script:pathOwner[$path] = $r
   return $r
 }
+# SR-X6 (D472): what is known about a candidate of unknown ownership, for excluded.tsv; missing values read "unreadable".
+function Get-UnknownDetail($p, [string] $cwd) {
+  $created = if ($p.CreationDate -is [datetime]) { $p.CreationDate.ToUniversalTime().ToString('o') } elseif ($p.CreationDate) { "$($p.CreationDate)" } else { 'unreadable' }
+  $exe = if ($p.ExecutablePath) { $p.ExecutablePath } else { 'unreadable' }
+  $cl = if ($p.CommandLine) { $p.CommandLine -replace '\s+', ' ' } else { 'unreadable' }
+  "name=$($p.Name) pid=$($p.ProcessId) ppid=$($p.ParentProcessId) created=$created exe=$exe cwd=$(if ($cwd) { $cwd } else { 'unreadable' }) cmdline=[$cl]"
+}
 function Get-Owner($p, [hashtable] $byId) {
-  $node = $p; $depth = 0; $seen = @{}
+  $node = $p; $depth = 0; $seen = @{}; $selfCwd = $null
   while ($node -and $depth -lt 32 -and -not $seen.ContainsKey([int]$node.ProcessId)) {
     $seen[[int]$node.ProcessId] = $true
     $ev = [System.Collections.Generic.List[object]]::new()
     if ($node.ExecutablePath) { $ev.Add(@('exe', $node.ExecutablePath)) }
     $cwd = [Gate01Cwd]::Get([int]$node.ProcessId); if ($cwd) { $ev.Add(@('cwd', $cwd)) }
+    if ($depth -eq 0) { $selfCwd = $cwd }
     $isCmd = $node.Name -match '(?i)^cmd(\.exe)?$'
     if ($node.CommandLine) { foreach ($x in Get-CmdPaths $node.CommandLine) { $ev.Add(@($(if ($isCmd) { 'cmd-arg' } else { 'cmdline' }), $x)) } }
     $erp = $null; $foreign = $null
@@ -104,7 +114,8 @@ function Get-Owner($p, [hashtable] $byId) {
     if (-not $parent -or ($parent.CreationDate -and $node.CreationDate -and $parent.CreationDate -gt $node.CreationDate)) { break }
     $node = $parent; $depth++
   }
-  return @{ Kind = 'unknown'; Rule = 'SR-C3'; Reason = "no repository evidence in process or $depth ancestor(s)" }  # exit SR-C3 (kit :100)
+  # Counted lets a D315 system exclusion replace this verdict; the rest stay unknown and excluded.
+  return @{ Kind = 'unknown'; Rule = 'SR-X6'; Reason = "no repository evidence in process or $depth ancestor(s); ancestors-walked=$depth $(Get-UnknownDetail $p $selfCwd)" }  # exit SR-X6 (ii) (R2: counted, kit :100)
 }
 # D315 system-browser exclusion, for a candidate of unknown ownership only. All of:
 #   (a) executable under C:\Program Files*, C:\Windows or the user's AppData\Local\Programs;
@@ -116,7 +127,7 @@ function Get-Owner($p, [hashtable] $byId) {
 # parent is an excluded browser, or a non-candidate launcher under Program Files* / AppData\Local\Programs that
 # meets (c)-(d), or (D316) its parent has exited, its cwd is readable and outside any repository, and it has at least
 # one live child (conhost aside), every one a non-candidate under Program Files* / AppData\Local\Programs meeting (c)-(d).
-# Returns @{ Rule = SR-X2 | SR-X3 | SR-X4 | SR-X5; Reason = the conditions met }, or $null (counted).
+# Returns @{ Rule = SR-X2 | SR-X3 | SR-X4 | SR-X5; Reason = the conditions met }, or $null (stays SR-X6).
 $script:automation = '(?i)--remote-debugging-(port|pipe)|--headless|--enable-automation|ms-playwright'
 function Test-SystemExe([string] $exe) {
   if (-not $exe) { return $null }
@@ -181,7 +192,7 @@ function Get-SystemExclusion($p, [hashtable] $byId) {
 }
 # D411: SR-X1 verdicts made earlier in this run, pid -> @{ Created; Reason }. A process whose command line becomes
 # unreadable (typically while it exits) keeps its SR-X1 verdict only when its creation time is readable and equal to
-# the recorded one; otherwise the PID may have been reused and it is counted (SR-C3) as before. The latest readable
+# the recorded one; otherwise the PID may have been reused and it is of unknown ownership (SR-X6, R3). The latest readable
 # sample wins: once it judges the process anything but foreign (its cwd can change), the record is dropped.
 $script:foreignSeen = @{}
 function Update-ForeignVerdict($p, $owner) {
@@ -194,9 +205,10 @@ function Get-UnreadableOwner($p) {
   if ($seen -and $p.CreationDate -and $seen.Created -eq $p.CreationDate) {
     return @{ Kind = 'foreign'; Rule = 'SR-X1'; Reason = "command line unreadable, judged foreign earlier in this run with the same creation time (D411): $($seen.Reason)" }  # exit SR-X1 (D411)
   }
-  return @{ Kind = 'unknown'; Rule = 'SR-C3'; Reason = 'command line unreadable' }  # exit SR-C3 (kit :190)
+  # cwd is not read here: it sits in the same process memory the command line could not be read from (no extra call).
+  return @{ Kind = 'unknown'; Rule = 'SR-X6'; Reason = "command line unreadable, no D411 record; $(Get-UnknownDetail $p $null)" }  # exit SR-X6 (i) (R2: counted, kit :190)
 }
-# Counted processes; the excluded ones (SR-X1–X5) are left in $script:lastExcluded. Every judged candidate gets
+# Counted processes (SR-C2 only); the excluded ones (SR-X1–X6) are left in $script:lastExcluded. Every judged candidate gets
 # Owner ("<rule> <kind>: <reason>") and Rule. Processes of this runner's tree (SR-R1) are neither counted nor
 # excluded; how many were in this snapshot is left in $script:lastRunnerTree.
 # -All replaces the live process snapshot (self-test only).
@@ -223,7 +235,7 @@ function Counted([object[]] $All) {
     $owner = if ($sys) { "$rule system: $($sys.Reason)" } else { "$rule $($o.Kind): $($o.Reason)" }
     $p | Add-Member -NotePropertyName Owner -NotePropertyValue $owner -Force
     $p | Add-Member -NotePropertyName Rule -NotePropertyValue $rule -Force
-    if ($o.Kind -eq 'foreign' -or $sys) { $script:lastExcluded.Add($p) } else { $hits.Add($p) }  # sink: SR-X1 SR-X2 SR-X3 SR-X4 SR-X5 excluded / SR-C2 SR-C3 counted, verdicts made above (kit :194)
+    if ($o.Kind -eq 'erp') { $hits.Add($p) } else { $script:lastExcluded.Add($p) }  # sink: SR-C2 counted / SR-X1 SR-X2 SR-X3 SR-X4 SR-X5 SR-X6 excluded, verdicts made above (kit :194)
   }
   return , $hits.ToArray()
 }
