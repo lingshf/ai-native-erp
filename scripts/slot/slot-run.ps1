@@ -1,19 +1,23 @@
 # Exclusive-slot runner (roadmap §5 "E2E 独占时段"; from the D316 GATE-01 kit, gist 4e00af7, SLOT-01).
-#   pwsh -File scripts/slot/slot-run.ps1 -OutDir DIR_OUTSIDE_REPO -StepsFile STEPS.ps1 [-BaseRoot BASE_WORKTREE] [-PreflightFiles PATH,...]
-# Sampling rules: version R2 of roadmap §5 "进程采样规则", implemented in procs.ps1.
+#   pwsh -File scripts/slot/slot-run.ps1 -OutDir DIR_OUTSIDE_REPO -StepsFile STEPS.ps1 -Ports PORT [-BaseRoot BASE_WORKTREE] [-PreflightFiles PATH,...]
+# Sampling rules: version R3 of roadmap §5 "进程采样规则", implemented in procs.ps1.
 # Counted process: any process outside this runner's own process tree whose image name is applicable
-# (node, cmd, any Chrome or Edge, vite, esbuild, biome, tsc, npm, npx; D314: no command-line prefilter;
-# an unreadable command line counts as unknown ownership), unless procs.ps1 attributes it to a repository
-# other than ai-native-erp (D311) or a system browser / its cmd.exe (D315, D316, D320). Every excluded process is
-# logged in excluded.tsv and slot-summary.log with its rule id (SR-X1–X5); each sample also logs one
-# "runner-tree n=…" line (SR-R1: this runner's own tree, neither counted nor excluded).
+# (node, cmd, any Chrome or Edge, vite, esbuild, biome, tsc, npm, npx; D314: no command-line prefilter) that
+# procs.ps1 attributes to ai-native-erp, any of its worktrees included (SR-C2, D442). Other repositories (D311), system
+# browsers / their cmd.exe (D315, D316, D320) and, from R3, unknown ownership (SR-X6, D472) are excluded. Every excluded
+# process is logged in excluded.tsv and slot-summary.log with its rule id (SR-X1–X6); processes.tsv gives each sample's
+# SR-X6 count; each sample also logs one "runner-tree n=…" line (SR-R1: this runner's own tree, neither counted nor excluded).
 # Precheck: 6 consecutive counts of 0 at 10 s intervals, waiting at most 15 min. Each step runs once; during it the runner samples every 10 s and aborts (exit 2) on any
 # counted process, or (exit 1) on any non-zero step exit. No step is retried.
+# Port gate (R3, D472): -Ports lists the slot's ports (required unless -Stub, else exit 4 before the build). They are
+# checked after the steps are loaded (before the static preflight, the build and the process precheck) and again after
+# the precheck, before the first step; a TCP listener on any of them (any address, IPv4 / IPv6) ends the run with
+# exit 7, no wait, no retry (D444).
 # Static preflight (S12 SLOT-02, D407 / D408): before the build, preflight.mjs checks head (with -PreflightFiles), then
 # base; its exit code 4 (input or configuration error) or 6 (new finding) ends the run with that same code before the
 # build, the dist check, the process precheck and any step. Each step gets the PSModulePath from step-env.ps1.
 param([Parameter(Mandatory)] [string] $OutDir, [Parameter(Mandatory)] [string] $StepsFile, [string] $BaseRoot = "", [string] $Stub = "",
-  [string[]] $PreflightFiles = @())
+  [string[]] $PreflightFiles = @(), [int[]] $Ports = @())
 # -StepsFile: a script called as  & $StepsFile -OutDir $OutDir -Root $root -BaseRoot $BaseRoot  that returns the
 # steps, each @{ name; dir; file; args; env = @{} } (see steps.example.ps1). It replaces the kit's GATE-01 list.
 # -Stub pass | fail:<step>: browserless rehearsal; every step is replaced by a node one-liner (a failing
@@ -30,7 +34,7 @@ $OutDir = [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolv
 $StepsFile = [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($StepsFile))
 if ($BaseRoot) { $BaseRoot = [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BaseRoot)) }
 $PreflightFiles = @($PreflightFiles | ForEach-Object { [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($_)) })
-# Candidate pattern, ownership rules and Counted (rule version R2) live in procs.ps1.
+# Candidate pattern, ownership rules and Counted (rule version R3) live in procs.ps1.
 . (Join-Path $PSScriptRoot 'procs.ps1')
 . (Join-Path $PSScriptRoot 'step-env.ps1')
 # Logs and slot data never go into the repository (SLOT-01); keep the directory and archive it, do not delete it.
@@ -57,7 +61,8 @@ function Sample([string] $phase) {
   $hits = Counted
   $at = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
   $detail = ($hits | ForEach-Object { $cl = $_.CommandLine -replace '\s+', ' '; "$($_.ProcessId):$($_.Name):$($cl.Substring(0, [Math]::Min(200, $cl.Length))) [$($_.Owner)]" }) -join " | "
-  Add-Content $samples "$at`t$phase`t$($hits.Count)`t$detail`t$($script:lastExcluded.Count)`t$($script:lastRunnerTree)"
+  $unknown = @($script:lastExcluded | Where-Object Rule -eq 'SR-X6').Count
+  Add-Content $samples "$at`t$phase`t$($hits.Count)`t$detail`t$($script:lastExcluded.Count)`t$($script:lastRunnerTree)`t$unknown"
   # SR-R1 is only ever reported here, never as an exclusion.
   Say "runner-tree n=$($script:lastRunnerTree) phase=$phase"
   # Every excluded process, every sample, in full; the summary log names each excluded PID once.
@@ -77,17 +82,39 @@ function Invoke-Preflight([string] $label, [string] $script, [string] $checkoutR
   Say "preflight $label exit=$code log=$preflightLog $(Get-Content $preflightLog -Tail 1)"
   return $code
 }
+# Port gate (R3, D472). The listener's owner gets the verdict procs.ps1 gives it in a fresh snapshot.
+function Get-PortOwnerText([int] $owningPid) {
+  $snapshot = @(Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name, CommandLine, ExecutablePath, CreationDate)
+  $null = Counted $snapshot
+  $p = $snapshot | Where-Object { [int]$_.ProcessId -eq $owningPid } | Select-Object -First 1
+  if (-not $p) { return "pid=$owningPid (exited)" }
+  $verdict = if ($p.Rule) { $p.Owner } elseif ($script:ever.ContainsKey($owningPid)) { 'SR-R1 runner tree' } else { 'SR-C1 not a candidate' }
+  "pid=$owningPid name=$($p.Name) cmdline=[$($p.CommandLine -replace '\s+', ' ')] verdict=[$verdict]"
+}
+# Ends the run with exit 7 when any -Ports port has a TCP listener; never waits or retries (D444).
+function Assert-PortsFree([string] $phase) {
+  if ($Ports.Count -eq 0) { Say "ports not given (stub) phase=$phase"; return }
+  $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $Ports -contains [int]$_.LocalPort })
+  if ($listeners.Count -eq 0) { Say "ports free phase=$phase ports=$($Ports -join ',')"; return }
+  foreach ($l in $listeners) { Say "port busy phase=$phase port=$($l.LocalPort) address=$($l.LocalAddress) $(Get-PortOwnerText ([int]$l.OwningProcess))" }
+  Say "ABORT: slot port in use ($phase)"
+  exit 7
+}
 $script:ever = @{ [int]$PID = $true }  # SR-R1: this runner's tree starts at its own PID (kit slot-run.ps1:46)
 $script:excludedSeen = @{}
 $excluded = Join-Path $OutDir "excluded.tsv"
-if (-not (Test-Path $samples)) { Set-Content $samples "utc`tphase`tcounted`tdetail`texcluded`trunner-tree" }
+if (-not (Test-Path $samples)) { Set-Content $samples "utc`tphase`tcounted`tdetail`texcluded`trunner-tree`tsr-x6" }
 if (-not (Test-Path $excluded)) { Set-Content $excluded "utc`tphase`tpid`tname`trule`treason`tcmdline" }
 
 $root = (git rev-parse --show-toplevel)
 Set-Location $root
 $head = (git rev-parse HEAD)
-Say "runner start head=$head rules=$($script:SlotRuleVersion) status=[$(git status --porcelain --untracked-files=all)]"
+Say "runner start head=$head rules=$($script:SlotRuleVersion) ports=$(if ($Ports.Count) { $Ports -join ',' } else { 'none' }) status=[$(git status --porcelain --untracked-files=all)]"
+# The scripts may come from another worktree than the app under test (DEMO-15): log both SHAs.
+Say "tooling head=$(git -C $PSScriptRoot rev-parse HEAD) dir=$PSScriptRoot"
 if (-not (Test-Path -LiteralPath $StepsFile -PathType Leaf)) { Say "missing -StepsFile $StepsFile"; exit 4 }
+if (-not $Stub -and $Ports.Count -eq 0) { Say "missing -Ports: a run without -Stub must name the slot's ports (R3, D472)"; exit 4 }
+if (@($Ports | Where-Object { $_ -lt 1 -or $_ -gt 65535 }).Count) { Say "invalid -Ports $($Ports -join ',')"; exit 4 }
 if ($BaseRoot) {
   if (-not (Test-Path -LiteralPath $BaseRoot -PathType Container)) { Say "missing -BaseRoot $BaseRoot"; exit 4 }
   Say "base head=$(git -C $BaseRoot rev-parse HEAD) status=[$(git -C $BaseRoot status --porcelain --untracked-files=all)]"
@@ -97,6 +124,7 @@ try { $steps = @(& $StepsFile -OutDir $OutDir -Root $root -BaseRoot $BaseRoot | 
 # A steps file that yields no step would otherwise pass the precheck and report success without running anything.
 if ($steps.Count -eq 0) { Say "ABORT: -StepsFile $StepsFile produced no steps"; exit 4 }
 Say "steps from $StepsFile`: $(($steps | ForEach-Object { $_.name }) -join ', ')"
+Assert-PortsFree 'before-preflight'
 $code = Invoke-Preflight 'head' (Join-Path $PSScriptRoot 'preflight.mjs') $root $PreflightFiles
 if ($code -ne 0) { Say "ABORT: preflight head exit $code"; exit $code }
 $basePreflight = if ($BaseRoot) { Join-Path $BaseRoot 'scripts/slot/preflight.mjs' } else { '' }
@@ -136,6 +164,7 @@ if ($Stub) {
     $step.file = "node"; $step.args = "-e `"$js`""
   }
 }
+Assert-PortsFree 'before-steps'
 foreach ($step in $steps) {
   $name = $step.name
   Set-Content (Join-Path $OutDir "$name-start-rev.txt") "$(git rev-parse HEAD)`n$(git status --porcelain --untracked-files=all)"

@@ -38,10 +38,11 @@ function fatal(msg) {
 for (const f of [opts.roadmap, opts.code, ...opts.also])
   if (!existsSync(f)) fatal(`file not found: ${f}`);
 
-// ---- Roadmap: the rule table that follows the "进程采样规则" bullet, and its version.
+// ---- Roadmap: the rule table that follows the bold "**进程采样规则**" bullet, and its version (other lines, such as the
+// sprint summary in §3, may mention the rule by name).
 const roadmap = readFileSync(opts.roadmap, "utf8").split(/\r?\n/);
-const start = roadmap.findIndex((l) => l.includes("进程采样规则"));
-if (start < 0) fatal(`no "进程采样规则" section in ${opts.roadmap}`);
+const start = roadmap.findIndex((l) => l.includes("**进程采样规则**"));
+if (start < 0) fatal(`no "**进程采样规则**" section in ${opts.roadmap}`);
 const version = /当前版本\s*\*\*(R\d+)\*\*/.exec(roadmap[start])?.[1];
 if (!version) fatal(`no "当前版本 **R…**" on the 进程采样规则 line of ${opts.roadmap}`);
 const table = new Set();
