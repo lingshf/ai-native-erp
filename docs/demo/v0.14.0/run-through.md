@@ -32,3 +32,9 @@
 
 - 每页（每个语言）一个全新的 browser context：`capture.mjs` 的 `contextFor()` 在每个页面循环里调用，页面结束 `context.close()`。
 - 桩演练：本记录。
+
+## 4 时段前不带浏览器演练（D467，`run-main.ps1 -SkipCapture`）
+
+- 2026-11-23 09:35（本地），手动 1 次，端口 4203，演练前无监听；日志 `logs/run-main-skipcapture.log`。
+- 迁移、启动、4 个 seed（含 `seed-credit.mjs`，贷项前 full 10/10 → 贷项 4 后 partial 6/10）、就绪检查全部通过；服务器已停，端口 4203 已释放，临时账套已删除。接口形状问题未出现。
+- 仍未验证：`capture.mjs` 对真实页面（只做了源码对照）。真实时段待 06c #256 合并后按 D308 申请。
