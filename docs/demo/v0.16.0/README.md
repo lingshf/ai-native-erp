@@ -29,7 +29,7 @@
 - SR-X6 行（[`logs/sr-x6-lines-real.tsv`](logs/sr-x6-lines-real.tsv)）：3 条，逐字抄录采样器的 reason：`no repository evidence in process or 4 / 5 / 6 ancestor(s)`，分别是 pid 70876 `node.exe`（`npm run check:boundaries`）、pid 4864 `cmd.exe`、pid 24068 `node.exe`（`node scripts/check-boundaries.mjs`），三者的 `cwd=unreadable`，不计数，已完整记录。
 - 内容断言全部通过：筛选条按钮文字与类型在订单页、发票页的中英文下都是 应用 / 清除 / 刷新列表（Apply / Clear / Refresh list），类型 submit / button / button；调整页标题正确，“专用取消单据 / Cancel document”可选，可选未结项 8 个。
 - **刷新行为记录**（`capture-log-real.json` 的两条 `refresh`）：订单页与发票页都是：应用 AR 后 hash 带 `side=AR`；伙伴框输入 `ZZZ` 不应用后点“刷新列表”；输入框仍是 `ZZZ`，side 仍是 AR，hash 不变，请求查询为 `company=DEFAULT&limit=100&side=AR`（没有 party），历史长度 2 → 2。
-- **390 px 记录**（zh-red，订单页、发票页相同）：`document.documentElement.scrollWidth` = **390**（≤ 390）；三个按钮同在一行，左右边界 应用 124–186、清除 194–256、刷新列表 264–354，都在 0–390 内。**没有换行**。英文 390 宽没有拍。1440 下页面无横向溢出，无页面错误。
+- **390 px 记录**（zh-red，订单页、发票页相同；证据：[`logs/capture-log-real.json`](logs/capture-log-real.json) 中 `step` 为 `k7-390` 的两条）：`document.documentElement.scrollWidth` = **390**（≤ 390）；三个按钮同在一行，左右边界 应用 124–186、清除 194–256、刷新列表 264–354，都在 0–390 内。**没有换行**。英文 390 宽没有拍。1440 下页面无横向溢出，无页面错误。
 - 不进截图的内容：地址栏 hash、请求查询、历史长度只在上面的 JSON 记录里，没有截图。
 
 | 截图 | 内容 |

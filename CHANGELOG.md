@@ -6,7 +6,7 @@
 
 ## [Unreleased]
 
-> **v0.16.0 发布候选**（尚未打 tag，日期待定）。产品代码基线为 `main` `35df068`（REFAC-07 [#275](https://github.com/lingshf/ai-native-erp/pull/275) 的合并提交；S17 的三项开发任务全部已合并，该提交的 main Full run 45263713443 绿）。v0.15.0 打在 `release/v0.15.0` 分支上、不在 main 上（D482），所以 `v0.15.0` 到 main 的范围里含 v0.15.0 已发布的文档提交。对照 `git log --oneline --first-parent v0.15.0..main`（**固定在 `35df068`** 上共 7 行，每行一个 PR；[#276](https://github.com/lingshf/ai-native-erp/pull/276) 是 `35df068` 之后才合并的纯设计 PR，单列，不需要条目）：
+> **v0.16.0 发布候选**（尚未打 tag，日期待定）。产品代码基线为 `main` `35df068`（REFAC-07 [#275](https://github.com/lingshf/ai-native-erp/pull/275) 的合并提交；S17 的三项开发任务全部已合并，该提交的 main Full run 45263713443 绿）。v0.15.0 打在 `release/v0.15.0` 分支上、不在 main 上（D482），所以 `v0.15.0` 到 main 的范围里含 v0.15.0 已发布的文档提交。对照 `git log --oneline --first-parent v0.15.0..35df068`（**固定在 `35df068`** 上共 7 行，每行一个 PR；[#276](https://github.com/lingshf/ai-native-erp/pull/276) 是 `35df068` 之后才合并的纯设计 PR，单列，不需要条目）：
 > - 已发布或只改日期，**不需要 `[Unreleased]` 条目**：[#269](https://github.com/lingshf/ai-native-erp/pull/269)（v0.15.0 的 RC 与 Demo，已随 v0.15.0 发布）、[#272](https://github.com/lingshf/ai-native-erp/pull/272)（v0.15.0 发布日与链接，只改日期）。
 > - 有条目：[#271](https://github.com/lingshf/ai-native-erp/pull/271)（新增）、[#270](https://github.com/lingshf/ai-native-erp/pull/270)、[#275](https://github.com/lingshf/ai-native-erp/pull/275)（变更，无用户可见变化）。
 > - 无用户可见变化，条目在下面“文档与流程”：[#273](https://github.com/lingshf/ai-native-erp/pull/273)（S16 评审与回顾的设计文档）、[#274](https://github.com/lingshf/ai-native-erp/pull/274)（Demo 模板与发布清单）。
@@ -21,7 +21,7 @@ S17 Sprint：一项用户可见的小功能（TLIST-01）、两项只拆分文�
 
 ### Changed（无用户可见变化）
 
-- **预付 / 贷项 / 纠错页内部拆分（REFAC-07，[#275](https://github.com/lingshf/ai-native-erp/pull/275)，合并提交 `35df068`）**：`TradeAdjustments.tsx` 中 643 行的 `ActionEntry` 拆成精简后的 73 行（文件共 173 行）和 `trade-adjustments/` 下 9 个新文件，只搬移，页面外观、文案、键盘与焦点、存储与请求都不变。依据：#275 正文 R4 逐步等价表（16/16 场景 base 与 head 逐字节相同，RESULT: PASS）与 R3（Web 全部 jsdom 测试 25 个文件、347 个用例通过，	rade-adjustments.test.tsx diff 为空）。**体积（R7，D454 首屏口径，D476 预算 +900 B）**：产物为两次 Vite manifest 构建中 trade-adjustments 路由的 route-added JS；方法为 gzip-9（哈希文件名遮蔽后）；结果 11774 → 12531 B，**+757 B**，在 +900 B 之内；其余各路由 +0 B（来源：[#275 评论](https://github.com/lingshf/ai-native-erp/pull/275#issuecomment-7113487980)）。
+- **预付 / 贷项 / 纠错页内部拆分（REFAC-07，[#275](https://github.com/lingshf/ai-native-erp/pull/275)，合并提交 `35df068`）**：`TradeAdjustments.tsx` 中 643 行的 `ActionEntry` 拆成精简后的 73 行（文件共 173 行）和 `trade-adjustments/` 下 9 个新文件，只搬移，页面外观、文案、键盘与焦点、存储与请求都不变。依据：#275 正文 R4 逐步等价表（16/16 场景 base 与 head 逐字节相同，RESULT: PASS）与 R3（Web 全部 jsdom 测试 25 个文件、347 个用例通过，`trade-adjustments.test.tsx diff 为空）。**体积（R7，D454 首屏口径，D476 预算 +900 B）**：产物为两次 Vite manifest 构建中 trade-adjustments 路由的 route-added JS；方法为 gzip-9（哈希文件名遮蔽后）；结果 11774 → 12531 B，**+757 B**，在 +900 B 之内；其余各路由 +0 B（来源：[#275 评论](https://github.com/lingshf/ai-native-erp/pull/275#issuecomment-7113487980)）。
 - **`tradeGuiSmoke` 测试支撑代码拆分（REFAC-08，[#270](https://github.com/lingshf/ai-native-erp/pull/270)，合并提交 `adeac52`）**：`smoke.ts` 由 262 行减到 97 行，拆入 `smoke/` 下 5 个模块，只改测试支撑代码，不改断言、等待与浏览器回调。依据：#270 正文 T2：断言调用链 base 与 head 各 11 条，仅 `() => pending` 变为读取函数 `() => pending()`，其余 10 条逐字相同。
 
 ### 文档与流程（无用户可见变化）
