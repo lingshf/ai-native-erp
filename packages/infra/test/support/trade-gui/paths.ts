@@ -6,6 +6,3 @@ const root = fileURLToPath(new URL("../../../../../", import.meta.url));
 const artifacts = resolve(process.env.ERP_E2E_ARTIFACTS ?? join(root, "artifacts/ci/trade-e2e"));
 
 export { artifacts, root };
-
-// CI-02 C3 temporary injection: outside the preflight baseline; reverted in the next commit.
-export const ci02InjectedTypeError: number = artifacts;
