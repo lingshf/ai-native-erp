@@ -658,7 +658,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | DEMO-14（无任务书） | v0.13.1 RC 与 Demo，验收见 [S14.md](S14.md#demo-14-验收) | 发布 | P1（Sprint 末） | REFAC-04 / 05 / 06 与 FIX-01 结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | 不加 | 需要（截图） | done | RC [#243](https://github.com/lingshf/ai-native-erp/pull/243)（`25d1e3c`）；Demo [#245](https://github.com/lingshf/ai-native-erp/pull/245)（`002c237`）；v0.13.1 已发布（tag `5feb803`） |
 
 - **并行**：REFAC-04 ∥ REFAC-05 ∥ REFAC-06 冲突域两两不相交，可同时派出；开发同时在岗不超过 3 人。三个任务都不加迁移、不申请浏览器时段，但服从 D442 时段停用通知。时段顺序：DEMO-13 → DEMO-14（DEMO-12 已随 #233 合并），D444 时段内只允许手动单次运行。
-- **Sprint 评审与回顾**：[S14 评审](../reviews/S14.md)（通过，无阻塞项；打回 7、待证据 3，main Full 零失败）、[S14 回顾](../reviews/S14-retro.md)（6 条行动项，待协调者认可）。v0.13.1 已发布（tag `5feb803` → `002c237`）；DEMO-14 偏差按 D457 接受。
+- **Sprint 评审与回顾**：[S14 评审](../reviews/S14.md)（通过，无阻塞项；打回 7、待证据 3，main Full 零失败）、[S14 回顾](../reviews/S14-retro.md)（6 条行动项，已由 D460 认可）。v0.13.1 已发布（tag `5feb803` → `002c237`）；DEMO-14 偏差按 D457 接受。
 
 ## S15：CI 运行时段预检 + 贷项冲减已开票数量 + 发票页收尾拆分（v0.14.0，D459）
 
