@@ -669,14 +669,29 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | [CI-02](S15.md#ci-02pr-ci-运行-slot-02-静态预检) | PR CI 的 verify 在 typecheck 之后运行 SLOT-02 静态预检（S13 回顾行动 3） | CI | P1 | 无 | bench/CI：`.github/workflows/ci.yml`、`scripts/slot/README.md` | 不加 | 不需要 | done | [#248](https://github.com/lingshf/ai-native-erp/pull/248)（`5803ae8`） |
-| [TINV-09](S15.md#tinv-09贷项冲减订单的已开票数量) | 贷项冲减订单的已开票数量；被冲回的数量可再开票；开票状态随之重算 | 功能（贸易单据） | P1 | 无 | storage `trade-documents.ts`；migrations(020)+migrations.ts；infra `trade-documents.test.ts`；`ui/trade-order-labels.ts` 教学文案；D463 另含 infra 的 `trade-invoice-list-fixture.ts`、`trade-order-invoicing-migration.test.ts` | **020**（只重算，不改 schema） | 不需要 | in progress | [#250](https://github.com/lingshf/ai-native-erp/pull/250) |
+| [TINV-09](S15.md#tinv-09贷项冲减订单的已开票数量) | 贷项冲减订单的已开票数量；被冲回的数量可再开票；开票状态随之重算 | 功能（贸易单据） | P1 | 无 | storage `trade-documents.ts`；migrations(020)+migrations.ts；infra `trade-documents.test.ts`；`ui/trade-order-labels.ts` 教学文案；D463 另含 infra 的 `trade-invoice-list-fixture.ts`、`trade-order-invoicing-migration.test.ts` | **020**（只重算，不改 schema） | 不需要 | done | [#250](https://github.com/lingshf/ai-native-erp/pull/250)（`bfeccb7`） |
 | [REFAC-06b](S15.md#refac-06buseinvoiceleaveguard-直接导入) | 四个页面直接从 `trade-invoices/use-invoice-leave-guard.ts` 导入，删掉 `TradeInvoices.tsx` 的再导出 | 重构（页面导入） | P2 | REFAC-04、REFAC-06 已合并 | 4 个页面的导入行、`TradeInvoices.tsx:21`、2 处注释 | 不加 | 不需要 | done（D462 例外） | [#251](https://github.com/lingshf/ai-native-erp/pull/251)（`0d2cdd3`） |
-| [REFAC-06c](REFAC-06c-invoice-entry-split.md) | 拆分 `InvoiceEntry` 函数体，不改行为 | 重构（页面） | P2 | REFAC-06 已合并 | `trade-invoices/invoice-entry.tsx` 与 `trade-invoices/` 下新文件 | 不加 | 不需要 | in progress（P7 上限按 D461） | — |
-| [JV-FIX-01](S15.md#jv-fix-01凭证列表刷新列表按钮) | 凭证列表工具栏按钮由“重试”改为“刷新列表”，行为不变（D464） | 用户可见修复 | P2 | 无 | web-ui:journals：`journal-list.tsx`、`ui/journal-labels.ts`、`test/journals.test.tsx` | 不加 | 不需要 | todo | — |
+| [REFAC-06c](REFAC-06c-invoice-entry-split.md) | 拆分 `InvoiceEntry` 函数体，不改行为 | 重构（页面） | P2 | REFAC-06 已合并 | `trade-invoices/invoice-entry.tsx` 与 `trade-invoices/` 下新文件 | 不加 | 不需要 | in progress（P7 上限按 D461） | [#256](https://github.com/lingshf/ai-native-erp/pull/256) |
+| [JV-FIX-01](S15.md#jv-fix-01凭证列表刷新列表按钮) | 凭证列表工具栏按钮由“重试”改为“刷新列表”，行为不变（D464） | 用户可见修复 | P2 | 无 | web-ui:journals：`journal-list.tsx`、`ui/journal-labels.ts`、`test/journals.test.tsx` | 不加 | 不需要 | done | [#254](https://github.com/lingshf/ai-native-erp/pull/254)（`dd9859f`） |
 | DEMO-15（无任务书） | v0.14.0 RC 与 Demo，验收见 [S15.md](S15.md#demo-15-验收) | 发布 | P1（Sprint 末） | 五个开发任务结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | 不加 | 需要（截图） | todo | — |
 
 - **并行**：泳道 A（CI-02 → REFAC-06b，已结案）∥ B（REFAC-06c）∥ C（TINV-09）∥ D（JV-FIX-01，D464），冲突域两两不相交，开发同时在岗不超过 3 人。只有 TINV-09 带迁移。五个开发任务都不申请浏览器时段，服从 D442 时段停用通知；DEMO-15 排在它们结案之后。
 - **S13 回顾行动（D456）落点**：见 [S15.md](S15.md#回顾行动项落点s13-回顾d456)。
+
+## S16：订单页函数体拆分 + 订单详情显示贷项冲回数量 + 清空预检 tsc 基线（建议 v0.15.0，草案）
+
+计划与任务书见 [S16.md](S16.md)，待协调者批准。基线 main `bfeccb7`（S15 四个开发任务已合并，REFAC-06c #256 在评审中，与 S16 不相交）。三条泳道 A（REFAC-05b）、B（TORD-08）、C（CI-03），都不加迁移。
+
+**不在本 Sprint**：M2-05 真实演练与 M2-06（仍待决定 A / B / C）；其他函数体拆分（一个 Sprint 一个）；按开票状态排序、多订单合并开票等交易候选；OQ-01 后续域。
+
+| ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [REFAC-05b](REFAC-05b-order-workspace-split.md) | 拆分 `OrderWorkspace` 函数体，不改行为 | 重构（页面） | P2 | REFAC-05 已合并 | `trade-orders/order-workspace.tsx` 与 `trade-orders/` 下新文件 | 不加 | 不需要 | todo | — |
+| [TORD-08](S16.md#tord-08订单详情显示贷项冲回数量) | 订单详情新增“贷项冲回数量”列（只读，口径不变） | 功能（贸易单据） | P2 | TINV-09 已合并 | core 契约与应用层；storage `trade-documents.ts`；`order-view.tsx`、`ui/trade-order-labels.ts`、`pages/trade-orders.css`；既有测试补字段 | 不加 | 不需要 | todo | — |
+| [CI-03](S16.md#ci-03清空-slot-02-预检的-tsc-基线) | 修掉预检基线中的 11 个 tsc 错误，基线 `tsc` 清空 | CI / 测试类型 | P2 | CI-02 已合并 | infra `test/http/` 两个慢测、`trade-gui/diagnostics.ts`、`trade-gui/smoke.ts`；`scripts/slot/preflight-baseline.json` | 不加 | 不需要 | todo | — |
+| DEMO-16（无任务书） | v0.15.0 RC 与 Demo，验收见 [S16.md](S16.md#demo-16-验收) | 发布 | P1（Sprint 末） | 三个开发任务结案；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/user/` | 不加 | 需要（截图） | todo | — |
+
+- **并行**：A ∥ B ∥ C，冲突域两两不相交，开发同时在岗不超过 3 人；都不申请浏览器时段，服从 D442 时段停用通知；DEMO-16 排在它们结案之后，申请时段附 `-Stub` 记录（D460）。
 
 ## 派发顺序
 
