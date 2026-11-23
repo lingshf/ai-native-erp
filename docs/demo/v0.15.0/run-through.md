@@ -35,19 +35,18 @@
 - 本次 `capture.mjs` 增加了“等首行单元格不再是加载占位 … 再读数”的等待，仅 `node --check` 通过；Stub 不运行它，所以该等待仍未在真实页面上验证，真实时段内先做一次短的 capture-only 试跑更稳妥。
 - 日志里 `counted=0` 但 SR-X1 排除了其他项目（debate-coach `npm ci`、dc-layer-check4 的 headless Chrome）的进程；这些进程在真实时段按 SR-C2 的口径可能计数，需要静默窗口。
 
-## 3 脚本哈希（取自 git；capture.mjs 为第二次演练后的版本，第一次演练时为 d15742f）
+## 3 脚本哈希（取自 git）
 
-`git rev-parse b485c4f:<路径>`（`git hash-object` 的 blob 哈希，不是 SHA-256 内容摘要；这是该路径在运行提交中的对象 ID）：
+`git rev-parse <提交>:<路径>`（`git hash-object` 的 blob 哈希，不是 SHA-256 内容摘要；是该路径在对应提交中的对象 ID）。三列分别取自：第一次 `-Stub` 的运行提交 `b485c4f`、第二次 `-Stub` 的运行提交 `42b1191`、真实运行的 `runner start head` `c7dd7cc`。
 
-| 脚本 | blob |
-| --- | --- |
-| `docs/demo/v0.15.0/scripts/capture.mjs` | `18ec7c2e5e745ed3c55b5c1baa838d8125a7de09` |
-| `docs/demo/v0.15.0/scripts/run-main.ps1` | `c9d656f60b23739f3880a18aa648e3b8a9753dd1` |
-| `docs/demo/v0.15.0/scripts/steps-demo16.ps1` | `a5860c0b63aae33456e3776deb366c32ce305fcf` |
-| `docs/demo/v0.14.0/scripts/seed-credit.mjs`（复用） | `80ea925377eeedf6b254d3d695f22c123f454f59` |
+| 脚本 | 第一次 Stub（b485c4f） | 第二次 Stub（42b1191） | 真实运行（c7dd7cc） |
+| --- | --- | --- | --- |
+| `docs/demo/v0.15.0/scripts/capture.mjs` | `d15742f6d6dd3867b10b05c1487e31965b522d6a` | `18ec7c2e5e745ed3c55b5c1baa838d8125a7de09` | `18ec7c2e5e745ed3c55b5c1baa838d8125a7de09` |
+| `docs/demo/v0.15.0/scripts/run-main.ps1` | `c9d656f60b23739f3880a18aa648e3b8a9753dd1` | `c9d656f60b23739f3880a18aa648e3b8a9753dd1` | `c9d656f60b23739f3880a18aa648e3b8a9753dd1` |
+| `docs/demo/v0.15.0/scripts/steps-demo16.ps1` | `a5860c0b63aae33456e3776deb366c32ce305fcf` | `a5860c0b63aae33456e3776deb366c32ce305fcf` | `a5860c0b63aae33456e3776deb366c32ce305fcf` |
+| `docs/demo/v0.14.0/scripts/seed-credit.mjs`（复用） | `80ea925377eeedf6b254d3d695f22c123f454f59` | `80ea925377eeedf6b254d3d695f22c123f454f59` | `80ea925377eeedf6b254d3d695f22c123f454f59` |
 
-真实时段后，以真实运行的提交重新取一次并与本表对照；脚本在本表之后若有改动，必须重做桩演练。
-
+真实运行的脚本与第二次 Stub 的脚本逐个相同；`capture.mjs` 在第一次与第二次 Stub 之间改过（等待开票明细到达），所以第二次 Stub 是对最终脚本的演练。
 ## 4 D457 的两项
 
 - 每页（每个语言、每个宽度）一个全新的 browser context：`capture.mjs` 的 `contextFor()` 在每个截图循环里调用，页面结束 `context.close()`。

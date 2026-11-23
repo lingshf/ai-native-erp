@@ -39,6 +39,7 @@ PO-C1 的造数复用 [v0.14.0 的 `seed-credit.mjs`](../v0.14.0/scripts/seed-cr
 | [`trade-orders-detail-zh-red-390-before-scroll.png`](screenshots/trade-orders-detail-zh-red-390-before-scroll.png) | 390 px，滚动前 |
 | [`trade-orders-detail-zh-red-390-after-scroll.png`](screenshots/trade-orders-detail-zh-red-390-after-scroll.png) | 390 px，新列滚入容器后 |
 
+**运行前的首次干跑失败（D481）**：第一次直接运行 `run-main.ps1 -Shots <临时目录>`（头 c7dd7cc，退出码 1）在“服务器就绪”处报 `not ready`，原因是新建应用 worktree 里没有 `packages\web\dist`（`run-main.ps1` 不构建，真实的 `slot-run.ps1` 才构建）。这是干跑流程的缺口，不是脚本缺陷；已停下上报，未进入后两步，输出在仓库外临时目录、未入库。协调者按 D481 批准在应用 worktree 先 `npm run build` 一次（流程修正，不算重试），再依次做下面的干跑与真实运行。详见 `run-through.md` §6。
 运行前的两次演练（不在本节日志里）：`-Stub`（见 `run-through.md`）；按 D481 在同一应用 worktree 先 `npm run build`，再 capture 干跑一次（出 6 张图，退出码 0）、`run-main.ps1 -SkipCapture` 一次（退出码 0）。这两次的输出写入仓库外临时目录，未入库。
 ## 4 偏差与没做的事
 
