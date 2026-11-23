@@ -201,6 +201,34 @@ export function TradeMaster({ preferences }: { preferences: Preferences }) {
     </section>
   );
 }
+// TLIST-02: "Refresh list" never touches the editor, so it stays enabled while New is locked.
+function PaneActions({
+  editing,
+  onNew,
+  onRefresh,
+  t,
+}: {
+  editing: boolean;
+  onNew: () => void;
+  onRefresh: () => void;
+  t: T;
+}) {
+  return (
+    <div className="ui-master-actions">
+      <button
+        type="button"
+        className={`btn ${editing ? "btn-secondary" : "btn-primary"}`}
+        disabled={editing}
+        onClick={onNew}
+      >
+        {t("trade.new")}
+      </button>
+      <button type="button" className="btn btn-secondary" onClick={onRefresh}>
+        {t("trade.listRefresh")}
+      </button>
+    </div>
+  );
+}
 function TradePane({
   company,
   kind,
@@ -215,8 +243,11 @@ function TradePane({
   lock: (guard: EditorGuard) => void;
 }) {
   const [editing, setEditing] = useState<TradeDto | null | undefined>();
+  const client = useQueryClient();
+  const queryKey = ["trade", company.code, kind, search];
+  const refresh = () => void client.resetQueries({ queryKey, exact: true });
   const page = useInfiniteQuery({
-    queryKey: ["trade", company.code, kind, search],
+    queryKey,
     initialPageParam: "",
     refetchOnMount: true,
     queryFn: ({ pageParam, signal }) =>
@@ -244,16 +275,12 @@ function TradePane({
   const after = virtual ? virtualizer.getTotalSize() - (measured.at(-1)?.end ?? 0) : 0;
   return (
     <>
-      <div className="ui-master-actions">
-        <button
-          type="button"
-          className={`btn ${editing === undefined ? "btn-primary" : "btn-secondary"}`}
-          disabled={editing !== undefined}
-          onClick={() => setEditing(null)}
-        >
-          {t("trade.new")}
-        </button>
-      </div>
+      <PaneActions
+        editing={editing !== undefined}
+        onNew={() => setEditing(null)}
+        onRefresh={refresh}
+        t={t}
+      />
       {page.isPending && <p role="status">{t("master.loading")}</p>}
       {page.isError && <Notice error={page.error} retry={() => void page.refetch()} t={t} />}
       <div className="card">
