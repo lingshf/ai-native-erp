@@ -3,9 +3,9 @@ export const masterZh = {
   "master.title": "科目表",
   "master.description": "按公司维护会计科目的类别、报表分组、余额方向与手工录入权限。",
   "master.company": "公司",
-  "master.loading": "正在读取主数据…",
+  "master.loading": "正在加载…",
   "master.empty": "没有科目。",
-  "master.error": "主数据请求失败。请检查连接和目标库配置后重试。",
+  "master.error": "请求失败。请检查连接和目标库配置后重试。",
   "master.invalid": "输入或响应不符合主数据契约，请核对后重试。",
   "master.conflict": "配置已被修改，未覆盖对方的修改。你的输入已保留；重新载入后核对再保存。",
   "master.retry": "重试",
@@ -83,10 +83,10 @@ export const masterEn = {
   "master.description":
     "Maintain each company's accounts: category, report group, normal side and manual-entry permission.",
   "master.company": "Company",
-  "master.loading": "Loading master data…",
+  "master.loading": "Loading…",
   "master.empty": "No accounts.",
   "master.error":
-    "Master data request failed. Check the connection and target database configuration, then retry.",
+    "Request failed. Check the connection and target database configuration, then retry.",
   "master.invalid": "Input or response does not match the master data contract. Check and retry.",
   "master.conflict":
     "Configuration changed. No changes were overwritten. Your input is preserved; reload and review before saving.",
