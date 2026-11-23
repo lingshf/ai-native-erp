@@ -671,6 +671,26 @@ describe("TINV-07 invoice links in the address", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   };
   const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+  // The page over a company list already in the cache: "fresh" is what the App holds after a
+  // visit (no refetch on mount), "stale" refetches on mount while the cached rows stay visible.
+  async function renderCached(cache: "fresh" | "stale", rows: (typeof company)[] = [company]) {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
+    });
+    client.setQueryData(["companies"], {
+      pages: [{ items: rows, nextCursor: null }],
+      pageParams: [""],
+    });
+    if (cache === "stale")
+      await client.invalidateQueries({ queryKey: ["companies"], refetchType: "none" });
+    render(
+      <QueryClientProvider client={client}>
+        <HashRouter>
+          <TradeInvoices preferences={defaultPreferences} />
+        </HashRouter>
+      </QueryClientProvider>,
+    );
+  }
 
   it("A1: ?invoice= opens the detail on load with one request; closing drops it and focuses the row's button", async () => {
     const served = setUp();
@@ -769,34 +789,62 @@ describe("TINV-07 invoice links in the address", () => {
     expect(writes()).toBe(0);
   });
 
-  it("P4: an unknown company with fromOrder and a link: fromOrder dropped once, one alert, nothing sent; cancel drops the link once and never takes the order again", async () => {
-    const served = setUp();
-    at(`?company=NOPE&fromOrder=PO-1&side=AP&invoice=${documentId}`);
-    const writes = countWrites();
-    render(<App />);
-    const alert = await screen.findByRole("alert");
-    await waitFor(() =>
-      expect(window.location.hash).toBe(
-        `#/trade-invoices?company=NOPE&side=AP&invoice=${documentId}`,
-      ),
-    );
-    await settle();
-    expect(writes()).toBe(1);
-    expect(screen.getAllByRole("alert")).toHaveLength(1);
-    expect(alert.textContent).toContain(`${t("tinv.fromOrder.company")} · NOPE`);
-    expect(screen.queryByLabelText(t("tinv.party"))).toBeNull();
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(served.lists()).toEqual([]);
-    expect(served.details()).toEqual([]);
-    fireEvent.click(within(alert).getByRole("button", { name: t("master.cancel") }));
-    await waitFor(() => expect(window.location.hash).toBe("#/trade-invoices"));
-    expect(await screen.findByLabelText(t("tinv.party"))).toBeTruthy();
-    await settle();
-    expect(writes()).toBe(2);
-    expect((screen.getByLabelText(t("tinv.party")) as HTMLInputElement).value).toBe("");
-    expect(served.calls().some((url) => url.includes("/invoicing"))).toBe(false);
-    expect(served.details()).toEqual([]);
-  });
+  it.each([
+    {
+      name: "with a link, companies loading",
+      search: `?company=NOPE&fromOrder=PO-1&side=AP&invoice=${documentId}`,
+      kept: `?company=NOPE&side=AP&invoice=${documentId}`,
+      cache: null,
+    },
+    {
+      name: "with a link, companies cached",
+      search: `?company=NOPE&fromOrder=PO-1&side=AP&invoice=${documentId}`,
+      kept: `?company=NOPE&side=AP&invoice=${documentId}`,
+      cache: "fresh",
+    },
+    // Only fromOrder: the intake effect runs after the first render, so the gate must hold before it.
+    {
+      name: "only fromOrder, companies cached",
+      search: "?company=NOPE&fromOrder=PO-1",
+      kept: "?company=NOPE",
+      cache: "fresh",
+    },
+  ] as const)(
+    "P4: an unknown company with fromOrder ($name): fromOrder dropped once, one alert, the default company never mounts and nothing is sent; cancel drops the link once and never takes the order again",
+    async ({ search, kept, cache }) => {
+      const served = setUp();
+      at(search);
+      const writes = countWrites();
+      // Record whether the draft ever mounted, even for a single frame.
+      let drafted = false;
+      const watcher = new MutationObserver(() => {
+        if (document.getElementById("tinv-party")) drafted = true;
+      });
+      watcher.observe(document.body, { childList: true, subtree: true });
+      if (cache) await renderCached(cache);
+      else render(<App />);
+      const alert = await screen.findByRole("alert");
+      await waitFor(() => expect(window.location.hash).toBe(`#/trade-invoices${kept}`));
+      await settle();
+      watcher.disconnect();
+      expect(drafted).toBe(false);
+      expect(writes()).toBe(1);
+      expect(screen.getAllByRole("alert")).toHaveLength(1);
+      expect(alert.textContent).toContain(`${t("tinv.fromOrder.company")} · NOPE`);
+      expect(screen.queryByLabelText(t("tinv.party"))).toBeNull();
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(served.lists()).toEqual([]);
+      expect(served.details()).toEqual([]);
+      fireEvent.click(within(alert).getByRole("button", { name: t("master.cancel") }));
+      await waitFor(() => expect(window.location.hash).toBe("#/trade-invoices"));
+      expect(await screen.findByLabelText(t("tinv.party"))).toBeTruthy();
+      await settle();
+      expect(writes()).toBe(2);
+      expect((screen.getByLabelText(t("tinv.party")) as HTMLInputElement).value).toBe("");
+      expect(served.calls().some((url) => url.includes("/invoicing"))).toBe(false);
+      expect(served.details()).toEqual([]);
+    },
+  );
 
   it.each([
     ["empty", ""],
@@ -964,6 +1012,41 @@ describe("TINV-07 invoice links in the address", () => {
     expect(served.details()).toEqual([`/api/v1/trade/invoices/${documentId}?company=ACME`]);
     expect(served.lists().every((url) => url.includes("company=ACME"))).toBe(true);
   });
+
+  it.each([
+    ["the linked company", `?company=DEFAULT&invoice=${documentId}`],
+    ["the implicit default company", `?invoice=${documentId}`],
+    ["the default company behind a filter link", "?side=AP"],
+  ])(
+    "P10: a failed company reload with %s still cached shows the error, mounts nothing and opens nothing; Retry opens it",
+    async (_, search) => {
+      let failed = false;
+      const served = setUp({
+        route: (url) => {
+          if (!url.startsWith("/api/v1/companies") || failed) return undefined;
+          failed = true;
+          return error(500, "INTERNAL");
+        },
+      });
+      at(search);
+      await renderCached("stale");
+      const alert = await screen.findByRole("alert");
+      await settle();
+      expect(within(alert).getByRole("button", { name: t("master.retry") })).toBeTruthy();
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(screen.queryByLabelText(t("tinv.party"))).toBeNull();
+      expect(served.lists()).toEqual([]);
+      expect(served.details()).toEqual([]);
+      fireEvent.click(within(alert).getByRole("button", { name: t("master.retry") }));
+      expect(await screen.findByLabelText(t("tinv.party"))).toBeTruthy();
+      if (search.includes("invoice=")) {
+        await screen.findByRole("dialog", { name: dialogTitle });
+        expect(served.details()).toEqual([detailPath]);
+      } else {
+        await waitFor(() => expect(served.lists()).toEqual([`${base}&side=AP`]));
+      }
+    },
+  );
   const orderInvoicing: TradeOrderInvoicingDto = {
     order: {
       orderId: "PO-1",

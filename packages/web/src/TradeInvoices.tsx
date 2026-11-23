@@ -363,18 +363,20 @@ export function TradeInvoices({ preferences }: { preferences: Preferences }) {
     setParams(next, { replace: true });
   };
   // An explicit target (an order link's company, or `company` with a link) is resolved apart from
-  // the P1/P3 fallback: it is "missing" only once a fresh company list lacks it, and while the list
-  // is not confirmed (loading, refetching, or failed with rows still cached) a target that is not
-  // among the rows mounts nothing, so it never falls back to another company (P2/P4/P10).
+  // the P1/P3 fallback: it is "missing" only once a fresh company list lacks it (P2/P4). While the
+  // list is not confirmed (loading, refetching, or failed with rows still cached), an order request
+  // or a link mounts nothing at all, even for a cached or implicit company (P10).
   const settled = companies.isSuccess && !companies.isFetching;
   const known = (code: string) => rows.some((row) => row.code === code);
-  const wanted = intake?.company;
+  // The order request still in the address is the target from the first render on: the intake
+  // effect only runs after it, and a cached list must not mount the default company meanwhile.
+  const pendingOrder = !!fromOrder?.trim();
+  const wanted = intake?.company ?? (pendingOrder ? linkCompany : null);
   const linkTarget = linked ? linkCompany : null;
   const missing = !!wanted && settled && !known(wanted);
   // A filter or invoice link for a company that is not loaded never opens another company's data.
   const linkMissing = !!linkTarget && settled && !known(linkTarget);
-  const unconfirmed =
-    !settled && ((!!wanted && !known(wanted)) || (!!linkTarget && !known(linkTarget)));
+  const unconfirmed = !settled && (intake !== null || pendingOrder || linked);
   const backFromLink = () => {
     setIntake(null);
     write({ company: null, invoice: null, party: null, side: null, from: null, to: null });
