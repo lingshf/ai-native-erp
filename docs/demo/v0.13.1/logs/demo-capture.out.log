@@ -1,0 +1,29 @@
+prepared C:\Users\shaoling\AppData\Local\Temp\erp-demo-8c63d938-bd73-4d29-8b83-b6964e32f9a7\demo.sqlite 2026
+ready port=4202 pid=53956 start=08:11:49
+posted PARTY AP-DEMO 11300
+posted PARTY2 AP-DEMO2 11300
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+GET /api/v1/trade/orders/PO-I1/invoicing?company=DEFAULT 200
+GET /api/v1/trade/orders/PO-I2/invoicing?company=DEFAULT 200
+GET /api/v1/trade/orders/PO-I3/invoicing?company=DEFAULT 200
+seed-invoicing ok: PO-I1 L1 4/10 L2 0/4; PO-I2 L1 10/10; PO-I3 L1 0/5
+POST /api/v1/trade/tradeProduct 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+GET /api/v1/trade/orders/SO-I1/invoicing?company=DEFAULT 200
+GET /api/v1/trade/orders/SO-I2/invoicing?company=DEFAULT 200
+seed-sales ok: SO-I1 L1 4/10 L2 0/4; SO-I2 L1 10/10 (AR, PARTY2)
+readiness ok: company DEFAULT; orders exist for invoicing none / partial / full
+shots 14
+capture exit 0
+port 4202 released
