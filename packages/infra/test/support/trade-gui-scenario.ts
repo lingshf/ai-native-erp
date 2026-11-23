@@ -2000,8 +2000,13 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       }, draftPrefix);
       expect(await drafts()).toBe(0);
     }
-    const historyLength = () => page.evaluate(() => window.history.length);
-    const hashNow = () => new URL(page.url()).hash;
+    // Function declarations, not consts: followUp() runs from the step loop above, before this line.
+    function historyLength() {
+      return page.evaluate(() => window.history.length);
+    }
+    function hashNow() {
+      return new URL(page.url()).hash;
+    }
     // TINV-06 acceptance 9: a real Back while the detail dialog is open. A clean draft leaves the
     // invoice page with no confirmation. TINV-07 A7 dirty segment (③④, decision 10, D275): with a
     // dirty draft, applying a filter and opening the detail only replace (no confirmation, same
