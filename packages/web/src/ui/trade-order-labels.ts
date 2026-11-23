@@ -7,7 +7,7 @@ export const tradeOrderEn = {
     "Enter a non-stock purchase order (payables) or sales order (receivables), or look up a saved order by number.",
   "tord.teachingTitle": "Teaching note",
   "tord.teaching":
-    "Orders do not post and create no journal. The server calculates tax and amounts; this page never calculates them. Preview shows the amounts the save would store, but saves nothing and does not reserve the order number. A saved order shows invoiced and not-invoiced quantities per line; Invoice opens the invoice page with a draft for the remaining quantities, and the match is still checked when posting. The order list sorts by order number; select an order number to see its details. List filters (partner, direction, order date range) apply only to the list and are not remembered.",
+    "Orders do not post and create no journal. The server calculates tax and amounts; this page never calculates them. Preview shows the amounts the save would store, but saves nothing and does not reserve the order number. A saved order shows invoiced and not-invoiced quantities per line; Invoice opens the invoice page with a draft for the remaining quantities, and the match is still checked when posting. The order list sorts by order number; select an order number to see its details. List filters (partner, direction, order date range) apply only to the list and are kept in the address, so they stay after a refresh or when the link is copied.",
   "tord.entry": "New order",
   "tord.orderId": "Order number",
   "tord.side": "Subledger",
@@ -80,6 +80,8 @@ export const tradeOrderEn = {
   "tord.filterApply": "Apply",
   "tord.filterClear": "Clear",
   "tord.filterRange": "The start date must not be later than the end date.",
+  "tord.filterLinkInvalid":
+    "The filters in the link are not valid and were ignored; all orders are shown.",
   "tord.lineCountColumn": "Lines",
   "tord.invoicing": "Invoicing",
   "tord.invoicing.none": "Not invoiced",
@@ -115,7 +117,7 @@ export const tradeOrderZh: Record<keyof typeof tradeOrderEn, string> = {
   "tord.description": "录入非库存采购订单（应付）或销售订单（应收），或按订单号查询已保存的订单。",
   "tord.teachingTitle": "教学说明",
   "tord.teaching":
-    "订单不过账，也不生成凭证。税额和金额由服务端计算，本页不自行算税。“预览”显示保存后将记录的金额，但预览不保存、不占号。已保存的订单逐行显示已开票与未开票数量；“开票”打开发票页并按未开票数量带入草稿，过账时仍按订单匹配校验。订单列表按订单号排序，点击订单号可查看详情。列表筛选（伙伴、方向、订单日期区间）只作用于列表，不会被记住。",
+    "订单不过账，也不生成凭证。税额和金额由服务端计算，本页不自行算税。“预览”显示保存后将记录的金额，但预览不保存、不占号。已保存的订单逐行显示已开票与未开票数量；“开票”打开发票页并按未开票数量带入草稿，过账时仍按订单匹配校验。订单列表按订单号排序，点击订单号可查看详情。列表筛选（伙伴、方向、订单日期区间）只作用于列表，并保存在地址中，刷新或复制链接后保持。",
   "tord.entry": "新订单",
   "tord.orderId": "订单号",
   "tord.side": "子账",
@@ -183,6 +185,7 @@ export const tradeOrderZh: Record<keyof typeof tradeOrderEn, string> = {
   "tord.filterApply": "应用",
   "tord.filterClear": "清除",
   "tord.filterRange": "起始日期不能晚于截止日期。",
+  "tord.filterLinkInvalid": "链接中的筛选条件无效，已忽略；当前显示全部订单。",
   "tord.lineCountColumn": "行数",
   "tord.invoicing": "开票状态",
   "tord.invoicing.none": "未开票",

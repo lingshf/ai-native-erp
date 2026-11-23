@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { tradeOrderCommandSchema, type TradeDto } from "@erp/core/contracts";
+import { tradeOrderCommandSchema } from "@erp/core/contracts";
 import { App } from "../src/App.tsx";
+import { formatDecimal } from "../src/decimal-format.ts";
 import { formatMinor } from "../src/reports-data.ts";
 import { label, preferenceStorageKey } from "../src/ui/index.ts";
 import {
@@ -10,166 +11,23 @@ import {
   tradeOrderZh,
   type TradeOrderKey,
 } from "../src/ui/trade-order-labels.ts";
-
-const company = {
-  code: "DEFAULT",
-  name: "Company",
-  currency: "CNY",
-  scale: 2,
-  year: 2026,
-  closeMode: "annual",
-  revision: 1,
-};
-const window2026 = { from: "2026-01-01", to: "2026-12-31" };
-const party: TradeDto = {
-  kind: "tradeParty",
-  code: "VENDOR",
-  active: true,
-  revision: 1,
-  data: {
-    ...window2026,
-    name: "Fictional Vendor",
-    role: "vendor",
-    apProfile: "PAY",
-    arProfile: null,
-    terms: "N30",
-    allowedTaxCodes: ["VAT"],
-    defaultDimensions: {},
-  },
-};
-const product: TradeDto = {
-  kind: "tradeProduct",
-  code: "EXPENSE",
-  active: true,
-  revision: 1,
-  data: {
-    ...window2026,
-    name: "Fictional Expense",
-    type: "expense",
-    expenseAccount: "5000",
-    revenueAccount: null,
-    allowedTaxCodes: ["VAT"],
-    defaultDimensions: {},
-  },
-};
-const tax: TradeDto = {
-  kind: "taxCode",
-  code: "VAT",
-  active: true,
-  revision: 1,
-  data: {
-    ...window2026,
-    name: "VAT 13%",
-    mode: "ordinary",
-    rates: [{ id: "R13", ...window2026, ratePercent: "13" }],
-    deductiblePercent: "100",
-    inputAccount: "1400",
-    outputAccount: "2200",
-  },
-};
-const savedOrder = {
-  orderId: "PO-1",
-  side: "AP",
-  party: "VENDOR",
-  currency: "CNY",
-  orderDate: "2026-04-01",
-  priceIncludesTax: false,
-  rounding: "line",
-  commandHash: "b".repeat(64),
-  recordedAt: "2026-04-01T08:00:00.000Z",
-  lines: [
-    {
-      lineId: "L1",
-      product: "EXPENSE",
-      taxCode: "VAT",
-      quantity: "10",
-      unitPrice: "10",
-      discountPercent: "0",
-      taxableCharge: "0",
-      lineNo: 1,
-      net: 10000,
-      tax: 1300,
-      gross: 11300,
-    },
-  ],
-};
-const response = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
-const failure = (
-  status: number,
-  code: string,
-  fieldErrors: { path: string; messageKey: string }[],
-) =>
-  response(
-    {
-      code,
-      messageKey: fieldErrors[0]?.messageKey ?? "api.error.internal",
-      params: {},
-      fieldErrors,
-      requestId: "00000000-0000-4000-8000-000000000001",
-      retryable: false,
-    },
-    status,
-  );
-const t = (key: TradeOrderKey) => orderLabel("zh", key);
-const field = (key: TradeOrderKey, lineId?: string) =>
-  screen.getByLabelText<HTMLInputElement>(lineId ? `${t(key)} ${lineId}` : t(key));
-
-type Handler = (url: string, init?: RequestInit) => Response | Promise<Response>;
-const emptyList: Handler = () => response({ items: [], nextCursor: null });
-const invoicingOf = (order: typeof savedOrder, quantities: readonly string[]) => ({
-  order,
-  invoiced: order.lines.map((line, index) => ({
-    lineId: line.lineId,
-    invoicedQuantity: quantities[index] ?? "0",
-  })),
-});
-// TINV-02: the order detail reads GET /trade/orders/:orderId/invoicing (TINV-01 scope 4 shape).
-const noneInvoiced: Handler = (url) => {
-  const orderId = decodeURIComponent(/\/trade\/orders\/([^/?]+)\/invoicing/u.exec(url)?.[1] ?? "");
-  return response(invoicingOf({ ...savedOrder, orderId }, []));
-};
-const oneCompany: Handler = () => response({ items: [company], nextCursor: null });
-function stubApi(
-  onOrder: Handler,
-  onList: Handler = emptyList,
-  onInvoicing = noneInvoiced,
-  onCompanies = oneCompany,
-) {
-  const calls: string[] = [];
-  const posts: unknown[] = [];
-  const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (path, init) => {
-    const url = String(path);
-    calls.push(`${init?.method ?? "GET"} ${url.split("?")[0]}`);
-    if (url.startsWith("/api/v1/companies")) return onCompanies(url, init);
-    if (url.startsWith("/api/v1/trade/tradeParty?"))
-      return response({ items: [party], nextCursor: null });
-    if (url.startsWith("/api/v1/trade/tradeProduct?"))
-      return response({ items: [product], nextCursor: null });
-    if (url.startsWith("/api/v1/trade/taxCode?"))
-      return response({ items: [tax], nextCursor: null });
-    if (url.startsWith("/api/v1/trade/orders?") && (init?.method ?? "GET") === "GET")
-      return onList(url, init);
-    if (/^\/api\/v1\/trade\/orders\/[^/?]+\/invoicing\?/u.test(url)) return onInvoicing(url, init);
-    if (url.startsWith("/api/v1/trade/orders")) {
-      if (init?.method === "POST") posts.push(JSON.parse(String(init.body)));
-      return onOrder(url, init);
-    }
-    return response({}, 404);
-  });
-  vi.stubGlobal("fetch", fetchMock);
-  return { calls, posts };
-}
-async function fillOrder() {
-  await screen.findByRole("form", { name: t("tord.entry") });
-  fireEvent.change(field("tord.orderId"), { target: { value: "PO-1" } });
-  fireEvent.change(field("tord.party"), { target: { value: "VENDOR" } });
-  fireEvent.change(field("tord.orderDate"), { target: { value: "2026-04-01" } });
-  fireEvent.change(field("tord.product", "L1"), { target: { value: "EXPENSE" } });
-  fireEvent.change(field("tord.taxCode", "L1"), { target: { value: "VAT" } });
-  fireEvent.change(field("tord.quantity", "L1"), { target: { value: "10" } });
-  fireEvent.change(field("tord.unitPrice", "L1"), { target: { value: "10" } });
-}
-const save = () => fireEvent.click(screen.getByRole("button", { name: t("tord.save") }));
+import {
+  company,
+  savedOrder,
+  response,
+  failure,
+  t,
+  field,
+  emptyList,
+  invoicingOf,
+  noneInvoiced,
+  oneCompany,
+  stubApi,
+  fillOrder,
+  save,
+  spyWrites,
+  type Handler,
+} from "./trade-orders-fixtures.ts";
 
 beforeEach(() => window.history.replaceState(null, "", "/#/trade-orders"));
 afterEach(() => {
@@ -774,8 +632,10 @@ describe("trade orders", () => {
       ),
     );
     expect(await screen.findByText(t("tord.listNoMatch"))).toBeTruthy();
-    // Filters are not written to the address bar (TORD-05).
-    expect(window.location.hash).not.toMatch(/invoicing/u);
+    // TORD-07: applied filters are written to the address (TORD-05 did not).
+    expect(window.location.hash).toBe(
+      "#/trade-orders?company=DEFAULT&invoicing=partial&party=VENDOR&side=AP&from=2026-01-01&to=2026-06-30",
+    );
 
     fireEvent.click(screen.getByRole("button", { name: t("tord.filterClear") }));
     await waitFor(() => expect(lists.at(-1)).toBe(base));
@@ -1182,7 +1042,8 @@ describe("trade orders", () => {
     });
 
   it.each([
-    ["is unknown", "?company=MISSING&order=PO-1", "MISSING", twoCompanies, "click"],
+    // Q10: filters in the link change nothing here; going back clears them like a switch.
+    ["is unknown", "?company=MISSING&order=PO-1&party=VENDOR", "MISSING", twoCompanies, "click"],
     ["is empty", "?company=&order=PO-1", "", twoCompanies, "Enter"],
     ["differs in case", "?company=branch", "branch", twoCompanies, " "],
     [
@@ -1218,7 +1079,7 @@ describe("trade orders", () => {
       expect(orderReads(calls)).toEqual([]);
 
       activate(await back(), how);
-      await waitFor(() => expect(address().toString()).toBe(""));
+      await waitFor(() => expect(address().toString()).toBe("company=DEFAULT"));
       const table = await listTable();
       expect(await within(table).findByRole("button", { name: "PO-1" })).toBeTruthy();
       expect(lists).toEqual(["/api/v1/trade/orders?company=DEFAULT&limit=100"]);
@@ -1229,6 +1090,22 @@ describe("trade orders", () => {
     },
   );
 
+  it("D429: keeps the unknown-company message and the address when no company exists", async () => {
+    linkTo("?company=MISSING&order=PO-1&party=VENDOR");
+    const { calls } = stubApi(found, emptyList, noneInvoiced, emptyList);
+    const writes = spyWrites();
+    render(<App />);
+    activate(await back(), "click");
+    await pause();
+    expect(screen.getByRole("alert").textContent).toContain(
+      `${t("tord.deepLink.company")} · MISSING`,
+    );
+    expect([writes(), address().toString()]).toEqual([
+      [0, 0],
+      "company=MISSING&order=PO-1&party=VENDOR",
+    ]);
+    expect(calls.filter((call) => call.includes("/trade/orders"))).toEqual([]);
+  });
   it("goes back from an unknown company by keyboard with one company and no select change", async () => {
     linkTo("?company=OTHER&order=PO-1");
     const { calls } = stubApi(found, () =>
@@ -1241,7 +1118,7 @@ describe("trade orders", () => {
     const changes = vi.fn();
     select.addEventListener("change", changes);
     activate(await back(), "Enter");
-    await waitFor(() => expect(address().toString()).toBe(""));
+    await waitFor(() => expect(address().toString()).toBe("company=DEFAULT"));
     expect(await within(await listTable()).findByRole("button", { name: "PO-1" })).toBeTruthy();
     expect(document.activeElement).toBe(select);
     expect(select.value).toBe("DEFAULT");
@@ -1252,7 +1129,7 @@ describe("trade orders", () => {
   it.each([
     ["an empty order", "?company=DEFAULT&order=", "Enter", 0, "company=DEFAULT"],
     ["a malformed order", "?company=DEFAULT&order=po%201", " ", 0, "company=DEFAULT"],
-    ["a malformed order without company", "?order=po%201", "Enter", 0, ""],
+    ["a malformed order without company", "?order=po%201", "Enter", 0, "company=DEFAULT"],
     [
       "an order the server rejects (400)",
       "?company=DEFAULT&order=PO-400",
@@ -1291,10 +1168,10 @@ describe("trade orders", () => {
     },
   );
 
-  // Recovery removes only `order`: an absent `company` stays absent.
+  // Recovery removes `order` and names the shown company (TORD-07 rule 3).
   it.each([
     ["?company=DEFAULT&order=PO-9", "company=DEFAULT"],
-    ["?order=PO-9", ""],
+    ["?order=PO-9", "company=DEFAULT"],
   ] as const)(
     "reports an order that does not exist and goes back to the list by Space (%s)",
     async (search, after) => {
@@ -1642,5 +1519,227 @@ describe("trade orders", () => {
     await waitFor(() => expect(address().get("order")).toBeNull());
     expect(window.location.pathname).toBe("/");
     expect(confirm).toHaveBeenCalledTimes(2);
+  });
+
+  // TORD-07: list filters live in the address (replace only, task table Q1–Q11, K1–K7b).
+  const filtered = (query: string) => `${base}&${query}`;
+  const filterInputs = [
+    "tord.filterParty",
+    "tord.filterSide",
+    "tord.invoicing",
+    "tord.filterFrom",
+    "tord.filterTo",
+  ] as const;
+  const filterValues = () => filterInputs.map((key) => filterField(key).value);
+  const linkWarning = () => screen.queryByText(t("tord.filterLinkInvalid"));
+  // Two pages (PO-1, PO-2 | PO-3) for every list except partner NOBODY (Q8); records each list URL.
+  const stubLists = (companies = oneCompany) => {
+    const lists: string[] = [];
+    const page = (url: string) => {
+      lists.push(url);
+      if (url.includes("party=NOBODY")) return response({ items: [], nextCursor: null });
+      if (url.includes("cursor="))
+        return response({ items: [summary("PO-3", 300)], nextCursor: null });
+      return response({ items: [summary("PO-1", 100), summary("PO-2", 200)], nextCursor: "PO-2" });
+    };
+    return { lists, ...stubApi(found, page, noneInvoiced, companies) };
+  };
+  const listShown = async () => within(await listTable()).findByRole("button", { name: "PO-1" });
+  const clickClear = (root: HTMLElement = document.body) =>
+    fireEvent.click(within(root).getByRole("button", { name: t("tord.filterClear") }));
+  const allFilters = "party=VENDOR&side=AP&invoicing=partial&from=2026-01-01&to=2026-06-30";
+
+  it("writes applied filters with replace only, restores them on refresh and clears them", async () => {
+    const { lists } = stubLists();
+    const length = window.history.length;
+    const writes = spyWrites();
+    const view = render(<App />);
+    await listShown();
+    setFilters({ party: "VENDOR", side: "AP", from: "2026-01-01", to: "2026-06-30" });
+    fireEvent.change(filterField("tord.invoicing"), { target: { value: "partial" } });
+    apply();
+    await waitFor(() => expect(address().toString()).toBe(`company=DEFAULT&${allFilters}`));
+    await pause();
+    // K7b: one first-page request per action; writing the address adds none.
+    expect(lists).toEqual([base, filtered(allFilters)]);
+    expect(writes()).toEqual([1, 0]);
+    expect(window.history.length).toBe(length);
+
+    view.unmount();
+    render(<App />);
+    await waitFor(() =>
+      expect(filterValues()).toEqual(["VENDOR", "AP", "partial", "2026-01-01", "2026-06-30"]),
+    );
+    await pause();
+    expect(lists.slice(2)).toEqual([lists[1]]);
+
+    clickClear(await filterForm());
+    await waitFor(() => expect(address().toString()).toBe("company=DEFAULT"));
+    await pause();
+    expect(lists.slice(3)).toEqual([base]);
+    expect(filterValues()).toEqual(["", "", "", "", ""]);
+    expect(writes()[1]).toBe(0);
+    expect(window.history.length).toBe(length);
+  });
+
+  it.each(["", "?company=DEFAULT&party=VENDOR", "?company=DEFAULT&side=ap&x=1"])(
+    "does not write the address while mounting %s",
+    async (search) => {
+      linkTo(search);
+      stubLists();
+      const writes = spyWrites();
+      render(<App />);
+      await listTable();
+      await pause();
+      expect(writes()).toEqual([0, 0]);
+      expect(window.location.hash).toBe(`#/trade-orders${search}`);
+    },
+  );
+
+  // Q1–Q9, one representative per row (the contract owns value rules): [case, link, query, warning].
+  it.each([
+    ["Q1 empty values", "party=&side=AP&from=", "side=AP", false],
+    ["Q2 lower case partner", "party=vendor", "", true],
+    ["Q3 lower case side", "side=ap", "", true],
+    ["Q4 unknown invoicing", "invoicing=paid", "", true],
+    ["Q5 impossible day", "from=2026-02-30", "", true],
+    ["Q6 inverted range", "from=2026-06-30&to=2026-01-01", "", true],
+    ["Q7 first value valid", "party=VENDOR&party=bad", "party=VENDOR", false],
+    ["Q7 first value invalid", "side=ap&side=AP", "", true],
+    ["Q8 unknown partner", "party=NOBODY", "party=NOBODY", false],
+    ["Q9 cursor, limit, unknown", "cursor=PO-9&limit=5&x=1&side=AR", "side=AR", false],
+    ["a valid and an invalid key", "party=VENDOR&side=ap", "", true],
+  ] as const)("reads a link with %s", async (_case, link, query, broken) => {
+    linkTo(`?company=DEFAULT&${link}`);
+    const { lists } = stubLists();
+    render(<App />);
+    await filterForm();
+    await waitFor(() => expect(lists).toEqual([query ? filtered(query) : base]));
+    if (query === "party=NOBODY")
+      expect(await screen.findByText(t("tord.listNoMatch"))).toBeTruthy();
+    else await listShown();
+    expect(linkWarning() !== null).toBe(broken);
+    if (broken) expect(filterValues()).toEqual(["", "", "", "", ""]);
+    expect(window.location.hash).toBe(`#/trade-orders?company=DEFAULT&${link}`);
+  });
+
+  it("Q7: a later write sets each managed key once and keeps cursor, limit and unknown keys", async () => {
+    linkTo(
+      "?company=DEFAULT&company=BRANCH&party=VENDOR&party=X&order=PO-1&order=PO-2&cursor=C&limit=5&x=1&x=2",
+    );
+    stubLists(twoCompanies);
+    render(<App />);
+    await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+    apply();
+    await waitFor(() =>
+      expect(address().toString()).toBe(
+        "company=DEFAULT&party=VENDOR&order=PO-1&cursor=C&limit=5&x=1&x=2",
+      ),
+    );
+  });
+
+  it("Q11: opens the linked order with filters and keeps them when opening and closing orders", async () => {
+    linkTo("?party=VENDOR&order=PO-1");
+
+    const { lists } = stubLists();
+    render(<App />);
+    await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+    expect(lists).toEqual([filtered("party=VENDOR")]);
+    fireEvent.click(await within(await listTable()).findByRole("button", { name: "PO-2" }));
+    await waitFor(() =>
+      expect(address().toString()).toBe("party=VENDOR&order=PO-2&company=DEFAULT"),
+    );
+    fireEvent.click(await back());
+    await waitFor(() => expect(address().toString()).toBe("party=VENDOR&company=DEFAULT"));
+    expect(lists).toEqual([filtered("party=VENDOR")]);
+  });
+
+  it.each(["click", "Enter", " "] as const)(
+    "clears an invalid link from the warning in one replace (%s)",
+    async (how) => {
+      linkTo("?company=DEFAULT&side=ap&from=2026-02-30&x=1");
+      const { lists } = stubLists();
+      render(<App />);
+      await listShown();
+      const warning = linkWarning()?.closest(".message-bar") as HTMLElement;
+      expect(warning.getAttribute("role")).toBe("status");
+      const writes = spyWrites();
+      activate(within(warning).getByRole("button", { name: t("tord.filterClear") }), how);
+      await waitFor(() => expect(address().toString()).toBe("company=DEFAULT&x=1"));
+      await pause();
+      expect(linkWarning()).toBeNull();
+      expect(writes()).toEqual([1, 0]);
+      expect(lists).toEqual([base, base]);
+    },
+  );
+
+  it("switches the company by replace and applies or clears filters over a dirty draft without asking", async () => {
+    linkTo("?company=BRANCH&party=VENDOR&order=PO-1&x=1");
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { lists } = stubLists(twoCompanies);
+    const length = window.history.length;
+    render(<App />);
+    await waitFor(() => expect(shownOrder()).toMatch(/PO-1$/u));
+    const writes = spyWrites();
+    // D423: only Apply and Clear are checked over a dirty draft; switching keeps its confirmation.
+    fireEvent.change(companySelect(), { target: { value: "DEFAULT" } });
+    await waitFor(() => expect(address().toString()).toBe("company=DEFAULT&x=1"));
+    await pause();
+    expect(lists.slice(1)).toEqual([base]);
+    expect([shownOrder(), filterValues()[0]]).toEqual([null, ""]);
+
+    fireEvent.change(field("tord.orderId"), { target: { value: "PO-DRAFT" } });
+    setFilters({ side: "AR" });
+    apply();
+    await waitFor(() => expect(address().toString()).toBe("company=DEFAULT&x=1&side=AR"));
+    clickClear(await filterForm());
+    await waitFor(() => expect(address().toString()).toBe("company=DEFAULT&x=1"));
+    await pause();
+    expect(lists.slice(2)).toEqual([filtered("side=AR"), base]);
+    expect(confirm).not.toHaveBeenCalled();
+    expect(field("tord.orderId").value).toBe("PO-DRAFT");
+    expect(writes()[1]).toBe(0);
+    expect(window.history.length).toBe(length);
+  });
+  it("K7b: switching back to a company whose list had two pages reloads only its first page", async () => {
+    const { lists } = stubLists(twoCompanies);
+    render(<App />);
+    await listShown();
+    fireEvent.click(screen.getByRole("button", { name: label("zh", "master.loadMore") }));
+    await within(await listTable()).findByRole("button", { name: "PO-3" });
+    for (const code of ["BRANCH", "DEFAULT"]) {
+      fireEvent.change(companySelect(), { target: { value: code } });
+      await waitFor(() => expect(address().toString()).toBe(`company=${code}`));
+      await listShown();
+    }
+    await pause();
+    const branchList = base.replace("DEFAULT", "BRANCH");
+    expect(lists).toEqual([base, `${base}&cursor=PO-2`, branchList, base]);
+    expect(within(await listTable()).queryByRole("button", { name: "PO-3" })).toBeNull();
+  });
+
+  // K5: the detail groups line decimals by language (formatDecimal); not-invoiced stays exact.
+  it("groups the detail's line decimals in zh and en", async () => {
+    const line = { quantity: "1234.5", unitPrice: "12345.678901", discountPercent: "2500.5" };
+    const large = { ...savedOrder, lines: [{ ...savedOrder.lines[0], ...line }] };
+    const lineCells = () =>
+      waitFor(() => {
+        const cells = [...(detail().getAllByRole("row")[1]?.querySelectorAll("td") ?? [])];
+        if (cells[5]?.textContent === "\u2026") throw new Error("loading");
+        return cells.slice(4, 9).map((cell) => cell.textContent);
+      });
+    linkTo("?company=DEFAULT&order=PO-1");
+    stubApi(byOrder({ "PO-1": () => response(large) }), emptyList, () =>
+      response(invoicingOf(large, ["1000.25"])),
+    );
+    for (const language of ["zh", "en"] as const) {
+      window.localStorage.setItem(preferenceStorageKey, JSON.stringify({ language }));
+      const view = render(<App />);
+      const shown = (value: string) => formatDecimal(value, language);
+      const grouped = ["1234.5", "1000.25", "12345.678901", "2500.5"].map(shown);
+      expect(await lineCells()).toEqual([...grouped.slice(0, 2), "234.25", ...grouped.slice(2)]);
+
+      view.unmount();
+    }
   });
 });

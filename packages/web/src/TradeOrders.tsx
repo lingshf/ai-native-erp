@@ -1,5 +1,10 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type QueryClient,
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { guardHistory, type HistoryGuard } from "./leave-guard-history.js";
 import {
@@ -19,6 +24,16 @@ import { label, type Preferences } from "./ui/index.ts";
 import { orderLabel, type TradeOrderKey } from "./ui/trade-order-labels.ts";
 import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
+import { formatDecimal } from "./decimal-format.ts";
+import {
+  nextOrderParams,
+  noOrderFilter,
+  orderFilterChange,
+  orderFilterKeys,
+  readOrderFilter,
+  type OrderFilter,
+  type OrderLinkChange,
+} from "./trade-order-link.ts";
 import { Badge, FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import "./pages/trade-orders.css";
 
@@ -50,15 +65,7 @@ const invoicingTone = { none: "warning", partial: "info", full: "success" } as c
 type Issue = { path: string; key: TradeOrderKey };
 type Failure = { message: string; issues: Issue[]; uncertain: boolean };
 const idleGuard: Guard = { busy: false, unsaved: false };
-type Filter = {
-  party: string;
-  side: "" | "AP" | "AR";
-  invoicing: "" | Invoicing;
-  from: string;
-  to: string;
-};
-const noFilter: Filter = { party: "", side: "", invoicing: "", from: "", to: "" };
-const filterKeys = ["party", "side", "invoicing", "from", "to"] as const;
+type FilterState = { key: string; draft: OrderFilter; invalid: "party" | "range" | null };
 const lineFields = ["product", "taxCode", "quantity", "unitPrice", "discountPercent"] as const;
 const numeric = new Set<string>(["quantity", "unitPrice", "discountPercent"]);
 const amountKeys = ["net", "tax", "gross"] as const;
@@ -218,17 +225,16 @@ export function TradeOrders({ preferences }: { preferences: Preferences }) {
   const linkOrder = params.get("order");
   const company = rows.find((row) => row.code === (linkCompany ?? (selected || rows[0]?.code)));
   const companyMissing = linkCompany !== null && companies.isSuccess && !company;
-  const link = (change: Readonly<Record<string, string | null>>) =>
-    setParams(
-      (current) => {
-        const next = new URLSearchParams(current);
-        for (const [key, value] of Object.entries(change))
-          if (value === null) next.delete(key);
-          else next.set(key, value);
-        return next;
-      },
-      { replace: true },
-    );
+  const client = useQueryClient();
+  // TORD-07: every write replaces the entry (no history, no leave confirmation) and names the
+  // company (rule 3).
+  const link = (change: OrderLinkChange) =>
+    setParams((current) => nextOrderParams(current, change), { replace: true });
+  // Rule 3: a company change clears the filters and order and restarts that company's list.
+  const switchTo = (code: string) => {
+    restartOrderList(client, code, noOrderFilter);
+    link({ company: code, order: null, ...orderFilterChange(noOrderFilter) });
+  };
   return (
     <section className="page trade-orders">
       <PageHeader
@@ -244,7 +250,7 @@ export function TradeOrders({ preferences }: { preferences: Preferences }) {
               onChange={(event) => {
                 if (!guard.unsaved || window.confirm(t("tord.leaveConfirm"))) {
                   setSelected(event.target.value);
-                  link({ company: event.target.value, order: null });
+                  switchTo(event.target.value);
                 }
               }}
             >
@@ -282,7 +288,11 @@ export function TradeOrders({ preferences }: { preferences: Preferences }) {
             type="button"
             className="btn btn-secondary"
             onClick={() => {
-              link({ company: null, order: null });
+              // Back to the list the page falls back to, named in the address (rule 3). With no
+              // company to fall back to (D429) nothing is written and the message stays.
+              const fallback = selected || rows[0]?.code;
+              if (!fallback) return;
+              switchTo(fallback);
               document.getElementById("tord-company")?.focus();
             }}
           >
@@ -298,8 +308,10 @@ export function TradeOrders({ preferences }: { preferences: Preferences }) {
           t={t}
           onGuard={setGuard}
           linkOrder={linkOrder}
+          params={params}
+          onFilter={(filter) => link({ company: company.code, ...orderFilterChange(filter) })}
           onLink={(order) => link({ company: company.code, order })}
-          onBack={() => link({ order: null })}
+          onBack={() => link({ company: company.code, order: null })}
         />
       )}
     </section>
@@ -325,6 +337,8 @@ function OrderWorkspace({
   t,
   onGuard,
   linkOrder,
+  params,
+  onFilter,
   onLink,
   onBack,
 }: {
@@ -333,8 +347,10 @@ function OrderWorkspace({
   t: T;
   onGuard: (guard: Guard) => void;
   linkOrder: string | null;
+  params: URLSearchParams;
+  onFilter: (filter: OrderFilter) => void;
   onLink: (orderId: string | null) => void;
-  // Recovery from a bad order link removes only `order`; an absent `company` stays absent.
+  // Recovery from a bad order link removes `order` and names this company (TORD-07 rule 3).
   onBack: () => void;
 }) {
   const language = preferences.language;
@@ -860,6 +876,8 @@ function OrderWorkspace({
         language={language}
         money={money}
         t={t}
+        params={params}
+        onFilter={onFilter}
         onOpen={(orderId) => open(orderId, true)}
       />
       <OrderLookup
@@ -875,67 +893,101 @@ function OrderWorkspace({
   );
 }
 
+const orderListKey = (company: string, filter: OrderFilter) =>
+  ["trade-orders", company, filter] as const;
+// K7b: a list shown afresh (apply, clear, company switch) reloads one first page, never pages
+// still cached from an earlier visit (the client keeps them for the whole session).
+const restartOrderList = (client: QueryClient, company: string, filter: OrderFilter) =>
+  void client.resetQueries({ queryKey: orderListKey(company, filter), exact: true });
+
+/**
+ * TORD-07: the applied filters are the address's; the bar's inputs keep unapplied edits and reset
+ * whenever the applied filters change. Apply and Clear restart the list, then write the address.
+ */
+function useOrderFilters(
+  params: URLSearchParams,
+  company: string,
+  onFilter: (filter: OrderFilter) => void,
+) {
+  const client = useQueryClient();
+  const { applied, broken } = readOrderFilter(params, company);
+  const key = JSON.stringify(applied);
+  const fresh = (): FilterState => ({ key, draft: applied, invalid: null });
+  const [state, setState] = useState(fresh);
+  const current = state.key === key ? state : fresh();
+  if (current !== state) setState(current);
+  const { draft, invalid } = current;
+  const show = (next: OrderFilter) => {
+    restartOrderList(client, company, next);
+    setState({ key: JSON.stringify(next), draft: next, invalid: null });
+    onFilter(next);
+  };
+  const apply = (event: FormEvent) => {
+    event.preventDefault();
+    const next = { ...draft, party: draft.party.trim() };
+    if (next.party && !tradeOrderCommandSchema.shape.party.safeParse(next.party).success)
+      setState({ ...current, invalid: "party" });
+    else if (next.from && next.to && next.from > next.to)
+      setState({ ...current, invalid: "range" });
+    else show(next);
+  };
+  const clear = () => show(noOrderFilter);
+  const edit = (patch: Partial<OrderFilter>) =>
+    setState({ ...current, draft: { ...draft, ...patch }, invalid: null });
+  return { applied, broken, draft, invalid, apply, clear, edit };
+}
+
 function OrderList({
   company,
   language,
   money,
   t,
+  params,
+  onFilter,
   onOpen,
 }: {
   company: CompanyDto;
   language: Preferences["language"];
   money: (value: number) => string;
   t: T;
+  params: URLSearchParams;
+  onFilter: (filter: OrderFilter) => void;
   onOpen: (orderId: string) => void;
 }) {
-  const client = useQueryClient();
-  const [draft, setDraft] = useState(noFilter);
-  const [applied, setApplied] = useState(noFilter);
-  const [invalid, setInvalid] = useState<"party" | "range" | null>(null);
-  const queryKey = ["trade-orders", company.code, applied] as const;
+  const { applied, broken, draft, invalid, apply, clear, edit } = useOrderFilters(
+    params,
+    company.code,
+    onFilter,
+  );
   const page = useInfiniteQuery({
-    queryKey,
+    queryKey: orderListKey(company.code, applied),
     initialPageParam: "",
     refetchOnMount: true,
     queryFn: ({ pageParam, signal }) => {
       // Load more keeps the applied filters (TORD-05); an unfiltered URL is unchanged from TORD-03.
       const params = new URLSearchParams({ company: company.code, limit: "100" });
       if (pageParam) params.set("cursor", pageParam);
-      for (const key of filterKeys) if (applied[key]) params.set(key, applied[key]);
+      for (const key of orderFilterKeys) if (applied[key]) params.set(key, applied[key]);
       return masterRequest(`/api/v1/trade/orders?${params}`, tradeOrderPageSchema, { signal });
     },
     getNextPageParam: (value) => value.nextCursor ?? undefined,
   });
   const rows = page.data?.pages.flatMap((value) => value.items) ?? [];
-  const filtered = filterKeys.some((key) => applied[key]);
-  // Apply and Clear always reload from the first page, never from pages cached for those filters.
-  const show = (next: Filter) => {
-    setInvalid(null);
-    void client.resetQueries({ queryKey: ["trade-orders", company.code, next], exact: true });
-    setApplied(next);
-  };
-  const apply = (event: FormEvent) => {
-    event.preventDefault();
-    const next = { ...draft, party: draft.party.trim() };
-    if (next.party && !tradeOrderCommandSchema.shape.party.safeParse(next.party).success)
-      setInvalid("party");
-    else if (next.from && next.to && next.from > next.to) setInvalid("range");
-    else show(next);
-  };
-  const clear = () => {
-    setDraft(noFilter);
-    show(noFilter);
-  };
-  const edit = (patch: Partial<Filter>) => {
-    setDraft((current) => ({ ...current, ...patch }));
-    setInvalid(null);
-  };
+  const filtered = orderFilterKeys.some((key) => applied[key]);
   const described = (kind: "party" | "range") =>
     invalid === kind
       ? { "aria-invalid": true as const, "aria-describedby": `tord-filter-${kind}-error` }
       : {};
   return (
     <FastTab id="tord-list" title={t("tord.list")}>
+      {broken && (
+        <MessageBar tone="warning" role="status">
+          <p>{t("tord.filterLinkInvalid")}</p>
+          <button type="button" className="btn btn-secondary" onClick={clear}>
+            {t("tord.filterClear")}
+          </button>
+        </MessageBar>
+      )}
       <form
         className="filter-bar tord-filter"
         aria-label={t("tord.filter")}
@@ -963,7 +1015,7 @@ function OrderList({
           <select
             id="tord-filter-side"
             value={draft.side}
-            onChange={(event) => edit({ side: event.target.value as Filter["side"] })}
+            onChange={(event) => edit({ side: event.target.value as OrderFilter["side"] })}
           >
             <option value="">{t("tord.filterAll")}</option>
             <option value="AP">{t("tord.filterAP")}</option>
@@ -975,7 +1027,9 @@ function OrderList({
           <select
             id="tord-filter-invoicing"
             value={draft.invoicing}
-            onChange={(event) => edit({ invoicing: event.target.value as Filter["invoicing"] })}
+            onChange={(event) =>
+              edit({ invoicing: event.target.value as OrderFilter["invoicing"] })
+            }
           >
             <option value="">{t("tord.filterAll")}</option>
             {invoicingValues.map((value) => (
@@ -1253,6 +1307,9 @@ function OrderView({
   money: (value: number) => string;
   t: T;
 }) {
+  // TORD-07: line decimals grouped by language; "…" while invoiced quantities are loading.
+  const decimal = (value: string | undefined) =>
+    value === undefined ? "…" : formatDecimal(value, language);
   const amountKeys = ["net", "tax", "gross"] as const;
   const reasonId = useId();
   // The saved / looked-up order stays the source of the detail; invoiced quantities come from one
@@ -1354,8 +1411,8 @@ function OrderView({
                   <td>{line.lineId}</td>
                   <td>{line.product}</td>
                   <td>{line.taxCode}</td>
-                  <td>{line.quantity}</td>
-                  <td>{invoiced.get(line.lineId) ?? "…"}</td>
+                  <td>{decimal(line.quantity)}</td>
+                  <td>{decimal(invoiced.get(line.lineId))}</td>
                   <td>
                     {left === null ? (
                       "…"
@@ -1368,8 +1425,8 @@ function OrderView({
                       </>
                     )}
                   </td>
-                  <td>{line.unitPrice}</td>
-                  <td>{line.discountPercent}</td>
+                  <td>{decimal(line.unitPrice)}</td>
+                  <td>{decimal(line.discountPercent)}</td>
                   {amountKeys.map((key) => (
                     <td key={key}>{money(line[key])}</td>
                   ))}
