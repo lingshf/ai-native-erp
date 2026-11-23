@@ -1042,7 +1042,8 @@ describe("trade orders", () => {
     });
 
   it.each([
-    ["is unknown", "?company=MISSING&order=PO-1", "MISSING", twoCompanies, "click"],
+    // Q10: filters in the link change nothing here; going back clears them like a switch.
+    ["is unknown", "?company=MISSING&order=PO-1&party=VENDOR", "MISSING", twoCompanies, "click"],
     ["is empty", "?company=&order=PO-1", "", twoCompanies, "Enter"],
     ["differs in case", "?company=branch", "branch", twoCompanies, " "],
     [
@@ -1089,6 +1090,22 @@ describe("trade orders", () => {
     },
   );
 
+  it("D429: keeps the unknown-company message and the address when no company exists", async () => {
+    linkTo("?company=MISSING&order=PO-1&party=VENDOR");
+    const { calls } = stubApi(found, emptyList, noneInvoiced, emptyList);
+    const writes = spyWrites();
+    render(<App />);
+    activate(await back(), "click");
+    await pause();
+    expect(screen.getByRole("alert").textContent).toContain(
+      `${t("tord.deepLink.company")} · MISSING`,
+    );
+    expect([writes(), address().toString()]).toEqual([
+      [0, 0],
+      "company=MISSING&order=PO-1&party=VENDOR",
+    ]);
+    expect(calls.filter((call) => call.includes("/trade/orders"))).toEqual([]);
+  });
   it("goes back from an unknown company by keyboard with one company and no select change", async () => {
     linkTo("?company=OTHER&order=PO-1");
     const { calls } = stubApi(found, () =>
@@ -1619,16 +1636,6 @@ describe("trade orders", () => {
         "company=DEFAULT&party=VENDOR&order=PO-1&cursor=C&limit=5&x=1&x=2",
       ),
     );
-  });
-
-  it("Q10: an unknown company with filters reports the company and reads no list", async () => {
-    linkTo("?company=MISSING&party=VENDOR");
-    const { lists } = stubLists(twoCompanies);
-    render(<App />);
-    expect((await screen.findByRole("alert")).textContent).toContain(t("tord.deepLink.company"));
-    await pause();
-    expect(lists).toEqual([]);
-    expect(linkWarning()).toBeNull();
   });
 
   it("Q11: opens the linked order with filters and keeps them when opening and closing orders", async () => {

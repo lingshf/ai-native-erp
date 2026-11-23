@@ -288,10 +288,11 @@ export function TradeOrders({ preferences }: { preferences: Preferences }) {
             type="button"
             className="btn btn-secondary"
             onClick={() => {
-              // Back to the list the page falls back to, named in the address (rule 3).
+              // Back to the list the page falls back to, named in the address (rule 3). With no
+              // company to fall back to (D429) nothing is written and the message stays.
               const fallback = selected || rows[0]?.code;
-              if (fallback) switchTo(fallback);
-              else link({ company: null, order: null });
+              if (!fallback) return;
+              switchTo(fallback);
               document.getElementById("tord-company")?.focus();
             }}
           >
@@ -349,7 +350,7 @@ function OrderWorkspace({
   params: URLSearchParams;
   onFilter: (filter: OrderFilter) => void;
   onLink: (orderId: string | null) => void;
-  // Recovery from a bad order link removes only `order`; an absent `company` stays absent.
+  // Recovery from a bad order link removes `order` and names this company (TORD-07 rule 3).
   onBack: () => void;
 }) {
   const language = preferences.language;
