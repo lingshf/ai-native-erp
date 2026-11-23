@@ -34,6 +34,7 @@ const text = {
     clear: "清除",
     loadMore: "加载更多",
     range: "起始日期不能晚于截止日期。",
+    partyError: "请使用大写字母、数字及 _ . : -（以字母或数字开头，最多 60 个字符）。",
     groups: { master: "基础配置", posting: "凭证与业务事件", trade: "贸易往来", ledger: "总账与结账", reports: "只读报表" },
   },
   en: {
@@ -47,10 +48,11 @@ const text = {
     clear: "Clear",
     loadMore: "Load more",
     range: "The start date must not be later than the end date.",
+    partyError: "Use uppercase letters, digits and _ . : - (up to 60 characters, starting with a letter or digit).",
     groups: { master: "Master data", posting: "Journals and events", trade: "Trade", ledger: "Ledger and close", reports: "Read-only reports" },
   },
 };
-// 侧栏链接顺序（packages/web/src/App.tsx:199–236）
+// 侧栏链接顺序：与 UI-14 #197 核验的 base 506201e / head 5f67f2e 的 16 个链接顺序相同（packages/web/src/App.tsx:199–236）
 const navOrder = [
   "#/", "#/migration", "#/accounts", "#/dimensions", "#/trade", "#/journals", "#/events", "#/trade-orders", "#/trade-invoices",
   "#/trade-settlements", "#/trade-adjustments", "#/trade-reports", "#/ledger-reports", "#/ledger", "#/period-close", "#/reports/trial",
@@ -74,13 +76,19 @@ async function assertState(page, want) {
   return scrollWidth;
 }
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const LIST_HASH = "#/trade-invoices?company=DEFAULT";
+const HOME_HASH = "#/";
+const expectedHash = (step) => (step === "sidebar-groups" ? HOME_HASH : LIST_HASH);
 async function shot(page, name, want, extra = {}) {
   await page.mouse.move(0, 0);
   await page.waitForTimeout(300);
   const scrollWidth = await assertState(page, want);
+  const hash = await page.evaluate(() => location.hash);
+  const expectHash = expectedHash(extra.step);
+  if (hash !== expectHash) throw new Error(`${name} 截图前 location.hash 应为 ${expectHash}，实际 ${hash}`);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   await page.screenshot({ path: join(out, `${name}.png`), fullPage: true });
-  log.push({ name, overflowPx: overflow, scrollWidth, hash: await page.evaluate(() => location.hash), ...extra });
+  log.push({ name, overflowPx: overflow, scrollWidth, hash, expectHash, ...extra });
 }
 async function poll(read, wanted, label) {
   const deadline = Date.now() + 8000;
@@ -120,6 +128,8 @@ async function openList(context, errors) {
     return d.dismiss();
   });
   await page.goto(`${base}/#/trade-invoices?company=DEFAULT`);
+  const entryHash = await page.evaluate(() => location.hash);
+  if (entryHash !== LIST_HASH) throw new Error(`入口 hash 应为 ${LIST_HASH}，实际 ${entryHash}`);
   await page.locator("section.tinv-list-scroll table tbody tr button.tinv-detail-trigger").first().waitFor({ timeout: 8000 });
   page.dialogs = dialogs;
   return page;
@@ -242,6 +252,8 @@ try {
       await filterBar(page).locator("#tinv-filter-party").fill("bad party");
       await filterBar(page).getByRole("button", { name: t.apply, exact: true }).click();
       await page.locator("#tinv-filter-party-error").waitFor({ timeout: 8000 });
+      const partyText = (await page.locator("#tinv-filter-party-error").innerText()).trim();
+      if (partyText !== t.partyError) throw new Error(`伙伴格式错误的提示应为“${t.partyError}”，实际“${partyText}”`);
       if ((await filterBar(page).locator("#tinv-filter-party").getAttribute("aria-invalid")) !== "true") throw new Error("伙伴输入框应 aria-invalid=true");
       await page.waitForTimeout(500);
       if (counter.n !== 0) throw new Error(`伙伴格式错误时不应发列表请求，实际 ${counter.n}：${JSON.stringify(counter.urls)}`);
@@ -286,31 +298,45 @@ try {
       await context.close();
     }
 
-    // 6 重置：应用筛选后刷新 → 筛选条为空、第一页未筛选；再应用后切换公司 DEMO2 → 筛选条为空；切回 DEFAULT → 筛选条为空、第一页 100 行
+    // 6 重置：筛选结果与未筛选结果靠真实请求参数和返回行数区分。
+    //   应用 AR（2 行）→ 刷新 → 请求不带筛选参数、101 行；应用 PARTY2 + AP（5 行，请求带 party/side）→ 切到 DEMO2（请求 company=DEMO2、不带筛选、0 行）→ 切回 DEFAULT（请求 company=DEFAULT、不带筛选、101 行）
     {
       const context = await contextFor(lang, theme, width);
       const page = await openList(context, errors);
       const entry = await hashOf(page);
+      const filterKeys = ["party", "side", "from", "to"];
+      const unfiltered = (response, company, label) => {
+        const params = Object.fromEntries(new URL(response.url()).searchParams);
+        if (params.company !== company || filterKeys.some((k) => params[k])) throw new Error(`${label}：请求应是 company=${company} 且不带筛选参数，实际 ${response.url()}`);
+      };
+      const listResponse = (trigger) => {
+        const waited = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/v1/trade/invoices" && r.request().method() === "GET");
+        return trigger().then(() => waited);
+      };
+      const listLocator = page.locator("section.tinv-list-scroll table tbody tr button.tinv-detail-trigger");
       await applyFilter(page, t, { side: "AR" });
-      await poll(() => externals(page), ["AR-I1-1", "AR-I2-1"], "刷新前先筛出 AR");
-      await page.reload();
-      await page.locator("section.tinv-list-scroll table tbody tr button.tinv-detail-trigger").first().waitFor({ timeout: 8000 });
+      await poll(() => externals(page), ["AR-I1-1", "AR-I2-1"], "刷新前先筛出 AR（2 行）");
+      unfiltered(await listResponse(() => page.reload()), "DEFAULT", "刷新后");
+      await listLocator.first().waitFor({ timeout: 8000 });
       await poll(() => barValues(page), ["", "", "", ""], "刷新后筛选条应为空");
       await poll(() => rowCount(page), "101", "刷新后应回到未筛选第一页（100 行 + 表头）");
-      await applyFilter(page, t, { party: "PARTY", side: "AP" });
-      await poll(() => rowCount(page), "101", "切换公司前先筛出伙伴 PARTY + 方向 AP（第一页 100 行）");
-      await page.locator("#tinv-company").selectOption("DEMO2");
+      const applied = await listResponse(() => applyFilter(page, t, { party: "PARTY2", side: "AP" }));
+      const appliedParams = Object.fromEntries(new URL(applied.url()).searchParams);
+      if (appliedParams.party !== "PARTY2" || appliedParams.side !== "AP") throw new Error("应用后的请求应带 party=PARTY2&side=AP：" + applied.url());
+      await poll(() => externals(page), ["AP-D1-1", "AP-DEMO2", "AP-EARLY-1", "AP-EARLY-2", "AP-EARLY-3"], "切换公司前先筛出 PARTY2 + AP（5 行，区别于未筛选的 101）");
+      unfiltered(await listResponse(() => page.locator("#tinv-company").selectOption("DEMO2")), "DEMO2", "切到 DEMO2");
       await poll(() => barValues(page), ["", "", "", ""], "切换到 DEMO2 后筛选条应为空");
-      await poll(() => page.locator("section.tinv-list-scroll table tbody tr button.tinv-detail-trigger").count(), 0, "DEMO2 没有发票");
-      await page.locator("#tinv-company").selectOption("DEFAULT");
-      await page.locator("section.tinv-list-scroll table tbody tr button.tinv-detail-trigger").first().waitFor({ timeout: 8000 });
+      await poll(() => listLocator.count(), 0, "DEMO2 没有发票");
+      unfiltered(await listResponse(() => page.locator("#tinv-company").selectOption("DEFAULT")), "DEFAULT", "切回 DEFAULT");
+      await listLocator.first().waitFor({ timeout: 8000 });
       await poll(() => barValues(page), ["", "", "", ""], "切回 DEFAULT 后筛选条应为空");
-      await poll(() => rowCount(page), "101", "切回 DEFAULT 后应是未筛选第一页（100 行 + 表头）");
-      await shot(page, `invoice-filter-reset-${tag}`, want, { step: "invoice-filter-reset", entryHash: entry, via: "apply side=AR, reload; apply party=PARTY side=AP, switch company DEMO2 then DEFAULT" });
+      await poll(() => rowCount(page), "101", "切回 DEFAULT 后应是未筛选第一页（100 行 + 表头，不是筛选后的 5 行）");
+      await shot(page, `invoice-filter-reset-${tag}`, want, { step: "invoice-filter-reset", entryHash: entry, via: "apply side=AR, reload; apply party=PARTY2 side=AP, switch company DEMO2 then DEFAULT" });
       await context.close();
     }
 
-    // 7 侧栏导航分组（UI-14）：首页入口，不做操作。1440：五个分组标题可见（三个是 UI-14 新拆出的）；390：标题隐藏；链接顺序同 App.tsx:199–236
+    // 7 侧栏导航分组（UI-14）：首页入口，不做操作。1440：五个带标题的分组标题可见（其中三个是 UI-14 新拆出的）；390：标题隐藏。
+    //   链接顺序 navOrder 与 #197（base 506201e、head 5f67f2e）核验的 16 个链接顺序相同（#197 正文与 slot-2 比对 16 对、failures=[]）。
     {
       const context = await contextFor(lang, theme, width);
       const page = await newPage(context, errors);
