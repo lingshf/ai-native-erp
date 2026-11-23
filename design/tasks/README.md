@@ -649,7 +649,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [REFAC-04](S14.md#refac-04共用件直接从-journals-导入d439-方案-b) | 业务事件、总账报表、期末结账、贸易报表直接从 `journals/*` 导入共用件，删掉 `Journals.tsx` 的再导出，`CompanyJournals` 不再进入非凭证路由（D439 方案 B） | 重构（页面导入） | P1 | REFAC-03b 已合并；D439 | web-ui:journals（`Journals.tsx`、`journals/dialogs.tsx`、`journals/virtual-rows.tsx` 只加样式导入）、web-ui:business-events 与三个报表页（只改 `import` 行）、`ledger-reports.test.tsx`（1 行） | 不加 | 不需要 | todo | — |
+| [REFAC-04](S14.md#refac-04共用件直接从-journals-导入d439-方案-b) | 业务事件、总账报表、期末结账、贸易报表直接从 `journals/*` 导入共用件，删掉 `Journals.tsx` 的再导出，`CompanyJournals` 不再进入非凭证路由（D439 方案 B） | 重构（页面导入） | P1 | REFAC-03b 已合并；D439 | 12 个文件，改动范围见 [S14 改动清单 L1–L3](S14.md#范围与决定)：`Journals.tsx` 删两条再导出、可删样式导入；`journals/dialogs.tsx`、`journals/virtual-rows.tsx` 各可加一条样式导入和一行注释；business-events 与三个报表页、`ledger-reports.test.tsx` 只改 `import` 语句 | 不加 | 不需要 | todo | — |
 | [REFAC-05](S14.md#refac-05拆分-tradeorderstsx只搬移不改行为) | 拆分 `TradeOrders.tsx`（1483 行）到 `src/trade-orders/`，只搬移不改行为 | 重构（页面） | P2 | 无 | web-ui:trade-orders（`TradeOrders.tsx` 与新目录） | 不加 | 不需要 | todo | — |
 | [REFAC-06](S14.md#refac-06拆分-tradeinvoicestsx只搬移不改行为) | 拆分 `TradeInvoices.tsx`（1465 行）到 `src/trade-invoices/`，导出集合不变，只搬移不改行为 | 重构（页面） | P2 | 无 | web-ui:trade 发票页（`TradeInvoices.tsx` 与新目录）；导入方不改 | 不加 | 不需要 | todo | — |
 | DEMO-14（无任务书） | v0.14.0 RC 与 Demo，验收见 [S14.md](S14.md#demo-14-验收) | 发布 | P1（Sprint 末） | 三个任务结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | 不加 | 需要（截图） | todo | — |
