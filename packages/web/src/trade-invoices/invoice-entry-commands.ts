@@ -84,13 +84,10 @@ export function invoiceEntryContext(
   return { ...state, company, t, command, serialized, stale, locked };
 }
 
-function editDraft(
-  { setDraft, setDirty, setReceipt }: InvoiceEntryContext,
-  change: Partial<Draft>,
-) {
-  setDraft((current) => ({ ...current, ...change }));
-  setDirty(true);
-  setReceipt(null);
+function editDraft(entry: InvoiceEntryContext, change: Partial<Draft>) {
+  entry.setDraft((current) => ({ ...current, ...change }));
+  entry.setDirty(true);
+  entry.setReceipt(null);
 }
 
 function editLine(entry: InvoiceEntryContext, index: number, field: LineField, value: string) {
@@ -112,90 +109,76 @@ function addLine(entry: InvoiceEntryContext) {
   editDraft(entry, { lines: [...lines, blankLine(n)] });
 }
 
-function discardDraft({
-  locked,
-  t,
-  setDraft,
-  setDocumentId,
-  setDirty,
-  setPreview,
-  setError,
-  setFromOrder,
-}: InvoiceEntryContext) {
-  if (locked || !window.confirm(t("tinv.discardConfirm"))) return;
-  setDraft(blankDraft());
-  setDocumentId(crypto.randomUUID());
-  setDirty(false);
-  setPreview(null);
-  setError(null);
-  setFromOrder(null);
+function discardDraft(entry: InvoiceEntryContext) {
+  if (entry.locked || !window.confirm(entry.t("tinv.discardConfirm"))) return;
+  entry.setDraft(blankDraft());
+  entry.setDocumentId(crypto.randomUUID());
+  entry.setDirty(false);
+  entry.setPreview(null);
+  entry.setError(null);
+  entry.setFromOrder(null);
 }
 
 async function fillFromOrder(entry: InvoiceEntryContext, orderId: string) {
-  const { company, dirty, locked, t, setBusy, setFromOrder } = entry;
-  const { setDraft, setDocumentId, setDirty, setPreview, setError, setReceipt } = entry;
-  if (locked) {
-    setFromOrder({ status: "locked", orderId });
+  if (entry.locked) {
+    entry.setFromOrder({ status: "locked", orderId });
     return;
   }
-  setBusy(true);
-  setFromOrder(null);
+  entry.setBusy(true);
+  entry.setFromOrder(null);
   try {
     const value = await masterRequest(
-      `/api/v1/trade/orders/${encodeURIComponent(orderId)}/invoicing?company=${encodeURIComponent(company.code)}`,
+      `/api/v1/trade/orders/${encodeURIComponent(orderId)}/invoicing?company=${encodeURIComponent(entry.company.code)}`,
       tradeOrderInvoicingSchema,
     );
 
     const next = draftFromOrder(value);
     if (!next) {
-      setFromOrder({ status: "fullyInvoiced", orderId });
+      entry.setFromOrder({ status: "fullyInvoiced", orderId });
       return;
     }
     // Cancelled: the request status was already cleared above.
-    if (dirty && !window.confirm(t("tinv.fromOrder.replaceConfirm"))) return;
-    setDraft(next);
-    setDocumentId(crypto.randomUUID());
-    setDirty(true);
-    setPreview(null);
-    setError(null);
-    setReceipt(null);
-    setFromOrder({ status: "loaded", orderId });
+    if (entry.dirty && !window.confirm(entry.t("tinv.fromOrder.replaceConfirm"))) return;
+    entry.setDraft(next);
+    entry.setDocumentId(crypto.randomUUID());
+    entry.setDirty(true);
+    entry.setPreview(null);
+    entry.setError(null);
+    entry.setReceipt(null);
+    entry.setFromOrder({ status: "loaded", orderId });
   } catch (issue) {
     // Only a confirmed NOT_FOUND means "no such order"; anything else (400 included) can be retried.
     const missing = (issue as MasterDataFailure | undefined)?.detail?.code === "NOT_FOUND";
-    setFromOrder({ status: missing ? "notFound" : "failed", orderId });
+    entry.setFromOrder({ status: missing ? "notFound" : "failed", orderId });
   } finally {
-    setBusy(false);
+    entry.setBusy(false);
   }
 }
 
 async function runPreview(entry: InvoiceEntryContext, event: FormEvent) {
-  const { command, serialized, locked, setBusy, setError, setReceipt, setPreview } = entry;
   event.preventDefault();
-  if (locked) return;
-  setBusy(true);
-  setError(null);
-  setReceipt(null);
+  if (entry.locked) return;
+  entry.setBusy(true);
+  entry.setError(null);
+  entry.setReceipt(null);
   try {
     const value = await masterRequest("/api/v1/trade/invoices/preview", tradeInvoicePreviewSchema, {
       method: "POST",
-      body: command,
+      body: entry.command,
     });
-    setPreview({ value, command: serialized });
+    entry.setPreview({ value, command: entry.serialized });
   } catch (issue) {
-    setPreview(null);
-    setError(failure(issue));
+    entry.setPreview(null);
+    entry.setError(failure(issue));
   } finally {
-    setBusy(false);
+    entry.setBusy(false);
   }
 }
 
 async function postInvoice(entry: InvoiceEntryContext, request: Pending) {
-  const { client, company, firstField, setBusy, setError, setRetry, setPending } = entry;
-  const { setReceipt, setPreview, setFromOrder, setDraft, setDocumentId, setDirty } = entry;
-  setBusy(true);
-  setError(null);
-  setRetry(false);
+  entry.setBusy(true);
+  entry.setError(null);
+  entry.setRetry(false);
   try {
     const value = await masterRequest("/api/v1/trade/invoices", tradeInvoiceReceiptSchema, {
       method: "POST",
@@ -206,30 +189,30 @@ async function postInvoice(entry: InvoiceEntryContext, request: Pending) {
         confirmation: "POST",
       },
     });
-    setReceipt(value);
-    setPending(null);
-    setPreview(null);
-    setFromOrder(null);
-    setDraft(blankDraft());
-    setDocumentId(crypto.randomUUID());
-    setDirty(false);
-    void client.invalidateQueries({ queryKey: ["trade-invoices", company.code] });
-    firstField.current?.focus();
+    entry.setReceipt(value);
+    entry.setPending(null);
+    entry.setPreview(null);
+    entry.setFromOrder(null);
+    entry.setDraft(blankDraft());
+    entry.setDocumentId(crypto.randomUUID());
+    entry.setDirty(false);
+    void entry.client.invalidateQueries({ queryKey: ["trade-invoices", entry.company.code] });
+    entry.firstField.current?.focus();
   } catch (issue) {
     if (uncertain(issue)) {
-      setRetry(true);
-      setError({ key: "tinv.uncertain", path: null });
+      entry.setRetry(true);
+      entry.setError({ key: "tinv.uncertain", path: null });
     } else {
-      setPending(null);
-      setError(failure(issue));
+      entry.setPending(null);
+      entry.setError(failure(issue));
     }
   } finally {
-    setBusy(false);
+    entry.setBusy(false);
   }
 }
 
 function confirmInvoice(entry: InvoiceEntryContext) {
-  const { preview, stale, locked, company, draft, documentId, dirty, setError, setPending } = entry;
+  const { preview, stale, locked, company, draft, documentId, dirty } = entry;
   if (!preview || stale || locked) return;
   const request = {
     command: JSON.parse(preview.command) as TradeInvoiceCommandDto,
@@ -238,10 +221,10 @@ function confirmInvoice(entry: InvoiceEntryContext) {
   };
   // D7: the original envelope must be durable before the request can reach the server.
   if (!storeSaved(company.code, { draft, documentId, dirty, pending: request })) {
-    setError({ key: "tinv.storageFailed", path: null });
+    entry.setError({ key: "tinv.storageFailed", path: null });
     return;
   }
-  setPending(request);
+  entry.setPending(request);
   void postInvoice(entry, request);
 }
 
