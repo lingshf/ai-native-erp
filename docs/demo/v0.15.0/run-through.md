@@ -5,6 +5,7 @@
 ## 1 做了什么
 
 - 基线：本分支提交 `b485c4f1f603311112a0367f3f3fc6a577291661`（`status=[]`，工作区干净；其上只有 docs 提交，产品代码基线 main `00d1ed4`）。
+- 说明：演练之后本分支 rebase 到了 main `93d5b04`（#268），`b485c4f` 只存在于本机和演练日志中；三个脚本在 rebase 后路径不变，`git rev-parse HEAD:<路径>` 的 blob 与 §3 表一致（已核对），演练用的就是这些文件内容。
 - 命令（外层 `powershell.exe -NoProfile -Command "pwsh -NoProfile -File ... ; exit $LASTEXITCODE"`），**手动 1 次**，无重试：
   `pwsh -NoProfile -File scripts\slot\slot-run.ps1 -OutDir <临时目录，仓库外> -StepsFile docs\demo\v0.15.0\scripts\steps-demo16.ps1 -Ports 4203 -Stub pass`
 - 结果：退出码 **0**。日志 [`logs/slot-summary-stub.log`](logs/slot-summary-stub.log)（UTC 2026-11-23 19:58）：
