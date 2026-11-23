@@ -1758,8 +1758,9 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
           expect(await onRegion()).toBe(true);
           // D360: each ArrowRight may start a smooth-scroll animation (headless Chromium on CI), and
           // rapid presses cancel each other. After every press wait until scrollLeft has settled
-          // (unchanged for 3 animation frames, or no movement within 30 frames); stop at the end
-          // or when a press makes no progress, then poll for the final position.
+          // (unchanged for 3 animation frames, or no movement within 30 frames, or a 1 s wall-clock
+          // cap so it returns even if rAF never fires); stop at the end or when a press makes no
+          // progress, then poll for the final position.
           const settle = (from: number) =>
             region.evaluate(
               (element, start) =>
@@ -1767,12 +1768,21 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
                   let last = element.scrollLeft;
                   let same = 0;
                   let frames = 0;
+                  let done = false;
+                  const finish = () => {
+                    if (done) return;
+                    done = true;
+                    clearTimeout(timer);
+                    resolve(element.scrollLeft);
+                  };
+                  const timer = setTimeout(finish, 1000);
                   const tick = () => {
+                    if (done) return;
                     const now = element.scrollLeft;
                     frames++;
                     same = now === last ? same + 1 : 0;
                     last = now;
-                    if ((now !== start && same >= 3) || frames >= 30) resolve(now);
+                    if ((now !== start && same >= 3) || frames >= 30) finish();
                     else requestAnimationFrame(tick);
                   };
                   requestAnimationFrame(tick);
@@ -1782,9 +1792,10 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
           const maximum = () =>
             region.evaluate((element) => element.scrollWidth - element.clientWidth);
           let presses = 0;
-          for (let position = await settle(-1); presses < 100; presses++) {
+          for (let position = await settle(-1); presses < 100; ) {
             if (position >= (await maximum()) - 1) break;
             await page.keyboard.press("ArrowRight");
+            presses++;
             const next = await settle(position);
             if (next === position) break;
             position = next;
