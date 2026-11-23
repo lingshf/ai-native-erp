@@ -111,11 +111,13 @@ export function fixture(t: FixtureContext, journals = history) {
   } finally {
     source.close();
   }
-  const entry = f.manifest.ledgers.enterprise,
+  // legacy-fixture.mjs is plain JS, so tsc infers its manifest.ledgers as `{}`.
+  const manifest = f.manifest as ConstructorParameters<typeof LegacyImportSnapshot>[1];
+  const entry = manifest.ledgers.enterprise,
     bytes = readFileSync(join(f.target, entry.file));
   entry.bytes = bytes.length;
   entry.sha256 = createHash("sha256").update(bytes).digest("hex");
-  const snapshot = new LegacyImportSnapshot(f.target, f.manifest);
+  const snapshot = new LegacyImportSnapshot(f.target, manifest);
   f.readers.push(snapshot);
   return { ...f, snapshot };
 }
