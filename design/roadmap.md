@@ -95,6 +95,21 @@ S5（v0.5.0）：`styles.css` 全局元素规则收尾，评审与回顾见 [rev
   - PR 正文须有“可读性”一节：逐条说明 ①–⑥；② 列出新写或重写的、超过 60 行的函数及其计数行数与最深层数；③ 贴热点文件的 `git diff --numstat` 行。
 - **完成定义（DoD）补充：证明附原文**（S13 回顾行动 6，D456）：PR 正文中证明类验收（等价、字节、耗时、计数、检索为 0 等）附所用脚本原文与未截断的输出，或链接到固定修订（gist 的 commit、PR 提交中的文件）；只写结论或计数不算附证据，评审可据此标为“待证据”。
 - **送审阶段与打回计数**（S12 回顾行动 6，D451）：PR 正文写明送审阶段，“静态评审（证据待补）”或“完整送审”。评审对静态评审可只给静态结论；只缺证据（时段证据、实际 base 的测量）的轮次单独记为“待证据”，不计作打回。自 S14 起，Sprint 评审分开统计“打回”与“待证据”；S13 及以前的打回数是旧口径，不与新口径混用。
+- **评审计数可重放**（S14 回顾行动 5，D460）：Sprint 评审中的打回、待证据、时段与 main Full 计数，用下列命令生成原始列表，命令与时间范围写进评审文档；同一事实只在一处写全，其他处链接；全称说法（“全部”“没有”“首次”）附出处。
+  - **评审轮次**：`gh api --paginate repos/lingshf/ai-native-erp/pulls/<n>/reviews --jq '.[] | "=== \(.id) \(.commit_id[0:7]) \(.submitted_at)\n\(.body)"'`，输出每轮的完整正文。评审状态都是 COMMENTED，结论看正文首行 `VERDICT:`，理由在正文中（第二行常只是绑定的 SHA）。`CHANGES_REQUESTED` 的轮次，评审文档逐条注明“打回”或“待证据”（D451：只缺构建来源、时段证据或实际 base 测量的记为待证据，如 #238 的 6024524851；需要改内容的记为打回，如 #243），并链接该评审。
+  - **main Full**：先从评审的“范围”列出归属本 Sprint 的 PR，取它们的合并 SHA，再只统计 `headSha` 在这个集合里的 push 运行。按日期窗口统计不行，窗口内可能有别的 Sprint 的 PR（S14 窗口内有 S13 的 #236、#239）。PowerShell：
+
+    ```powershell
+    $prs  = 234,237,238,240,241,242,243,244,245,246   # 评审“范围”中的 PR
+    $shas = foreach ($n in $prs) { gh pr view $n -R lingshf/ai-native-erp --json mergeCommit --jq .mergeCommit.oid }
+    $runs = gh run list -R lingshf/ai-native-erp -w full.yml -b main -e push -L 200 --json databaseId,headSha,conclusion |
+      ConvertFrom-Json | Where-Object { $shas -contains $_.headSha }
+    $runs | ForEach-Object { "$($_.databaseId) $($_.headSha.Substring(0,7)) $($_.conclusion)" }
+    $runs | Group-Object conclusion | ForEach-Object { "$($_.Name)=$($_.Count)" }
+    ```
+
+    `-L 200` 必须写（默认只取最近 20 条），并且要覆盖到 Sprint 的第一个合并。核对：运行条数等于 SHA 个数，每个 SHA 恰好一条；某个 SHA 有重跑时，按 SHA 列出每次重跑，取最后一次结论；没有运行的 SHA 单独列出。S14 实测：10 个 SHA，10 条运行，success 8、cancelled 2。cancelled 按上文“Full 被取消时”写明由哪个后续 SHA 覆盖。
+  - **时段**：Demo 时段的运行日志归档在 `docs/demo/<版本>/logs/slot-summary.log`（同目录还有 `processes.tsv` 与预检日志）。每次运行以一行 `runner start head=…` 开始，以 `runner done` 结束；计数用 `git grep -c "runner start" -- "docs/demo/*/logs/slot-summary.log"`，结果用 `git grep -h -E "runner (start|done)|preflight head exit=|step .* exit=" -- <日志>`。目前只归档被采用的那次运行，被放弃的尝试只记在该版本 `README.md` 的运行经过里（如 v0.13.0 第 1、2 次），开发任务的时段日志在 PR 正文或证据 gist；这些按出处计数，注明“自述，未归档日志”。
 - **合并检查清单**（v0.3.0 回顾）：
   - **合并前**（协调者逐项确认，任一不满足不合并）：
     1. 评审的 `commit_id` 等于 PR 当前 head，结论为通过，该 head 的 PR CI 为绿；
@@ -122,6 +137,7 @@ S5（v0.5.0）：`styles.css` 全局元素规则收尾，评审与回顾见 [rev
 - **E2E 独占时段**（S5 回顾，D115 / D118）：在 [E2E-01](tasks/E2E-01-concurrent-e2e-interference.md) 给出结论前，同一时间只有一个开发 session 跑真实 Chrome E2E、Playwright 截图或 vitest slow。**时段内整机独占**（D217 / D234，取代原先“其他 session 照常跑单测与构建”的口径）：其他 session 只能继续编辑代码与文档，不在本机跑 vitest（含单测）、biome、Playwright、浏览器或构建，验证一律交给 PR CI，直到协调者通知解除。持有者在时段首尾记录 `git rev-parse HEAD` 与 `git status --porcelain --untracked-files=all`，开跑前连续两次确认外部浏览器 / 测试进程为 0，运行中每 10 s 采样一次，结束时报告协调者。协调者在派发消息中给出排队位置。
   - **批时段前先停用、收齐回执**（S7 回顾行动项 1，D234）：独占时段（真实 Chrome 取证、Demo、整机测量）批给申请方之前，协调者向本机所有在岗会话下达“停用本机 vitest / biome / playwright / 浏览器 / 构建”，**收齐每个会话的“已停”回复后才批时段**；时段释放后由协调者统一通知解除。期间其他会话只能编辑，验证一律交给 PR CI（D217）。批准消息逐个列出本机所有在岗会话（含刚建的、plan 模式的、同一开发正在做其他任务的会话）及其“已停”回执；预检超时或采到外部进程时，报告写明是哪个进程（S11 回顾行动 4，D400）。
   - **时段内其他会话停用本地 node**（S12 回顾行动 1，D442）：从批准到协调者通知时段结束，其他会话不在本机运行任何 node 进程（npm、vite、tsc、biome、vitest，单测也算），只写文档、用 git / gh；推送并回报后、等 CI 期间也一样。批准消息与释放通知都点名这一条；各会话回报时写明“本地 node 进程已全部结束”。
+  - **时段申请附演练记录**（S14 回顾行动 4，D460）：申请消息附 `slot-run -Stub` 桩演练（及无浏览器演练）的命令、退出码与时间；协调者看到记录后才批准时段。Demo 模板中的对应条目由版本管理维护（`docs/demo/TEMPLATE.md`）。
   - **只允许手动单次运行**（S12 回顾行动 2，D444）：时段内每次运行都由申请方手动发起，一次运行对应一条批准；不写自动重试循环。每次运行后、交回时段前，列出并结束自己留下的后台 shell，在运行记录里写明。
   - **precheck 采到外部进程时先报告**（S7 回顾行动项 2，D234）：申请方在 precheck 或运行中采到外部浏览器 / 测试 / 构建进程，都报告其命令行与来源 worktree（不只是计数）。precheck 阶段采到的：由协调者找到对应会话处理后，申请方从头计数，不自行等待它消失后继续。运行中采到的：立即中止，本轮作废并保留日志，**不在原时段内重新开跑**；协调者处理干扰源、重新收齐“已停”回执后另批时段。
   - **开跑前静态检查为时段第一步**（S11 回顾行动 2，D400）：起浏览器、跑构建之前，对本次要跑的场景与取证脚本做 tsc 与 TDZ 静态检查，输出写入时段日志；有基线外的发现就不开跑。[SLOT-02](tasks/S12.md#slot-02runner-开跑前静态检查与子进程环境) 合并后由 `scripts/slot/slot-run.ps1` 自动执行（退出码 6）；合并前由申请方按 D386 的做法手动执行，并把输出附在时段日志里。
