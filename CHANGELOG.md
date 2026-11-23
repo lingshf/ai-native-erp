@@ -8,9 +8,9 @@
 
 （暂无）
 
-## [0.13.1] - 待定
+## [0.13.1] - 2026-11-23
 
-> **发布候选（S14）**：tag 目标与发布日由协调者授权后写定，**尚未打 tag、尚未发布**。产品代码基线为 `main` `48ba245`（REFAC-06 [#242](https://github.com/lingshf/ai-native-erp/pull/242) 的合并提交；main Full run 45211228377 绿）。自 v0.13.0 的 tag（`9866728`）到 `48ba245`，`packages/` 下 29 个文件（+2765/−2651），`scripts/` 下无变化（已核对）。**tag 目标**按 D21 / D398：打在 RC / Demo PR 的 squash 提交上之前，须核对 `git diff 48ba245 <目标> -- packages scripts` 为空。
+> **已发布**：tag `v0.13.1`（annotated，tag 对象 `5feb803b…`）打在 `002c237`（Demo [#245](https://github.com/lingshf/ai-native-erp/pull/245) 的 squash 提交），`git diff 48ba245 002c237 -- packages scripts` 为空（已核对，D21 / D398），产品代码与 `48ba245` 相同；发布日 2026-11-23。Release：<https://github.com/lingshf/ai-native-erp/releases/tag/v0.13.1>。完整变更对比：[v0.13.0...v0.13.1](https://github.com/lingshf/ai-native-erp/compare/v0.13.0...v0.13.1)。Demo（真实 Chrome，7 个页面 × 中英文共 14 张，证明拆分后正常渲染，非逐像素对比）在 tag 内：[docs/demo/v0.13.1](docs/demo/v0.13.1/README.md)。产品代码基线为 `main` `48ba245`（REFAC-06 [#242](https://github.com/lingshf/ai-native-erp/pull/242) 的合并提交；main Full run 45211228377 绿）。自 v0.13.0 的 tag（`9866728`）到 `48ba245`，`packages/` 下 29 个文件（+2765/−2651），`scripts/` 下无变化（已核对）。
 
 S14 Sprint：三项只搬移的重构和一项测试夹具类型修正。**没有用户可见的功能变化**；无迁移（仍为 019），无依赖变化，不改过账规则。按 SemVer 取 patch（0.13.0 → 0.13.1）。
 
@@ -549,7 +549,8 @@ M1 贸易里程碑完成（M1-01..07，M1-R 评审通过，无阻塞项）。产
 - 旧快照未配置提示、凭证空列表文案和根 README 迁移版本说明已在 v0.2.0 修复（见 `[0.2.0]`）；v0.1.0 原发布基线不包含这些修复。
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
-[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.13.1...HEAD
+[0.13.1]: https://github.com/lingshf/ai-native-erp/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/lingshf/ai-native-erp/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/lingshf/ai-native-erp/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/lingshf/ai-native-erp/compare/v0.10.0...v0.11.0
