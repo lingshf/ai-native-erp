@@ -57,7 +57,8 @@ for (let i = start + 1; i < roadmap.length; i++) {
 }
 if (!table.size) fatal(`no SR-… rows in the 进程采样规则 table of ${opts.roadmap}`);
 
-// ---- Code: decision exits, found by structure (not by their tags), in the three decision functions.
+// ---- Code: decision exits, found by structure (not by their tags), in the decision functions.
+const RETURNING_DECIDERS = ["Get-Owner", "Get-UnreadableOwner", "Get-SystemExclusion"];
 const code = readFileSync(opts.code, "utf8").split(/\r?\n/);
 const idRe = /\bSR-[A-Z]+\d+\b/g;
 const exits = [];
@@ -66,10 +67,11 @@ code.forEach((line, i) => {
   const f = /^function\s+([\w-]+)/.exec(line);
   if (f) fn = f[1];
   else if (/^\S/.test(line) && !line.startsWith("}")) fn = null;
-  if (!["Get-Owner", "Get-SystemExclusion", "Counted"].includes(fn)) return;
+  if (![...RETURNING_DECIDERS, "Counted"].includes(fn)) return;
   const body = line.replace(/#.*$/, "");
   let kind = null;
-  if (fn !== "Counted" && /\breturn\b(?!\s*(\$null\b|$|;|\}))/.test(body)) kind = "return";
+  if (RETURNING_DECIDERS.includes(fn) && /\breturn\b(?!\s*(\$null\b|$|;|\}))/.test(body))
+    kind = "return";
   else if (fn === "Counted") {
     if (/\bcontinue\b/.test(body)) kind = "continue";
     else if (/@\{\s*Kind\s*=/.test(body)) kind = "verdict";

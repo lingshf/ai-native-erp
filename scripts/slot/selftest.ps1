@@ -1,4 +1,4 @@
-# Self-test of procs.ps1 (rule version R1, roadmap §5 "进程采样规则"). Windows only; run by hand, not in CI.
+# Self-test of procs.ps1 (rule version R2, roadmap §5 "进程采样规则"). Windows only; run by hand, not in CI.
 #   pwsh -File scripts/slot/selftest.ps1 [-OutDir DIR_OUTSIDE_REPO] [-ReferenceProcs KIT_PROCS_PS1]
 # Part 1, the D316 kit's 27 checks (cases A-W), unchanged, each now also asserting the rule id:
 # D311/D314 candidate and ownership rules with stand-in processes (no real tsc / vite / browser). Cases K-P: this
@@ -72,8 +72,8 @@ function Copy-Snap([object[]] $snap) { @($snap | Select-Object ProcessId, Parent
 # $ever/$refEver are this scenario's runner trees (SR-R1); both are extended in place, as across real samples.
 function Judge([string] $label, [object[]] $snap, [hashtable] $ever, [hashtable] $refEver) {
   $refSnap = Copy-Snap $snap
-  $saved = $script:ever; $script:ever = $ever
-  try { $hits = Counted -All $snap } finally { $script:ever = $saved }
+  $saved = $script:ever, $script:foreignSeen; $script:ever = $ever; $script:foreignSeen = @{}  # D411 memory: fresh per call, as the kit has none
+  try { $hits = Counted -All $snap } finally { $script:ever, $script:foreignSeen = $saved }
   $state = @{}
   foreach ($h in $hits) { $state[[int]$h.ProcessId] = @('counted', $h.Rule, $h.Owner) }
   foreach ($x in $script:lastExcluded) { $state[[int]$x.ProcessId] = @('excluded', $x.Rule, $x.Owner) }
@@ -236,6 +236,21 @@ Case 'SR-C2' '-' 'parent younger than the child (PID reuse) is not walked into' 
 # SR-C3: unreadable command line counted without the walk.
 Case 'SR-C3' '+' 'unreadable command line, executable in another repository: counted, not walked' @((P 30 4 'node.exe' $null "$foreign\node.exe" 0)) 30 'counted' 'SR-C3' '*command line unreadable*'
 Case 'SR-C3' '-' 'same process with a readable command line: walked and excluded' @((P 31 4 'node.exe' "`"$foreign\node.exe`" x.js" "$foreign\node.exe" 0)) 31 'excluded' 'SR-X1'
+
+# SR-X1 carry-over (R2, D411): two samples of one run; the second has the command line unreadable. Counted is called
+# directly because the D316 kit (EQUIV) keeps no verdicts across samples.
+function TwoSamples([string] $sign, [string] $what, [object[]] $first, [object] $second, [string] $want, [string] $wantRule) {
+  $saved = $script:ever, $script:foreignSeen; $script:ever = @{}; $script:foreignSeen = @{}
+  try { $null = Counted -All $first; $hits = Counted -All @($second) } finally { $script:ever, $script:foreignSeen = $saved }
+  $got = if ($hits.Count) { @('counted', $hits[0].Rule, $hits[0].Owner) } elseif ($script:lastExcluded.Count) { @('excluded', $script:lastExcluded[0].Rule, $script:lastExcluded[0].Owner) } else { @('not-a-candidate', '', '') }
+  Check "SR-X1$sign D411 $what" ($got[0] -eq $want -and $got[1] -eq $wantRule) "want=$want $wantRule got=$($got[0]) $($got[1]) [$($got[2])]"
+}
+$foreignCl = "`"$nodeExe`" `"$foreign\x.js`""
+TwoSamples '+' 'judged foreign, then unreadable with the same creation time: still excluded' @((P 32 4 'node.exe' $foreignCl $nodeExe 0)) (P 32 4 'node.exe' $null $nodeExe 0) 'excluded' 'SR-X1'
+TwoSamples '-' 'judged foreign, then unreadable with another creation time (PID reuse): counted' @((P 33 4 'node.exe' $foreignCl $nodeExe 0)) (P 33 4 'node.exe' $null $nodeExe 7) 'counted' 'SR-C3'
+$noTime = P 34 4 'node.exe' $null $nodeExe 0; $noTime.CreationDate = $null
+TwoSamples '-' 'judged foreign, then unreadable without a creation time: counted' @((P 34 4 'node.exe' $foreignCl $nodeExe 0)) $noTime 'counted' 'SR-C3'
+TwoSamples '-' 'never judged foreign (first sample unknown ownership), then unreadable: counted' @((P 35 4 'node.exe' "`"$nodeExe`" `"$nogit\sleep.js`"" $nodeExe 0)) (P 35 4 'node.exe' $null $nodeExe 0) 'counted' 'SR-C3'
 
 # SR-X1: other-repository evidence at the nearest level.
 Case 'SR-X1' '+' 'node with an other-repository script' @((P 40 4 'node.exe' "`"$nodeExe`" `"$foreign\tsc`"" $nodeExe 0)) 40 'excluded' 'SR-X1'

@@ -112,11 +112,12 @@ function Get-TdzFixtureResults([string] $SlotDir, [string] $WorkDir) {
 
 # A throw-away git repository (outside this one) holding only what the preflight reads before its tools: a copy of
 # tsconfig.preflight.json, the baseline text ($null: no baseline) and, with -WithPreflight, a copy of preflight.mjs.
-function New-PreflightTempRoot([string] $SlotDir, [string] $Path, [AllowNull()] [string] $BaselineText, [switch] $WithPreflight) {
+function New-PreflightTempRoot([string] $SlotDir, [string] $Path, [string] $BaselineText, [switch] $WithPreflight) {
   $slot = Join-Path $Path 'scripts\slot'
   New-Item -ItemType Directory -Force $slot | Out-Null
   Copy-Item (Join-Path $SlotDir 'tsconfig.preflight.json') $slot
-  if ($null -ne $BaselineText) { Set-Content (Join-Path $slot 'preflight-baseline.json') $BaselineText }
+  # [string] turns $null into '', so an empty $BaselineText means "no baseline file".
+  if ($BaselineText) { Set-Content (Join-Path $slot 'preflight-baseline.json') $BaselineText }
   if ($WithPreflight) { Copy-Item (Join-Path $SlotDir 'preflight.mjs'), (Join-Path $SlotDir 'preflight') $slot -Recurse }
   git -C $Path init --quiet 2>&1 | Out-Null
   git -C $Path add --all 2>&1 | Out-Null

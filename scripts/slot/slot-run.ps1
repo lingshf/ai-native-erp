@@ -1,6 +1,6 @@
 # Exclusive-slot runner (roadmap §5 "E2E 独占时段"; from the D316 GATE-01 kit, gist 4e00af7, SLOT-01).
 #   pwsh -File scripts/slot/slot-run.ps1 -OutDir DIR_OUTSIDE_REPO -StepsFile STEPS.ps1 [-BaseRoot BASE_WORKTREE] [-PreflightFiles PATH,...]
-# Sampling rules: version R1 of roadmap §5 "进程采样规则", implemented in procs.ps1.
+# Sampling rules: version R2 of roadmap §5 "进程采样规则", implemented in procs.ps1.
 # Counted process: any process outside this runner's own process tree whose image name is applicable
 # (node, cmd, any Chrome or Edge, vite, esbuild, biome, tsc, npm, npx; D314: no command-line prefilter;
 # an unreadable command line counts as unknown ownership), unless procs.ps1 attributes it to a repository
@@ -30,7 +30,7 @@ $OutDir = [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolv
 $StepsFile = [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($StepsFile))
 if ($BaseRoot) { $BaseRoot = [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BaseRoot)) }
 $PreflightFiles = @($PreflightFiles | ForEach-Object { [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($_)) })
-# Candidate pattern, ownership rules and Counted (rule version R1) live in procs.ps1.
+# Candidate pattern, ownership rules and Counted (rule version R2) live in procs.ps1.
 . (Join-Path $PSScriptRoot 'procs.ps1')
 . (Join-Path $PSScriptRoot 'step-env.ps1')
 # Logs and slot data never go into the repository (SLOT-01); keep the directory and archive it, do not delete it.
