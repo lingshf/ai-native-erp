@@ -8,9 +8,9 @@
 
 （暂无）
 
-## [0.14.0] - 发布候选（尚未发布，日期待定）
+## [0.14.0] - 2026-11-23
 
-> **发布候选**：尚未打 tag。产品代码基线为 `main` `94aefc2`（REFAC-06c [#256](https://github.com/lingshf/ai-native-erp/pull/256) 的合并提交，S15 五项全部已合并；该提交的 main Full run 45230507382 绿）；上一个提交 `bfeccb7`（TINV-09 [#250](https://github.com/lingshf/ai-native-erp/pull/250)）的 main Full run 45227250621 绿。tag 目标按 D21 为本 RC 与 Demo 合并后的提交，发布前核对 `git diff <基线> <tag 目标> -- packages scripts` 为空。
+> **已发布**：tag `v0.14.0`（annotated，tag 对象 `8fd8940635cc821c0e60e7cdd42e74c481704844`）打在 `f325792`（#264：`release/v0.14.0` 上的 DEMO-15 文档与截图，D473 / D479），不在 main 上；发布日 2026-11-23。Release：<https://github.com/lingshf/ai-native-erp/releases/tag/v0.14.0>。完整变更对比：[v0.13.1...v0.14.0](https://github.com/lingshf/ai-native-erp/compare/v0.13.1...v0.14.0)。`git diff 94aefc2 f325792 -- packages scripts` 为空（已核对），tag 提交以 `072a575` 为祖先（退出码 0），不含 TORD-08（`fe371bf`，退出码 1）与 SLOT-03（`33d5068`，退出码 1）。产品代码基线为 `main` `94aefc2`（REFAC-06c [#256](https://github.com/lingshf/ai-native-erp/pull/256) 的合并提交，S15 五项全部已合并；该提交的 main Full run 45230507382 绿）；上一个提交 `bfeccb7`（TINV-09 [#250](https://github.com/lingshf/ai-native-erp/pull/250)）的 main Full run 45227250621 绿。Demo（12 张截图，6 页 × 中英文，证明页面正常渲染，非逐像素对比）在 tag 内：[docs/demo/v0.14.0](https://github.com/lingshf/ai-native-erp/blob/v0.14.0/docs/demo/v0.14.0/README.md)。
 
 S15 Sprint：一项用户可见的功能变化（TINV-09）、一处按钮文案修正（JV-FIX-01）、一项开发流程变化（CI-02）和重构。按 SemVer 取 minor（0.13.1 → 0.14.0），因为 TINV-09 改变订单的已开票数量与开票状态；**有迁移（019 → 020，只重算已保存的开票状态，不改表结构）**，无依赖变化，不改过账规则、贷项金额与数量上限。
 
@@ -578,7 +578,8 @@ M1 贸易里程碑完成（M1-01..07，M1-R 评审通过，无阻塞项）。产
 - 旧快照未配置提示、凭证空列表文案和根 README 迁移版本说明已在 v0.2.0 修复（见 `[0.2.0]`）；v0.1.0 原发布基线不包含这些修复。
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
-[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.13.1...HEAD
+[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/lingshf/ai-native-erp/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/lingshf/ai-native-erp/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/lingshf/ai-native-erp/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/lingshf/ai-native-erp/compare/v0.11.0...v0.12.0
