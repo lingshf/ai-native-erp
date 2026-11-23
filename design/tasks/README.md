@@ -62,8 +62,8 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 | [M2-03b](M2-03b-legacy-opening-open-items.md) | 旧账 AP/AR 期初未结项导入与核对口径（D25） | M2-03, M1-06 | legacy-import, domain-posting, storage, admin-cli, web-ui:trade | done | [#63](https://github.com/lingshf/ai-native-erp/pull/63) |
 | [M2-04](M2-04-legacy-reconciliation.md) | 迁移核对报告（首批，现行 `tradeReconciliation` + 期初门禁 fail-closed，D26） | M2-03 | — | done | [#59](https://github.com/lingshf/ai-native-erp/pull/59) |
 | [M2-04b](M2-04-legacy-reconciliation.md#跟进-m2-04bd25d26) | M2-04 跟进：贸易子账按 P 公式核对、期初负例（D25/D26） | M2-04, M2-03b | — | done | [#70](https://github.com/lingshf/ai-native-erp/pull/70) |
-| [M2-05a](S13.md#m2-05a迁移虚构端到端演练与操作手册) | M2-05 中不需授权的部分：`legacy-import --dry-run` 接入 CLI、虚构端到端演练进 Full、迁移链路 Bench、操作手册（S13） | M2-01, M2-04b | admin-cli（只改 `storage-admin-main.mjs` 参数解析与分派）, bench/CI, docs/runbook | todo | |
-| [M2-05b](M2-05b-opening-batched-write.md) | 期初未结项分批写入：明细落临时库暂存表、按批读写，期初阶段仍为单事务（M2-03b 原子性不变）；J6 导入峰值 RSS ≤ 512 MiB，关闭 KG（D434） | M2-05a | legacy-import（`opening-items.ts`、`legacy-import.ts`、可选新 `opening-staging.ts` 及两份现有测试）、bench 开关（只删 KG 一项）、docs/runbook（只改 KG 两处） | todo | |
+| [M2-05a](S13.md#m2-05a迁移虚构端到端演练与操作手册) | M2-05 中不需授权的部分：`legacy-import --dry-run` 接入 CLI、虚构端到端演练进 Full、迁移链路 Bench、操作手册（S13） | M2-01, M2-04b | admin-cli（只改 `storage-admin-main.mjs` 参数解析与分派）, bench/CI, docs/runbook | done | [#227](https://github.com/lingshf/ai-native-erp/pull/227)（`69cd9ce`） |
+| [M2-05b](M2-05b-opening-batched-write.md) | 期初未结项分批写入：明细落临时库暂存表、按批读写，期初阶段仍为单事务（M2-03b 原子性不变）；J6 导入峰值 RSS ≤ 512 MiB，关闭 KG（D434） | M2-05a | legacy-import（`opening-items.ts`、`legacy-import.ts`、可选新 `opening-staging.ts` 及两份现有测试）、bench 开关（只删 KG 一项）、docs/runbook（只改 KG 两处） | done | [#232](https://github.com/lingshf/ai-native-erp/pull/232)（`1c88243`） |
 | [M2-05](M2-05-migration-rehearsal.md) | 隔离试迁移演练与操作手册（M2-05a 之后只剩真实演练，待决定 A / C） | M2-05a；决定 A / C | bench/CI, docs/runbook | todo | |
 | [M2-06](M2-06-controlled-cutover.md) | 受控切换与回退 | M2-05 | admin-cli, docs/runbook | todo | |
 | [M2-R](M2-R-milestone-review.md) | M2 里程碑评审 + 测试审计（设计角色） | M2-06 | — | todo | |
@@ -628,17 +628,33 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [M2-05a](S13.md#m2-05a迁移虚构端到端演练与操作手册) | 迁移虚构端到端演练（快照 → dry-run → 导入含期初 → 确认 → 备份校验 → 只读核对，进 Full ≤ 60s）、`legacy-import --dry-run` 接入 CLI、迁移链路 Bench、操作手册 `docs/migration-runbook.md` | 工具 + 测试 + 文档 | P1 | M2-01、M2-04b；D417（限虚构夹具） | admin-cli（`storage-admin-main.mjs`）、bench/CI（`bench.yml`、`legacy-snapshot-windows.yml`、新 Bench 脚本）、docs/runbook（含 `docs/user/backup-and-legacy.md`、根 `README.md` 各一行链接）、新测试 `legacy-rehearsal.test.ts`、`storage-admin-cli.test.ts` 只追加；权重只追加一条 | 不加 | 不需要 | todo | — |
+| [M2-05a](S13.md#m2-05a迁移虚构端到端演练与操作手册) | 迁移虚构端到端演练（快照 → dry-run → 导入含期初 → 确认 → 备份校验 → 只读核对，进 Full ≤ 60s）、`legacy-import --dry-run` 接入 CLI、迁移链路 Bench、操作手册 `docs/migration-runbook.md` | 工具 + 测试 + 文档 | P1 | M2-01、M2-04b；D417（限虚构夹具） | admin-cli（`storage-admin-main.mjs`）、bench/CI（`bench.yml`、`legacy-snapshot-windows.yml`、新 Bench 脚本）、docs/runbook（含 `docs/user/backup-and-legacy.md`、根 `README.md` 各一行链接）、新测试 `legacy-rehearsal.test.ts`、`storage-admin-cli.test.ts` 只追加；权重只追加一条 | 不加 | 不需要 | done | [#227](https://github.com/lingshf/ai-native-erp/pull/227)（`69cd9ce`） |
 | [TORD-07](S13.md#tord-07订单筛选写入地址栏与小数格式化) | 订单筛选写入地址栏（只用 replace、非法整组忽略并提示，口径同 TINV-07）+ 订单详情数量 / 单价 / 折扣按语言分组 | 页面 | P2 | D418 | web-ui:trade-orders（`TradeOrders.tsx`、新增 `trade-order-link.ts`、`trade-order-labels.ts`、`trade-orders.css`、`trade-orders.test.tsx`、`docs/flows/trade-order-flow.md`）；不改 tests:trade-e2e 与契约 | 不加 | 不需要（比照 D375 / D406） | done | [#223](https://github.com/lingshf/ai-native-erp/pull/223)（`453b382`） |
-| [REFAC-01b](S13.md#refac-01b拆分-tradeguiscenario-函数体不改行为) | 拆分 `tradeGuiScenario` 函数体为按阶段的具名函数，不改行为（S11 回顾行动 7） | 重构（测试） | P2 | REFAC-01 已合并；D419 | tests:trade-e2e（`trade-gui-scenario.ts` 与新目录 `trade-gui/scenario/`），独占 | 不加 | 需要（L5 真实 Chrome；D419：排在 DEMO-12 截图之后） | todo | — |
-| [REFAC-03](S13.md#refac-03拆分-journalstsx只搬移不改行为) | 拆分 `Journals.tsx`：`CompanyJournals` 与共享组件按职责搬到 `src/journals/`，原文件保留全部导出，只搬移不改行为 | 重构（页面） | P2 | TORD-07 合并空出名额；D431 | web-ui:journals（`Journals.tsx` 与新目录 `src/journals/`）；导入方与测试不改 | 不加 | 不需要（比照 REFAC-02） | todo | — |
-| [M2-05b](M2-05b-opening-batched-write.md) | 期初未结项分批写入（单事务 + 内存分批，原子性同 M2-03b），J6 导入峰值 RSS ≤ 512 MiB，关闭 KG 恢复硬判定 | 性能修复（工具链） | P1 | M2-05a 的 PR #227 合并后才派发（同写 Bench 脚本与手册，串行）；D434 | legacy-import（`opening-items.ts`、`legacy-import.ts`、可选新 `opening-staging.ts`、两份现有测试只追加或改写）、bench 开关（`bench-migration-rehearsal.mjs` 只删 KG 一项）、docs/runbook（只改 KG 两处） | 不加 | 不需要 | todo | — |
-| [REFAC-03b](REFAC-03b-company-journals-split.md) | 拆分 `CompanyJournals` 函数体（约 1030 行）为自定义 Hook 与无 Hook 展示组件，按 ② 每函数 ≤ 80 行，不改行为（REFAC-03 候选池） | 重构（页面） | P2 | REFAC-03 已合并（#226，`e8ef434`）；D438 | web-ui:journals（只改 `journals/company-journals.tsx`，并在 `journals/` 下新增文件）；`Journals.tsx`、`dialogs.tsx`、`virtual-rows.tsx` 与测试不改 | 不加 | 不需要（jsdom 既有用例 + P4 逐步 DOM / 焦点 / 请求等价） | todo | — |
+| [REFAC-01b](S13.md#refac-01b拆分-tradeguiscenario-函数体不改行为) | 拆分 `tradeGuiScenario` 函数体为按阶段的具名函数，不改行为（S11 回顾行动 7） | 重构（测试） | P2 | REFAC-01 已合并；D419 | tests:trade-e2e（`trade-gui-scenario.ts` 与新目录 `trade-gui/scenario/`），独占 | 不加 | 需要（L5 真实 Chrome；D419：排在 DEMO-12 截图之后） | done | [#224](https://github.com/lingshf/ai-native-erp/pull/224)（`ef0de69`） |
+| [REFAC-03](S13.md#refac-03拆分-journalstsx只搬移不改行为) | 拆分 `Journals.tsx`：`CompanyJournals` 与共享组件按职责搬到 `src/journals/`，原文件保留全部导出，只搬移不改行为 | 重构（页面） | P2 | TORD-07 合并空出名额；D431 | web-ui:journals（`Journals.tsx` 与新目录 `src/journals/`）；导入方与测试不改 | 不加 | 不需要（比照 REFAC-02） | done | [#226](https://github.com/lingshf/ai-native-erp/pull/226)（`e8ef434`） |
+| [M2-05b](M2-05b-opening-batched-write.md) | 期初未结项分批写入（单事务 + 内存分批，原子性同 M2-03b），J6 导入峰值 RSS ≤ 512 MiB，关闭 KG 恢复硬判定 | 性能修复（工具链） | P1 | M2-05a 的 PR #227 合并后才派发（同写 Bench 脚本与手册，串行）；D434 | legacy-import（`opening-items.ts`、`legacy-import.ts`、可选新 `opening-staging.ts`、两份现有测试只追加或改写）、bench 开关（`bench-migration-rehearsal.mjs` 只删 KG 一项）、docs/runbook（只改 KG 两处） | 不加 | 不需要 | done | [#232](https://github.com/lingshf/ai-native-erp/pull/232)（`1c88243`） |
+| [REFAC-03b](REFAC-03b-company-journals-split.md) | 拆分 `CompanyJournals` 函数体（约 1030 行）为自定义 Hook 与无 Hook 展示组件，按 ② 每函数 ≤ 80 行，不改行为（REFAC-03 候选池） | 重构（页面） | P2 | REFAC-03 已合并（#226，`e8ef434`）；D438 | web-ui:journals（只改 `journals/company-journals.tsx`，并在 `journals/` 下新增文件）；`Journals.tsx`、`dialogs.tsx`、`virtual-rows.tsx` 与测试不改 | 不加 | 不需要（jsdom 既有用例 + P4 逐步 DOM / 焦点 / 请求等价） | done（P7 按 D439 放宽） | [#231](https://github.com/lingshf/ai-native-erp/pull/231)（`e84fa4c`） |
 | DEMO-13（无任务书） | v0.13.0 RC 与 Demo，验收见 [S13.md](S13.md#demo-13-验收) | 发布 | P1（Sprint 末） | 四个任务结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | 不加 | 需要（截图） | todo | — |
 
 - **并行**：M2-05a ∥ TORD-07 ∥ REFAC-01b 冲突域不相交，可同时派出；TORD-07 合并后空出的名额给 REFAC-03（web-ui:journals，与另两条不相交）；开发同时在岗不超过 3 人。只有 REFAC-01b 申请浏览器时段；M2-05a 与 TORD-07 不申请，但服从时段停用通知。共享单文件与交界规则见 [S13.md](S13.md#泳道)。
 - **追加 REFAC-03b**（D438）：#226 合并后空出的名额可以马上派；冲突域 web-ui:journals 与 M2-05a / M2-05b（legacy-import、Bench、手册）、REFAC-01b（tests:trade-e2e）都不相交；不进 DEMO-13 门禁。
 - **追加 M2-05b**（D434）：M2-05a 合并后有空名额即派；与 REFAC-01b、REFAC-03 不相交；不进 DEMO-13 门禁，S13 收尾前未派出则顺延为 S14 首项。
+- **S13 期间决定**：D439–D443 与 DEMO-12“开票列表 0 px 留白”发现的处置（判定不是缺陷）见 [S13.md](S13.md#s13-期间决定d439d443与-demo-12-处置)。
+
+## S14：共用件直接导入 + 订单页、发票页文件拆分（v0.14.0，草案）
+
+计划与任务书见 [S14.md](S14.md)。基线 main `ef0de69`（S13 五个开发任务均已合并）。S14 计划的决定编号待协调者给出。
+
+**不在本 Sprint**：M2-05 真实演练与 M2-06（仍待决定 A / B / C）；DEMO-12 的 0 px 留白发现（判定不是缺陷，不立任务）；订单页、发票页函数体拆分（REFAC-05b / REFAC-06c）与 `useInvoiceLeaveGuard` 直接导入（REFAC-06b）；多订单合并开票等交易候选；OQ-01 后续域；迁移（三个任务都不加，下一个可用编号仍为 020）。
+
+| ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [REFAC-04](S14.md#refac-04共用件直接从-journals-导入d439-方案-b) | 业务事件、总账报表、期末结账、贸易报表直接从 `journals/*` 导入共用件，删掉 `Journals.tsx` 的再导出，`CompanyJournals` 不再进入非凭证路由（D439 方案 B） | 重构（页面导入） | P1 | REFAC-03b 已合并；D439 | web-ui:journals（`Journals.tsx`、`journals/dialogs.tsx`、`journals/virtual-rows.tsx` 只加样式导入）、web-ui:business-events 与三个报表页（只改 `import` 行）、`ledger-reports.test.tsx`（1 行） | 不加 | 不需要 | todo | — |
+| [REFAC-05](S14.md#refac-05拆分-tradeorderstsx只搬移不改行为) | 拆分 `TradeOrders.tsx`（1483 行）到 `src/trade-orders/`，只搬移不改行为 | 重构（页面） | P2 | 无 | web-ui:trade-orders（`TradeOrders.tsx` 与新目录） | 不加 | 不需要 | todo | — |
+| [REFAC-06](S14.md#refac-06拆分-tradeinvoicestsx只搬移不改行为) | 拆分 `TradeInvoices.tsx`（1465 行）到 `src/trade-invoices/`，导出集合不变，只搬移不改行为 | 重构（页面） | P2 | 无 | web-ui:trade 发票页（`TradeInvoices.tsx` 与新目录）；导入方不改 | 不加 | 不需要 | todo | — |
+| DEMO-14（无任务书） | v0.14.0 RC 与 Demo，验收见 [S14.md](S14.md#demo-14-验收) | 发布 | P1（Sprint 末） | 三个任务结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | 不加 | 需要（截图） | todo | — |
+
+- **并行**：REFAC-04 ∥ REFAC-05 ∥ REFAC-06 冲突域两两不相交，可同时派出；开发同时在岗不超过 3 人。三个任务都不加迁移、不申请浏览器时段，但服从 D442 时段停用通知。时段顺序：DEMO-12 剩余 → DEMO-13 → DEMO-14，D444 时段内只允许手动单次运行。
 
 ## 派发顺序
 
