@@ -654,7 +654,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [REFAC-06](S14.md#refac-06拆分-tradeinvoicestsx只搬移不改行为) | 拆分 `TradeInvoices.tsx`（1465 行）到 `src/trade-invoices/`，导出集合不变，只搬移不改行为 | 重构（页面） | P2 | 无 | web-ui:trade 发票页（`TradeInvoices.tsx` 与新目录）；导入方不改 | 不加 | 不需要 | todo | — |
 | DEMO-14（无任务书） | v0.14.0 RC 与 Demo，验收见 [S14.md](S14.md#demo-14-验收) | 发布 | P1（Sprint 末） | 三个任务结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | 不加 | 需要（截图） | todo | — |
 
-- **并行**：REFAC-04 ∥ REFAC-05 ∥ REFAC-06 冲突域两两不相交，可同时派出；开发同时在岗不超过 3 人。三个任务都不加迁移、不申请浏览器时段，但服从 D442 时段停用通知。时段顺序：DEMO-12 剩余 → DEMO-13 → DEMO-14，D444 时段内只允许手动单次运行。
+- **并行**：REFAC-04 ∥ REFAC-05 ∥ REFAC-06 冲突域两两不相交，可同时派出；开发同时在岗不超过 3 人。三个任务都不加迁移、不申请浏览器时段，但服从 D442 时段停用通知。时段顺序：DEMO-13 → DEMO-14（DEMO-12 已随 #233 合并），D444 时段内只允许手动单次运行。
 
 ## 派发顺序
 
