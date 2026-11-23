@@ -195,6 +195,7 @@ export function BusinessEvents({ preferences }: { preferences: Preferences }) {
     <section className="page business-events">
       <PageHeader
         title={t("business.title")}
+        description={t("business.description")}
         context={
           <div className="field">
             <label htmlFor="business-company">{t("master.company")}</label>

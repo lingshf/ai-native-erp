@@ -1,6 +1,8 @@
 export const journalEn = {
   "journal.editor": "Journal draft",
   "journal.title": "Journals",
+  "journal.description":
+    "Enter manual journal drafts, preview and confirm posting, then review or reverse posted journals.",
   "journal.teachingTitle": "How posting works",
   "journal.tabGeneral": "General",
   "journal.tabLines": "Lines",
@@ -96,6 +98,7 @@ export const journalEn = {
 export const journalZh: Record<keyof typeof journalEn, string> = {
   "journal.editor": "凭证草稿",
   "journal.title": "凭证",
+  "journal.description": "录入手工凭证草稿，预览并确认过账，再查看或反向已过账凭证。",
   "journal.teachingTitle": "过账流程",
   "journal.tabGeneral": "常规",
   "journal.tabLines": "分录行",

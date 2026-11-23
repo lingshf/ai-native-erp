@@ -96,6 +96,7 @@ export function Journals({ preferences }: { preferences: Preferences }) {
     <section className="page journals">
       <PageHeader
         title={t("journal.title")}
+        description={t("journal.description")}
         context={
           <>
             <div className="field">

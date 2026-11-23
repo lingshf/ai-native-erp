@@ -519,3 +519,51 @@ it("leaves focus on the page after a posting rule form closes by cancel or succe
   await waitFor(() => expect(create.matches(":disabled")).toBe(false));
   expect(document.activeElement).toBe(document.body);
 });
+
+it("shows the page description verbatim in zh and en whether teaching is off or on (UI-16)", async () => {
+  window.history.replaceState(null, "", "/#/events");
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn<typeof fetch>()
+      .mockImplementation(async (path) =>
+        new URL(String(path), "http://localhost").pathname === "/api/v1/companies"
+          ? response({ items: [company], nextCursor: null })
+          : response({ items: [], nextCursor: null }),
+      ),
+  );
+  const expected = {
+    zh: "维护服务、往来方与过账规则，录入业务事件并处理待转队列。",
+    en: "Maintain services, parties and posting rules, record business events and process the transfer queue.",
+  };
+  expect(Array.from(expected.zh).length).toBeLessThanOrEqual(40);
+  expect(expected.en.length).toBeLessThanOrEqual(120);
+  const { container } = render(<App />);
+  await screen.findByRole("heading", { level: 2, name: label("zh", "business.title") });
+  const assertHeader = (language: "zh" | "en", teaching: boolean) => {
+    const heading = screen.getByRole("heading", {
+      level: 2,
+      name: label(language, "business.title"),
+    });
+    const description = heading.nextElementSibling;
+    expect(description?.tagName).toBe("P");
+    expect(description?.textContent).toBe(expected[language]);
+    expect(label(language, "business.description")).toBe(expected[language]);
+    const tips = [...container.querySelectorAll("aside.teaching-tip")].filter(
+      (tip) => tip.getAttribute("aria-label") === label(language, "business.teachingTitle"),
+    );
+    expect(tips).toHaveLength(teaching ? 1 : 0);
+  };
+  const switchTo = (from: "zh" | "en", to: "zh" | "en") =>
+    fireEvent.change(screen.getByLabelText(label(from, "shell.language")), {
+      target: { value: to },
+    });
+  for (const teaching of [false, true]) {
+    if (teaching)
+      fireEvent.click(screen.getByLabelText(label("zh", "shell.showTeachingExplanations")));
+    assertHeader("zh", teaching);
+    switchTo("zh", "en");
+    assertHeader("en", teaching);
+    switchTo("en", "zh");
+  }
+});

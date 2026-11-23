@@ -73,6 +73,7 @@ export function Dimensions({ preferences }: { preferences: Preferences }) {
     <section className="page ui-master dimensions">
       <PageHeader
         title={t("dim.title")}
+        description={t("dim.description")}
         context={
           companies.data && (
             <>
