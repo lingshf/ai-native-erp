@@ -1,0 +1,5 @@
+utc	phase	pid	name	rule	reason	cmdline
+2026-11-23T19:42:33.185Z	precheck-4	1228	node.exe	SR-X6	SR-X6 unknown: command line unreadable, no D411 record; name=node.exe pid=1228 ppid=88264 created=2026-11-23T19:42:32.6080320Z exe=unreadable cwd=unreadable cmdline=[unreadable]	
+2026-11-23T19:42:33.185Z	precheck-4	92380	node.exe	SR-X6	SR-X6 unknown: command line unreadable, no D411 record; name=node.exe pid=92380 ppid=88264 created=2026-11-23T19:42:32.6275400Z exe=unreadable cwd=unreadable cmdline=[unreadable]	
+2026-11-23T19:42:33.185Z	precheck-4	85276	node.exe	SR-X6	SR-X6 unknown: command line unreadable, no D411 record; name=node.exe pid=85276 ppid=88264 created=2026-11-23T19:42:32.7328560Z exe=unreadable cwd=unreadable cmdline=[unreadable]	
+2026-11-23T19:42:58.842Z	precheck-6	89628	node.exe	SR-X6	SR-X6 unknown: command line unreadable, no D411 record; name=node.exe pid=89628 ppid=91464 created=2026-11-23T19:42:54.4583580Z exe=unreadable cwd=unreadable cmdline=[unreadable]	
