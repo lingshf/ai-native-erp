@@ -1,0 +1,8 @@
+## D362 checks 2026-11-22T20:33:20.9049883-08:00 branch HEAD f104ce89c63d770161306770ff705b060ec60446 + working tree; origin/main 4bf2dccecc4766e74d96c4ff1d49bb65e746b5c4
+Checked 1 file in 80ms. No fixes applied.
+biome exit 0
+
+> ai-native-erp@0.1.0 typecheck
+> tsc --noEmit -p tsconfig.json
+
+typecheck exit 0
