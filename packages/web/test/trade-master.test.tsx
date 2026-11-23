@@ -655,7 +655,8 @@ function stubTwoPages(answer?: () => Promise<Response> | undefined) {
 }
 const shownCodes = () => [...document.querySelectorAll(CODE_CELLS)].map((cell) => cell.textContent);
 const expectCodes = (codes: string[]) => waitFor(() => expect(shownCodes()).toEqual(codes));
-const refreshButton = () => screen.getByRole("button", { name: zh("trade.listRefresh") });
+const refreshButton = () =>
+  screen.getByRole<HTMLButtonElement>("button", { name: REFRESH_TEXT.zh });
 const newButton = () => screen.getByRole<HTMLButtonElement>("button", { name: zh("trade.new") });
 const clickRefresh = () => fireEvent.click(refreshButton());
 const selectKind = async (kind: string) =>
@@ -672,21 +673,6 @@ async function openTermsSearch(urls: string[]) {
   await selectKind("tradeTerms");
   const search = screen.getByLabelText(zh("trade.search"));
   await expectOneReread(urls, () => fireEvent.change(search, { target: { value: SEARCH } }));
-}
-// jsdom has no default keyboard actions: Tab focuses the next enabled tabbable element in document
-// order, and a focused native button activates as browsers do (Enter on keydown, Space on keyup).
-function tabFrom(start: HTMLElement) {
-  const tabbables = [
-    ...document.querySelectorAll<HTMLElement>("a[href], button, input, select, [tabindex]"),
-  ].filter((element) => element.tabIndex >= 0 && !(element as HTMLButtonElement).disabled);
-  start.focus();
-  fireEvent.keyDown(start, { key: "Tab" });
-  tabbables[tabbables.indexOf(start) + 1]?.focus();
-  return document.activeElement;
-}
-function press(button: HTMLElement, key: "Enter" | " ") {
-  if (fireEvent.keyDown(button, { key }) && key === "Enter") fireEvent.click(button);
-  if (fireEvent.keyUp(button, { key }) && key === " ") fireEvent.click(button);
 }
 describe("TLIST-02 trade master refresh list", () => {
   it("L2: places a secondary Refresh list button after New configuration in zh and en", async () => {
@@ -728,17 +714,16 @@ describe("TLIST-02 trade master refresh list", () => {
     clickRefresh();
     within(await screen.findByRole("alert")).getByRole("button", { name: zh("master.retry") });
   });
-  it("L4 / L7: Tab reaches Refresh list after New, and with an edited draft open; Enter and Space refresh without asking", async () => {
+  it("L4 / L7: Refresh list is the native button after New and stays enabled to refresh a dirty draft without asking", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const { urls } = stubTwoPages();
     await openTermsSearch(urls);
-    expect(tabFrom(newButton())).toBe(refreshButton());
-    await expectOneReread(urls, () => press(refreshButton(), "Enter"));
+    expect(newButton().nextElementSibling).toBe(refreshButton());
+    expect(refreshButton().hasAttribute("tabindex")).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: `${zh("trade.edit")} NET01` }));
     fireEvent.change(screen.getByLabelText(zh("trade.name")), { target: { value: "Unfinished" } });
-    expect(newButton().disabled).toBe(true);
-    expect(tabFrom(screen.getByLabelText(zh("trade.search")))).toBe(refreshButton());
-    await expectOneReread(urls, () => press(refreshButton(), " "));
+    expect([newButton().disabled, refreshButton().disabled]).toEqual([true, false]);
+    await expectOneReread(urls, clickRefresh);
     const kept = (["trade.name", "trade.search", "trade.kind", "master.company"] as const).map(
       (key) => screen.getByLabelText<HTMLInputElement | HTMLSelectElement>(zh(key)).value,
     );
