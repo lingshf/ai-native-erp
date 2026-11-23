@@ -1,0 +1,19 @@
+// TDZ fixture, positive (D385 shape, 8029f96): the scope first calls a hoisted async function, which calls
+// another hoisted function, which uses a const arrow declared only further down.
+// expect: historyLength
+export function scenario(page: { evaluate(code: () => number): Promise<number> }, part: number) {
+  run(async () => {
+    if (part === 1) await setUp();
+    else await followUp();
+    async function setUp() {}
+    async function followUp() {
+      await detailBack();
+    }
+    const historyLength = () => page.evaluate(() => window.history.length);
+    async function detailBack() {
+      const entries = await historyLength();
+      return entries;
+    }
+  });
+}
+declare function run(body: () => Promise<void>): void;

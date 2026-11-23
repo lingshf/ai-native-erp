@@ -1,6 +1,6 @@
 # Exclusive-slot runner (roadmap §5 "E2E 独占时段"; from the D316 GATE-01 kit, gist 4e00af7, SLOT-01).
-#   pwsh -File scripts/slot/slot-run.ps1 -OutDir DIR_OUTSIDE_REPO -StepsFile STEPS.ps1 [-BaseRoot BASE_WORKTREE]
-# Sampling rules: version R1 of roadmap §5 "进程采样规则", implemented in procs.ps1.
+#   pwsh -File scripts/slot/slot-run.ps1 -OutDir DIR_OUTSIDE_REPO -StepsFile STEPS.ps1 [-BaseRoot BASE_WORKTREE] [-PreflightFiles PATH,...]
+# Sampling rules: version R2 of roadmap §5 "进程采样规则", implemented in procs.ps1.
 # Counted process: any process outside this runner's own process tree whose image name is applicable
 # (node, cmd, any Chrome or Edge, vite, esbuild, biome, tsc, npm, npx; D314: no command-line prefilter;
 # an unreadable command line counts as unknown ownership), unless procs.ps1 attributes it to a repository
@@ -9,7 +9,11 @@
 # "runner-tree n=…" line (SR-R1: this runner's own tree, neither counted nor excluded).
 # Precheck: 6 consecutive counts of 0 at 10 s intervals, waiting at most 15 min. Each step runs once; during it the runner samples every 10 s and aborts (exit 2) on any
 # counted process, or (exit 1) on any non-zero step exit. No step is retried.
-param([Parameter(Mandatory)] [string] $OutDir, [Parameter(Mandatory)] [string] $StepsFile, [string] $BaseRoot = "", [string] $Stub = "")
+# Static preflight (S12 SLOT-02, D407 / D408): before the build, preflight.mjs checks head (with -PreflightFiles), then
+# base; its exit code 4 (input or configuration error) or 6 (new finding) ends the run with that same code before the
+# build, the dist check, the process precheck and any step. Each step gets the PSModulePath from step-env.ps1.
+param([Parameter(Mandatory)] [string] $OutDir, [Parameter(Mandatory)] [string] $StepsFile, [string] $BaseRoot = "", [string] $Stub = "",
+  [string[]] $PreflightFiles = @())
 # -StepsFile: a script called as  & $StepsFile -OutDir $OutDir -Root $root -BaseRoot $BaseRoot  that returns the
 # steps, each @{ name; dir; file; args; env = @{} } (see steps.example.ps1). It replaces the kit's GATE-01 list.
 # -Stub pass | fail:<step>: browserless rehearsal; every step is replaced by a node one-liner (a failing
@@ -25,8 +29,10 @@ $ErrorActionPreference = "Stop"
 $OutDir = [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutDir))
 $StepsFile = [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($StepsFile))
 if ($BaseRoot) { $BaseRoot = [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($BaseRoot)) }
-# Candidate pattern, ownership rules and Counted (rule version R1) live in procs.ps1.
+$PreflightFiles = @($PreflightFiles | ForEach-Object { [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($_)) })
+# Candidate pattern, ownership rules and Counted (rule version R2) live in procs.ps1.
 . (Join-Path $PSScriptRoot 'procs.ps1')
+. (Join-Path $PSScriptRoot 'step-env.ps1')
 # Logs and slot data never go into the repository (SLOT-01); keep the directory and archive it, do not delete it.
 $repoRoot = [IO.Path]::GetFullPath((git -C $PSScriptRoot rev-parse --show-toplevel)).TrimEnd('\', '/') + '\'
 if (($OutDir.TrimEnd('\', '/') + '\').StartsWith($repoRoot, [StringComparison]::OrdinalIgnoreCase)) { Write-Host "-OutDir must be outside the repository ($repoRoot)"; exit 4 }
@@ -62,6 +68,15 @@ function Sample([string] $phase) {
   }
   return $hits.Count
 }
+# Runs one checkout's preflight.mjs into preflight-<label>.log and returns its exit code unchanged.
+function Invoke-Preflight([string] $label, [string] $script, [string] $checkoutRoot, [string[]] $files) {
+  $preflightLog = Join-Path $OutDir "preflight-$label.log"
+  $arguments = @($script, '--root', $checkoutRoot) + $(if ($files.Count) { @('--files') + $files } else { @() })
+  & node @arguments *> $preflightLog
+  $code = $LASTEXITCODE
+  Say "preflight $label exit=$code log=$preflightLog $(Get-Content $preflightLog -Tail 1)"
+  return $code
+}
 $script:ever = @{ [int]$PID = $true }  # SR-R1: this runner's tree starts at its own PID (kit slot-run.ps1:46)
 $script:excludedSeen = @{}
 $excluded = Join-Path $OutDir "excluded.tsv"
@@ -82,6 +97,15 @@ try { $steps = @(& $StepsFile -OutDir $OutDir -Root $root -BaseRoot $BaseRoot | 
 # A steps file that yields no step would otherwise pass the precheck and report success without running anything.
 if ($steps.Count -eq 0) { Say "ABORT: -StepsFile $StepsFile produced no steps"; exit 4 }
 Say "steps from $StepsFile`: $(($steps | ForEach-Object { $_.name }) -join ', ')"
+$code = Invoke-Preflight 'head' (Join-Path $PSScriptRoot 'preflight.mjs') $root $PreflightFiles
+if ($code -ne 0) { Say "ABORT: preflight head exit $code"; exit $code }
+$basePreflight = if ($BaseRoot) { Join-Path $BaseRoot 'scripts/slot/preflight.mjs' } else { '' }
+if (-not $BaseRoot) { Say "base preflight skipped (no -BaseRoot)" }
+elseif (-not (Test-Path -LiteralPath $basePreflight -PathType Leaf)) { Say "base preflight skipped (no preflight.mjs)" }
+else {
+  $code = Invoke-Preflight 'base' $basePreflight $BaseRoot @()
+  if ($code -ne 0) { Say "ABORT: preflight base exit $code"; exit $code }
+}
 # Build gate (roadmap §5 item 8): build this tree, then require packages/web/dist/index.html to be strictly
 # newer than the HEAD commit time; otherwise stop before any browser or measurement step runs.
 Say "build start"
@@ -115,7 +139,9 @@ if ($Stub) {
 foreach ($step in $steps) {
   $name = $step.name
   Set-Content (Join-Path $OutDir "$name-start-rev.txt") "$(git rev-parse HEAD)`n$(git status --porcelain --untracked-files=all)"
-  foreach ($k in $step.env.Keys) { Set-Item "env:$k" $step.env[$k] }
+  $stepEnvironment = Get-StepEnvironment $step.env
+  $savedEnvironment = Set-StepEnvironment $stepEnvironment
+  Say "step $name PSModulePath=$($stepEnvironment.PSModulePath)"
   Say "step $name start: [$($step.dir)] $($step.file) $($step.args)"
   $proc = Start-Process -FilePath $step.file -ArgumentList $step.args -WorkingDirectory $step.dir -NoNewWindow -PassThru `
     -RedirectStandardOutput (Join-Path $OutDir "$name.out.log") -RedirectStandardError (Join-Path $OutDir "$name.err.log")
@@ -130,7 +156,7 @@ foreach ($step in $steps) {
   }
   $proc.WaitForExit()
   $code = $proc.ExitCode
-  foreach ($k in $step.env.Keys) { Remove-Item "env:$k" }
+  Restore-StepEnvironment $savedEnvironment
   Set-Content (Join-Path $OutDir "$name-end-rev.txt") "$(git rev-parse HEAD)`n$(git status --porcelain --untracked-files=all)"
   $c = Sample "after-$name"
   Say "step $name exit=$code counted-after=$c"

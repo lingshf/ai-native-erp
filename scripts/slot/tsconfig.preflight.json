@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "../../packages/infra/test/support/**/*.ts",
+    "../../packages/infra/test/http/*.slow.test.ts"
+  ]
+}

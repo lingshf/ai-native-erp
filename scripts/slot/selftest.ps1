@@ -1,4 +1,4 @@
-# Self-test of procs.ps1 (rule version R1, roadmap §5 "进程采样规则"). Windows only; run by hand, not in CI.
+# Self-test of procs.ps1 (rule version R2, roadmap §5 "进程采样规则"). Windows only; run by hand, not in CI.
 #   pwsh -File scripts/slot/selftest.ps1 [-OutDir DIR_OUTSIDE_REPO] [-ReferenceProcs KIT_PROCS_PS1]
 # Part 1, the D316 kit's 27 checks (cases A-W), unchanged, each now also asserting the rule id:
 # D311/D314 candidate and ownership rules with stand-in processes (no real tsc / vite / browser). Cases K-P: this
@@ -25,6 +25,8 @@
 # Part 4 (D354), slot-run.ps1 entry checks: a relative -OutDir is resolved once against the caller's directory (its
 # log does not follow the runner into the repository root), a relative -OutDir inside the repository is refused, and
 # a -StepsFile that yields no step ends the run with exit 4 before the build.
+# Part 5 (S12 SLOT-02, D407 / D408), in selftest-preflight.ps1: step PSModulePath (I1), TDZ fixtures (I4), and
+# preflight.mjs / slot-run.ps1 exit-code pass-through before the build (I5); runner runs there are -Stub only.
 param([string] $OutDir = "", [string] $ReferenceProcs = "")
 if ($PSVersionTable.PSEdition -eq 'Core' -and -not $IsWindows) { Write-Host "selftest.ps1 只能在 Windows 运行 (Windows only)"; exit 2 }
 # procs.ps1 (as in the D316 kit) uses [IO.Path]::GetFullPath(path, base), which only .NET Core has: under Windows PowerShell 5.1
@@ -70,8 +72,8 @@ function Copy-Snap([object[]] $snap) { @($snap | Select-Object ProcessId, Parent
 # $ever/$refEver are this scenario's runner trees (SR-R1); both are extended in place, as across real samples.
 function Judge([string] $label, [object[]] $snap, [hashtable] $ever, [hashtable] $refEver) {
   $refSnap = Copy-Snap $snap
-  $saved = $script:ever; $script:ever = $ever
-  try { $hits = Counted -All $snap } finally { $script:ever = $saved }
+  $saved = $script:ever, $script:foreignSeen; $script:ever = $ever; $script:foreignSeen = @{}  # D411 memory: fresh per call, as the kit has none
+  try { $hits = Counted -All $snap } finally { $script:ever, $script:foreignSeen = $saved }
   $state = @{}
   foreach ($h in $hits) { $state[[int]$h.ProcessId] = @('counted', $h.Rule, $h.Owner) }
   foreach ($x in $script:lastExcluded) { $state[[int]$x.ProcessId] = @('excluded', $x.Rule, $x.Owner) }
@@ -235,6 +237,26 @@ Case 'SR-C2' '-' 'parent younger than the child (PID reuse) is not walked into' 
 Case 'SR-C3' '+' 'unreadable command line, executable in another repository: counted, not walked' @((P 30 4 'node.exe' $null "$foreign\node.exe" 0)) 30 'counted' 'SR-C3' '*command line unreadable*'
 Case 'SR-C3' '-' 'same process with a readable command line: walked and excluded' @((P 31 4 'node.exe' "`"$foreign\node.exe`" x.js" "$foreign\node.exe" 0)) 31 'excluded' 'SR-X1'
 
+# SR-X1 carry-over (R2, D411): samples of one run; the last has the command line unreadable. -Middle adds a readable
+# sample in between. Counted is called directly because the D316 kit (EQUIV) keeps no verdicts across samples.
+function SampleSequence([string] $sign, [string] $what, [object[]] $first, [object] $second, [string] $want, [string] $wantRule, [object[]] $Middle) {
+  $saved = $script:ever, $script:foreignSeen; $script:ever = @{}; $script:foreignSeen = @{}
+  try {
+    $null = Counted -All $first
+    if ($Middle) { $null = Counted -All $Middle }
+    $hits = Counted -All @($second)
+  } finally { $script:ever, $script:foreignSeen = $saved }
+  $got = if ($hits.Count) { @('counted', $hits[0].Rule, $hits[0].Owner) } elseif ($script:lastExcluded.Count) { @('excluded', $script:lastExcluded[0].Rule, $script:lastExcluded[0].Owner) } else { @('not-a-candidate', '', '') }
+  Check "SR-X1$sign D411 $what" ($got[0] -eq $want -and $got[1] -eq $wantRule) "want=$want $wantRule got=$($got[0]) $($got[1]) [$($got[2])]"
+}
+$foreignCl = "`"$nodeExe`" `"$foreign\x.js`""
+SampleSequence '+' 'judged foreign, then unreadable with the same creation time: still excluded' @((P 32 4 'node.exe' $foreignCl $nodeExe 0)) (P 32 4 'node.exe' $null $nodeExe 0) 'excluded' 'SR-X1'
+SampleSequence '-' 'judged foreign, then unreadable with another creation time (PID reuse): counted' @((P 33 4 'node.exe' $foreignCl $nodeExe 0)) (P 33 4 'node.exe' $null $nodeExe 7) 'counted' 'SR-C3'
+$noTime = P 34 4 'node.exe' $null $nodeExe 0; $noTime.CreationDate = $null
+SampleSequence '-' 'judged foreign, then unreadable without a creation time: counted' @((P 34 4 'node.exe' $foreignCl $nodeExe 0)) $noTime 'counted' 'SR-C3'
+SampleSequence '-' 'never judged foreign (first sample unknown ownership), then unreadable: counted' @((P 35 4 'node.exe' "`"$nodeExe`" `"$nogit\sleep.js`"" $nodeExe 0)) (P 35 4 'node.exe' $null $nodeExe 0) 'counted' 'SR-C3'
+SampleSequence '-' 'judged foreign, then this repository (cwd changed), then unreadable: latest verdict wins, counted' @((P 36 4 'node.exe' $foreignCl $nodeExe 0)) (P 36 4 'node.exe' $null $nodeExe 0) 'counted' 'SR-C3' -Middle @((P 36 4 'node.exe' "`"$nodeExe`" `"$erpRoot\scripts\ci.ts`"" $nodeExe 0))
+
 # SR-X1: other-repository evidence at the nearest level.
 Case 'SR-X1' '+' 'node with an other-repository script' @((P 40 4 'node.exe' "`"$nodeExe`" `"$foreign\tsc`"" $nodeExe 0)) 40 'excluded' 'SR-X1'
 Case 'SR-X1' '-' 'cmd.exe whose only other-repository path is its /c argument' @((P 41 4 'cmd.exe' "cmd.exe /d /s /c node `"$foreign\tsc`"" $cmdExe 0)) 41 'counted' 'SR-C3'
@@ -341,6 +363,13 @@ $ex = @(& (Join-Path $PSScriptRoot 'steps.example.ps1') -OutDir $p4 -Root $erpRo
 Check 'RUN-STEPS+ steps.example.ps1 yields at least one step' ($ex.Count -ge 1) "steps=$(($ex | ForEach-Object { $_.name }) -join ',')"
 $part4 = $script:items - $part4Start
 
-Say "summary: $($script:items) checks = $part1 kit cases A-W + $($script:items - $part1 - $script:equiv - $part4) SR rule cases + $equivText + $part4 runner entry checks; $($script:items - $script:fail) PASS, $($script:fail) FAIL"
+# Part 5 (S12 SLOT-02): every input is passed explicitly; each result is logged through Check.
+. (Join-Path $PSScriptRoot 'selftest-preflight.ps1')
+$part5Start = $script:items
+Get-PreflightSelftestResults -SlotDir $PSScriptRoot -RepoRoot $erpRoot -WorkDir (Join-Path $OutDir 'preflight') -PwshExe $pwshExe |
+  ForEach-Object { if ($_.Skip) { Say "SKIP $($_.Label) $($_.Detail)" } else { Check $_.Label $_.Ok $_.Detail } }
+$part5 = $script:items - $part5Start
+
+Say "summary: $($script:items) checks = $part1 kit cases A-W + $($script:items - $part1 - $script:equiv - $part4 - $part5) SR rule cases + $equivText + $part4 runner entry checks + $part5 preflight / step environment checks; $($script:items - $script:fail) PASS, $($script:fail) FAIL"
 Say "selftest $(if ($script:fail) { "FAILED ($($script:fail))" } else { 'passed' })"
 exit [int]($script:fail -ne 0)

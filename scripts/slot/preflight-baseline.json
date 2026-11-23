@@ -1,0 +1,15 @@
+{
+  "comment": "S12 SLOT-02 (D407 / D408): known findings on main 0384c0f; counts may only go down. Adding or raising an entry needs a design decision number.",
+  "tsc": {
+    "TS2322: Type 'Promise<T>' is not assignable to type 'T | Promise<Awaited<T>>'. >> Type 'Promise<T>' is not assignable to type 'Promise<Awaited<T>>'. >> Type 'T' is not assignable to type 'Awaited<T>'.": 1,
+    "TS2339: Property 'port' does not exist on type 'string | AddressInfo'. >> Property 'port' does not exist on type 'string'.": 1,
+    "TS2339: Property 'teaching' does not exist on type '{}'.": 1,
+    "TS2345: Argument of type 'string' is not assignable to parameter of type '\"ai.adopt\" | \"ai.boundary\" | \"ai.busy\" | \"ai.cancel\" | \"ai.cancelled\" | \"ai.candidate\" | \"ai.candidateBadge\" | \"ai.cleanup\" | \"ai.discard\" | \"ai.disclosure\" | \"ai.draft\" | ... N more ... | \"tset.unloaded\"'.": 1,
+    "TS2345: Argument of type '{ version: number; status: string; crossDatabaseAtomic: boolean; ledgers: {}; }' is not assignable to parameter of type '{ version: number; status: string; crossDatabaseAtomic: boolean; ledgers: Record<Source, { file: string; bytes: number; sha256: string; }>; }'. >> Types of property 'ledgers' are incompatible. >> Type '{}' is missing the following properties from type 'Record<Source, { file: string; bytes: number; sha256: string; }>': enterprise, teaching": 1,
+    "TS2531: Object is possibly 'null'.": 1,
+    "TS2561: Object literal may only specify known properties, but 'intervals' does not exist in type 'ExpectPollOptions'. Did you mean to write 'interval'?": 3,
+    "TS2769: No overload matches this call. >> The last overload gave the following error. >> Argument of type 'string' is not assignable to parameter of type 'number'.": 1,
+    "TS7006: Parameter 't' implicitly has an 'any' type.": 1
+  },
+  "tdz": {}
+}

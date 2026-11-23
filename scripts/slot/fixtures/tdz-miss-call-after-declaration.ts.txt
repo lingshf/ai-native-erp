@@ -1,0 +1,9 @@
+// TDZ fixture, negative: the hoisted function that uses the const is only called after the declaration.
+// expect: none
+export async function scenario(page: { url(): string }) {
+  const hashNow = () => new URL(page.url()).hash;
+  await followUp();
+  async function followUp() {
+    return hashNow();
+  }
+}

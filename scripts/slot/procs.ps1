@@ -1,10 +1,11 @@
 # Exclusive-slot counted-process logic, dot-sourced by slot-run.ps1 and selftest.ps1 (D311, D314).
-# Implements rule version R1 of design/roadmap.md §5 "进程采样规则" (D338, D341): the D316 kit's procs.ps1 (gist
+# Implements rule version R2 of design/roadmap.md §5 "进程采样规则": R1 (D338, D341) plus the SR-X1 carry-over of
+# D411 (Get-UnreadableOwner). R1 is the D316 kit's procs.ps1 (gist
 # lingshf/c437f3d99887d0214ebd05ae9d741cc5 @ 4e00af7, LF SHA-256 906A4B70…90A6F8) including the launcher branch
 # ratified by D320, branch for branch and in the same order. Every decision exit carries its rule id (SR-R1, SR-C1–C3,
 # SR-X1–X5) in a trailing "# exit SR-…" comment; "kit :N" names the line of the D316 file. check-manifest.mjs checks
 # the ids against the roadmap table. Changing any rule needs a decision number and a roadmap edit (R2…) first.
-$script:SlotRuleVersion = 'R1'
+$script:SlotRuleVersion = 'R2'
 # Candidate (D314): every process outside this runner's tree whose image name is in $names (node, cmd, any Chrome
 # or Edge, vite, esbuild, biome, tsc, npm, npx), whatever its command line; there is no command-line prefilter.
 # A candidate whose command line cannot be read is counted as unknown ownership, without the ownership walk.
@@ -178,6 +179,23 @@ function Get-SystemExclusion($p, [hashtable] $byId) {
   if ($pw -and $pw -ne 'C:\Windows' -and -not (Test-CleanCmdline $parent.CommandLine)) { return @{ Rule = 'SR-X4'; Reason = "$rules; parent pid=$($parent.ProcessId) $($parent.Name) is a system launcher under $pw meeting (c)-(d)" } }  # exit SR-X4 (kit :171–172, D320)
   return $null
 }
+# D411: SR-X1 verdicts made earlier in this run, pid -> @{ Created; Reason }. A process whose command line becomes
+# unreadable (typically while it exits) keeps its SR-X1 verdict only when its creation time is readable and equal to
+# the recorded one; otherwise the PID may have been reused and it is counted (SR-C3) as before. The latest readable
+# sample wins: once it judges the process anything but foreign (its cwd can change), the record is dropped.
+$script:foreignSeen = @{}
+function Update-ForeignVerdict($p, $owner) {
+  $id = [int]$p.ProcessId
+  if ($owner.Kind -eq 'foreign' -and $p.CreationDate) { $script:foreignSeen[$id] = @{ Created = $p.CreationDate; Reason = $owner.Reason } }
+  else { $script:foreignSeen.Remove($id) }
+}
+function Get-UnreadableOwner($p) {
+  $seen = $script:foreignSeen[[int]$p.ProcessId]
+  if ($seen -and $p.CreationDate -and $seen.Created -eq $p.CreationDate) {
+    return @{ Kind = 'foreign'; Rule = 'SR-X1'; Reason = "command line unreadable, judged foreign earlier in this run with the same creation time (D411): $($seen.Reason)" }  # exit SR-X1 (D411)
+  }
+  return @{ Kind = 'unknown'; Rule = 'SR-C3'; Reason = 'command line unreadable' }  # exit SR-C3 (kit :190)
+}
 # Counted processes; the excluded ones (SR-X1–X5) are left in $script:lastExcluded. Every judged candidate gets
 # Owner ("<rule> <kind>: <reason>") and Rule. Processes of this runner's tree (SR-R1) are neither counted nor
 # excluded; how many were in this snapshot is left in $script:lastRunnerTree.
@@ -198,7 +216,8 @@ function Counted([object[]] $All) {
     # kit :189 tested both conditions in one "continue"; split only to count the runner tree.
     if ($mine.ContainsKey([int]$p.ProcessId)) { $script:lastRunnerTree++; continue }  # exit SR-R1 (kit :189)
     if ($p.Name -notmatch $names) { continue }  # exit SR-C1 (kit :189)
-    $o = if ($p.CommandLine) { Get-Owner $p $byId } else { @{ Kind = 'unknown'; Rule = 'SR-C3'; Reason = 'command line unreadable' } }  # exit SR-C3 (kit :190)
+    $o = if ($p.CommandLine) { Get-Owner $p $byId } else { Get-UnreadableOwner $p }
+    if ($p.CommandLine) { Update-ForeignVerdict $p $o }
     $sys = if ($o.Kind -eq 'unknown' -and $p.CommandLine) { Get-SystemExclusion $p $byId }
     $rule = if ($sys) { $sys.Rule } else { $o.Rule }
     $owner = if ($sys) { "$rule system: $($sys.Reason)" } else { "$rule $($o.Kind): $($o.Reason)" }
