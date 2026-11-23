@@ -416,7 +416,7 @@ function withPoMatch(value: TradeInvoiceDetailDto, poMatch: PoMatch): TradeInvoi
   const lines = value.document.lines.map((line) => ({ ...line, matchStatus: poMatch }));
   return { ...value, document: { ...value.document, poMatch, exceptionReason, lines } };
 }
-function usePreferences(language: Language) {
+function storePreferences(language: Language) {
   window.localStorage.setItem(
     preferenceStorageKey,
     JSON.stringify({ language, theme: language === "zh" ? "red" : "green", teaching: false }),
@@ -454,7 +454,7 @@ describe("TINV-08 status badges and number formats", () => {
   it.each(badgeCases)(
     "$language: $poMatch / $status are badges in the list, header, lines and open item; Tab stops unchanged",
     async ({ language, poMatch, status, poTone, statusTone }) => {
-      usePreferences(language);
+      storePreferences(language);
       const orderId = poMatch === "notApplicable" ? null : "PO-1";
       serve(withPoMatch(detail({ orderId, status }), poMatch));
       render(<App />);
