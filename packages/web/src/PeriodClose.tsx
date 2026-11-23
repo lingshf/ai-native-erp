@@ -84,6 +84,7 @@ export function PeriodClose({ preferences }: { preferences: Preferences }) {
     <section className="page period-close">
       <PageHeader
         title={t("close.title")}
+        description={t("close.description")}
         context={
           <>
             <div className="field">

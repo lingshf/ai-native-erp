@@ -129,11 +129,18 @@ export function TradePeriodAdmission({
     <FastTab
       id="trade-period-admission"
       title={t("trpt.admission")}
-      summary={(["trade", "tax"] as const).map((module) => (
-        <Badge key={module} tone={period.modules.includes(module) ? "success" : "warning"}>
-          {module}
-        </Badge>
-      ))}
+      summary={(["trade", "tax"] as const).map((module) => {
+        const admitted = period.modules.includes(module);
+        return (
+          <Badge key={module} tone={admitted ? "success" : "warning"}>
+            {t(`trpt.module.${module}`)}
+            <span className="visually-hidden">
+              {preferences.language === "zh" ? "：" : ": "}
+              {t(admitted ? "trpt.admitted" : "trpt.notAdmitted")}
+            </span>
+          </Badge>
+        );
+      })}
     >
       <TeachingTip
         teaching={preferences.teaching}

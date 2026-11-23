@@ -51,8 +51,8 @@ export const tradeReportZh = {
   "trpt.tradeDifference": "贸易差异",
   "trpt.difference": "总差异",
   "trpt.admission": "期间贸易模块准入",
-  "trpt.trade": "准入 trade",
-  "trpt.taxModule": "准入 tax",
+  "trpt.trade": "准入贸易",
+  "trpt.taxModule": "准入税务",
   "trpt.admissionNote":
     "已有期间和新开期间默认不准入 trade/tax；所有贸易写入要求两项均勾选并保存（会计日期间）。保存改变期间版本，旧预览失效。",
   "trpt.save": "保存期间准入",
@@ -60,6 +60,10 @@ export const tradeReportZh = {
   "trpt.reason": "准入变更原因",
   "trpt.storage": "无法逐字读回确认封套，未发送。请恢复会话存储后重试。",
   "trpt.unknown": "结果未确认；仅用原封套重试，禁止重建不同输入。",
+  "trpt.module.trade": "贸易",
+  "trpt.module.tax": "税务",
+  "trpt.admitted": "已准入",
+  "trpt.notAdmitted": "未准入",
 } as const;
 export const tradeReportEn: Record<keyof typeof tradeReportZh, string> = {
   "trpt.title": "Trade open items and ageing",
@@ -125,4 +129,8 @@ export const tradeReportEn: Record<keyof typeof tradeReportZh, string> = {
   "trpt.storage":
     "Confirmation envelope could not be read back byte-for-byte; nothing sent. Restore session storage and retry.",
   "trpt.unknown": "Outcome unconfirmed; retry only the original envelope, not different input.",
+  "trpt.module.trade": "Trade",
+  "trpt.module.tax": "Tax",
+  "trpt.admitted": "admitted",
+  "trpt.notAdmitted": "not admitted",
 };

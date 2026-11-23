@@ -138,7 +138,7 @@ it("drills preview amounts at the same compound pin and retries unknown close/ne
   }
   fireEvent.click(screen.getByRole("button", { name: "确认结账" }));
   await screen.findByText(/结果未知/u);
-  expect(screen.getByLabelText("准入 trade").matches(":disabled")).toBe(true);
+  expect(screen.getByLabelText("准入贸易").matches(":disabled")).toBe(true);
   const client = mount.mock.contexts.find((context) => context instanceof QueryClient);
   if (!(client instanceof QueryClient)) throw new Error("Missing mounted QueryClient");
   await act(async () => {
@@ -248,7 +248,7 @@ it("shows period status badges, keeps derived numbers hidden until preview, and 
   expect(within(current).getByText("2026-02")).toBeTruthy();
   expect(within(current).getByText("开放").closest(".badge")?.className).toBe("badge info");
   expect(within(list).getByText("冻结").closest(".badge")?.className).toBe("badge warning");
-  expect(screen.getByText("trade", { selector: ".badge" }).className).toBe("badge warning");
+  expect(screen.getByText("贸易", { selector: ".badge" }).className).toBe("badge warning");
   expect(screen.getByRole("group", { name: "期末结账" })).toBeTruthy();
   expect(screen.getByRole("group", { name: "期间贸易模块准入" })).toBeTruthy();
   expect(screen.queryByText("本次结转净额")).toBeNull();
