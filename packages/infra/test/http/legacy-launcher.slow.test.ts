@@ -4,7 +4,8 @@ import { once } from "node:events";
 import { writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { test } from "vitest";
+import { type TestContext, test } from "vitest";
+import type { LegacyImportSnapshot } from "../../src/legacy/import-plan.ts";
 import { captureDirectory, legacyFixture } from "../support/legacy-fixture.mjs";
 
 const script = fileURLToPath(
@@ -12,14 +13,16 @@ const script = fileURLToPath(
 );
 const environment = { ERP_PROFILE: "local", ERP_HOST: "127.0.0.1", ERP_PORT: "4180" };
 
-async function reserve(t) {
+async function reserve(t: TestContext) {
   const server = createServer();
-  await new Promise((resolveListen, reject) => {
+  await new Promise<void>((resolveListen, reject) => {
     server.once("error", reject);
-    server.listen(0, "127.0.0.1", resolveListen);
+    server.listen(0, "127.0.0.1", () => resolveListen());
   });
-  t.onTestFinished(() => new Promise((resolveClose) => server.close(resolveClose)));
-  return { server, port: server.address().port };
+  t.onTestFinished(() => new Promise<void>((resolveClose) => server.close(() => resolveClose())));
+  const address = server.address();
+  assert.ok(address !== null && typeof address === "object", "TCP server has an AddressInfo");
+  return { server, port: address.port };
 }
 
 test("launcher import has no execution side effects in a fresh process", () => {
@@ -111,7 +114,9 @@ test("actual CLI opens explicit fixture, serves financial data and terminates af
   }
   assert.equal(response?.status, 200, stderr);
   const context = await response.json();
-  assert.equal(context.source.snapshotSha256, f.manifest.ledgers.teaching.sha256);
+  // legacy-fixture.mjs is plain JS, so tsc infers its manifest.ledgers as `{}`.
+  const manifest = f.manifest as ConstructorParameters<typeof LegacyImportSnapshot>[1];
+  assert.equal(context.source.snapshotSha256, manifest.ledgers.teaching.sha256);
   const ledger = await (
     await fetch(
       `${address}/api/v1/legacy/ledger?snapshot=${context.source.snapshotSha256}` +

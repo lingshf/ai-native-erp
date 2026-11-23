@@ -1,7 +1,7 @@
 // Page-level smoke over every trade page for each language/theme combination.
 import { type ExpectStatic, afterAll, beforeAll, expect, test } from "vitest";
 import type { BrowserContext, Page } from "playwright";
-import { label, resources } from "../../../../web/src/ui/index.ts";
+import { type LabelKey, label, resources } from "../../../../web/src/ui/index.ts";
 import { diagnostics, guiPhase, timed } from "./diagnostics.ts";
 import {
   type Server,
@@ -16,10 +16,10 @@ import { freshIds, httpSend, seedPartOne } from "./seed.ts";
 
 // Each page's own list query (first load must succeed) and the seeded rows it renders from it.
 // Titles, lang and theme render even when the data request fails, so they prove nothing alone.
-type Label = (key: string) => string;
+type Label = (key: LabelKey) => string;
 const tradePages: readonly {
   path: string;
-  title: string;
+  title: LabelKey;
   request: (url: URL) => boolean;
   loaded: (t: Label) => string;
   // Read-only keyboard step that makes the page show its loaded rows.
@@ -155,7 +155,7 @@ export function tradeGuiSmoke(combinations: readonly (readonly ["zh" | "en", "re
         if (request.url().includes("/api/") && request.failure()?.errorText !== "net::ERR_ABORTED")
           failures.push(`${request.failure()?.errorText} ${request.url()}`);
       });
-      const t = (key: string) => label(language, key);
+      const t = (key: LabelKey) => label(language, key);
       const foreign = foreignLabels(language);
       let failed = true;
       try {
@@ -173,7 +173,7 @@ export function tradeGuiSmoke(combinations: readonly (readonly ["zh" | "en", "re
             .poll(() => page.locator("main h2").first().textContent(), {
               message: `${path} title`,
               timeout: 10_000,
-              intervals: [20],
+              interval: 20,
             })
             .toBe(t(title));
           await reveal?.(page, expect);
@@ -181,14 +181,14 @@ export function tradeGuiSmoke(combinations: readonly (readonly ["zh" | "en", "re
             .poll(() => page.locator(loaded(t)).count(), {
               message: `${path} seeded rows loaded`,
               timeout: 10_000,
-              intervals: [20],
+              interval: 20,
             })
             .toBeGreaterThan(0);
           await expect
             .poll(() => pending, {
               message: `${path} API requests settle`,
               timeout: 10_000,
-              intervals: [20],
+              interval: 20,
             })
             .toBe(0);
           expect(await page.locator("html").getAttribute("lang"), path).toBe(language);
