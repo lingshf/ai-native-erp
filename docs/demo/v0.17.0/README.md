@@ -23,7 +23,7 @@
 
 ## 3 真实运行结果
 
-- **序列**（D489 / D490 / D491 授权，运行器各一次）：两个全新 worktree（app 在 PR 头，tooling 在 main `1638445`）的 `npm ci` 在窗口开始前完成（D489 把步骤 0 并入窗口）（均退出码 0）→ `npm run build`（退出码 0）→ **步骤 0** `run-main.ps1 -SkipCapture -Shots <目录>`（退出码 0）→ capture 干跑（`run-main.ps1`，含 capture，退出码 0）→ 真实 `slot-run.ps1 -Ports 4203`（R3，退出码 0）。
+- **序列**（D489 / D490 / D491 授权，运行器各一次）：两个全新 worktree（app 在 PR 头，tooling 在 main `1638445`）的 `npm ci` 在窗口内、步骤 0 之前运行（均退出码 0）→ `npm run build`（退出码 0）→ **步骤 0** `run-main.ps1 -SkipCapture -Shots <目录>`（退出码 0）→ capture 干跑（`run-main.ps1`，含 capture，退出码 0）→ 真实 `slot-run.ps1 -Ports 4203`（R3，退出码 0）。
 - `runner start head=319778cc86481d03037b24eb8d978d161ba169cc rules=R3 ports=4203 status=[]`（运行器自己再构建一次，`dist check … newer=True`）；`tooling head=1638445c536467d488f3f455ecdbefbdc4686c7b`。产品代码与 main `1638445` 相同（本分支只改文档）。
 - **D487：run-main 证据**（浏览器外 `-SkipCapture`，[`logs/skipcapture.out.log`](logs/skipcapture.out.log)）：含 `web-dist: ok …dist-index=2026-11-23T22:43:19Z head-commit=2026-11-23T22:40:44Z`，随后迁移、造数、`readiness ok`、`capture skipped (dry-run)`、`port 4203 released`。
 - **D487：capture 证据**（窗口内干跑，TEMPLATE 第 17 条，[`logs/capture-dry-run.out.log`](logs/capture-dry-run.out.log)）：`capture exit 0`，23 项显式检查全部通过（[`logs/capture-log-dry-run.json`](logs/capture-log-dry-run.json)）。
