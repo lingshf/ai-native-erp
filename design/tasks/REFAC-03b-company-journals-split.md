@@ -136,7 +136,7 @@
       2. 导航到 `?id=B`；
       3. 释放 B 的响应并采样，再释放 A 的响应并采样。
 
-      `Journals.tsx` 以 `` `${company.code}:${id}` `` 作为 `CompanyJournals` 的 `key`，所以 id 变化会卸载旧实例、挂载新实例。脚本须核实这一点：采样记录旧实例 `alive` 已清除（通过页面结果判定，不读内部状态），且只挂载了一个新实例。断言：
+      `Journals.tsx` 以 `` `${company.code}:${id}` `` 作为 `CompanyJournals` 的 `key`，所以 id 变化会卸载旧实例、挂载新实例；脚本须核实只挂载了一个新实例。这里不对旧实例的 `alive` 清理做运行时判定：即使缺了 `alive` 清理，中止信号也会挡住迟到响应，页面输出照样相同，无法据此证明。`alive` 清理由 P5f 静态核对。断言：
       - A 的请求已中止；
       - 释放 A 的响应后，页面仍显示 B 的明细；
       - 释放 A 前后，控制台都没有 `error` / `warn` 输出，也没有未捕获的异常。
@@ -153,7 +153,7 @@
     main `e8ef434` 中有 4 处 `invalidateQueries`：`save` 中 1 处（`:248`），`confirm` 成功分支中 2 处（`:289` 的 `["business", …]` 与 `:296` 的 `["journals", …]`），删除确认中 1 处（`:887`）。以 PR 实际 base 为准逐项列出。查询键的结构与取值、失效的匹配范围（前缀与 `exact` 等选项）都不得改变。按 ④ 抽出分页样板之后，生成的 `queryKey` 也必须与 base 逐项相同（P4 的查询缓存采样会核对）。
   - **P5f effect 清理与中止归属**：PR 正文列出 base 中每个 `useEffect` / `useLayoutEffect` 的清理函数，以及每个 `AbortController` / `alive` 标记，在 head 中由哪个 Hook 拥有。要求：
     - `detailRequest` 的创建、`abort()`（`loadDetail` 开头、`edit` 中、加载 `initialEntryId` 的 effect 清理）和 `alive.current` 的置位与清除，都留在**同一个** Hook 或 `CompanyJournals` 内；不拆到两个 Hook，也不复制成两份；
-    - 读取 `alive.current` 的检查点与 base 一一对应（数量与所在分支），P4a 用运行时证据佐证。
+    - 读取 `alive.current` 的检查点与 base 一一对应（数量与所在分支），以静态对照为准；P4a 只验证中止和迟到响应，不用来证明 `alive` 清理。
 - **P6 尺寸与可读性**：
   - `CompanyJournals`、每个自定义 Hook、每个新组件与命令函数都满足 ②（≤ 80 行、嵌套 ≤ 3 层）；
   - `company-journals.tsx` ≤ 200 行，`journals/` 下每个新文件 ≤ 400 行；
