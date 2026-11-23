@@ -1041,6 +1041,21 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       expect(await orderQuantities("PO-STATUS")).toEqual(["10", "0", "10"]);
       await invoiceFromOrder("PO-STATUS", "AP-STATUS-1", 4520, "4");
       let stage = 0;
+      // The filter is component state, so staying on the route keeps it: clear it and wait for a row
+      // the filter had hidden.
+      const clearFilters = async (orderId: string) => {
+        await activate(
+          page,
+          page
+            .locator("form")
+            .filter({ has: page.locator("#tord-filter-invoicing") })
+            .getByRole("button", { name: ordered("tord.filterClear"), exact: true }),
+        );
+        await page
+          .getByRole("table", { name: ordered("tord.list"), exact: true })
+          .getByRole("button", { name: orderId, exact: true })
+          .waitFor();
+      };
       const listed = async (status: "none" | "partial" | "full", expected: string[]) => {
         stage += 1;
         await navigate("trade-orders");
@@ -1098,6 +1113,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       };
       await listed("partial", ["PO-STATUS"]);
       await listed("none", ["PO-NONE"]);
+      await clearFilters("PO-STATUS");
       await openOrder("PO-STATUS");
       expect(await orderQuantities("PO-STATUS")).toEqual(["10", "4", "6"]);
       const second = await invoiceFromOrder("PO-STATUS", "AP-STATUS-2", 6780);
@@ -1111,6 +1127,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       await listed("full", ["PO-DEMO", "PO-FROM"]);
       await listed("partial", ["PO-STATUS"]);
       await listed("none", ["PO-NONE"]);
+      await clearFilters("PO-DEMO");
       expect(failures).toEqual([]);
     }
     async function invoice(side: "AP" | "AR", external: string, matched = false) {
