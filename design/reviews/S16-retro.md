@@ -25,7 +25,7 @@
   - 设计文字被脚本当作输入（路线图 §5 规则表由 `check-manifest.mjs` 解析），但设计 PR 的自查不包括运行这个脚本；该脚本也不在 CI 中（`git grep -n check-manifest -- .github` 无结果）。
   - 门禁类条款只写了“通过”与“失败”，没有写“无法判定”。
 - **改进**：
-  - 行动 6：设计 PR 改了路线图 §5 时，推送前跑 `node scripts/slot/check-manifest.mjs` 并附输出；门禁类验收（端口、预检、祖先检查等）必须写出第三种结果“无法判定”及其退出码或处理。
+  - 行动 6：凡改动 `design/` 的设计 PR（不只改 §5 的；D474 的触发点在 §3），推送前跑 `node scripts/slot/check-manifest.mjs` 并附输出；门禁类验收（端口、预检、祖先检查等）必须写出第三种结果“无法判定”及其退出码或处理。
   - S15 行动 1 已在 S17 写入，S17 回顾再核对，不另立行动。
 
 ## 议题 2：PR 正文过时，多出两轮评审
@@ -68,7 +68,7 @@
 - **发生了什么**（观察）：S17 的 TLIST-01（[#271](https://github.com/lingshf/ai-native-erp/pull/271)，用户可见）与 REFAC-08（[#270](https://github.com/lingshf/ai-native-erp/pull/270)）已合并到 main，但 main 的 `[Unreleased]` 仍是“（暂无）”。由协调者在发布后指出。
 - **根因**：CHANGELOG 只在 RC 时由版本管理集中整理，合并时没有检查；v0.15.0 打在 release 分支上（D482），main 上的条目更容易被遗漏。
 - **改进**：
-  - 行动 5：RC 送审清单加一条对照：`git log --oneline --first-parent <上一个 tag>..main` 中的每个 PR（本仓库 squash 合并，每行一个 PR），要么有 CHANGELOG 条目，要么注明“无用户可见变化”。DEMO-17 的 RC 先补上 #271 与 #270（[S17 DEMO-17 验收](../tasks/S17.md#demo-17-验收)）。
+  - 行动 5：RC 送审清单加一条对照：`git log --oneline --first-parent <上一个 tag>..main` 中的每个 PR（本仓库 squash 合并，每行一个 PR），要么有 CHANGELOG 条目，要么注明“无用户可见变化”。DEMO-17 的 RC 写入 #271 与 #270 两条，#269（已随 v0.15.0 发布）与 #272（只改日期）单列为不需要条目（[S17 DEMO-17 验收](../tasks/S17.md#demo-17-验收)）。
 
 ## S15 回顾行动项检查（D472）
 
@@ -97,5 +97,5 @@
 | 2 | **干跑先构建**：Demo 模板干跑步骤第一条在应用 worktree 跑 `npm run build`；另建候选任务让 `run-main.ps1` 缺 dist 时明确报错 | 版本管理（模板）；设计（候选任务） | `docs/demo/TEMPLATE.md`；S18 候选池 | DEMO-17 干跑第一次即通过，没有 D481 类流程修正 |
 | 3 | **繁忙机器上的本地验证**：先跑受影响文件；全量用 `--maxWorkers=2`；超时只重跑失败文件并附两次输出；门禁以 PR CI 为准 | 设计（规则文字）；开发（PR 正文） | 路线图 §4 | S17 的 PR 正文对本地超时都附重跑输出，不再只写“以 CI 为准” |
 | 4 | **标准时段流程**：D480 写入路线图 §5；S15 行动 5 的完成标准改为“SR-X6 每行有 PID、进程名与不可读原因” | 设计 | 路线图 §5“进程采样规则” | DEMO-17 按标准流程一次通过，静默窗口由流程预先排定，不再临时决定 |
-| 5 | **CHANGELOG 对照**：RC 对照 `git log --oneline --first-parent <上一个 tag>..main` 与 CHANGELOG 条目；DEMO-17 先补 #271 / #270 | 版本管理 | `docs/release/README.md` 送审清单；[S17 DEMO-17 验收](../tasks/S17.md#demo-17-验收) | v0.16.0 RC 没有遗漏已合并 PR 的条目 |
-| 6 | **设计文字的副作用与“无法判定”**：设计 PR 改了路线图 §5 时推送前跑 `check-manifest.mjs`；门禁类验收写出“无法判定”的结果 | 设计 | 路线图 §5“设计文档自查”；`design/tasks/TEMPLATE.md` | S17 没有 D474 / D475 类因设计文字引起的越界或补充裁定 |
+| 5 | **CHANGELOG 对照**：RC 对照 `git log --oneline --first-parent <上一个 tag>..main` 与 CHANGELOG 条目；DEMO-17 写入 #271 / #270，#269 / #272 单列为不需要条目 | 版本管理 | `docs/release/README.md` 送审清单；[S17 DEMO-17 验收](../tasks/S17.md#demo-17-验收) | v0.16.0 RC 没有遗漏已合并 PR 的条目 |
+| 6 | **设计文字的副作用与“无法判定”**：凡改动 `design/` 的设计 PR 推送前跑 `check-manifest.mjs`；门禁类验收写出“无法判定”的结果 | 设计 | 路线图 §5“设计文档自查”；`design/tasks/TEMPLATE.md` | S17 没有 D474 / D475 类因设计文字引起的越界或补充裁定 |
