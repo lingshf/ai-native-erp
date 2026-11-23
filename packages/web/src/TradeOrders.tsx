@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
+import { useOrderLeaveGuard } from "./trade-orders/use-order-leave-guard.ts";
 import { companiesPageSchema } from "@erp/core/contracts";
 import { label, type Preferences } from "./ui/index.ts";
 import { orderLabel } from "./ui/trade-order-labels.ts";
@@ -13,7 +14,6 @@ import {
 } from "./trade-order-link.ts";
 import { MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import { type T, idleGuard } from "./trade-orders/order-model.ts";
-import { useOrderLeaveGuard } from "./trade-orders/use-order-leave-guard.ts";
 import { OrderWorkspace } from "./trade-orders/order-workspace.tsx";
 import { restartOrderList } from "./trade-orders/order-list.tsx";
 import "./pages/trade-orders.css";
