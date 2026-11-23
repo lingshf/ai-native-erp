@@ -696,7 +696,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 - **并行**：A ∥ B ∥ C（CI-03 已结案，由 C′ SLOT-03 接替，D472），冲突域两两不相交，开发同时在岗不超过 3 人；都不申请浏览器时段，服从 D442 时段停用通知；DEMO-16 排在它们结案之后，申请时段附 `-Stub` 记录（D460）。
 - **Sprint 评审与回顾**：[S16 评审](../reviews/S16.md)（通过：四个开发任务与 RC 已合并，v0.15.0 已发布；打回 11、待证据 0，main Full 零失败）、[S16 回顾](../reviews/S16-retro.md)（6 条行动项已认可，设计侧已写入路线图与模板；DEMO-17 须补 CHANGELOG `[Unreleased]` 的 #271 / #270）。
 
-## S17：调整页函数体拆分 + smoke 拆分 + 订单 / 发票列表“刷新列表”（建议 v0.16.0，草案）
+## S17：调整页函数体拆分 + smoke 拆分 + 订单 / 发票列表“刷新列表”（v0.16.0，D484）
 
 计划与任务书见 [S17.md](S17.md)，已由 [#267](https://github.com/lingshf/ai-native-erp/pull/267) 合并（`8cf9712`，D476 / D477）。基线 main `00d1ed4`（S16 三个开发泳道已合并；SLOT-03 #266 按 D473 顺序收尾，不占 S17 名额）。三条泳道 A（REFAC-07）、B（REFAC-08）、C（TLIST-01），都不加迁移；S15 回顾行动 1–3 由计划 PR 写入路线图 §5 与任务书模板。
 
@@ -707,10 +707,11 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [REFAC-07](REFAC-07-action-entry-split.md) | 拆分调整页 `ActionEntry` 函数体，不改行为 | 重构（页面） | P2 | 无 | `TradeAdjustments.tsx` 与新目录 `trade-adjustments/` 下新文件 | 不加 | 不需要 | done | [#275](https://github.com/lingshf/ai-native-erp/pull/275)（`35df068`） |
 | [REFAC-08](S17.md#refac-08拆分-tradeguismoke不改断言) | 拆分 `tradeGuiSmoke`，不改断言（D469） | 重构（测试支持） | P2 | CI-03 已合并 | infra `trade-gui/smoke.ts` 与新目录 `trade-gui/smoke/` 下新文件 | 不加 | 不需要 | done | [#270](https://github.com/lingshf/ai-native-erp/pull/270)（`adeac52`） |
 | [TLIST-01](S17.md#tlist-01订单列表与发票列表加刷新列表) | 订单列表与发票列表加“刷新列表”（按已应用的筛选重读第一页） | 功能（列表） | P2 | 无 | `trade-orders/order-list.tsx`、`trade-invoices/invoice-list.tsx`、`ui/trade-order-labels.ts`、`ui/trade-labels.ts`；两个既有测试的焦点顺序断言；新测试 `trade-list-refresh.test.tsx` 与一条分片权重 | 不加 | 不需要 | done（D477：`OrderList` 206 → 209、`InvoiceList` 290 → 294） | [#271](https://github.com/lingshf/ai-native-erp/pull/271)（`0ce9940`） |
-| [FIX-TADJ-BUSY](FIX-TADJ-BUSY-stale-preview-busy.md)（补充） | 调整页在途预览被编辑取代后 busy 必须清除（REFAC-07 R4 场景 P 发现的原有缺陷） | 缺陷修复（页面状态） | P3 | REFAC-07 #275 已合并（`35df068`，满足；泳道 A 续） | `trade-adjustments/action-commands.ts`；`packages/web/test/trade-adjustments.test.tsx`（加 2 个用例） | 不加 | 不需要 | todo | — |
-| DEMO-17（无任务书） | v0.16.0 RC 与 Demo（TLIST-01 未合并则 v0.15.1），验收见 [S17.md](S17.md#demo-17-验收) | 发布 | P1（Sprint 末） | 每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿；DEMO-16 已发布 | docs/release、`docs/user/` | 不加 | 需要（截图） | todo | — |
+| [FIX-TADJ-BUSY](FIX-TADJ-BUSY-stale-preview-busy.md)（补充） | 调整页在途预览被编辑取代后 busy 必须清除（REFAC-07 R4 场景 P 发现的原有缺陷） | 缺陷修复（页面状态） | P3 | REFAC-07 #275 已合并（`35df068`，满足；泳道 A 续） | `trade-adjustments/action-commands.ts`；`packages/web/test/trade-adjustments.test.tsx`（加 2 个用例） | 不加 | 不需要 | done（RC 之后合并，不在 v0.16.0；D484、D485） | [#278](https://github.com/lingshf/ai-native-erp/pull/278)（`b75d30a`） |
+| DEMO-17（无任务书） | v0.16.0 RC 与 Demo（TLIST-01 未合并则 v0.15.1），验收见 [S17.md](S17.md#demo-17-验收) | 发布 | P1（Sprint 末） | 每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿；DEMO-16 已发布 | docs/release、`docs/user/` | 不加 | 需要（截图） | done（tag → `release/v0.16.0` 的 `ac1c1d4`，D484；D486） | [#277](https://github.com/lingshf/ai-native-erp/pull/277)（`22f3217`） |
 
 - **并行**：A ∥ B ∥ C，冲突域两两不相交，开发同时在岗不超过 3 人；只有 C 可能新增一条分片权重；都不申请浏览器时段，服从 D442 时段停用通知；DEMO-17 排在它们结案之后，申请时段附 `-Stub` 记录（D460）。
+- **Sprint 评审与回顾**：[S17 评审](../reviews/S17.md)（通过：三个开发任务与 RC 已合并，v0.16.0 已发布；打回 8、待证据 1，main Full 零失败）、[S17 回顾](../reviews/S17-retro.md)（4 条行动项待协调者认可；S18 候选见回顾末节；#278 的 `[Unreleased]` 条目已由 #279 写入，下一个 RC 转入 `[0.17.0]`，不重复添加）。
 
 ## 派发顺序
 
