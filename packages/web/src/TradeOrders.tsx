@@ -6,6 +6,7 @@ import {
   companiesPageSchema,
   tradeOrderCommandSchema,
   tradeOrderInvoicingSchema,
+  tradeOrderInvoicingStatusSchema,
   tradeOrderPageSchema,
   tradeOrderPreviewSchema,
   tradeOrderSchema,
@@ -43,7 +44,7 @@ type Draft = {
 };
 type Guard = { busy: boolean; unsaved: boolean };
 type Opened = { orderId: string; focus: boolean };
-const invoicingValues = ["none", "partial", "full"] as const;
+const invoicingValues = tradeOrderInvoicingStatusSchema.options;
 type Invoicing = (typeof invoicingValues)[number];
 const invoicingTone = { none: "warning", partial: "info", full: "success" } as const;
 type Issue = { path: string; key: TradeOrderKey };
