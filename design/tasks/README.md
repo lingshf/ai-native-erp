@@ -687,13 +687,28 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [REFAC-05b](REFAC-05b-order-workspace-split.md) | 拆分 `OrderWorkspace` 函数体，不改行为 | 重构（页面） | P2 | REFAC-05 已合并 | `trade-orders/order-workspace.tsx` 与 `trade-orders/` 下新文件 | 不加 | 不需要 | todo | — |
-| [TORD-08](S16.md#tord-08订单详情显示贷项冲回数量) | 订单详情新增“贷项冲回数量”列（只读，口径不变） | 功能（贸易单据） | P2 | TINV-09 已合并 | core 契约与应用层；storage `trade-documents.ts`；`order-view.tsx`、`ui/trade-order-labels.ts`、`pages/trade-orders.css`；既有测试补字段 | 不加 | 不需要 | todo | — |
-| [CI-03](S16.md#ci-03清空-slot-02-预检的-tsc-基线) | 修掉预检基线中的 11 个 tsc 错误，基线 `tsc` 清空 | CI / 测试类型 | P2 | CI-02 已合并 | infra `test/http/` 两个慢测、`trade-gui/diagnostics.ts`、`trade-gui/smoke.ts`；`scripts/slot/preflight-baseline.json` | 不加 | 不需要 | done（`tradeGuiSmoke` 净增 0 行，D469） | [#261](https://github.com/lingshf/ai-native-erp/pull/261)（`22bd1ce`） |
-| [SLOT-03](S16.md#slot-03进程采样规则-r3只计本仓库) | 进程采样规则 R3：归属不明改为 SR-X6（不计数、全量记日志），加端口硬检查（D472） | 工具 / 时段 | P1（DEMO-15 依赖） | CI-03 已合并 | `scripts/slot/` 的 `procs.ps1`、`slot-run.ps1`、`selftest.ps1`（可新建 `selftest-ports.ps1`）、`README.md`；路线图 §5“进程采样规则”一条 | 不加 | 不需要 | todo | — |
+| [REFAC-05b](REFAC-05b-order-workspace-split.md) | 拆分 `OrderWorkspace` 函数体，不改行为 | 重构（页面） | P2 | REFAC-05 已合并 | — | 不加 | 不需要 | done | [#265](https://github.com/lingshf/ai-native-erp/pull/265)（`00d1ed4`） |
+| [TORD-08](S16.md#tord-08订单详情显示贷项冲回数量) | 订单详情新增“贷项冲回数量”列（只读，口径不变） | 功能（贸易单据） | P2 | TINV-09 已合并 | — | 不加 | 不需要 | done | [#262](https://github.com/lingshf/ai-native-erp/pull/262)（`fe371bf`） |
+| [CI-03](S16.md#ci-03清空-slot-02-预检的-tsc-基线) | 修掉预检基线中的 11 个 tsc 错误，基线 `tsc` 清空 | CI / 测试类型 | P2 | CI-02 已合并 | — | 不加 | 不需要 | done（`tradeGuiSmoke` 净增 0 行，D469） | [#261](https://github.com/lingshf/ai-native-erp/pull/261)（`22bd1ce`） |
+| [SLOT-03](S16.md#slot-03进程采样规则-r3只计本仓库) | 进程采样规则 R3：归属不明改为 SR-X6（不计数、全量记日志），加端口硬检查（D472） | 工具 / 时段 | P1（DEMO-15 依赖） | CI-03 已合并 | `scripts/slot/` 的 `procs.ps1`、`slot-run.ps1`、`selftest.ps1`（可新建 `selftest-ports.ps1`）、`README.md`；路线图 §5“进程采样规则”一条 | 不加 | 不需要 | in review（按 D473 顺序：批准不合并 → DEMO-15 → tag 后合并） | [#266](https://github.com/lingshf/ai-native-erp/pull/266) |
 | DEMO-16（无任务书） | v0.15.0 RC 与 Demo（TORD-08 未合并则 v0.14.1），验收见 [S16.md](S16.md#demo-16-验收) | 发布 | P1（Sprint 末） | 每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/user/` | 不加 | 需要（截图） | todo | — |
 
 - **并行**：A ∥ B ∥ C（CI-03 已结案，由 C′ SLOT-03 接替，D472），冲突域两两不相交，开发同时在岗不超过 3 人；都不申请浏览器时段，服从 D442 时段停用通知；DEMO-16 排在它们结案之后，申请时段附 `-Stub` 记录（D460）。
+
+## S17：调整页函数体拆分 + smoke 拆分 + 订单 / 发票列表“刷新列表”（建议 v0.16.0，草案）
+
+计划与任务书见 [S17.md](S17.md)，待协调者批准。基线 main `00d1ed4`（S16 三个开发泳道已合并；SLOT-03 #266 按 D473 顺序收尾，不占 S17 名额）。三条泳道 A（REFAC-07）、B（REFAC-08）、C（TLIST-01），都不加迁移；S15 回顾行动 1–3 由计划 PR 写入路线图 §5 与任务书模板。
+
+**不在本 Sprint**：M2-05 真实演练与 M2-06（仍待决定 A / B / C）；其他函数体拆分（一个 Sprint 一个）；按开票状态排序、多订单合并开票等交易候选；其他列表的“刷新列表”；OQ-01 后续域。
+
+| ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [REFAC-07](REFAC-07-action-entry-split.md) | 拆分调整页 `ActionEntry` 函数体，不改行为 | 重构（页面） | P2 | 无 | `TradeAdjustments.tsx` 与新目录 `trade-adjustments/` 下新文件 | 不加 | 不需要 | todo | — |
+| [REFAC-08](S17.md#refac-08拆分-tradeguismoke不改断言) | 拆分 `tradeGuiSmoke`，不改断言（D469） | 重构（测试支持） | P2 | CI-03 已合并 | infra `trade-gui/smoke.ts` 与新目录 `trade-gui/smoke/` 下新文件 | 不加 | 不需要 | todo | — |
+| [TLIST-01](S17.md#tlist-01订单列表与发票列表加刷新列表) | 订单列表与发票列表加“刷新列表”（按已应用的筛选重读第一页） | 功能（列表） | P2 | 无 | `trade-orders/order-list.tsx`、`trade-invoices/invoice-list.tsx`、`ui/trade-order-labels.ts`、`ui/trade-labels.ts`；两个既有测试的焦点顺序断言；新测试 `trade-list-refresh.test.tsx` 与一条分片权重 | 不加 | 不需要 | todo | — |
+| DEMO-17（无任务书） | v0.16.0 RC 与 Demo（TLIST-01 未合并则 v0.15.1），验收见 [S17.md](S17.md#demo-17-验收) | 发布 | P1（Sprint 末） | 每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿；DEMO-16 已发布 | docs/release、`docs/user/` | 不加 | 需要（截图） | todo | — |
+
+- **并行**：A ∥ B ∥ C，冲突域两两不相交，开发同时在岗不超过 3 人；只有 C 可能新增一条分片权重；都不申请浏览器时段，服从 D442 时段停用通知；DEMO-17 排在它们结案之后，申请时段附 `-Stub` 记录（D460）。
 
 ## 派发顺序
 
