@@ -628,11 +628,12 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | [M2-05a](S13.md#m2-05a迁移虚构端到端演练与操作手册) | 迁移虚构端到端演练（快照 → dry-run → 导入含期初 → 确认 → 备份校验 → 只读核对，进 Full ≤ 60s）、`legacy-import --dry-run` 接入 CLI、迁移链路 Bench、操作手册 `docs/migration-runbook.md` | 工具 + 测试 + 文档 | P1 | M2-01、M2-04b；D417（限虚构夹具） | admin-cli（`storage-admin-main.mjs`）、bench/CI（`bench.yml`、`legacy-snapshot-windows.yml`、新 Bench 脚本）、docs/runbook（含 `docs/user/backup-and-legacy.md`、根 `README.md` 各一行链接）、新测试 `legacy-rehearsal.test.ts`、`storage-admin-cli.test.ts` 只追加；权重只追加一条 | 不加 | 不需要 | todo | — |
-| [TORD-07](S13.md#tord-07订单筛选写入地址栏与小数格式化) | 订单筛选写入地址栏（只用 replace、非法整组忽略并提示，口径同 TINV-07）+ 订单详情数量 / 单价 / 折扣按语言分组 | 页面 | P2 | D418 | web-ui:trade-orders（`TradeOrders.tsx`、新增 `trade-order-link.ts`、`trade-order-labels.ts`、`trade-orders.css`、`trade-orders.test.tsx`、`docs/flows/trade-order-flow.md`）；不改 tests:trade-e2e 与契约 | 不加 | 不需要（比照 D375 / D406） | todo | — |
+| [TORD-07](S13.md#tord-07订单筛选写入地址栏与小数格式化) | 订单筛选写入地址栏（只用 replace、非法整组忽略并提示，口径同 TINV-07）+ 订单详情数量 / 单价 / 折扣按语言分组 | 页面 | P2 | D418 | web-ui:trade-orders（`TradeOrders.tsx`、新增 `trade-order-link.ts`、`trade-order-labels.ts`、`trade-orders.css`、`trade-orders.test.tsx`、`docs/flows/trade-order-flow.md`）；不改 tests:trade-e2e 与契约 | 不加 | 不需要（比照 D375 / D406） | done | [#223](https://github.com/lingshf/ai-native-erp/pull/223)（`453b382`） |
 | [REFAC-01b](S13.md#refac-01b拆分-tradeguiscenario-函数体不改行为) | 拆分 `tradeGuiScenario` 函数体为按阶段的具名函数，不改行为（S11 回顾行动 7） | 重构（测试） | P2 | REFAC-01 已合并；D419 | tests:trade-e2e（`trade-gui-scenario.ts` 与新目录 `trade-gui/scenario/`），独占 | 不加 | 需要（L5 真实 Chrome；D419：排在 DEMO-12 截图之后） | todo | — |
-| DEMO-13（无任务书） | v0.13.0 RC 与 Demo，验收见 [S13.md](S13.md#demo-13-验收) | 发布 | P1（Sprint 末） | 三个任务结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | 不加 | 需要（截图） | todo | — |
+| [REFAC-03](S13.md#refac-03拆分-journalstsx只搬移不改行为) | 拆分 `Journals.tsx`：`CompanyJournals` 与共享组件按职责搬到 `src/journals/`，原文件保留全部导出，只搬移不改行为 | 重构（页面） | P2 | TORD-07 合并空出名额；决定编号待定 | web-ui:journals（`Journals.tsx` 与新目录 `src/journals/`）；导入方与测试不改 | 不加 | 不需要（比照 REFAC-02） | todo | — |
+| DEMO-13（无任务书） | v0.13.0 RC 与 Demo，验收见 [S13.md](S13.md#demo-13-验收) | 发布 | P1（Sprint 末） | 四个任务结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | 不加 | 需要（截图） | todo | — |
 
-- **并行**：M2-05a ∥ TORD-07 ∥ REFAC-01b 冲突域不相交，可同时派出；开发同时在岗不超过 3 人。只有 REFAC-01b 申请浏览器时段；M2-05a 与 TORD-07 不申请，但服从时段停用通知。共享单文件与交界规则见 [S13.md](S13.md#泳道)。
+- **并行**：M2-05a ∥ TORD-07 ∥ REFAC-01b 冲突域不相交，可同时派出；TORD-07 合并后空出的名额给 REFAC-03（web-ui:journals，与另两条不相交）；开发同时在岗不超过 3 人。只有 REFAC-01b 申请浏览器时段；M2-05a 与 TORD-07 不申请，但服从时段停用通知。共享单文件与交界规则见 [S13.md](S13.md#泳道)。
 
 ## 派发顺序
 
