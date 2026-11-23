@@ -6,7 +6,8 @@ import {
   type BusinessEventDto,
 } from "@erp/core/contracts";
 import type { Language } from "../ui/index.ts";
-import { DimensionFields, VirtualRows } from "../Journals.tsx";
+import { DimensionFields } from "../journals/dialogs.tsx";
+import { VirtualRows } from "../journals/virtual-rows.tsx";
 import { formatMinor } from "../reports-data.ts";
 import { PageControls, PageTable, usePage } from "./list.tsx";
 import type { T } from "./types.ts";

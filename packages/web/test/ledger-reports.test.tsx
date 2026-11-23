@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { QueryClient, focusManager, onlineManager } from "@tanstack/react-query";
 import { buildReports, type Account, type ReportRow } from "@erp/core/domain";
 import { App } from "../src/App.tsx";
-import { VirtualRows } from "../src/Journals.tsx";
+import { VirtualRows } from "../src/journals/virtual-rows.tsx";
 const company = {
   code: "DEFAULT",
   name: "Synthetic",

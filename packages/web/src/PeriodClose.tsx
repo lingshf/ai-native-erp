@@ -15,7 +15,7 @@ import {
 import { label, type LabelKey, type Preferences } from "./ui/index.ts";
 import { MasterDataFailure, masterRequest } from "./master-data-client.ts";
 import { formatMinor } from "./reports-data.ts";
-import { VirtualRows } from "./Journals.tsx";
+import { VirtualRows } from "./journals/virtual-rows.tsx";
 import { TradePeriodAdmission } from "./TradePeriodAdmission.tsx";
 import { Badge, FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
 import "./pages/period-close.css";

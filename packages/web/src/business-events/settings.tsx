@@ -11,7 +11,7 @@ import {
   type PostingRuleDto,
 } from "@erp/core/contracts";
 import { masterRequest } from "../master-data-client.ts";
-import { DimensionFields } from "../Journals.tsx";
+import { DimensionFields } from "../journals/dialogs.tsx";
 import { BusinessError } from "./business-error.tsx";
 import { PageControls, PageTable, usePage } from "./list.tsx";
 import type { T } from "./types.ts";

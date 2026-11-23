@@ -15,7 +15,8 @@ import {
 } from "@erp/core/contracts";
 import { label, type Language } from "../ui/index.ts";
 import { MasterDataFailure, masterRequest } from "../master-data-client.ts";
-import { Facts, LinePlan, Modal, VirtualRows } from "../Journals.tsx";
+import { Facts, LinePlan, Modal } from "../journals/dialogs.tsx";
+import { VirtualRows } from "../journals/virtual-rows.tsx";
 import { MessageBar } from "../ui/components/index.tsx";
 import { formatMinor } from "../reports-data.ts";
 import { BusinessError } from "./business-error.tsx";
