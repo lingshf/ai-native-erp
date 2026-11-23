@@ -12,7 +12,7 @@
 # Port gate (R3, D472): -Ports lists the slot's ports (required unless -Stub, else exit 4 before the build). They are
 # checked after the steps are loaded (before the static preflight, the build and the process precheck) and again after
 # the precheck, before the first step; a TCP listener on any of them (any address, IPv4 / IPv6) ends the run with
-# exit 7, no wait, no retry (D444).
+# exit 7, no wait, no retry (D444). A failed port lookup (provider error or exception) ends the run with exit 8 (D475).
 # Static preflight (S12 SLOT-02, D407 / D408): before the build, preflight.mjs checks head (with -PreflightFiles), then
 # base; its exit code 4 (input or configuration error) or 6 (new finding) ends the run with that same code before the
 # build, the dist check, the process precheck and any step. Each step gets the PSModulePath from step-env.ps1.
@@ -91,10 +91,24 @@ function Get-PortOwnerText([int] $owningPid) {
   $verdict = if ($p.Rule) { $p.Owner } elseif ($script:ever.ContainsKey($owningPid)) { 'SR-R1 runner tree' } else { 'SR-C1 not a candidate' }
   "pid=$owningPid name=$($p.Name) cmdline=[$($p.CommandLine -replace '\s+', ' ')] verdict=[$verdict]"
 }
-# Ends the run with exit 7 when any -Ports port has a TCP listener; never waits or retries (D444).
+# Listen-state TCP connections on -Ports. Any lookup error, non-terminating or thrown, is logged in full and ends the
+# run with exit 8: a port that could not be checked is never treated as free (D475). No retry.
+function Get-PortListeners([string] $phase) {
+  $lookupErrors = @()
+  try { $all = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue -ErrorVariable lookupErrors) }
+  catch { $lookupErrors = @($_) }
+  if ($lookupErrors.Count -eq 0) { return @($all | Where-Object { $Ports -contains [int]$_.LocalPort }) }
+  foreach ($e in $lookupErrors) {
+    $record = if ($e -is [Management.Automation.ErrorRecord]) { $e } else { $e.ErrorRecord }
+    Say "port lookup failed phase=$phase id=[$($record.FullyQualifiedErrorId)] category=[$($record.CategoryInfo)] exception=[$($record.Exception.GetType().FullName)] message=[$($record.Exception.Message -replace '\s+', ' ')]"
+  }
+  Say "ABORT: port lookup failed ($phase)"
+  exit 8
+}
+# Ends the run with exit 7 when a listener is confirmed on any -Ports port; never waits or retries (D444).
 function Assert-PortsFree([string] $phase) {
   if ($Ports.Count -eq 0) { Say "ports not given (stub) phase=$phase"; return }
-  $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $Ports -contains [int]$_.LocalPort })
+  $listeners = @(Get-PortListeners $phase)
   if ($listeners.Count -eq 0) { Say "ports free phase=$phase ports=$($Ports -join ',')"; return }
   foreach ($l in $listeners) { Say "port busy phase=$phase port=$($l.LocalPort) address=$($l.LocalAddress) $(Get-PortOwnerText ([int]$l.OwningProcess))" }
   Say "ABORT: slot port in use ($phase)"
