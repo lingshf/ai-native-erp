@@ -1,0 +1,73 @@
+== A1 对照：监听不换，run-main 应走完 ==
+A1 通过：退出 0，四个 seed 都执行，readiness 通过，端口释放：True
+== A2 真实 run-main：监听换成 B，应在 seed-invoicing 之前中止 ==
+ready port=4201 pid=88872 start=21:44:05
+port 4201 released
+powershell.exe : owner mismatch before seed-invoicing
+At C:\GithubCopilot\copilot-worktrees\ai-native-erp\lingshf-animated-disco\docs\demo\v0.11.0\scripts\orchestration-stub
+.ps1:96 char:13
++     $out = (& powershell -NoProfile -File $script -Shots "$sb\tmp\sho ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (owner mismatch before seed-invoicing:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+At C:\GithubCopilot\copilot-worktrees\ai-native-erp\lingshf-animated-disco\docs\demo\v0.11.0\scripts\run-main.ps1:23 
+char:156
++ ... wner[0] -ne $server.Id){throw "owner mismatch before seed-invoicing"}
++                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (owner mismatch before seed-invoicing:String) [], RuntimeException
+    + FullyQualifiedErrorId : owner mismatch before seed-invoicing
+A2 通过：中止信息 owner mismatch before seed-invoicing；seed-trade 执行、后续 seed 未执行；B pid 78616
+== A2 对照：run-main 副本去掉该处 PID 比较，同一场景应放行（负例失效） ==
+A2 对照通过：去掉 PID 比较后 seed-invoicing 被执行了（这个负例此时失败），退出 1
+== A4 真实 run-main：监听换成 B，应在 seed-sales 之前中止 ==
+ready port=4201 pid=46784 start=21:44:19
+port 4201 released
+powershell.exe : owner mismatch before seed-sales
+At C:\GithubCopilot\copilot-worktrees\ai-native-erp\lingshf-animated-disco\docs\demo\v0.11.0\scripts\orchestration-stub
+.ps1:96 char:13
++     $out = (& powershell -NoProfile -File $script -Shots "$sb\tmp\sho ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (owner mismatch before seed-sales:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+At C:\GithubCopilot\copilot-worktrees\ai-native-erp\lingshf-animated-disco\docs\demo\v0.11.0\scripts\run-main.ps1:25 
+char:156
++ ... r $owner[0] -ne $server.Id){throw "owner mismatch before seed-sales"}
++                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (owner mismatch before seed-sales:String) [], RuntimeException
+    + FullyQualifiedErrorId : owner mismatch before seed-sales
+A4 通过：中止信息 owner mismatch before seed-sales；seed-invoicing 执行、后续 seed 未执行；B pid 15016
+== A4 对照：run-main 副本去掉该处 PID 比较，同一场景应放行（负例失效） ==
+A4 对照通过：去掉 PID 比较后 seed-sales 被执行了（这个负例此时失败），退出 1
+== A6 真实 run-main：监听换成 B，应在 seed-detail 之前中止 ==
+ready port=4201 pid=77168 start=21:44:34
+port 4201 released
+powershell.exe : owner mismatch before seed-detail
+At C:\GithubCopilot\copilot-worktrees\ai-native-erp\lingshf-animated-disco\docs\demo\v0.11.0\scripts\orchestration-stub
+.ps1:96 char:13
++     $out = (& powershell -NoProfile -File $script -Shots "$sb\tmp\sho ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (owner mismatch before seed-detail:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+At C:\GithubCopilot\copilot-worktrees\ai-native-erp\lingshf-animated-disco\docs\demo\v0.11.0\scripts\run-main.ps1:27 
+char:156
++ ...  $owner[0] -ne $server.Id){throw "owner mismatch before seed-detail"}
++                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (owner mismatch before seed-detail:String) [], RuntimeException
+    + FullyQualifiedErrorId : owner mismatch before seed-detail
+A6 通过：中止信息 owner mismatch before seed-detail；seed-sales 执行、后续 seed 未执行；B pid 90880
+== A6 对照：run-main 副本去掉该处 PID 比较，同一场景应放行（负例失效） ==
+A6 对照通过：去掉 PID 比较后 seed-detail 被执行了（这个负例此时失败），退出 1
+== B 渲染结果里的真实服务演练块和取图块 ==
+取到的块：真实服务演练块序号 4，取图块序号 6（共 6 块）
+B3 通过：真实服务演练块在沙箱里执行，退出 0，替身 run-main 被带 -SkipCapture 调用，没有 build
+B6 通过：取图块在沙箱里执行，退出 0；build 先于 run-main 替身（不带 -SkipCapture）；32 张复制到沙箱截图目录；shots 临时目录已清
+B6 负例通过：dist 缺 Invoice details，取图块因 dist 断言中止（退出 1，输出含[dist 里没有]），run-main 替身没有被调用，没有复制截图
+B6 负例通过：dist 时间与 HEAD 提交时间相等，取图块因严格晚于断言中止（退出 1，输出含[不晚于 HEAD]），run-main 替身没有被调用，没有复制截图
+B7 成功通过：stdout、原生 stderr、其后的 stdout 三段都在日志里，exit=0；复制 32 张，shots 目录已清，日志保留
+B7 失败通过：原生 stderr 之后的 stdout 仍落盘；日志记 EXCEPTION 与实际退出码 exit=3；块以失败退出；不复制截图；shots 目录保留（含已写出的 5 张）
+B7 抛错通过：runner 抛错的原始异常和 exit=1 落盘；块失败退出；不复制截图
+B7 复制失败通过：Copy-Item 失败进入 catch，日志 ok=False 且有 EXCEPTION；块失败退出；shots 目录保留，32 张原图未删
+编排替身检查全部通过；端口 4201 已空闲；真实截图目录未变：55 个文件

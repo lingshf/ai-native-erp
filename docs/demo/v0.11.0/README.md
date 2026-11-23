@@ -19,7 +19,8 @@
 
 数据来源见 `scripts/seed-detail.mjs`：伙伴 PARTY2 的 AP-D1-1（订单 PO-D1）、AP-EARLY-1..3（当月 1 日）、BULK-001..102（伙伴 PARTY，凑够 >100 行）；AR-I1-1 核销 50.00。DEFAULT 共 112 张，PARTY 105 张。
 
-**与任务书的差异**：任务书写“三个新分组”，页面实际有五个带标题的分组（基础配置/凭证与业务事件/贸易往来/总账与结账/只读报表），其中三个由 UI-14 拆出；首组（运行状态、迁移核对）无标题。以代码为准。
+**与任务书的差异**：任务书写“三个新分组”。页面实际是三个新分组（凭证与业务事件 / 贸易往来 / 总账与结账，由 UI-14 #197 拆出），加上原有的基础配置、只读报表，共五个带标题的分组，另有一个无标题的首组（运行状态、迁移核对）。以代码为准。
+链接顺序（16 个）与 [#197](https://github.com/lingshf/ai-native-erp/pull/197)（base `506201e`、head `5f67f2e`）核验过的顺序相同：#197 正文记录 slot-2 的 base/head 取图比对 16 对、`failures=[]`，`App.test.tsx` 的 “UI-14 sidebar navigation groups” 断言同一 16 链接序列。本 Demo 的 `capture.mjs` 的 `navOrder` 与之一致，只断言“与 #197 核验的 base 顺序相同”，没有自己重做 base/head 比对。
 
 ## 2. 槽位与运行记录
 
@@ -30,8 +31,102 @@
 - 完整日志：`logs/demo-capture-main.log`（33 行），SHA-256 `32B2869BD5CC8800701A2C48144B285F0ABE7C3961562BD2BB0CDF1ECAB62E52`。
 - 命令：`$env:ERP_E2E_BROWSER_CHANNEL='chrome'; ./docs/demo/v0.11.0/scripts/run-main.ps1 -Shots docs/demo/v0.11.0/screenshots`（需先 `npm run build`）。
 
-## 3. 未做 / 限制
+**例外记录（D373，不作先例）**
 
-- **未做无浏览器替身检查**：v0.10.0 的 `stub-check.ps1`、`orchestration-stub.ps1`、`proc05-negatives.ps1` 没有为 v0.11.0 新增副本，PROC-08 要求的“README 渲染块实跑”与负例也未补跑。本次直接在真服务上预演并一次取图成功；如评审要求，我再补。
+- ①：21:13–21:15 取图时，槽位是协调者明确批准直接使用的（“可以直接用，按 D308 执行”）。当时两名开发刚建、处于 plan 模式，没有浏览器进程。本轮接受只用 Chrome 做 2 秒预检，作为例外（D373），以后不作先例。
+- ⑤：端口 4201 作为例外接受。端口已释放，没有冲突证据（D373）。
+
+**重取记录（D376、D380）**：#204 评审后 `capture.mjs` 增加了断言（伙伴错误文案、筛选/未筛选按请求区分、截图前 hash），所以 21:13 的 32 张图早于最终脚本，不能作为最终证据。按 R1（`scripts/slot/slot-run.ps1`）重取：
+
+- 第 1 次尝试（21:23–21:38）：预检期间开发在别的工作树跑 vitest，预检 15 分钟超时，exit 3，没有运行任何步骤。目录 `C:\Users\shaoling\slot-s11-demo-recapture-attempt1-precheck-timeout`（本机，未入库）。
+- 第 2 次（21:38:43–21:41:21）：预检 6 次均为 0，唯一一次取图在第 7 步“重置”失败（slot-run exit 1，按 D308 不重跑）。原文：`CAPTURE FAILED: page.waitForResponse: Timeout 30000ms exceeded while waiting for event "response"`。已写出 6 张，端口 4201 已释放，无残留进程。目录 `C:\Users\shaoling\slot-s11-demo-recapture`（本机，未入库）。
+- 原因（读 `TradeInvoices.tsx:1091–1112` 与 `App.tsx:67–70`）：QueryClient 的 `staleTime` 是 `Infinity`，切回 DEFAULT 时未筛选的第一页取自缓存，不发请求，我新增的 `waitForResponse` 因此等不到。`capture.mjs` 已改为：切回 DEFAULT 时不要求有请求，只断言期间发出的任何列表请求都不带筛选参数，再断言筛选条为空、101 行。
+
+## 3. 限制
+
 - 390 宽的详情对话框是 fixed 定位，整页截图里显示在页面顶部，属 TINV-06 已有行为，不是本 Demo 引入。
 - 本 PR 只加 Demo 材料；CHANGELOG 日期和 tag 目标留给日期 PR。
+
+## 4. 复跑（从仓库根目录）
+
+无浏览器替身检查（不启动 Chrome / Playwright / Vitest）。`seed-detail` 替身（`seed-detail-stub.mjs`）校验 222 个请求的成功路径，以及缺 AR、超额核销、日期格式错误、缺参数的负例：
+
+```powershell
+powershell -NoProfile -File docs\demo\v0.11.0\scripts\stub-check.ps1
+```
+
+PROC-05 固定负例（空目录、隐藏文件、读不了的文件、中途抛错、所有权变化、同文件 `Copy-Item` 非终止错误对照；第 6 项“从渲染文档取块”由下面的编排替身覆盖）：
+
+```powershell
+powershell -NoProfile -File docs\demo\v0.11.0\scripts\proc05-negatives.ps1
+```
+
+编排级替身（无浏览器、无真实服务；端口 4201 须空闲）：在沙箱里原样运行真实 `run-main.ps1`，在 seed-trade、seed-invoicing、seed-sales 之后分别构造“进程 A 存活但监听归进程 B”（各带去掉 PID 比较的对照），并把 GitHub 渲染后的 README 里的真实服务演练块和取图块实际执行，含 dist 缺界面标记、dist 时间等于 HEAD 两个负例与 B7 日志完整性路径：
+
+```powershell
+powershell -NoProfile -File docs\demo\v0.11.0\scripts\orchestration-stub.ps1
+```
+
+真实服务演练（无浏览器，需协调者批准）：
+
+```powershell
+$shots = Join-Path $env:TEMP ("demo-s11-shots-" + [guid]::NewGuid())
+& .\docs\demo\v0.11.0\scripts\run-main.ps1 -Shots $shots -SkipCapture
+```
+
+真实 Chrome 取图（需独占时段，R1）。正式时段用 `pwsh -File scripts\slot\slot-run.ps1 -OutDir <仓库外目录> -StepsFile <steps>`，它自己做 build 与 dist 新鲜度门禁、6 次预检（间隔 10 秒）和采样；预检不为 0 就不开始。手动预检：
+
+```powershell
+1..6 | ForEach-Object {
+  $n = @(Get-CimInstance Win32_Process | Where-Object {
+    $_.ProcessId -ne $PID -and $_.Name -ne "pwsh.exe" -and $_.Name -ne "powershell.exe" -and
+    ($_.Name -match "^(chrome|biome)" -or $_.CommandLine -match "vitest|playwright|vite\b|tsc\b|main\.ts|capture\.mjs")
+  }).Count
+  "预检 $_ : $n"
+  if ($n -ne 0) { throw "有外部进程，不开始" }
+  if ($_ -lt 6) { Start-Sleep 10 }
+}
+```
+
+取图块：先 build，断言 `index.html` 严格晚于 HEAD 提交时间，再断言 dist 里有本版界面文案（“Invoice details”“No invoices match the filters”），然后取图；任何一步失败就中止：
+
+```powershell
+. {
+  $shots = Join-Path $env:TEMP ("demo-s11-shots-" + [guid]::NewGuid())
+  $log = "$shots.run.log"   # 完整输出写入文件；失败时保留 $shots 与日志，不清理
+  $ok = $false
+  $code = 0
+  $prevEap = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"   # Stop 下 PowerShell 5.1 会在第一行原生 stderr 处终止管道，丢后续输出并改写退出码
+  try {
+    $global:LASTEXITCODE = 0
+    npm run build *>&1 | Out-File -FilePath $log -Append -Encoding utf8 -Width 4096
+    if ($LASTEXITCODE -ne 0) { throw "构建失败，退出码 $LASTEXITCODE" }
+    $headTime = [DateTimeOffset]::Parse((git log -1 --format=%cI HEAD)).UtcDateTime
+    $index = "packages\web\dist\index.html"
+    if (-not (Test-Path $index) -or (Get-Item $index).LastWriteTimeUtc -le $headTime) { throw "dist 缺失，或不晚于 HEAD 提交时间（相等也算失败），中止" }
+    $dist = Get-ChildItem packages\web\dist\assets -Filter *.js | Get-Content -Raw
+    if (-not ($dist -match "Invoice details" -and $dist -match "No invoices match the filters")) { throw "dist 里没有 Invoice details 或 No invoices match the filters，旧界面，中止" }
+    $global:LASTEXITCODE = 0
+    & .\docs\demo\v0.11.0\scripts\run-main.ps1 -Shots $shots *>&1 | Out-File -FilePath $log -Append -Encoding utf8 -Width 4096
+    if ($LASTEXITCODE -ne 0) { throw "run-main 退出码 $LASTEXITCODE" }
+    $n = @(Get-ChildItem $shots -Filter *.png).Count
+    if ($n -ne 32) { throw "截图数 $n，不是 32，不复制" }
+    Copy-Item "$shots\*" docs\demo\v0.11.0\screenshots\ -ErrorAction Stop   # 复制失败要进 catch：不设 ok、不删 $shots 里的原图
+    $ok = $true
+  } catch {
+    $code = if ($LASTEXITCODE) { $LASTEXITCODE } else { 1 }
+    "EXCEPTION: $($_ | Out-String)" | Out-File -FilePath $log -Append -Encoding utf8 -Width 4096
+  } finally {
+    $ErrorActionPreference = $prevEap
+    "exit=$code ok=$ok log=$log" | Out-File -FilePath $log -Append -Encoding utf8 -Width 4096
+    if ($ok -and (Split-Path $shots -Leaf) -like "demo-s11-shots-*" -and (Test-Path $shots)) { Remove-Item -Recurse -Force $shots }
+  }
+  Get-Content -Encoding UTF8 $log
+  if (-not $ok) { throw "失败，退出码 $code；已保留 $shots 和 $log，不清理，不重试" }
+}
+```
+
+`run-main.ps1` 启动前检查端口 4201 空闲（D373 例外）；每个 seed 与 capture 之前都校验监听进程就是本轮服务；`finally` 只停本轮服务、只删本轮 `erp-demo-*` 目录。`screenshots/.gitkeep` 是替身检查的哨兵文件，别删。取图期间不使用 `tinv06-*`（开发提交的文件，不要覆盖）。
+
+脚本入口：[run-main.ps1](scripts/run-main.ps1)、[capture.mjs](scripts/capture.mjs)、[seed-detail.mjs](scripts/seed-detail.mjs)、[seed-detail-stub.mjs](scripts/seed-detail-stub.mjs)、[stub-check.ps1](scripts/stub-check.ps1)、[proc05-negatives.ps1](scripts/proc05-negatives.ps1)、[orchestration-stub.ps1](scripts/orchestration-stub.ps1)；账套准备与主数据复用 v0.4.0 的 `prepare.mjs`、`seed-trade.mjs`，开票与销售复用 v0.10.0 的 `seed-invoicing.mjs`、`seed-sales.mjs`。证据与逐条断言出处见 [run-through.md](run-through.md)。

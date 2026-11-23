@@ -327,8 +327,20 @@ try {
       unfiltered(await listResponse(() => page.locator("#tinv-company").selectOption("DEMO2")), "DEMO2", "切到 DEMO2");
       await poll(() => barValues(page), ["", "", "", ""], "切换到 DEMO2 后筛选条应为空");
       await poll(() => listLocator.count(), 0, "DEMO2 没有发票");
-      unfiltered(await listResponse(() => page.locator("#tinv-company").selectOption("DEFAULT")), "DEFAULT", "切回 DEFAULT");
+      // 切回 DEFAULT：QueryClient staleTime=Infinity（App.tsx:70），未筛选的 DEFAULT 第一页取自缓存，可能不发请求（2026-11-22 21:40 取图在此处等响应超时）；
+      // 因此不要求一定有请求，只断言期间发出的任何列表请求都不带筛选参数
+      const switchBack = [];
+      const record = (r) => { if (new URL(r.url()).pathname === "/api/v1/trade/invoices") switchBack.push(r.url()); };
+      page.on("request", record);
+      await page.locator("#tinv-company").selectOption("DEFAULT");
       await listLocator.first().waitFor({ timeout: 8000 });
+      await page.waitForTimeout(500);
+      page.off("request", record);
+      for (const u of switchBack) {
+        const p = Object.fromEntries(new URL(u).searchParams);
+        if (p.company !== "DEFAULT" || filterKeys.some((k) => p[k])) throw new Error("切回 DEFAULT 的列表请求不应带筛选参数：" + u);
+      }
+      log.push({ step: "reset-switch-back", listRequests: switchBack });
       await poll(() => barValues(page), ["", "", "", ""], "切回 DEFAULT 后筛选条应为空");
       await poll(() => rowCount(page), "101", "切回 DEFAULT 后应是未筛选第一页（100 行 + 表头，不是筛选后的 5 行）");
       await shot(page, `invoice-filter-reset-${tag}`, want, { step: "invoice-filter-reset", entryHash: entry, via: "apply side=AR, reload; apply party=PARTY2 side=AP, switch company DEMO2 then DEFAULT" });
