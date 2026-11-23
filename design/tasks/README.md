@@ -601,20 +601,22 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 **计划正文**：[S12.md](S12.md)（草案；D368 起草，D369 把 TINV-07、TORD-06 排在最前并已先行派发，D370 / D371 决定两者的方案口径；各任务细节以该文为准）。基线 main `f5defcc`；版本号暂定 v0.12.0。S11 的 Sprint 评审与回顾见 [S11 评审](../reviews/S11.md) 与 [S11 回顾](../reviews/S11-retro.md)。
 
-**不在本 Sprint**：M2-05 / M2-06（仍待用户授权）；多订单合并开票、贷项冲减已开票数量、保留前进历史；订单筛选写入地址栏；按开票状态排序（候选池）；发票列表其余观感问题（TINV-07 之后另起小步任务）。
+**不在本 Sprint**：M2-05 / M2-06（仍待用户授权）；多订单合并开票、贷项冲减已开票数量、保留前进历史；订单筛选写入地址栏；按开票状态排序（候选池）；发票来源订单链接样式（TINV-06 定的样式，不改）。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| [TINV-07](S12.md#tinv-07发票详情深链接与筛选写入地址栏) | 发票详情深链接 `?invoice=` 与筛选写入地址栏；只用 replace，切换账套写地址，非法筛选整组忽略并提示，非法 `invoice` 前端判 notFound（D370） | 页面 | P1 | — （D369 先行派发） | web-ui:trade（`TradeInvoices.tsx`、`TradeInvoiceDetail.tsx`、发票 labels 只追加、发票测试、`docs/flows/invoice-*.md`）；共享 `trade-gui-scenario.ts`、`scripts/test-shard-weights.json` 只追加 | in progress | — |
-| [TORD-06](S12.md#tord-06订单按开票状态筛选) | 订单按开票状态筛选：迁移 019 存储状态，过账 / 作废事务内维护，列表列读存储值；`invoicing` 单值（D371） | 迁移 + 页面 | P1 | — （D369 先行派发） | migrations(019)+migrations.ts、domain-posting、storage、contracts（订单列表查询追加）、web-ui:trade-orders；共享文件同上 | in progress | — |
+| [TINV-07](S12.md#tinv-07发票详情深链接与筛选写入地址栏) | 发票详情深链接 `?invoice=` 与筛选写入地址栏；只用 replace，切换账套写地址，非法筛选整组忽略并提示，非法 `invoice` 前端判 notFound（D370） | 页面 | P1 | — （D369 先行派发） | web-ui:trade（`TradeInvoices.tsx`、`TradeInvoiceDetail.tsx`、发票 labels 只追加、发票测试、`docs/flows/invoice-*.md`）；共享 `trade-gui-scenario.ts`、`scripts/test-shard-weights.json` 只追加 | done | [#208](https://github.com/lingshf/ai-native-erp/pull/208)（`676d4f7`） |
+| [TORD-06](S12.md#tord-06订单按开票状态筛选) | 订单按开票状态筛选：迁移 019 存储状态，过账 / 作废事务内维护，列表列读存储值；`invoicing` 单值（D371） | 迁移 + 页面 | P1 | — （D369 先行派发） | migrations(019)+migrations.ts、domain-posting、storage、contracts（订单列表查询追加）、web-ui:trade-orders；共享文件同上 | done | [#209](https://github.com/lingshf/ai-native-erp/pull/209)（`6afaef9`） |
 | [UI-15](S12.md#ui-15期末结账页小步整理) | 期末结账页小步整理：补页头说明，准入徽标与复选框显示本地化模块名（界面小步） | 页面 | P2 | 本 PR | web-ui:period-close（`PeriodClose.tsx`、`TradePeriodAdmission.tsx`、`ui/close-labels.ts`、`ui/trade-report-labels.ts` 中 `trpt.*`、`pages/period-close.css` 及测试） | done | #206 |
 | [UI-16](S12.md#ui-16总账四页补页头说明) | 总账四页（科目表、财务维度、凭证、业务事件）补页头说明（界面小步，D377，不用槽位） | 页面 | P2 | UI-15 合并 | web-ui:master、web-ui:dimensions、web-ui:journals、web-ui:business-events（四个页面、对应 `ui/*-labels.ts` 只追加 `*.description` 及四页测试） | done | #210 |
-| [UI-17](S12.md#ui-17通用加载与失败提示去掉主数据字样) | 通用加载与失败提示去掉“主数据”字样：只影响使用这两个共享键的现有提示，专用提示不改；只改 `master.loading` / `master.error` 的中英取值，不改键名（D384，不用槽位，不进截图与门禁） | 页面（文案） | P2 | UI-16 合并 | web-ui:master（`ui/master-labels.ts`）+ web-ui:migration（`test/migration.test.tsx` 只追加） | in progress | — |
-| [REFAC-01](S12.md#refac-01拆分-trade-gui-scenariots只搬移不改行为) | 拆分 `trade-gui-scenario.ts`：把场景函数以外的顶层声明按职责搬到 `test/support/trade-gui/`，原名再导出，只搬移不改行为（2026-11-22 用户要求可读性） | 重构（测试） | P2 | TINV-07、TORD-06 合并且 main Full 绿（D388） | tests:trade-e2e（独占） | todo | — |
-| [REFAC-02](S12.md#refac-02拆分-businesseventstsx只搬移不改行为) | 拆分 `BusinessEvents.tsx`：组件按职责搬到 `src/business-events/`，只搬移不改行为 | 重构（页面） | P2 | — （D388：有开发名额空出即派） | web-ui:business-events | todo | — |
+| [UI-17](S12.md#ui-17通用加载与失败提示去掉主数据字样) | 通用加载与失败提示去掉“主数据”字样：只影响使用这两个共享键的现有提示，专用提示不改；只改 `master.loading` / `master.error` 的中英取值，不改键名（D384，不用槽位，不进截图与门禁） | 页面（文案） | P2 | UI-16 合并 | web-ui:master（`ui/master-labels.ts`）+ web-ui:migration（`test/migration.test.tsx` 只追加） | done | [#213](https://github.com/lingshf/ai-native-erp/pull/213)（`3427d0e`） |
+| [REFAC-01](S12.md#refac-01拆分-trade-gui-scenariots只搬移不改行为) | 拆分 `trade-gui-scenario.ts`：把场景函数以外的顶层声明按职责搬到 `test/support/trade-gui/`，原名再导出，只搬移不改行为（2026-11-22 用户要求可读性） | 重构（测试） | P2 | TINV-07、TORD-06 合并且 main Full 绿（D388） | tests:trade-e2e（独占） | in progress | — |
+| [REFAC-02](S12.md#refac-02拆分-businesseventstsx只搬移不改行为) | 拆分 `BusinessEvents.tsx`：组件按职责搬到 `src/business-events/`，只搬移不改行为 | 重构（页面） | P2 | — （D388：有开发名额空出即派） | web-ui:business-events | done | [#214](https://github.com/lingshf/ai-native-erp/pull/214)（`b5f7129`） |
+| [TINV-08](S12.md#tinv-08发票页小步打磨) | 发票页小步打磨：筛选栏间距、匹配 / 未结项状态徽标、详情合计一行、数量 / 单价 / 折扣按语言分组；不改标签、契约与 tests:trade-e2e | 页面 | P2 | TINV-07 已合并；D406（比照 D375，不占浏览器时段） | web-ui:trade 发票页（`TradeInvoices.tsx`、`TradeInvoiceDetail.tsx`、`trade-invoices.css`、新增 `trade-invoice-status.ts`、`decimal-format.ts` 及发票 jsdom 测试） | todo | — |
+| [SLOT-02](S12.md#slot-02runner-开跑前静态检查与子进程环境) | runner 开跑前 tsc 与 TDZ 静态检查（退出码 4 输入或配置错误、6 新发现，runner 原样传出）与子进程 `PSModulePath` 修正（S11 回顾行动 2、3；D407 / D408：重置 `PSModulePath`，只有新写与改动的脚本用 .NET） | 开发工具 | P2 | — | `scripts/slot/`（不改 `procs.ps1` 与规则 R1；不进 CI） | todo | — |
 | DEMO-12（无任务书） | v0.12.0 RC 与 Demo，验收见 [S12.md](S12.md#demo-12-验收) | 发布 | P1（Sprint 末） | TINV-07、TORD-06、UI-15 结案；覆盖最后一个合并提交的 main Full 绿 | docs/release | todo | — |
 
-- **并行**：TINV-07 ∥ TORD-06 ∥ UI-15 冲突域不相交，可同时进行（D369）；UI-15 合并后由 UI-16 接替第三个名额（D377），UI-16 合并后由 UI-17 接替（D384）；只有 TORD-06 加迁移（019），其他任务不得新增迁移。开发同时在岗不超过 3 人。共享单文件与槽位规则见 [S12.md](S12.md#泳道)。
+- **并行**：TINV-07 ∥ TORD-06 ∥ UI-15 冲突域不相交，可同时进行（D369）；UI-15 合并后由 UI-16 接替第三个名额（D377），UI-16 合并后由 UI-17 接替（D384）；REFAC-02 合并后空出的 2 个名额给 TINV-08 ∥ SLOT-02，两者与 REFAC-01 的冲突域不相交；只有 TORD-06 加迁移（019），其他任务不得新增迁移。开发同时在岗不超过 3 人。共享单文件与槽位规则见 [S12.md](S12.md#泳道)。
 
 ## 派发顺序
 
