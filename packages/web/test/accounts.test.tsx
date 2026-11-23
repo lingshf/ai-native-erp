@@ -311,3 +311,51 @@ describe("account editing", () => {
     expect(await screen.findByText("Equipment")).toBeTruthy();
   });
 });
+
+it("shows the page description verbatim in zh and en whether teaching is off or on (UI-16)", async () => {
+  window.history.replaceState(null, "", "/#/accounts");
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn<typeof fetch>()
+      .mockImplementation(async (path) =>
+        new URL(String(path), "http://localhost").pathname === "/api/v1/companies"
+          ? response({ items: [company], nextCursor: null })
+          : response({ items: [], nextCursor: null }),
+      ),
+  );
+  const expected = {
+    zh: "按公司维护会计科目的类别、报表分组、余额方向与手工录入权限。",
+    en: "Maintain each company's accounts: category, report group, normal side and manual-entry permission.",
+  };
+  expect(Array.from(expected.zh).length).toBeLessThanOrEqual(40);
+  expect(expected.en.length).toBeLessThanOrEqual(120);
+  const { container } = render(<App />);
+  await screen.findByRole("heading", { level: 2, name: label("zh", "master.title") });
+  const assertHeader = (language: "zh" | "en", teaching: boolean) => {
+    const heading = screen.getByRole("heading", {
+      level: 2,
+      name: label(language, "master.title"),
+    });
+    const description = heading.nextElementSibling;
+    expect(description?.tagName).toBe("P");
+    expect(description?.textContent).toBe(expected[language]);
+    expect(label(language, "master.description")).toBe(expected[language]);
+    const tips = [...container.querySelectorAll("aside.teaching-tip")].filter(
+      (tip) => tip.getAttribute("aria-label") === label(language, "master.teachingTitle"),
+    );
+    expect(tips).toHaveLength(teaching ? 1 : 0);
+  };
+  const switchTo = (from: "zh" | "en", to: "zh" | "en") =>
+    fireEvent.change(screen.getByLabelText(label(from, "shell.language")), {
+      target: { value: to },
+    });
+  for (const teaching of [false, true]) {
+    if (teaching)
+      fireEvent.click(screen.getByLabelText(label("zh", "shell.showTeachingExplanations")));
+    assertHeader("zh", teaching);
+    switchTo("zh", "en");
+    assertHeader("en", teaching);
+    switchTo("en", "zh");
+  }
+});
