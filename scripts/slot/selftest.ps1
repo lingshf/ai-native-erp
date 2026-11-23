@@ -237,20 +237,25 @@ Case 'SR-C2' '-' 'parent younger than the child (PID reuse) is not walked into' 
 Case 'SR-C3' '+' 'unreadable command line, executable in another repository: counted, not walked' @((P 30 4 'node.exe' $null "$foreign\node.exe" 0)) 30 'counted' 'SR-C3' '*command line unreadable*'
 Case 'SR-C3' '-' 'same process with a readable command line: walked and excluded' @((P 31 4 'node.exe' "`"$foreign\node.exe`" x.js" "$foreign\node.exe" 0)) 31 'excluded' 'SR-X1'
 
-# SR-X1 carry-over (R2, D411): two samples of one run; the second has the command line unreadable. Counted is called
-# directly because the D316 kit (EQUIV) keeps no verdicts across samples.
-function TwoSamples([string] $sign, [string] $what, [object[]] $first, [object] $second, [string] $want, [string] $wantRule) {
+# SR-X1 carry-over (R2, D411): samples of one run; the last has the command line unreadable. -Middle adds a readable
+# sample in between. Counted is called directly because the D316 kit (EQUIV) keeps no verdicts across samples.
+function SampleSequence([string] $sign, [string] $what, [object[]] $first, [object] $second, [string] $want, [string] $wantRule, [object[]] $Middle) {
   $saved = $script:ever, $script:foreignSeen; $script:ever = @{}; $script:foreignSeen = @{}
-  try { $null = Counted -All $first; $hits = Counted -All @($second) } finally { $script:ever, $script:foreignSeen = $saved }
+  try {
+    $null = Counted -All $first
+    if ($Middle) { $null = Counted -All $Middle }
+    $hits = Counted -All @($second)
+  } finally { $script:ever, $script:foreignSeen = $saved }
   $got = if ($hits.Count) { @('counted', $hits[0].Rule, $hits[0].Owner) } elseif ($script:lastExcluded.Count) { @('excluded', $script:lastExcluded[0].Rule, $script:lastExcluded[0].Owner) } else { @('not-a-candidate', '', '') }
   Check "SR-X1$sign D411 $what" ($got[0] -eq $want -and $got[1] -eq $wantRule) "want=$want $wantRule got=$($got[0]) $($got[1]) [$($got[2])]"
 }
 $foreignCl = "`"$nodeExe`" `"$foreign\x.js`""
-TwoSamples '+' 'judged foreign, then unreadable with the same creation time: still excluded' @((P 32 4 'node.exe' $foreignCl $nodeExe 0)) (P 32 4 'node.exe' $null $nodeExe 0) 'excluded' 'SR-X1'
-TwoSamples '-' 'judged foreign, then unreadable with another creation time (PID reuse): counted' @((P 33 4 'node.exe' $foreignCl $nodeExe 0)) (P 33 4 'node.exe' $null $nodeExe 7) 'counted' 'SR-C3'
+SampleSequence '+' 'judged foreign, then unreadable with the same creation time: still excluded' @((P 32 4 'node.exe' $foreignCl $nodeExe 0)) (P 32 4 'node.exe' $null $nodeExe 0) 'excluded' 'SR-X1'
+SampleSequence '-' 'judged foreign, then unreadable with another creation time (PID reuse): counted' @((P 33 4 'node.exe' $foreignCl $nodeExe 0)) (P 33 4 'node.exe' $null $nodeExe 7) 'counted' 'SR-C3'
 $noTime = P 34 4 'node.exe' $null $nodeExe 0; $noTime.CreationDate = $null
-TwoSamples '-' 'judged foreign, then unreadable without a creation time: counted' @((P 34 4 'node.exe' $foreignCl $nodeExe 0)) $noTime 'counted' 'SR-C3'
-TwoSamples '-' 'never judged foreign (first sample unknown ownership), then unreadable: counted' @((P 35 4 'node.exe' "`"$nodeExe`" `"$nogit\sleep.js`"" $nodeExe 0)) (P 35 4 'node.exe' $null $nodeExe 0) 'counted' 'SR-C3'
+SampleSequence '-' 'judged foreign, then unreadable without a creation time: counted' @((P 34 4 'node.exe' $foreignCl $nodeExe 0)) $noTime 'counted' 'SR-C3'
+SampleSequence '-' 'never judged foreign (first sample unknown ownership), then unreadable: counted' @((P 35 4 'node.exe' "`"$nodeExe`" `"$nogit\sleep.js`"" $nodeExe 0)) (P 35 4 'node.exe' $null $nodeExe 0) 'counted' 'SR-C3'
+SampleSequence '-' 'judged foreign, then this repository (cwd changed), then unreadable: latest verdict wins, counted' @((P 36 4 'node.exe' $foreignCl $nodeExe 0)) (P 36 4 'node.exe' $null $nodeExe 0) 'counted' 'SR-C3' -Middle @((P 36 4 'node.exe' "`"$nodeExe`" `"$erpRoot\scripts\ci.ts`"" $nodeExe 0))
 
 # SR-X1: other-repository evidence at the nearest level.
 Case 'SR-X1' '+' 'node with an other-repository script' @((P 40 4 'node.exe' "`"$nodeExe`" `"$foreign\tsc`"" $nodeExe 0)) 40 'excluded' 'SR-X1'

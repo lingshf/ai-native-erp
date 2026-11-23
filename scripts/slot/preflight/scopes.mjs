@@ -231,12 +231,14 @@ function walkCall(node, ctx) {
 }
 
 function walkVariableDeclaration(node, ctx) {
+  // Each declarator is its own declaration point: in `const first = later, later = 1;` the reference to
+  // `later` runs before `later`'s declarator, and `const a = 1, b = a;` reads an initialized `a`.
   for (const declarator of node.declarations) {
     const functionValue = isInlineFunction(declarator.init) ? declarator.init : null;
     if (declarator.id.type === "Identifier") {
-      declare(declarator.id, node.kind, node, functionValue, ctx);
+      declare(declarator.id, node.kind, declarator, functionValue, ctx);
     } else {
-      declarePattern(declarator.id, node.kind, node, ctx);
+      declarePattern(declarator.id, node.kind, declarator, ctx);
     }
     walkPatternExpressions(declarator.id, ctx);
     if (functionValue) walkFunction(functionValue, ctx, declarator.id.name, false);

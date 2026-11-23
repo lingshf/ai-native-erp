@@ -35,6 +35,7 @@ function main(argv) {
 function parseOptions(argv) {
   const options = { root: undefined, files: [] };
   let collectingFiles = false;
+  let filesGiven = false;
   for (let index = 0; index < argv.length; index++) {
     const token = argv[index];
     if (token === "--root") {
@@ -42,6 +43,7 @@ function parseOptions(argv) {
       collectingFiles = false;
     } else if (token === "--files") {
       collectingFiles = true;
+      filesGiven = true;
     } else if (collectingFiles && !token.startsWith("--")) {
       options.files.push(token);
     } else {
@@ -49,6 +51,10 @@ function parseOptions(argv) {
     }
   }
   if (!options.root) throw new PreflightConfigError(`--root is required; ${USAGE}`);
+  // An empty --files would silently check only the default scope; the caller meant extra files (D408).
+  if (filesGiven && options.files.length === 0) {
+    throw new PreflightConfigError(`--files needs at least one path; ${USAGE}`);
+  }
   return options;
 }
 

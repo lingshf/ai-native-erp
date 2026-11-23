@@ -8,8 +8,12 @@ const LOCATED_ERROR =
 const GLOBAL_ERROR = /^error (?<code>TS\d+): (?<message>.*)$/;
 const CONTINUATION = /^\s+\S/;
 // tsc abbreviates long unions as "... 791 more ..."; the count moves with every new i18n key, so the
-// baseline key must not depend on it.
+// baseline key must not depend on it. Positions "(line,column)" in continuation lines move with any
+// edit, so they are dropped too.
 const ELIDED_COUNT = /\.\.\. \d+ more \.\.\./g;
+const POSITION = /\(\d+,\d+\)/g;
+// Joins the first message line and its continuation lines in a baseline key.
+const DETAIL_SEPARATOR = " >> ";
 
 /**
  * Returns the located diagnostics ({ file, line, column, code, message, details }). A diagnostic
@@ -35,9 +39,13 @@ export function runTsc({ root, tscPath, tsconfigPath }) {
   return diagnostics;
 }
 
-/** Baseline key: error code and first message line, without file, line or elided counts. */
+/**
+ * Baseline key: error code, first message line and its continuation lines (a TS2769 names the
+ * mismatching argument only there), without file, positions or elided counts.
+ */
 export function tscKey(diagnostic) {
-  return `${diagnostic.code}: ${diagnostic.message.replace(ELIDED_COUNT, "... N more ...")}`;
+  const text = [diagnostic.message, ...diagnostic.details].join(DETAIL_SEPARATOR);
+  return `${diagnostic.code}: ${text.replace(ELIDED_COUNT, "... N more ...").replace(POSITION, "")}`;
 }
 
 function parseDiagnostics(output) {

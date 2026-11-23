@@ -3,8 +3,9 @@
 #   Get-PreflightSelftestResults -SlotDir scripts/slot -RepoRoot ROOT -WorkDir DIR_OUTSIDE_REPO -PwshExe PWSH
 # I1: a Windows PowerShell 5.1 probe loads its built-in hash cmdlet with the step PSModulePath (and, as the D387
 # control, fails with this pwsh 7's inherited one); a step's own env.PSModulePath wins; lines this branch adds use the
-# .NET hash and GUID APIs. I4: the TDZ fixtures. I5: slot-run.ps1 passes preflight exit 4 / 6 through before the
-# build, the process precheck and any step, runs base only after a clean head, and logs the skipped base preflight.
+# .NET hash and GUID APIs. I3 key: tsc continuation lines are part of the baseline key. I4: the TDZ fixtures.
+# I5: slot-run.ps1 passes preflight exit 4 / 6 through before the build, the process precheck and any step, runs base
+# only after a clean head, and logs the skipped base preflight.
 # Every runner run here is -Stub or ends in the preflight: no browser, no vitest.
 . (Join-Path $PSScriptRoot 'step-env.ps1')
 
@@ -27,6 +28,7 @@ function Get-PreflightSelftestResults([string] $SlotDir, [string] $RepoRoot, [st
   Get-DotNetRuleResult -RepoRoot $RepoRoot
   Get-TdzFixtureResults -SlotDir $SlotDir -WorkDir $WorkDir
   Get-PreflightCliResults -SlotDir $SlotDir -WorkDir $WorkDir
+  Get-TscKeyResults -SlotDir $SlotDir -RepoRoot $RepoRoot -WorkDir $WorkDir
   Get-RunnerPreflightResults -SlotDir $SlotDir -RepoRoot $RepoRoot -WorkDir $WorkDir -PwshExe $PwshExe
 }
 
@@ -137,12 +139,54 @@ function Get-PreflightCliResults([string] $SlotDir, [string] $WorkDir) {
   $cases = @(
     @{ Label = 'I5-CLI missing baseline: exit 4'; Tag = 'no-baseline'; Arguments = @('--root', $missing); Expect = 'baseline file missing' },
     @{ Label = 'I5-CLI corrupt baseline: exit 4'; Tag = 'corrupt-baseline'; Arguments = @('--root', $corrupt); Expect = 'baseline is not valid JSON' },
-    @{ Label = 'I5-CLI missing --files entry: exit 4'; Tag = 'missing-file'; Arguments = @('--root', $missing, '--files', (Join-Path $WorkDir 'absent.mjs')); Expect = '--files entry does not exist' }
+    @{ Label = 'I5-CLI missing --files entry: exit 4'; Tag = 'missing-file'; Arguments = @('--root', $missing, '--files', (Join-Path $WorkDir 'absent.mjs')); Expect = '--files entry does not exist' },
+    @{ Label = 'I5-CLI --files without a path: exit 4'; Tag = 'empty-files'; Arguments = @('--root', $missing, '--files'); Expect = '--files needs at least one path' }
   )
   foreach ($case in $cases) {
     $run = Invoke-PreflightCli $SlotDir $WorkDir $case.Tag $case.Arguments
     New-CheckResult $case.Label ($run.Code -eq 4 -and $run.Text -match $case.Expect) "exit=$($run.Code) $(($run.Text -split "`n" | Select-Object -First 1))"
   }
+}
+
+# ---- I3 key: tsc continuation lines ----------------------------------------------------------------------------
+
+$script:TSC_KEY_BASELINE = @'
+{ "tsc": {
+  "TS2769: No overload matches this call. >> The last overload gave the following error. >> Argument of type 'string' is not assignable to parameter of type 'number'.": 1,
+  "TS2345: Argument of type 'string' is not assignable to parameter of type '\"a\" | ... N more ... | \"z\"'.": 1
+}, "tdz": {} }
+'@
+# tsc --pretty false output: $Argument is the TS2769 continuation line naming the mismatching argument; the positions
+# and the elided union count differ from the baseline on purpose.
+function Get-FakeTscOutput([string] $Argument) {
+  @(
+    "a.ts(31,7): error TS2769: No overload matches this call.",
+    "  The last overload gave the following error.",
+    "    $Argument",
+    "a.ts(40,2): error TS2345: Argument of type 'string' is not assignable to parameter of type '`"a`" | ... 12 more ... | `"z`"'."
+  ) -join "`n"
+}
+
+# A preflight root whose tsc only prints $TscOutput and fails, and whose @babel/parser is this checkout's.
+function New-FakeTscRoot([string] $SlotDir, [string] $RepoRoot, [string] $Path, [string] $TscOutput) {
+  $root = New-PreflightTempRoot $SlotDir $Path $script:TSC_KEY_BASELINE
+  $tscDir = New-Item -ItemType Directory -Force (Join-Path $root 'node_modules\typescript\bin')
+  Set-Content (Join-Path $tscDir 'tsc') "process.stdout.write($(ConvertTo-Json $TscOutput)); process.exitCode = 2;"
+  $parserDir = New-Item -ItemType Directory -Force (Join-Path $root 'node_modules\@babel\parser')
+  Set-Content (Join-Path $parserDir 'index.js') "module.exports = require(require.resolve('@babel/parser', { paths: [$(ConvertTo-Json $RepoRoot)] }));"
+  return $root
+}
+
+function Get-TscKeyResults([string] $SlotDir, [string] $RepoRoot, [string] $WorkDir) {
+  $same = "Argument of type 'string' is not assignable to parameter of type 'number'."
+  $other = "Argument of type 'number' is not assignable to parameter of type 'string'."
+  $root = New-FakeTscRoot $SlotDir $RepoRoot (Join-Path $WorkDir 'root-tsc-same') (Get-FakeTscOutput $same)
+  $run = Invoke-PreflightCli $SlotDir $WorkDir 'tsc-same' @('--root', $root)
+  New-CheckResult 'I3-KEY same diagnostics, other positions and elided count: exit 0' ($run.Code -eq 0) "exit=$($run.Code)"
+  $root = New-FakeTscRoot $SlotDir $RepoRoot (Join-Path $WorkDir 'root-tsc-replaced') (Get-FakeTscOutput $other)
+  $run = Invoke-PreflightCli $SlotDir $WorkDir 'tsc-replaced' @('--root', $root)
+  $ok = $run.Code -eq 6 -and $run.Text -match 'tsc key new count=1 baseline=0 :: TS2769: .*number.* is not assignable to parameter of type .string.'
+  New-CheckResult 'I3-KEY TS2769 replaced by another TS2769 (same first line): exit 6' $ok "exit=$($run.Code)"
 }
 
 # Runs slot-run.ps1 in a child pwsh from $Cwd; $Parameters maps runner parameter names to single values.

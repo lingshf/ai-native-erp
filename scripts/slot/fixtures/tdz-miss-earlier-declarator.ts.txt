@@ -1,0 +1,10 @@
+// TDZ fixture, negative: one declaration with several declarators; each initializer reads only bindings of
+// earlier declarators, which are already initialized.
+// expect: none
+export function check() {
+  const base = 1,
+    doubled = base * 2;
+  const readBase = () => base + doubled,
+    total = readBase();
+  return total;
+}

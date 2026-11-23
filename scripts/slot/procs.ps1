@@ -181,10 +181,13 @@ function Get-SystemExclusion($p, [hashtable] $byId) {
 }
 # D411: SR-X1 verdicts made earlier in this run, pid -> @{ Created; Reason }. A process whose command line becomes
 # unreadable (typically while it exits) keeps its SR-X1 verdict only when its creation time is readable and equal to
-# the recorded one; otherwise the PID may have been reused and it is counted (SR-C3) as before.
+# the recorded one; otherwise the PID may have been reused and it is counted (SR-C3) as before. The latest readable
+# sample wins: once it judges the process anything but foreign (its cwd can change), the record is dropped.
 $script:foreignSeen = @{}
-function Save-ForeignVerdict($p, [string] $reason) {
-  if ($p.CreationDate) { $script:foreignSeen[[int]$p.ProcessId] = @{ Created = $p.CreationDate; Reason = $reason } }
+function Update-ForeignVerdict($p, $owner) {
+  $id = [int]$p.ProcessId
+  if ($owner.Kind -eq 'foreign' -and $p.CreationDate) { $script:foreignSeen[$id] = @{ Created = $p.CreationDate; Reason = $owner.Reason } }
+  else { $script:foreignSeen.Remove($id) }
 }
 function Get-UnreadableOwner($p) {
   $seen = $script:foreignSeen[[int]$p.ProcessId]
@@ -214,7 +217,7 @@ function Counted([object[]] $All) {
     if ($mine.ContainsKey([int]$p.ProcessId)) { $script:lastRunnerTree++; continue }  # exit SR-R1 (kit :189)
     if ($p.Name -notmatch $names) { continue }  # exit SR-C1 (kit :189)
     $o = if ($p.CommandLine) { Get-Owner $p $byId } else { Get-UnreadableOwner $p }
-    if ($p.CommandLine -and $o.Kind -eq 'foreign') { Save-ForeignVerdict $p $o.Reason }
+    if ($p.CommandLine) { Update-ForeignVerdict $p $o }
     $sys = if ($o.Kind -eq 'unknown' -and $p.CommandLine) { Get-SystemExclusion $p $byId }
     $rule = if ($sys) { $sys.Rule } else { $o.Rule }
     $owner = if ($sys) { "$rule system: $($sys.Reason)" } else { "$rule $($o.Kind): $($o.Reason)" }

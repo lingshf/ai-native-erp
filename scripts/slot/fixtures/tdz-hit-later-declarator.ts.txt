@@ -1,0 +1,11 @@
+// TDZ fixture, positive: one declaration with several declarators; an initializer reads a binding of a
+// later declarator, directly or through a function value declared earlier in the same statement.
+// expect: later, limit
+export function check() {
+  const first = later,
+    later = 1;
+  const readLimit = () => limit,
+    value = readLimit(),
+    limit = 3;
+  return first + value;
+}

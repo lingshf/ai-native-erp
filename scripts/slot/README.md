@@ -1,6 +1,6 @@
 # 独占时段进程采样器（`scripts/slot/`）
 
-E2E 独占时段（[路线图 §5](../../design/roadmap.md#5-团队流程)“E2E 独占时段”）用的运行器与进程采样器，规则见路线图 §5“进程采样规则”。本目录实现规则版本 **R2**（`procs.ps1` 中的 `$script:SlotRuleVersion`）：R1 即 D319 时段所用 D316 版 kit（gist `lingshf/c437f3d99887d0214ebd05ae9d741cc5` @ `4e00af7`）的实际逻辑，含 D320 追认的 launcher 分支，逐分支一致，只多出规则编号；R2 在 R1 上加了 SR-X1 的沿用判定（D411、D412，S12 SLOT-02）：本次运行已判为外仓的进程，之后命令行读不到但创建时间不变时仍判外仓。来源：[SLOT-01](../../design/tasks/SLOT-01-slot-sampler-in-repo.md)。
+E2E 独占时段（[路线图 §5](../../design/roadmap.md#5-团队流程)“E2E 独占时段”）用的运行器与进程采样器，规则见路线图 §5“进程采样规则”。本目录实现规则版本 **R2**（`procs.ps1` 中的 `$script:SlotRuleVersion`）：R1 即 D319 时段所用 D316 版 kit（gist `lingshf/c437f3d99887d0214ebd05ae9d741cc5` @ `4e00af7`）的实际逻辑，含 D320 追认的 launcher 分支，逐分支一致，只多出规则编号；R2 在 R1 上加了 SR-X1 的沿用判定（D411、D412，S12 SLOT-02）：本次运行已判为外仓的进程，之后命令行读不到但创建时间不变时仍判外仓；一旦某次可读采样改判为非外仓，沿用记录即清除（以最新可读判定为准）。来源：[SLOT-01](../../design/tasks/SLOT-01-slot-sampler-in-repo.md)。
 
 不进 Vitest、不进 CI。
 
@@ -18,7 +18,7 @@ E2E 独占时段（[路线图 §5](../../design/roadmap.md#5-团队流程)“E2E
 | `fixtures/`                       | TDZ 回归夹具（`tdz-*.ts.txt`，按内容解析，不进 lint 与 typecheck）与 I1 的 `PSModulePath` 探针                 | —               |
 | `tdz-fixtures.mjs`                | TDZ 夹具检查：逐个夹具输出 `PASS` / `FAIL`                                                                     | 任意 OS（Node） |
 | `step-env.ps1`                    | 步骤子进程环境：每步重置 `PSModulePath`                                                                        | Windows         |
-| `selftest-preflight.ps1`          | `selftest.ps1` 第 5 部分：子进程环境（I1）、TDZ 夹具（I4）、静态检查接入 runner（I5）                          | Windows         |
+| `selftest-preflight.ps1`          | `selftest.ps1` 第 5 部分：子进程环境（I1）、tsc 基线键（I3）、TDZ 夹具（I4）、静态检查接入 runner（I5）        | Windows         |
 | `steps.d387.ps1`                  | D387 回归步骤：用 `powershell.exe` 原样运行 v0.11.0 Demo 的三个无浏览器替身                                    | Windows         |
 | const rows = compareWithBaseline( |
     countByKey(findings, (found) => found.key),
@@ -56,12 +56,12 @@ node scripts/slot/check-manifest.mjs [--roadmap design/roadmap.md] [--code scrip
 
 - **检查内容**：`preflight.mjs --root <checkout>` 用 `<checkout>` 自己的 `node_modules` 下的 tsc 和 `@babel/parser`，读取 `<checkout>/scripts/slot/` 下的 `tsconfig.preflight.json` 与 `preflight-baseline.json`。
   - tsc：检查 `tsconfig.preflight.json` 的 `include`（`packages/infra/test/support/**/*.ts`、`packages/infra/test/http/*.slow.test.ts`）。
-  - TDZ：同一函数或块作用域中，在某个 `let` / `const` / `class` 声明之前，直接引用该绑定，或调用（含作为参数传出）直接或间接引用该绑定的局部函数。检查范围是上述文件加上 `--files`（可以是取证用的 `.mjs`）。
-- **退出码**：0 无新发现；**4** 输入或配置错误（参数缺失、`--root` 或 `--files` 不存在、tsconfig 或基线缺失或无法解析、找不到 tsc 或 `@babel/parser`、文件无法解析），其他内部异常也是 4；**6** 有新发现（基线外的 tsc 错误或 TDZ 发现，或某条计数超过基线）。输出逐条列出 `tsc NEW|baseline 文件(行,列) 错误码: 消息` 与 `tdz NEW|baseline 文件:行 键 (declared line N) via …`，最后一行是 `preflight result exit=…`。
+  - TDZ：同一函数或块作用域中，在某个 `let` / `const` / `class` 声明之前，直接引用该绑定，或调用（含作为参数传出）直接或间接引用该绑定的局部函数；同一条声明中的多个绑定各按自己的声明子句起点判定（`const first = later, later = 1;` 命中 `later`）。检查范围是上述文件加上 `--files`（可以是取证用的 `.mjs`）。
+- **退出码**：0 无新发现；**4** 输入或配置错误（参数缺失、`--files` 后没有路径、`--root` 或 `--files` 不存在、tsconfig 或基线缺失或无法解析、找不到 tsc 或 `@babel/parser`、文件无法解析），其他内部异常也是 4；**6** 有新发现（基线外的 tsc 错误或 TDZ 发现，或某条计数超过基线）。输出逐条列出 `tsc NEW|baseline 文件(行,列) 错误码: 消息` 与 `tdz NEW|baseline 文件:行 键 (declared line N) via …`，最后一行是 `preflight result exit=…`。
 - **原样传出**：head 预检以 4 或 6 结束时，runner 以同一退出码结束，不构建、不做 dist 检查、不做进程预检、不运行任何步骤；head 不为 0 时不跑 base。`-BaseRoot` 下有 `scripts/slot/preflight.mjs` 时用 base 自己的工具与基线检查 base（`--root <BaseRoot>`，不带 `-PreflightFiles`），结果同样原样传出；没有时记 `base preflight skipped (no preflight.mjs)`，不算错误；不给 `-BaseRoot` 时记 `base preflight skipped (no -BaseRoot)`。
 - **`-PreflightFiles`**：只交给 head 预检的 `--files`；相对路径按调用时的当前目录解析。文件不存在时预检返回 4，runner 原样传出。
 - **日志**：`OutDir` 下的 `preflight-head.log` / `preflight-base.log` 是完整输出；`slot-summary.log` 中各有一行 `preflight head|base exit=… log=… preflight result …`。
-- **基线只减不增**：`preflight-baseline.json` 按“错误码 + 消息首行”（tsc，不含文件与行号）和“外层函数路径 > 绑定名”（TDZ）计数。基线外的键或计数变大即为新发现（6）；计数减少或消失的条目只在日志中列为 `reduced`，不阻断，由后续 PR 删除。增加条目或调大计数须经设计角色批准并有决定编号。
+- **基线只减不增**：`preflight-baseline.json` 按“错误码 + 消息首行及其续行”（tsc，续行以 `>>` 连接，不含文件、位置与长联合的省略计数；TS2769 这类诊断的实际参数类型只在续行）和“外层函数路径 > 绑定名”（TDZ）计数。基线外的键或计数变大即为新发现（6）；计数减少或消失的条目只在日志中列为 `reduced`，不阻断，由后续 PR 删除。增加条目或调大计数须经设计角色批准并有决定编号。
 
 ## 步骤子进程环境（D387 / D407）
 
