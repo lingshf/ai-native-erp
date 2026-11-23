@@ -1,0 +1,3 @@
+-- TINV-09: credit notes reduce an order's invoiced quantity. No schema change: this file creates,
+-- drops and alters nothing, so the schema fingerprint equals 019. migrateConnection recomputes every
+-- stored trade_order_invoicing status with the new rule (backfillOrderInvoicing), repeatably.

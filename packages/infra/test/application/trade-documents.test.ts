@@ -23,18 +23,15 @@ import {
   normalizeExternalInvoice,
   parseAiCandidate,
   tradeOrderInvoicingStatuses,
-  type AccountInput,
   type TradeInvoiceCommand,
   type TradeInvoiceLineInput,
   type TradeOrderCommand,
-  type TradeWrite,
   type TradeSettlementCommand,
   type TradeActionCommand,
 } from "@erp/core/domain";
 import { createSqliteStorage } from "../../src/storage/index.ts";
 import { createMasterDataStore, masterDataRepository } from "../../src/storage/master-data.ts";
 import { journalTools } from "../../src/storage/journals.ts";
-import { tradeOrderStatuses } from "../../src/storage/trade-documents.ts";
 import { latestMigrationVersion, normalizeMigration } from "../../src/storage/migrations.ts";
 import { schemaFingerprint } from "../../src/storage/schema.ts";
 import { sqliteBackend } from "../../src/storage/sqlite.ts";
@@ -50,216 +47,25 @@ import {
   copyLedgerRows,
   ledgerAt017,
   ledgerAt018,
+  ledgerAt019,
   seedInvoiceList,
 } from "../support/trade-invoice-list-fixture.ts";
-
-const window = { name: "Fictional", from: "2026-01-01", to: "2026-12-31" };
-const base = { company: "DEFAULT", active: true, expectedRevision: 0 };
-const configs: TradeWrite[] = [
-  {
-    ...base,
-    kind: "tradeTerms",
-    code: "N30",
-    data: {
-      ...window,
-      dueDays: 30,
-      discountDays: 7,
-      discountPercent: "1.5",
-      allowPartialDiscount: true,
-    },
-  },
-  {
-    ...base,
-    kind: "taxCode",
-    code: "VAT",
-    data: {
-      ...window,
-      mode: "ordinary",
-      deductiblePercent: "100",
-      inputAccount: "1400",
-      outputAccount: "2200",
-      rates: [
-        { id: "OLD", from: "2026-01-01", to: "2026-03-14", ratePercent: "13" },
-        { id: "NEW", from: "2026-03-15", to: "2026-12-31", ratePercent: "9" },
-      ],
-    },
-  },
-  {
-    ...base,
-    kind: "taxCode",
-    code: "EXEMPT",
-    data: {
-      ...window,
-      mode: "exempt",
-      deductiblePercent: "0",
-      inputAccount: null,
-      outputAccount: null,
-      rates: [{ id: "E", from: "2026-01-01", to: "2026-12-31", ratePercent: "0" }],
-    },
-  },
-  {
-    ...base,
-    kind: "tradeProfile",
-    code: "PAY",
-    data: {
-      ...window,
-      side: "AP",
-      controlAccount: "2100",
-      advanceAccount: "1250",
-      cashAccount: "1000",
-      discountAccount: "4000",
-    },
-  },
-  {
-    ...base,
-    kind: "tradeProfile",
-    code: "REC",
-    data: {
-      ...window,
-      side: "AR",
-      controlAccount: "1300",
-      advanceAccount: "2300",
-      cashAccount: "1000",
-      discountAccount: "4000",
-    },
-  },
-  ...(["V1", "V2"] as const).map(
-    (code): TradeWrite => ({
-      ...base,
-      kind: "tradeParty",
-      code,
-      data: {
-        ...window,
-        role: "vendor",
-        apProfile: "PAY",
-        arProfile: null,
-        terms: "N30",
-        allowedTaxCodes: ["VAT", "EXEMPT"],
-        defaultDimensions: {},
-      },
-    }),
-  ),
-  {
-    ...base,
-    kind: "tradeParty",
-    code: "C1",
-    data: {
-      ...window,
-      role: "customer",
-      apProfile: null,
-      arProfile: "REC",
-      terms: "N30",
-      allowedTaxCodes: ["VAT"],
-      defaultDimensions: {},
-    },
-  },
-  {
-    ...base,
-    kind: "tradeProduct",
-    code: "RENT",
-    data: {
-      ...window,
-      type: "expense",
-      expenseAccount: "5000",
-      revenueAccount: null,
-      allowedTaxCodes: ["VAT", "EXEMPT"],
-      defaultDimensions: {},
-    },
-  },
-  {
-    ...base,
-    kind: "tradeProduct",
-    code: "WAGE",
-    data: {
-      ...window,
-      type: "expense",
-      expenseAccount: "5100",
-      revenueAccount: null,
-      allowedTaxCodes: ["VAT"],
-      defaultDimensions: {},
-    },
-  },
-  {
-    ...base,
-    kind: "tradeProduct",
-    code: "CONSULT",
-    data: {
-      ...window,
-      type: "service",
-      expenseAccount: null,
-      revenueAccount: "4000",
-      allowedTaxCodes: ["VAT"],
-      defaultDimensions: {},
-    },
-  },
-];
-function line(changes: Partial<TradeInvoiceLineInput> = {}): TradeInvoiceLineInput {
-  return {
-    lineId: "L1",
-    product: "RENT",
-    taxCode: "VAT",
-    quantity: "10",
-    unitPrice: "10.00",
-    discountPercent: "0",
-    taxableCharge: "0",
-    orderLineId: null,
-    dimensions: {},
-    ...changes,
-  };
-}
-function invoice(changes: Partial<TradeInvoiceCommand> = {}): TradeInvoiceCommand {
-  return {
-    company: "DEFAULT",
-    documentId: randomUUID(),
-    side: "AP",
-    party: "V1",
-    externalInvoice: `INV-${randomUUID().slice(0, 8)}`,
-    currency: "CNY",
-    accountingDate: "2026-01-20",
-    documentDate: "2026-01-18",
-    taxDate: "2026-01-19",
-    orderId: null,
-    priceIncludesTax: false,
-    rounding: "line",
-    headerDimensions: {},
-    matchingException: null,
-    lines: [line()],
-    ...changes,
-  };
-}
-function order(changes: Partial<TradeOrderCommand> = {}): TradeOrderCommand {
-  return {
-    company: "DEFAULT",
-    orderId: "PO-1",
-    side: "AP",
-    party: "V1",
-    currency: "CNY",
-    orderDate: "2026-01-05",
-    priceIncludesTax: false,
-    rounding: "line",
-    lines: [
-      {
-        lineId: "OL1",
-        product: "RENT",
-        taxCode: "VAT",
-        quantity: "10",
-        unitPrice: "10.00",
-        discountPercent: "0",
-        taxableCharge: "0",
-      },
-      {
-        lineId: "OL2",
-        product: "WAGE",
-        taxCode: "VAT",
-        quantity: "4",
-        unitPrice: "25.00",
-        discountPercent: "0",
-        taxableCharge: "0",
-      },
-    ],
-    ...changes,
-  };
-}
+import {
+  configBase as base,
+  configWindow as window,
+  configs,
+  invoice,
+  invoiceOn,
+  line,
+  order,
+  orderInvoicingSteps,
+  orderLine,
+  recomputedStatusesIn,
+  seedTradeTemplate,
+  storedStatusesIn,
+  type TradeLedger,
+  tradeSteps,
+} from "../support/trade-ledger.ts";
 
 describe("trade invoices on real SQLite", () => {
   let templateDirectory: string, template: string;
@@ -269,53 +75,7 @@ describe("trade invoices on real SQLite", () => {
   beforeAll(async () => {
     templateDirectory = await mkdtemp(join(tmpdir(), "erp-trade-template-"));
     template = join(templateDirectory, "template.sqlite");
-    const storage = createSqliteStorage({ filename: template });
-    try {
-      await storage.migrate();
-    } finally {
-      await storage.close();
-    }
-    const seedStore = createMasterDataStore({ filename: template });
-    const master = new MasterDataService(seedStore);
-    try {
-      await master.initialize(2026);
-      for (let month = 1; month <= 12; month++)
-        await master.setPeriod(
-          "DEFAULT",
-          `2026-${String(month).padStart(2, "0")}`,
-          1,
-          "open",
-          "Enable fictional trade",
-          true,
-          ["trade", "tax"],
-        );
-      for (const [code, category, reportGroup, controlModule] of [
-        ["2100", "LIABILITY", "payables", "AP"],
-        ["1250", "ASSET", "prepayments", "AP"],
-        ["1300", "ASSET", "receivables", "AR"],
-        ["2300", "LIABILITY", "otherLiabilities", "AR"],
-        ["1400", "ASSET", "otherAssets", "TAX"],
-        ["2200", "LIABILITY", "taxLiabilities", "TAX"],
-      ] as const) {
-        const account: AccountInput = {
-          code,
-          name: `Control ${code}`,
-          category,
-          reportGroup,
-          controlModule,
-          purpose: "control",
-          normalSide: category === "ASSET" ? "DEBIT" : "CREDIT",
-          contraOf: null,
-          active: true,
-          manualAllowed: false,
-        };
-        await master.saveAccount("DEFAULT", account, 0);
-      }
-      const trade = new TradeMasterService(seedStore);
-      for (const command of configs) await trade.save(command);
-    } finally {
-      await seedStore.close();
-    }
+    await seedTradeTemplate(template);
   });
   afterAll(async () => {
     if (templateDirectory) await rm(templateDirectory, { recursive: true, force: true });
@@ -347,43 +107,21 @@ describe("trade invoices on real SQLite", () => {
       raw.close();
     }
   }
-  const tables = [
-    "trade_actions",
-    "trade_item_sources",
-    "trade_credit_lines",
-    "trade_action_items",
-    "trade_payments",
-    "settlements",
-    "journal_entries",
-    "journal_lines",
-    "receipts",
-    "audit",
-    "trade_orders",
-    "trade_order_lines",
-    "trade_documents",
-    "trade_document_lines",
-    "open_items",
-  ];
-  function counts() {
-    const db = new Database(filename, { readonly: true });
-    try {
-      return Object.fromEntries(
-        tables.map((table) => [table, db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n]),
-      );
-    } finally {
-      db.close();
-    }
-  }
-  async function post(command: TradeInvoiceCommand, key = randomUUID()) {
-    const preview = await service.preview(command);
-    const receipt = await service.confirm({
-      command,
-      fingerprint: preview.fingerprint,
-      idempotencyKey: key,
-      confirmation: "POST",
-    });
-    return { preview, receipt, key };
-  }
+  const ledger: TradeLedger = {
+    get filename() {
+      return filename;
+    },
+    get journals() {
+      return journals;
+    },
+    get service() {
+      return service;
+    },
+    set service(next) {
+      service = next;
+    },
+  };
+  const { counts, post, actionHeader, act, current, cancel } = tradeSteps(ledger);
   async function rejects(command: TradeInvoiceCommand, issue: Record<string, unknown>) {
     const before = counts();
     await expect(service.preview(command)).rejects.toMatchObject({ issue });
@@ -417,13 +155,6 @@ describe("trade invoices on real SQLite", () => {
     };
     return { preview, receipt: await service.confirmSettlement(envelope), envelope };
   }
-  const actionHeader = () => ({
-    company: "DEFAULT",
-    actionId: randomUUID(),
-    accountingDate: "2026-01-25",
-    documentDate: "2026-01-25",
-    taxDate: "2026-01-25",
-  });
   function advance(side: "AP" | "AR" = "AP", gross = 5650): TradeActionCommand {
     return {
       ...actionHeader(),
@@ -435,25 +166,6 @@ describe("trade invoices on real SQLite", () => {
       dimensions: {},
     };
   }
-  async function act(command: TradeActionCommand) {
-    const before = counts();
-    const preview = await service.previewAction(command);
-    expect(counts()).toEqual(before);
-    const envelope = {
-      command,
-      fingerprint: preview.fingerprint,
-      idempotencyKey: randomUUID(),
-      confirmation: "POST" as const,
-    };
-    const receipt = await service.confirmAction(envelope);
-    return { preview, receipt, envelope };
-  }
-  async function current(itemId: string) {
-    const page = await service.openItems("DEFAULT", { limit: 500 });
-    const item = page.items.find((item) => item.itemId === itemId);
-    if (!item) throw new Error("Missing test item");
-    return item;
-  }
   async function undo(settlementId: string, ids: string[], day = "2026-01-25") {
     return act({
       ...actionHeader(),
@@ -464,17 +176,6 @@ describe("trade invoices on real SQLite", () => {
       items: await Promise.all(
         ids.map(async (itemId) => ({ itemId, revision: (await current(itemId)).revision })),
       ),
-    });
-  }
-  async function cancel(itemId: string, relatedId?: string, day = "2026-01-25") {
-    return act({
-      ...actionHeader(),
-      kind: "cancel",
-      itemId,
-      revision: (await current(itemId)).revision,
-      relatedRevision: relatedId ? (await current(relatedId)).revision : null,
-      accountingDate: day,
-      reason: "Fictional cancellation",
     });
   }
   it("keeps TC-T10 January history after February settlement, with independent credits/advances and saved inactive accounts", async () => {
@@ -3096,15 +2797,6 @@ describe("trade invoices on real SQLite", () => {
     const trade = new TradeMasterService(store);
     for (const command of configs) await trade.save({ ...command, company: "OTHER" });
   }
-  const orderLine = (lineId: string, quantity: string, unitPrice: string) => ({
-    lineId,
-    product: "RENT",
-    taxCode: "VAT",
-    quantity,
-    unitPrice,
-    discountPercent: "0",
-    taxableCharge: "0",
-  });
   async function threeOrders() {
     return [
       await service.createOrder(order({ orderId: "PO-B" })),
@@ -4185,80 +3877,25 @@ describe("trade invoices on real SQLite", () => {
     }
   });
 
-  // TORD-06 (S12): the stored invoicing status. Shared readers and the filter fixture first, then
-  // one group per responsibility: kept in step by writes, read by the list filter, backfilled by 019.
+  // TORD-06 (S12): the stored invoicing status. The status checks are in support/trade-ledger.ts;
+  // the filter fixture first, then one group per responsibility: kept in step by writes, read by
+  // the list filter, backfilled by 019 and 020. TINV-09's credit cases are in
+  // trade-order-credit-invoicing.test.ts.
   describe("TORD-06 stored invoicing status (trade_order_invoicing)", () => {
-    // TORD-06: the stored status (trade_order_invoicing) is written by the posting and cancelling
-    // transactions and is what the list column shows (B6a). After every step it must equal the
-    // TINV-03 status recomputed from the invoice lines.
-    const storedStatusesIn = (raw: Database.Database) =>
-      Object.fromEntries(
-        (
-          raw
-            .prepare(
-              "SELECT order_id,status FROM trade_order_invoicing WHERE company_id='DEFAULT' ORDER BY order_id",
-            )
-            .all() as { order_id: string; status: string }[]
-        ).map((row) => [row.order_id, row.status]),
-      );
-    /** The TINV-03 recomputation run directly on a raw ledger handle. */
-    const recomputedStatusesIn = async (raw: Database.Database, orderIds: readonly string[]) => {
-      const reader: Pick<Connection, "query"> = {
-        query: async (sql, values = []) =>
-          raw.prepare(sql).all(...values) as Record<string, unknown>[],
-      };
-      return Object.fromEntries(await tradeOrderStatuses(reader, "DEFAULT", orderIds));
-    };
-    const storedStatuses = () => {
-      const raw = new Database(filename, { readonly: true });
-      try {
-        return storedStatusesIn(raw);
-      } finally {
-        raw.close();
-      }
-    };
-    const listedStatuses = async () =>
-      Object.fromEntries(
-        (await service.listOrders("DEFAULT", { limit: 500 })).items.map((item) => [
-          item.orderId,
-          item.invoicing,
-        ]),
-      );
-    const recomputedStatuses = async () => {
-      const raw = new Database(filename, { readonly: true });
-      try {
-        const orderIds = raw
-          .prepare("SELECT order_id FROM trade_orders WHERE company_id='DEFAULT' ORDER BY order_id")
-          .pluck()
-          .all() as string[];
-        return await recomputedStatusesIn(raw, orderIds);
-      } finally {
-        raw.close();
-      }
-    };
-    async function expectStored(expected: Record<string, string>) {
-      expect(storedStatuses()).toEqual(expected);
-      expect(await recomputedStatuses()).toEqual(expected);
-      expect(await listedStatuses()).toEqual(expected);
-    }
+    const { expectStored, creditOn, blockingStatusWrites, expectRolledBack } =
+      orderInvoicingSteps(ledger);
 
     // TORD-06: filter fixture on top of TORD-05's — PO-01 full, PO-03 (V2) partial, PO-04 partial,
     // PO-05 (AR) full, PO-02 / PO-06 none.
-    const invoiceOn = (
-      orderId: string,
-      orderLineId: string,
-      quantity: string,
-      changes: Partial<TradeInvoiceCommand> = {},
-      lineChanges: Partial<TradeInvoiceLineInput> = {},
-    ) =>
-      invoice({
-        orderId,
-        accountingDate: "2026-04-20",
-        documentDate: "2026-04-20",
-        taxDate: "2026-04-20",
-        lines: [line({ orderLineId, quantity, unitPrice: "3.00", ...lineChanges })],
-        ...changes,
-      });
+    /** TINV-09: an order with one line L1 of `ordered`, invoiced in full and then credited. */
+    async function creditedOrder(orderId: string, ordered: string, credited: string) {
+      await service.createOrder(
+        order({ orderId, orderDate: "2026-04-01", lines: [orderLine("L1", ordered, "3.00")] }),
+      );
+      const invoiced = invoiceOn(orderId, "L1", ordered);
+      await post(invoiced);
+      await creditOn(invoiced.documentId, credited);
+    }
     async function invoicingOrders() {
       await filterOrders();
       await post(invoiceOn("PO-01", "L1", "2"));
@@ -4293,7 +3930,8 @@ describe("trade invoices on real SQLite", () => {
         await post(first);
         await expectStored({ "PO-1": "partial", "PO-N": "none" });
 
-        // Settlement, its reversal and a credit note change the open item but never what is invoiced.
+        // Settlement and its reversal change the open item but never what is invoiced. A credit
+        // note reduces OL1 from 10 to 9 (TINV-09); OL2 is still not invoiced, so PO-1 stays partial.
         const paid = await settle(payment(first, 1000));
         await expectStored({ "PO-1": "partial", "PO-N": "none" });
         await undo(paid.receipt.paymentId, [first.documentId]);
@@ -4326,60 +3964,18 @@ describe("trade invoices on real SQLite", () => {
       it("TORD-06 a failing status write rolls back the whole invoice posting or cancellation", async () => {
         await service.createOrder(order());
         const first = invoiceFor("PO-1", [["OL1", "10", "RENT"]]);
-        // Same transaction shape as the real store, but the status UPDATE fails inside it.
-        const backend = sqliteBackend({ filename });
-        const run = async <T>(
-          write: boolean,
-          work: (repo: ReturnType<typeof masterDataRepository>) => Promise<T>,
-        ) => {
-          const db = await backend.acquire(!write, false);
-          try {
-            await db.begin();
-            const failing = {
-              ...db,
-              query: (sql: string, values: Parameters<Connection["query"]>[1] = []) =>
-                sql.startsWith("UPDATE trade_order_invoicing")
-                  ? Promise.reject(new Error("blocked"))
-                  : db.query(sql, values),
-            } as Connection;
-            try {
-              const result = await work(masterDataRepository(failing));
-              await db.commit();
-              return result;
-            } catch (error) {
-              await db.rollback();
-              throw error;
-            }
-          } finally {
-            await db.release();
-          }
-        };
-        const original = service;
-        const blocked = new TradeDocumentService(
-          { read: (work) => run(false, work), write: (work) => run(true, work) },
-          journals,
-          journalTools,
-        );
+        const { blocked, close } = blockingStatusWrites();
         try {
-          service = blocked;
-          const before = counts();
-          await expect(post(first)).rejects.toThrow("blocked");
-          expect(counts()).toEqual(before);
-          service = original;
+          await expectRolledBack(blocked, () => post(first));
           await expectStored({ "PO-1": "none" });
 
           await post(first);
           await expectStored({ "PO-1": "partial" });
-          service = blocked;
-          const posted = counts();
-          await expect(cancel(first.documentId)).rejects.toThrow("blocked");
-          expect(counts()).toEqual(posted);
-          service = original;
+          await expectRolledBack(blocked, () => cancel(first.documentId));
           expect((await current(first.documentId)).status).toBe("open");
           await expectStored({ "PO-1": "partial" });
         } finally {
-          service = original;
-          await backend.close();
+          await close();
         }
       });
 
@@ -4624,7 +4220,7 @@ describe("trade invoices on real SQLite", () => {
       });
     });
 
-    describe("backfilled by migration 019", () => {
+    describe("backfilled by migrations 019 and 020", () => {
       /** Every row of every user table except `excluded`, keyed by table, in a stable order. */
       function rowsByTable(file: string, excluded: readonly string[]) {
         const db = new Database(file, { readonly: true });
@@ -4651,28 +4247,10 @@ describe("trade invoices on real SQLite", () => {
         }
       }
       /** S12 B1 backfill cases: several invoices adding up to full (PO-04: 0.5 + 1.5 of 2), and an
-       *  order invoiced in full and then credited (PO-07), which stays full. */
+       *  order invoiced in full and then credited 1 of 2 (PO-07), partial since TINV-09. */
       async function cumulativeAndCreditedFullOrders() {
         await post(invoiceOn("PO-04", "L1", "1.5"));
-        await service.createOrder(
-          order({
-            orderId: "PO-07",
-            orderDate: "2026-04-01",
-            lines: [orderLine("L1", "2", "3.00")],
-          }),
-        );
-        const credited = invoiceOn("PO-07", "L1", "2");
-        await post(credited);
-        await act({
-          ...actionHeader(),
-          kind: "credit",
-          invoiceId: credited.documentId,
-          revision: (await current(credited.documentId)).revision,
-          accountingDate: "2026-04-21",
-          documentDate: "2026-04-21",
-          taxDate: "2026-04-21",
-          lines: [{ sourceLineId: "L1", quantity: "1" }],
-        });
+        await creditedOrder("PO-07", "2", "1");
       }
 
       it("TORD-06 an 018 ledger with posted and cancelled invoices upgrades to 019 with every status backfilled and every other row unchanged", async () => {
@@ -4681,7 +4259,7 @@ describe("trade invoices on real SQLite", () => {
         await post(cancelled);
         await cancel(cancelled.documentId, undefined, "2026-04-21");
         await cumulativeAndCreditedFullOrders();
-        const upgraded = { ...invoicingExpected, "PO-04": "full", "PO-07": "full" };
+        const upgraded = { ...invoicingExpected, "PO-04": "full", "PO-07": "partial" };
         await expectStored(upgraded);
         await store.close();
         const at018 = join(directory, "at018.sqlite");
@@ -4691,13 +4269,9 @@ describe("trade invoices on real SQLite", () => {
         const snapshot = () => rowsByTable(at018, ["schema_migrations", "trade_order_invoicing"]);
         const before = snapshot();
         expect(before.trade_documents).toHaveLength(7);
-        const storage = createSqliteStorage({ filename: at018 });
-        try {
-          await storage.migrate();
-          await storage.verifySchema();
-        } finally {
-          await storage.close();
-        }
+        // The real migrator from 018 through 019 (with its backfill hook), stopped before 020, so
+        // 020's recomputation cannot hide a broken 019 backfill.
+        await ledgerAt019(at018);
         const after = snapshot();
         const db = new Database(at018, { readonly: true });
         try {
@@ -4706,6 +4280,63 @@ describe("trade invoices on real SQLite", () => {
           // Order by order, the backfill equals the status recomputed from the migrated invoice lines.
           expect(await recomputedStatusesIn(db, Object.keys(upgraded))).toEqual(stored);
           expect(db.prepare("SELECT count(*) FROM schema_migrations").pluck().get()).toBe(19);
+        } finally {
+          db.close();
+        }
+        for (const table of Object.keys(before))
+          expect([table, after[table]]).toEqual([table, before[table]]);
+      });
+
+      it("TINV-09 V7 a 019 ledger with credited orders upgrades to 020 with statuses recomputed, the 019 schema and every other row unchanged", async () => {
+        await invoicingOrders();
+        await cumulativeAndCreditedFullOrders();
+        await creditedOrder("PO-08", "2", "2");
+        const upgraded = {
+          ...invoicingExpected,
+          "PO-04": "full",
+          "PO-07": "partial",
+          "PO-08": "none",
+        };
+        await expectStored(upgraded);
+        await store.close();
+        const at019 = join(directory, "at019.sqlite");
+        await ledgerAt019(at019);
+        copyLedgerRows(filename, at019);
+        // What 019 stored before TINV-09: credits were ignored, so both credited orders were full.
+        const legacy = new Database(at019);
+        try {
+          legacy
+            .prepare(
+              "UPDATE trade_order_invoicing SET status='full' WHERE company_id='DEFAULT' AND order_id IN ('PO-07','PO-08')",
+            )
+            .run();
+        } finally {
+          legacy.close();
+        }
+        const snapshot = () => rowsByTable(at019, ["schema_migrations", "trade_order_invoicing"]);
+        const before = snapshot();
+        const storage = createSqliteStorage({ filename: at019 });
+        try {
+          await storage.migrate();
+          await storage.verifySchema();
+        } finally {
+          await storage.close();
+        }
+        const after = snapshot();
+        const db = new Database(at019, { readonly: true });
+        try {
+          const stored = storedStatusesIn(db);
+          expect(stored).toEqual(upgraded);
+          expect(await recomputedStatusesIn(db, Object.keys(upgraded))).toEqual(stored);
+          const fingerprints = db
+            .prepare(
+              "SELECT schema_fingerprint FROM schema_migrations WHERE version IN (19,20) ORDER BY version",
+            )
+            .pluck()
+            .all();
+          expect(fingerprints).toHaveLength(2);
+          expect(fingerprints[1]).toBe(fingerprints[0]);
+          expect(db.prepare("SELECT count(*) FROM schema_migrations").pluck().get()).toBe(20);
         } finally {
           db.close();
         }

@@ -103,7 +103,13 @@ const filenames = [
   "017-trade-order-filters.sql",
   "018-trade-invoice-filters.sql",
   "019-trade-order-invoicing.sql",
+  "020-trade-order-invoicing-credits.sql",
 ];
+// TORD-06 / TINV-09: migrations after which every stored order invoicing status is recomputed.
+const invoicingBackfills = new Set([
+  "019-trade-order-invoicing.sql",
+  "020-trade-order-invoicing-credits.sql",
+]);
 export const latestMigrationVersion = filenames.length;
 
 export function normalizeMigration(text: string): string {
@@ -421,7 +427,8 @@ export async function inspectSchema(
 }
 
 // TORD-06: 019 seeds every order as 'none'; orders with any order-linked invoice line are then
-// recomputed through the same code the posting transaction uses (exact decimal → micros).
+// recomputed through the same code the posting transaction uses (exact decimal → micros). TINV-09:
+// 020 reruns it so stored statuses count credit notes; rerunning writes the same result.
 async function backfillOrderInvoicing(connection: Connection) {
   const rows = await connection.query(
     "SELECT DISTINCT company_id,order_id FROM trade_document_lines WHERE order_id IS NOT NULL ORDER BY company_id,order_id",
@@ -452,8 +459,7 @@ export async function migrateConnection(connection: Connection): Promise<void> {
         "INSERT INTO trade_invoice_terms(company_id,item_id,discount_percent,allow_partial_discount) VALUES(?,?,?,?)",
         [terms.company, terms.itemId, terms.discountPercent, terms.allowPartialDiscount ? 1 : 0],
       );
-    if (filenames[index] === "019-trade-order-invoicing.sql")
-      await backfillOrderInvoicing(connection);
+    if (invoicingBackfills.has(filenames[index])) await backfillOrderInvoicing(connection);
     const fingerprint = await schemaFingerprint(connection);
     await connection.query(
       "INSERT INTO schema_migrations(version,dialect,checksum,schema_fingerprint) VALUES(?,?,?,?)",

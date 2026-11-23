@@ -8,8 +8,7 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, beforeEach, test } from "vitest";
 import { createSqliteStorage } from "../src/storage/index.ts";
-import { latestMigrationVersion } from "../src/storage/migrations.ts";
-import { ledgerAt018 } from "./support/trade-invoice-list-fixture.ts";
+import { ledgerAt018, ledgerAt019 } from "./support/trade-invoice-list-fixture.ts";
 
 const added = [
   "index:trade_order_invoicing_status",
@@ -46,21 +45,12 @@ const versions = (filename: string) => {
     db.close();
   }
 };
-async function migrate(filename: string) {
-  const storage = createSqliteStorage({ filename });
-  try {
-    await storage.migrate();
-    await storage.verifySchema();
-  } finally {
-    await storage.close();
-  }
-}
 
 test("019 adds only trade_order_invoicing, its status index and three triggers to an 018 ledger", async () => {
-  assert.equal(latestMigrationVersion, 19);
+  // Both ledgers come from the real migrator; the new one stops before 020 (TINV-09).
   const fresh = join(directory, "fresh.sqlite"),
     old = join(directory, "018.sqlite");
-  await migrate(fresh);
+  await ledgerAt019(fresh);
   await ledgerAt018(old);
   const before = schemaObjects(old);
   const after = schemaObjects(fresh);
@@ -92,7 +82,7 @@ test("an 018 ledger is refused until migrated, then upgrades to 019 keeping its 
   } finally {
     await storage.close();
   }
-  await migrate(filename);
+  await ledgerAt019(filename);
   const after = versions(filename);
   assert.equal(after.length, 19);
   assert.deepEqual(after.slice(0, 18), before);
