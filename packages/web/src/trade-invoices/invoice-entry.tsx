@@ -1,31 +1,27 @@
 import type { CompanyDto } from "@erp/core/contracts";
 import type { Preferences } from "../ui/index.ts";
 import { formatMinor } from "../reports-data.ts";
-import { FastTab, MessageBar, TeachingTip } from "../ui/components/index.tsx";
+import { MessageBar, TeachingTip } from "../ui/components/index.tsx";
 import type { Guard, T } from "./invoice-model.ts";
-import { PreviewPanel } from "./preview-panel.tsx";
 import { bindInvoiceCommands, invoiceEntryContext } from "./invoice-entry-commands.ts";
 import { InvoiceCommandBar } from "./invoice-command-bar.tsx";
 import { InvoiceErrorBar, InvoiceReceiptBar, OrderIntakeBar } from "./invoice-messages.tsx";
 import { InvoiceGeneralTab } from "./invoice-general-tab.tsx";
 import { InvoiceLinesTab } from "./invoice-lines-tab.tsx";
+import { InvoicePreviewTab } from "./invoice-preview-tab.tsx";
 import { useAddLineShortcut, useInvoiceEntryState, useOrderIntake } from "./use-invoice-entry.ts";
 
-export function InvoiceEntry({
-  company,
-  preferences,
-  t,
-  onGuard,
-  intake,
-  onIntake,
-}: {
+type InvoiceEntryProps = {
   company: CompanyDto;
   preferences: Preferences;
   t: T;
   onGuard: (guard: Guard) => void;
   intake: string | null;
   onIntake: (done: null) => void;
-}) {
+};
+
+export function InvoiceEntry(props: InvoiceEntryProps) {
+  const { company, preferences, t, onGuard, intake, onIntake } = props;
   const entry = invoiceEntryContext(useInvoiceEntryState(company, onGuard), company, t);
   const { draft, dirty, preview, pending, busy, error, retry, receipt, fromOrder } = entry;
   const { firstField, stale, locked } = entry;
@@ -95,18 +91,12 @@ export function InvoiceEntry({
         onRemoveLine={commands.removeLine}
       />
       {preview && (
-        <FastTab
-          id="tinv-preview"
-          title={t("tinv.previewTitle")}
-          summary={t("tinv.previewSummary")}
-        >
-          <PreviewPanel
-            preview={preview.value}
-            money={money}
-            language={preferences.language}
-            t={t}
-          />
-        </FastTab>
+        <InvoicePreviewTab
+          t={t}
+          preview={preview.value}
+          money={money}
+          language={preferences.language}
+        />
       )}
     </form>
   );
