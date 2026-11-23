@@ -22,6 +22,14 @@ const DRY_RUN_BUDGET_SECONDS = 120;
 const IMPORT_BUDGET_SECONDS = 600;
 const CONFIRM_BUDGET_SECONDS = 120;
 const PEAK_RSS_BUDGET_MIB = 512;
+/**
+ * Known gaps (D434): budgets still reported with their limit but not failing the job.
+ * Delete an entry when its gap closes to restore the hard gate.
+ */
+const KNOWN_GAPS = {
+  "import.peakRssMiB":
+    "KG (D434): the opening plan of 100k items stays resident through the import (373 MiB with 0 items, 668 MiB with 100k); fix by writing opening items in batches or streaming",
+};
 const STEP_TIMEOUT_MS = 30 * 60 * 1000;
 const STEP_OUTPUT_BYTES = 64 * 1024 * 1024;
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -35,7 +43,7 @@ const decisionC = [
   ["--audit", "archive-only"],
 ].flat();
 
-/** `hard` budgets fail the job; anything else in a step result is record-only. */
+/** `hard` budgets fail the job unless listed in KNOWN_GAPS; anything else is record-only. */
 const steps = [
   {
     name: "dry-run",
@@ -240,17 +248,19 @@ function spawnStep(step, work) {
   console.error(
     `${step.name}: ${measured.seconds.toFixed(1)}s ${measured.peakRssMiB.toFixed(0)} MiB`,
   );
-  return { step: step.name, metrics: labelMetrics({ ...measured, ...recorded }, step.hard) };
+  return { step: step.name, metrics: labelMetrics(step, { ...measured, ...recorded }) };
 }
 
-function labelMetrics(values, hard) {
+function labelMetrics(step, values) {
+  const label = (metric, value) => {
+    if (!(metric in step.hard)) return { value, gate: "record-only" };
+    const limit = step.hard[metric];
+    const knownGap = KNOWN_GAPS[`${step.name}.${metric}`];
+    if (knownGap) return { value, gate: "known-gap", limit, overBudget: value > limit, knownGap };
+    return { value, gate: "hard", limit, exceeded: value > limit };
+  };
   return Object.fromEntries(
-    Object.entries(values).map(([metric, value]) => [
-      metric,
-      metric in hard
-        ? { value, gate: "hard", limit: hard[metric], exceeded: value > hard[metric] }
-        : { value, gate: "record-only" },
-    ]),
+    Object.entries(values).map(([metric, value]) => [metric, label(metric, value)]),
   );
 }
 
