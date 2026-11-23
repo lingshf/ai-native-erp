@@ -6,12 +6,16 @@
 
 ## [Unreleased]
 
-> **v0.16.0 发布候选**（尚未打 tag，日期待定）。产品代码基线为 `main` `35df068`（REFAC-07 [#275](https://github.com/lingshf/ai-native-erp/pull/275) 的合并提交；S17 的三项开发任务全部已合并，该提交的 main Full run 45263713443 绿）。v0.15.0 打在 `release/v0.15.0` 分支上、不在 main 上（D482），所以 `v0.15.0` 到 main 的范围里含 v0.15.0 已发布的文档提交。对照 `git log --oneline --first-parent v0.15.0..35df068`（**固定在 `35df068`** 上共 7 行，每行一个 PR；[#276](https://github.com/lingshf/ai-native-erp/pull/276) 是 `35df068` 之后才合并的纯设计 PR，单列，不需要条目）：
+（暂无）
+
+## [0.16.0] - 2026-11-23
+
+> **已发布**：tag `v0.16.0`（annotated，tag 对象 `c240c42da61c6ccc4e67294b2e3bfbd7ba930412`）打在 `ac1c1d4`（[#277](https://github.com/lingshf/ai-native-erp/pull/277) 的最终头，位于 `release/v0.16.0` 分支上；D484）；发布日 2026-11-23。main 上的 #277 squash 提交 `22f3217` 不是 tag 目标。Release：<https://github.com/lingshf/ai-native-erp/releases/tag/v0.16.0>。完整版本差异：[v0.15.0..v0.16.0](https://github.com/lingshf/ai-native-erp/compare/v0.15.0..v0.16.0)（两点，tag 到 tag 的直接差异，61 个文件，+3117/−989，`git diff --shortstat v0.15.0 v0.16.0`）；合并基对比：[v0.15.0...v0.16.0](https://github.com/lingshf/ai-native-erp/compare/v0.15.0...v0.16.0)（三点，自合并基 `93d5b04`，82 个文件，+4126/−985，会重现 v0.15.0 已发布的 DEMO-15 的 20 个路径，因两个发布分支分叉）。`git diff --name-only 35df068 ac1c1d4 -- packages scripts` 为空（已核对）。产品代码基线为 `main` `35df068`（REFAC-07 [#275](https://github.com/lingshf/ai-native-erp/pull/275) 的合并提交；S17 的三项开发任务全部已合并，该提交的 main Full run 45263713443 绿）。v0.15.0 打在 `release/v0.15.0` 分支上、不在 main 上（D482），所以 `v0.15.0` 到 main 的范围里含 v0.15.0 已发布的文档提交。对照 `git log --oneline --first-parent v0.15.0..35df068`（**固定在 `35df068`** 上共 7 行，每行一个 PR；[#276](https://github.com/lingshf/ai-native-erp/pull/276) 是 `35df068` 之后才合并的纯设计 PR，单列，不需要条目）：
 > - 已发布或只改日期，**不需要 `[Unreleased]` 条目**：[#269](https://github.com/lingshf/ai-native-erp/pull/269)（v0.15.0 的 RC 与 Demo，已随 v0.15.0 发布）、[#272](https://github.com/lingshf/ai-native-erp/pull/272)（v0.15.0 发布日与链接，只改日期）。
 > - 有条目：[#271](https://github.com/lingshf/ai-native-erp/pull/271)（新增）、[#270](https://github.com/lingshf/ai-native-erp/pull/270)、[#275](https://github.com/lingshf/ai-native-erp/pull/275)（变更，无用户可见变化）。
 > - 无用户可见变化，条目在下面“文档与流程”：[#273](https://github.com/lingshf/ai-native-erp/pull/273)（S16 评审与回顾的设计文档）、[#274](https://github.com/lingshf/ai-native-erp/pull/274)（Demo 模板与发布清单）。
 >
-> 与 `v0.15.0` 相比，`git diff --name-only v0.15.0 35df068 -- packages` 共 23 个文件（`--shortstat`：+1698/−962），没有迁移（仍为 020），没有 `package.json` 改动；`scripts/` 只有 1 个文件、1 行（`scripts/test-shard-weights.json`，#271 为新测试文件加的估算权重）。tag 目标按 D484：打在 `release/v0.16.0` 上审核通过的 RC 头，与 v0.14.0、v0.15.0 一致，授权前不打。**FIX-TADJ-BUSY（[#276](https://github.com/lingshf/ai-native-erp/pull/276) 任务书）推迟，不在 v0.16.0 发布。**完整版本差异（两点）与合并基对比（三点，D483）的链接和数字在 tag 创建后核对填入。
+> 与 `v0.15.0` 相比，`git diff --name-only v0.15.0 35df068 -- packages` 共 23 个文件（`--shortstat`：+1698/−962），没有迁移（仍为 020），没有 `package.json` 改动；`scripts/` 只有 1 个文件、1 行（`scripts/test-shard-weights.json`，#271 为新测试文件加的估算权重）。tag 目标按 D484：打在 `release/v0.16.0` 上审核通过的 RC 头，与 v0.14.0、v0.15.0 一致（已打）。**FIX-TADJ-BUSY（[#276](https://github.com/lingshf/ai-native-erp/pull/276) 任务书）推迟，不在 v0.16.0 发布。**
 
 S17 Sprint：一项用户可见的小功能（TLIST-01）、两项只拆分文件的重构（REFAC-07、REFAC-08）。按 SemVer 取 minor（0.15.0 → 0.16.0），因为订单列表与发票列表多了一个按钮。**无迁移，无依赖变化**，已有账套不需要 migrate，不改过账规则与任何金额、数量口径。
 
@@ -21,7 +25,7 @@ S17 Sprint：一项用户可见的小功能（TLIST-01）、两项只拆分文�
 
 ### Changed（无用户可见变化）
 
-- **预付 / 贷项 / 纠错页内部拆分（REFAC-07，[#275](https://github.com/lingshf/ai-native-erp/pull/275)，合并提交 `35df068`）**：`TradeAdjustments.tsx` 中 643 行的 `ActionEntry` 拆成精简后的 73 行（文件共 173 行）和 `trade-adjustments/` 下 9 个新文件，只搬移，页面外观、文案、键盘与焦点、存储与请求都不变。依据：#275 正文 R4 逐步等价表（16/16 场景 base 与 head 逐字节相同，RESULT: PASS）与 R3（Web 全部 jsdom 测试 25 个文件、347 个用例通过，`trade-adjustments.test.tsx diff 为空）。**体积（R7，D454 首屏口径，D476 预算 +900 B）**：产物为两次 Vite manifest 构建中 trade-adjustments 路由的 route-added JS；方法为 gzip-9（哈希文件名遮蔽后）；结果 11774 → 12531 B，**+757 B**，在 +900 B 之内；其余各路由 +0 B（来源：[#275 评论](https://github.com/lingshf/ai-native-erp/pull/275#issuecomment-7113487980)）。
+- **预付 / 贷项 / 纠错页内部拆分（REFAC-07，[#275](https://github.com/lingshf/ai-native-erp/pull/275)，合并提交 `35df068`）**：`TradeAdjustments.tsx` 中 643 行的 `ActionEntry` 拆成精简后的 73 行（文件共 173 行）和 `trade-adjustments/` 下 9 个新文件，只搬移，页面外观、文案、键盘与焦点、存储与请求都不变。依据：#275 正文 R4 逐步等价表（16/16 场景 base 与 head 逐字节相同，RESULT: PASS）与 R3（Web 全部 jsdom 测试 25 个文件、347 个用例通过，`trade-adjustments.test.tsx` diff 为空）。**体积（R7，D454 首屏口径，D476 预算 +900 B）**：产物为两次 Vite manifest 构建中 trade-adjustments 路由的 route-added JS；方法为 gzip-9（哈希文件名遮蔽后）；结果 11774 → 12531 B，**+757 B**，在 +900 B 之内；其余各路由 +0 B（来源：[#275 评论](https://github.com/lingshf/ai-native-erp/pull/275#issuecomment-7113487980)）。
 - **`tradeGuiSmoke` 测试支撑代码拆分（REFAC-08，[#270](https://github.com/lingshf/ai-native-erp/pull/270)，合并提交 `adeac52`）**：`smoke.ts` 由 262 行减到 97 行，拆入 `smoke/` 下 5 个模块，只改测试支撑代码，不改断言、等待与浏览器回调。依据：#270 正文 T2：断言调用链 base 与 head 各 11 条，仅 `() => pending` 变为读取函数 `() => pending()`，其余 10 条逐字相同。
 
 ### 文档与流程（无用户可见变化）
@@ -618,7 +622,8 @@ M1 贸易里程碑完成（M1-01..07，M1-R 评审通过，无阻塞项）。产
 - 旧快照未配置提示、凭证空列表文案和根 README 迁移版本说明已在 v0.2.0 修复（见 `[0.2.0]`）；v0.1.0 原发布基线不包含这些修复。
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
-[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/lingshf/ai-native-erp/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/lingshf/ai-native-erp/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/lingshf/ai-native-erp/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/lingshf/ai-native-erp/compare/v0.13.0...v0.13.1
