@@ -1,8 +1,8 @@
 # Demo v0.15.0（S16：订单详情“贷项冲回数量”列、订单页拆分后的外观、390 px 记录）
 
-**状态：脚本已写好，`-Stub` 演练已做；真实时段尚未申请，没有截图。** 演练记录见 [`run-through.md`](run-through.md)。按 `design/tasks/S16.md` 的 DEMO-16 验收。运行环境（真实时段时）：临时演示账套 `erp-demo-<guid>`，端口 **4203**（不是 4173），不连接真实账套、`.bak`、用户主检出。
+**状态：真实时段已运行（2026-11-23，R3，端口 4203，退出码 0），6 张截图已在 `screenshots/`。** 演练记录见 [`run-through.md`](run-through.md)。按 `design/tasks/S16.md` 的 DEMO-16 验收。运行环境（真实时段时）：临时演示账套 `erp-demo-<guid>`，端口 **4203**（不是 4173），不连接真实账套、`.bak`、用户主检出。
 
-## 1 计划拍摄（共 6 张，截图在 [`screenshots/`](screenshots/)，真实时段后才有）
+## 1 计划拍摄（共 6 张，截图在 [`screenshots/`](screenshots/)）
 
 | 名称 | 页面（路由） | 宽度 / 语言 / 主题 | 证明什么 |
 | --- | --- | --- | --- |
@@ -22,10 +22,26 @@ PO-C1 的造数复用 [v0.14.0 的 `seed-credit.mjs`](../v0.14.0/scripts/seed-cr
 
 ## 3 真实运行结果
 
-尚未运行。待协调者安排 D478 式安静时段（S17 开发者在做 REFAC-07 / REFAC-08 / TLIST-01，SR-C2 计入他们的本地 node 与 vitest 进程）。
+- 命令（从应用 worktree 运行，一次，不重试）：`pwsh -NoProfile -File <tooling>\scripts\slot\slot-run.ps1 -OutDir <仓库外目录> -StepsFile docs\demo\v0.15.0\scripts\steps-demo16.ps1 -Ports 4203`，退出码 **0**，规则版本 R3。
+- `runner start head=c7dd7cc3e160f2d29160135a6e8184f99dbc2af8`（`status=[]`，即 #269 的头）；`tooling head=93d5b0419bf08289b4193f7ec1d065fcada52485`（main，含 R3 / SR-X6）。
+- 预检连续 6 次 `counted=0`，之后 `step demo-capture exit=0 counted-after=0`；端口 4203 事后无监听。完整日志：[`logs/slot-summary-real.log`](logs/slot-summary-real.log)、[`logs/processes-real.tsv`](logs/processes-real.tsv)、[`logs/preflight-head-real.log`](logs/preflight-head-real.log)、[`logs/demo-capture-real.out.log`](logs/demo-capture-real.out.log)、[`logs/capture-log-real.json`](logs/capture-log-real.json)。
+- SR-X6 行（[`logs/sr-x6-lines-real.tsv`](logs/sr-x6-lines-real.tsv)）：2 条，均为命令行不可读的 `chrome-headless-shell.exe`（pid 58536、90812），父进程是本次运行自己的 Chrome，不计数，已完整记录。
+- 产品代码基线：`git diff --name-only 00d1ed4 HEAD -- packages` 为空（以 v0.15.0 的产品基线 00d1ed4 计）。`scripts/` 与 00d1ed4 的差异是 `scripts/slot/` 下的 6 个文件（SLOT-03 的 `-Ports` / SR-X6 等，运行用的是 tooling 的 main 版本），不影响产品。
+- 内容断言全部通过（拍错即中止）：订单录入页（zh-red、en-green）命令条“预览 / 保存订单”各 1 个、录入行表 1 个；订单详情 PO-C1 L1：数量 10 / 已开票 6 / 未开票 4 / 冲回 4，共 13 列，“贷项冲回数量”在第 8 列（索引 7），紧跟“未开票数量”。
+- **390 px 记录（K7，`capture-log-real.json` 的 `k7` 条目）**：滚动前后 `document.documentElement.scrollWidth` 都是 **390**（≤ 390）；`div.grid-wrap` 的 `scrollWidth` **1040** > `clientWidth` **316**；`scrollIntoView` 之后 `scrollLeft` = 335，容器矩形 left 36 / right 354，“贷项冲回数量”表头 left 230.2 / right 352.9，L1 行该列单元格 left 230.2 / right 352.9，均完整落在容器内。滚动前该列在容器之外（left 565.2 / right 687.9）。
 
+| 截图 | 内容 |
+| --- | --- |
+| [`trade-orders-entry-zh-red-1440.png`](screenshots/trade-orders-entry-zh-red-1440.png) | 订单页录入区，中文、专业红 |
+| [`trade-orders-entry-en-green-1440.png`](screenshots/trade-orders-entry-en-green-1440.png) | 订单页录入区，English、绿色主题 |
+| [`trade-orders-detail-zh-red-1440.png`](screenshots/trade-orders-detail-zh-red-1440.png) | PO-C1 详情，“贷项冲回数量”列（中文） |
+| [`trade-orders-detail-en-green-1440.png`](screenshots/trade-orders-detail-en-green-1440.png) | PO-C1 详情，“Credited qty”列（English） |
+| [`trade-orders-detail-zh-red-390-before-scroll.png`](screenshots/trade-orders-detail-zh-red-390-before-scroll.png) | 390 px，滚动前 |
+| [`trade-orders-detail-zh-red-390-after-scroll.png`](screenshots/trade-orders-detail-zh-red-390-after-scroll.png) | 390 px，新列滚入容器后 |
+
+运行前的两次演练（不在本节日志里）：`-Stub`（见 `run-through.md`）；按 D481 在同一应用 worktree 先 `npm run build`，再 capture 干跑一次（出 6 张图，退出码 0）、`run-main.ps1 -SkipCapture` 一次（退出码 0）。这两次的输出写入仓库外临时目录，未入库。
 ## 4 偏差与没做的事
 
 - 没有 REFAC-05b 前后的对比图；没有首屏字节的 Demo 对比，字节数见发布说明（取自 #262、#265 正文，未重测）。
 - 订单录入页只拍了录入区，没有演练“保存订单”或“预览”的写入流程（Demo 不证明这些流程）。
-- `-Stub` 不运行步骤脚本，`run-main.ps1` 与 `capture.mjs` 在真实 PowerShell 子进程与 Chrome 下的行为尚未经实跑验证（见 `run-through.md` §2）。
+- `-Stub` 不运行步骤脚本；`run-main.ps1` 与 `capture.mjs` 的真实行为由 §3 的真实运行验证（先前为空白，见 `run-through.md` §6 的 D481 记录）。

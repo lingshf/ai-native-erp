@@ -58,3 +58,11 @@
 - 规则版本 **R3**，`-Ports 4203`，D444 单次手动、不重试。
 - 真实运行要求所有 ai-native-erp 会话（含 S17 开发者）安静：SR-C2 仍计入它们的 node / vitest；SR-X6（归属未知的 `node.exe`）不计数但会完整记录。
 - 申请前由 `slot-run.ps1` 自己的预检等待连续 6 次 counted=0（最多 15 分钟，超时则中止不重试）。
+
+## 6 真实运行与 D481 的干跑缺口
+
+- D480 授权的序列：capture 干跑 → `run-main.ps1 -SkipCapture` → 真实 slot-run，各一次，不重试，任一步失败即停。
+- **缺口**：第一次干跑（头 c7dd7cc，直接运行 `run-main.ps1`）在“服务器就绪”处失败（`not ready`），原因是新建的应用 worktree 没有 `packages\web\dist`；`run-main.ps1` 不构建，真实的 `slot-run.ps1` 才构建。这是干跑流程的缺口，不是脚本缺陷；已停下并上报，没有进入后两步。
+- **D481**（协调者授权）：在应用 worktree 先 `npm run build` 一次（算流程修正，不算重试），然后三步各一次：干跑退出码 0、`-SkipCapture` 退出码 0、真实 slot-run 退出码 0。
+- 真实运行的 `runner start head=c7dd7cc3e160f2d29160135a6e8184f99dbc2af8`、`tooling head=93d5b0419bf08289b4193f7ec1d065fcada52485`、SR-X6 行与 390 px 数字见 [`README.md`](README.md) §3；日志在 `logs/*-real.*`。
+- 脚本哈希：真实运行用的是 c7dd7cc 上的三个脚本，`git rev-parse c7dd7cc:<路径>` 与 §3 表一致（capture.mjs 18ec7c2…）。
