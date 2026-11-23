@@ -89,7 +89,7 @@ export function registerTradeDocumentRoutes(
     boundary.assert(request, reply, ["GET", "POST"]);
     const app = ready(request);
     if (request.method === "GET") {
-      const { company, limit, cursor, party, side, from, to } = parse(
+      const { company, limit, cursor, party, side, from, to, invoicing } = parse(
         tradeOrderListQuerySchema,
         request.query,
       );
@@ -101,6 +101,7 @@ export function registerTradeDocumentRoutes(
           ...(side ? { side } : {}),
           ...(from ? { from } : {}),
           ...(to ? { to } : {}),
+          ...(invoicing ? { invoicing } : {}),
         }),
       );
     }

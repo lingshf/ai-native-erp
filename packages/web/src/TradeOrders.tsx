@@ -6,6 +6,7 @@ import {
   companiesPageSchema,
   tradeOrderCommandSchema,
   tradeOrderInvoicingSchema,
+  tradeOrderInvoicingStatusSchema,
   tradeOrderPageSchema,
   tradeOrderPreviewSchema,
   tradeOrderSchema,
@@ -43,14 +44,21 @@ type Draft = {
 };
 type Guard = { busy: boolean; unsaved: boolean };
 type Opened = { orderId: string; focus: boolean };
-type Invoicing = "none" | "partial" | "full";
+const invoicingValues = tradeOrderInvoicingStatusSchema.options;
+type Invoicing = (typeof invoicingValues)[number];
 const invoicingTone = { none: "warning", partial: "info", full: "success" } as const;
 type Issue = { path: string; key: TradeOrderKey };
 type Failure = { message: string; issues: Issue[]; uncertain: boolean };
 const idleGuard: Guard = { busy: false, unsaved: false };
-type Filter = { party: string; side: "" | "AP" | "AR"; from: string; to: string };
-const noFilter: Filter = { party: "", side: "", from: "", to: "" };
-const filterKeys = ["party", "side", "from", "to"] as const;
+type Filter = {
+  party: string;
+  side: "" | "AP" | "AR";
+  invoicing: "" | Invoicing;
+  from: string;
+  to: string;
+};
+const noFilter: Filter = { party: "", side: "", invoicing: "", from: "", to: "" };
+const filterKeys = ["party", "side", "invoicing", "from", "to"] as const;
 const lineFields = ["product", "taxCode", "quantity", "unitPrice", "discountPercent"] as const;
 const numeric = new Set<string>(["quantity", "unitPrice", "discountPercent"]);
 const amountKeys = ["net", "tax", "gross"] as const;
@@ -960,6 +968,21 @@ function OrderList({
             <option value="">{t("tord.filterAll")}</option>
             <option value="AP">{t("tord.filterAP")}</option>
             <option value="AR">{t("tord.filterAR")}</option>
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="tord-filter-invoicing">{t("tord.invoicing")}</label>
+          <select
+            id="tord-filter-invoicing"
+            value={draft.invoicing}
+            onChange={(event) => edit({ invoicing: event.target.value as Filter["invoicing"] })}
+          >
+            <option value="">{t("tord.filterAll")}</option>
+            {invoicingValues.map((value) => (
+              <option key={value} value={value}>
+                {t(`tord.invoicing.${value}`)}
+              </option>
+            ))}
           </select>
         </div>
         <div className="field">

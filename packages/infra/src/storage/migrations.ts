@@ -5,6 +5,7 @@ import { tradeConfigSchema } from "@erp/core/contracts";
 import { addTradeDays, checkedTradePercent, type TradeConfig } from "@erp/core/domain";
 import type { Connection } from "./types.ts";
 import { schemaFingerprint } from "./schema.ts";
+import { refreshTradeOrderInvoicing } from "./trade-documents.ts";
 
 const baseNames = [
   ...["audit", "books", "companies", "receipts", "schema_migrations", "tenants"].map(
@@ -101,6 +102,7 @@ const filenames = [
   "016-trade-report-capacity.sql",
   "017-trade-order-filters.sql",
   "018-trade-invoice-filters.sql",
+  "019-trade-order-invoicing.sql",
 ];
 export const latestMigrationVersion = filenames.length;
 
@@ -392,6 +394,15 @@ export async function inspectSchema(
       ...(latest >= 16 ? ["index:settlements_report"] : []),
       ...(latest >= 17 ? ["index:trade_orders_party"] : []),
       ...(latest >= 18 ? ["index:trade_documents_party"] : []),
+      ...(latest >= 19
+        ? [
+            "table:trade_order_invoicing",
+            "index:trade_order_invoicing_status",
+            "trigger:trade_order_invoicing_no_delete",
+            "trigger:trade_order_invoicing_status_only",
+            "trigger:trade_orders_invoicing_seed",
+          ]
+        : []),
     ])
   )
     throw new StorageError("SCHEMA_MISMATCH");
@@ -409,6 +420,24 @@ export async function inspectSchema(
   return latest;
 }
 
+// TORD-06: 019 seeds every order as 'none'; orders with any order-linked invoice line are then
+// recomputed through the same code the posting transaction uses (exact decimal → micros).
+async function backfillOrderInvoicing(connection: Connection) {
+  const rows = await connection.query(
+    "SELECT DISTINCT company_id,order_id FROM trade_document_lines WHERE order_id IS NOT NULL ORDER BY company_id,order_id",
+  );
+  const byCompany = new Map<string, string[]>();
+  for (const row of rows) {
+    if (typeof row.company_id !== "string" || typeof row.order_id !== "string")
+      throw new StorageError("SCHEMA_MISMATCH");
+    const list = byCompany.get(row.company_id) ?? [];
+    list.push(row.order_id);
+    byCompany.set(row.company_id, list);
+  }
+  for (const [company, orderIds] of byCompany)
+    await refreshTradeOrderInvoicing(connection, company, orderIds);
+}
+
 export async function migrateConnection(connection: Connection): Promise<void> {
   const applied = await inspectSchema(connection, true);
   for (let index = applied; index < filenames.length; index++) {
@@ -423,6 +452,8 @@ export async function migrateConnection(connection: Connection): Promise<void> {
         "INSERT INTO trade_invoice_terms(company_id,item_id,discount_percent,allow_partial_discount) VALUES(?,?,?,?)",
         [terms.company, terms.itemId, terms.discountPercent, terms.allowPartialDiscount ? 1 : 0],
       );
+    if (filenames[index] === "019-trade-order-invoicing.sql")
+      await backfillOrderInvoicing(connection);
     const fingerprint = await schemaFingerprint(connection);
     await connection.query(
       "INSERT INTO schema_migrations(version,dialect,checksum,schema_fingerprint) VALUES(?,?,?,?)",

@@ -1,4 +1,4 @@
-// TORD-03 / TORD-05 / PG-05: hot-read p95 of GET /api/v1/trade/orders on 10,000 synthetic orders
+// TORD-03 / TORD-05 / TORD-06 / PG-05: hot-read p95 of GET /api/v1/trade/orders on 10,000 synthetic orders
 // with 1–20 lines each, unfiltered and filtered. Standalone evidence (not part of the PR fast suite):
 //   node packages/infra/bench/trade-order-list.ts
 // The seed writes only the two order tables directly, with foreign keys off on the seeding
@@ -25,7 +25,7 @@ import { quantityMicros } from "@erp/core/domain";
 import { createApi } from "../src/http/index.ts";
 import { createSqliteStorage } from "../src/storage/index.ts";
 import { createMasterDataStore } from "../src/storage/master-data.ts";
-import { tradeOrderPageStatement } from "../src/storage/trade-documents.ts";
+import { tradeOrderPageStatement, tradeOrderStatuses } from "../src/storage/trade-documents.ts";
 import { SqliteExecutor } from "../src/workers/executor.ts";
 
 const orders = 10_000;
@@ -117,6 +117,21 @@ async function seed(filename: string) {
         else if (index === cancelled) invoice(index, lineCount(index), "1", "cancelled");
       }
     })();
+    // TORD-06 (head only): the seed bypasses posting, so the stored status is written here from
+    // the same fixture rule; every listed item's column is still checked against invoicingOf.
+    const stored = db
+      .prepare("SELECT count(*) FROM sqlite_schema WHERE name='trade_order_invoicing'")
+      .pluck()
+      .get();
+    if (stored) {
+      const status = db.prepare(
+        "UPDATE trade_order_invoicing SET status=? WHERE company_id='DEFAULT' AND order_id=?",
+      );
+      db.transaction(() => {
+        for (let index = 1; index <= orders; index++)
+          status.run(invoicingOf(index), orderId(index));
+      })();
+    }
   } finally {
     db.close();
   }
@@ -138,7 +153,7 @@ interface Scenario {
 }
 const pathOf = ({ query }: Scenario) => {
   const params = new URLSearchParams({ company: "DEFAULT", limit: String(query.limit) });
-  for (const key of ["cursor", "party", "side", "from", "to"] as const) {
+  for (const key of ["cursor", "party", "side", "invoicing", "from", "to"] as const) {
     const value = query[key];
     if (value !== undefined) params.set(key, value);
   }
@@ -227,6 +242,25 @@ const scenarios: readonly Scenario[] = [
     expected: { items: 100, first: orderId(9_501), next: orderId(9_600) },
   },
 ];
+// TORD-06 scenarios, run only where the ledger has trade_order_invoicing (head; base rejects the
+// parameter with 400).
+const invoicingScenarios: readonly Scenario[] = [
+  {
+    name: "(e) invoicing=full first page",
+    query: { limit, invoicing: "full" },
+    expected: { items: 100, first: orderId(1), next: orderId(298) },
+  },
+  {
+    name: "(f) invoicing=none deep continuation",
+    query: { limit, invoicing: "none", cursor: deep },
+    expected: { items: 100, first: orderId(9_503), next: orderId(9_800) },
+  },
+  {
+    name: "(g) party=P01 invoicing=partial first page",
+    query: { limit, party: "P01", invoicing: "partial" },
+    expected: { items: 33, first: orderId(300), next: null },
+  },
+];
 
 const directory = await mkdtemp(join(tmpdir(), "erp-tord05-bench-"));
 try {
@@ -246,7 +280,42 @@ try {
     }),
   );
   const raw = new Database(filename, { readonly: true });
+  let active = scenarios;
   try {
+    if (
+      raw
+        .prepare("SELECT count(*) FROM sqlite_schema WHERE name='trade_order_invoicing'")
+        .pluck()
+        .get()
+    ) {
+      active = [...scenarios, ...invoicingScenarios];
+      const stored = raw
+        .prepare(
+          "SELECT status,count(*) AS orders FROM trade_order_invoicing GROUP BY status ORDER BY status",
+        )
+        .all();
+      console.info(JSON.stringify({ stored }));
+      assert.deepEqual(stored, [
+        { status: "full", orders: Math.ceil(orders / 3) },
+        { status: "none", orders: orders - Math.ceil(orders / 3) - Math.floor(orders / 3) },
+        { status: "partial", orders: Math.floor(orders / 3) },
+      ]);
+      // B9: the stored status equals the TINV-03 recomputation from the invoice lines, order by order.
+      const reader = {
+        query: async (sql: string, values: readonly unknown[] = []) =>
+          raw.prepare(sql).all(...values) as Record<string, unknown>[],
+      };
+      const storedOf = raw.prepare(
+        "SELECT status FROM trade_order_invoicing WHERE company_id='DEFAULT' AND order_id=?",
+      );
+      for (let start = 1; start <= orders; start += 400) {
+        const ids = Array.from({ length: Math.min(400, orders - start + 1) }, (_, n) =>
+          orderId(start + n),
+        );
+        for (const [id, status] of await tradeOrderStatuses(reader, "DEFAULT", ids))
+          assert.equal(storedOf.pluck().get(id), status, id);
+      }
+    }
     const fixture = raw
       .prepare(
         "SELECT count(DISTINCT party_id) AS parties,sum(party_id='P01') AS p01,sum(order_date>='2026-12-01') AS december,min(CASE WHEN order_date>='2026-12-01' THEN order_id END) AS firstDecember,max(CASE WHEN order_date<'2026-12-01' THEN order_date END) AS lastBefore,min(order_date) AS firstDate,sum(side='AP') AS ap FROM trade_orders",
@@ -274,7 +343,7 @@ try {
       lines: invoiceLines,
       orders: Math.ceil(orders / 3) + Math.floor(orders / 3) + 1,
     });
-    for (const scenario of scenarios) {
+    for (const scenario of active) {
       const statement = tradeOrderPageStatement("DEFAULT", {
         ...scenario.query,
       });
@@ -301,7 +370,7 @@ try {
   try {
     const origin = new URL(await api.listen()).origin;
     const results = [];
-    for (const scenario of scenarios) {
+    for (const scenario of active) {
       const result = await measure(origin, scenario);
       console.info(JSON.stringify(result));
       results.push(result);

@@ -8,6 +8,7 @@ import { type ExpectStatic, afterAll, beforeAll, expect, test } from "vitest";
 import { chromium, type Browser, type BrowserContext, type Locator, type Page } from "playwright";
 import { build } from "vite";
 import { MasterDataService } from "@erp/core/application";
+import type { TradeOrderInvoicingStatus } from "@erp/core/domain";
 import { createSqliteStorage } from "../../src/storage/index.ts";
 import { createMasterDataStore } from "../../src/storage/master-data.ts";
 import { SqliteExecutor } from "../../src/workers/executor.ts";
@@ -1031,6 +1032,109 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       ).toBe(0);
       expect(failures).toEqual([]);
     }
+    // TORD-06 (B8) helpers. The order-list filter form is the one holding the invoicing select.
+    const orderFilterForm = () =>
+      page.locator("form").filter({ has: page.locator("#tord-filter-invoicing") });
+    // The filter is component state, so staying on the route keeps it: clear it and wait for a row
+    // the filter had hidden.
+    async function clearOrderFilters(visibleOrderId: string) {
+      await activate(
+        page,
+        orderFilterForm().getByRole("button", { name: ordered("tord.filterClear"), exact: true }),
+      );
+      await page
+        .getByRole("table", { name: ordered("tord.list"), exact: true })
+        .getByRole("button", { name: visibleOrderId, exact: true })
+        .waitFor();
+    }
+    async function applyInvoicingFilter(status: TradeOrderInvoicingStatus) {
+      await choose(page, page.locator("#tord-filter-invoicing"), status);
+      const response = page.waitForResponse((item) => {
+        const url = new URL(item.url());
+        return (
+          url.pathname === "/api/v1/trade/orders" &&
+          url.searchParams.get("invoicing") === status &&
+          item.request().method() === "GET"
+        );
+      });
+      await activate(
+        page,
+        orderFilterForm().getByRole("button", { name: ordered("tord.filterApply"), exact: true }),
+      );
+      expect((await response).status()).toBe(200);
+    }
+    /** Listed rows as { orderId, badge }, the badge without its aria-hidden tone symbol. */
+    const listedOrderBadges = () =>
+      page.locator("table.tord-list tbody tr").evaluateAll((items) =>
+        items.map((row) => {
+          const badge = row.querySelector("td.tord-invoicing .badge")?.cloneNode(true) as
+            | Element
+            | undefined;
+          for (const mark of badge?.querySelectorAll('[aria-hidden="true"]') ?? []) mark.remove();
+          return {
+            orderId: row.querySelector("td button")?.textContent ?? "",
+            badge: badge?.textContent?.trim() ?? "",
+          };
+        }),
+      );
+    async function expectInvoicingFiltered(status: TradeOrderInvoicingStatus, expected: string[]) {
+      await expect
+        .poll(async () => (await listedOrderBadges()).map((row) => row.orderId).sort(), {
+          message: `Orders filtered by invoicing=${status}`,
+          timeout: 10_000,
+        })
+        .toEqual(expected);
+      if (expected.length === 0) {
+        await page
+          .locator("p.empty-state")
+          .filter({ hasText: ordered("tord.listNoMatch") })
+          .waitFor();
+        return;
+      }
+      const label = ordered(`tord.invoicing.${status}`);
+      const shown = (await listedOrderBadges()).sort((a, b) => a.orderId.localeCompare(b.orderId));
+      expect(shown).toEqual(expected.map((orderId) => ({ orderId, badge: label })));
+    }
+    // TORD-06 (B8): the invoicing filter follows posting and cancellation. PO-STATUS is invoiced in
+    // part, then in full; cancelling the second invoice brings it back to partial. PO-NONE is
+    // never invoiced. Runs after orderToInvoice(): PO-DEMO and PO-FROM are then fully invoiced.
+    // Every filtered row's badge shows the filtered status; the address never changes.
+    async function orderInvoicingFilter() {
+      await purchaseOrder("PO-NONE");
+      await purchaseOrder("PO-STATUS");
+      expect(await orderQuantities("PO-STATUS")).toEqual(["10", "0", "10"]);
+      await invoiceFromOrder("PO-STATUS", "AP-STATUS-1", 4520, "4");
+      let stage = 0;
+      const listed = async (status: TradeOrderInvoicingStatus, expected: string[]) => {
+        stage += 1;
+        await navigate("trade-orders");
+        const hash = new URL(page.url()).hash;
+        await applyInvoicingFilter(status);
+        await expectInvoicingFiltered(status, expected);
+        expect(new URL(page.url()).hash).toBe(hash);
+        await page.screenshot({
+          path: join(artifacts, `${name}-order-invoicing-${stage}-${status}.png`),
+        });
+      };
+      await listed("partial", ["PO-STATUS"]);
+      await listed("none", ["PO-NONE"]);
+      await clearOrderFilters("PO-STATUS");
+      await openOrder("PO-STATUS");
+      expect(await orderQuantities("PO-STATUS")).toEqual(["10", "4", "6"]);
+      const second = await invoiceFromOrder("PO-STATUS", "AP-STATUS-2", 6780);
+      await listed("full", ["PO-DEMO", "PO-FROM", "PO-STATUS"]);
+      await listed("partial", []);
+      await navigate("trade-adjustments");
+      await action("cancel", {
+        "tadj.source": second.documentId,
+        "tadj.reason": "Fictional second invoice cancelled",
+      });
+      await listed("full", ["PO-DEMO", "PO-FROM"]);
+      await listed("partial", ["PO-STATUS"]);
+      await listed("none", ["PO-NONE"]);
+      await clearOrderFilters("PO-DEMO");
+      expect(failures).toEqual([]);
+    }
     async function invoice(side: "AP" | "AR", external: string, matched = false) {
       await navigate("trade-invoices");
       await choose(page, page.locator("#tinv-side"), side);
@@ -1329,6 +1433,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       });
       // After the report totals above, so the new AP invoices do not change them.
       await orderToInvoice();
+      await orderInvoicingFilter();
       await sourceOrders();
       await invoiceFilters();
       await invoiceDetail();

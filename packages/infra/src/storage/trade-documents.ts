@@ -114,49 +114,74 @@ function openItemRow(row: Row, segments: readonly TradeControlSegment[]): OpenIt
 }
 const openItemSelect =
   "SELECT o.*,d.kind,d.external_no,t.discount_percent,t.allow_partial_discount FROM open_items o JOIN trade_item_sources d ON d.company_id=o.company_id AND d.item_id=o.item_id JOIN trade_invoice_terms t ON t.company_id=o.company_id AND t.item_id=o.item_id";
-const tradeOrderPageSelect = (from: string) =>
-  `SELECT o.order_id,o.side,o.party_id,o.order_date,o.currency,o.price_includes_tax,o.rounding_mode,o.recorded_at,count(*) AS line_count,sum(l.net_minor) AS net_minor,sum(l.tax_minor) AS tax_minor,sum(l.gross_minor) AS gross_minor FROM ${from} JOIN trade_order_lines l ON l.company_id=o.company_id AND l.order_id=o.order_id WHERE o.company_id=?`;
-const tradeOrderPageOrder = " GROUP BY o.order_id ORDER BY o.order_id LIMIT ?";
+type PageDriver = "o" | "s";
+// `driver` is the alias whose (company_id, order_id) drives the page: the keyset and its order.
+const tradeOrderPageSelect = (from: string, driver: PageDriver = "o") =>
+  `SELECT o.order_id,o.side,o.party_id,o.order_date,o.currency,o.price_includes_tax,o.rounding_mode,o.recorded_at,s.status AS invoicing,count(*) AS line_count,sum(l.net_minor) AS net_minor,sum(l.tax_minor) AS tax_minor,sum(l.gross_minor) AS gross_minor FROM ${from} JOIN trade_order_lines l ON l.company_id=o.company_id AND l.order_id=o.order_id WHERE ${driver}.company_id=?`;
+const tradeOrderPageOrder = (driver: PageDriver = "o") =>
+  ` GROUP BY ${driver}.order_id ORDER BY ${driver}.order_id LIMIT ?`;
+// TORD-06: the stored status joined on its primary key (one row per order). CROSS JOIN keeps the
+// orders table (or, below, the status index) as the outer loop.
+const joinStatus =
+  " CROSS JOIN trade_order_invoicing s ON s.company_id=o.company_id AND s.order_id=o.order_id";
+const statusDrivenFrom =
+  "trade_order_invoicing s INDEXED BY trade_order_invoicing_status CROSS JOIN trade_orders o ON o.company_id=s.company_id AND o.order_id=s.order_id";
 // TORD-03: one statement per order-list page; parameters are (company, cursor or "", limit + 1).
-// Orders always have 1–100 lines, so the inner join keeps every order; both tables use their primary keys.
-export const tradeOrderPageSql = `${tradeOrderPageSelect("trade_orders o")} AND o.order_id>?${tradeOrderPageOrder}`;
+// Orders always have 1–100 lines, so the inner join keeps every order; every table uses its primary
+// key. TORD-06: the invoicing column is the stored status (B6a), not a per-page aggregate.
+export const tradeOrderPageSql = `${tradeOrderPageSelect(`trade_orders o${joinStatus}`)} AND o.order_id>?${tradeOrderPageOrder()}`;
 // TORD-05: still one statement per page. The text is assembled only from fixed fragments chosen by
 // which filters are present; every value is bound. With a party the statement SEARCHes
 // trade_orders_party (company_id, party_id, order_id), already in order_id order. INDEXED BY is
 // required: without ANALYZE statistics SQLite's default estimates prefer the primary key, which
 // would walk every order of the company after the cursor. Side and date are filtered row by row
 // on the primary-key range. With no filter the text is exactly tradeOrderPageSql.
+// TORD-06: every variant reads the stored status. An invoicing filter without a party drives the
+// page from trade_order_invoicing_status (company_id, status, order_id), also already in order_id
+// order; otherwise the status is joined on its primary key and filtered row by row.
+function tradeOrderPageFrom(query: TradeOrderListQuery): {
+  readonly from: string;
+  readonly driver: PageDriver;
+} {
+  if (query.invoicing !== undefined && query.party === undefined)
+    return { from: statusDrivenFrom, driver: "s" };
+  const orders =
+    query.party === undefined ? "trade_orders o" : "trade_orders o INDEXED BY trade_orders_party";
+  return { from: orders + joinStatus, driver: "o" };
+}
 export function tradeOrderPageStatement(
   company: string,
   query: TradeOrderListQuery,
 ): { readonly sql: string; readonly values: readonly (string | number)[] } {
-  let sql = tradeOrderPageSelect(
-    query.party === undefined ? "trade_orders o" : "trade_orders o INDEXED BY trade_orders_party",
-  );
+  const { from, driver } = tradeOrderPageFrom(query);
+  let sql = tradeOrderPageSelect(from, driver);
   const values: (string | number)[] = [company];
   const add = (fragment: string, value: string | undefined) => {
     if (value === undefined) return;
     sql += fragment;
     values.push(value);
   };
+  add(" AND s.status=?", query.invoicing);
   add(" AND o.party_id=?", query.party);
-  add(" AND o.order_id>?", query.cursor ?? "");
+  add(` AND ${driver}.order_id>?`, query.cursor ?? "");
   add(" AND o.side=?", query.side);
   add(" AND o.order_date>=?", query.from);
   add(" AND o.order_date<=?", query.to);
   values.push(query.limit + 1);
-  return { sql: sql + tradeOrderPageOrder, values };
+  return { sql: sql + tradeOrderPageOrder(driver), values };
 }
 
 // TINV-03: the single "invoiced" predicate. Invoice lines of the company that reference an order and
-// whose open item is not cancelled; tradeOrderInvoiced and the order-list aggregate both append
+// whose open item is not cancelled; tradeOrderInvoiced and the status recomputation both append
 // their own order filters. First bound value: company.
 const invoicedOrderLines =
   "FROM trade_document_lines l JOIN open_items o ON o.company_id=l.company_id AND o.item_id=l.document_id WHERE l.company_id=? AND l.order_id IS NOT NULL AND o.status<>'cancelled'";
 const placeholders = (count: number) => Array.from({ length: count }, () => "?").join(",");
-// TINV-03: one statement per list page, whatever its size. Ordered quantity of every line of the
-// page's orders (trade_order_lines primary key) with its invoiced micros, summed on
+// TINV-03: one statement for a set of orders, whatever its size. Ordered quantity of every line of
+// the orders (trade_order_lines primary key) with its invoiced micros, summed on
 // trade_document_lines_order over the same orders. Values: (company, ...orderIds) twice.
+// TORD-06: no longer run by the list; only by the stored-status refresh (posting, cancellation,
+// migration 019 backfill).
 export function tradeOrderPageInvoicedSql(orders: number): string {
   const ids = placeholders(orders);
   return `SELECT ol.order_id,ol.quantity,COALESCE(i.micros,'0') AS micros FROM trade_order_lines ol LEFT JOIN (SELECT l.order_id,l.order_line_id,CAST(SUM(l.quantity_micros) AS TEXT) AS micros ${invoicedOrderLines} AND l.order_id IN(${ids}) GROUP BY l.order_id,l.order_line_id) i ON i.order_id=ol.order_id AND i.order_line_id=ol.line_id WHERE ol.company_id=? AND ol.order_id IN(${ids})`;
@@ -167,6 +192,55 @@ export function tradeOrderInvoicingStatus(
 ): TradeOrderSummary["invoicing"] {
   if (lines.every((line) => line.invoiced === 0n)) return "none";
   return lines.every((line) => line.invoiced >= line.ordered) ? "full" : "partial";
+}
+/**
+ * TINV-03 / TORD-06: invoicing status of each given order recomputed from its invoice lines, in one
+ * tradeOrderPageInvoicedSql statement. Used to write the stored status (and by tests to check it).
+ */
+export async function tradeOrderStatuses(
+  db: Pick<Connection, "query">,
+  company: string,
+  orderIds: readonly string[],
+): Promise<Map<string, TradeOrderSummary["invoicing"]>> {
+  if (!orderIds.length) return new Map();
+  const rows = await db.query(tradeOrderPageInvoicedSql(orderIds.length), [
+    company,
+    ...orderIds,
+    company,
+    ...orderIds,
+  ]);
+  const lines = new Map<string, { ordered: bigint; invoiced: bigint }[]>();
+  for (const row of rows) {
+    const orderId = str(row.order_id);
+    const list = lines.get(orderId) ?? [];
+    list.push({ ordered: quantityMicros(str(row.quantity)), invoiced: BigInt(str(row.micros)) });
+    lines.set(orderId, list);
+  }
+  return new Map(orderIds.map((id) => [id, tradeOrderInvoicingStatus(lines.get(id) ?? [])]));
+}
+// Orders recomputed per statement: bounds its values (2 + 2 × chunk) far below the SQLite and
+// PostgreSQL parameter limits however many orders one migration or posting touches.
+const refreshChunk = 400;
+/**
+ * TORD-06: recomputes the stored status of the given orders with the TINV-03 computation and
+ * writes it on the caller's connection, so it commits or rolls back with the caller's transaction
+ * (invoice posting, cancellation, migration 019 backfill). Every order must have its row.
+ */
+export async function refreshTradeOrderInvoicing(
+  db: Pick<Connection, "query">,
+  company: string,
+  orderIds: readonly string[],
+): Promise<void> {
+  for (let start = 0; start < orderIds.length; start += refreshChunk) {
+    const chunk = orderIds.slice(start, start + refreshChunk);
+    for (const [orderId, status] of await tradeOrderStatuses(db, company, chunk)) {
+      const updated = await db.query(
+        "UPDATE trade_order_invoicing SET status=? WHERE company_id=? AND order_id=? RETURNING order_id",
+        [status, company, orderId],
+      );
+      if (updated.length !== 1) throw new StorageError("STORAGE_FAILURE");
+    }
+  }
 }
 // TINV-05: one statement per invoice-list page, newest sequence first. The text is assembled only
 // from fixed fragments chosen by which filters are present; every value is bound. With a party the
@@ -391,6 +465,19 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
         );
         if (updated.length !== 1) throw new StorageError("STORAGE_FAILURE");
       }
+      // TORD-06: cancelling an invoice (or any change into/out of cancelled) changes what the
+      // TINV-03 predicate counts for its order; credits have no trade_documents row.
+      if ((before.status === "cancelled") !== (after.status === "cancelled")) {
+        const linkedOrders = await db.query(
+          "SELECT DISTINCT order_id FROM trade_document_lines WHERE company_id=? AND document_id=? AND order_id IS NOT NULL ORDER BY order_id",
+          [company, after.itemId],
+        );
+        await refreshTradeOrderInvoicing(
+          db,
+          company,
+          linkedOrders.map((row) => str(row.order_id)),
+        );
+      }
     },
     async insertTradeAction(company, record) {
       const c = record.command,
@@ -580,24 +667,6 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
       const statement = tradeOrderPageStatement(company, query);
       const fetched = await db.query(statement.sql, statement.values);
       const rows = fetched.slice(0, query.limit);
-      const lines = new Map<string, { ordered: bigint; invoiced: bigint }[]>();
-      if (rows.length) {
-        const ids = rows.map((row) => str(row.order_id));
-        for (const row of await db.query(tradeOrderPageInvoicedSql(ids.length), [
-          company,
-          ...ids,
-          company,
-          ...ids,
-        ])) {
-          const orderId = str(row.order_id);
-          const list = lines.get(orderId) ?? [];
-          list.push({
-            ordered: quantityMicros(str(row.quantity)),
-            invoiced: BigInt(str(row.micros)),
-          });
-          lines.set(orderId, list);
-        }
-      }
       const items: TradeOrderSummary[] = rows.map((row) => ({
         orderId: str(row.order_id),
         side: str(row.side) as TradeOrderSummary["side"],
@@ -611,7 +680,7 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
         net: int(row.net_minor),
         tax: int(row.tax_minor),
         gross: int(row.gross_minor),
-        invoicing: tradeOrderInvoicingStatus(lines.get(str(row.order_id)) ?? []),
+        invoicing: str(row.invoicing) as TradeOrderSummary["invoicing"],
       }));
       return {
         items,
@@ -754,6 +823,11 @@ export function tradeDocumentRepository(db: Connection): TradeDocumentRepository
           },
         ],
       );
+      // TORD-06: after the open item exists, so the TINV-03 predicate already counts this invoice.
+      const linkedOrders = new Set(
+        record.lines.flatMap((line) => (line.orderId === null ? [] : [line.orderId])),
+      );
+      await refreshTradeOrderInvoicing(db, company, [...linkedOrders]);
     },
     async tradeDocumentPage(company, query) {
       const statement = tradeDocumentPageStatement(company, query);

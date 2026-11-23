@@ -707,6 +707,7 @@ describe("trade orders", () => {
     expect(focusable.map((element) => element.id || element.textContent)).toEqual([
       "tord-filter-party",
       "tord-filter-side",
+      "tord-filter-invoicing",
       "tord-filter-from",
       "tord-filter-to",
       t("tord.filterApply"),
@@ -722,6 +723,63 @@ describe("trade orders", () => {
       ["AP", t("tord.filterAP")],
       ["AR", t("tord.filterAR")],
     ]);
+  });
+
+  // TORD-06: invoicing-status filter, one value at a time, combined with the TORD-05 filters.
+  it("filters by invoicing status alone and with the other filters, keeps it for load more and clears it", async () => {
+    const lists: string[] = [];
+    stubApi(
+      () => response({}, 404),
+      (url) => {
+        lists.push(url);
+        if (url.includes("invoicing=full"))
+          return url.includes("cursor=")
+            ? response({ items: [summary("PO-3", 500)], nextCursor: null })
+            : response({ items: [summary("PO-1", 11300)], nextCursor: "PO-1" });
+        if (url.includes("invoicing=")) return response({ items: [], nextCursor: null });
+        return response({
+          items: [summary("PO-1", 11300), summary("PO-2", 2000)],
+          nextCursor: null,
+        });
+      },
+    );
+    render(<App />);
+    const table = await listTable();
+    await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(3));
+    const select = screen.getByLabelText<HTMLSelectElement>(t("tord.invoicing"));
+    expect(select.id).toBe("tord-filter-invoicing");
+    expect([...select.options].map((option) => [option.value, option.textContent])).toEqual([
+      ["", t("tord.filterAll")],
+      ["none", t("tord.invoicing.none")],
+      ["partial", t("tord.invoicing.partial")],
+      ["full", t("tord.invoicing.full")],
+    ]);
+    // Choosing a value does not request until Apply, like the other filters.
+    fireEvent.change(select, { target: { value: "full" } });
+    expect(lists).toEqual([base]);
+    apply();
+    await waitFor(() => expect(lists).toEqual([base, `${base}&invoicing=full`]));
+    const narrowed = await listTable();
+    await waitFor(() => expect(within(narrowed).getAllByRole("row")).toHaveLength(2));
+    fireEvent.click(screen.getByRole("button", { name: label("zh", "master.loadMore") }));
+    await waitFor(() => expect(lists.at(-1)).toBe(`${base}&cursor=PO-1&invoicing=full`));
+    await waitFor(() => expect(within(narrowed).getAllByRole("row")).toHaveLength(3));
+
+    setFilters({ party: "VENDOR", side: "AP", from: "2026-01-01", to: "2026-06-30" });
+    fireEvent.change(select, { target: { value: "partial" } });
+    apply();
+    await waitFor(() =>
+      expect(lists.at(-1)).toBe(
+        `${base}&party=VENDOR&side=AP&invoicing=partial&from=2026-01-01&to=2026-06-30`,
+      ),
+    );
+    expect(await screen.findByText(t("tord.listNoMatch"))).toBeTruthy();
+    // Filters are not written to the address bar (TORD-05).
+    expect(window.location.hash).not.toMatch(/invoicing/u);
+
+    fireEvent.click(screen.getByRole("button", { name: t("tord.filterClear") }));
+    await waitFor(() => expect(lists.at(-1)).toBe(base));
+    expect(select.value).toBe("");
   });
 
   // TORD-04: preview before save.

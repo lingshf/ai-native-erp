@@ -79,5 +79,6 @@
   "packages/web/test/trade-settlements.test.tsx": 713,
   "packages/web/test/ui.test.ts": 46,
   "packages/infra/test/trade-invoice-filters-migration.test.ts": 1000,
-  "packages/web/test/trade-invoice-detail.test.tsx": 2100
+  "packages/web/test/trade-invoice-detail.test.tsx": 2100,
+  "packages/infra/test/trade-order-invoicing-migration.test.ts": 1000
 }

@@ -173,24 +173,33 @@ export const compatInvoices: readonly InvoiceListRow[] = [
 ];
 
 /** Runs the real migrations up to and including 017 and stops before 018 (trade_documents_party). */
-export async function ledgerAt017(filename: string): Promise<void> {
+export function ledgerAt017(filename: string): Promise<void> {
+  return ledgerBefore(filename, "trade_documents_party", 17);
+}
+/** Runs the real migrations up to and including 018 and stops before 019 (trade_order_invoicing). */
+export function ledgerAt018(filename: string): Promise<void> {
+  return ledgerBefore(filename, "trade_order_invoicing", 18);
+}
+// Applies every pending migration in order until the first script that mentions `marker`, which
+// is rejected with its whole transaction step; the ledger is left at `version`.
+async function ledgerBefore(filename: string, marker: string, version: number): Promise<void> {
   const backend = sqliteBackend({ filename });
   const db = await backend.acquire(false, true),
-    stop = Error("stop before 018");
+    stop = Error(`stop before ${marker}`);
   try {
     await db.begin();
     await assert.rejects(
       migrateConnection({
         ...db,
         async script(sql) {
-          if (sql.includes("trade_documents_party")) throw stop;
+          if (sql.includes(marker)) throw stop;
           await db.script(sql);
         },
       }),
       (error) => error === stop,
     );
     await db.commit();
-    assert.equal(await inspectSchema(db, true), 17);
+    assert.equal(await inspectSchema(db, true), version);
   } finally {
     await db.release();
     await backend.close();
@@ -199,10 +208,11 @@ export async function ledgerAt017(filename: string): Promise<void> {
 
 /**
  * Copies every row of every user table except schema_migrations from `source` (a ledger with
- * really posted documents) into `target` (a ledger built by ledgerAt017), in table creation
- * order, then asserts every table of `target` equals `source` row for row (all columns) and that
- * no foreign key is broken. Rows produced by INSERT triggers in the target are kept only when
- * identical to the copied ones.
+ * really posted documents) into `target` (a ledger built by ledgerAt017 or ledgerAt018), in table
+ * creation order, then asserts every table of `target` equals `source` row for row (all columns)
+ * and that no foreign key is broken. Tables the older target does not have yet (e.g. 019's
+ * trade_order_invoicing) are skipped: its upgrade must create them. Rows produced by INSERT
+ * triggers in the target are kept only when identical to the copied ones.
  */
 export function copyLedgerRows(source: string, target: string): void {
   const db = new Database(target);
@@ -211,7 +221,7 @@ export function copyLedgerRows(source: string, target: string): void {
     db.prepare("ATTACH DATABASE ? AS src").run(source);
     const tables = db
       .prepare(
-        "SELECT name FROM src.sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name<>'schema_migrations' ORDER BY rowid",
+        "SELECT name FROM src.sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name<>'schema_migrations' AND name IN (SELECT name FROM main.sqlite_schema WHERE type='table') ORDER BY rowid",
       )
       .pluck()
       .all() as string[];
