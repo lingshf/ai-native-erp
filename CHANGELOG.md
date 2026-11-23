@@ -8,6 +8,49 @@
 
 （暂无）
 
+## [0.12.0] - 待定（发布候选；日期、版本和 tag 目标在日期 PR 中写定）
+
+> **草稿状态**：产品代码基线暂为 `main` ab2ba1c（#219，main Full run 45133620436 绿）；SLOT-02 [#220](https://github.com/lingshf/ai-native-erp/pull/220) 仍在评审，合并后再定 RC 的目标提交，届时更新本段。自 v0.11.0 的 tag 目标 `024b7fa` 到 ab2ba1c，`packages/` 下 57 个文件（+6255/−3184）。**tag 目标待协调者按 D21/D398 的规则确定**：先用 `git diff <基线> <目标> -- packages` 核对，只有产品代码与基线一致时才可打在 Demo / 日期 PR 的 squash 提交上。
+
+S12 Sprint：发票深链接与地址栏筛选、订单按开票状态筛选、发票页打磨、页头说明、两项只搬移的重构。**含一个迁移（019）**，新增用户可见功能，版本号取 minor（0.11.0 → 0.12.0）。无依赖变化，不改过账规则。
+
+### Added（用户可见）
+
+- **发票详情深链接与筛选写入地址栏（TINV-07，[#208](https://github.com/lingshf/ai-native-erp/pull/208)）**：打开详情后地址含 `invoice=<编号>`，已应用的筛选写成 `party / side / from / to`；刷新和书签按地址恢复详情与筛选。只用“替换地址”（`history.replaceState`），不新增浏览器历史、不触发离开确认；每次写入都带 `company`，切换账套时去掉 `invoice` 与筛选；游标和每页条数不写地址。链接有误时：`invoice` 格式不对或不存在 / 属于别的账套显示“发票不存在或已不在本公司。”（格式不对不发请求）；筛选任一项无效则整组忽略并提示“链接中的筛选条件无效，已忽略；当前显示全部发票。”和“清除”；`company` 不在账套列表里（且带 `invoice` 或筛选）提示“链接中的公司不在已加载列表中，未打开”和“返回发票页”。**行为变化：v0.10.0 的“筛选刷新后清空”不再成立**（刷新后筛选与详情恢复）。
+- **订单列表按开票状态筛选（TORD-06，[#209](https://github.com/lingshf/ai-native-erp/pull/209)）**：订单筛选栏“方向”之后多了“开票状态”下拉框（全部 / 未开票 / 部分开票 / 已开完），可与其他筛选组合，点“应用”生效，不写地址栏。API `GET /api/v1/trade/orders` 新增可选查询参数 `invoicing=none|partial|full`；非法值或重复键返回 400 `INVALID_REQUEST`。订单列表的“开票状态”列改为读存储值。
+- **发票页打磨（TINV-08，[#219](https://github.com/lingshf/ai-native-erp/pull/219)）**：筛选栏与卡片标题之间多 16 px 留白；列表、详情抬头、详情行明细的匹配状态和详情未结项状态改为带符号的彩色徽标（文字不变，`aria-hidden` 符号）；详情“合计”三项在宽屏排成一行；详情行明细与开票预览订单匹配表的数量、单价、折扣按语言加千分位（小数位原样）。
+- **期末结账页整理（UI-15，[#206](https://github.com/lingshf/ai-native-erp/pull/206)）**：页头多一句说明；期间准入摘要徽标显示“贸易 / 税务”（英文 Trade / Tax），读屏另读“已准入 / 未准入”；复选框中文改为“准入贸易 / 准入税务”。
+- **总账四页页头说明（UI-16，[#210](https://github.com/lingshf/ai-native-erp/pull/210)）**：科目表、财务维度、凭证、业务事件页头各一句说明，教学模式关闭时也显示。
+
+### Changed
+
+- **通用加载与失败提示（UI-17，[#213](https://github.com/lingshf/ai-native-erp/pull/213)）**：共享键 `master.loading` / `master.error` 的文案由“正在读取主数据…”“主数据请求失败…”改为“正在加载…”“请求失败。请检查连接和目标库配置后重试。”（英文同步），迁移核对、发票等非主数据页不再出现“主数据”。各页专用提示不变。
+- **订单开票状态来源（TORD-06）**：列表“开票状态”列不再逐页聚合，改读新表 `trade_order_invoicing`；取值规则不变（已作废发票不计入，贷项、核销、冲销不改变状态）。
+
+### Internal（无用户可见变化）
+
+- **REFAC-02（[#214](https://github.com/lingshf/ai-native-erp/pull/214)）**：`BusinessEvents.tsx` 拆为 `business-events/` 下的模块，只搬移、不改行为。
+- **REFAC-01（[#217](https://github.com/lingshf/ai-native-erp/pull/217)）**：端到端场景支撑代码 `trade-gui-scenario.ts` 拆到 `trade-gui/`，只搬移、不改行为。
+- **SLOT-02（[#220](https://github.com/lingshf/ai-native-erp/pull/220)，评审中，合并后补入）**：runner 开跑前静态检查（tsc + TDZ）与步骤子进程 `PSModulePath` 重置，开发者本机工具。
+- **文档与流程**：S12 计划与任务书 [#205](https://github.com/lingshf/ai-native-erp/pull/205)、[#207](https://github.com/lingshf/ai-native-erp/pull/207)、[#211](https://github.com/lingshf/ai-native-erp/pull/211)、[#212](https://github.com/lingshf/ai-native-erp/pull/212)（含可读性 DoD）、[#218](https://github.com/lingshf/ai-native-erp/pull/218)；S11 评审与回顾 [#216](https://github.com/lingshf/ai-native-erp/pull/216)；v0.11.0 Demo [#204](https://github.com/lingshf/ai-native-erp/pull/204) 与日期 [#215](https://github.com/lingshf/ai-native-erp/pull/215)。
+- **测试**：新增 `trade-invoice-links.test.tsx`、`trade-order-invoicing-migration.test.ts` 等；按任务书授权改写 TINV-05 / TINV-06 中 4 处“地址不变”的断言（TINV-07 D370）和 3 处徽标相关断言（TINV-08）。
+
+### 面向调用方（HTTP API、迁移）
+
+- **迁移 019**（`019-trade-order-invoicing.sql`）：新表 `trade_order_invoicing(company_id, order_id, status)`，每张订单恰一行，新订单由触发器写入 `none`，迁移时按已有发票回填；在过账与作废的既有事务内同步维护。**已有账套须先 `migrate` 到 019**；迁移在事务内，失败回滚、版本仍为 018。
+- **契约**：`GET /api/v1/trade/orders` 追加可选 `invoicing`（纯追加，返回体不变）。其余契约、过账规则不变。
+- **依赖**：无变化。
+
+### 已知限制与已接受的决定
+
+- 深链接不记游标和每页条数；筛选参数有任一项无效时整组忽略；有未保存草稿时刷新仍由浏览器离开警告拦截；取消后退会丢弃前进历史（D275）。
+- 订单页筛选不写地址栏；开票状态筛选只能单选，没有按开票状态排序。
+- 键名 `master.*` 仍被多页借用（命名债，候选池）。
+- **性能（PG-05，gzip-9，数字取自各 PR 正文，各自的 base 不同，不能相加）**：UI-15 入口 +103 B、期末结账块 +73 B、CSS 0；UI-16 入口 +274 B、CSS 0；TINV-07 入口 +3 B、发票页块 +853 B；TINV-08 入口 0、发票页块 +219 B、发票页 CSS +17 B。TORD-06 与 UI-17 的字节数见各自 PR；与 v0.11.0 相比的净变化未测量，发布前未重测。
+- 真实 Chrome 验证在 PR 取证 head 上，不在合并后的 squash 提交上；UI-15 / 16 / 17、TINV-08 按 D375 / D377 / D384 / D406 以 jsdom 验收，视觉由 Demo 截图覆盖。
+- 旧账迁移（M2）仍未完成：M2-05（演练）与 M2-06（切换）未开始，另需用户授权。
+- Demo 记录与截图：Demo PR 合并后补链接（docs/demo/v0.12.0）。
+
 ## [0.11.0] - 2026-11-22
 
 > 产品代码基线为 `main` 68620fd（Full run 45114359894 绿）。自 v0.10.0（tag 所指提交 ae4fbaa）到 68620fd 共 10 个已合并 PR（#193–#202）；产品与测试提交是 TINV-06 [#199](https://github.com/lingshf/ai-native-erp/pull/199) + 修复 [#200](https://github.com/lingshf/ai-native-erp/pull/200)、UI-14 [#197](https://github.com/lingshf/ai-native-erp/pull/197)；其余为流程、脚本、权重与文档。**tag 目标（D335 的做法无法照搬）**：基线之后 main 上有 S12 的三个产品提交 UI-15 [#206](https://github.com/lingshf/ai-native-erp/pull/206)、UI-16 [#210](https://github.com/lingshf/ai-native-erp/pull/210)、UI-17 [#213](https://github.com/lingshf/ai-native-erp/pull/213)（`git diff --stat 68620fd 1d2602d -- packages` 为 19 个文件、389 行增、15 行删），它们在 Demo PR [#204](https://github.com/lingshf/ai-native-erp/pull/204)（squash 提交 `1d2602d`）之前合并，所以 `git diff 68620fd 1d2602d -- packages` 不为空，tag 不能打在 `1d2602d` 或本日期 PR 的 squash 提交上，否则 v0.11.0 会带入未做 Sprint 评审的 S12 改动。**已定（D398）：tag 目标 `024b7fa`**，即 RC [#203](https://github.com/lingshf/ai-native-erp/pull/203) 之后、S12 产品提交之前的最后一个提交（S12 计划 [#205](https://github.com/lingshf/ai-native-erp/pull/205)），`git diff 68620fd 024b7fa -- packages` 为空（已核对）；Demo 在该产品代码上取图，记录见 [docs/demo/v0.11.0](docs/demo/v0.11.0/run-through.md)（Demo 文档在 tag 之后合并，tag 内不含）。UI-15 #206、UI-16 #210、UI-17 #213 不在 v0.11.0，归入 v0.12.0。
