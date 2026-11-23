@@ -507,6 +507,7 @@ export const tradeOrderListQuerySchema = z
     side: side.optional(),
     from: day.optional(),
     to: day.optional(),
+    invoicing: z.enum(["none", "partial", "full"]).optional(),
   })
   .refine((query) => !query.from || !query.to || query.from <= query.to, { path: ["to"] });
 export const tradeOrderPageSchema = z.strictObject({

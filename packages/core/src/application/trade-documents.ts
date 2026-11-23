@@ -73,6 +73,8 @@ export interface TradeOrderListQuery extends PageQuery {
   readonly side?: TradeSide;
   readonly from?: string;
   readonly to?: string;
+  /** TORD-06: stored invoicing status of the order. */
+  readonly invoicing?: TradeOrderSummary["invoicing"];
 }
 /** TINV-05: optional filters, combined with AND; the keyset stays on the sequence cursor. */
 export interface TradeInvoiceListQuery extends PageQuery {
@@ -1296,6 +1298,8 @@ export class TradeDocumentService {
     checkedPage(query);
     if (query.cursor !== undefined) checkedCode(query.cursor);
     checkedListFilters(query);
+    if (query.invoicing !== undefined && !["none", "partial", "full"].includes(query.invoicing))
+      tradeDocumentError("invoicing", "shape");
     return this.store.read(async (repo) => {
       required(await repo.company(company));
       return repo.tradeOrderPage(company, query);

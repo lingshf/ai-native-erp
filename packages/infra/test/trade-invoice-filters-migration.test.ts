@@ -10,7 +10,7 @@ import { afterEach, beforeEach, test } from "vitest";
 import { createSqliteStorage } from "../src/storage/index.ts";
 import { sqliteBackend } from "../src/storage/sqlite.ts";
 import { latestMigrationVersion, migrateConnection } from "../src/storage/migrations.ts";
-import { ledgerAt017 } from "./support/trade-invoice-list-fixture.ts";
+import { ledgerAt017, ledgerAt018 } from "./support/trade-invoice-list-fixture.ts";
 
 const definition =
   "CREATE INDEX trade_documents_party ON trade_documents(company_id, party_id, sequence)";
@@ -64,11 +64,12 @@ test("018 is one comment line and one CREATE INDEX; a new ledger adds only that 
     lines.filter((line) => !line.startsWith("--")),
     [`${definition};`],
   );
-  assert.equal(latestMigrationVersion, 18);
+  assert.ok(latestMigrationVersion >= 18);
 
+  // TORD-06: 019 follows; the 018 state is reached by stopping before 019 (D307).
   const fresh = join(directory, "fresh.sqlite"),
     old = join(directory, "017.sqlite");
-  await migrate(fresh);
+  await ledgerAt018(fresh);
   await ledgerAt017(old);
   const before = schemaObjects(old);
   assert.deepEqual(
@@ -103,7 +104,7 @@ test("an empty 017 ledger upgrades to 018 keeping its 017 version rows", async (
   await ledgerAt017(filename);
   const before = versions(filename);
   assert.equal(before.length, 17);
-  await migrate(filename);
+  await ledgerAt018(filename);
   const after = versions(filename);
   assert.equal(after.length, 18);
   assert.deepEqual(after.slice(0, 17), before);
@@ -113,7 +114,7 @@ test("an empty 017 ledger upgrades to 018 keeping its 017 version rows", async (
   );
 });
 
-test("reopening an 018 ledger runs no migration script and keeps its version rows", async () => {
+test("reopening a fully migrated ledger runs no migration script and keeps its version rows", async () => {
   const filename = join(directory, "reopen.sqlite");
   await migrate(filename);
   const before = versions(filename);

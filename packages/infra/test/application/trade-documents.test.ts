@@ -32,6 +32,7 @@ import {
 import { createSqliteStorage } from "../../src/storage/index.ts";
 import { createMasterDataStore, masterDataRepository } from "../../src/storage/master-data.ts";
 import { journalTools } from "../../src/storage/journals.ts";
+import { tradeOrderStatuses } from "../../src/storage/trade-documents.ts";
 import { latestMigrationVersion, normalizeMigration } from "../../src/storage/migrations.ts";
 import { schemaFingerprint } from "../../src/storage/schema.ts";
 import { sqliteBackend } from "../../src/storage/sqlite.ts";
@@ -46,6 +47,7 @@ import {
   compatParties,
   copyLedgerRows,
   ledgerAt017,
+  ledgerAt018,
   seedInvoiceList,
 } from "../support/trade-invoice-list-fixture.ts";
 
@@ -3276,8 +3278,8 @@ describe("trade invoices on real SQLite", () => {
         await counted.listOrders("DEFAULT", query);
         sizes.push(statements.length);
       }
-      // TINV-03: every page here is non-empty and adds one invoiced-status aggregate.
-      expect(new Set(sizes)).toEqual(new Set([3]));
+      // TORD-06 (B6a): the invoicing column is joined from trade_order_invoicing; no aggregate.
+      expect(new Set(sizes)).toEqual(new Set([2]));
       await counted.listOrders("DEFAULT", { limit: 2 });
       const page = statements.find((item) => item.sql.includes("FROM trade_orders"));
       if (!page) throw new Error("Missing order page statement");
@@ -3290,6 +3292,7 @@ describe("trade invoices on real SQLite", () => {
             .map((row) => (row as { detail: string }).detail);
           expect(plan).toEqual([
             "SEARCH o USING PRIMARY KEY (company_id=? AND order_id>?)",
+            "SEARCH s USING PRIMARY KEY (company_id=? AND order_id=?)",
             "SEARCH l USING PRIMARY KEY (company_id=? AND order_id=?)",
           ]);
         }
@@ -3511,6 +3514,7 @@ describe("trade invoices on real SQLite", () => {
     const party =
       "SEARCH o USING INDEX trade_orders_party (company_id=? AND party_id=? AND order_id>?)";
     const lines = "SEARCH l USING PRIMARY KEY (company_id=? AND order_id=?)";
+    const stored = "SEARCH s USING PRIMARY KEY (company_id=? AND order_id=?)";
     const raw = new Database(filename, { readonly: true });
     try {
       const filters = [
@@ -3533,9 +3537,9 @@ describe("trade invoices on real SQLite", () => {
           { limit: 100, cursor: "PO-03" },
         ]) {
           statements.length = 0;
-          const listed = await counted.listOrders("DEFAULT", { ...page, ...filter });
-          // TINV-03: a non-empty page adds one invoiced-status aggregate; an empty page skips it.
-          expect(statements.length).toBe(listed.items.length > 0 ? 3 : 2);
+          await counted.listOrders("DEFAULT", { ...page, ...filter });
+          // TORD-06 (B6a): company lookup + the page statement, empty or not; no aggregate.
+          expect(statements.length).toBe(2);
           const [statement] = statements.filter((item) => item.sql.includes("FROM trade_orders"));
           if (!statement) throw new Error("Missing order page statement");
           expect(statement.sql).not.toMatch(/IS NULL/u);
@@ -3543,7 +3547,7 @@ describe("trade invoices on real SQLite", () => {
             .prepare(`EXPLAIN QUERY PLAN ${statement.sql}`)
             .all(...statement.values)
             .map((row) => (row as { detail: string }).detail);
-          expect(plan).toEqual([orders, lines]);
+          expect(plan).toEqual([orders, stored, lines]);
         }
     } finally {
       raw.close();
@@ -4113,7 +4117,7 @@ describe("trade invoices on real SQLite", () => {
     }
   });
 
-  it("TINV-03 PG-05: one invoiced-status aggregate per page whatever its size, on trade_document_lines_order", async () => {
+  it("TORD-06 B6a (replaces TINV-03 PG-05): the invoicing column is the stored status, one page statement whatever its size, no invoiced aggregate", async () => {
     for (let index = 0; index < 60; index++) {
       const orderId = `PO-M${String(index).padStart(2, "0")}`;
       await service.createOrder(
@@ -4147,7 +4151,7 @@ describe("trade invoices on real SQLite", () => {
     const raw = new Database(filename, { readonly: true });
     try {
       const sizes: number[] = [];
-      let aggregate: { sql: string; values: readonly unknown[] } | undefined;
+      let pageStatement: { sql: string; values: readonly unknown[] } | undefined;
       for (const limit of [2, 60]) {
         statements.length = 0;
         const page = await counted.listOrders("DEFAULT", { limit });
@@ -4156,25 +4160,445 @@ describe("trade invoices on real SQLite", () => {
           new Set(["partial", "none"]),
         );
         sizes.push(statements.length);
-        const invoiced = statements.filter((item) => item.sql.includes("trade_document_lines"));
-        expect(invoiced).toHaveLength(1);
-        aggregate = invoiced[0];
+        expect(statements.filter((item) => item.sql.includes("trade_document_lines"))).toEqual([]);
+        const paged = statements.filter((item) => item.sql.includes("trade_order_invoicing"));
+        expect(paged).toHaveLength(1);
+        pageStatement = paged[0];
       }
-      expect(sizes).toEqual([3, 3]);
-      if (!aggregate) throw new Error("Missing invoiced-status aggregate");
+      expect(sizes).toEqual([2, 2]);
+      if (!pageStatement) throw new Error("Missing page statement");
       const plan = raw
-        .prepare(`EXPLAIN QUERY PLAN ${aggregate.sql}`)
-        .all(...aggregate.values)
+        .prepare(`EXPLAIN QUERY PLAN ${pageStatement.sql}`)
+        .all(...pageStatement.values)
         .map((row) => (row as { detail: string }).detail);
-      expect(plan.some((detail) => detail.includes("USING INDEX trade_document_lines_order"))).toBe(
-        true,
-      );
-      expect(plan.some((detail) => /^SCAN (l|ol)\b/u.test(detail))).toBe(false);
+      expect(plan).toEqual([
+        "SEARCH o USING PRIMARY KEY (company_id=? AND order_id>?)",
+        "SEARCH s USING PRIMARY KEY (company_id=? AND order_id=?)",
+        "SEARCH l USING PRIMARY KEY (company_id=? AND order_id=?)",
+      ]);
     } finally {
       raw.close();
       await db.release();
       await backend.close();
     }
+  });
+
+  // TORD-06: the stored status (trade_order_invoicing) is written by the posting and cancelling
+  // transactions and is what the list column shows (B6a). After every step it must equal the
+  // TINV-03 status recomputed from the invoice lines.
+  const storedStatuses = () => {
+    const raw = new Database(filename, { readonly: true });
+    try {
+      return Object.fromEntries(
+        (
+          raw
+            .prepare(
+              "SELECT order_id,status FROM trade_order_invoicing WHERE company_id='DEFAULT' ORDER BY order_id",
+            )
+            .all() as { order_id: string; status: string }[]
+        ).map((row) => [row.order_id, row.status]),
+      );
+    } finally {
+      raw.close();
+    }
+  };
+  const listedStatuses = async () =>
+    Object.fromEntries(
+      (await service.listOrders("DEFAULT", { limit: 500 })).items.map((item) => [
+        item.orderId,
+        item.invoicing,
+      ]),
+    );
+  const recomputedStatuses = async () => {
+    const raw = new Database(filename, { readonly: true });
+    try {
+      const ids = (
+        raw
+          .prepare("SELECT order_id FROM trade_orders WHERE company_id='DEFAULT' ORDER BY order_id")
+          .pluck()
+          .all() as string[]
+      ).slice();
+      const reader = {
+        query: async (sql: string, values: readonly unknown[] = []) =>
+          raw.prepare(sql).all(...values) as Record<string, unknown>[],
+      } as Pick<Connection, "query">;
+      return Object.fromEntries(await tradeOrderStatuses(reader, "DEFAULT", ids));
+    } finally {
+      raw.close();
+    }
+  };
+  async function expectStored(expected: Record<string, string>) {
+    expect(storedStatuses()).toEqual(expected);
+    expect(await recomputedStatuses()).toEqual(expected);
+    expect(await listedStatuses()).toEqual(expected);
+  }
+
+  it("TORD-06 keeps the stored status equal to the list column through posting, settlement, credit, reversal and cancellation", async () => {
+    await service.createOrder(order());
+    await service.createOrder(order({ orderId: "PO-N" }));
+    await expectStored({ "PO-1": "none", "PO-N": "none" });
+
+    const first = invoiceFor("PO-1", [["OL1", "10", "RENT"]]);
+    await post(first);
+    await expectStored({ "PO-1": "partial", "PO-N": "none" });
+
+    // Settlement, its reversal and a credit note change the open item but never what is invoiced.
+    const paid = await settle(payment(first, 1000));
+    await expectStored({ "PO-1": "partial", "PO-N": "none" });
+    await undo(paid.receipt.paymentId, [first.documentId]);
+    await expectStored({ "PO-1": "partial", "PO-N": "none" });
+    const credit = await act({
+      ...actionHeader(),
+      kind: "credit",
+      invoiceId: first.documentId,
+      revision: (await current(first.documentId)).revision,
+      lines: [{ sourceLineId: "L1", quantity: "1" }],
+    });
+    await expectStored({ "PO-1": "partial", "PO-N": "none" });
+    await cancel(credit.receipt.actionId, first.documentId);
+    await expectStored({ "PO-1": "partial", "PO-N": "none" });
+
+    const rest = {
+      ...invoiceFor("PO-1", [["OL2", "4", "WAGE"]]),
+      accountingDate: "2026-01-26",
+      documentDate: "2026-01-26",
+      taxDate: "2026-01-26",
+    };
+    await post(rest);
+    await expectStored({ "PO-1": "full", "PO-N": "none" });
+    await cancel(rest.documentId, undefined, "2026-01-27");
+    await expectStored({ "PO-1": "partial", "PO-N": "none" });
+    await cancel(first.documentId, undefined, "2026-01-27");
+    await expectStored({ "PO-1": "none", "PO-N": "none" });
+  });
+
+  it("TORD-06 a failing status write rolls back the whole invoice posting or cancellation", async () => {
+    await service.createOrder(order());
+    const first = invoiceFor("PO-1", [["OL1", "10", "RENT"]]);
+    // Same transaction shape as the real store, but the status UPDATE fails inside it.
+    const backend = sqliteBackend({ filename });
+    const run = async <T>(
+      write: boolean,
+      work: (repo: ReturnType<typeof masterDataRepository>) => Promise<T>,
+    ) => {
+      const db = await backend.acquire(!write, false);
+      try {
+        await db.begin();
+        const failing = {
+          ...db,
+          query: (sql: string, values: Parameters<Connection["query"]>[1] = []) =>
+            sql.startsWith("UPDATE trade_order_invoicing")
+              ? Promise.reject(new Error("blocked"))
+              : db.query(sql, values),
+        } as Connection;
+        try {
+          const result = await work(masterDataRepository(failing));
+          await db.commit();
+          return result;
+        } catch (error) {
+          await db.rollback();
+          throw error;
+        }
+      } finally {
+        await db.release();
+      }
+    };
+    const original = service;
+    const blocked = new TradeDocumentService(
+      { read: (work) => run(false, work), write: (work) => run(true, work) },
+      journals,
+      journalTools,
+    );
+    try {
+      service = blocked;
+      const before = counts();
+      await expect(post(first)).rejects.toThrow("blocked");
+      expect(counts()).toEqual(before);
+      service = original;
+      await expectStored({ "PO-1": "none" });
+
+      await post(first);
+      await expectStored({ "PO-1": "partial" });
+      service = blocked;
+      const posted = counts();
+      await expect(cancel(first.documentId)).rejects.toThrow("blocked");
+      expect(counts()).toEqual(posted);
+      service = original;
+      expect((await current(first.documentId)).status).toBe("open");
+      await expectStored({ "PO-1": "partial" });
+    } finally {
+      service = original;
+      await backend.close();
+    }
+  });
+
+  it("TORD-06 storage rejects deleting a status row or moving it to another order, and seeds 'none' for every new order", async () => {
+    await service.createOrder(order());
+    await service.createOrder(order({ orderId: "PO-2" }));
+    await expectStored({ "PO-1": "none", "PO-2": "none" });
+    const raw = new Database(filename);
+    try {
+      for (const sql of [
+        "DELETE FROM trade_order_invoicing WHERE order_id='PO-1'",
+        "UPDATE trade_order_invoicing SET order_id='PO-X' WHERE order_id='PO-1'",
+        "UPDATE trade_order_invoicing SET company_id='OTHER' WHERE order_id='PO-1'",
+        "UPDATE trade_order_invoicing SET status='cancelled' WHERE order_id='PO-1'",
+        "INSERT INTO trade_order_invoicing VALUES('DEFAULT','PO-NOPE','none')",
+      ])
+        expect(() => raw.exec(sql), sql).toThrow();
+    } finally {
+      raw.close();
+    }
+    await expectStored({ "PO-1": "none", "PO-2": "none" });
+  });
+
+  // TORD-06: filter fixture on top of TORD-05's — PO-01 full, PO-03 (V2) partial, PO-04 partial,
+  // PO-05 (AR) full, PO-02 / PO-06 none.
+  const invoiceOn = (
+    orderId: string,
+    orderLineId: string,
+    quantity: string,
+    changes: Partial<TradeInvoiceCommand> = {},
+    lineChanges: Partial<TradeInvoiceLineInput> = {},
+  ) =>
+    invoice({
+      orderId,
+      accountingDate: "2026-04-20",
+      documentDate: "2026-04-20",
+      taxDate: "2026-04-20",
+      lines: [line({ orderLineId, quantity, unitPrice: "3.00", ...lineChanges })],
+      ...changes,
+    });
+  async function invoicingOrders() {
+    await filterOrders();
+    await post(invoiceOn("PO-01", "L1", "2"));
+    await post(invoiceOn("PO-03", "L1", "1", { party: "V2" }));
+    await post(invoiceOn("PO-04", "L1", "0.5"));
+    await post(
+      invoiceOn(
+        "PO-05",
+        "CL1",
+        "1",
+        { side: "AR", party: "C1" },
+        { product: "CONSULT", unitPrice: "7.77" },
+      ),
+    );
+  }
+  const invoicingExpected = {
+    "PO-01": "full",
+    "PO-02": "none",
+    "PO-03": "partial",
+    "PO-04": "partial",
+    "PO-05": "full",
+    "PO-06": "none",
+  };
+
+  it("TORD-06 filters by invoicing over HTTP, alone and with party / side / dates, with keyset paging, and rejects bad values", async () => {
+    await invoicingOrders();
+    await expectStored(invoicingExpected);
+    const executor = await SqliteExecutor.create({ filename, readers: 2 });
+    const api = await createApi({
+      environment: { ERP_PORT: "0" },
+      allowPortZero: true,
+      ...executor.services(),
+      logError: () => undefined,
+    });
+    try {
+      const host = new URL(await api.listen()).host;
+      const get = (url: string) => api.app.inject({ method: "GET", url, headers: { host } });
+      const all = tradeOrderPageSchema.parse(
+        (await get("/api/v1/trade/orders?company=DEFAULT")).json(),
+      ).items;
+      const ids = async (query: string) => {
+        const response = await get(`/api/v1/trade/orders?company=DEFAULT&${query}`);
+        expect(response.statusCode).toBe(200);
+        const page = tradeOrderPageSchema.parse(response.json());
+        expect(page.nextCursor).toBeNull();
+        // Items are the very same summaries as the unfiltered list, column included.
+        for (const item of page.items)
+          expect(item).toEqual(all.find((row) => row.orderId === item.orderId));
+        return page.items.map((item) => item.orderId);
+      };
+      expect(await ids("invoicing=none")).toEqual(["PO-02", "PO-06"]);
+      expect(await ids("invoicing=partial")).toEqual(["PO-03", "PO-04"]);
+      expect(await ids("invoicing=full")).toEqual(["PO-01", "PO-05"]);
+      expect(await ids("invoicing=full&side=AP")).toEqual(["PO-01"]);
+      expect(await ids("invoicing=partial&party=V1")).toEqual(["PO-04"]);
+      expect(await ids("invoicing=none&party=V1")).toEqual(["PO-06"]);
+      expect(await ids("invoicing=partial&from=2026-02-11")).toEqual(["PO-04"]);
+      expect(await ids("invoicing=none&to=2026-03-31")).toEqual(["PO-02"]);
+      expect(await ids(`${allFilters}&invoicing=partial`)).toEqual(["PO-04"]);
+      expect(await ids(`${allFilters}&invoicing=full`)).toEqual([]);
+      const first = await get("/api/v1/trade/orders?company=DEFAULT&invoicing=partial&limit=1");
+      expect(first.json()).toMatchObject({ nextCursor: "PO-03" });
+      expect(first.json().items.map((item: { orderId: string }) => item.orderId)).toEqual([
+        "PO-03",
+      ]);
+      const second = await get(
+        "/api/v1/trade/orders?company=DEFAULT&invoicing=partial&limit=1&cursor=PO-03",
+      );
+      expect(second.json()).toMatchObject({ nextCursor: null });
+      expect(second.json().items.map((item: { orderId: string }) => item.orderId)).toEqual([
+        "PO-04",
+      ]);
+      for (const query of [
+        "invoicing=FULL",
+        "invoicing=",
+        "invoicing=cancelled",
+        "invoicing=all",
+        "invoicing=full&invoicing=none",
+      ]) {
+        const response = await get(`/api/v1/trade/orders?company=DEFAULT&${query}`);
+        expect([query, response.statusCode]).toEqual([query, 400]);
+        expect(response.json()).toMatchObject({
+          code: "INVALID_REQUEST",
+          fieldErrors: [{ path: "form", messageKey: "api.error.tradeDocument.shape" }],
+        });
+      }
+      await expect(
+        service.listOrders("DEFAULT", { limit: 2, invoicing: "cancelled" as "none" }),
+      ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+      // OpenAPI: the list operation documents the optional parameter with exactly three values.
+      const parameters = (
+        openApiDocument.paths["/api/v1/trade/orders"] as unknown as {
+          get: { parameters: { name: string; required?: boolean; schema: unknown }[] };
+        }
+      ).get.parameters;
+      expect(parameters.find((parameter) => parameter.name === "invoicing")).toMatchObject({
+        required: false,
+        schema: { type: "string", enum: ["none", "partial", "full"] },
+      });
+    } finally {
+      await api.close();
+      await executor.close();
+    }
+  });
+
+  it("TORD-06 PG-05: one page statement per invoicing filter; alone on trade_order_invoicing_status, with a party on trade_orders_party", async () => {
+    await invoicingOrders();
+    const backend = sqliteBackend({ filename });
+    const db = await backend.acquire(true, false);
+    const statements: { sql: string; values: readonly unknown[] }[] = [];
+    const counting = {
+      ...db,
+      query: (sql: string, values: Parameters<Connection["query"]>[1] = []) => {
+        statements.push({ sql, values });
+        return db.query(sql, values);
+      },
+    } as Connection;
+    const counted = new TradeDocumentService(
+      {
+        read: (work) => work(masterDataRepository(counting)),
+        write: () => Promise.reject(new Error("listOrders must not write")),
+      },
+      journals,
+      journalTools,
+    );
+    const status =
+      "SEARCH s USING COVERING INDEX trade_order_invoicing_status (company_id=? AND status=? AND order_id>?)";
+    const byOrder = "SEARCH o USING PRIMARY KEY (company_id=? AND order_id=?)";
+    const party =
+      "SEARCH o USING INDEX trade_orders_party (company_id=? AND party_id=? AND order_id>?)";
+    const stored = "SEARCH s USING PRIMARY KEY (company_id=? AND order_id=?)";
+    const lines = "SEARCH l USING PRIMARY KEY (company_id=? AND order_id=?)";
+    const raw = new Database(filename, { readonly: true });
+    try {
+      const filters = [
+        [{ invoicing: "none" }, [status, byOrder, lines]],
+        [{ invoicing: "full", side: "AP" }, [status, byOrder, lines]],
+        [{ invoicing: "partial", from: "2026-02-01", to: "2026-03-31" }, [status, byOrder, lines]],
+        [{ invoicing: "partial", party: "V1" }, [party, stored, lines]],
+        [
+          { invoicing: "none", party: "V1", side: "AP", from: "2026-02-01" },
+          [party, stored, lines],
+        ],
+      ] as const;
+      for (const [filter, plan] of filters)
+        for (const page of [
+          { limit: 1 },
+          { limit: 100 },
+          { limit: 1, cursor: "PO-03" },
+          { limit: 100, cursor: "PO-03" },
+        ]) {
+          statements.length = 0;
+          await counted.listOrders("DEFAULT", { ...page, ...filter });
+          expect(statements.length).toBe(2);
+          const pages = statements.filter((item) => item.sql.includes("trade_order_invoicing"));
+          expect(pages).toHaveLength(1);
+          const [statement] = pages;
+          if (!statement) throw new Error("Missing order page statement");
+          const detail = raw
+            .prepare(`EXPLAIN QUERY PLAN ${statement.sql}`)
+            .all(...statement.values)
+            .map((row) => (row as { detail: string }).detail);
+          expect(detail).toEqual(plan);
+          expect(detail.join("\n")).not.toMatch(/TEMP B-TREE/u);
+        }
+    } finally {
+      raw.close();
+      await db.release();
+      await backend.close();
+    }
+  });
+
+  it("TORD-06 an 018 ledger with posted and cancelled invoices upgrades to 019 with every status backfilled and every other row unchanged", async () => {
+    await invoicingOrders();
+    const cancelled = invoiceOn("PO-06", "L1", "2");
+    await post(cancelled);
+    await cancel(cancelled.documentId, undefined, "2026-04-21");
+    await expectStored(invoicingExpected);
+    await store.close();
+    const at018 = join(directory, "at018.sqlite");
+    await ledgerAt018(at018);
+    copyLedgerRows(filename, at018);
+    const snapshot = () => {
+      const db = new Database(at018, { readonly: true });
+      try {
+        db.defaultSafeIntegers(true);
+        const names = db
+          .prepare(
+            "SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name NOT IN ('schema_migrations','trade_order_invoicing') ORDER BY name",
+          )
+          .pluck()
+          .all() as string[];
+        const key = (row: unknown) =>
+          JSON.stringify(row, (_, value) => (typeof value === "bigint" ? `${value}n` : value));
+        return Object.fromEntries(
+          names.map((name) => [name, db.prepare(`SELECT * FROM "${name}"`).all().map(key).sort()]),
+        );
+      } finally {
+        db.close();
+      }
+    };
+    const before = snapshot();
+    expect(before.trade_documents).toHaveLength(5);
+    const storage = createSqliteStorage({ filename: at018 });
+    try {
+      await storage.migrate();
+      await storage.verifySchema();
+    } finally {
+      await storage.close();
+    }
+    const after = snapshot();
+    const db = new Database(at018, { readonly: true });
+    try {
+      expect(
+        Object.fromEntries(
+          (
+            db
+              .prepare(
+                "SELECT order_id,status FROM trade_order_invoicing WHERE company_id='DEFAULT' ORDER BY order_id",
+              )
+              .all() as { order_id: string; status: string }[]
+          ).map((row) => [row.order_id, row.status]),
+        ),
+      ).toEqual(invoicingExpected);
+      expect(db.prepare("SELECT count(*) FROM schema_migrations").pluck().get()).toBe(19);
+    } finally {
+      db.close();
+    }
+    for (const table of Object.keys(before))
+      expect([table, after[table]]).toEqual([table, before[table]]);
   });
 
   // TINV-04: invoice list items carry the source orderId (null without one), AP and AR.
@@ -4571,13 +4995,8 @@ describe("trade invoices on real SQLite", () => {
     expect(before.openItems.length).toBeGreaterThanOrEqual(8);
     expect(before.versions).toHaveLength(17);
     expect(before.index).toBeUndefined();
-    const storage = createSqliteStorage({ filename: at017 });
-    try {
-      await storage.migrate();
-      await storage.verifySchema();
-    } finally {
-      await storage.close();
-    }
+    // TORD-06: 019 follows; stop before it so this stays the 017 → 018 step (D307).
+    await ledgerAt018(at017);
     const after = rows();
     expect(after.index).toBe(
       "CREATE INDEX trade_documents_party ON trade_documents(company_id, party_id, sequence)",

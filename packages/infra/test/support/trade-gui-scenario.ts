@@ -1031,6 +1031,75 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       ).toBe(0);
       expect(failures).toEqual([]);
     }
+    // TORD-06 (B8): the invoicing filter follows posting and cancellation. PO-STATUS is invoiced in
+    // part, then in full; cancelling the second invoice brings it back to partial. PO-NONE is
+    // never invoiced. Earlier orders (PO-DEMO, PO-FROM) are fully invoiced. Every filtered row's
+    // badge shows the filtered status; the address never changes.
+    async function orderInvoicingFilter() {
+      await purchaseOrder("PO-NONE");
+      await purchaseOrder("PO-STATUS");
+      expect(await orderQuantities("PO-STATUS")).toEqual(["10", "0", "10"]);
+      await invoiceFromOrder("PO-STATUS", "AP-STATUS-1", 4520, "4");
+      const listed = async (status: "none" | "partial" | "full", expected: string[]) => {
+        await navigate("trade-orders");
+        const hash = new URL(page.url()).hash;
+        const form = page.locator("form").filter({ has: page.locator("#tord-filter-invoicing") });
+        await choose(page, page.locator("#tord-filter-invoicing"), status);
+        const response = page.waitForResponse((item) => {
+          const url = new URL(item.url());
+          return (
+            url.pathname === "/api/v1/trade/orders" &&
+            url.searchParams.get("invoicing") === status &&
+            item.request().method() === "GET"
+          );
+        });
+        await activate(
+          page,
+          form.getByRole("button", { name: ordered("tord.filterApply"), exact: true }),
+        );
+        expect((await response).status()).toBe(200);
+        const rows = () =>
+          page.locator("table.tord-list tbody tr").evaluateAll((items) =>
+            items.map((row) => ({
+              orderId: row.querySelector("td button")?.textContent ?? "",
+              badge: row.querySelector("td.tord-invoicing")?.textContent ?? "",
+            })),
+          );
+        await expect
+          .poll(async () => (await rows()).map((row) => row.orderId).sort(), {
+            message: `Orders filtered by invoicing=${status}`,
+            timeout: 10_000,
+          })
+          .toEqual(expected);
+        if (expected.length === 0)
+          await page
+            .locator("p.empty-state")
+            .filter({ hasText: ordered("tord.listNoMatch") })
+            .waitFor();
+        else
+          expect(new Set((await rows()).map((row) => row.badge))).toEqual(
+            new Set([ordered(`tord.invoicing.${status}`)]),
+          );
+        expect(new URL(page.url()).hash).toBe(hash);
+        await page.screenshot({ path: join(artifacts, `${name}-order-invoicing-${status}.png`) });
+      };
+      await listed("partial", ["PO-STATUS"]);
+      await listed("none", ["PO-NONE"]);
+      await openOrder("PO-STATUS");
+      expect(await orderQuantities("PO-STATUS")).toEqual(["10", "4", "6"]);
+      const second = await invoiceFromOrder("PO-STATUS", "AP-STATUS-2", 6780);
+      await listed("full", ["PO-DEMO", "PO-FROM", "PO-STATUS"]);
+      await listed("partial", []);
+      await navigate("trade-adjustments");
+      await action("cancel", {
+        "tadj.source": second.documentId,
+        "tadj.reason": "Fictional second invoice cancelled",
+      });
+      await listed("full", ["PO-DEMO", "PO-FROM"]);
+      await listed("partial", ["PO-STATUS"]);
+      await listed("none", ["PO-NONE"]);
+      expect(failures).toEqual([]);
+    }
     async function invoice(side: "AP" | "AR", external: string, matched = false) {
       await navigate("trade-invoices");
       await choose(page, page.locator("#tinv-side"), side);
@@ -1329,6 +1398,7 @@ export function tradeGuiScenario(language: "zh" | "en", theme: "red" | "green", 
       });
       // After the report totals above, so the new AP invoices do not change them.
       await orderToInvoice();
+      await orderInvoicingFilter();
       await sourceOrders();
       await invoiceFilters();
       await invoiceDetail();
