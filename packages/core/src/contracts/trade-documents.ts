@@ -498,6 +498,8 @@ export const openItemPageSchema = z.strictObject({
   items: z.array(openItemSchema).max(500),
   nextCursor: z.string().nullable(),
 });
+/** TINV-03 / TORD-06: order invoicing status, shared by the list filter and the list column. */
+const orderInvoicing = z.enum(["none", "partial", "full"]);
 export const tradeOrderListQuerySchema = z
   .strictObject({
     company: companyCodeSchema,
@@ -507,7 +509,7 @@ export const tradeOrderListQuerySchema = z
     side: side.optional(),
     from: day.optional(),
     to: day.optional(),
-    invoicing: z.enum(["none", "partial", "full"]).optional(),
+    invoicing: orderInvoicing.optional(),
   })
   .refine((query) => !query.from || !query.to || query.from <= query.to, { path: ["to"] });
 export const tradeOrderPageSchema = z.strictObject({
@@ -520,7 +522,7 @@ export const tradeOrderPageSchema = z.strictObject({
         net: minor,
         tax: minor,
         gross: minor,
-        invoicing: z.enum(["none", "partial", "full"]),
+        invoicing: orderInvoicing,
       }),
     )
     .max(500),

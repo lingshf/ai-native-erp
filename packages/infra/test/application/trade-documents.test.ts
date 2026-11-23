@@ -4186,18 +4186,28 @@ describe("trade invoices on real SQLite", () => {
   // TORD-06: the stored status (trade_order_invoicing) is written by the posting and cancelling
   // transactions and is what the list column shows (B6a). After every step it must equal the
   // TINV-03 status recomputed from the invoice lines.
+  const storedStatusesIn = (raw: Database.Database) =>
+    Object.fromEntries(
+      (
+        raw
+          .prepare(
+            "SELECT order_id,status FROM trade_order_invoicing WHERE company_id='DEFAULT' ORDER BY order_id",
+          )
+          .all() as { order_id: string; status: string }[]
+      ).map((row) => [row.order_id, row.status]),
+    );
+  /** The TINV-03 recomputation run directly on a raw ledger handle. */
+  const recomputedStatusesIn = async (raw: Database.Database, orderIds: readonly string[]) => {
+    const reader: Pick<Connection, "query"> = {
+      query: async (sql, values = []) =>
+        raw.prepare(sql).all(...values) as Record<string, unknown>[],
+    };
+    return Object.fromEntries(await tradeOrderStatuses(reader, "DEFAULT", orderIds));
+  };
   const storedStatuses = () => {
     const raw = new Database(filename, { readonly: true });
     try {
-      return Object.fromEntries(
-        (
-          raw
-            .prepare(
-              "SELECT order_id,status FROM trade_order_invoicing WHERE company_id='DEFAULT' ORDER BY order_id",
-            )
-            .all() as { order_id: string; status: string }[]
-        ).map((row) => [row.order_id, row.status]),
-      );
+      return storedStatusesIn(raw);
     } finally {
       raw.close();
     }
@@ -4212,17 +4222,11 @@ describe("trade invoices on real SQLite", () => {
   const recomputedStatuses = async () => {
     const raw = new Database(filename, { readonly: true });
     try {
-      const ids = (
-        raw
-          .prepare("SELECT order_id FROM trade_orders WHERE company_id='DEFAULT' ORDER BY order_id")
-          .pluck()
-          .all() as string[]
-      ).slice();
-      const reader = {
-        query: async (sql: string, values: readonly unknown[] = []) =>
-          raw.prepare(sql).all(...values) as Record<string, unknown>[],
-      } as Pick<Connection, "query">;
-      return Object.fromEntries(await tradeOrderStatuses(reader, "DEFAULT", ids));
+      const orderIds = raw
+        .prepare("SELECT order_id FROM trade_orders WHERE company_id='DEFAULT' ORDER BY order_id")
+        .pluck()
+        .all() as string[];
+      return await recomputedStatusesIn(raw, orderIds);
     } finally {
       raw.close();
     }
@@ -4606,12 +4610,31 @@ describe("trade invoices on real SQLite", () => {
     }
   });
 
-  it("TORD-06 an 018 ledger with posted and cancelled invoices upgrades to 019 with every status backfilled and every other row unchanged", async () => {
-    await invoicingOrders();
-    const cancelled = invoiceOn("PO-06", "L1", "2");
-    await post(cancelled);
-    await cancel(cancelled.documentId, undefined, "2026-04-21");
-    // S12 B1: several invoices adding up to full (PO-04: 0.5 + 1.5 of 2), and full then credited.
+  /** Every row of every user table except `excluded`, keyed by table, in a stable order. */
+  function rowsByTable(file: string, excluded: readonly string[]) {
+    const db = new Database(file, { readonly: true });
+    try {
+      db.defaultSafeIntegers(true);
+      const names = (
+        db
+          .prepare(
+            "SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' ORDER BY name",
+          )
+          .pluck()
+          .all() as string[]
+      ).filter((name) => !excluded.includes(name));
+      const key = (row: unknown) =>
+        JSON.stringify(row, (_, value) => (typeof value === "bigint" ? `${value}n` : value));
+      return Object.fromEntries(
+        names.map((name) => [name, db.prepare(`SELECT * FROM "${name}"`).all().map(key).sort()]),
+      );
+    } finally {
+      db.close();
+    }
+  }
+  /** S12 B1 backfill cases: several invoices adding up to full (PO-04: 0.5 + 1.5 of 2), and an
+   *  order invoiced in full and then credited (PO-07), which stays full. */
+  async function cumulativeAndCreditedFullOrders() {
     await post(invoiceOn("PO-04", "L1", "1.5"));
     await service.createOrder(
       order({ orderId: "PO-07", orderDate: "2026-04-01", lines: [orderLine("L1", "2", "3.00")] }),
@@ -4628,31 +4651,22 @@ describe("trade invoices on real SQLite", () => {
       taxDate: "2026-04-21",
       lines: [{ sourceLineId: "L1", quantity: "1" }],
     });
+  }
+
+  it("TORD-06 an 018 ledger with posted and cancelled invoices upgrades to 019 with every status backfilled and every other row unchanged", async () => {
+    await invoicingOrders();
+    const cancelled = invoiceOn("PO-06", "L1", "2");
+    await post(cancelled);
+    await cancel(cancelled.documentId, undefined, "2026-04-21");
+    await cumulativeAndCreditedFullOrders();
     const upgraded = { ...invoicingExpected, "PO-04": "full", "PO-07": "full" };
     await expectStored(upgraded);
     await store.close();
     const at018 = join(directory, "at018.sqlite");
     await ledgerAt018(at018);
     copyLedgerRows(filename, at018);
-    const snapshot = () => {
-      const db = new Database(at018, { readonly: true });
-      try {
-        db.defaultSafeIntegers(true);
-        const names = db
-          .prepare(
-            "SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name NOT IN ('schema_migrations','trade_order_invoicing') ORDER BY name",
-          )
-          .pluck()
-          .all() as string[];
-        const key = (row: unknown) =>
-          JSON.stringify(row, (_, value) => (typeof value === "bigint" ? `${value}n` : value));
-        return Object.fromEntries(
-          names.map((name) => [name, db.prepare(`SELECT * FROM "${name}"`).all().map(key).sort()]),
-        );
-      } finally {
-        db.close();
-      }
-    };
+    // trade_order_invoicing only exists after 019; schema_migrations gains its row.
+    const snapshot = () => rowsByTable(at018, ["schema_migrations", "trade_order_invoicing"]);
     const before = snapshot();
     expect(before.trade_documents).toHaveLength(7);
     const storage = createSqliteStorage({ filename: at018 });
@@ -4665,24 +4679,10 @@ describe("trade invoices on real SQLite", () => {
     const after = snapshot();
     const db = new Database(at018, { readonly: true });
     try {
-      const stored = Object.fromEntries(
-        (
-          db
-            .prepare(
-              "SELECT order_id,status FROM trade_order_invoicing WHERE company_id='DEFAULT' ORDER BY order_id",
-            )
-            .all() as { order_id: string; status: string }[]
-        ).map((row) => [row.order_id, row.status]),
-      );
+      const stored = storedStatusesIn(db);
       expect(stored).toEqual(upgraded);
       // Order by order, the backfill equals the status recomputed from the migrated invoice lines.
-      const reader = {
-        query: async (sql: string, values: readonly unknown[] = []) =>
-          db.prepare(sql).all(...values) as Record<string, unknown>[],
-      } as Pick<Connection, "query">;
-      expect(
-        Object.fromEntries(await tradeOrderStatuses(reader, "DEFAULT", Object.keys(upgraded))),
-      ).toEqual(stored);
+      expect(await recomputedStatusesIn(db, Object.keys(upgraded))).toEqual(stored);
       expect(db.prepare("SELECT count(*) FROM schema_migrations").pluck().get()).toBe(19);
     } finally {
       db.close();

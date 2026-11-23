@@ -43,9 +43,9 @@ type Draft = {
 };
 type Guard = { busy: boolean; unsaved: boolean };
 type Opened = { orderId: string; focus: boolean };
-type Invoicing = "none" | "partial" | "full";
+const invoicingValues = ["none", "partial", "full"] as const;
+type Invoicing = (typeof invoicingValues)[number];
 const invoicingTone = { none: "warning", partial: "info", full: "success" } as const;
-const invoicingValues = ["none", "partial", "full"] as const satisfies readonly Invoicing[];
 type Issue = { path: string; key: TradeOrderKey };
 type Failure = { message: string; issues: Issue[]; uncertain: boolean };
 const idleGuard: Guard = { busy: false, unsaved: false };
