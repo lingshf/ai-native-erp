@@ -95,16 +95,25 @@
 - **L1 范围**：`git diff --name-only` 只含“范围”所列三个文件。不加迁移。
 - **L8 中英**：中英标签同时加；检查中英键集合一致的既有用例（`packages/web/test/ui.test.ts:16–23`）通过。
 - **L9 既有测试**：`accounts.test.tsx` 原有 6 个用例不改、全部通过。其中 Tab 走查用例（`:85–120`）只遍历表格区域，加按钮不改变它的期望。Web 全部 jsdom 测试与 PR CI 绿；合并后覆盖该合并提交的 main Full 绿。
-- **L10 打包**：构建在新建的分离 worktree 中进行，`git status --porcelain` 为空（S17 回顾行动 3）。
+- **L10 打包**：构建来源按[任务书模板](TEMPLATE.md)“证据要求 / 构建来源”（D460 / D487），标准同 [#284](https://github.com/lingshf/ai-native-erp/pull/284) 与 [#285](https://github.com/lingshf/ai-native-erp/pull/285)：
+  - **base 固定为最终送审 head 的实际合并基**（`git merge-base origin/main <head>` 的完整 SHA），不是 `1638445`，也不是本任务书写作时的 main；合并基变了就重新测量。
+  - base 与 head 各在新建的分离 worktree 中构建。两侧的命令、lockfile blob（`git rev-parse <sha>:package-lock.json`）、OS / Node / npm 必须相同。
+  - 两侧都附：
+    - `git rev-parse HEAD`；
+    - `npm ci` 前后的 `git status --porcelain` 原文，两次都须为空；
+    - `npm ci` 的实际输出；
+    - 构建命令原文与退出码；
+    - 全部产物逐文件的完整 SHA-256，不截断。
+  - 测量脚本须完整附上（PR 评论或正文），或者钉住一个等价版本（提交 SHA 加路径，或 gist 修订加 sha256），并附它的原始输出。评审要能据此重放首屏预加载闭包与哈希掩码。
   - 首屏预加载集合与 base 相同；首屏 JS 合计（掩码 gzip-9，同 D461 的测法）**≤ +40 B**（标签在首屏块，见“现状”）；
   - `Accounts` 路由块 **≤ +200 B**（gzip-9）；
   - 其他 JS 块与 CSS **±0**；
-  - 上限与 TLIST-02 L10 相同。本任务书没有试改构建（见“证据要求”），也不给余量估计。超出即停下报告协调者，不自行放宽。
+  - 上限与 TLIST-02 L10 相同，属于沿用的预算，未经测量。本任务书没有试改构建（见“证据要求”），也不给余量估计。超出即停下报告协调者，不自行放宽。
 - **L11 PR 正文**须含：
   - “用户可见变化”一节（内容同下）；
   - “可读性”一节；
   - L2–L7 的用例名与 `file:line` 对照表；
-  - L10 的 base / head 构建来源（`rev-parse HEAD`、空的 `status --porcelain`、Node / npm 版本、lockfile blob）与逐块数字原文。
+  - L10 的“构建来源”一节（上面列出的全部字段，base 写实际合并基）、测量脚本或其钉住的版本，以及逐块数字原文。
 
 ## e2e 断言
 
