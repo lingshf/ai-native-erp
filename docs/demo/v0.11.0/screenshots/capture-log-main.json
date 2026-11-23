@@ -1,0 +1,402 @@
+[
+ {
+  "name": "invoice-detail-ap-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-detail-ap",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "filter party=PARTY2 side=AP, click button AP-D1-1",
+  "hashBefore": "#/trade-invoices?company=DEFAULT",
+  "hashAfter": "#/trade-invoices?company=DEFAULT"
+ },
+ {
+  "name": "invoice-detail-ar-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-detail-ar",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "filter side=AR, focus Apply then Tab x5 to the AR-I1-1 button, Enter",
+  "tabs": 5,
+  "hashBefore": "#/trade-invoices?company=DEFAULT",
+  "hashAfter": "#/trade-invoices?company=DEFAULT"
+ },
+ {
+  "name": "invoice-filter-date-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-date",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "fill from/to 2026-11-01, click 应用",
+  "rows": 3
+ },
+ {
+  "name": "invoice-filter-error-party-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-error-party",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "fill party 'bad party', click apply",
+  "listRequestsAfter": 0
+ },
+ {
+  "name": "invoice-filter-error-range-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-error-range",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "fill from 2026-11-22 to 2026-11-01, click apply",
+  "listRequestsAfter": 0
+ },
+ {
+  "name": "invoice-filter-loadmore-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-loadmore",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "fill party PARTY, apply, click load more",
+  "secondPageRows": 5,
+  "secondPageUrl": "?company=DEFAULT&limit=100&cursor=13&party=PARTY"
+ },
+ {
+  "step": "reset-switch-back",
+  "listRequests": []
+ },
+ {
+  "name": "invoice-filter-reset-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-reset",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "apply side=AR, reload; apply party=PARTY2 side=AP, switch company DEMO2 then DEFAULT"
+ },
+ {
+  "name": "sidebar-groups-zh-red-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/",
+  "expectHash": "#/",
+  "step": "sidebar-groups",
+  "entryHash": "#/",
+  "via": "none (entry page)",
+  "links": 16
+ },
+ {
+  "page": "s11",
+  "tag": "zh-red-1440",
+  "errors": []
+ },
+ {
+  "name": "invoice-detail-ap-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-detail-ap",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "filter party=PARTY2 side=AP, click button AP-D1-1",
+  "hashBefore": "#/trade-invoices?company=DEFAULT",
+  "hashAfter": "#/trade-invoices?company=DEFAULT"
+ },
+ {
+  "name": "invoice-detail-ar-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-detail-ar",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "filter side=AR, focus Apply then Tab x5 to the AR-I1-1 button, Enter",
+  "tabs": 5,
+  "hashBefore": "#/trade-invoices?company=DEFAULT",
+  "hashAfter": "#/trade-invoices?company=DEFAULT"
+ },
+ {
+  "name": "invoice-filter-date-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-date",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "fill from/to 2026-11-01, click 应用",
+  "rows": 3
+ },
+ {
+  "name": "invoice-filter-error-party-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-error-party",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "fill party 'bad party', click apply",
+  "listRequestsAfter": 0
+ },
+ {
+  "name": "invoice-filter-error-range-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-error-range",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "fill from 2026-11-22 to 2026-11-01, click apply",
+  "listRequestsAfter": 0
+ },
+ {
+  "name": "invoice-filter-loadmore-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-loadmore",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "fill party PARTY, apply, click load more",
+  "secondPageRows": 5,
+  "secondPageUrl": "?company=DEFAULT&limit=100&cursor=13&party=PARTY"
+ },
+ {
+  "step": "reset-switch-back",
+  "listRequests": []
+ },
+ {
+  "name": "invoice-filter-reset-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-reset",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "apply side=AR, reload; apply party=PARTY2 side=AP, switch company DEMO2 then DEFAULT"
+ },
+ {
+  "name": "sidebar-groups-zh-red-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/",
+  "expectHash": "#/",
+  "step": "sidebar-groups",
+  "entryHash": "#/",
+  "via": "none (entry page)",
+  "links": 16
+ },
+ {
+  "page": "s11",
+  "tag": "zh-red-390",
+  "errors": []
+ },
+ {
+  "name": "invoice-detail-ap-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-detail-ap",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "filter party=PARTY2 side=AP, click button AP-D1-1",
+  "hashBefore": "#/trade-invoices?company=DEFAULT",
+  "hashAfter": "#/trade-invoices?company=DEFAULT"
+ },
+ {
+  "name": "invoice-detail-ar-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-detail-ar",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "filter side=AR, focus Apply then Tab x5 to the AR-I1-1 button, Enter",
+  "tabs": 5,
+  "hashBefore": "#/trade-invoices?company=DEFAULT",
+  "hashAfter": "#/trade-invoices?company=DEFAULT"
+ },
+ {
+  "name": "invoice-filter-date-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-date",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "fill from/to 2026-11-01, click Apply",
+  "rows": 3
+ },
+ {
+  "name": "invoice-filter-error-party-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-error-party",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "fill party 'bad party', click apply",
+  "listRequestsAfter": 0
+ },
+ {
+  "name": "invoice-filter-error-range-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-error-range",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "fill from 2026-11-22 to 2026-11-01, click apply",
+  "listRequestsAfter": 0
+ },
+ {
+  "name": "invoice-filter-loadmore-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-loadmore",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "fill party PARTY, apply, click load more",
+  "secondPageRows": 5,
+  "secondPageUrl": "?company=DEFAULT&limit=100&cursor=13&party=PARTY"
+ },
+ {
+  "step": "reset-switch-back",
+  "listRequests": []
+ },
+ {
+  "name": "invoice-filter-reset-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-reset",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "apply side=AR, reload; apply party=PARTY2 side=AP, switch company DEMO2 then DEFAULT"
+ },
+ {
+  "name": "sidebar-groups-en-green-1440",
+  "overflowPx": 0,
+  "scrollWidth": 1440,
+  "hash": "#/",
+  "expectHash": "#/",
+  "step": "sidebar-groups",
+  "entryHash": "#/",
+  "via": "none (entry page)",
+  "links": 16
+ },
+ {
+  "page": "s11",
+  "tag": "en-green-1440",
+  "errors": []
+ },
+ {
+  "name": "invoice-detail-ap-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-detail-ap",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "filter party=PARTY2 side=AP, click button AP-D1-1",
+  "hashBefore": "#/trade-invoices?company=DEFAULT",
+  "hashAfter": "#/trade-invoices?company=DEFAULT"
+ },
+ {
+  "name": "invoice-detail-ar-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-detail-ar",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "filter side=AR, focus Apply then Tab x5 to the AR-I1-1 button, Enter",
+  "tabs": 5,
+  "hashBefore": "#/trade-invoices?company=DEFAULT",
+  "hashAfter": "#/trade-invoices?company=DEFAULT"
+ },
+ {
+  "name": "invoice-filter-date-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-date",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "fill from/to 2026-11-01, click Apply",
+  "rows": 3
+ },
+ {
+  "name": "invoice-filter-error-party-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-error-party",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "fill party 'bad party', click apply",
+  "listRequestsAfter": 0
+ },
+ {
+  "name": "invoice-filter-error-range-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-error-range",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "fill from 2026-11-22 to 2026-11-01, click apply",
+  "listRequestsAfter": 0
+ },
+ {
+  "name": "invoice-filter-loadmore-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-loadmore",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "fill party PARTY, apply, click load more",
+  "secondPageRows": 5,
+  "secondPageUrl": "?company=DEFAULT&limit=100&cursor=13&party=PARTY"
+ },
+ {
+  "step": "reset-switch-back",
+  "listRequests": []
+ },
+ {
+  "name": "invoice-filter-reset-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/trade-invoices?company=DEFAULT",
+  "expectHash": "#/trade-invoices?company=DEFAULT",
+  "step": "invoice-filter-reset",
+  "entryHash": "#/trade-invoices?company=DEFAULT",
+  "via": "apply side=AR, reload; apply party=PARTY2 side=AP, switch company DEMO2 then DEFAULT"
+ },
+ {
+  "name": "sidebar-groups-en-green-390",
+  "overflowPx": 0,
+  "scrollWidth": 390,
+  "hash": "#/",
+  "expectHash": "#/",
+  "step": "sidebar-groups",
+  "entryHash": "#/",
+  "via": "none (entry page)",
+  "links": 16
+ },
+ {
+  "page": "s11",
+  "tag": "en-green-390",
+  "errors": []
+ }
+]
