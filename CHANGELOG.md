@@ -6,6 +6,33 @@
 
 ## [Unreleased]
 
+## [0.20.0] - 未发布（RC，待协调者授权）
+
+> **发布候选（DEMO-21）**：RC 范围终点固定为完整 SHA `a1a12448207372d6792b2497da852d08418c552b`（[#309](https://github.com/lingshf/ai-native-erp/pull/309)）。tag 目标与日期待协调者授权后按 D484 / D458 填写。
+>
+> **版本号**：TLIST-05（[#301](https://github.com/lingshf/ai-native-erp/pull/301)，`f9024d5fd320396a328ee7a91a20b2c79042006c`）是用户可见的小功能，取 minor（0.19.0 → 0.20.0）。FLAKE-08 `49f3254`、SLOT-04 `5b6a4bf`、#307 `013d681`、DOC-21 `276fd3b` 对该终点的 `git merge-base --is-ancestor` 退出码均为 0；TLIST-05 同为 0。协调者预期是补丁版本，已告知并认可 v0.20.0。
+>
+> v0.19.0 不在 main 上（D484）：tag 指向 `10292ede0906f96d26806bdd9bb7e8b4e72279c8`（在 `release/v0.19.0`），与 main 的合并基是 `6156759c2aef6b9805aca70ba5505490e2bd4c5b`。`git diff --name-only 10292ede0906f96d26806bdd9bb7e8b4e72279c8 6156759c2aef6b9805aca70ba5505490e2bd4c5b -- packages scripts` 为空，所以从 `6156759…` 到 `a1a1244…` 在 packages / scripts / 两个 package 文件上的差异就是本版本的产品与工具改动：`git diff --shortstat 6156759c2aef6b9805aca70ba5505490e2bd4c5b a1a12448207372d6792b2497da852d08418c552b -- packages scripts package.json package-lock.json` 为 7 个文件（+455/−55）。没有迁移。对照 `git log --oneline --first-parent v0.19.0..a1a12448207372d6792b2497da852d08418c552b`（固定在该完整 SHA，`git rev-list --count --first-parent` 为 9 行）：
+> - 有条目：[#301](https://github.com/lingshf/ai-native-erp/pull/301)（TLIST-05，新增）、[#304](https://github.com/lingshf/ai-native-erp/pull/304)（SLOT-04，变更，开发工具，无用户可见变化）、[#303](https://github.com/lingshf/ai-native-erp/pull/303)（FLAKE-08，修复，测试基础设施）、[#305](https://github.com/lingshf/ai-native-erp/pull/305)、[#307](https://github.com/lingshf/ai-native-erp/pull/307)、[#309](https://github.com/lingshf/ai-native-erp/pull/309)（发布 / Demo 流程文档）。
+> - **不需要条目**，单列：[#302](https://github.com/lingshf/ai-native-erp/pull/302)（v0.19.0 的 RC，已随 v0.19.0 发布）、[#306](https://github.com/lingshf/ai-native-erp/pull/306)（S20 评审与回顾，设计）、[#308](https://github.com/lingshf/ai-native-erp/pull/308)（S22 计划，设计）。
+>
+> Demo 与窗口证据在 [docs/demo/v0.20.0](docs/demo/v0.20.0/README.md)，窗口结果（含第一窗口的失败与原因）和体积重测只写在其 [run-through](docs/demo/v0.20.0/run-through.md)，此处不重复。
+
+S21 Sprint 的用户可见改动只有 TLIST-05。**无迁移，无依赖变化**，已有账套不需要 migrate，不改过账规则与任何金额、数量口径。
+
+### Added（用户可见）
+
+- **业务事件与转账队列多一个“刷新列表”按钮（TLIST-05，[#301](https://github.com/lingshf/ai-native-erp/pull/301)，合并提交 `f9024d5`）**：两个列表在“新增 ·”一行 / 状态筛选之后各多一个“刷新列表”按钮（英文 “Refresh list”），只重读第一页；设置视图与编辑器内的列表不变；草稿编辑器打开时按钮仍可用，刷新不清空草稿。数字取自 #301 正文：`BusinessEvents` 路由块 +137 B（上限 +300 B），首屏与其他块 ±0。
+
+### Changed（无用户可见变化）
+
+- **槽位运行脚本（SLOT-04，[#304](https://github.com/lingshf/ai-native-erp/pull/304)，合并提交 `5b6a4bf`）**：`scripts/slot/` 开发工具（调用位置检查 `Assert-CallLocation` 等），不影响运行时与界面。
+- **发布与 Demo 流程文档**：DOC-21 送审清单（[#305](https://github.com/lingshf/ai-native-erp/pull/305)）、Demo 模板第 22–25 条（[#307](https://github.com/lingshf/ai-native-erp/pull/307)）、`git grep` 单一来源自查（[#309](https://github.com/lingshf/ai-native-erp/pull/309)），只改文档。
+
+### Fixed（测试基础设施）
+
+- **`ledger-reports` 测试的偶发失败（FLAKE-08，[#303](https://github.com/lingshf/ai-native-erp/pull/303)，合并提交 `49f3254`）**：只修测试里的可疑用例，产品代码不变。
+
 ## [0.19.0] - 2026-11-23
 
 > **已发布**：tag `v0.19.0`（annotated，tag 对象 `a858945bdb7f25072a259e31d64609be350d97a6`）打在 `10292ede0906f96d26806bdd9bb7e8b4e72279c8`（[#302](https://github.com/lingshf/ai-native-erp/pull/302) 的最终头，位于 `release/v0.19.0` 分支上；D484 / D510）；发布日 2026-11-23。main 上的 #302 squash 提交 `c6d5e2469ac2efd389e1560e81cae29c5d8c4719` 不是 tag 目标：它的树 `3b4bac63c806417e781ebaee4e9dd966e28541a9` 与 tag 树 `8fd3b054e2469a93baea53a1b8491fe87bdef046` 不同，差异是 `c6d5e24` 多含 TLIST-05（[#301](https://github.com/lingshf/ai-native-erp/pull/301)，延后，不在 v0.19.0 内）。`git diff --name-only 6156759c2aef6b9805aca70ba5505490e2bd4c5b 10292ede0906f96d26806bdd9bb7e8b4e72279c8 -- packages scripts` 为空（已核对）。Release：<https://github.com/lingshf/ai-native-erp/releases/tag/v0.19.0>。完整版本差异：[v0.18.0..v0.19.0](https://github.com/lingshf/ai-native-erp/compare/v0.18.0..v0.19.0)（两点，60 个文件，+4280/−208，`git diff --shortstat v0.18.0 v0.19.0`）；合并基对比：[v0.18.0...v0.19.0](https://github.com/lingshf/ai-native-erp/compare/v0.18.0...v0.19.0)（三点，自合并基 `3f8f2ff9fd010ff63fb8d891b4a4b1209d4cd0ee`，87 个文件，+5655/−206，会重现 v0.18.0 已发布的 DEMO-19 文档路径，因两个发布分支分叉）。

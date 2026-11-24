@@ -1,0 +1,322 @@
+[
+ {
+  "name": "events-zh-red-1440",
+  "step": "page",
+  "via": "goto #/events?company=DEFAULT，视图 events",
+  "hash": "#/events?company=DEFAULT",
+  "heading": "业务事件",
+  "documentScrollWidth": 1440,
+  "rect": {
+   "left": 280,
+   "right": 370,
+   "top": 330
+  },
+  "previous": {
+   "tag": "DIV",
+   "cls": "toolbar-row",
+   "texts": [
+    "新增 · 现金服务",
+    "新增 · 统计",
+    "新增 · 清算匹配"
+   ]
+  }
+ },
+ {
+  "name": "queue-zh-red-1440",
+  "step": "page",
+  "via": "goto #/events?company=DEFAULT，视图 queue",
+  "hash": "#/events?company=DEFAULT",
+  "heading": "业务事件",
+  "documentScrollWidth": 1440,
+  "rect": {
+   "left": 280,
+   "right": 370,
+   "top": 330
+  },
+  "previous": {
+   "tag": "LABEL",
+   "cls": "ui-field jv-status",
+   "texts": []
+  }
+ },
+ {
+  "name": "events-en-green-1440",
+  "step": "page",
+  "via": "goto #/events?company=DEFAULT，视图 events",
+  "hash": "#/events?company=DEFAULT",
+  "heading": "Business events",
+  "documentScrollWidth": 1440,
+  "rect": {
+   "left": 280,
+   "right": 383.6,
+   "top": 350
+  },
+  "previous": {
+   "tag": "DIV",
+   "cls": "toolbar-row",
+   "texts": [
+    "New · Cash service",
+    "New · Statistics",
+    "New · Match clearing items"
+   ]
+  }
+ },
+ {
+  "name": "queue-en-green-1440",
+  "step": "page",
+  "via": "goto #/events?company=DEFAULT，视图 queue",
+  "hash": "#/events?company=DEFAULT",
+  "heading": "Business events",
+  "documentScrollWidth": 1440,
+  "rect": {
+   "left": 280,
+   "right": 383.6,
+   "top": 350
+  },
+  "previous": {
+   "tag": "LABEL",
+   "cls": "ui-field jv-status",
+   "texts": []
+  }
+ },
+ {
+  "name": "events-zh-red-390",
+  "step": "k7-390",
+  "via": "goto #/events?company=DEFAULT，视图 events",
+  "hash": "#/events?company=DEFAULT",
+  "heading": "业务事件",
+  "documentScrollWidth": 390,
+  "rect": {
+   "left": 16,
+   "right": 106,
+   "top": 597
+  },
+  "previous": {
+   "tag": "DIV",
+   "cls": "toolbar-row",
+   "texts": [
+    "新增 · 现金服务",
+    "新增 · 统计",
+    "新增 · 清算匹配"
+   ]
+  }
+ },
+ {
+  "name": "queue-zh-red-390",
+  "step": "k7-390",
+  "via": "goto #/events?company=DEFAULT，视图 queue",
+  "hash": "#/events?company=DEFAULT",
+  "heading": "业务事件",
+  "documentScrollWidth": 390,
+  "rect": {
+   "left": 16,
+   "right": 106,
+   "top": 541
+  },
+  "previous": {
+   "tag": "LABEL",
+   "cls": "ui-field jv-status",
+   "texts": []
+  }
+ },
+ {
+  "name": "events-en-green-390",
+  "step": "k7-390",
+  "via": "goto #/events?company=DEFAULT，视图 events",
+  "hash": "#/events?company=DEFAULT",
+  "heading": "Business events",
+  "documentScrollWidth": 390,
+  "rect": {
+   "left": 16,
+   "right": 119.6,
+   "top": 681
+  },
+  "previous": {
+   "tag": "DIV",
+   "cls": "toolbar-row",
+   "texts": [
+    "New · Cash service",
+    "New · Statistics",
+    "New · Match clearing items"
+   ]
+  }
+ },
+ {
+  "name": "queue-en-green-390",
+  "step": "k7-390",
+  "via": "goto #/events?company=DEFAULT，视图 queue",
+  "hash": "#/events?company=DEFAULT",
+  "heading": "Business events",
+  "documentScrollWidth": 390,
+  "rect": {
+   "left": 16,
+   "right": 119.6,
+   "top": 625
+  },
+  "previous": {
+   "tag": "LABEL",
+   "cls": "ui-field jv-status",
+   "texts": []
+  }
+ },
+ {
+  "name": "events-keyboard-record",
+  "step": "keyboard",
+  "via": "#/events?company=DEFAULT：page.keyboard.press 的 Tab / Enter / Space",
+  "record": {
+   "lang": "en",
+   "theme": "green",
+   "width": 1440,
+   "eventsFocusStart": "New · Match clearing items",
+   "eventsFocusAfterTab": "Refresh list",
+   "eventsEnterRequests": [
+    "/api/v1/events?company=DEFAULT&limit=100"
+   ],
+   "eventsSpaceRequests": [
+    "/api/v1/events?company=DEFAULT&limit=100"
+   ],
+   "refreshDisabledWithEditor": false,
+   "draftBefore": "DEMO-21 draft memo",
+   "editorOpenFocusStart": "a:Trial balance",
+   "editorOpenFocusAfterTab": "Refresh list",
+   "editorOpenEnterRequests": [
+    "/api/v1/events?company=DEFAULT&limit=100"
+   ],
+   "editorStillOpen": true,
+   "draftAfter": "DEMO-21 draft memo",
+   "queueFocusAfterTab": "Refresh list",
+   "queueEnterRequests": [
+    "/api/v1/transfer-queue?company=DEFAULT&limit=100&status=failed"
+   ],
+   "queueSpaceRequests": [
+    "/api/v1/transfer-queue?company=DEFAULT&limit=100&status=failed"
+   ],
+   "queueStatusAfter": "failed"
+  }
+ },
+ {
+  "checks": [
+   {
+    "check": "events-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "events-zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "queue-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "queue-zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "events-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "events-en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "queue-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "queue-en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "events-zh-red-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "events-zh-red-390 刷新按钮在视口内（left ≥ 0 且 right ≤ 390）",
+    "ok": true,
+    "detail": {
+     "left": 16,
+     "right": 106,
+     "top": 597
+    }
+   },
+   {
+    "check": "events-zh-red-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "queue-zh-red-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "queue-zh-red-390 刷新按钮在视口内（left ≥ 0 且 right ≤ 390）",
+    "ok": true,
+    "detail": {
+     "left": 16,
+     "right": 106,
+     "top": 541
+    }
+   },
+   {
+    "check": "queue-zh-red-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "events-en-green-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "events-en-green-390 刷新按钮在视口内（left ≥ 0 且 right ≤ 390）",
+    "ok": true,
+    "detail": {
+     "left": 16,
+     "right": 119.6,
+     "top": 681
+    }
+   },
+   {
+    "check": "events-en-green-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "queue-en-green-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "queue-en-green-390 刷新按钮在视口内（left ≥ 0 且 right ≤ 390）",
+    "ok": true,
+    "detail": {
+     "left": 16,
+     "right": 119.6,
+     "top": 625
+    }
+   },
+   {
+    "check": "queue-en-green-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "键盘取证 无页面错误",
+    "ok": true,
+    "detail": []
+   }
+  ]
+ }
+]

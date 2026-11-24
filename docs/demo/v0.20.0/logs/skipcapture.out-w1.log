@@ -1,0 +1,42 @@
+web-dist: ok C:\GithubCopilot\copilot-worktrees\ai-native-erp\demo21-app\packages\web\dist\index.html dist-index=2026-11-24T02:33:41.7385113Z head-commit=2026-11-24T02:31:18.0000000Z
+demo-account-path=C:\Users\shaoling\AppData\Local\Temp\erp-demo-ca43e2e0-ac3a-411f-80e6-02cd992f801e
+prepared C:\Users\shaoling\AppData\Local\Temp\erp-demo-ca43e2e0-ac3a-411f-80e6-02cd992f801e\demo.sqlite 2026
+ready port=4204 pid=84632 start=18:33:56
+posted PARTY AP-DEMO 11300
+posted PARTY2 AP-DEMO2 11300
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+GET /api/v1/trade/orders/PO-I1/invoicing?company=DEFAULT 200
+GET /api/v1/trade/orders/PO-I2/invoicing?company=DEFAULT 200
+GET /api/v1/trade/orders/PO-I3/invoicing?company=DEFAULT 200
+seed-invoicing ok: PO-I1 L1 4/10 L2 0/4; PO-I2 L1 10/10; PO-I3 L1 0/5
+POST /api/v1/trade/tradeProduct 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+GET /api/v1/trade/orders/SO-I1/invoicing?company=DEFAULT 200
+GET /api/v1/trade/orders/SO-I2/invoicing?company=DEFAULT 200
+seed-sales ok: SO-I1 L1 4/10 L2 0/4; SO-I2 L1 10/10 (AR, PARTY2)
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+GET /api/v1/trade/orders?company=DEFAULT&limit=100 200
+GET /api/v1/trade/orders/PO-C1/invoicing?company=DEFAULT 200
+GET /api/v1/trade/open-items?company=DEFAULT&limit=100 200
+POST /api/v1/trade/actions/preview 200
+POST /api/v1/trade/actions 201
+GET /api/v1/trade/orders?company=DEFAULT&limit=100 200
+GET /api/v1/trade/orders/PO-C1/invoicing?company=DEFAULT 200
+seed-credit ok: PO-C1 L1 贷项前 full 10/10 → 贷项 4 后 partial 6/10
+readiness ok: company DEFAULT; orders exist for invoicing none / partial / full; PO-C1 partial (seed-credit asserts 10 -> 6; credited 4)
+capture skipped (dry-run)
+port 4204 released
+exit=0

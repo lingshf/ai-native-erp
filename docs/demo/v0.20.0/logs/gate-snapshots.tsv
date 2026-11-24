@@ -1,0 +1,67 @@
+phase	time	pid	ppid_chain	cpu_s	cwd	cmd
+pre	2026-11-23 18:40:27	22720		1	未取	"C:\Program Files\nodejs\node.exe" "C:\Program Files\nodejs/node_modules/npm/bin/npm-cli.js" start
+pre	2026-11-23 18:40:27	17516		2	未取	node  src/server.js
+pre	2026-11-23 18:40:27	67836		1	未取	"C:\Program Files\nodejs\node.exe" "C:\Program Files\nodejs/node_modules/npm/bin/npm-cli.js" start
+pre	2026-11-23 18:40:27	68596		1	未取	node  --env-file-if-exists=.env server.js
+pre	2026-11-23 18:40:27	71336		1	未取	"C:\Program Files\nodejs\node.exe" dist/server.js
+pre	2026-11-23 18:40:27	68508		0	未取	"C:\Program Files\nodejs\node.exe" --env-file-if-exists=.env dist/server.js
+pre	2026-11-23 18:40:27	85656		1	未取	"C:\Program Files\nodejs\node.exe" "C:\Program Files\nodejs/node_modules/npm/bin/npx-cli.js" playwright test --reporter=list
+pre	2026-11-23 18:40:27	65976		2	未取	"node"   "C:\GithubCopilot\copilot-worktrees\debate-coach\lingshf-ideal-potato\node_modules\.bin\\..\@playwright\test\cli.js" test --reporte
+pre	2026-11-23 18:40:27	91688		1	未取	node  tools/ui-test-server.js
+pre	2026-11-23 18:40:27	23504		0	未取	node  tools/ui-test-server.js --unconfigured
+pre	2026-11-23 18:40:27	93900		1	未取	node  tools/ui-test-server.js --fake
+pre	2026-11-23 18:40:27	52772		0	未取	node  tools/ui-test-server.js --fake --port=3106
+pre	2026-11-23 18:40:27	91608		1	未取	node  tools/ui-test-server.js --fake --port=3107
+pre	2026-11-23 18:40:27	43180		1	未取	node  tools/ui-test-server.js --fake --port=3108
+pre	2026-11-23 18:40:27	22060		1	未取	node  tools/ui-test-server.js --port=3109
+pre	2026-11-23 18:40:27	91780		1	未取	node  tools/ui-test-server.js --fake --port=3110
+pre	2026-11-23 18:40:27	87496		1	未取	node  tools/ui-test-server.js --fake --port=3111
+pre	2026-11-23 18:40:27	94144		8	未取	"C:\Program Files\nodejs\node.exe" C:\GithubCopilot\copilot-worktrees\debate-coach\lingshf-ideal-potato\node_modules\playwright\lib\worker\w
+win	2026-11-23 18:41:42	22720		1	未取	"C:\Program Files\nodejs\node.exe" "C:\Program Files\nodejs/node_modules/npm/bin/npm-cli.js" start
+win	2026-11-23 18:41:42	17516		2	未取	node  src/server.js
+win	2026-11-23 18:41:42	67836		1	未取	"C:\Program Files\nodejs\node.exe" "C:\Program Files\nodejs/node_modules/npm/bin/npm-cli.js" start
+win	2026-11-23 18:41:42	68596		1	未取	node  --env-file-if-exists=.env server.js
+win	2026-11-23 18:41:42	71336		1	未取	"C:\Program Files\nodejs\node.exe" dist/server.js
+win	2026-11-23 18:41:42	68508		0	未取	"C:\Program Files\nodejs\node.exe" --env-file-if-exists=.env dist/server.js
+win	2026-11-23 18:42:44	22720		1	未取	"C:\Program Files\nodejs\node.exe" "C:\Program Files\nodejs/node_modules/npm/bin/npm-cli.js" start
+win	2026-11-23 18:42:44	17516		2	未取	node  src/server.js
+win	2026-11-23 18:42:44	67836		1	未取	"C:\Program Files\nodejs\node.exe" "C:\Program Files\nodejs/node_modules/npm/bin/npm-cli.js" start
+win	2026-11-23 18:42:44	68596		1	未取	node  --env-file-if-exists=.env server.js
+win	2026-11-23 18:42:44	71336		1	未取	"C:\Program Files\nodejs\node.exe" dist/server.js
+win	2026-11-23 18:42:44	68508		0	未取	"C:\Program Files\nodejs\node.exe" --env-file-if-exists=.env dist/server.js
+win	2026-11-23 18:42:44	68976		1	未取	"C:\Program Files\nodejs\node.exe" "C:\Program Files\nodejs/node_modules/npm/bin/npx-cli.js" playwright test --reporter=list
+win	2026-11-23 18:42:44	84668		2	未取	"node"   "C:\GithubCopilot\copilot-worktrees\debate-coach\lingshf-ideal-potato\node_modules\.bin\\..\@playwright\test\cli.js" test --reporte
+win	2026-11-23 18:42:44	53272		1	未取	node  tools/ui-test-server.js
+win	2026-11-23 18:42:44	32200		0	未取	node  tools/ui-test-server.js --unconfigured
+win	2026-11-23 18:42:44	92144		0	未取	node  tools/ui-test-server.js --fake
+win	2026-11-23 18:42:44	45720		0	未取	node  tools/ui-test-server.js --fake --port=3106
+win	2026-11-23 18:42:44	61668		1	未取	node  tools/ui-test-server.js --fake --port=3107
+win	2026-11-23 18:42:44	47572		1	未取	node  tools/ui-test-server.js --fake --port=3108
+win	2026-11-23 18:42:44	6076		1	未取	node  tools/ui-test-server.js --port=3109
+win	2026-11-23 18:42:44	17736		0	未取	node  tools/ui-test-server.js --fake --port=3110
+win	2026-11-23 18:42:44	38180		1	未取	node  tools/ui-test-server.js --fake --port=3111
+win	2026-11-23 18:42:44	93232		6	未取	"C:\Program Files\nodejs\node.exe" C:\GithubCopilot\copilot-worktrees\debate-coach\lingshf-ideal-potato\node_modules\playwright\lib\worker\w
+win	2026-11-23 18:43:46	22720		1	未取	"C:\Program Files\nodejs\node.exe" "C:\Program Files\nodejs/node_modules/npm/bin/npm-cli.js" start
+win	2026-11-23 18:43:46	17516		2	未取	node  src/server.js
+win	2026-11-23 18:43:46	67836		1	未取	"C:\Program Files\nodejs\node.exe" "C:\Program Files\nodejs/node_modules/npm/bin/npm-cli.js" start
+win	2026-11-23 18:43:46	68596		1	未取	node  --env-file-if-exists=.env server.js
+win	2026-11-23 18:43:46	71336		1	未取	"C:\Program Files\nodejs\node.exe" dist/server.js
+win	2026-11-23 18:43:46	68508		0	未取	"C:\Program Files\nodejs\node.exe" --env-file-if-exists=.env dist/server.js
+win	2026-11-23 18:43:46	68976		1	未取	"C:\Program Files\nodejs\node.exe" "C:\Program Files\nodejs/node_modules/npm/bin/npx-cli.js" playwright test --reporter=list
+win	2026-11-23 18:43:46	84668		2	未取	"node"   "C:\GithubCopilot\copilot-worktrees\debate-coach\lingshf-ideal-potato\node_modules\.bin\\..\@playwright\test\cli.js" test --reporte
+win	2026-11-23 18:43:46	53272		1	未取	node  tools/ui-test-server.js
+win	2026-11-23 18:43:46	32200		1	未取	node  tools/ui-test-server.js --unconfigured
+win	2026-11-23 18:43:46	92144		1	未取	node  tools/ui-test-server.js --fake
+win	2026-11-23 18:43:46	45720		0	未取	node  tools/ui-test-server.js --fake --port=3106
+win	2026-11-23 18:43:46	61668		1	未取	node  tools/ui-test-server.js --fake --port=3107
+win	2026-11-23 18:43:46	47572		1	未取	node  tools/ui-test-server.js --fake --port=3108
+win	2026-11-23 18:43:46	6076		1	未取	node  tools/ui-test-server.js --port=3109
+win	2026-11-23 18:43:46	17736		1	未取	node  tools/ui-test-server.js --fake --port=3110
+win	2026-11-23 18:43:46	38180		1	未取	node  tools/ui-test-server.js --fake --port=3111
+win	2026-11-23 18:43:46	92516		5	未取	"C:\Program Files\nodejs\node.exe" C:\GithubCopilot\copilot-worktrees\debate-coach\lingshf-ideal-potato\node_modules\playwright\lib\worker\w
+win	2026-11-23 18:44:48	22720		1	未取	"C:\Program Files\nodejs\node.exe" "C:\Program Files\nodejs/node_modules/npm/bin/npm-cli.js" start
+win	2026-11-23 18:44:48	17516		2	未取	node  src/server.js
+win	2026-11-23 18:44:48	67836		1	未取	"C:\Program Files\nodejs\node.exe" "C:\Program Files\nodejs/node_modules/npm/bin/npm-cli.js" start
+win	2026-11-23 18:44:48	68596		1	未取	node  --env-file-if-exists=.env server.js
+win	2026-11-23 18:44:48	71336		1	未取	"C:\Program Files\nodejs\node.exe" dist/server.js
+win	2026-11-23 18:44:48	68508		0	未取	"C:\Program Files\nodejs\node.exe" --env-file-if-exists=.env dist/server.js
