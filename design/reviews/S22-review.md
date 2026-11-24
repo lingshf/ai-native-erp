@@ -20,7 +20,7 @@
 - tag 树与 RC 范围终点 `3ae4848` 相比，`packages`、`scripts`、`.github`、`package.json`、lock 都没有差异（§5.3，输出 0 行）。
 - 产品与工具变更：`git diff --shortstat v0.20.0 3ae4848 -- packages` 为 16 个文件，+1081 / −535（REFAC-12 与 TLIST-06）；`-- scripts` 为 3 个文件，+398（SLOT-05）。`TradeSettlements` 入口 465 → 58 行，主文件 630 → 157 行。
 - **S22 范围内的 main Full**：8 个合并提交，8 个 success，0 个 cancelled，0 个 failure（§5.2）。
-- **评审打回 12 次、待证据 0 次**（S21 为 12 次、0 次）：设计 3（#314 一次、#318 两次）、开发 3（#311、#312、#316 各一次）、发布流程文档与版本管理 6（#317 三次、#319 三次）。#315 直接批准。#319 的打回点集中在证据不全，见 §2.2 与[回顾议题 1](S22-retro.md#议题-1demo-22-的-rc-退回-3-轮证据不全)。
+- **评审打回 11 次、待证据 1 次**（S21 为 12 次、0 次）：设计 3（#314 一次、#318 两次）、开发 2 次打回与 1 次待证据（#312、#316 各打回一次；#311 待证据一次，见 §2.2）、发布流程文档与版本管理 6（#317 三次、#319 三次）。#315 直接批准。#319 的打回点集中在证据不全，见 §2.2 与[回顾议题 1](S22-retro.md#议题-1demo-22-的-rc-退回-3-轮证据不全)。
 - **预算例外 1 次**：D519，Sprint 累计 `TradeSettlements` 路由 +841 B 超过 +200 B，来自 REFAC-12（+775 B，按其自身预算已批准）；TLIST-06 本身 +66 B，首屏 +2 B。
 - **冲突域越界 0 次**；派发后的补充裁定 2 次（都在 S23 任务或 DEMO-22 上，见 §3）：D520（TSET-01 N7 首屏预算自相矛盾）、D521（DEMO-22 K2 金额断言作废）。
 - **真实时段 1 次，一次通过**：capture 干跑 exit 0，K1 / K3 通过；slot-run exit 0；`gate-snapshot.ps1` 窗口内 4 帧、129 数据行、0 error。K2 的金额断言因 capture 选择器缺陷作废（D521，不是产品缺陷），改由 TLIST-06 S3 证明。SLOT-05 第一次实用：窗内 59 个 node 行都能在同一帧找到父进程行，cwd 全部取到（§4、[回顾](S22-retro.md#s20--s21-回顾行动项检查)）。
@@ -32,20 +32,20 @@
 | 目标 | 结果 | 证据 |
 | --- | --- | --- |
 | SLOT-05：开窗前与窗口内每分钟快照工具 `gate-snapshot.ps1` | 达成 | [#312](https://github.com/lingshf/ai-native-erp/pull/312) `7c7cafd`。首轮打回 4 处（查询失败被当作空闲、写入失败仍退出 0、补跑错过的节拍、G10 证据 SHA 不符），修改后批准（[6033341831](https://github.com/lingshf/ai-native-erp/pull/312#pullrequestreview-6033341831)）。合并时主脚本 160 / 160 物理行、自测 220 / 220（达上限未超），最长命名函数 12 / 15 行。DEMO-22 第一次实用见 §1 |
-| REFAC-12：拆分 `SettlementEntry`（不改行为） | 达成 | [#311](https://github.com/lingshf/ai-native-erp/pull/311) `9c05266`。首轮打回只在 R4 送审证据（zh / en 序列不全、B / F 只有摘录）；产品代码无阻塞；入口 465 → 58 行、主文件 630 → 157 行，最大新函数 73 行；路由 +775 B（其预算内），首屏 +2 B（[6033095329](https://github.com/lingshf/ai-native-erp/pull/311#pullrequestreview-6033095329)） |
+| REFAC-12：拆分 `SettlementEntry`（不改行为） | 达成 | [#311](https://github.com/lingshf/ai-native-erp/pull/311) `9c05266`。首轮只要求补 R4 送审证据（zh / en 序列不全、B / F 只有摘录），按 D451 记为待证据；产品代码无阻塞；入口 465 → 58 行、主文件 630 → 157 行，最大新函数 73 行；路由 +775 B（其预算内），首屏 +2 B（[6033095329](https://github.com/lingshf/ai-native-erp/pull/311#pullrequestreview-6033095329)） |
 | TLIST-06：付款与收款页加“刷新列表” | 达成 | [#316](https://github.com/lingshf/ai-native-erp/pull/316) `eac0c37`。首轮打回：S3 没有在加载第二页后经 UI 勾选并改金额；S5 / S6 在请求发出而不是完成后观察。修改后 base 7 个新断言失败、head 15 / 15；路由 +66 B / +200 B，首屏与 CSS 不增（[6033358291](https://github.com/lingshf/ai-native-erp/pull/316#pullrequestreview-6033358291)） |
 | DOC-22：(a) 送审清单 `git grep` 自查；(b) Demo 模板第 23 条引用快照工具 | 达成 | (a) #309 `a1a1244`（计入 S21）；(b) [#317](https://github.com/lingshf/ai-native-erp/pull/317) `3ae4848`，3 次打回后批准（[6033450925](https://github.com/lingshf/ai-native-erp/pull/317#pullrequestreview-6033450925)） |
-| S21 回顾行动 1–3 | 行动 1 部分达成、行动 2 达成、行动 3 未达成 | 见[回顾](S22-retro.md#s20--s21-回顾行动项检查) |
+| S21 回顾行动 1–3 | 行动 1 部分达成、行动 2 部分达成、行动 3 未达成 | 见[回顾](S22-retro.md#s20--s21-回顾行动项检查) |
 | DEMO-22：v0.21.0 RC 与 Demo | 达成，D519 / D521 | [#319](https://github.com/lingshf/ai-native-erp/pull/319) main `0494020`；tag → `01b16db`。RC 范围终点 `3ae4848`；端口 4204；一个窗口，一次通过 |
 | 门禁：开发任务都已结案，覆盖最后一个合并提交的 main Full 绿 | 达成 | RC 范围终点 `3ae4848`（#317）的 [Full 45323357311](https://github.com/lingshf/ai-native-erp/actions/runs/45323357311) success |
 
 ### 2.2 各 PR 评审
 
-评审都以 COMMENTED 状态提交，结论按正文首行 `VERDICT:` 计。打回与待证据的区分按 D451，口径与 S21 相同。本 Sprint 没有“只要求补证据、代码与文档都不改”的轮次，`CHANGES_REQUESTED` 全部记为打回。
+评审都以 COMMENTED 状态提交，结论按正文首行 `VERDICT:` 计。打回与待证据的区分按 D451，口径与 S21 相同；首行 `VERDICT:` 只决定是否计入，不直接等同统计分类。#311 的 [6033013484](https://github.com/lingshf/ai-native-erp/pull/311#pullrequestreview-6033013484) 只要求补 R4 的双语实跑与完整采样，批准在同一 head `b3212de`，没有要求改代码或文档，记为**待证据**；其余 11 条 `CHANGES_REQUESTED` 记为打回。
 
 | PR | 合并 / 轮次 | main Full | 结论与打回点 |
 | --- | --- | --- | --- |
-| REFAC-12 [#311](https://github.com/lingshf/ai-native-erp/pull/311) | `9c05266`；1 轮打回（[6033013484](https://github.com/lingshf/ai-native-erp/pull/311#pullrequestreview-6033013484)），批准 [6033095329](https://github.com/lingshf/ai-native-erp/pull/311#pullrequestreview-6033095329)（同一 head `b3212de`，只补评论中的证据） | [绿](https://github.com/lingshf/ai-native-erp/actions/runs/45317584310) | 打回点只在 R4 证据：规定序列没有在 zh / en 各走一遍（各场景固定了一种语言）；B / F 的逐步输出只有截断摘录，没有可核对的完整采样 |
+| REFAC-12 [#311](https://github.com/lingshf/ai-native-erp/pull/311) | `9c05266`；1 轮待证据（D451，[6033013484](https://github.com/lingshf/ai-native-erp/pull/311#pullrequestreview-6033013484)），批准 [6033095329](https://github.com/lingshf/ai-native-erp/pull/311#pullrequestreview-6033095329)（同一 head `b3212de`，只补评论中的证据） | [绿](https://github.com/lingshf/ai-native-erp/actions/runs/45317584310) | 待证据，只要求补 R4 证据：规定序列没有在 zh / en 各走一遍（各场景固定了一种语言）；B / F 的逐步输出只有截断摘录，没有可核对的完整采样 |
 | SLOT-05 [#312](https://github.com/lingshf/ai-native-erp/pull/312) | `7c7cafd`；1 轮打回（[6033062950](https://github.com/lingshf/ai-native-erp/pull/312#pullrequestreview-6033062950)），批准 [6033341831](https://github.com/lingshf/ai-native-erp/pull/312#pullrequestreview-6033341831) | [绿](https://github.com/lingshf/ai-native-erp/actions/runs/45321725958) | 4 处：G6 把整个 `ObjectNotFound` 类别当成无监听（查询失败会误放行）；`CreateNew` / `AppendAllText` 失败仍可退出 0；采样按全局起点补跑错过的节拍；G10 日志打印的是 `a1a1244` 而不是送审 head |
 | S21 评审与回顾 [#314](https://github.com/lingshf/ai-native-erp/pull/314) | `94f1da3`；1 轮打回（[6033185156](https://github.com/lingshf/ai-native-erp/pull/314#pullrequestreview-6033185156)），批准 [6033208289](https://github.com/lingshf/ai-native-erp/pull/314#pullrequestreview-6033208289) | [绿](https://github.com/lingshf/ai-native-erp/actions/runs/45319491679) | 设计文档的事实：把第二窗口快照写成有父进程链（`ppid_chain` 全空）；行动 3 仍写“待确认”（已采纳） |
 | D513 同步 [#315](https://github.com/lingshf/ai-native-erp/pull/315) | `4382b41`；直接批准 [6033194520](https://github.com/lingshf/ai-native-erp/pull/315#pullrequestreview-6033194520) | [绿](https://github.com/lingshf/ai-native-erp/actions/runs/45319259756) | 通过 |
@@ -110,7 +110,7 @@ foreach ($n in 311,312,314,315,316,317,318,319) {
 }
 ```
 
-输出（2026-11-24，main `0494020`）：#315 只有 1 次 `APPROVED`；#311、#312、#314、#316 各有 1 次 `CHANGES_REQUESTED` 和 1 次 `APPROVED`；#318 有 2 次 `CHANGES_REQUESTED` 和 1 次 `APPROVED`；#317、#319 各有 3 次 `CHANGES_REQUESTED` 和 1 次 `APPROVED`。`CHANGES_REQUESTED` 共 12 次，全部记为打回。
+输出（2026-11-24，main `0494020`）：#315 只有 1 次 `APPROVED`；#311、#312、#314、#316 各有 1 次 `CHANGES_REQUESTED` 和 1 次 `APPROVED`；#318 有 2 次 `CHANGES_REQUESTED` 和 1 次 `APPROVED`；#317、#319 各有 3 次 `CHANGES_REQUESTED` 和 1 次 `APPROVED`。`CHANGES_REQUESTED` 共 12 次：#311 的 1 次只要求补证据、批准在同一 head，按 D451 记为待证据；其余 11 次记为打回。
 
 ### 5.2 main Full
 
