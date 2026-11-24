@@ -56,7 +56,12 @@ export function LedgerFilterForm({
         field={dimension}
         locked={locked}
       />
-      <FilterInput id="ledger-value" label={t("ledger.value")} field={value} locked={locked} />
+      <FilterInput
+        id="ledger-value"
+        label={t("ledger.value")}
+        field={value}
+        locked={locked || !dimension.value}
+      />
       <div className="actions">
         <button className="btn btn-primary" type="submit" disabled={locked}>
           {t("ledger.apply")}

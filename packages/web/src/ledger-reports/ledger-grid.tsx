@@ -90,7 +90,7 @@ function submitFilters({
       stage: params.get("stage") ?? "adjusted",
       watermark: params.get("watermark") ?? "",
       accountRevision: params.get("accountRevision") ?? "",
-      ...(dimension ? { dimension, value } : value ? { value } : {}),
+      ...(dimension ? { dimension, value } : {}),
     });
   };
 }
@@ -144,11 +144,15 @@ export function LedgerGrid({
     setParams,
   });
   const onScroll = loadMoreOnScroll(query, conflict);
+  const changeDimension = (next: string) => {
+    setDimension(next);
+    if (!next) setValue("");
+  };
   return (
     <div className="ledger-stack">
       <LedgerFilterForm
         account={{ value: code, onChange: setCode }}
-        dimension={{ value: dimension, onChange: setDimension }}
+        dimension={{ value: dimension, onChange: changeDimension }}
         value={{ value, onChange: setValue }}
         locked={conflict !== null}
         onSubmit={submit}
