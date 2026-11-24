@@ -3,7 +3,7 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AiFailure, type AiPort } from "@erp/core/application";
-import { removeWorkspace, terminateRuntime } from "./copilot-ai-cleanup.ts";
+import { cleanupSteps } from "./copilot-ai-cleanup.ts";
 import { isolatedClient } from "./copilot-ai-client.ts";
 import { createCallState, interruptionOf } from "./copilot-ai-interruption.ts";
 import { runTextSession } from "./copilot-ai-session.ts";
@@ -72,21 +72,21 @@ export class CopilotAiAdapter implements AiPort {
       failure = error instanceof AiFailure ? error : new AiFailure("unavailable");
     } finally {
       signal.removeEventListener("abort", cancel);
-      let cleanupFailed = false,
-        terminated = !client;
-      if (client)
-        ({ cleanupFailed, terminated } = await terminateRuntime(
-          client,
-          state.interrupted || signal.aborted,
-          this.options,
-          () => {
-            this.blocked = true;
-            console.error("AI runtime termination unconfirmed; AI disabled until restart.");
-          },
-        ));
-      if (directory && terminated && !(await removeWorkspace(directory))) cleanupFailed = true;
+      const scope = { client, directory, interrupted: state.interrupted || signal.aborted };
+      const steps = cleanupSteps(scope, this.options, () => {
+        this.blocked = true;
+        console.error("AI runtime termination unconfirmed; AI disabled until restart.");
+      });
+      // Await each yielded promise here: one continuation per cleanup await, exactly as before.
+      let step = steps.next();
+      while (!step.done)
+        try {
+          step = steps.next(await step.value);
+        } catch (error) {
+          step = steps.throw(error);
+        }
       this.busy = false;
-      if (cleanupFailed) failure = new AiFailure("cleanup");
+      if (step.value) failure = new AiFailure("cleanup");
     }
     if (failure) throw failure;
     if (answer === undefined) throw new AiFailure("response");
