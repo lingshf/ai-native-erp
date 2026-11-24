@@ -59,7 +59,7 @@ function New-CommittedRepo([string] $Path) {
   return $Path
 }
 
-function Get-LogLines($Run, [string] $Pattern) { ($Run.Log -split "`n" | Where-Object { $_ -match $Pattern }) -join ' ' }
+function Get-LogLines($Run, [string] $Pattern) { ($Run.Log -split '\r?\n' | Where-Object { $_ -match $Pattern }) -join ' ' }
 
 # True when the run stopped before the steps file and every later action.
 function Test-NoAction($Run) {
