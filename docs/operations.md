@@ -48,9 +48,9 @@ npm run storage:admin -- restore <db> <in>   # 必须先停止服务和其他数
 
 ## 锁与恢复失败
 
-维护锁是库旁的 `<库文件>.maintenance-lock`。持锁时服务启动会失败。两条路径行为不同（`packages/infra/src/storage/maintenance.ts`）：
+维护锁是库旁的 `<库文件>.maintenance-lock`。持锁时服务启动会失败（进程退出并记录 `errorType: StartupError`，不会对外返回 `BUSY`）。两条路径行为不同（`packages/infra/src/storage/maintenance.ts`）：
 
-- **服务启动、在线备份**取得“共享租约”：锁被占用时短暂重试约 50 次（每次 10 ms）后返回 `BUSY`。
+- **服务启动、在线备份**取得“共享租约”：锁被占用时短暂重试约 50 次（每次 10 ms）后内部得到 `BUSY`；服务启动对外表现为 `StartupError`，`storage:admin backup` 则输出 `BUSY` 错误。
 - **恢复**要独占：不重试；已有锁或存在仍在运行的使用者租约就立即 `BUSY`，不会等服务关闭。须先停服务。
 
 - 异常终止遗留的锁：先确认没有维护进程在运行并调查原因，再由操作员处理；**不能直接删锁强启服务**。

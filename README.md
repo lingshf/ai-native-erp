@@ -216,7 +216,7 @@ npm run storage:admin -- provision --provider sqlite --file new-target.sqlite --
 
 只接受已生成并校验 SHA 的双账快照、显式的新目标路径和全部六项决定 C 选项；不会读取活动旧账、4173 或 `.bak`。导入后须经迁移核对（`legacy-reconcile`，见 [docs/user/backup-and-legacy.md](docs/user/backup-and-legacy.md)）达到 `reconciled` 才能作为活动库；演练（M2-05）与切换（M2-06）尚未交付，另需用户授权。
 
-逐步操作见 [docs/migration-runbook.md](docs/migration-runbook.md)；`legacy-import --snapshot-dir DIR --dry-run` 可先只读列出六项决定 C 及其影响条数。
+快照、演练（dry-run，只读列出六项决定 C 及其影响条数）、导入与核对的逐步命令见 [docs/migration-runbook.md](docs/migration-runbook.md)。
 
 导入、核对的完整命令（含必需的 `--opening-items`）只在 [docs/migration-runbook.md](docs/migration-runbook.md) 维护，期初文件格式见 [docs/user/backup-and-legacy.md](docs/user/backup-and-legacy.md) 的“期初未结项”。合成验收基准：`node packages\infra\test\support\legacy-import-bench.mjs --execute`。
 
