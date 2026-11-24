@@ -125,6 +125,7 @@ export const tradeEn = {
   "trade.rateHint":
     "Rates are decimal strings; date ranges include both endpoints and must not overlap. No implicit default tax rate.",
   "trade.issue.shape": "Invalid field value or unsupported field.",
+  "trade.issue.wholeDays": "Enter a whole number from 0 to 3650.",
   "trade.issue.window": "Invalid or overlapping validity dates.",
   "trade.issue.reference":
     "Choose an existing active reference covering these validity dates in this company.",
@@ -367,6 +368,7 @@ export const tradeZh: Record<keyof typeof tradeEn, string> = {
   "trade.discountHint": "折扣使用收入科目：AP 贷记收入，AR 借记抵减收入。保存配置不产生余额。",
   "trade.rateHint": "税率使用十进制字符串；日期区间含首尾且不可重叠。无默认隐含税率。",
   "trade.issue.shape": "字段值无效或含不支持的字段。",
+  "trade.issue.wholeDays": "请输入 0–3650 的整数。",
   "trade.issue.window": "有效日期无效或重叠。",
   "trade.issue.reference": "请选择本法人中已存在、已启用且覆盖有效期的引用。",
   "trade.issue.account": "科目类别、子账、用途或报表组不符合要求。",

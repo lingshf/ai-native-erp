@@ -731,3 +731,145 @@ describe("TLIST-02 trade master refresh list", () => {
     expect(confirm).not.toHaveBeenCalled();
   });
 });
+// TMAS-01 (D539): both term-day fields take only whole numbers 0–3650 and show one dedicated message.
+type DayField = "dueDays" | "discountDays";
+type TermsField = "name" | DayField | "discountPercent" | "rates";
+// Records every save (POST / PUT) body; lists stay empty.
+function stubTradeWrites() {
+  const writes: { data: Record<string, unknown> }[] = [];
+  vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
+    if (url.startsWith("/api/v1/companies"))
+      return response({ items: [company], nextCursor: null });
+    if (!init?.method) return response({ items: [], nextCursor: null });
+    const command = JSON.parse(String(init.body));
+    writes.push(command);
+    const { company: _, expectedRevision, ...saved } = command;
+    return response({ ...saved, revision: expectedRevision + 1 }, 201);
+  });
+  return writes;
+}
+const fill = (fields: Partial<Record<TermsField, string>>) => {
+  for (const [field, value] of Object.entries(fields))
+    fireEvent.change(screen.getByLabelText(zh(`trade.${field as TermsField}`)), {
+      target: { value },
+    });
+};
+// Submits the form directly, as a script would, so native `required` does not intervene.
+const submitDraft = () =>
+  fireEvent.submit(screen.getByRole("button", { name: zh("dim.save") }).closest("form") as Element);
+async function openNew(
+  kind: "tradeTerms" | "taxCode",
+  fields: Partial<Record<TermsField, string>>,
+) {
+  await selectKind(kind);
+  fireEvent.click(await screen.findByRole("button", { name: zh("trade.new") }));
+  fill({ name: "Terms", ...fields });
+  fireEvent.change(screen.getByLabelText(zh("trade.code")), {
+    target: { value: "T1" },
+  });
+}
+const errorBar = () => document.getElementById("trade-error")?.textContent;
+const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+// What the user sees after one submit: the error bar, the field's ARIA and DOM, and saves sent.
+function outcome(field: DayField, writes: unknown[], language: "zh" | "en" = "zh") {
+  const input = screen.queryByLabelText<HTMLInputElement>(label(language, `trade.${field}`));
+  return {
+    error: errorBar(),
+    invalid: input?.getAttribute("aria-invalid"),
+    describedBy: input?.getAttribute("aria-describedby"),
+    type: input?.getAttribute("type"),
+    required: input?.required,
+    extra: ["min", "max", "inputmode", "pattern"].filter((name) => input?.hasAttribute(name)),
+    requests: writes.length,
+  };
+}
+const wholeDaysIssue = (field: DayField, language: "zh" | "en" = "zh") => ({
+  error: `data.${field}: ${label(language, "trade.issue.wholeDays")}`,
+  invalid: "true",
+  describedBy: "trade-error",
+  type: "text",
+  required: true,
+  extra: [],
+  requests: 0,
+});
+// Submits each value in a fresh editor, so a value that saves cannot hide the next one.
+async function submitEach(
+  field: DayField,
+  values: string[],
+  fields: Partial<Record<TermsField, string>> = {},
+) {
+  const writes = stubTradeWrites();
+  const seen: Record<string, ReturnType<typeof outcome>> = {};
+  let view: ReturnType<typeof render> | undefined;
+  for (const value of values) {
+    view?.unmount();
+    writes.length = 0;
+    view = render(<App />);
+    await openNew("tradeTerms", { ...fields, [field]: value });
+    submitDraft();
+    await settle();
+    seen[value] = outcome(field, writes);
+  }
+  return seen;
+}
+const expectEach = (field: DayField, values: string[], seen: Record<string, unknown>) =>
+  expect(seen).toEqual(Object.fromEntries(values.map((value) => [value, wholeDaysIssue(field)])));
+describe("TMAS-01 trade term days validation", () => {
+  for (const [id, field, values] of [
+    ["V1", "dueDays", ["30.0"]],
+    ["V2", "discountDays", ["1e2", "0x10"]],
+    ["V3", "dueDays", ["", "   "]],
+    ["V4", "dueDays", ["-1", "3651", "abc", "３０"]],
+  ] as const)
+    it(`TMAS-01 ${id} / N4: rejects ${field} ${values.map((value) => JSON.stringify(value)).join(", ")} with a dedicated message and no request`, async () => {
+      expectEach(field, [...values], await submitEach(field, [...values]));
+    });
+  it("TMAS-01 V5: the whitespace-only due date message follows a zh → en switch", async () => {
+    const writes = stubTradeWrites();
+    render(<App />);
+    await openNew("tradeTerms", { dueDays: "   " });
+    submitDraft();
+    await settle();
+    fireEvent.change(screen.getByLabelText(zh("shell.language")), {
+      target: { value: "en" },
+    });
+    expect(errorBar()).toBe("data.dueDays: Enter a whole number from 0 to 3650.");
+    expect(outcome("dueDays", writes, "en")).toEqual(wholeDaysIssue("dueDays", "en"));
+  });
+  it("TMAS-01 V6: reports the days field before contract issues such as an empty name", async () => {
+    expectEach("dueDays", ["x"], await submitEach("dueDays", ["x"], { name: "" }));
+  });
+  it("TMAS-01 N1: saves trimmed whole days with leading zeros as JSON numbers", async () => {
+    const writes = stubTradeWrites();
+    render(<App />);
+    for (const [value, days] of [
+      ["0", 0],
+      ["3650", 3650],
+      [" 45 ", 45],
+      ["007", 7],
+    ] as const) {
+      await openNew("tradeTerms", { dueDays: value, discountDays: value });
+      submitDraft();
+      await waitFor(() => expect(screen.queryByLabelText(zh("trade.code"))).toBeNull());
+      expect(writes.at(-1)?.data).toMatchObject({
+        dueDays: days,
+        discountDays: days,
+      });
+    }
+    expect(writes).toHaveLength(4);
+  });
+  it("TMAS-01 N2: other fields keep the generic shape message", async () => {
+    const writes = stubTradeWrites();
+    render(<App />);
+    await openNew("tradeTerms", { discountPercent: "abc" });
+    submitDraft();
+    expect(errorBar()).toBe(`data.discountPercent: ${zh("trade.issue.shape")}`);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: zh("master.cancel") }));
+    await openNew("taxCode", { rates: "[" });
+    submitDraft();
+    expect(errorBar()).toBe(`data.rates: ${zh("trade.issue.shape")}`);
+    await settle();
+    expect(writes).toEqual([]);
+  });
+});
