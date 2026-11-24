@@ -753,11 +753,27 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | [MEAS-01](MEAS-01-bundle-measure-script.md) | 体积测量脚本入库（S18 回顾行动 4） | 开发工具 | P1 | 无 | `scripts/measure/**`、`packages/infra/test/tooling/bundle-compare.test.ts`、`scripts/test-shard-weights.json`（加一行） | 不加 | 不需要 | todo | — |
-| [REFAC-11](REFAC-11-order-view-split.md) | 拆分订单详情 `OrderView` 函数体，不改行为 | 重构（页面） | P2 | 无 | `trade-orders/order-view.tsx` 与同目录新文件 | 不加 | 不需要 | todo | — |
-| [TLIST-04](TLIST-04-dimensions-refresh.md) | 财务维度加“刷新列表” | 功能（列表） | P2 | 无 | `Dimensions.tsx`、`dimensions.test.tsx` | 不加 | 不需要 | todo | — |
+| [REFAC-11](REFAC-11-order-view-split.md) | 拆分订单详情 `OrderView` 函数体，不改行为 | 重构（页面） | P2 | 无 | `trade-orders/order-view.tsx` 与同目录新文件 | 不加 | 不需要 | done | [#299](https://github.com/lingshf/ai-native-erp/pull/299)（`6fbc2da`） |
+| [TLIST-04](TLIST-04-dimensions-refresh.md) | 财务维度加“刷新列表” | 功能（列表） | P2 | 无 | `Dimensions.tsx`、`dimensions.test.tsx` | 不加 | 不需要 | done | [#296](https://github.com/lingshf/ai-native-erp/pull/296)（`ea24f87`） |
 | DEMO-20（无任务书） | v0.19.0 RC 与 Demo（TLIST-04 未合并则 v0.18.1），验收见 [S20.md](S20.md#demo-20-验收) | 发布 | P1（Sprint 末） | v0.18.0 已发布；每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | todo | — |
 
 - **并行**：A ∥ B ∥ C，冲突域不相交；共享单文件 `scripts/test-shard-weights.json` 只有 A 改；都不申请浏览器时段，服从 D442 / D480 时段停用通知；DEMO-20 排在它们结案之后。体积口径见 [S20.md](S20.md#l10--体积口径)。
+
+## S21：时段 runner 调用位置自检 + main Full 偶发失败根治 + 业务事件“刷新列表”（建议 S20 之后的下一个 MINOR）
+
+计划与任务书见 [S21.md](S21.md)（S21 不预占决定编号，从 S20 决定表届时的下一个可用编号起）。基线 main `6fbc2da`（S20 的 TLIST-04 #296、REFAC-11 #299 已合并；MEAS-01 #298 进行中；DEMO-20 未开始）。三条泳道 A（SLOT-04，S19 回顾行动 2）、B（FLAKE-08，run 45291279585）、C（TLIST-05），都不加迁移；DOC-21 由版本管理把证据格式四条写入送审清单（S19 回顾行动 4）。TLIST-05 不在冻结的 RC 范围内则发补丁版本。
+
+**不在本 Sprint**：M2-05 真实演练与 M2-06（仍待用户决定 A / B / C）；结算的“刷新列表”（须先拆 `SettlementEntry`）；函数体拆分（`CompanyEvents` 只要求净增 ≤ 0）；`slot-run.ps1` 进程采样与端口规则改版；任务书模板“构建来源”改为引用 `scripts/measure`（MEAS-01 合并后另开设计 PR）。
+
+| ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [SLOT-04](SLOT-04-call-location-check.md) | `slot-run.ps1` 调用位置自检 + dist 检查改用 `assert-web-dist.ps1` | 开发工具 | P1 | DEMO-20 窗口已关闭 | `scripts/slot/slot-run.ps1`、`scripts/slot/selftest-location.ps1`（新）、`scripts/slot/README.md` | 不加 | 不需要 | todo | — |
+| [FLAKE-08](FLAKE-08-virtualizer-timer-after-teardown.md) | 虚拟列表防抖定时器在 jsdom 拆除后触发（main Full 偶发 `window is not defined`） | 修复（测试基础设施） | P1 | 无 | `packages/web/test/setup.ts` 和 / 或 `packages/web/test/ledger-reports.test.tsx` | 不加 | 不需要 | todo | — |
+| [TLIST-05](TLIST-05-business-events-refresh.md) | 业务事件与待转队列加“刷新列表” | 功能（列表） | P2 | 无 | `business-events/list.tsx`、`business-events/company-events.tsx`、`business-events.test.tsx` | 不加 | 不需要 | todo | — |
+| DOC-21（无任务书） | 送审清单写入证据格式四条，验收见 [S21.md](S21.md#doc-21-验收) | 文档（发布流程） | P2 | 无 | `docs/release/README.md` | 不加 | 不需要 | todo | — |
+| DEMO-21（无任务书） | `<S21 版本>` RC 与 Demo，验收见 [S21.md](S21.md#demo-21-验收) | 发布 | P1（Sprint 末） | `<S20 版本>` 已发布；每个开发任务与 DOC-21 已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | todo | — |
+
+- **并行**：A ∥ B ∥ C，冲突域不相交，没有共享单文件；A 在 DEMO-20 窗口关闭后才派发，DEMO 窗口期间不改 `scripts/slot/`；都不申请浏览器时段，服从 D442 / D480 时段停用通知；DEMO-21 排在它们结案之后。体积口径见 [S21.md](S21.md#l10--体积口径)。
 
 ## 派发顺序
 
