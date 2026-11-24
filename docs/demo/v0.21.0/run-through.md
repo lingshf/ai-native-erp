@@ -26,7 +26,7 @@
 
 | 键盘步骤 | 焦点起点（确定元素） | 键 | 期望目标 | 窗口外验证 |
 | --- | --- | --- | --- | --- |
-| K1 | “核销分配”页签头按钮（`aria-controls=tset-allocation-body`） | Tab | “刷新列表”（有 / 无选择均如此） | 用例 K1 通过；K2 的“选中保持”在窗口外未单独验证，金额保持见 TLIST-06 S3 |
+| K1 | “核销分配”页签头按钮（`aria-controls=tset-allocation-body`） | Tab | “刷新列表”（有 / 无选择均如此） | 用例 K1 通过；K2（有选择时的保持）见 TLIST-06 S3，不属于窗口验收 |
 | K3 | 同上，确认待定、表格锁定 | Tab | “刷新列表” | 用例 K3 通过 |
 | K1 Enter / 空格 | “刷新列表” | Enter / Space | 各 1 次未结项第一页请求 | jsdom 无法证明浏览器的按键激活，留给窗口内的真实 Chrome（D487） |
 
@@ -68,15 +68,29 @@ TLIST-06 单独符合 +200 B 的上限（+66 B）。整个 Sprint 的 +841 B 超
 
 **D519 体积例外：** Sprint 累计 `TradeSettlements` +841 B 超过 +200 B，原因是 REFAC-12 在同一路由上的拆分（+775 B，已按其自身预算评审批准）；TLIST-06 本身 +66 B，首屏 +2 B（D454 ≤10 B）。协调者放行，产品代码未改。
 
-**时间线（PST，本机时间）：**
+**时间线（PST，2026-11-23，只保留这一套数字；时间只取自仓库内的原始记录，不用我转述的 `Get-Date` 读数）：**
 
-| 时间 | 事件 |
+| 时间 | 事件（出处） |
 | --- | --- |
-| 20:18:26 | 开窗前门禁：`pwsh -NoProfile -File "$T\scripts\slot\gate-snapshot.ps1" -OutFile "$W\logs\gate-pre-window.tsv" -Once -Ports "4204,4173"`，exit 0，errors=0，4204 与 4173 各一行 `pid=none`（`logs/gate-pre-window.tsv`）。开窗，已通知协调者 |
-| 20:18:40 | 启动窗口快照（异步）：`pwsh -NoProfile -File "$T\scripts\slot\gate-snapshot.ps1" -OutFile "$W\logs\gate-window.tsv" -StopFile "$W\logs\gate.stop" -Ports "4204,4173"`，启动前 OutFile 与 StopFile 均不存在 |
-| 20:18:43–20:19:29 | 步骤 1：`powershell.exe -NoProfile -File docs\demo\v0.21.0\scripts\run-main.ps1 -Shots "$W\shots-dry" -Port 4204 *> "$W\logs\capture-dry-run.out.log"`，紧接 `Add-Content … "exit=$LASTEXITCODE"`；exit=0，capture exit 0，4 张图，`port 4204 released` |
-| 20:19:36–20:21:43 | 步骤 2：`pwsh -NoProfile -File "$T\scripts\slot\slot-run.ps1" -OutDir "$W\out" -StepsFile "$A\docs\demo\v0.21.0\scripts\steps-demo22.ps1" -BaseRoot $T -Ports 4204 *> "$W\logs\slot-run.out.log"`，紧接 `Add-Content … "exit=$LASTEXITCODE"`；exit=0，`step demo-capture exit=0 counted-after=0` |
-| 20:21:46 | 关窗：创建 `gate.stop`；快照进程 `snapshots=4 rows=129 errors=0 timedOut=false exit=0`。已通知协调者 |
+| 20:18:28.605 | 开窗前门禁唯一一帧 `takenAt`（`logs/gate-pre-window.tsv`，`2026-11-23T20:18:28.6048693-08:00`） |
+| 20:18:42.369 / 20:19:42.448 / 20:20:42.666 / 20:21:42.800 | 窗口快照 4 帧 `takenAt`（`logs/gate-window.tsv`） |
+| 20:19:28 | 步骤 1 的账套删除前清单时间（`logs/capture-dry-run.out.log` `at=`），随后 `port 4204 released` |
+| 20:19:38.628 | 步骤 2 runner 启动（`logs/slot-run.out.log` 第 1 行 `2026-11-24T04:19:38.628Z`） |
+| 20:21:40 | 步骤 2 的账套删除前清单时间（`logs/slot-demo-capture.out.log` `at=`） |
+| 20:21:43.448 | 步骤 2 runner 结束（`logs/slot-run.out.log` `runner done`，`04:21:43.448Z`） |
+| 20:21:46.733 | 关窗：`gate.stop` 的创建时间（文件元数据，文件在 `%TEMP%\demo22\logs\gate.stop`，0 B，未入库） |
+
+**缺口（诚实记录）：** ① 放行时刻、步骤 1 的启动时刻、窗口快照命令的启动时刻没有仓库内的原始记录；只能界定范围：放行在门禁帧 20:18:28.605 之后、窗口快照首帧 20:18:42.369 之前，步骤 1 在窗口快照启动之后、20:19:28 之前。我在转述里用过的 20:18:26 / 20:18:40 / 20:18:43 / 20:19:36 来自 shell 命令前的 `Get-Date` 输出，没有存成文件，**作废，不再使用**。② 快照命令的“原始启动记录”拿不到：`gate-window.out.log` 只有收尾两行（脚本只在结束时输出，无启动行）；PSReadLine 历史对由工具启动的命令没有记录（`ConsoleHost_history.txt` 中 `gate-window`、`slot-run`、`run-main` 的命中为 0）；`gate-window.tsv` 的进程行里没有快照进程自身。因此下面的命令文本只是我执行时的原文，没有独立的启动日志佐证；可交叉验证的只有第一帧时间、`-Ports "4204,4173"` 对应的 port 行和 `-StopFile` 触发的 `exit=0`。
+
+**命令（原文，`$T` 的展开路径见评审修正一节）：**
+
+| 步骤 | 命令 |
+| --- | --- |
+| 门禁 | `pwsh -NoProfile -File "$T\scripts\slot\gate-snapshot.ps1" -OutFile "$W\logs\gate-pre-window.tsv" -Once -Ports "4204,4173"`，exit 0，errors=0，4204 与 4173 各一行 `pid=none`（`logs/gate-pre-window.tsv`）。开窗，已通知协调者 |
+| 窗口快照（异步） | `pwsh -NoProfile -File "$T\scripts\slot\gate-snapshot.ps1" -OutFile "$W\logs\gate-window.tsv" -StopFile "$W\logs\gate.stop" -Ports "4204,4173"`，启动前 OutFile 与 StopFile 均不存在 |
+| 步骤 1 | `powershell.exe -NoProfile -File docs\demo\v0.21.0\scripts\run-main.ps1 -Shots "$W\shots-dry" -Port 4204 *> "$W\logs\capture-dry-run.out.log"`，紧接 `Add-Content … "exit=$LASTEXITCODE"`；exit=0，capture exit 0，4 张图，`port 4204 released` |
+| 步骤 2 | `pwsh -NoProfile -File "$T\scripts\slot\slot-run.ps1" -OutDir "$W\out" -StepsFile "$A\docs\demo\v0.21.0\scripts\steps-demo22.ps1" -BaseRoot $T -Ports 4204 *> "$W\logs\slot-run.out.log"`，紧接 `Add-Content … "exit=$LASTEXITCODE"`；exit=0，`step demo-capture exit=0 counted-after=0` |
+| 关窗 | 创建 `gate.stop`；快照进程 `snapshots=4 rows=129 errors=0 timedOut=false exit=0`。已通知协调者 |
 
 无失败、无重试、无管道。快照原始记录：`logs/gate-window.tsv`（SHA-256 `1093D2F9436022E96DD6C92C221EFEF6B5740C4DB31CC7D7B17DD28B0F76CC52`）；`logs/capture-dry-run.out.log`（`0ED3FEE170CB113CD0B802CDDF9F2BD0B1570BAD708AC5828804BBA2963DB844`）；`logs/slot-run.out.log`（`FBE71A884D9676376A116BC9FE23E111A2497A5DEB5A679ED70C0D82B0622640`）；步骤 2 的附属日志为 `logs/slot-*`。
 
@@ -85,7 +99,7 @@ TLIST-06 单独符合 +200 B 的上限（+66 B）。整个 Sprint 的 +841 B 超
 | 项 | 结果 |
 | --- | --- |
 | K1 | 起点 `button[aria-controls=tset-allocation-body]`，Tab 后落在“Refresh list”；Enter 与 Space 各产生 1 次 `/api/v1/trade/open-items?company=DEFAULT&status=open&limit=100` |
-| K2 | 选中状态：刷新后仍勾选（`k2StillChecked: true`）。**金额断言无效，作废（D521）**：日志里的 `k2AmountBefore/After = on` 是 checkbox 的值，不是核销金额，不能当作“金额不变”的证据 |
+| K2 | **不属于窗口验收（D521）。** 日志里的 `k2StillChecked`、`k2AmountBefore/After = on` 都不作为证据：金额断言用错了选择器（`on` 是 checkbox 的值，不是核销金额）；“刷新后选择与金额保持”整体改由产品测试 TLIST-06 S3 证明（7 passed，exit 0，`logs/s3-vitest.out.log`） |
 | K3 | 锁定态 fieldset disabled，“刷新列表”仍可用；刷新后“安全重试过账”仍显示、fieldset 仍禁用 |
 
 readiness：`openItems 8`，DEFAULT 账套的未结项、PO-C1 部分开票/10→6 均满足。
@@ -98,28 +112,16 @@ readiness：`openItems 8`，DEFAULT 账套的未结项、PO-C1 部分开票/10�
 
 ## 评审 6033643731（绑定 3ea8a12）的修正
 
-**1. K2 的 `on`：capture 脚本选择器问题，不是产品缺陷。D521（协调者代定）：不再开窗；窗口内 K2 的“金额不变”断言无效；真实浏览器证据只认焦点路径和 Enter / 空格激活（K1、K3，以及 K2 的焦点路径与 Enter 请求、选中保持）；“刷新后选择与金额保持”改由产品测试 TLIST-06 S3 证明（7 passed，exit 0，`logs/s3-vitest.out.log`）。截图只展示按钮位置与布局，不依赖 `on` 值。**
+**1. K2 的 `on`：capture 脚本选择器问题，不是产品缺陷。D521（协调者代定）：不再开窗；窗口内 K2 的“金额不变”断言无效；真实浏览器证据只认焦点路径和 Enter / 空格激活（K1、K3）；“刷新后选择与金额保持”改由产品测试 TLIST-06 S3 证明（7 passed，exit 0，`logs/s3-vitest.out.log`）。截图只展示按钮位置与布局，不依赖 `on` 值。**
 - 原选择器 `tbody input` 加 `filter({ hasNot: locator("[type=checkbox]") })`：`hasNot` 检查的是子孙元素，`input` 没有子孙，所以不会排除任何元素，`.first()` 取到的是行首的选择 checkbox，其未设 value，`inputValue()` 返回浏览器默认值 `on`。所以窗口里的 `k2AmountBefore/After = on` 是 checkbox 的值，不是核销金额，那一项等式没有证明金额不变。
 - 产品侧：`packages/web/src/trade-settlements/settlement-row.tsx` 中，金额输入框是选中后才渲染的 `type="number"`（`aria-label` 为“核销总额 + 单号”），checkbox 另是 `type="checkbox"`；产品代码无缺陷。
 - 脚本已改为 `tbody input[type=number]`（`capture.mjs`，`node --check` exit 0）。
 - 窗口外影响说明（现有产品测试，未改测试）：`packages/web/test/trade-settlements.test.tsx` 的 TLIST-06 用例 S3 断言刷新后保留选择和金额。在 `demo22-app`（产品代码与 `3ae4848` 相同）根目录执行 `npx vitest run packages/web/test/trade-settlements.test.tsx -t "TLIST-06" *> "$env:TEMP\demo22\logs\s3-vitest.out.log"`，紧接 `Add-Content … "exit=$LASTEXITCODE"`：7 passed | 8 skipped，exit 0（`logs/s3-vitest.out.log`）。注：先从 `packages\web` 目录执行过一次，因缺少根配置的 jsdom 环境报 `window is not defined`（exit 1），已覆盖为根目录执行的结果。
-- 窗口内真实 Chrome 的有效证据范围：K1（Enter、空格各 1 次请求）、K2 的“选中状态保持”（`k2StillChecked: true`）、K3 有效；K2 的“金额不变”在真实浏览器里没有有效取证，只有上述 jsdom 测试覆盖，修正后的脚本未在真实浏览器里重跑。D521：不再开窗，不补真实浏览器取证。
+- 窗口内真实 Chrome 的有效证据范围：K1（Enter、空格各 1 次请求）和 K3；K2 整体（选择、金额保持）不属于窗口验收，改由上述 jsdom 测试 TLIST-06 S3 证明；修正后的脚本未在真实浏览器里重跑。D521：不再开窗，不补真实浏览器取证。
 
 **2. 快照命令与时间点。**
 - `$T` 展开为 `C:\GithubCopilot\copilot-worktrees\ai-native-erp\demo22-tool`（基线 `3ae4848`），实际执行的是 `pwsh -NoProfile -File "C:\GithubCopilot\copilot-worktrees\ai-native-erp\demo22-tool\scripts\slot\gate-snapshot.ps1" -OutFile "C:\Users\shaoling\AppData\Local\Temp\demo22\logs\gate-window.tsv" -StopFile "C:\Users\shaoling\AppData\Local\Temp\demo22\logs\gate.stop" -Ports "4204,4173"`；开窗前门禁同样用该路径，参数为 `-OutFile "…\logs\gate-pre-window.tsv" -Once -Ports "4204,4173"`。没有使用 lingshf-animated-disco 下的脚本。
-- 时间点（PST，2026-11-23）：
-
-| 时间 | 含义 |
-| --- | --- |
-| 20:18:26 | 门禁命令启动（命令前 `Get-Date` 输出） |
-| 20:18:28.605 | 门禁唯一一帧 `takenAt`（`logs/gate-pre-window.tsv`，`2026-11-23T20:18:28.6048693-08:00`），4204、4173 各一行 `pid=none` |
-| 约 20:18:3x | 门禁 exit 0 后向协调者发通知并按批准放行，随即启动窗口快照 |
-| 20:18:40 | 窗口快照命令启动（`Get-Date` 输出） |
-| 20:18:42.369 / 20:19:42.448 / 20:20:42.666 / 20:21:42.800 | 窗口快照 4 帧 `takenAt`（`logs/gate-window.tsv`），每帧约 60 s |
-| 20:18:43 | 步骤 1 开始 |
-| 20:21:46 | 创建 `gate.stop`，快照进程 exit 0 |
-
-- 批准原文的转达时间只有“当前时间约 20:18”级别，系统消息没有更细时间戳；“实际放行”以门禁 exit 0 后开始执行步骤 1（20:18:43）为准。
+- 时间点只保留窗口一节的那一套（仅取自原始记录）；放行时刻等缺口也记在那里。批准原文的转达时间没有比“约 20:18”更细的时间戳。
 
 **3. D492 清理前全部产物清单（窗口内，由 runner 在删除账套前写入日志，之后账套目录被删除）。**
 
@@ -136,9 +138,38 @@ readiness：`openItems 8`，DEFAULT 账套的未结项、PO-C1 部分开票/10�
 
 两个账套的 `-wal`、`-shm` 均 present（日志中有 `inventory demo.sqlite-wal present`、`inventory demo.sqlite-shm present` 行）。账套文件（sqlite、-wal、-shm、users 下的 0 字节文件）按规则在清单后删除，未入库：账套是一次性临时库，含演示数据，不作为证据保留，证据是清单中的字节数与哈希。
 
-窗口产物的留存情况：
-- 已入库（`docs/demo/v0.21.0/logs/` 与 `shots/`、`shots-slot/`）：`capture-dry-run.out.log`、`slot-run.out.log`、`gate-window.tsv`、`gate-window.out.log`、`gate-pre-window.tsv`，以及 slot-run 附属文件 `slot-slot-summary.log`、`slot-demo-capture.out.log`、`slot-preflight-base.log`、`slot-preflight-head.log`、`slot-demo-capture-start-rev.txt`、`slot-demo-capture-end-rev.txt`、`slot-build.log`（原 `out\build.log`，SHA-256 `7325C4B2C360E19D8F3E67E97EBACD4BDAC72C545E3505DBD56AA519448D5C6E`）、`slot-processes.tsv`（原 `out\processes.tsv`，`8845E73C4B007FE586BF2AC160FA4757661A3B5917608D75C465CEFDCDEFCDEF`）；截图 4 张（步骤 1，`shots/`）和步骤 2 的 4 张（`shots-slot/`）及各自 `capture-log-main.json`。
-- 未入库：`out\excluded.tsv`（341244 B，SHA-256 `1ACB92608384361A83A12F3928D961502D69EBF1F07C23FA6019DE40D9959585`，门禁排除进程的逐行明细，体积大，且 `slot-slot-summary.log` 已含同类 `excluded` 行）；`out\demo-capture.err.log`（0 B，空文件，SHA-256 `E3B0C442…B855`）；`gate.stop`（0 B 标志文件，是关窗操作，时间见上）；上述账套文件。
+窗口产物逐项（原件指 `%TEMP%\demo22` 下执行时产生的文件，仍在本机；“仓库 blob”指 `git show HEAD:<路径>` 的字节。`-text` 的 `.log` 原样入库，原件与 blob 哈希一致；`.tsv`/`.txt` 受 `.gitattributes` 的 `* text=auto eol=lf` 影响，入库时 CRLF 被转成 LF，所以哈希不同）：
+
+| 入库文件（`docs/demo/v0.21.0/logs/`） | 原件字节 | 原件 SHA-256 | 仓库 blob 字节 | 仓库 blob SHA-256 |
+| --- | --- | --- | --- | --- |
+| `capture-dry-run.out.log` | 3469 | `0ED3FEE170CB113CD0B802CDDF9F2BD0B1570BAD708AC5828804BBA2963DB844` | 3469 | 同左 |
+| `slot-run.out.log` | 51964 | `FBE71A884D9676376A116BC9FE23E111A2497A5DEB5A679ED70C0D82B0622640` | 51964 | 同左 |
+| `gate-window.tsv` | 83888 | `1093D2F9436022E96DD6C92C221EFEF6B5740C4DB31CC7D7B17DD28B0F76CC52` | 83888 | 同左（原件本就是 LF） |
+| `gate-window.out.log` | 80 | `4E71B704EB5A1E11B7ECA45B6DB51DDB04D9AE2179CA707C508ABF699905614E` | 80 | 同左 |
+| `gate-pre-window.tsv` | 16470 | `238F444566DDBB6CA9FE1190B22CBCFEDDFF03F1D7226F38D9415158F91F73AA` | 16470 | 同左（原件本就是 LF） |
+| `s3-vitest.out.log` | 265 | `61AC62E4E990136530BB500F78084FD0EC6CBC2E69A7B5464FAB8084FC2867F5` | 265 | 同左 |
+| `slot-slot-summary.log`（原 `out\slot-summary.log`） | 51956 | `947A079647C808D5AF8FB868E9CE80E34592166D8C8B907951B6CDAF434BA7DC` | 51956 | 同左 |
+| `slot-demo-capture.out.log`（原 `out\demo-capture.out.log`） | 3425 | `7966CD62807BF8C7786369FA47B1B8B5D2C1F24B6D1D93624F65E2434AE67769` | 3425 | 同左 |
+| `slot-preflight-base.log` | 392 | `F08B302B7AC1B1DFFD9A8616534E2B5F9F6732901D066AD375159A5B1CAC907E` | 392 | 同左 |
+| `slot-preflight-head.log` | 389 | `D6FF23F4B2A720C2A39496450075368B50A59443BE62B13164026485C13AF7CA` | 389 | 同左 |
+| `slot-build.log`（原 `out\build.log`） | 3881 | `7325C4B2C360E19D8F3E67E97EBACD4BDAC72C545E3505DBD56AA519448D5C6E` | 3881 | 同左 |
+| `slot-demo-capture-start-rev.txt`、`slot-demo-capture-end-rev.txt`（两份内容相同） | 43 | `63564F52A8E3E2163952BA2F6D8D33797B4753460D391455C8839006A6076DC1` | 42 | `E123ECB20BFDA47BCEC958752AA958337FD49F525B623E4BB3C2D5F34E4ED9B6` |
+| `slot-processes.tsv`（原 `out\processes.tsv`） | 550 | `8845E73C4B007FE586BF2AC160FA4757661A3B5917608D75C465CEFDCDEFCDEF` | 539 | `96240A41F3301FE45FD3864BC7698F336AF62A70FDB853774B58EB0D19AAB3FD` |
+
+`slot-processes.tsv` 的原件是 CRLF（550 B，含 11 个 CR），仓库 blob 是 LF（539 B），差的 11 B 就是 11 个行尾的 CR，这是 `.gitattributes` 对 `.tsv` 的 `eol=lf` 规则造成的，内容无其他差异；rev 文本同理（43 → 42 B，少 1 个 CR）。要对哈希验证原件，请用原件的 CRLF 版本。
+
+未入库的窗口产物（清理前元数据，原件仍在 `%TEMP%\demo22`）：
+
+| 产物 | 字节 | SHA-256 | 未入库原因 |
+| --- | --- | --- | --- |
+| `out\excluded.tsv` | 341244 | `1ACB92608384361A83A12F3928D961502D69EBF1F07C23FA6019DE40D9959585` | 门禁排除进程的逐行明细，体积大；`slot-slot-summary.log` 已含同类 `excluded` 行 |
+| `out\demo-capture.err.log` | 0 | `E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855` | 空文件 |
+| `logs\gate.stop` | 0 | （空文件，同上） | 关窗标志文件，创建时间 20:21:46.733 |
+| 账套全部文件 | 见上表 | 见上表 | 一次性临时库，清单后由 runner 删除，证据是字节数与哈希 |
+
+截图原件与入库逐字节一致（`-text` 二进制）：`shots/`（步骤 1，原件在 `%TEMP%\demo22\shots-dry`）`settlements-en-green-1440.png` 127852 B `7D321DC33A5B56FDB8D62EFE01C57EF30C98C88B2EBDA2F27C6673425FC0B8FB`、`settlements-en-green-390.png` 86276 B `F956FC79260018C8BF557378750CB84720C48E28D29A71CD98B5CD0FB28C869D`、`settlements-zh-red-1440.png` 122223 B `393FAF7E34014068C49E84122D13CD7673965F3601D40AFA001EFEE20AF65DDA`、`settlements-zh-red-390.png` 85112 B `43A75C539A4C3B5CA585937367FF8449D778B06F51F1EADE5238C9AE0C0AA8D4`、`capture-log-main.json` 4330 B `533D390176093479E20B90557AFC9AA515B04B60C5CA1147E604E1B68DA27B35`；`shots-slot/`（步骤 2，原件在 `%TEMP%\demo22\out\shots`）`settlements-en-green-1440.png` 127478 B `3120D06DFC213FEF686ECC88A5A7C199597A40B9B8C4878AEEDD6022E38DF334`、`settlements-en-green-390.png` 86315 B `D9A2078FF3F62B40CB3D3553FD6EBBB9D6F4D83832DB14DB2162B9A7C38C85D5`、`settlements-zh-red-1440.png` 121282 B `D887FC6E849395D751F1524A2615F0E673DC1DC49262D1DCBEAC321EFC60E917`、`settlements-zh-red-390.png` 85123 B `AE021871D58E35B3072E861B52B44767C08CEBC1B489A2C3EAB986B601BC66B0`、`capture-log-main.json` 4330 B（与步骤 1 的同哈希）。
+
+缺口：账套文件本身没有留存，窗口内也没有在清理前对 `out\` 之外的目录（例如 Chrome 的临时用户目录）做清单，那部分没有元数据。
 - `%TEMP%` 下还有 4 个我未创建于本窗口、也未触碰的 `erp-demo-*` 目录，不属于本窗口清单。
 
 **4. D495 的 `git diff --check`（D511 做法：不改原始日志，按原样给出排除规则）。**
