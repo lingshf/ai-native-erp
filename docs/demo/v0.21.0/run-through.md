@@ -173,6 +173,6 @@ readiness：`openItems 8`，DEFAULT 账套的未结项、PO-C1 部分开票/10�
 - `%TEMP%` 下还有 4 个我未创建于本窗口、也未触碰的 `erp-demo-*` 目录，不属于本窗口清单。
 
 **4. D495 的 `git diff --check`（D511 做法：不改原始日志，按原样给出排除规则）。**
-- 完整命令 `git diff --check 3ae4848d36c4c06c2e208173e58ed2cac3771564 <head>`：exit 2。告警全部落在 `docs/demo/v0.21.0/logs/` 下的原始日志（未改一字节，按 D511 保持原样；行尾为 CRLF 或有 Tab 分隔）。按文件的告警索引：capture-dry-run 52、slot-run 102、slot-slot-summary 101、gate-window.tsv 129、gate-pre-window.tsv 18、gate-pre.tsv 16、bundle-measure-sprint 516、bundle-measure-tlist06 524、build-app 61、skipcapture 51、focus-path-jsdom 27 等，非 `logs/` 路径为 0。
+- 完整命令 `git diff --check 3ae4848d36c4c06c2e208173e58ed2cac3771564 <head>`：exit 2。告警全部落在 `docs/demo/v0.21.0/logs/` 下的原始日志（未改一字节，按 D511 保持原样；行尾为 CRLF 或有 Tab 分隔）。按文件的告警条数（`git diff --check` 的 `path:line:` 行数，共 20 个文件，均在 `docs/demo/v0.21.0/logs/`）：build-app.log 61、bundle-measure-sprint.out.log 516、bundle-measure-tlist06.out.log 524、capture-dry-run.out.log 52、focus-path-jsdom.out.log 27、gate-pre-window.tsv 18、gate-pre.tsv 16、gate-window.out.log 2、gate-window.tsv 129、npm-ci-app.log 8、npm-ci-tool.log 6、s3-vitest.out.log 10、skipcapture.out.log 51、slot-build.log 60、slot-demo-capture-end-rev.txt 1、slot-demo-capture-start-rev.txt 1、slot-demo-capture.out.log 15、slot-preflight-base.log 5、slot-preflight-head.log 5、slot-run.out.log 102、slot-slot-summary.log 101；非 `logs/` 路径为 0。
 - 排除规则命令 `git diff --check 3ae4848d36c4c06c2e208173e58ed2cac3771564 <head> -- . ':!docs/demo/v0.21.0/logs'`：exit 0。
 - 具体 head 的两条命令输出写在 PR 正文。
