@@ -1,6 +1,4 @@
-import { useEffect, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
 import {
   tradeReportSchema,
   tradeReconciliationSchema,
@@ -8,20 +6,13 @@ import {
   type CompanyDto,
 } from "@erp/core/contracts";
 import { masterRequest } from "../master-data-client.ts";
-import { useInvoiceLeaveGuard } from "../trade-invoices/use-invoice-leave-guard.ts";
 import { OPEN_ITEMS_PAGE_SIZE, isValidReportQuery, reportScopes } from "./report-query.ts";
 import type { T } from "./types.ts";
+import { useReportFilters } from "./use-report-filters.ts";
 export type CompanyReportsState = ReturnType<typeof useCompanyReports>;
 export function useCompanyReports(company: CompanyDto, t: T) {
-  const [params, setParams] = useSearchParams();
-  const party = params.get("party") ?? "",
-    month = params.get("month") ?? "",
-    side = params.get("side") ?? "";
-  const [input, setInput] = useState({ party, month, side });
-  useEffect(() => setInput({ party, month, side }), [party, month, side]);
-  const dirty = input.party !== party || input.month !== month || input.side !== side;
-  useInvoiceLeaveGuard({ busy: false, unsaved: dirty }, t("trade.leaveConfirm"));
-  const view = params.get("view") ?? "openItems";
+  const filters = useReportFilters(company, t);
+  const { party, month, side, view, id } = filters;
   const valid = isValidReportQuery({ month, party, side, view });
   const { scope, filtered } = reportScopes(company.code, { month, party, side });
   const page = useInfiniteQuery({
@@ -47,7 +38,6 @@ export function useCompanyReports(company: CompanyDto, t: T) {
         signal,
       }),
   });
-  const id = params.get("item");
   const detail = useQuery({
     queryKey: ["tradeItemDetail", company.code, month, id],
     enabled: valid && !!id,
@@ -61,12 +51,6 @@ export function useCompanyReports(company: CompanyDto, t: T) {
   });
   const rows = page.data?.pages.flatMap((p) => p.items) ?? [],
     totals = page.data?.pages[0]?.totals;
-  function change(fields: Record<string, string>) {
-    setParams({ ...Object.fromEntries(params), company: company.code, ...fields, item: "" });
-  }
-  function openItem(documentId: string) {
-    setParams({ ...Object.fromEntries(params), company: company.code, item: documentId });
-  }
   const failure =
     (view === "reconciliation" ? reconciliation.error : page.error) ?? (id ? detail.error : null);
   const refresh = () => {
@@ -74,24 +58,5 @@ export function useCompanyReports(company: CompanyDto, t: T) {
     else void page.refetch();
     if (id) void detail.refetch();
   };
-  const clear = () => setInput({ party, month, side });
-  return {
-    input,
-    setInput,
-    clear,
-    dirty,
-    change,
-    openItem,
-    refresh,
-    failure,
-    month,
-    view,
-    valid,
-    id,
-    page,
-    reconciliation,
-    detail,
-    rows,
-    totals,
-  };
+  return { ...filters, valid, page, reconciliation, detail, rows, totals, failure, refresh };
 }
