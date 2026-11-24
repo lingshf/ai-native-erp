@@ -592,3 +592,4 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D563 | 表 | AI 讲解与教学模式（#372 §6b）：服务端**不**按教学模式拦截 `/api/v1/ai/explain`，界面… | [design/tasks/S24.md:204](tasks/S24.md) |
 | D564 | 表 | KDOC-09 核对（#377）：D1、D2、D3、D51 原记录缺备选、代价、失效条件，由设计角色补记到路线图 §6.… | [design/tasks/S24.md:205](tasks/S24.md) |
 | D565 | 表 | 重构 PR 中登记的现存缺陷立为候选：BUG-01（#371 孤立 `value`）、BUG-02a–d（#364 AI… | [design/tasks/S24.md:206](tasks/S24.md) |
+| D566 | 表 | 用户要求（四个团队）：里程碑收尾时做一次合并的结果对目标检查与回顾，补充而不取代 Sprint 评审与回顾 | [design/tasks/S24.md:207](tasks/S24.md) |
