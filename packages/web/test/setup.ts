@@ -1,8 +1,8 @@
 import { cleanup, configure } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, vi } from "vitest";
 
-// FLAKE-09: 3000 ms passed the trial runs under load and is 1/5 of testTimeout.
-const ASYNC_WAIT_MS = 3000;
+// FLAKE-09 (D531): 3000 ms still timed out under heavy load; 5000 ms is 1/3 of testTimeout.
+const ASYNC_WAIT_MS = 5000;
 configure({ asyncUtilTimeout: ASYNC_WAIT_MS });
 
 // FLAKE-09: with isolate: false, the first lazy route load was timed inside the first findBy;
