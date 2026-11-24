@@ -69,7 +69,7 @@
 | G2 | 接 G1，查子进程 | runner 退出后，命令行含本次 TSV 路径的 `pwsh` 进程数为 0（按 `Win32_Process` 查询，PR 正文附查询原文） |
 | G3 | 替身停止后，`slot-run.ps1 -Stub pass -Ports P`（构建一次，不开浏览器） | runner 退出码 **0**；TSV 至少 1 次快照，端口 P 与 4173 各有 `pid=none` 的 `kind=listen` 行；日志 `gate snapshot exit=0 gate-snapshot done …` |
 | G4 | 同 G1，但 `-Ports P,4173`（含 4173） | 子进程不因重复端口退出（日志不出现 `exited early exit=3`）；TSV 中 4173 每次快照只出现一组 `kind=listen` 行 |
-| G5 | 设置 `GATE_SNAPSHOT_SLOW_FIRST_SECONDS=40`（SLOT-05 的替身环境变量，第一次快照慢 40 s），走 G1 的端口占用路径 | runner 退出码仍为 **7**；日志依次有 `gate snapshot not ready after 15 s` 与 `gate snapshot stop timeout after 30 s; stopped pid=…`；之后同 G2，没有遗留的子进程 |
+| G5 | 设置 `GATE_SNAPSHOT_SLOW_FIRST_SECONDS=60`（SLOT-05 的替身环境变量，第一次快照慢 60 s：大于启动等待 15 s 与停止等待 30 s 之和 45 s，留 15 s 余量，使 runner 在快照写出前就到停止超时），走 G1 的端口占用路径 | runner 退出码仍为 **7**；日志依次有 `gate snapshot not ready after 15 s` 与 `gate snapshot stop timeout after 30 s; stopped pid=…`；之后同 G2，没有遗留的子进程 |
 
 ### 两侧都须成立的不变量
 
@@ -94,7 +94,7 @@
 - **④**：快照的启停集中在上述函数中，主流程只调用；不把端口并集的逻辑写进 `Assert-PortsFree`。
 - **⑤**：15 s、30 s、端口 4173、时间戳格式与文件名前缀都用具名常量（`$script:` 级）。
 - **⑥**：在启动处写一行“为什么”：第一次快照先于端口检查，使退出码 7 / 8 时有占用者的父进程链与 cwd。不留调试输出。
-- **测试在满载下的耗时**（[TEMPLATE](TEMPLATE.md#证据要求)）：G3 构建一次，其余各项不构建；PR 正文附自测总耗时与每项耗时；总耗时 ≤ 300 s（含一次构建，构建耗时单列），G5 因 30 s 停止超时而长于其他项，写明原因；不加重试。
+- **测试在满载下的耗时**（[TEMPLATE](TEMPLATE.md#证据要求)）：G3 构建一次，其余各项不构建；PR 正文附自测总耗时与每项耗时；总耗时 ≤ 300 s（含一次构建，构建耗时单列），G5 因 15 s 启动等待加 30 s 停止超时（约 45 s）而长于其他项，写明原因；不加重试。
 
 ## 用户可见变化
 
@@ -106,7 +106,7 @@
 - **可行性**（S13 回顾行动 4）：
   - `try`/`finally` 与 `exit` 的组合已由设计角色在 pwsh 7.6.10 上实测（见“现状”）；
   - G1 的替身监听沿用 `selftest-ports.ps1` P1 的做法，不构建；
-  - G5 的慢快照替身是 SLOT-05 已有的环境变量 `GATE_SNAPSHOT_SLOW_FIRST_SECONDS`，子进程继承 runner 的环境；
+  - G5 的慢快照替身是 SLOT-05 已有的环境变量 `GATE_SNAPSHOT_SLOW_FIRST_SECONDS`，子进程继承 runner 的环境；60 s 大于 15 s + 30 s，第一次快照在 runner 停止等待结束之前一定写不出，停止超时分支稳定可达。不为此新增可注入的超时参数（15 s、30 s 仍是具名常量）；
   - 设计角色**没有**试改 `slot-run.ps1`。
 - 本机运行须服从协调者的时段静默通知（D442 / D480）；自测会占一个临时端口并查询 4173，在任何 DEMO 窗口内不运行。
 - PR 正文附：G1–G5 两侧未截断输出；G6–G10 的命令与输出；G8 两侧 `check-manifest.mjs` 输出原文；“可读性”与“用户可见变化”两节。
