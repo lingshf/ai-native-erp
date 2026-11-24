@@ -125,15 +125,16 @@ function Get-WorktreeTop([string] $dir) {
   return [IO.Path]::GetFullPath($top).TrimEnd('\', '/')
 }
 # Call location (SLOT-04): exit 4 before the steps file runs when R-base or R-steps holds. -eq / -notin ignore case.
+# The current directory may be outside git (selftest.ps1 Part 4): root is then none and equals no worktree.
 function Assert-CallLocation([string] $checkoutRoot, [string] $stepsPath, [string] $baseRootPath) {
-  $rootTop = [IO.Path]::GetFullPath($checkoutRoot).TrimEnd('\', '/')
+  $rootTop = $checkoutRoot ? [IO.Path]::GetFullPath($checkoutRoot).TrimEnd('\', '/') : $null
   $toolTop = Get-WorktreeTop $PSScriptRoot
   $stepsTop = Get-WorktreeTop (Split-Path -Parent $stepsPath)
   $baseTop = if ($baseRootPath) { (Get-WorktreeTop $baseRootPath) ?? $baseRootPath.TrimEnd('\', '/') }
   $broken = @()
   if ($baseTop -and $baseTop -eq $rootTop) { $broken += $script:RULE_BASE }
   if ($stepsTop -and $stepsTop -notin @($rootTop, $toolTop)) { $broken += $script:RULE_STEPS }
-  $where = "root=$rootTop tool=$toolTop steps-worktree=$($stepsTop ?? 'none')"
+  $where = "root=$($rootTop ?? 'none') tool=$toolTop steps-worktree=$($stepsTop ?? 'none')"
   if ($broken.Count -eq 0) { Say "call location ok $where"; return }
   Say "ABORT: call location rules=$($broken -join ',') $where base-root=$($baseRootPath ? $baseRootPath : 'none'); run from the app worktree: pwsh -File $(Join-Path $PSScriptRoot 'slot-run.ps1') …"
   exit 4
@@ -145,8 +146,7 @@ function Invoke-WebDistCheck([string] $assertScript, [string] $checkoutRoot) {
   Say "dist check $line"
   if ($code -ne 0) { Say "ABORT: dist check exit $code"; exit 5 }
 }
-$script:RULE_BASE = 'R-base'
-$script:RULE_STEPS = 'R-steps'
+$script:RULE_BASE = 'R-base'; $script:RULE_STEPS = 'R-steps'
 $webDistScript = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\demo\assert-web-dist.ps1'))
 $script:ever = @{ [int]$PID = $true }  # SR-R1: this runner's tree starts at its own PID (kit slot-run.ps1:46)
 $script:excludedSeen = @{}
