@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it, onTestFinished, vi } from "vitest";
 import { QueryClient, focusManager, onlineManager } from "@tanstack/react-query";
 import { buildReports, type Account, type ReportRow } from "@erp/core/domain";
 import { App } from "../src/App.tsx";
@@ -581,7 +581,19 @@ it("bounds the paged virtual table DOM while scrolling within a full page", asyn
   await screen.findByText("ROW-0");
   const count = () => region.querySelectorAll("tbody tr:not([aria-hidden])").length;
   expect(count()).toBeLessThanOrEqual(Math.ceil(440 / 44) + 2 * 5 + 1);
+  // The scroll arms @tanstack/virtual-core's 150 ms scroll-reset debounce, which is never
+  // cleared on unmount. Left on the real clock, this file's last scroll could fire it after
+  // the fork's jsdom teardown, where React reads the deleted `window` (FLAKE-08). Arm it on
+  // a test-owned clock and finish it while the table is still mounted.
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
   fireEvent.scroll(region, { target: { scrollTop: 11_000 } });
+  expect(vi.getTimerCount(), "scroll-reset debounce armed by the scroll").toBe(1);
+  act(() => vi.advanceTimersByTime(150));
+  expect(vi.getTimerCount(), "scroll-reset debounce still pending").toBe(0);
+  vi.useRealTimers();
   await screen.findByText("ROW-250");
   expect(screen.queryByText("ROW-0")).toBeNull();
   expect(count()).toBeLessThanOrEqual(Math.ceil(440 / 44) + 2 * 5 + 1);
