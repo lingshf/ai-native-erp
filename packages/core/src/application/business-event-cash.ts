@@ -1,0 +1,136 @@
+import {
+  businessError,
+  compilePostingRules,
+  type BusinessEvent,
+  type CancelCashEvent,
+  type CashServiceEvent,
+  type Account,
+  type Company,
+  type JournalDraft,
+} from "@erp/core/domain";
+import {
+  required,
+  waitFor,
+  type BusinessEventPart,
+  type JournalPlanner,
+  type RepositorySteps,
+} from "./business-event-plan.ts";
+import type { MasterDataRepository } from "./master-data.ts";
+type PostingSelection = ReturnType<ReturnType<typeof compilePostingRules>["match"]>;
+export function businessDraft(event: BusinessEvent): JournalDraft {
+  return {
+    id: event.id,
+    revision: 0,
+    sourceRef: event.sourceRef,
+    date: event.date,
+    documentDate: event.date,
+    taxDate: event.date,
+    memo: event.memo,
+    operation: "journal",
+    originalId: null,
+    kind: "normal",
+    headerDimensions: {},
+    lines: [],
+  };
+}
+function checkedCashAccounts(
+  accounts: readonly Account[],
+  event: CashServiceEvent,
+  cash: PostingSelection,
+  offset: PostingSelection,
+): BusinessEventPart["matches"] {
+  const matches: BusinessEventPart["matches"] = [];
+  for (const [selection, isCash] of [
+    [cash, true],
+    [offset, false],
+  ] as const) {
+    const account = accounts.find((item) => item.code === selection.rule.account);
+    if (
+      !account?.active ||
+      account.purpose !== "general" ||
+      (isCash
+        ? account.category !== "ASSET" || account.reportGroup !== "cash"
+        : account.category !== (event.direction === "receive" ? "REVENUE" : "EXPENSE"))
+    )
+      businessError(`rules.${selection.rule.meaning}`, "account");
+    matches.push(selection.explanation);
+  }
+  return matches;
+}
+function cashServiceDraft(
+  draft: JournalDraft,
+  event: CashServiceEvent,
+  cash: PostingSelection,
+  offset: PostingSelection,
+): JournalDraft {
+  const receive = event.direction === "receive";
+  return {
+    ...draft,
+    lines: [
+      {
+        account: cash.rule.account,
+        debit: receive ? event.amount : "",
+        credit: receive ? "" : event.amount,
+        dimensions: event.dimensions,
+        suspense: null,
+      },
+      {
+        account: offset.rule.account,
+        debit: receive ? "" : event.amount,
+        credit: receive ? event.amount : "",
+        dimensions: event.dimensions,
+        suspense: null,
+      },
+    ],
+  };
+}
+export function* cashServicePlan(
+  repo: MasterDataRepository,
+  journals: JournalPlanner,
+  company: string,
+  owner: Company,
+  event: CashServiceEvent,
+  draft: JournalDraft,
+): RepositorySteps<BusinessEventPart> {
+  if (event.currency !== owner.currency) businessError("currency", "shape");
+  const service = required(yield* waitFor(repo.businessMaster(company, "service", event.service)));
+  const party =
+    event.party === null
+      ? null
+      : required(yield* waitFor(repo.businessMaster(company, "party", event.party)));
+  if (!service.active || (party && !party.active)) businessError("service", "reference");
+  const compiled = compilePostingRules(yield* waitFor(repo.postingCatalog(company)), event.date);
+  const cash = compiled.match(event.direction, "cash", service, party);
+  const offset = compiled.match(event.direction, "offset", service, party);
+  const accounts = yield* waitFor(
+    repo.accountsByCodes(company, [cash.rule.account, offset.rule.account]),
+  );
+  const matches = checkedCashAccounts(accounts, event, cash, offset);
+  const master = { ...(party?.dimensions ?? {}), ...service.dimensions };
+  const current = yield* waitFor(
+    journals.plan(repo, company, cashServiceDraft(draft, event, cash, offset), [
+      { ...master, ...cash.rule.dimensions },
+      { ...master, ...offset.rule.dimensions },
+    ]),
+  );
+  return { current, matches, statistics: null, clearing: [], evidence: [service, party] };
+}
+export function* cashServiceCancelPlan(
+  repo: MasterDataRepository,
+  journals: JournalPlanner,
+  company: string,
+  event: CancelCashEvent,
+  draft: JournalDraft,
+): RepositorySteps<BusinessEventPart> {
+  const original = required(yield* waitFor(repo.businessEvent(company, event.originalId)));
+  if (original.event.operation !== "cash_service" || original.receipt.journalIds.length !== 1)
+    businessError("originalId", "reference");
+  const current = yield* waitFor(
+    journals.plan(repo, company, {
+      ...draft,
+      operation: "reverse",
+      originalId: original.receipt.journalIds[0],
+    }),
+  );
+  return { current, matches: [], statistics: null, clearing: [], evidence: original.receipt };
+}
