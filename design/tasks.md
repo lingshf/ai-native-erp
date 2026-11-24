@@ -1,5 +1,7 @@
 # Implementation tasks
 
+> **历史记录，不是待办（D562，KDOC-03）。** 本文件是 M0 重启之前 ARCH-M0x / TASK 阶段的实施记录，不再登记新任务，内容不再更新。现行唯一待办是[任务总表](tasks/README.md)（见[团队章程 §2](team-charter.md#2-权威路径)）；全部决定的位置见[决定索引](decisions.md)。
+
 ## 当前授权：ARCH-M00起逐阶段实施
 
 用户已委托DC01..04与M00..09执行、恢复M06/TASK24和备份核对后切换原4173账。M00已通过G3/G5/G6、安全审查、本地保护同步并发布main `74819f9bfa7087ac230c4ccaf96b6b40f1e740bf`，干净clone安装/182项/语法通过。M01三个增量G5、组合及公共变体G6已独立释放MODEL01，工作区358项、原302测试身份完整保留；本地保护交付和安全完成，代码1574db67及状态69cdb211的全新clone各238项/build/typecheck通过且已清理。M00/M01/M02现已完成限定验收，M02修订f9f1bcb精确新clone302+真实70/build/typecheck通过；M03现已独立G3/G5/G6、安全/本地交付并发布a608ee1，精确新clone361+真实70/build/types通过；M04..09仍须各阶段详细门禁。完整需求/工具环境见[architecture-migration](architecture-migration.md)，下方“仅设计/暂停/0 ready”为前次交付历史，不再限制继续开发，但原成果和剩余验收不能删除。44FG仍0/13/31，不因授权改done。
