@@ -29,14 +29,14 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | --- | --- | --- | --- |
 | D1 | 表 | 一个总账模型，结账方式作为公司设置 | [design/reviews/M0.md:35](reviews/M0.md)；[design/roadmap.md:199](roadmap.md)；[design/roadmap.md:217](roadmap.md) |
 | D2 | 表 | Dependabot | [design/reviews/M0.md:36](reviews/M0.md)；[design/roadmap.md:200](roadmap.md)；[design/roadmap.md:218](roadmap.md) |
-| D3 | 表 | 4173 原账套不动 | [design/reviews/M0.md:37](reviews/M0.md)；[design/roadmap.md:201](roadmap.md)；[design/roadmap.md:219](roadmap.md) |
+| D3 | 表 | 4173 原账套不动 | [design/reviews/M0.md:37](reviews/M0.md)；[design/roadmap.md:201](roadmap.md)；[design/roadmap.md:219](roadmap.md) 等 4 处 |
 | D4 | 表 | 存储与迁移版本 | [design/reviews/M0.md:38](reviews/M0.md) |
 | D5 | 表 | 维度规则 | [design/reviews/M0.md:39](reviews/M0.md) |
 | D6 | 表 | 凭证纠错 | [design/reviews/M0.md:40](reviews/M0.md) |
 | D7 | 表 | 业务事件待转 | [design/reviews/M0.md:41](reviews/M0.md) |
 | D8 | 表 | 报表水位：二元组 (`watermark`=凭证 `MAX(sequence)`, `accountRevision`=… | [design/reviews/M0.md:42](reviews/M0.md) |
 | D9 | 表 | M0-R4 的 Windows `INVALID_SNAPSHOT` 无法复现时怎么结案（开发 5 在 main b0d… | [design/roadmap.md:202](roadmap.md) |
-| D10 | 表 | M2 草案评审第三轮的两项分歧 | [design/roadmap.md:203](roadmap.md)；[design/tasks/M2-04-legacy-reconciliation.md:18](tasks/M2-04-legacy-reconciliation.md) |
+| D10 | 表 | M2 草案评审第三轮的两项分歧 | [design/roadmap.md:203](roadmap.md)；[docs/tradeoffs.md:39](../docs/tradeoffs.md)；[design/tasks/M2-04-legacy-reconciliation.md:18](tasks/M2-04-legacy-reconciliation.md) |
 | D11 | 条目 |  | [design/reviews/S11.md:53](reviews/S11.md)；[design/reviews/S12.md:67](reviews/S12.md)；[design/reviews/S13.md:67](reviews/S13.md) 等 14 处 |
 | D12 | 提及 | | [design/tasks/M0-R2-test-speedup.md:21](tasks/M0-R2-test-speedup.md) |
 | D13 | 提及 | | [design/reviews/S4-retro.md:44](reviews/S4-retro.md)；[design/reviews/S4-retro.md:46](reviews/S4-retro.md)；[design/reviews/S4-retro.md:49](reviews/S4-retro.md) 等 17 处 |
@@ -51,8 +51,8 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D22 | 无 | | |
 | D23 | 无 | | |
 | D24 | 无 | | |
-| D25 | 表 | 旧账 AP/AR 控制科目余额迁入后没有未结项，贸易子账与 GL 不一致（M1-R 提出） | [design/roadmap.md:204](roadmap.md)；[design/tasks/M2-04-legacy-reconciliation.md:41](tasks/M2-04-legacy-reconciliation.md)；[CHANGELOG.md:616](../CHANGELOG.md) |
-| D26 | 表 | M2-04 是否要等 M2-03b 才能交付 | [design/roadmap.md:205](roadmap.md)；[design/tasks/M2-03b-legacy-opening-open-items.md:6](tasks/M2-03b-legacy-opening-open-items.md)；[design/tasks/M2-04-legacy-reconciliation.md:4](tasks/M2-04-legacy-reconciliation.md) 等 4 处 |
+| D25 | 表 | 旧账 AP/AR 控制科目余额迁入后没有未结项，贸易子账与 GL 不一致（M1-R 提出） | [design/roadmap.md:204](roadmap.md)；[docs/tradeoffs.md:40](../docs/tradeoffs.md)；[design/tasks/M2-04-legacy-reconciliation.md:41](tasks/M2-04-legacy-reconciliation.md) 等 4 处 |
+| D26 | 表 | M2-04 是否要等 M2-03b 才能交付 | [design/roadmap.md:205](roadmap.md)；[docs/tradeoffs.md:41](../docs/tradeoffs.md)；[design/tasks/M2-03b-legacy-opening-open-items.md:6](tasks/M2-03b-legacy-opening-open-items.md) 等 5 处 |
 | D27 | 无 | | |
 | D28 | 无 | | |
 | D29 | 无 | | |
@@ -593,3 +593,4 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D564 | 表 | KDOC-09 核对（#377）：D1、D2、D3、D51 原记录缺备选、代价、失效条件，由设计角色补记到路线图 §6.… | [design/tasks/S24.md:205](tasks/S24.md) |
 | D565 | 表 | 重构 PR 中登记的现存缺陷立为候选：BUG-01（#371 孤立 `value`）、BUG-02a–d（#364 AI… | [design/tasks/S24.md:206](tasks/S24.md) |
 | D566 | 表 | 用户要求（四个团队）：里程碑收尾时做一次合并的结果对目标检查与回顾，补充而不取代 Sprint 评审与回顾 | [design/tasks/S24.md:207](tasks/S24.md) |
+| D567 | 表 | KDOC-01..11 全部合并或并入后，把 Knowledge Lead 报告的剩余文档缺口登记为候选 KGAP-01… | [design/tasks/S24.md:208](tasks/S24.md) |
