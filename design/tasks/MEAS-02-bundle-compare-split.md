@@ -67,6 +67,7 @@
 - tooling:measure：只改 `scripts/measure/`。
 - 受影响的 e2e 断言：无（不改 Web 与服务端）。
 - 与在途任务：FLAKE-09（`packages/web/test/setup.ts`）、REFAC-15（`packages/web/src/TradeReports.tsx`、`trade-reports/`）逐文件不相交。
+- **合并门：DEMO-23 时段内不合并**（评审 6034725951）：DEMO-23 的 RC 钉住 `bundle-measure.mjs` 所在的提交 SHA 取证，而 `bundle-measure.mjs` 导入本任务拆分的比较器。从 DEMO-23 的 RC 冻结（固定 `<RC 范围终点>`）到 Demo 与评审结束、协调者宣布解冻之前，本任务的 PR **不合并**（已获批也等待），解冻后由协调者安排合并。RC 的体积证据一律按 RC 所钉 SHA 上的脚本取得并保留，不因本任务合并而重测或替换。开发与送审不受此限。
 - **与 REFAC-15 的 R7 测量**：REFAC-15 用 `bundle-measure.mjs` 报体积，并写明脚本所在的提交 SHA。本任务若先合并，REFAC-15 按实际合并基上的脚本测量即可；R4 保证同样输入下输出逐字节相同，不需要重测已有结果。
 
 ## 验收标准
@@ -88,22 +89,23 @@
 - **R3 既有测试原样通过**：`npx vitest run packages/infra/test/tooling/bundle-compare.test.ts` 的 8 个用例在 base 与 head 上都通过，测试文件 diff 为空；PR 正文附两侧汇总行原文。
 - **R4 命令行输出等价**（送审证据，脚本不提交）：
   - **准备**：用 base 上的 `bundle-measure.mjs` 构建一对真实 `dist`：`--base 32aaea7…`（REFAC-13 合并点）`--head ac8ac00…`（REFAC-14 合并点，`BusinessEvents` 路由有真实差异）`--work C:\tmp\meas-02-dists`，写完整 40 位 SHA。以下记 `A = …\base\packages\web\dist`、`B = …\head\packages\web\dist`。另建 base 的分离 worktree，用于运行 base 一侧的脚本。
-  - **用例**（每例在 base 脚本与 head 脚本上各跑一次，记录 stdout、stderr、退出码）：
+  - **启动方式**：每个用例在两侧各跑一次，**工作目录分别为 base worktree 根与 head 检出根**，脚本一律用相同的**相对路径**（`scripts/measure/bundle-compare.mjs` 或 `scripts/measure/bundle-measure.mjs`），其余参数逐字相同（`A`、`B`、`--work` 等用同一个绝对路径）。不得传两条不同的绝对脚本路径：`bundle-measure.mjs:132` 会回显 argv，会造成与改动无关的字节差异。
+  - **用例**（每例记录 stdout、stderr、退出码）：
     - C1 `A B`（不给预算，预期有 FAIL 行，退出码 1）；
     - C2 `A B --route src/BusinessEvents.tsx=+5000 --chunk src/BusinessEvents.tsx=+5000 --d454`，以及按 C1 的输出把其余变化项也放宽到能通过的参数（预期退出码 0；PR 正文写明最终参数）；
     - C3 `A A`（同一份 `dist`，全部 ±0，退出码 0）；
     - C4 用法错误，各一例：只给一个目录；`--chunk nokey`；`--route src/Nope.tsx=+1`；`--first-screen abc`；指向没有 `.vite/manifest.json` 的目录（均为退出码 2）；
-    - C5 `node --input-type=module -e "await import('./scripts/measure/bundle-compare.mjs')"`（只导入不运行：无输出，退出码 0）；
-    - C6 经 `bundle-measure.mjs` 的参数拒绝路径：短 SHA、已存在的 `--work`、未知参数（不触发构建）。
-  - **判定**：每个用例的 stdout、stderr 与退出码，在 base 与 head 上逐字节相同；并且直接断言 C1 退出码为 1、C2 与 C3 为 0、C4 为 2（只比两侧相同不够：两侧都错也会相同）。PR 正文附脚本全文、各用例两侧输出的 SHA-256、比较结果，以及 C1 的输出原文。
+    - C5 `node --input-type=module -e "await import('./scripts/measure/bundle-compare.mjs')"`（只导入不运行）；
+    - C6 经 `bundle-measure.mjs` 的参数拒绝路径（不触发构建），各一例：C6a 短 SHA（`--base 32aaea7 --head <完整 SHA> --work <新目录>`）；C6b 已存在的 `--work`（`--base`、`--head` 用完整 SHA，两侧用同一个已存在的绝对路径）；C6c 未知参数（`--bogus 1`）。
+  - **判定**：每个用例的 stdout、stderr 与退出码，在 base 与 head 上逐字节相同；并且在两侧都直接断言（只比两侧相同不够：两侧都错也会相同）：C1 退出码为 1；C2 与 C3 为 0；C4 各例为 2；C5 为 0，且 stdout 与 stderr 都为空（0 字节）；C6a 与 C6b 为 3（provenance），C6c 为 2（usage）。PR 正文附脚本全文、各用例两侧输出的 SHA-256、比较结果，以及 C1 的输出原文。
 - **R5 结构规则**（静态，评审按代码与 PR 表格核对）：
   - **R5a 原样搬移**：PR 正文附 `git diff --color-moved=plain -M <base> <head> -- scripts/measure` 的输出；除决定 3 允许的改动外没有新增或修改的行。
   - **R5b 依赖图**：PR 正文列出各模块的 `import` 关系（文本或 mermaid），无环，且新模块不导入 `bundle-compare.mjs`。
-  - **R5c 唯一定义**：每个函数与常量在 `scripts/measure/` 中只声明一次（PR 正文附 `git grep -nE "^(export )?(const|function) " -- scripts/measure` 的结果）。
+  - **R5c 唯一定义**：检查范围限定为比较器，即 `bundle-compare.mjs` 与本任务新增的模块（不含 `bundle-measure.mjs`）：其中每个函数与常量只声明一次。PR 正文附 `git grep -nE "^(export )?(const|function) " -- scripts/measure/bundle-compare.mjs <新模块…>` 的结果。`bundle-measure.mjs:131` 与 `bundle-compare.mjs` 各自的入口 `main` 是两个独立入口，保留各自的 `main`，不算重复，不得为此改动 `bundle-measure.mjs`。
 - **R6 尺寸**：除 R6a 外，`README.md` ≤ 150 行；没有函数超过 ② 上限（≤ 80 行、嵌套 ≤ 3 层，搬移前后都满足）。PR 正文贴 `git diff --numstat`。
 - **R7 打包字节**：首屏 ±0、所有路由与 chunk ±0，由 R1 保证（见“chunk 归属与首屏预算”），不另测。
 - **R8 质量门**：
-  - **R8a 合并前**：`npx biome ci scripts/measure`、`npm run typecheck`、CI-02 预检通过；PR CI（`ci.yml`）绿。
+  - **R8a 合并前**：`npx biome ci scripts/measure`、`npm run typecheck`、CI-02 预检通过；PR CI（`ci.yml`）绿；且当前不在 DEMO-23 时段内（见“冲突域 / 合并门”）。
   - **R8b 合并后检查（不作合并门）**：合并后第一次覆盖该合并提交的 main Full 须绿；失败时报协调者，按 D456 暂停后续合并。
 - **R9 可读性一节**：PR 正文按下节逐条说明。
 
@@ -138,5 +140,5 @@
 - [x] base 失败、head 通过的判据（R6a）与两侧不变量（R1–R5）分开写；R4 除两侧相同外另有直接断言。
 - [x] 改动文件的 chunk 归属与首屏预算已写明（不属于任何 chunk，全部 ±0）。
 - [x] 与 FLAKE-09、REFAC-15 逐文件不相交；不是页面拆分。
-- [x] main Full 只作合并后检查（R8b）。
+- [x] main Full 只作合并后检查（R8b）；DEMO-23 时段内不合并。
 - [x] 用户可见变化已写明（无）。
