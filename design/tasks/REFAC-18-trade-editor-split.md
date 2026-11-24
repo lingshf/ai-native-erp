@@ -37,7 +37,7 @@
   6. `useLayoutEffect`，依赖 `[lock]`（`:456`）：清理时 `lock(idleGuard)`；
   7. `useEffect`，依赖 `[]`（`:457–462`）：卸载时 `generation.current++`。
 - **命令**：
-  - `submit`（`:463–511`）：`busy || uncertain` 时直接返回；逐字段解析（`:466–490`）：JSON 字段 `JSON.parse`，`allowedTaxCodes` 按逗号切分、去空白、去空项，`allowPartialDiscount` 转布尔，`dueDays` / `discountDays` 空串转 `null`，`nullable` 中的字段空串转 `null`；`SyntaxError` 时置 `{ path: "data.<field>", key: "trade.issue.shape" }` 并返回，其他错误原样抛出；再 `tradeWriteSchema.safeParse`，失败取第一条 issue 的路径；成功后写 `pendingCommand` 并 `await persist(...)`。
+  - `submit`（`:463–511`）：`busy || uncertain` 时直接返回；逐字段解析（`:466–490`）：JSON 字段 `JSON.parse`，`allowedTaxCodes` 按逗号切分、去空白、去空项，`allowPartialDiscount` 转布尔，`dueDays` / `discountDays` 去空白后为空则转 `null`（契约 `trade-master.ts:44–45` 不可空，随后 `safeParse` 失败；见 D537、D538），`nullable` 中的字段空串转 `null`；`SyntaxError` 时置 `{ path: "data.<field>", key: "trade.issue.shape" }` 并返回，其他错误原样抛出；再 `tradeWriteSchema.safeParse`，失败取第一条 issue 的路径；成功后写 `pendingCommand` 并 `await persist(...)`。
   - `persist`（`:512–556`）：`id = ++generation.current`；`expectedRevision` 非 0 时 `PUT`，否则 `POST` `/api/v1/trade/${kind}`；`reconcile` 为真且返回 409 时，`GET /api/v1/trade/${kind}/<code>?company=<公司>`，五项（`kind`、`code`、`revision === expectedRevision + 1`、`active`、`JSON.stringify(data)`）全部相符才视为已保存；`generation.current === id` 时才 `close()`、写错误与 `uncertain`（`:544–550`：非 `MasterDataFailure`、非 `http`、状态 ≥ 500、或对账时非 409 为 `true`）；`finally` 中 `generation.current === id` 时复位 `busy`，`accepted || generation.current !== id` 时失效 `["trade", company.code, kind]`（`:554`）。
 - **JSX**（`<form>` → `FastTab` 下，R5d 的 base 一侧）：
   1. 三条提示（`:564–566`：`trade.nullHint`；`tradeProfile` 时 `trade.discountHint`；`taxCode` 时 `trade.rateHint`）；
@@ -118,7 +118,7 @@ base 数字（屏蔽哈希后的原始 / gzip-9 字节，输出原文行）：
   - **确认与焦点**：`window.confirm` 换成**记录桩**，按脚本依次返回预设值并记下每次调用的文案；`HTMLElement.prototype.focus` 装记录桩（保留原实现），记下每次调用的目标与次数。
   - **序列**至少包含：
     - 列表首屏 → 新建往来方：依次填名称、日期、`role`（`select`）、`allowedTaxCodes`（`"VAT, ,ZERO"`）、`defaultDimensions`（JSON）；保存成功（`POST`）；
-    - 新建付款条件：`dueDays` 留空、`allowPartialDiscount` 取消勾选；新建税码：`rates` 填**非法 JSON** → 保存（不发请求，字段错误）→ 改正后保存；新建过账配置（出现 `trade.discountHint`）；新建产品（`expenseAccount` 留空）；
+    - 新建付款条件（D537）：`allowPartialDiscount` 取消勾选，`dueDays` 留空 → 以 `submit` 派发保存（jsdom 不执行原生 `required` 校验）→ 不发请求、字段错误；再填入 `dueDays`（如 `"30"`）→ 保存；新建税码：`rates` 填**非法 JSON** → 保存（不发请求，字段错误）→ 改正后保存；新建过账配置（出现 `trade.discountHint`）；新建产品（`expenseAccount` 留空）；
     - 编辑已有记录（`revision > 0`）：代码输入禁用，保存发 `PUT`；
     - 保存挂起：字段组禁用、出现 `role="status"`；同一时刻再次派发 `submit` 只发出 1 个请求；挂起期间点击页面内的同源链接（驱动 B 自行在文档中放一个）；放行成功 → 编辑器关闭，`["trade", <公司>, <类别>]` 被失效并重新请求；
     - 保存返回 409 → 冲突错误条与“重新加载”按钮 → 点击“重新加载”；
@@ -131,7 +131,9 @@ base 数字（屏蔽哈希后的原始 / gzip-9 字节，输出原文行）：
     1. 守卫：打开未改动的编辑器后两个下拉禁用、`beforeunload` 未挂接；首次改动后 `guardHistory` 调用 1 次且 `beforeunload` 挂接 1 次；保存挂起期间点击链接被阻止且 `confirm` 调用 0 次；保存成功关闭后两个下拉恢复可用，`dispose` 调用次数等于 `guardHistory` 调用次数，`beforeunload` 的挂接与卸下次数相等（守卫全部卸下）；
     2. 防重入：两次 `submit` 只记 1 个请求；
     3. 非法 JSON：没有发出请求；错误条文本以 `data.rates: ` 开头；`#trade-rates` 带 `aria-invalid="true"` 与 `aria-describedby="trade-error"`；
-    4. 请求体：往来方的 `allowedTaxCodes` 为 `["VAT","ZERO"]`；付款条件的 `dueDays` 为 `null`、`allowPartialDiscount` 为 `false`；产品的 `expenseAccount` 为 `null`；
+    4. 请求体（D537 改为 4a、4b 两条；原“付款条件 `dueDays` 为 `null`”在 base 上不成立：契约 `trade-master.ts:44` 的 `dueDays` 为 `z.number().int()`，不可空，留空时 `safeParse` 失败、不发请求）：往来方的 `allowedTaxCodes` 为 `["VAT","ZERO"]`；产品的 `expenseAccount` 为 `null`；
+       - 4a. 付款条件 `dueDays` 留空：发出请求 0 次；错误条文本以 `data.dueDays: ` 开头；`#trade-dueDays` 带 `aria-invalid`；
+       - 4b. 填入 `dueDays` 后保存：请求体中 `allowPartialDiscount` 为 `false`、`dueDays` 为数字（JSON 数值，不是字符串）；
     5. 对账：重发的方法与请求体与首次请求逐字节相同，随后恰好 1 个 `GET /api/v1/trade/<类别>/<代码>?company=<公司>`；相符时关闭；不符时编辑器不关闭，状态文案不再是 `trade.uncertain`（`uncertain` 为 `false`），没有“对账”按钮，错误条为 `master.conflict` 的当前语言文本且出现“重新加载”按钮，点击后 `["trade", <公司>, <类别>]` 被失效；这是 base 的现有行为，本任务保留，不改产品代码；
     6. 取消：未改动时 `confirm` 调用 0 次；改动后调用 2 次，文案均为 `trade.discard` 的当前语言文本；第一次之后草稿仍在；
     7. 卸载时的在途保存：（i）放行成功响应后 `["trade", <公司>, <类别>]` 被失效 1 次；（ii）放行失败响应后该键**仍被失效 1 次**——此时 `accepted` 为 `false`，失效只来自 `generation.current !== id` 分支（`:553`），因此删掉该分支会使（ii）失败，而（i）不能区分（成功时 `accepted` 已为 `true`）；两遍都没有 `setError` / `setBusy` 的效果（组件已卸载），`console.error` 无新增记录，`confirm` 调用 0 次。
