@@ -13,7 +13,7 @@
 
 ## 窗口前
 
-- 两处 `npm ci`（app、tool）退出码均 0，`package-lock.json` blob 均为 `07c1aee8b9c3392b88c25f9bb670adbbc8f19201`，安装后 `git status --porcelain` 为空（D493，已在窗口申请中给出）。这两次安装的控制台输出当时没有存成文件，属于日志缺口，如实记录，不重跑。
+- 两处 `npm ci`（app、tool）退出码均 0，`package-lock.json` blob 均为 `07c1aee8b9c3392b88c25f9bb670adbbc8f19201`，安装后 `git status --porcelain` 为空（D493，已在窗口申请中给出）。这两次安装的控制台输出当时没有存成文件，属于日志缺口；D506 按 D500 先例接受，不重跑。替代证据：两处退出码均 0；lock blob 均为完整 `07c1aee8b9c3392b88c25f9bb670adbbc8f19201`；安装后 `git status --porcelain --untracked-files=all` 为空（窗口申请中给出）。DEMO-21 起 npm ci 输出须用 `Tee-Object` 存成文件（回顾候选项）。
 - D503 门禁：窗口开启前列出 node 进程，别项目的 vitest/playwright 自行结束；留下 6 个长驻服务（PID 22720、67836、17516、68596、71336、68508），按 D505 放行。`logs/gate-window-open.log` 含 PID、CPU 秒数、命令行，以及 4204/4173 无监听（`Get-NetTCPConnection` 结果为空）。窗口开启时另有一个 `npx playwright test`（PID 4056，CPU 1.23 s，开窗前已在运行，非本 Demo）；slot-run 把 debate-coach 的 playwright / ui-test-server / chrome-headless-shell 记为外来进程（见 `logs/processes-real.tsv`、`logs/slot-summary-real.log`）。slot-run 的 `processes-real.tsv` / `excluded.tsv` 是窗口内进程的记录来源；我没有另做逐进程比对，未发现新的 ERP 相关外来 node 进程，但这一点只以这两份记录为据。
 
 ## 步骤（每步一次，不重试，均退出码 0）
