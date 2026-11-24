@@ -1,6 +1,6 @@
-# Demo v0.19.0（DEMO-20，窗口前草稿）
+# Demo v0.19.0（DEMO-20）
 
-> 状态：**窗口尚未批准、未运行**。本目录目前只有脚本与本说明；截图、日志、run-through 在 D480 窗口运行后补入。
+> 状态：D480 窗口（D503/D505）已运行并关闭，结果见 [run-through.md](run-through.md)；截图在 `shots/`，日志在 `logs/`。
 
 ## 范围（RC 范围终点 `6156759c2aef6b9805aca70ba5505490e2bd4c5b`）
 
@@ -12,7 +12,7 @@
 
 窗口后合并的 S21 任务（FLAKE-08、TLIST-05）一律“延后”，不进入 v0.19.0。
 
-## 将要拍的内容（`scripts/capture.mjs`）
+## 拍摄内容（`scripts/capture.mjs`）
 
 1. 财务维度页（`#/dimensions`）中英文各一张 1440 截图（红 / 绿主题），“新建配置”与“刷新列表”可见。
 2. 同页 390 px 中英文各一张：`scrollWidth ≤ 390`，两个按钮 `left ≥ 0` 且 `right ≤ 390`。

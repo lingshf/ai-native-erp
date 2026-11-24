@@ -1,0 +1,9 @@
+step4 start 2026-11-23T17:27:32.0726326-08:00
+2026-11-24T01:27:34.660Z runner start head=73ea29a0291825ed3a386d823fab3f2561210069 rules=R3 ports=4204 status=[]
+2026-11-24T01:27:34.769Z tooling head=6156759c2aef6b9805aca70ba5505490e2bd4c5b dir=C:\GithubCopilot\copilot-worktrees\ai-native-erp\demo20-tool\scripts\slot
+2026-11-24T01:27:35.334Z base head=6156759c2aef6b9805aca70ba5505490e2bd4c5b status=[]
+2026-11-24T01:27:35.469Z steps from C:\GithubCopilot\copilot-worktrees\ai-native-erp\demo20-app\docs\demo\v0.19.0\scripts\steps-demo20.ps1: demo-capture
+2026-11-24T01:27:38.163Z ports free phase=before-preflight ports=4204
+2026-11-24T01:27:43.365Z preflight head exit=0 log=C:\Users\shaoling\AppData\Local\Temp\demo20\out\preflight-head.log preflight result exit=0 new-keys=0 reduced-keys=0
+2026-11-24T01:27:47.359Z preflight base exit=0 log=C:\Users\shaoling\AppData\Local\Temp\demo20\out\preflight-base.log preflight result exit=0 new-keys=0 reduced-keys=0
+2026-11-24T01:27:47.378Z build start

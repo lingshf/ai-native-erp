@@ -1,0 +1,255 @@
+[
+ {
+  "name": "dimensions-zh-red-1440",
+  "step": "page",
+  "via": "goto #/dimensions",
+  "hash": "#/dimensions",
+  "heading": "财务维度",
+  "buttons": [
+   "新建配置",
+   "刷新列表"
+  ]
+ },
+ {
+  "name": "dimensions-en-green-1440",
+  "step": "page",
+  "via": "goto #/dimensions",
+  "hash": "#/dimensions",
+  "heading": "Financial dimensions",
+  "buttons": [
+   "New configuration",
+   "Refresh list"
+  ]
+ },
+ {
+  "name": "dimensions-zh-red-390",
+  "step": "k7-390",
+  "via": "goto #/dimensions",
+  "hash": "#/dimensions",
+  "documentScrollWidth": 390,
+  "buttons": [
+   "新建配置",
+   "刷新列表"
+  ],
+  "rects": [
+   {
+    "text": "新建配置",
+    "left": 16,
+    "right": 106,
+    "top": 509
+   },
+   {
+    "text": "刷新列表",
+    "left": 114,
+    "right": 204,
+    "top": 509
+   }
+  ]
+ },
+ {
+  "name": "dimensions-en-green-390",
+  "step": "k7-390",
+  "via": "goto #/dimensions",
+  "hash": "#/dimensions",
+  "documentScrollWidth": 390,
+  "buttons": [
+   "New configuration",
+   "Refresh list"
+  ],
+  "rects": [
+   {
+    "text": "New configuration",
+    "left": 16,
+    "right": 168.6,
+    "top": 529
+   },
+   {
+    "text": "Refresh list",
+    "left": 176.6,
+    "right": 280.1,
+    "top": 529
+   }
+  ]
+ },
+ {
+  "name": "dimensions-keyboard-record",
+  "step": "keyboard",
+  "via": "#/dimensions：page.keyboard.press 的 Tab / Enter / Space",
+  "record": {
+   "lang": "en",
+   "theme": "green",
+   "width": 1440,
+   "focusStart": "New configuration",
+   "focusAfterTab": "Refresh list",
+   "enterRequests": [
+    "/api/v1/dimensions?company=DEFAULT&kind=dimension&limit=100"
+   ],
+   "spaceRequests": [
+    "/api/v1/dimensions?company=DEFAULT&kind=dimension&limit=100"
+   ],
+   "refreshDisabledWithEditor": false,
+   "editorOpenFocusAfterTab": "Refresh list",
+   "editorOpenEnterRequests": [
+    "/api/v1/dimensions?company=DEFAULT&kind=dimension&limit=100"
+   ],
+   "editorStillOpen": true
+  }
+ },
+ {
+  "name": "trade-order-detail-zh-red-1440",
+  "step": "page",
+  "via": "goto #/trade-orders?company=DEFAULT，点击订单号 PO-C1",
+  "hash": "#/trade-orders?company=DEFAULT&order=PO-C1",
+  "headers": [
+   "#",
+   "行号",
+   "商品",
+   "税码",
+   "数量",
+   "已开票数量",
+   "未开票数量",
+   "贷项冲回数量",
+   "单价",
+   "折扣 %",
+   "净额",
+   "税额",
+   "价税合计"
+  ],
+  "got": {
+   "quantity": 10,
+   "invoiced": 6,
+   "uninvoiced": 4
+  }
+ },
+ {
+  "name": "trade-order-detail-en-green-1440",
+  "step": "page",
+  "via": "goto #/trade-orders?company=DEFAULT，点击订单号 PO-C1",
+  "hash": "#/trade-orders?company=DEFAULT&order=PO-C1",
+  "headers": [
+   "#",
+   "Line",
+   "Product",
+   "Tax code",
+   "Quantity",
+   "Invoiced qty",
+   "Not invoiced qty",
+   "Credited qty",
+   "Unit price",
+   "Discount %",
+   "Net",
+   "Tax",
+   "Gross"
+  ],
+  "got": {
+   "quantity": 10,
+   "invoiced": 6,
+   "uninvoiced": 4
+  }
+ },
+ {
+  "checks": [
+   {
+    "check": "dimensions-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "dimensions-zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "dimensions-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "dimensions-en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "dimensions-zh-red-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "dimensions-zh-red-390 两个按钮都在视口内（left ≥ 0 且 right ≤ 390）",
+    "ok": true,
+    "detail": [
+     {
+      "text": "新建配置",
+      "left": 16,
+      "right": 106,
+      "top": 509
+     },
+     {
+      "text": "刷新列表",
+      "left": 114,
+      "right": 204,
+      "top": 509
+     }
+    ]
+   },
+   {
+    "check": "dimensions-zh-red-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "dimensions-en-green-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "dimensions-en-green-390 两个按钮都在视口内（left ≥ 0 且 right ≤ 390）",
+    "ok": true,
+    "detail": [
+     {
+      "text": "New configuration",
+      "left": 16,
+      "right": 168.6,
+      "top": 529
+     },
+     {
+      "text": "Refresh list",
+      "left": 176.6,
+      "right": 280.1,
+      "top": 529
+     }
+    ]
+   },
+   {
+    "check": "dimensions-en-green-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "键盘取证 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-order-detail-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-order-detail-zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "trade-order-detail-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "trade-order-detail-en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   }
+  ]
+ }
+]
