@@ -6,7 +6,11 @@
 
 ## [Unreleased]
 
-> **v0.18.0 发布候选**（尚未打 tag，日期待定）。产品代码基线为 `main` `6787f52`（REFAC-10 [#291](https://github.com/lingshf/ai-native-erp/pull/291) 的合并提交；S19 的两项开发任务全部已合并，该提交的 main Full run 45288533288 绿）；文档基线为 `3f8f2ff`（[#292](https://github.com/lingshf/ai-native-erp/pull/292)，main Full run 45288780685 绿）。v0.17.0 打在 `release/v0.17.0` 分支上、不在 main 上（D484），所以 `v0.17.0` 到 main 的范围里含 v0.17.0 已发布的文档提交。对照 `git log --oneline --first-parent v0.17.0..3f8f2ff9fd010ff63fb8d891b4a4b1209d4cd0ee`（**固定在该完整 SHA 上共 7 行**，每行一个 PR；`v0.17.0` 与 main 的合并基是 `1638445`）：
+（暂无）
+
+## [0.18.0] - 2026-11-23
+
+> **已发布**：tag `v0.18.0`（annotated，tag 对象 `bf9e003a62d605d18750e313db288ef29f698c98`）打在 `422d24b`（[#293](https://github.com/lingshf/ai-native-erp/pull/293) 的最终头，位于 `release/v0.18.0` 分支上；D484 / D501）；发布日 2026-11-23。main 上的 #293 squash 提交 `5398eb8` 不是 tag 目标。Release：<https://github.com/lingshf/ai-native-erp/releases/tag/v0.18.0>。完整版本差异：[v0.17.0..v0.18.0](https://github.com/lingshf/ai-native-erp/compare/v0.17.0..v0.18.0)（两点，tag 到 tag 的直接差异，47 个文件，+2643/−274，`git diff --shortstat v0.17.0 v0.18.0`）；合并基对比：[v0.17.0...v0.18.0](https://github.com/lingshf/ai-native-erp/compare/v0.17.0...v0.18.0)（三点，自合并基 `1638445`，69 个文件，+4176/−272，`git diff --shortstat v0.17.0...v0.18.0`，会重现 v0.17.0 已发布的 DEMO-18 文档路径，因两个发布分支分叉）。`git diff --name-only 6787f52 422d24b -- packages scripts` 为空（已核对），tag 提交以 `3f8f2ff` 为祖先（`merge-base --is-ancestor` 退出码 0），不含 `5398eb8`（退出码 1）。产品代码基线为 `main` `6787f52`（REFAC-10 [#291](https://github.com/lingshf/ai-native-erp/pull/291) 的合并提交；S19 的两项开发任务全部已合并，该提交的 main Full run 45288533288 绿）；文档基线为 `3f8f2ff`（[#292](https://github.com/lingshf/ai-native-erp/pull/292)，main Full run 45288780685 绿）。v0.17.0 打在 `release/v0.17.0` 分支上、不在 main 上（D484），所以 `v0.17.0` 到 main 的范围里含 v0.17.0 已发布的文档提交。对照 `git log --oneline --first-parent v0.17.0..3f8f2ff9fd010ff63fb8d891b4a4b1209d4cd0ee`（**固定在该完整 SHA 上共 7 行**，每行一个 PR；`v0.17.0` 与 main 的合并基是 `1638445`）：
 > - 有条目：[#288](https://github.com/lingshf/ai-native-erp/pull/288)（TLIST-03，新增）、[#291](https://github.com/lingshf/ai-native-erp/pull/291)（REFAC-10，变更，无用户可见变化）。
 > - 已发布、只改日期或只改设计 / 流程文档，**不需要条目**，单列：[#286](https://github.com/lingshf/ai-native-erp/pull/286)（v0.17.0 的 RC 与 Demo，已随 v0.17.0 发布）、[#289](https://github.com/lingshf/ai-native-erp/pull/289)（v0.17.0 发布日与链接，只改日期）、[#287](https://github.com/lingshf/ai-native-erp/pull/287)（S19 计划，设计）、[#290](https://github.com/lingshf/ai-native-erp/pull/290)（S18 评审与回顾，设计）、[#292](https://github.com/lingshf/ai-native-erp/pull/292)（D492 / D493 / D495 写入发布清单与 Demo 模板，流程文档）。
 >
@@ -659,7 +663,8 @@ M1 贸易里程碑完成（M1-01..07，M1-R 评审通过，无阻塞项）。产
 - 旧快照未配置提示、凭证空列表文案和根 README 迁移版本说明已在 v0.2.0 修复（见 `[0.2.0]`）；v0.1.0 原发布基线不包含这些修复。
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
-[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/lingshf/ai-native-erp/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/lingshf/ai-native-erp/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/lingshf/ai-native-erp/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/lingshf/ai-native-erp/compare/v0.14.0...v0.15.0
