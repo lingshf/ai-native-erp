@@ -83,9 +83,9 @@ function Lock-TsvFile([string] $path) {
   for ($try = 1; ; $try++) { try { return [IO.File]::Open($path, 'Open', 'Read', 'Read') } catch { if ($try -ge 50) { throw } }; Start-Sleep -Milliseconds 20 }
 }
 function Remove-SelftestTraces {
-  foreach ($id in $script:started) { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue }
-  foreach ($id in $script:started) { Wait-Process -Id $id -Timeout 5 -ErrorAction SilentlyContinue }
-  Remove-Item -LiteralPath $Work -Recurse -Force -ErrorAction SilentlyContinue
+  foreach ($id in $script:started) { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue; Wait-Process -Id $id -Timeout 5 -ErrorAction SilentlyContinue }
+  # A killed run may still hold its redirected output briefly on a busy machine, so retry the removal.
+  Wait-Until { Remove-Item -LiteralPath $Work -Recurse -Force -ErrorAction SilentlyContinue; -not (Test-Path -LiteralPath $Work) } 10 "self-test directory not removed: $Work"
 }
 function Test-SameDir([string] $a, [string] $b) { $a.TrimEnd('\') -ieq $b.TrimEnd('\') }
 function Get-SnapshotNumbers($rows) { @($rows | ForEach-Object { [int]$_.snapshot } | Sort-Object -Unique) }
