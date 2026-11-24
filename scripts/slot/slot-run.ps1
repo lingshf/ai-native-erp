@@ -147,7 +147,7 @@ function Invoke-WebDistCheck([string] $assertScript, [string] $checkoutRoot) {
   if ($code -ne 0) { Say "ABORT: dist check exit $code"; exit 5 }
 }
 # Gate snapshot (SLOT-06, D517): runs beside every run past the input exit-4 checks; record only, its exit code is never ours.
-$script:SNAPSHOT_READY_SECONDS = 15; $script:SNAPSHOT_STOP_SECONDS = 30; $script:SNAPSHOT_POLL_MILLISECONDS = 250; $script:SNAPSHOT_KILL_CONFIRM_MILLISECONDS = 5000
+$script:SNAPSHOT_READY_SECONDS = 15; $script:SNAPSHOT_STOP_SECONDS = 30; $script:SNAPSHOT_POLL_MILLISECONDS = 250; $script:SNAPSHOT_KILL_RESERVE_MILLISECONDS = 5000
 $script:SNAPSHOT_PREVIEW_PORT = 4173; $script:SNAPSHOT_TIMESTAMP_FORMAT = 'yyyyMMddTHHmmssfffZ'; $script:SNAPSHOT_FILE_PREFIX = 'gate-snapshot-'
 function Get-SnapshotPortCsv([int[]] $slotPorts) { (@($slotPorts) + $script:SNAPSHOT_PREVIEW_PORT | Sort-Object -Unique) -join ',' }  # distinct: gate-snapshot.ps1 rejects a repeat
 # Starts gate-snapshot.ps1 -StopFile into new timestamped files in $directory; $null (logged) when it cannot start.
@@ -169,22 +169,22 @@ function Wait-GateSnapshotReady($snapshot) {
   }
   Say "gate snapshot not ready after $($script:SNAPSHOT_READY_SECONDS) s"
 }
-# Creates the stop file, waits at most SNAPSHOT_STOP_SECONDS and logs exit code and summary, else ends only its tree.
-# Runs in the main flow's finally, so an error here is only logged and never replaces the runner's exit code.
+# Creates the stop file and logs exit code and summary; the whole step, kill included, fits in SNAPSHOT_STOP_SECONDS.
+# Runs in the main flow's finally: its errors, and a failing log write about them, never replace the runner's exit code.
 function Stop-GateSnapshot($snapshot) {
   if (-not $snapshot) { return }
   try {
-    $null = New-Item -ItemType File -Force -Path $snapshot.StopFile -ErrorAction SilentlyContinue
-    if (-not $snapshot.Process.WaitForExit($script:SNAPSHOT_STOP_SECONDS * 1000)) { Stop-GateSnapshotTree $snapshot.Process; return }
+    $budget = [Diagnostics.Stopwatch]::StartNew(); $null = New-Item -ItemType File -Force -Path $snapshot.StopFile -ErrorAction SilentlyContinue
+    if (-not $snapshot.Process.WaitForExit($script:SNAPSHOT_STOP_SECONDS * 1000 - $script:SNAPSHOT_KILL_RESERVE_MILLISECONDS)) { Stop-GateSnapshotTree $snapshot.Process $budget; return }
     $done = Get-Content -LiteralPath $snapshot.OutLog -ErrorAction SilentlyContinue | Where-Object { $_ -like 'gate-snapshot done *' } | Select-Object -Last 1
     Say "gate snapshot exit=$($snapshot.Process.ExitCode) $done"
-  } catch { Say "gate snapshot cleanup error (runner exit code kept): $($_.Exception.Message)" }
+  } catch { try { Say "gate snapshot cleanup error (runner exit code kept): $($_.Exception.Message)" } catch { $null = $_ } }
 }
-# Ends the timed-out snapshot's tree; logs "stopped" only once the process is confirmed gone, otherwise a warning.
-function Stop-GateSnapshotTree($snapshotProcess) {
-  $killOutput = (& taskkill.exe /PID $snapshotProcess.Id /T /F 2>&1) -join ' '; $killExit = $LASTEXITCODE
-  $outcome = if ($snapshotProcess.WaitForExit($script:SNAPSHOT_KILL_CONFIRM_MILLISECONDS)) { "stopped pid=$($snapshotProcess.Id)" } else { "WARNING: pid=$($snapshotProcess.Id) still running after taskkill exit=$killExit $killOutput" }
-  Say "gate snapshot stop timeout after $($script:SNAPSHOT_STOP_SECONDS) s; $outcome"
+# Ends the timed-out snapshot's tree; "stopped" only once it is confirmed gone within the stop budget, else a warning.
+function Stop-GateSnapshotTree($snapshotProcess, [Diagnostics.Stopwatch] $budget) {
+  $killOutput = (& taskkill.exe /PID $snapshotProcess.Id /T /F 2>&1) -join ' '; $killExit = $LASTEXITCODE; $budgetMilliseconds = $script:SNAPSHOT_STOP_SECONDS * 1000
+  $stopped = $snapshotProcess.WaitForExit([int][Math]::Max(0, $budgetMilliseconds - $budget.ElapsedMilliseconds)) -and $budget.ElapsedMilliseconds -le $budgetMilliseconds
+  Say "gate snapshot stop timeout after $($script:SNAPSHOT_STOP_SECONDS) s; $(if ($stopped) { "stopped pid=$($snapshotProcess.Id)" } else { "WARNING: pid=$($snapshotProcess.Id) not confirmed stopped within the $($script:SNAPSHOT_STOP_SECONDS) s budget; taskkill exit=$killExit $killOutput" })"
 }
 $script:RULE_BASE = 'R-base'; $script:RULE_STEPS = 'R-steps'
 $webDistScript = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\demo\assert-web-dist.ps1'))
