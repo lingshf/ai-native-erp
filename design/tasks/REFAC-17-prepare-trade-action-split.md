@@ -94,8 +94,10 @@
 - **R2 导出不变**：`trade-adjustments.ts` 的导出集合与 base 相同（`prepareTradeAction`，async function），参数与返回类型的源文本相同（只归一空白）。用仓库根 devDependency `@babel/parser`（插件 `typescript`）解析，口径同 REFAC-14 R2。新文件的导出只在本任务文件内使用，PR 正文附 `git grep` 结果。`npm run check:boundaries` 通过。
 - **R3 既有测试原样通过**：`npx vitest run --project core --project infra --project infra-isolated` 全部通过（含 `trade-documents.test.ts` 与 `trade-order-credit-invoicing.test.ts`）；测试文件 diff 为空。PR 正文附汇总行原文，base 与 head 各一次；有失败时逐个列出，并附只对失败文件的串行重跑原文（`--no-file-parallelism`）。
 - **R4 返回值、错误与调用序列等价**（送审证据，驱动不提交，不加常驻 CI 用例）：
-  - **驱动**：临时 node / vitest 脚本，在 base 与 head 上用同一份虚构数据建库（可借用 `trade-documents.test.ts` 的建账与开票步骤），**直接调用** `prepareTradeAction`（从源文件导入），传入的 `repo`、`journals`（含 `adapter(...)` 返回对象的 `plan`）与 `tools` 都用**记录代理**包装：按调用顺序记下方法名、参数（JSON）与返回值摘要（SHA-256）。`hash` 照常计算。
-  - **每个用例记录**：返回值（JSON，键顺序照原样）或抛出的错误（构造器名、`code`、全部自有可枚举属性、`message`）；完整调用记录。
+  - **驱动**：临时 node / vitest 脚本，在 base 与 head 上用同一份虚构数据建库（可借用 `trade-documents.test.ts` 的建账与开票步骤），**直接调用** `prepareTradeAction`（从源文件导入），传入的 `repo`、`journals`（含 `adapter(...)` 返回对象的 `plan`）与 `tools` 都用**委托包装对象**记录：按调用顺序记下方法名、参数与返回值摘要（SHA-256，按下面的记录编码）。`hash` 照常计算。
+  - **委托包装对象，不用 `Proxy`**：`adapter(...)` 返回的对象是冻结的，用 `Proxy` 包它再替换 `plan` 会违反 Proxy 不变量而抛 `TypeError`。因此每个被记录的依赖都另建一个**普通的新对象**：对原对象的每个方法逐一写转发函数（`(...args) => { 记录调用; const r = original.method(...args); 记录返回; return r; }`，用 `original.method.call(original, ...args)` 保持 `this`），非函数属性原值复制。`journals.adapter` 的包装先调用原 `adapter(...)` 得到冻结对象，再返回一个新的普通对象：其余属性原值复制，`plan` 换成转发并记录的函数；**不得**修改、解冻或用 `Proxy` 包原冻结对象。转发函数不改参数、不改返回值、不吞错误（抛出的错误照样记录后原样抛出）。base 与 head 用同一份包装代码。
+  - **记录编码**：参数、返回值和下一条“每个用例记录”中的返回值都先经同一个确定性编码函数再做 JSON / SHA-256，不得直接 `JSON.stringify`（`Set`、`Map` 会被编码成 `{}`，空集合与有内容的集合无法区分）。规则：`Set` → `{"$set": [按迭代顺序逐项编码]}`；`Map` → `{"$map": [[编码后的键, 编码后的值], …]}`（按迭代顺序）；`bigint` → `{"$bigint": "字符串"}`；`undefined` → `{"$undefined": true}`；`Date` → `{"$date": ISO 字符串}`；数组按下标逐项编码；普通对象按自有可枚举键的原顺序逐项编码；函数 → `{"$function": 名称}`；其余原值。`tradeOpeningItems()` 返回的 `Set` 由此保留内容与迭代顺序。驱动须带一条自测：`encode(new Set())` 与 `encode(new Set(["a"]))` 不同，`encode(new Map([["k", 1]]))` 含键 `k` 与值 `1`；自测失败即 R4 失败。
+  - **每个用例记录**：返回值（按上述记录编码后的 JSON，键顺序照原样）或抛出的错误（构造器名、`code`、全部自有可枚举属性、`message`）；完整调用记录。
   - **用例**至少包含：
     - 五种动作各至少一个成功用例；`advance` 的 AP 与 AR 各一个（覆盖 `changes[0]` 回写维度与分段）；
     - **重复检查**：`actionId` 分别与已有动作、日记账、未结项、付款相同，以及 `sourceRef` 已存在，共 5 个用例；
@@ -147,5 +149,5 @@
 ## 证据要求
 
 - **不需要浏览器时段**：行为等价由 R3（core / infra 既有用例）与 R4（返回值、错误与调用序列逐字节等价及直接断言）证明；经过贸易调整的 e2e 场景在 main Full 中运行，作合并后检查（R8b）。R4 与构建在本机运行，须服从协调者的时段静默通知（D442 / D480）。
-- **可行性**（S13 回顾行动 4）：`trade-documents.test.ts` 已能在临时 SQLite 上建出五种动作所需的未结项、付款与贷项；`prepareTradeAction` 的三个依赖都是接口对象（`MasterDataRepository`、`JournalService`、`JournalTools`），可用 `Proxy` 包装记录。R6a、R6b 的 base 数字见“现状”与上表（设计角色实测）。本任务书**没有**试写驱动。若某个“用例”在虚构数据上构造不出来，PR 正文写明原因并报协调者，不得静默删去。
+- **可行性**（S13 回顾行动 4）：`trade-documents.test.ts` 已能在临时 SQLite 上建出五种动作所需的未结项、付款与贷项；`prepareTradeAction` 的三个依赖都是接口对象（`MasterDataRepository`、`JournalService`、`JournalTools`），可用委托包装对象逐方法转发并记录（不用 `Proxy`，见 R4“驱动”）。R6a、R6b 的 base 数字见“现状”与上表（设计角色实测）。本任务书**没有**试写驱动。若某个“用例”在虚构数据上构造不出来，PR 正文写明原因并报协调者，不得静默删去。
 - PR 正文附：R2 导出与 `git grep` 结果；R3 汇总行；R4 驱动、用例清单、比较结果与直接断言结果；R5a–R5d 各表；R6 行数表（base 与 head 两列）；R7 的 `bundle-measure.mjs` 完整输出与退出码；可读性一节。R8b 合并后补到 PR 评论。
