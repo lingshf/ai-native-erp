@@ -79,7 +79,7 @@
 | [`docs/tradeoffs.md`](tradeoffs.md) | 取舍汇总 | partial（钉合并提交 `6debbdf551242c269cbb22401b34f27a028f6e91`；KDOC-09 新增；设计/产品已核对，未经 QA） |
 | [`docs/operations.md`](operations.md) | 运维与故障排查 | partial（钉合并提交 `66f3a47623e3b07f55447b06ac48fe84d153c34a`；KDOC-07 新增） |
 | [`docs/ci.md`](ci.md) | CI 说明 | partial（钉版本 `08d9cf34e3623f01803d143caa14bfcb923d2561`；对照 workflow 与 `scripts/ci.ts`，未经复核） |
-| [`docs/flows/`](flows/README.md) | Mermaid 界面流程图 | 索引页；新增付款与收款流程，见 G4（partial，合并后钉版本） |
+| [`docs/flows/`](flows/README.md) | Mermaid 界面流程图 | 索引页；新增付款与收款流程，见 G4（partial；`docs/flows/README.md` 钉 `8ed9d1b0fdfd053acf87f82dcaca3c0efeebb011`） |
 | [`docs/release/`](release/README.md) | 流程、各版发布说明、评审与回顾 | 仅 README.md 与 v0.21.0 发布说明已钉版本（见矩阵），其余未核对 |
 | [`docs/demo/`](demo/TEMPLATE.md) | 每版 Demo 脚本与证据（v0.1.0..v0.21.0） | 证据存档，不是用户文档 |
 | [`docs/migration-runbook.md`](migration-runbook.md) | 迁移操作手册 | partial（版本见矩阵；仅虚构夹具验证） |
