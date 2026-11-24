@@ -1,6 +1,6 @@
 # UI-1 界面设计规范与逐步改进方案
 
-- 角色：设计/产品负责人　状态：待评审　适用：`packages/web`（现行 React 工作区）
+- 角色：设计/产品负责人　状态：已评审并合并（[#60](https://github.com/lingshf/ai-native-erp/pull/60)：评审 [5979043801](https://github.com/lingshf/ai-native-erp/pull/60#pullrequestreview-5979043801) 要求修改，[5979226410](https://github.com/lingshf/ai-native-erp/pull/60#pullrequestreview-5979226410) 对 `e0b9ae7` 通过，合并为 `1072322`）；UI-1 的 13 项实施任务已全部合并，随 v0.3.0 发布，一致性审查见 [reviews/UI-1.md](../reviews/UI-1.md)（KDOC-11）　适用：`packages/web`（现行 React 工作区）
 - 目标：在现有 web 界面上**分步调整**，做到好看、简洁；**业务功能与流程不变**，不推倒重来。
 - 约束来源：[产品规范 PG-03/PG-04](../product-guidelines.md)（参考 Dynamics 365 的信息组织方式，不复制 Microsoft/Fluent 的视觉、图标、文字和素材；默认红、可选绿；中英双语；纯键盘可用；教学模式可关闭且关闭后不隐藏风险或必填信息）。
 - 本目录文件：
