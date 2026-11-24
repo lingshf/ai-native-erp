@@ -142,7 +142,7 @@ async function selectFirstItem(page, lang) {
   await page.getByLabel(st.date[lang], { exact: true }).fill(day);
   const box = page.locator("tbody input[type=checkbox]").first();
   await box.check();
-  const amount = page.locator("tbody input").filter({ hasNot: page.locator("[type=checkbox]") }).first();
+  const amount = page.locator("tbody input[type=number]").first();
   return { box, amount };
 }
 

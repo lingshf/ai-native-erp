@@ -1,0 +1,10 @@
+
+ RUN  v5.1.0 C:/GithubCopilot/copilot-worktrees/ai-native-erp/demo22-app
+
+
+ Test Files  1 passed (1)
+      Tests  7 passed | 8 skipped (15)
+   Start at  20:27:48
+   Duration  8.65s (tests 47%, environment 29%, transform 10%, import 8%, setup 6%)
+
+exit=0

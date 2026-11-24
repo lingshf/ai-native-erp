@@ -95,3 +95,53 @@ readiness：`openItems 8`，DEFAULT 账套的未结项、PO-C1 部分开票/10�
 **D492 清单（窗口内，删除前）：** 步骤 1 的账套 `C:\Users\shaoling\AppData\Local\Temp\erp-demo-a8f2f654-1469-446b-81e4-5fdb6aa5852d`：`demo.sqlite` 647168 B（`CE55C639…5953`）、`demo.sqlite-wal` 1878752 B（`52E018EF…028D`）、`demo.sqlite-shm` 32768 B（`061A691C…1A60`），`demo.sqlite.users\` 下 2 个 0 字节文件（`E3B0C442…B855`）；`-wal`、`-shm` 均 present。完整 SHA-256 见 `logs/capture-dry-run.out.log`；步骤 2 的清单见 `logs/slot-demo-capture.out.log`。
 
 **未做：** `-Stub pass` 演练（本版本 SLOT 无改动）。
+
+## 评审 6033643731（绑定 3ea8a12）的修正
+
+**1. K2 的 `on`：capture 脚本选择器问题，不是产品缺陷。**
+- 原选择器 `tbody input` 加 `filter({ hasNot: locator("[type=checkbox]") })`：`hasNot` 检查的是子孙元素，`input` 没有子孙，所以不会排除任何元素，`.first()` 取到的是行首的选择 checkbox，其未设 value，`inputValue()` 返回浏览器默认值 `on`。所以窗口里的 `k2AmountBefore/After = on` 是 checkbox 的值，不是核销金额，那一项等式没有证明金额不变。
+- 产品侧：`packages/web/src/trade-settlements/settlement-row.tsx` 中，金额输入框是选中后才渲染的 `type="number"`（`aria-label` 为“核销总额 + 单号”），checkbox 另是 `type="checkbox"`；产品代码无缺陷。
+- 脚本已改为 `tbody input[type=number]`（`capture.mjs`，`node --check` exit 0）。
+- 窗口外影响说明（现有产品测试，未改测试）：`packages/web/test/trade-settlements.test.tsx` 的 TLIST-06 用例 S3 断言刷新后保留选择和金额。在 `demo22-app`（产品代码与 `3ae4848` 相同）根目录执行 `npx vitest run packages/web/test/trade-settlements.test.tsx -t "TLIST-06" *> "$env:TEMP\demo22\logs\s3-vitest.out.log"`，紧接 `Add-Content … "exit=$LASTEXITCODE"`：7 passed | 8 skipped，exit 0（`logs/s3-vitest.out.log`）。注：先从 `packages\web` 目录执行过一次，因缺少根配置的 jsdom 环境报 `window is not defined`（exit 1），已覆盖为根目录执行的结果。
+- 窗口内真实 Chrome 的有效证据范围：K1（Enter、空格各 1 次请求）、K2 的“选中状态保持”（`k2StillChecked: true`）、K3 有效；K2 的“金额不变”在真实浏览器里没有有效取证，只有上述 jsdom 测试覆盖，修正后的脚本未在真实浏览器里重跑。若需要真实浏览器取证，须另行申请窗口（D480），本次没有开窗。
+
+**2. 快照命令与时间点。**
+- `$T` 展开为 `C:\GithubCopilot\copilot-worktrees\ai-native-erp\demo22-tool`（基线 `3ae4848`），实际执行的是 `pwsh -NoProfile -File "C:\GithubCopilot\copilot-worktrees\ai-native-erp\demo22-tool\scripts\slot\gate-snapshot.ps1" -OutFile "C:\Users\shaoling\AppData\Local\Temp\demo22\logs\gate-window.tsv" -StopFile "C:\Users\shaoling\AppData\Local\Temp\demo22\logs\gate.stop" -Ports "4204,4173"`；开窗前门禁同样用该路径，参数为 `-OutFile "…\logs\gate-pre-window.tsv" -Once -Ports "4204,4173"`。没有使用 lingshf-animated-disco 下的脚本。
+- 时间点（PST，2026-11-23）：
+
+| 时间 | 含义 |
+| --- | --- |
+| 20:18:26 | 门禁命令启动（命令前 `Get-Date` 输出） |
+| 20:18:28.605 | 门禁唯一一帧 `takenAt`（`logs/gate-pre-window.tsv`，`2026-11-23T20:18:28.6048693-08:00`），4204、4173 各一行 `pid=none` |
+| 约 20:18:3x | 门禁 exit 0 后向协调者发通知并按批准放行，随即启动窗口快照 |
+| 20:18:40 | 窗口快照命令启动（`Get-Date` 输出） |
+| 20:18:42.369 / 20:19:42.448 / 20:20:42.666 / 20:21:42.800 | 窗口快照 4 帧 `takenAt`（`logs/gate-window.tsv`），每帧约 60 s |
+| 20:18:43 | 步骤 1 开始 |
+| 20:21:46 | 创建 `gate.stop`，快照进程 exit 0 |
+
+- 批准原文的转达时间只有“当前时间约 20:18”级别，系统消息没有更细时间戳；“实际放行”以门禁 exit 0 后开始执行步骤 1（20:18:43）为准。
+
+**3. D492 清理前全部产物清单（窗口内，由 runner 在删除账套前写入日志，之后账套目录被删除）。**
+
+| 账套（步骤） | 文件 | 字节 | SHA-256 |
+| --- | --- | --- | --- |
+| `…\Temp\erp-demo-a8f2f654-1469-446b-81e4-5fdb6aa5852d`（步骤 1，20:19:28） | `demo.sqlite` | 647168 | `CE55C63923B7B131DD3CF44D43A9FC43218BAE1C1B127D70036A934742505953` |
+| | `demo.sqlite-wal` | 1878752 | `52E018EFB73B9648E2F795C0BA2E3396D247E227C95BC84095F79952B19E028D` |
+| | `demo.sqlite-shm` | 32768 | `061A691C2CBF65230BDA8E7FC4770C5ED4C6158A7702F3E8FFCD2950055A1A60` |
+| | `demo.sqlite.users\43876-b31552a8-…`、`…\43876-d0712800-…` | 0 ×2 | `E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855` |
+| `…\Temp\erp-demo-7b84915f-8ce7-49e1-b670-5e7fd9a6c50e`（步骤 2，20:21:40） | `demo.sqlite` | 647168 | `FC336C2FB604C2D5C028E0634AF8A0CB57112172A2651DD48EF24F1C157D7B9A` |
+| | `demo.sqlite-wal` | 1878752 | `43278D30254AD461DCEDF98C38A0F91E2FF84DCA7373471FBA5B170ACDB318D4` |
+| | `demo.sqlite-shm` | 32768 | `885BFDB9A2F9CEF26D67C3C45F3F8E74D36275566F00EB92E21802B297E7C870` |
+| | `demo.sqlite.users\86164-828690c4-…`、`…\86164-bf35d5a5-…` | 0 ×2 | `E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855` |
+
+两个账套的 `-wal`、`-shm` 均 present（日志中有 `inventory demo.sqlite-wal present`、`inventory demo.sqlite-shm present` 行）。账套文件（sqlite、-wal、-shm、users 下的 0 字节文件）按规则在清单后删除，未入库：账套是一次性临时库，含演示数据，不作为证据保留，证据是清单中的字节数与哈希。
+
+窗口产物的留存情况：
+- 已入库（`docs/demo/v0.21.0/logs/` 与 `shots/`、`shots-slot/`）：`capture-dry-run.out.log`、`slot-run.out.log`、`gate-window.tsv`、`gate-window.out.log`、`gate-pre-window.tsv`，以及 slot-run 附属文件 `slot-slot-summary.log`、`slot-demo-capture.out.log`、`slot-preflight-base.log`、`slot-preflight-head.log`、`slot-demo-capture-start-rev.txt`、`slot-demo-capture-end-rev.txt`、`slot-build.log`（原 `out\build.log`，SHA-256 `7325C4B2C360E19D8F3E67E97EBACD4BDAC72C545E3505DBD56AA519448D5C6E`）、`slot-processes.tsv`（原 `out\processes.tsv`，`8845E73C4B007FE586BF2AC160FA4757661A3B5917608D75C465CEFDCDEFCDEF`）；截图 4 张（步骤 1，`shots/`）和步骤 2 的 4 张（`shots-slot/`）及各自 `capture-log-main.json`。
+- 未入库：`out\excluded.tsv`（341244 B，SHA-256 `1ACB92608384361A83A12F3928D961502D69EBF1F07C23FA6019DE40D9959585`，门禁排除进程的逐行明细，体积大，且 `slot-slot-summary.log` 已含同类 `excluded` 行）；`out\demo-capture.err.log`（0 B，空文件，SHA-256 `E3B0C442…B855`）；`gate.stop`（0 B 标志文件，是关窗操作，时间见上）；上述账套文件。
+- `%TEMP%` 下还有 4 个我未创建于本窗口、也未触碰的 `erp-demo-*` 目录，不属于本窗口清单。
+
+**4. D495 的 `git diff --check`（D511 做法：不改原始日志，按原样给出排除规则）。**
+- 完整命令 `git diff --check 3ae4848d36c4c06c2e208173e58ed2cac3771564 <head>`：exit 2。告警全部落在 `docs/demo/v0.21.0/logs/` 下的原始日志（未改一字节，按 D511 保持原样；行尾为 CRLF 或有 Tab 分隔）。按文件的告警索引：capture-dry-run 52、slot-run 102、slot-slot-summary 101、gate-window.tsv 129、gate-pre-window.tsv 18、gate-pre.tsv 16、bundle-measure-sprint 516、bundle-measure-tlist06 524、build-app 61、skipcapture 51、focus-path-jsdom 27 等，非 `logs/` 路径为 0。
+- 排除规则命令 `git diff --check 3ae4848d36c4c06c2e208173e58ed2cac3771564 <head> -- . ':!docs/demo/v0.21.0/logs'`：exit 0。
+- 具体 head 的两条命令输出写在 PR 正文。
