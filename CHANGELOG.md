@@ -8,7 +8,7 @@
 
 ## [0.21.0] - 2026-11-23
 
-> **已发布**：tag `v0.21.0`（annotated，tag 对象 `416b3090cb89bf8451f7a77ce09e9082b845c108`）打在 `01b16dbf36dd4feab80aee05f9583cfe9bc1de13`（[#319](https://github.com/lingshf/ai-native-erp/pull/319) 的最终头，位于 `release/v0.21.0`；D484）；main 上的 squash 提交 `0494020` 不是 tag 目标。Release：<https://github.com/lingshf/ai-native-erp/releases/tag/v0.21.0>。tag 对 tag 的版本差异（D483）见[发布说明](docs/release/v0.21.0-release-notes.md)。
+> **已发布**：tag `v0.21.0`（annotated，tag 对象 `416b3090cb89bf8451f7a77ce09e9082b845c108`）打在 `01b16dbf36dd4feab80aee05f9583cfe9bc1de13`（[#319](https://github.com/lingshf/ai-native-erp/pull/319) 的最终头，位于 `release/v0.21.0`；D484）；main 上的 squash 提交 `0494020` 不是 tag 目标。Release：<https://github.com/lingshf/ai-native-erp/releases/tag/v0.21.0>。tag 对 tag 的版本差异（D483，`git diff --shortstat`，无路径过滤）：[v0.20.0..v0.21.0](https://github.com/lingshf/ai-native-erp/compare/v0.20.0..v0.21.0)（两点）70 个文件，+4519/−550；[v0.20.0...v0.21.0](https://github.com/lingshf/ai-native-erp/compare/v0.20.0...v0.21.0)（三点，合并基 `a1a12448207372d6792b2497da852d08418c552b`）111 个文件，+6957/−548；`git rev-list --count` 两点 18、三点 23。
 
 > **版本号**：D514，minor（0.20.0 → 0.21.0）：TLIST-06 让付款与收款页多了一个按钮，是用户可见的小功能。
 >
