@@ -811,16 +811,17 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 ## S24：拆分 CompanyEvents + 其余待定（计划草案，版本待 S23 发布后定）
 
-计划草案见 [S24.md](S24.md)（D525 为 REFAC-14 不改行为；D526 为 #326 中 trade-orders 串行失败判为原有偶发；D527 为 FLAKE-09 的原因推断与修法；D528 为 REFAC-15 不改行为；下一个可用编号 D529）。REFAC-14 按 main `2794c3a` 写，已由 #326 合并；FLAKE-09 与 REFAC-15 按 main `ac8ac00` 写（REFAC-13 #325 已合并；SLOT-06 进行中）。其余泳道在 S23 评审回顾之后从候选（Demo 全产物清单脚本化等）中选。
+计划草案见 [S24.md](S24.md)（D525 为 REFAC-14 不改行为；D526 为 #326 中 trade-orders 串行失败判为原有偶发；D527 为 FLAKE-09 的原因推断与修法；D528 为 REFAC-15 不改行为；D529 为 MEAS-02 不改行为；下一个可用编号 D530）。REFAC-14 按 main `2794c3a` 写，已由 #326 合并；FLAKE-09 与 REFAC-15 按 main `ac8ac00` 写（REFAC-13 #325 已合并）；MEAS-02 按 main `e4a9fec` 写（SLOT-06 #322 已合并）。其余泳道在 S23 评审回顾之后从候选（Demo 全产物清单脚本化等）中选。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | [REFAC-14](REFAC-14-company-events-split.md) | 拆分 `CompanyEvents` 函数体（不改行为） | 重构（页面） | P2 | 无 | `packages/web/src/business-events/company-events.tsx`、`business-events/` 下新文件 | 不加 | 不需要 | done | [#326](https://github.com/lingshf/ai-native-erp/pull/326) |
 | [FLAKE-09](FLAKE-09-web-async-wait.md) | web 测试在本机负载下的异步等待超时（只改测试设置） | 测试基础设施 | P2 | REFAC-13 已合并 | `packages/web/test/setup.ts`（单文件） | 不加 | 不需要 | todo | — |
 | [REFAC-15](REFAC-15-company-reports-split.md) | 拆分 `CompanyReports` 函数体（不改行为） | 重构（页面） | P2 | REFAC-14 已合并 | `packages/web/src/TradeReports.tsx`、新目录 `trade-reports/` | 不加 | 不需要 | todo | — |
+| [MEAS-02](MEAS-02-bundle-compare-split.md) | 拆分 `bundle-compare.mjs`（不改行为） | 重构（工具脚本） | P3 | SLOT-06 已合并 | `scripts/measure/` | 不加 | 不需要 | todo | — |
 | DEMO-24（无任务书） | `<S24 版本>` RC 与 Demo，验收待正式计划补写 | 发布 | P1（Sprint 末） | S23 版本已发布；开发任务已合并或移出；main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 视范围 | todo | — |
 
-- **并行**：REFAC-14 与 S23 在途的 REFAC-13（`trade-orders/`）、SLOT-06（`scripts/slot/`）冲突域逐文件不相交，没有共享单文件，路由 chunk 不同；FLAKE-09 只改 `packages/web/test/setup.ts`，与 SLOT-06 不相交，在途期间其他任务不得改该文件；REFAC-15 只改贸易报表页（`TradeReports.tsx` 与新目录 `trade-reports/`），不改测试，与 FLAKE-09、SLOT-06 不相交；都不加迁移；不申请浏览器时段，服从 D442 / D480 时段停用通知。
+- **并行**：REFAC-14 与 S23 在途的 REFAC-13（`trade-orders/`）、SLOT-06（`scripts/slot/`）冲突域逐文件不相交，没有共享单文件，路由 chunk 不同；FLAKE-09 只改 `packages/web/test/setup.ts`，与 SLOT-06 不相交，在途期间其他任务不得改该文件；REFAC-15 只改贸易报表页（`TradeReports.tsx` 与新目录 `trade-reports/`），不改测试，与 FLAKE-09、SLOT-06 不相交；MEAS-02 只改 `scripts/measure/`，不是页面拆分，与 FLAKE-09、REFAC-15 不相交；都不加迁移；不申请浏览器时段，服从 D442 / D480 时段停用通知。
 
 ## 派发顺序
 
