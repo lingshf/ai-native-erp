@@ -715,7 +715,8 @@ M1 贸易里程碑完成（M1-01..07，M1-R 评审通过，无阻塞项）。产
 - 旧快照未配置提示、凭证空列表文案和根 README 迁移版本说明已在 v0.2.0 修复（见 `[0.2.0]`）；v0.1.0 原发布基线不包含这些修复。
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
-[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/lingshf/ai-native-erp/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/lingshf/ai-native-erp/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/lingshf/ai-native-erp/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/lingshf/ai-native-erp/compare/v0.16.0...v0.17.0
