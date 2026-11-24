@@ -146,44 +146,45 @@ function Invoke-WebDistCheck([string] $assertScript, [string] $checkoutRoot) {
   Say "dist check $line"
   if ($code -ne 0) { Say "ABORT: dist check exit $code"; exit 5 }
 }
-# Gate snapshot (SLOT-06, D517): runs beside every run past the exit-4 checks; record only, its exit code is never ours.
-$script:SNAPSHOT_READY_SECONDS = 15; $script:SNAPSHOT_STOP_SECONDS = 30; $script:SNAPSHOT_POLL_MILLISECONDS = 250
+# Gate snapshot (SLOT-06, D517): runs beside every run past the input exit-4 checks; record only, its exit code is never ours.
+$script:SNAPSHOT_READY_SECONDS = 15; $script:SNAPSHOT_STOP_SECONDS = 30; $script:SNAPSHOT_POLL_MILLISECONDS = 250; $script:SNAPSHOT_KILL_CONFIRM_MILLISECONDS = 5000
 $script:SNAPSHOT_PREVIEW_PORT = 4173; $script:SNAPSHOT_TIMESTAMP_FORMAT = 'yyyyMMddTHHmmssfffZ'; $script:SNAPSHOT_FILE_PREFIX = 'gate-snapshot-'
-# The slot's ports and 4173, distinct and ascending (gate-snapshot.ps1 rejects a repeated port).
-function Get-SnapshotPortCsv([int[]] $slotPorts) { (@($slotPorts) + $script:SNAPSHOT_PREVIEW_PORT | Sort-Object -Unique) -join ',' }
+function Get-SnapshotPortCsv([int[]] $slotPorts) { (@($slotPorts) + $script:SNAPSHOT_PREVIEW_PORT | Sort-Object -Unique) -join ',' }  # distinct: gate-snapshot.ps1 rejects a repeat
 # Starts gate-snapshot.ps1 -StopFile into new timestamped files in $directory; $null (logged) when it cannot start.
 function Start-GateSnapshot([string] $directory, [int[]] $slotPorts) {
-  $stamp = (Get-Date).ToUniversalTime().ToString($script:SNAPSHOT_TIMESTAMP_FORMAT)
-  $base = Join-Path $directory "$($script:SNAPSHOT_FILE_PREFIX)$stamp"
+  $base = Join-Path $directory "$($script:SNAPSHOT_FILE_PREFIX)$((Get-Date).ToUniversalTime().ToString($script:SNAPSHOT_TIMESTAMP_FORMAT))"
   $snapshot = @{ TsvFile = "$base.tsv"; StopFile = "$base.stop"; OutLog = "$base.stdout.log"; Ports = Get-SnapshotPortCsv $slotPorts }
   $arguments = "-NoProfile -File `"$(Join-Path $PSScriptRoot 'gate-snapshot.ps1')`" -OutFile `"$($snapshot.TsvFile)`" -Ports `"$($snapshot.Ports)`" -StopFile `"$($snapshot.StopFile)`""
   try { $snapshot.Process = Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList $arguments -NoNewWindow -PassThru -RedirectStandardOutput $snapshot.OutLog -RedirectStandardError "$base.stderr.log" }
   catch { Say "gate snapshot not started: $($_.Exception.Message)"; return $null }
-  $null = $snapshot.Process.Handle
-  Say "gate snapshot started pid=$($snapshot.Process.Id) file=$($snapshot.TsvFile) ports=$($snapshot.Ports)"
+  $null = $snapshot.Process.Handle; Say "gate snapshot started pid=$($snapshot.Process.Id) file=$($snapshot.TsvFile) ports=$($snapshot.Ports)"
   return $snapshot
 }
 # Waits until the TSV holds a row after its header or the snapshot exited, at most SNAPSHOT_READY_SECONDS; never blocks the run.
 function Wait-GateSnapshotReady($snapshot) {
   if (-not $snapshot) { return }
-  $deadline = (Get-Date).AddSeconds($script:SNAPSHOT_READY_SECONDS)
-  while ((Get-Date) -lt $deadline) {
+  for ($waited = [Diagnostics.Stopwatch]::StartNew(); $waited.Elapsed.TotalSeconds -lt $script:SNAPSHOT_READY_SECONDS; Start-Sleep -Milliseconds $script:SNAPSHOT_POLL_MILLISECONDS) {
     if ($snapshot.Process.HasExited) { Say "gate snapshot exited early exit=$($snapshot.Process.ExitCode)"; return }
     if (@(Get-Content -LiteralPath $snapshot.TsvFile -TotalCount 2 -ErrorAction SilentlyContinue).Count -ge 2) { return }
-    Start-Sleep -Milliseconds $script:SNAPSHOT_POLL_MILLISECONDS
   }
   Say "gate snapshot not ready after $($script:SNAPSHOT_READY_SECONDS) s"
 }
-# Creates the stop file and waits at most SNAPSHOT_STOP_SECONDS; logs the exit code and summary line, or ends only its tree.
+# Creates the stop file, waits at most SNAPSHOT_STOP_SECONDS and logs exit code and summary, else ends only its tree.
+# Runs in the main flow's finally, so an error here is only logged and never replaces the runner's exit code.
 function Stop-GateSnapshot($snapshot) {
   if (-not $snapshot) { return }
-  $null = New-Item -ItemType File -Force -Path $snapshot.StopFile -ErrorAction SilentlyContinue
-  if ($snapshot.Process.WaitForExit($script:SNAPSHOT_STOP_SECONDS * 1000)) {
+  try {
+    $null = New-Item -ItemType File -Force -Path $snapshot.StopFile -ErrorAction SilentlyContinue
+    if (-not $snapshot.Process.WaitForExit($script:SNAPSHOT_STOP_SECONDS * 1000)) { Stop-GateSnapshotTree $snapshot.Process; return }
     $done = Get-Content -LiteralPath $snapshot.OutLog -ErrorAction SilentlyContinue | Where-Object { $_ -like 'gate-snapshot done *' } | Select-Object -Last 1
-    Say "gate snapshot exit=$($snapshot.Process.ExitCode) $done"; return
-  }
-  & taskkill.exe /PID $snapshot.Process.Id /T /F | Out-Null
-  Say "gate snapshot stop timeout after $($script:SNAPSHOT_STOP_SECONDS) s; stopped pid=$($snapshot.Process.Id)"
+    Say "gate snapshot exit=$($snapshot.Process.ExitCode) $done"
+  } catch { Say "gate snapshot cleanup error (runner exit code kept): $($_.Exception.Message)" }
+}
+# Ends the timed-out snapshot's tree; logs "stopped" only once the process is confirmed gone, otherwise a warning.
+function Stop-GateSnapshotTree($snapshotProcess) {
+  $killOutput = (& taskkill.exe /PID $snapshotProcess.Id /T /F 2>&1) -join ' '; $killExit = $LASTEXITCODE
+  $outcome = if ($snapshotProcess.WaitForExit($script:SNAPSHOT_KILL_CONFIRM_MILLISECONDS)) { "stopped pid=$($snapshotProcess.Id)" } else { "WARNING: pid=$($snapshotProcess.Id) still running after taskkill exit=$killExit $killOutput" }
+  Say "gate snapshot stop timeout after $($script:SNAPSHOT_STOP_SECONDS) s; $outcome"
 }
 $script:RULE_BASE = 'R-base'; $script:RULE_STEPS = 'R-steps'
 $webDistScript = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\demo\assert-web-dist.ps1'))
@@ -213,8 +214,7 @@ try { $steps = @(& $StepsFile -OutDir $OutDir -Root $root -BaseRoot $BaseRoot | 
 # A steps file that yields no step would otherwise pass the precheck and report success without running anything.
 if ($steps.Count -eq 0) { Say "ABORT: -StepsFile $StepsFile produced no steps"; exit 4 }
 Say "steps from $StepsFile`: $(($steps | ForEach-Object { $_.name }) -join ', ')"
-# Wait for the first snapshot (at most 15 s) so that it usually precedes the port check: an exit 7 / 8 then has the
-# listener's parent chain and cwd on record. A slow or failed snapshot is only logged and never blocks the run.
+# Wait for the first snapshot (at most 15 s) so it usually precedes the port check and an exit 7 / 8 records the listener's parent chain and cwd; a slow or failed snapshot is only logged.
 $gateSnapshot = Start-GateSnapshot $OutDir $Ports
 try {
   Wait-GateSnapshotReady $gateSnapshot
