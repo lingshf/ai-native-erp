@@ -48,6 +48,7 @@ export async function terminateRuntime(
       await bounded(client.forceStop());
       terminated = true;
     } catch {
+      // Unconfirmed termination keeps the directory and disables AI until restart.
       onUnconfirmed();
     }
   }

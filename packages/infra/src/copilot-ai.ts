@@ -80,7 +80,6 @@ export class CopilotAiAdapter implements AiPort {
           state.interrupted || signal.aborted,
           this.options,
           () => {
-            // Unconfirmed termination keeps the directory and disables AI until restart.
             this.blocked = true;
             console.error("AI runtime termination unconfirmed; AI disabled until restart.");
           },
