@@ -12,7 +12,7 @@
 | [invoice-deeplink-flow.md](invoice-deeplink-flow.md) | 发票深链接与地址栏筛选：带参数打开的判定、有误时的提示、操作如何写地址（v0.12.0） |
 | [order-invoice-trace-flow.md](order-invoice-trace-flow.md) | 订单与发票互相追溯：开票状态列、订单页深链接、发票来源订单列、五页统一离开确认（v0.9.0） |
 | [legacy-import-flow.md](legacy-import-flow.md) | 旧账导入（M2-03，命令行） |
-| [settlement-flow.md](settlement-flow.md) | 付款与收款页：选择与折扣规则、预览与确认、结果未知、刷新列表（v0.21.0 代码） |
+| [settlement-flow.md](settlement-flow.md) | 付款与收款页：选择与折扣规则、预览与确认、结果未知、刷新列表（v0.21.0；另标注其后 main 的 TSET-01 提示） |
 | [period-close-flow.md](period-close-flow.md) | 期末结账向导 |
 | [teaching-toggle.md](teaching-toggle.md) | 教学说明开关 |
 | [ui-shell-and-templates.md](ui-shell-and-templates.md) | UI-1 外壳、导航与页面模板 |
