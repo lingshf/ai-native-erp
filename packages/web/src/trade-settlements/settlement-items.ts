@@ -61,6 +61,17 @@ export function setItemDiscount(items: CommandItem[], itemId: string, takeDiscou
   return items.map((item) => (item.itemId === itemId ? { ...item, takeDiscount } : item));
 }
 
+export function withoutItems(items: CommandItem[], itemIds: string[]) {
+  return items.filter((item) => !itemIds.includes(item.itemId));
+}
+
+// 只有未结项已全部加载才能断定已选项不在其中；未加载完时仍按“待加载”处理，不算缺失。
+export function missingSelections(items: CommandItem[], rows: OpenItem[], complete: boolean) {
+  if (!complete) return [];
+  const open = new Set(rows.map((row) => row.itemId));
+  return items.filter((item) => !open.has(item.itemId)).map((item) => item.itemId);
+}
+
 export function settlementTotals(items: CommandItem[], rows: OpenItem[]) {
   // 已选未结项尚未加载时余额未知：NaN 使应付/应收与剩余显示“待加载”，不按 0 推算。
   const due = items.reduce(

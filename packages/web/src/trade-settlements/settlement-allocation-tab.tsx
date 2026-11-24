@@ -1,7 +1,8 @@
 import type { CompanyDto, TradeSettlementCommandDto } from "@erp/core/contracts";
 import { FastTab } from "../ui/components/index.tsx";
 import type { Money, T } from "./settlement-model.ts";
-import { settlementTotals } from "./settlement-items.ts";
+import { settlementTotals, withoutItems } from "./settlement-items.ts";
+import { SettlementMissingNotice, useSettledMissing } from "./settlement-missing-notice.tsx";
 import { SettlementRow, SettlementSpacerRow } from "./settlement-row.tsx";
 import { SettlementKpis, SettlementTableHead } from "./settlement-table-parts.tsx";
 import { SettlementListToolbar } from "./settlement-list-toolbar.tsx";
@@ -22,6 +23,8 @@ export function SettlementAllocationTab(props: SettlementAllocationTabProps) {
   const { page, rows, scroll, virtual, virtualizer, measured, visible } = openItems;
   const firstSelected = rows.find((item) => item.itemId === command.items[0]?.itemId);
   const { due, allocated } = settlementTotals(command.items, rows);
+  const missing = useSettledMissing(command.items, rows, page);
+  const removeMissing = () => onChange({ ...command, items: withoutItems(command.items, missing) });
   return (
     <FastTab id="tset-allocation" title={t("tset.allocation")}>
       <SettlementListToolbar t={t} onRefresh={() => void page.refetch()} />
@@ -30,12 +33,14 @@ export function SettlementAllocationTab(props: SettlementAllocationTabProps) {
         <SettlementKpis
           t={t}
           money={money}
+          unknown={missing.length > 0 ? "tset.notOpen" : undefined}
           entries={[
             [`trade.${command.side}`, due],
             ["tset.allocated", allocated],
             ["tset.remaining", due - allocated],
           ]}
         />
+        <SettlementMissingNotice t={t} count={missing.length} onRemove={removeMissing} />
         <div className="grid-wrap accounts-scroll" ref={scroll}>
           <table className="grid" aria-label={t("tset.select")}>
             <SettlementTableHead
