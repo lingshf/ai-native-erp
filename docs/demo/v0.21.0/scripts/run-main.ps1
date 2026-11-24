@@ -40,6 +40,13 @@ param(
   else { node docs/demo/v0.21.0/scripts/capture.mjs "http://127.0.0.1:$port" $Shots $day; if ($LASTEXITCODE) { throw "capture failed, exit $LASTEXITCODE" }; "capture exit 0" }
   } finally {
   if ($server -and -not $server.HasExited) { Stop-Process -Id $server.Id -ErrorAction Stop }
+  # S21 retro action 1 (D492): list every file in the temp account with its SHA-256 and size before deleting it; -wal / -shm are reported explicitly
+  if ($demo -and (Test-Path $demo)) {
+    "inventory-before-delete path=$demo at=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+    foreach ($f in (Get-ChildItem -LiteralPath $demo -Force -Recurse -File | Sort-Object FullName)) { "inventory file=$($f.FullName) bytes=$($f.Length) sha256=$((Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash)" }
+    foreach ($s in "demo.sqlite-wal","demo.sqlite-shm") { "inventory $s " + $(if (Test-Path -LiteralPath (Join-Path $demo $s)) { "present" } else { "absent" }) }
+    "inventory-end"
+  }
   if ($demo -and (Split-Path $demo -Leaf) -like "erp-demo-*") { Remove-Item -Recurse -Force $demo -ErrorAction Stop }
   if ($port) { if (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) {"port still listening"} else {"port $port released"} }
   }
