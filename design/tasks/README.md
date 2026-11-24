@@ -776,6 +776,22 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 - **并行**：A ∥ B ∥ C，冲突域不相交，没有共享单文件；A 在 DEMO-20 窗口关闭后才派发，DEMO 窗口期间不改 `scripts/slot/`；都不申请浏览器时段，服从 D442 / D480 时段停用通知；DEMO-21 排在它们结案之后。体积口径见 [S21.md](S21.md#l10--体积口径)。
 
+## S22：窗口门禁快照工具 + 拆分 SettlementEntry + 付款与收款“刷新列表”（版本待 S21 发布后定）
+
+计划与任务书见 [S22.md](S22.md)（S22 不预占决定编号；截至起草，下一个可用 D512，S21 / DEMO-21 期间用掉的以届时决定表为准）。基线 main `013d681`（S21 的 TLIST-05 #301、FLAKE-08 #303、DOC-21 #305 已合并；SLOT-04 #304 进行中；DEMO-21 未开始）。两条开发泳道 A（SLOT-05，S20 回顾行动 2）、B（REFAC-12 → TLIST-06，同一泳道先后），都不加迁移；DOC-22 由版本管理把 `git grep` 自查写进送审清单（S20 回顾行动 5），SLOT-05 合并后把 Demo 模板第 23 条改为引用该工具。任务书模板“构建来源”改为引用 `scripts/measure`、新增“测试在满载下的耗时”条款（S20 回顾行动 6），由 S22 计划 PR 完成。`<S22 版本>` 在 `<S21 版本>` 发布后由协调者定。
+
+**不在本 Sprint**：M2-05 真实演练与 M2-06（仍待用户决定 A / B / C）；拆 `OrderLookup`（S23 起）；`bundle-compare.mjs` 拆分；`scripts/measure` 接入 CI；`slot-run.ps1` 自动调用快照工具。
+
+| ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [SLOT-05](SLOT-05-gate-snapshot.md) | 窗口门禁与每分钟快照工具 `gate-snapshot.ps1` | 开发工具 | P1 | SLOT-04 #304 已合并；不在 DEMO 窗口内派发或合并 | `scripts/slot/gate-snapshot.ps1`（新）、`scripts/slot/selftest-gate-snapshot.ps1`（新）、`scripts/slot/README.md` | 不加 | 不需要 | todo | — |
+| [REFAC-12](REFAC-12-settlement-entry-split.md) | 拆分 `SettlementEntry` 函数体（不改行为） | 重构（页面） | P2 | 无 | `packages/web/src/TradeSettlements.tsx`、`packages/web/src/trade-settlements/`（新） | 不加 | 不需要 | todo | — |
+| [TLIST-06](TLIST-06-settlements-refresh.md) | 付款与收款页加“刷新列表” | 功能（列表） | P2 | REFAC-12 已合并 | `trade-settlements/` 下的分配页签与查询文件、`trade-settlements.test.tsx` | 不加 | 不需要 | todo | — |
+| DOC-22（无任务书） | 送审清单加 `git grep` 自查；Demo 模板第 23 条引用快照工具，验收见 [S22.md](S22.md#doc-22-验收) | 文档（发布流程） | P2 | (b) 须 SLOT-05 已合并 | `docs/release/README.md`、`docs/demo/TEMPLATE.md` | 不加 | 不需要 | todo | — |
+| DEMO-22（无任务书） | `<S22 版本>` RC 与 Demo，验收见 [S22.md](S22.md#demo-22-验收) | 发布 | P1（Sprint 末） | `<S21 版本>` 已发布；每个开发任务与 DOC-22 已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | todo | — |
+
+- **并行**：A ∥ B，冲突域不相交，没有共享单文件；B 内 REFAC-12 合并后才开 TLIST-06，REFAC-12 未在 RC 冻结前合并则 TLIST-06 顺延 S23；A 在 #304 合并且 DEMO-21 窗口关闭后派发，DEMO 窗口期间不改 `scripts/slot/`；都不申请浏览器时段，服从 D442 / D480 时段停用通知；DEMO-22 排在它们结案之后。体积口径见 [S22.md](S22.md#l10--体积口径)。
+
 ## 派发顺序
 
 1. 第一批（按顺序，同时只开一个以避免 `package.json`/lock 冲突）：M0-01 → M0-02 → M0-03 → M0-04 → M0-05 → M0-06→ M0-07。M0-02 与 M0-03 可并行，后合并者重新生成 lock。
