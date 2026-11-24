@@ -185,7 +185,7 @@ base 数字（原始 / gzip-9 字节）：
     - `close-preview`、`close`、`open-next` 可以挂起，也可以返回驱动给定的成功体、字段不符的成功体、带指定状态码（400 / 409 / 500 / 503）的错误信封，或网络拒绝（`TypeError`）；
     - 桩记录每次请求的序号、方法、URL 与请求体原文，由驱动决定何时放行。
 
-    `crypto.randomUUID` 在两侧都换成按调用递增的确定性桩（`00000000-0000-4000-8000-00000000000N`），记录调用次数。`QueryClient.prototype.invalidateQueries` 用委托包装记录调用（序号、`queryKey`、调用时 `pending` 状态是否已清、返回的 Promise 何时完成），保留原实现。
+    `crypto.randomUUID` 在两侧都换成按调用递增的确定性桩（`00000000-0000-4000-8000-00000000000N`），记录调用次数。`QueryClient.prototype.invalidateQueries` 用委托包装记录调用（序号、`queryKey`、调用时 DOM 中是否有“重试原命令”按钮与 `p[role=status]`、返回的 Promise 何时完成），保留原实现。调用瞬间的 DOM 只反映已提交的渲染，不反映已排队的 `setPending(null)`；setter 的先后由 R5c 原文比较保证，不由 R4 推断。
 
     - **驱动 A（整页）**：渲染 `App`，经导航进入期末结账页，按 `period-close.test.tsx` 三个用例的路径操作。
     - **驱动 B（直接渲染导出组件）**：在 `QueryClientProvider` 与 `HashRouter` 内直接渲染导出的 `PeriodClose`，`preferences` 由驱动控制（zh / en）；公司与期间由 `fetch` 桩决定（`closeMode` 为 `annual` 与 `monthly-teaching`；月份为 `2026-11` 与 `2026-12`；状态为 `open` / `frozen` / `closed`）。`CloseWizard` 不导出，不得为取证而导出。
@@ -196,7 +196,7 @@ base 数字（原始 / gzip-9 字节）：
     - 驱动须带 REFAC-17 的自测（a）–（c），失败即 R4 失败。
   - **焦点**：`HTMLElement.prototype.focus` 装记录桩，保留原实现，记下每次调用的目标。
   - **序列**至少包含（驱动 B，另有标注的除外）：
-    - **预览**：成功（无阻断项、2 行结转分录，其中一行科目为 `3100`）；成功但有阻断项；4 种字段不符（`company`、`month`、`revision`、`commandId` 各一）；网络拒绝；在途时再次点预览（用 `fireEvent.click` 直接派发，绕过 `disabled`）。
+    - **预览**：成功（无阻断项、2 行结转分录，其中一行科目为 `3100`）；成功但有阻断项；4 种字段不符（`company`、`month`、`revision`、`commandId` 各一）；网络拒绝；在途时（`close-preview` 挂起）再次对已禁用的预览按钮派发 `fireEvent.click`。
     - **确认结账**：成功；5 种字段不符各一；409；500；网络拒绝后点“重试原命令”再成功。
     - **打开下一期间**（按钮只在 `closedView` 时出现）：`2026-11` 冻结期间 → `2026-12` 成功；`2026-12` 关闭期间 → `2027-01` 成功；返回月份不符；返回 `status: "frozen"`；400；503 后重试成功；在 `open-next` 等待失效期间挂起 `invalidateQueries` 返回的 Promise，再放行。
     - **禁用条件**：`annual` 的 `2026-11` 冻结期间、`annual` 的 `2026-12` 冻结期间、`monthly-teaching` 的 `2026-11` 冻结期间与关闭期间，各渲染一次，记录打开下一期间按钮的 `disabled`。
@@ -210,11 +210,22 @@ base 数字（原始 / gzip-9 字节）：
     - 焦点调用记录；
     - `console.error` 调用记录。
   - **判定**：base 与 head 逐步、逐项、逐字节相同。并且**直接断言**，只比两侧相同不够：
-    1. **预览请求**：`POST /api/v1/periods/<month>/close-preview`，请求体原文为 `{"company":…,"revision":…,"commandId":…}`，键顺序如此，`commandId` 为本次 `randomUUID` 的返回值；在途时再次派发点击，请求仍只有 1 个、`randomUUID` 只多 1 次。
+    1. **预览请求**：`POST /api/v1/periods/<month>/close-preview`，请求体原文为 `{"company":…,"revision":…,"commandId":…}`，键顺序如此，`commandId` 为本次 `randomUUID` 的返回值；在途时预览按钮带 `disabled`，再对它派发 `fireEvent.click`，请求仍只有 1 个、`randomUUID` 仍只调用 1 次。此条只证明“在途按钮禁用、再点不增加请求与 UUID”：在本仓库锁定的 React / jsdom 下，`fireEvent.click` 会派发原生事件，但 React 不调用禁用按钮的 `onClick`，不进入 `loadPreview`，因此**不**证明函数内的 `busy || pending` 守卫；该守卫由 R5c 的 `loadPreview` 原文比较保证。设计角色在 `b74d526` 上用临时 jsdom 脚本实测：首次点击后请求 1 个、`randomUUID` 1 次、按钮 `disabled`；再派发点击后，按钮上另挂的原生监听器触发 1 次，请求仍为 1 个、`randomUUID` 仍为 1 次。
     2. **响应校验**：预览 4 种字段不符与预览网络拒绝：错误条为 `danger` + `close.error`、带 `role="alert"`，没有预览卡片，没有“重试原命令”按钮。确认 5 种、打开下一期间 2 种字段不符（`invalid` 不是 HTTP 失败，`pending` 保留）：错误条为 `warning` + `close.unknown`、带 `role="alert"`，出现“重试原命令”按钮，`invalidateQueries` 不增加。
     3. **失败分流**：确认与打开下一期间的 400 / 409：没有“重试原命令”按钮，错误条为 `danger` + `close.error`，确认场景的预览卡片消失（打开下一期间本无预览卡片），`invalidateQueries` 恰好多 1 次、键为 `["close-periods", <company>]`；500 / 503 / 网络拒绝：出现重试按钮、错误条为 `warning` + `close.unknown`，`invalidateQueries` 不增加。
-    4. **重试原命令**：重试请求的 URL 与请求体原文与第一次逐字节相同，`randomUUID` 不增加；结果未知期间，预览、确认、打开下一期间按钮都带 `disabled`，重试按钮不带；父页 `#close-company`、`#close-month` 带 `disabled`；净额与结转分录金额为纯文本（没有 `<a>`）。
-    5. **成功后的失效**：确认成功后 `invalidateQueries` 依次为 `["ledger-live", <company>]`、`["close-periods", <company>]`，调用时 `pending` 已清；打开下一期间成功后依次为 `["close-periods", <company>]`、`["ledger-periods", <company>]`，在两者的 Promise 放行**之前**父页 `#close-month` 的值不变、重试按钮仍在，放行之后期间切换到返回的月份。
+    4. **重试原命令**：重试请求的 URL 与请求体原文与第一次逐字节相同，`randomUUID` 不增加；结果未知期间，父页 `#close-company`、`#close-month` 带 `disabled`，“重试原命令”按钮已渲染且不带 `disabled`。其余按钮按场景区分“未渲染”与“已渲染且禁用”（以 `queryByRole` 为 `null` 判未渲染）：
+       - **开放期间确认结账结果未知**（网络拒绝，或确认响应字段不符）：预览、确认按钮已渲染且带 `disabled`；“打开下一期间”**未渲染**（`period-close.test.tsx:12` 已断言）；预览卡片仍在，净额与结转分录金额为纯文本（`#close-preview` 内没有 `<a>`）。
+       - **从关闭期间打开下一期间结果未知**（网络拒绝、503，或返回月份 / 状态不符）：预览、确认按钮**未渲染**；“打开下一期间”已渲染且带 `disabled`；没有预览卡片，因此不做纯文本断言。
+       - **从冻结期间（`annual` 的 `2026-11`）打开下一期间结果未知**：预览按钮已渲染且带 `disabled`；确认按钮未渲染（没有预览）；“打开下一期间”已渲染且带 `disabled`；没有预览卡片。
+
+       设计角色在 `b74d526` 上实测了第二种：预览、确认均未渲染，打开下一期间 `disabled`，重试不带 `disabled`，没有 `#close-preview`。
+    5. **成功后的失效**：
+       - **确认成功**：分三件事断言，不得互相推断。
+         - **失效键与先后**：`invalidateQueries` 恰好多 2 次，依次为 `["ledger-live", <company>]`、`["close-periods", <company>]`，两次在同一异步回调内同步发生、中间没有其他记录。
+         - **调用时的 DOM**：两次调用时 DOM 中仍有“重试原命令”按钮（带 `disabled`）与 `p[role=status]`。这是 base 的实际现象（设计角色在 `b74d526` 上实测，两次都为“仍在”）：`setPending(null)` 已排队但 React 尚未提交，不能据此判断 `pending` 是否已清。
+         - **提交后的 DOM**：放行后等待 React 提交，“重试原命令”按钮与 `p[role=status]` 都消失，预览卡片消失，已关闭 `MessageBar` 出现，父页两个下拉不带 `disabled`。
+         - `setResult`、`setPreview(null)`、`setPending(null)` 在 `invalidateQueries` 之前调用的先后，由 R5c 的 `execute` 原文比较核对。
+       - **打开下一期间成功**：依次为 `["close-periods", <company>]`、`["ledger-periods", <company>]`，在两者的 Promise 放行**之前**父页 `#close-month` 的值不变、重试按钮仍在，放行之后期间切换到返回的月份。
     6. **下一月计算**：`2026-11` 期望 `2026-12`，`2026-12` 期望 `2027-01`；两者成功，返回其他月份即 `invalid`。
     7. **打开下一期间的禁用**：`annual` 的 `2026-11` 冻结期间不带 `disabled`；`annual` 的 `2026-12` 冻结期间与 `monthly-teaching` 的 `2026-11` 冻结期间带 `disabled`；`monthly-teaching` 的关闭期间不带。
     8. **穿透链接**：预览成功后，净额链接与科目 `3100` 的金额链接指向 `#/ledger-reports?company=…&month=…&stage=adjusted&watermark=…&accountRevision=…&view=trial`，其他科目指向 `#/ledger?company=…&month=…&stage=adjusted&watermark=…&accountRevision=…&account=<科目>`，参数顺序如此。
