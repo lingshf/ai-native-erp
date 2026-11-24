@@ -139,13 +139,19 @@
   - PR 正文附 `infra` 项目汇总行原文，base 与 head 各一次；有失败时逐个列出，并附只对失败文件的串行重跑原文（`--no-file-parallelism`）。
 - **R4 HTTP 行为与服务调用等价**（送审证据，驱动不提交，不加常驻 CI 用例）：
   - **驱动**：
-    - 临时 vitest 脚本，例如 `packages/infra/test/zz-r34-probe.test.ts`，送审前删除，在 base 与 head 上各运行一次。运行命令：`cd packages/infra; npx vitest run --config ../../vitest.config.ts --project infra test/zz-r34-probe.test.ts`。`console.log` 会被吞掉，输出写到临时文件。
-    - 用 `createApi({ environment: { ERP_PORT: "0" }, allowPortZero: true, tradeDocs, logError: () => undefined })` 构造，`await app.listen()` 后用 `app.inject` 发请求，`headers` 带 `host: 127.0.0.1:<实际端口>`；用例结束后 `close()`。
-    - `tradeDocs` 为**假服务**：普通对象，16 个方法各先记录方法名与实参，再按用例返回、抛错；不用 `Proxy`。“无服务”用例不传 `tradeDocs`。
+    - 临时 vitest 脚本，例如 `packages/infra/test/zz-r34-probe.test.ts`，送审前删除，在 base 与 head 上**各连续运行两次**（共四次）。运行命令：`cd packages/infra; npx vitest run --config ../../vitest.config.ts --project infra test/zz-r34-probe.test.ts`。`console.log` 会被吞掉，输出写到临时文件。
+    - 用 `createApi({ environment: { ERP_PORT: "0" }, allowPortZero: true, tradeDocs, logError: () => undefined })` 构造，`await app.listen()` 后用 `app.inject` 发请求，`headers` 带 `host`（取 `new URL(await app.listen()).host`，端口由系统分配）；用例结束后 `close()`。不改产品代码来固定端口或请求 ID。
+    - `tradeDocs` 为**假服务**：普通对象，16 个方法各先记录方法名与实参，再按用例返回、抛错；不用 `Proxy`。返回值是驱动内的固定字面量（见下文“POST 夹具”），驱动开头先用对应契约 schema 的 `parse` 校验每个请求夹具与返回夹具，校验失败即 R4 失败。“无服务”用例不传 `tradeDocs`。
     - 另用一个只实现 `all(path)` 的假 `server` 直接调用 `registerTradeDocumentRoutes(fake, undefined, {} as never)`，记录注册的路径序列。
-  - **记录与编码**：每个请求记录方法、URL、请求头、请求体、状态码、`allow`、`cache-control`、`content-type` 响应头、响应体原文、本次请求引起的服务调用（方法名与实参的 JSON，保留键序）。用确定性 JSON 编码，同一驱动连续两次运行的输出须逐字节相同。驱动须带 REFAC-17 的自测（a）–（c），任一自测失败即 R4 失败。
-  - **用例**至少包含下列直接断言 1–10 的全部输入，另须包含：
-    - 每个路由的每个允许方法各一次“最小合法请求”（GET 带 `company=DEFAULT`，POST 带 `{}` 与 `application/json`）；
+  - **记录与编码**：每个请求记录方法、URL、请求头、请求体、状态码、`allow`、`cache-control`、`content-type` 响应头、响应体原文、本次请求引起的服务调用（方法名与实参的 JSON，保留键序）。用确定性 JSON 编码。
+  - **定向归一**（只此两项，其余字节与键序原样保留）：
+    - **本机 Host**：请求头中的 `host` 值等于本次 `listen()` 返回的 `host` 时记为 `"<local>"`；其他取值（如 `evil:1`）原样记录。
+    - **错误响应的 `requestId`**：`http/index.ts:85–86` 关闭了请求 ID 头并为每个请求生成随机 UUID，`http/errors.ts` 把它写进错误响应体。驱动先断言错误响应体有 `requestId` 键、值匹配 UUID v4（`/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/`），再只把该值替换为 `"<requestId>"`，键的位置不变（错误体键序为 `code, messageKey, params, fieldErrors, requestId, retryable`）。不匹配即 R4 失败。成功响应体中不做任何替换。
+  - **两侧各两次**：base 两次输出须逐字节相同，head 两次输出须逐字节相同，base 与 head 也须逐字节相同；PR 正文附四份输出的 SHA-256。设计角色在 `c978a95` 上按此归一连续跑两次，输出逐字节相同。
+  - 驱动须带 REFAC-17 的自测（a）–（c），任一自测失败即 R4 失败。
+  - **用例**至少包含下列直接断言 1–12 的全部输入，另须包含：
+    - 每个 GET 路由各一次“最小合法请求”（带 `company=DEFAULT`）；
+    - 8 个 POST 路径各一次**契约合法请求**（见直接断言 11 与“POST 夹具”）；另各一次 JSON `{}`，作为负例（都报 `shape`，0 次调用）；
     - 每个路由各一次 `PUT`；
     - 订单、发票、未结项、报表四个列表各一次“全部可选查询参数，URL 中顺序打乱”。
   - **判定**：base 与 head 每个用例的记录逐字节相同，PR 正文附两侧输出的 SHA-256 与比较结果。只比两侧相同不够，以下**直接断言**也须成立。期望值都由设计角色在 base `c978a95` 上用临时驱动实测，驱动已删除。下文路径省略前缀 `/api/v1/trade`；“0 次调用”指假服务的方法都未被调用；`shape` 指 400 `INVALID_REQUEST` 且 `fieldErrors` 为 `[{"path":"form","messageKey":"api.error.tradeDocument.shape"}]`：
@@ -185,6 +191,26 @@
     8. **框架层 415**：`POST orders` 带 `application/xml` 报 415 `UNSUPPORTED_MEDIA_TYPE`，**没有** `cache-control`（Fastify 不进处理函数，`boundary` 未运行），0 次调用。
     9. **响应校验**：假服务对列表返回 `{}` 或带多余键的页 → 500 `INTERNAL_ERROR`（`retryable: false`），调用仍发生 1 次；返回合法空页 → 200。
     10. **服务错误映射**：假服务抛 `new DomainError("NOT_FOUND")` → 404 `NOT_FOUND`。
+
+    11. **8 个 POST 的成功路径**（请求与返回用下文“POST 夹具”）：每个路径恰 1 次调用，实参为请求夹具本身（单个实参）；状态码与服务方法为：
+        - `orders` → `createOrder`，**201**；`orders/preview` → `previewOrder`，200；
+        - `actions/preview` → `previewAction`，200；`actions` → `confirmAction`，**201**；
+        - `settlements/preview` → `previewSettlement`，200；`settlements` → `confirmSettlement`，**201**；
+        - `invoices/preview` → `preview`，200；`invoices` → `confirm`，**201**；
+        - 8 个响应都带 `cache-control: no-store`、`content-type: application/json; charset=utf-8`，响应体等于 `JSON.stringify(返回夹具)`。
+    12. **键序由契约决定**：
+        - 把请求夹具的顶层键倒序后发送，8 个路径的服务实参仍按契约 schema 的键序（与原请求夹具的 `JSON.stringify` 相同）；
+        - 假服务把返回夹具的顶层键倒序后返回，8 个响应体仍等于 `JSON.stringify(原返回夹具)`；
+        - 假服务返回“返回夹具加一个多余键 `extra: 1`”时，8 个路径都报 500 `INTERNAL_ERROR`，调用仍发生 1 次。
+
+    **POST 夹具**（虚构数据；设计角色已在 `c978a95` 上用对应 schema 校验通过，开发可原样使用，也可换成其他契约合法值，但须同样在驱动开头校验）。记 `U(n)` 为 `00000000-0000-4000-8000-` 后接 12 位补零的 `n`，`FP` 为 64 个 `a`，`AT` 为 `"2026-01-15T00:00:00.000Z"`，`D` 为 `"2026-01-15"`：
+    - 订单请求：`{company:"DEFAULT", orderId:"PO-1", side:"AP", party:"V1", currency:"CNY", orderDate:D, priceIncludesTax:false, rounding:"line", lines:[L]}`，其中 `L = {lineId:"L1", product:"P1", taxCode:"VAT13", quantity:"1", unitPrice:"100", discountPercent:"0", taxableCharge:"0"}`；订单与订单预览共用。
+    - 订单返回：去掉 `company` 的订单头加 `commandHash:FP, recordedAt:AT`，`lines:[{...L, lineNo:1, net:10000, tax:1300, gross:11300}]`；订单预览返回：`{lines:[{lineId:"L1", lineNo:1, net:10000, tax:1300, gross:11300}], net:10000, tax:1300, gross:11300}`。
+    - 日记账计划 `P`（三个预览共用）：`version:1, company:"DEFAULT", currency:"CNY", scale:2, draftId:U(90), draftRevision:1, sourceRef:"S1", date/documentDate/taxDate:D, module:"TRADE", memo:"", operation:"journal", originalId:null`，`journals` 为 1 张 `normal` / `normal` 凭证、借贷各 100，两行 `1001` 借、`2202` 贷，行的其余字段为 `dimensions:{}, dimensionOrigins:{}, role:"business", suspense:null, balancing:null, historical:null, group:null`。
+    - 动作请求：`{company:"DEFAULT", actionId:U(10), accountingDate/documentDate/taxDate:D, kind:"advance", side:"AP", party:"V1", currency:"CNY", gross:100, dimensions:{}}`；确认信封为 `{command:<请求>, fingerprint:FP, idempotencyKey:U(11), confirmation:"POST"}`（核销、发票同此形）。
+    - 动作结果：`{fingerprint:FP, kind:"advance", gross:100, changes:[{before:null, after:<未结项>}], creditLines:[], links:[]}`，未结项为 `advance` 类、`itemId:U(10)`、金额 100、`controlAccount:"1123"`、`status:"open"`、`revision:1`、一个 `{dimensions:{}, gross:100, remainingGross:100}` 段，其余日期为 `D`；预览加 `journal:P`；回执加 `company:"DEFAULT", actionId:U(10), idempotencyKey:U(11), sourceRef:"S1", journalIds:[U(12)], postedAt:AT`。
+    - 核销请求：`{company:"DEFAULT", paymentId:U(20), side:"AP", party:"V1", currency:"CNY", accountingDate/documentDate/taxDate:D, items:[{itemId:U(21), revision:1, gross:100, takeDiscount:false}]}`；金额 `{gross:100, cash:100, discount:0, allocations:[<U(21) 全额、无折扣、剩余 0 的分配>]}`；预览为 `{fingerprint:FP, ...金额, journal:P}`；回执为金额加 `company, paymentId:U(20), idempotencyKey:U(11), fingerprint:FP, sourceRef:"S1", journalIds:[U(12)], postedAt:AT`。
+    - 发票请求：`{company:"DEFAULT", documentId:U(30), side:"AP", party:"V1", externalInvoice:"INV-1", currency:"CNY", accountingDate/documentDate/taxDate:D, orderId:null, priceIncludesTax:false, rounding:"line", headerDimensions:{}, matchingException:null, lines:[{...L, orderLineId:null, dimensions:{}}]}`；预览为 `{fingerprint:FP, side:"AP", externalNoNormalized:"INV-1", calculation:<一行 standard 的 trade-v1 计算>, poMatch:"notApplicable", matches:[], dueDate:"2026-02-14", discountDate:D, controlAccount:"2202", journal:P}`；回执为 `{company:"DEFAULT", documentId:U(30), idempotencyKey:U(11), fingerprint:FP, sourceRef:"S1", journalIds:[U(12)], poMatch:"notApplicable", gross:100, postedAt:AT}`。
 
     base 上任一直接断言不成立，先停下并向协调者报告。PR 正文附驱动、用例清单、比较结果与直接断言结果。
   - **驱动原件**：PR 正文贴驱动**原文件字节的 base64**，或同时写出两种 SHA-256：原始字节、按 UTF-8 解码并把换行归一为 LF 后的字节。只给一种哈希不算满足。
@@ -248,7 +274,7 @@ node scripts/measure/bundle-measure.mjs --base <合并基全 SHA> --head <head �
 ## 证据要求
 
 - **不需要浏览器时段**：行为等价由 R3 与 R4 证明；R4 用 `app.inject` 比较 HTTP 行为与服务调用逐字节等价，并核对直接断言。页面只经 HTTP 访问这些路由。R4 与构建在本机运行，须服从协调者的时段静默通知（D442 / D480）。
-- **可行性**（S13 回顾行动 4）：设计角色已在 `c978a95` 上用两个临时 vitest 驱动（`inject` 驱动与假 `server` 驱动，都在 `infra` 项目）实测 R4 直接断言 1–10 全部成立，驱动已删除、未提交。`trade-documents.test.ts` 中 R3 所列 POST→201 用例在同一提交上通过。
+- **可行性**（S13 回顾行动 4）：设计角色已在 `c978a95` 上用两个临时 vitest 驱动（`inject` 驱动与假 `server` 驱动，都在 `infra` 项目）实测 R4 直接断言 1–12 全部成立（含按“定向归一”连续两次运行逐字节相同），驱动已删除、未提交。`trade-documents.test.ts` 中 R3 所列 POST→201 用例在同一提交上通过。
 - PR 正文附：R2 导出比较与 `git grep` 结果；R3 汇总行；R4 驱动（原件 base64 或两种 SHA-256）、用例清单、比较结果与直接断言结果；R5a–R5d 各表；R6 行数表（base 与 head 两列）；R7 的 `bundle-measure.mjs` 完整输出与退出码；可读性一节。R8b 合并后补到 PR 评论。
 
 ## 设计自查
