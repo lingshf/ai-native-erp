@@ -5,7 +5,7 @@
 需要 Node.js 26.x、npm 11。详细命令见仓库根目录 [README](../../README.md)。要点：
 
 1. `npm ci`，`npm run build`。
-2. 创建**新的**目标库（迁移到 020）：`npm run storage:admin -- migrate --provider sqlite --file <新文件>.sqlite`。
+2. 创建**新的**目标库并迁移到最新 schema：命令见[迁移操作手册 §10](../migration-runbook.md#10-新建或升级目标库schema-迁移)。
 3. 设置 `ERP_SQLITE_FILE`（绝对路径）和可选的 `ERP_PORT`（默认 4180），运行 `npm run start:local`。
 4. 浏览器打开 `http://127.0.0.1:<端口>/`。
 

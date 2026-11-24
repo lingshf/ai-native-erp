@@ -11,7 +11,7 @@ $env:ERP_SQLITE_FILE = Join-Path $demo "demo.sqlite"
 $env:ERP_PORT = "4187"
 $env:ERP_HOST = "127.0.0.1"
 $env:ERP_PROFILE = "local"
-npm run storage:admin -- migrate --provider sqlite --file $env:ERP_SQLITE_FILE
+# 先按迁移手册第 10 节对 $env:ERP_SQLITE_FILE 执行 migrate（docs/migration-runbook.md）
 npm run start:local
 ```
 

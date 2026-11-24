@@ -98,12 +98,13 @@ npm run storage:admin -- legacy-reconcile --snapshot-dir <WORK>\snapshot --targe
 
 ## 6. 备份并校验目标库
 
+备份命令及其规则见[运维与故障排查](operations.md#备份与恢复)（`backup <WORK>\target.sqlite <WORK>\target-backup.sqlite`）；备份后校验：
+
 ```powershell
-npm run storage:admin -- backup <WORK>\target.sqlite <WORK>\target-backup.sqlite
 npm run storage:admin -- verify --provider sqlite --file <WORK>\target-backup.sqlite
 ```
 
-期望：两条都退出码 0；备份输出路径须不存在。在 M2-06 授权之前，查看核对结果只用 `--check` 输出，不要把目标库配置给服务启动。
+期望：备份与校验都退出码 0；备份输出路径须不存在。在 M2-06 授权之前，查看核对结果只用 `--check` 输出，不要把目标库配置给服务启动。
 
 ## 7. 错误码速查
 
@@ -149,6 +150,17 @@ npm run storage:admin -- verify --provider sqlite --file <WORK>\target-backup.sq
 Bench 作业运行 `node scripts/bench-migration-rehearsal.mjs`，结果写入工件 `artifacts/ci/migration-rehearsal.json`，每项指标标明 `hard`（超出则作业失败）、`record-only` 或 `known-gap`（报告预算与是否超出，但不使作业失败）。备份期间热读 p95 由 M0-R5 自己的 Bench 覆盖。
 
 **已知缺口 KG：已于 M2-05b 关闭（D434）**。M2-05a 时导入峰值 RSS 在 10 万条期初时为 566–721MB，超出 512MB，原因是期初计划（10 万个未结项）在整个导入期间常驻内存。M2-05b 把校验通过的期初项暂存在临时计划库中，在仍为单一写事务的期初阶段内每批读出 1000 项写入目标库。Bench 实测导入峰值 RSS 为 427MB（100 万 GL 行 + 10 万期初，Linux CI）。导入峰值 RSS 已恢复为 `hard` 判定，脚本的 `KNOWN_GAPS` 现为空。
+
+## 10. 新建或升级目标库（schema 迁移）
+
+服务启动不会自动建库或迁移（见[运维与故障排查](operations.md#启动与环境变量)），须先显式执行；这是启动前的标准步骤，对全新库和旧版本库相同：
+
+```powershell
+npm run storage:admin -- migrate --provider sqlite --file <新文件>.sqlite
+npm run storage:admin -- verify --provider sqlite --file <新文件>.sqlite
+```
+
+期望：`migrate` 输出 `{"status":"ok","action":"migrate","provider":"sqlite"}` 且退出码 0；父目录须已存在；当前最新 schema 为 020，已发布迁移与 checksum 不变。`verify` 对文件不存在、非本系统库或 schema 不是最新的库以 `SCHEMA_MISMATCH` 退出 1。然后把 `ERP_SQLITE_FILE` 设为该文件的绝对路径再启动服务。不要把原账、快照或 `.bak` 选作目标库。
 
 ## 命令与测试对照
 

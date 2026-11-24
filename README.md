@@ -15,7 +15,7 @@ git clone https://github.com/lingshf/ai-native-erp.git
 Set-Location ai-native-erp
 npm ci
 npm run verify
-npm run storage:admin -- migrate --provider sqlite --file new-target.sqlite
+# 创建并迁移目标库：命令见 docs/migration-runbook.md 第 10 节，得到 new-target.sqlite
 $env:ERP_SQLITE_FILE = (Resolve-Path .\new-target.sqlite).Path
 npm run start:local
 ```
@@ -206,9 +206,6 @@ CLI 输出标注`live:false`、快照 SHA、`scale:2`精确最小单位；总账
 npm run storage:admin -- --help
 npm run storage:admin -- verify --provider sqlite --file new-target.sqlite
 npm run storage:admin -- provision --provider sqlite --file new-target.sqlite --tenant T1 --book B1 --company C1
-npm run storage:admin -- backup new-target.sqlite independent-backup.sqlite
-# Restore MUST be offline: stop the service and all other database tools first.
-npm run storage:admin -- restore new-target.sqlite independent-backup.sqlite
 ```
 
 `provision`只建立技术作用域，不是建账或 GL 导入。目标库连接使用 WAL/NORMAL、外键和 5000ms 忙等待；只读旧快照不改变 journal 模式。D4：已发布 001 的历史 dialect 允许值/checksum 保持不变，运行时只支持 sqlite。详见[存储说明](packages/infra/README.md)。
