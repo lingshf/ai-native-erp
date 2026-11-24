@@ -6,6 +6,32 @@
 
 ## [Unreleased]
 
+## [0.21.0] - 待发布（RC，DEMO-22；发布日由日期 PR 填写）
+
+> **版本号**：D514，minor（0.20.0 → 0.21.0）：TLIST-06 让付款与收款页多了一个按钮，是用户可见的小功能。
+>
+> **RC 范围终点**固定为完整 SHA `3ae4848d36c4c06c2e208173e58ed2cac3771564`（[#317](https://github.com/lingshf/ai-native-erp/pull/317)）。v0.20.0 的 tag 指向 `90c762f05de39723852d1a381058301cab4da997`（在 `release/v0.20.0`，不在 main 上，树与 main 上的 #310 squash 提交相同），与范围终点的合并基是 `a1a12448207372d6792b2497da852d08418c552b`，所以对照用 main 侧的 `git log --oneline --first-parent a1a12448207372d6792b2497da852d08418c552b..3ae4848d36c4c06c2e208173e58ed2cac3771564`（8 行）。
+>
+> - 有条目：[#316](https://github.com/lingshf/ai-native-erp/pull/316)（TLIST-06，新增）、[#312](https://github.com/lingshf/ai-native-erp/pull/312)（SLOT-05，新增，开发工具，无用户可见变化）、[#311](https://github.com/lingshf/ai-native-erp/pull/311)（REFAC-12，变更，重构，无用户可见变化）、[#317](https://github.com/lingshf/ai-native-erp/pull/317)（DOC-22 (b)，变更，发布流程文档）。
+> - **不需要条目**，单列：[#310](https://github.com/lingshf/ai-native-erp/pull/310)、[#313](https://github.com/lingshf/ai-native-erp/pull/313)（v0.20.0 的 RC 与日期，已随 v0.20.0 发布）、[#314](https://github.com/lingshf/ai-native-erp/pull/314)、[#315](https://github.com/lingshf/ai-native-erp/pull/315)（S21 评审、S22 决定，设计）。DOC-22 (a)（[#309](https://github.com/lingshf/ai-native-erp/pull/309)）在 v0.20.0 的范围内，已列在 v0.20.0。
+>
+> Demo 与窗口证据只写在 [docs/demo/v0.21.0 的 run-through](docs/demo/v0.21.0/run-through.md)；版本差异数字（D483）见[发布说明](docs/release/v0.21.0-release-notes.md)。
+
+S22 Sprint 的用户可见改动只有 TLIST-06。**无迁移，无依赖变化**，已有账套不需要 migrate，不改过账规则与任何金额、数量口径。
+
+### Added（用户可见）
+
+- **付款与收款页多一个“刷新列表”按钮（TLIST-06，[#316](https://github.com/lingshf/ai-native-erp/pull/316)，合并提交 `eac0c37`）**：在“核销分配”页签的表格之前（英文 “Refresh list”），重读已加载的未结项；已选的未结项与核销总额保留，不清空草稿；确认过账待定（结果未知）时按钮仍可用，不影响原请求与“安全重试过账”。Tab 顺序多一站。
+
+### Added（开发工具，无用户可见变化）
+
+- **窗口门禁快照工具（SLOT-05，[#312](https://github.com/lingshf/ai-native-erp/pull/312)，合并提交 `7c7cafd`）**：`scripts/slot/gate-snapshot.ps1`，记录 node 进程、父进程链、cwd、CPU 秒与端口监听者，只记录不判定。
+
+### Changed（无用户可见变化）
+
+- **付款与收款页组件拆分（REFAC-12，[#311](https://github.com/lingshf/ai-native-erp/pull/311)，合并提交 `9c05266`）**：`SettlementEntry` 拆到 `trade-settlements/`，行为不变。
+- **Demo 模板第 23 条（DOC-22 (b)，[#317](https://github.com/lingshf/ai-native-erp/pull/317)，合并提交 `3ae4848`）**：引用 `gate-snapshot.ps1`，写明参数、退出码与开窗前判定标准，只改文档。
+
 ## [0.20.0] - 2026-11-23
 
 > **已发布**：tag `v0.20.0`（annotated，tag 对象 `97e9a23d2a3f78cda15bd1601ab2b0233779adc3`）打在 `90c762f05de39723852d1a381058301cab4da997`（[#310](https://github.com/lingshf/ai-native-erp/pull/310) 的最终头，位于 `release/v0.20.0` 分支上；D484）；发布日 2026-11-23。main 上的 #310 squash 提交 `2ce7821000066d73a563de16a9d9f8601e704495` 不是 tag 目标，但两者的树相同（均为 `23b709c82788b84cd64c42088f274602b4cad1bc`，`git rev-parse` 核对）。Release：<https://github.com/lingshf/ai-native-erp/releases/tag/v0.20.0>。tag 对 tag 的版本差异（D483，`git diff --shortstat`，无路径过滤）：[v0.19.0..v0.20.0](https://github.com/lingshf/ai-native-erp/compare/v0.19.0..v0.20.0)（两点）64 个文件，+3827/−77；[v0.19.0...v0.20.0](https://github.com/lingshf/ai-native-erp/compare/v0.19.0...v0.20.0)（三点，合并基 `6156759c2aef6b9805aca70ba5505490e2bd4c5b`）92 个文件，+5506/−71；`git rev-list --count` 两点 14、三点 20。
@@ -716,6 +742,7 @@ M1 贸易里程碑完成（M1-01..07，M1-R 评审通过，无阻塞项）。产
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
 [Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.20.0...HEAD
+[0.21.0]: https://github.com/lingshf/ai-native-erp/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/lingshf/ai-native-erp/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/lingshf/ai-native-erp/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/lingshf/ai-native-erp/compare/v0.17.0...v0.18.0

@@ -1,0 +1,60 @@
+
+> ai-native-erp@0.1.0 build
+> npm run build --workspace @erp/web
+
+
+> @erp/web@0.1.0 build
+> vite build
+
+[36mvite v8.3.6 [32mbuilding client environment for production...[36m[39m
+transforming...
+✓ 330 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                    0.45 kB │ gzip:   0.29 kB
+dist/assets/Accounts-0Trj-Hyg.css                  0.89 kB │ gzip:   0.37 kB
+dist/assets/master-l0PINZ8G.css                    1.77 kB │ gzip:   0.73 kB
+dist/assets/TradeReports-B2X2bxpq.css              1.86 kB │ gzip:   0.60 kB
+dist/assets/ledger-BsKUGf7q.css                    2.08 kB │ gzip:   0.73 kB
+dist/assets/PeriodClose-Cnfbimgu.css               2.24 kB │ gzip:   0.73 kB
+dist/assets/trade-settlements-KB9rSY3-.css         2.86 kB │ gzip:   0.82 kB
+dist/assets/TradeOrders-DnGspDwj.css               2.97 kB │ gzip:   0.88 kB
+dist/assets/Migration-Dt5F-mml.css                 5.03 kB │ gzip:   1.15 kB
+dist/assets/TradeInvoices-d2093p3n.css             5.27 kB │ gzip:   1.24 kB
+dist/assets/virtual-rows-C9RttyBw.css              5.81 kB │ gzip:   1.60 kB
+dist/assets/index-DhcDIMA7.css                    10.50 kB │ gzip:   2.92 kB
+dist/assets/components-BSHRe5rS.css               12.42 kB │ gzip:   2.57 kB
+dist/assets/useQuery-DVn0rQoP.js                   0.09 kB │ gzip:   0.10 kB
+dist/assets/decimal-format-BWPY7JQR.js             0.20 kB │ gzip:   0.18 kB
+dist/assets/leave-guard-history-CDccTch_.js        0.39 kB │ gzip:   0.27 kB
+dist/assets/master-data-client-BQIsvIGJ.js         0.71 kB │ gzip:   0.45 kB
+dist/assets/use-invoice-leave-guard-BswI_0ED.js    1.02 kB │ gzip:   0.54 kB
+dist/assets/useInfiniteQuery-BfP9hA7w.js           1.15 kB │ gzip:   0.49 kB
+dist/assets/virtual-rows-DaSsps_D.js               1.34 kB │ gzip:   0.66 kB
+dist/assets/components-B4lbPz2C.js                 1.68 kB │ gzip:   0.74 kB
+dist/assets/reports-data-l67MD1Pm.js               1.94 kB │ gzip:   0.94 kB
+dist/assets/dialogs-DJAi966c.js                    4.65 kB │ gzip:   1.86 kB
+dist/assets/Migration-BZJ9_Mn3.js                  5.11 kB │ gzip:   1.87 kB
+dist/assets/useBaseQuery-CkwJz1OL.js               7.89 kB │ gzip:   2.89 kB
+dist/assets/Dimensions-BYUR8ww7.js                11.17 kB │ gzip:   3.79 kB
+dist/assets/Reports-B2hIjMUg.js                   11.74 kB │ gzip:   3.67 kB
+dist/assets/TradeReports-B81skM1n.js              11.87 kB │ gzip:   3.49 kB
+dist/assets/PeriodClose-D9u3ILmr.js               12.46 kB │ gzip:   4.31 kB
+dist/assets/Accounts-vB1Jcwxh.js                  12.63 kB │ gzip:   3.82 kB
+dist/assets/esm-B_8MPJdt.js                       12.95 kB │ gzip:   4.28 kB
+dist/assets/TradeMaster-JD7o7GwR.js               12.98 kB │ gzip:   4.71 kB
+dist/assets/TradeSettlements-CvrUZxhZ.js          15.07 kB │ gzip:   5.21 kB
+dist/assets/LedgerReports-Dk46jkVa.js             17.60 kB │ gzip:   4.98 kB
+dist/assets/TradeAdjustments-BsI3Lq09.js          19.50 kB │ gzip:   6.35 kB
+dist/assets/BusinessEvents-CXqDsdQH.js            29.94 kB │ gzip:   6.96 kB
+dist/assets/Journals-G_6BuAXl.js                  30.91 kB │ gzip:   8.48 kB
+dist/assets/TradeInvoices-CGqVy7BJ.js             41.08 kB │ gzip:  11.75 kB
+dist/assets/TradeOrders-1NCvLUQu.js               43.04 kB │ gzip:  13.33 kB
+dist/assets/index-Zd7N3mpV.js                    530.72 kB │ gzip: 163.04 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[32m✓ built in 596ms[39m

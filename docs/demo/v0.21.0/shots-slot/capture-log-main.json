@@ -1,0 +1,182 @@
+[
+ {
+  "name": "readiness",
+  "openItems": 8
+ },
+ {
+  "name": "settlements-zh-red-1440",
+  "step": "page",
+  "via": "goto #/trade-settlements?company=DEFAULT",
+  "hash": "#/trade-settlements?company=DEFAULT",
+  "heading": "付款与收款",
+  "documentScrollWidth": 1440,
+  "rect": {
+   "left": 300,
+   "right": 390,
+   "top": 612
+  },
+  "placement": {
+   "beforeFieldset": true,
+   "insideFieldset": false,
+   "beforeTable": true
+  }
+ },
+ {
+  "name": "settlements-en-green-1440",
+  "step": "page",
+  "via": "goto #/trade-settlements?company=DEFAULT",
+  "hash": "#/trade-settlements?company=DEFAULT",
+  "heading": "Payments and receipts",
+  "documentScrollWidth": 1440,
+  "rect": {
+   "left": 300,
+   "right": 403.6,
+   "top": 632
+  },
+  "placement": {
+   "beforeFieldset": true,
+   "insideFieldset": false,
+   "beforeTable": true
+  }
+ },
+ {
+  "name": "settlements-zh-red-390",
+  "step": "k7-390",
+  "via": "goto #/trade-settlements?company=DEFAULT",
+  "hash": "#/trade-settlements?company=DEFAULT",
+  "heading": "付款与收款",
+  "documentScrollWidth": 390,
+  "rect": {
+   "left": 36,
+   "right": 126,
+   "top": 1201
+  },
+  "placement": {
+   "beforeFieldset": true,
+   "insideFieldset": false,
+   "beforeTable": true
+  }
+ },
+ {
+  "name": "settlements-en-green-390",
+  "step": "k7-390",
+  "via": "goto #/trade-settlements?company=DEFAULT",
+  "hash": "#/trade-settlements?company=DEFAULT",
+  "heading": "Payments and receipts",
+  "documentScrollWidth": 390,
+  "rect": {
+   "left": 36,
+   "right": 139.6,
+   "top": 1321
+  },
+  "placement": {
+   "beforeFieldset": true,
+   "insideFieldset": false,
+   "beforeTable": true
+  }
+ },
+ {
+  "name": "settlements-keyboard-record",
+  "step": "keyboard",
+  "via": "#/trade-settlements?company=DEFAULT：page.keyboard.press 的 Tab / Enter / Space",
+  "record": {
+   "lang": "en",
+   "theme": "green",
+   "width": 1440,
+   "k1FocusStart": "button[aria-controls=tset-allocation-body]:Allocation",
+   "k1FocusAfterTab": "Refresh list",
+   "k1EnterRequests": [
+    "/api/v1/trade/open-items?company=DEFAULT&status=open&limit=100"
+   ],
+   "k1SpaceRequests": [
+    "/api/v1/trade/open-items?company=DEFAULT&status=open&limit=100"
+   ],
+   "k2AmountBefore": "on",
+   "k2FocusStart": "button[aria-controls=tset-allocation-body]:Allocation",
+   "k2FocusAfterTab": "Refresh list",
+   "k2EnterRequests": [
+    "/api/v1/trade/open-items?company=DEFAULT&status=open&limit=100"
+   ],
+   "k2StillChecked": true,
+   "k2AmountAfter": "on",
+   "k3FieldsetDisabled": true,
+   "k3RefreshDisabled": false,
+   "k3FocusStart": "button[aria-controls=tset-allocation-body]:Allocation",
+   "k3FocusAfterTab": "Refresh list",
+   "k3EnterRequests": [
+    "/api/v1/trade/open-items?company=DEFAULT&status=open&limit=100"
+   ],
+   "k3RetryStillShown": true,
+   "k3FieldsetStillDisabled": true
+  }
+ },
+ {
+  "checks": [
+   {
+    "check": "settlements-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "settlements-zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "settlements-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "settlements-en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "settlements-zh-red-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "settlements-zh-red-390 刷新按钮在视口内（left ≥ 0 且 right ≤ 390）",
+    "ok": true,
+    "detail": {
+     "left": 36,
+     "right": 126,
+     "top": 1201
+    }
+   },
+   {
+    "check": "settlements-zh-red-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "settlements-en-green-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "settlements-en-green-390 刷新按钮在视口内（left ≥ 0 且 right ≤ 390）",
+    "ok": true,
+    "detail": {
+     "left": 36,
+     "right": 139.6,
+     "top": 1321
+    }
+   },
+   {
+    "check": "settlements-en-green-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "键盘取证 无页面错误（K3 中止的 POST 产生的 net 错误除外）",
+    "ok": true,
+    "detail": [
+     "Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:4204/#/trade-settlements?company=DEFAULT"
+    ]
+   }
+  ]
+ }
+]

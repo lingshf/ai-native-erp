@@ -1,0 +1,52 @@
+web-dist: ok C:\GithubCopilot\copilot-worktrees\ai-native-erp\demo22-app\packages\web\dist\index.html dist-index=2026-11-24T04:07:52.3994773Z head-commit=2026-11-24T04:06:44.0000000Z
+demo-account-path=C:\Users\shaoling\AppData\Local\Temp\erp-demo-a8f2f654-1469-446b-81e4-5fdb6aa5852d
+prepared C:\Users\shaoling\AppData\Local\Temp\erp-demo-a8f2f654-1469-446b-81e4-5fdb6aa5852d\demo.sqlite 2026
+ready port=4204 pid=43876 start=20:18:58
+posted PARTY AP-DEMO 11300
+posted PARTY2 AP-DEMO2 11300
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+GET /api/v1/trade/orders/PO-I1/invoicing?company=DEFAULT 200
+GET /api/v1/trade/orders/PO-I2/invoicing?company=DEFAULT 200
+GET /api/v1/trade/orders/PO-I3/invoicing?company=DEFAULT 200
+seed-invoicing ok: PO-I1 L1 4/10 L2 0/4; PO-I2 L1 10/10; PO-I3 L1 0/5
+POST /api/v1/trade/tradeProduct 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+GET /api/v1/trade/orders/SO-I1/invoicing?company=DEFAULT 200
+GET /api/v1/trade/orders/SO-I2/invoicing?company=DEFAULT 200
+seed-sales ok: SO-I1 L1 4/10 L2 0/4; SO-I2 L1 10/10 (AR, PARTY2)
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+GET /api/v1/trade/orders?company=DEFAULT&limit=100 200
+GET /api/v1/trade/orders/PO-C1/invoicing?company=DEFAULT 200
+GET /api/v1/trade/open-items?company=DEFAULT&limit=100 200
+POST /api/v1/trade/actions/preview 200
+POST /api/v1/trade/actions 201
+GET /api/v1/trade/orders?company=DEFAULT&limit=100 200
+GET /api/v1/trade/orders/PO-C1/invoicing?company=DEFAULT 200
+seed-credit ok: PO-C1 L1 贷项前 full 10/10 → 贷项 4 后 partial 6/10
+readiness ok: company DEFAULT; orders exist for invoicing none / partial / full; PO-C1 partial (seed-credit asserts 10 -> 6; credited 4)
+shots 4
+capture exit 0
+inventory-before-delete path=C:\Users\shaoling\AppData\Local\Temp\erp-demo-a8f2f654-1469-446b-81e4-5fdb6aa5852d at=2026-11-23 20:19:28
+inventory file=C:\Users\shaoling\AppData\Local\Temp\erp-demo-a8f2f654-1469-446b-81e4-5fdb6aa5852d\demo.sqlite bytes=647168 sha256=CE55C63923B7B131DD3CF44D43A9FC43218BAE1C1B127D70036A934742505953
+inventory file=C:\Users\shaoling\AppData\Local\Temp\erp-demo-a8f2f654-1469-446b-81e4-5fdb6aa5852d\demo.sqlite.users\43876-b31552a8-45a5-4aa4-9db6-4904ca554c17 bytes=0 sha256=E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855
+inventory file=C:\Users\shaoling\AppData\Local\Temp\erp-demo-a8f2f654-1469-446b-81e4-5fdb6aa5852d\demo.sqlite.users\43876-d0712800-fc8b-45ff-9740-e2fee93c1b89 bytes=0 sha256=E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855
+inventory file=C:\Users\shaoling\AppData\Local\Temp\erp-demo-a8f2f654-1469-446b-81e4-5fdb6aa5852d\demo.sqlite-shm bytes=32768 sha256=061A691C2CBF65230BDA8E7FC4770C5ED4C6158A7702F3E8FFCD2950055A1A60
+inventory file=C:\Users\shaoling\AppData\Local\Temp\erp-demo-a8f2f654-1469-446b-81e4-5fdb6aa5852d\demo.sqlite-wal bytes=1878752 sha256=52E018EFB73B9648E2F795C0BA2E3396D247E227C95BC84095F79952B19E028D
+inventory demo.sqlite-wal present
+inventory demo.sqlite-shm present
+inventory-end
+port 4204 released
+exit=0

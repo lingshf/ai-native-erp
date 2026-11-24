@@ -1,0 +1,27 @@
+
+ RUN  v5.1.0 C:/GithubCopilot/copilot-worktrees/ai-native-erp/lingshf-animated-disco
+
+ ↓ |web| test/trade-settlements.test.tsx > trade payments and receipts > reloads current balances when returning from another trade page despite an infinitely fresh cache
+ ↓ |web| test/trade-settlements.test.tsx > trade payments and receipts > does not post if the pending envelope cannot be read back byte-for-byte
+ ↓ |web| test/trade-settlements.test.tsx > trade payments and receipts > requires explicit selection and discount, invalidates a changed preview, and shows remaining balances and accounting links
+ ↓ |web| test/trade-settlements.test.tsx > trade payments and receipts > locks unknown outcomes, preserves the original envelope across remount and language switches, then retries safely
+ ↓ |web| test/trade-settlements.test.tsx > trade payments and receipts > reports an unknown outcome only after the first send fails, never while it is in flight
+ ↓ |web| test/trade-settlements.test.tsx > trade payments and receipts > does not derive due or remaining from a refreshed draft before its open items load
+ ↓ |web| test/trade-settlements.test.tsx > trade payments and receipts > renders the settlement teaching tip only while teaching is on and keeps the boundary visible
+ ↓ |web| test/trade-settlements.test.tsx > trade payments and receipts > asks before leaving an unsaved settlement and keeps it on cancel
+ ↓ |web| test/trade-settlements.test.tsx > TLIST-06 refresh the open items > S2 (zh): one Refresh list button, in the allocation tab before the table and outside its fieldset
+ ↓ |web| test/trade-settlements.test.tsx > TLIST-06 refresh the open items > S2 (en): one Refresh list button, in the allocation tab before the table and outside its fieldset
+ ↓ |web| test/trade-settlements.test.tsx > TLIST-06 refresh the open items > S3: re-reads both loaded pages in order and keeps them (due stays known), the selection and its amount
+ ↓ |web| test/trade-settlements.test.tsx > TLIST-06 refresh the open items > S4: shows a selected item's reduced balance and neither clears nor recomputes the preview
+ ↓ |web| test/trade-settlements.test.tsx > TLIST-06 refresh the open items > S5: stays enabled while a confirmation is pending and leaves the envelope and buttons alone
+ ↓ |web| test/trade-settlements.test.tsx > TLIST-06 refresh the open items > S6: keeps the unknown-outcome notice and retries with the same envelope after a refresh
+ ↓ |web| test/trade-settlements.test.tsx > TLIST-06 refresh the open items > S7: a native button between the general tab and the table; two clicks show one copy, a failure the error bar
+ ✓ |web| test/trade-settlements.test.tsx > DEMO-22 focus path > K1/K2: from the Allocation tab header, Tab reaches Refresh list (also with a selection) 185ms
+ ✓ |web| test/trade-settlements.test.tsx > DEMO-22 focus path > K3: with a confirmation pending the table is locked but Tab still reaches Refresh list 327ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed | 15 skipped (17)
+   Start at  20:04:21
+   Duration  4.80s (environment 63%, tests 11%, import 11%, setup 9%, transform 5%)
+
+exit=0
