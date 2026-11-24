@@ -8,8 +8,6 @@ import {
   checkedJournalDraft,
   checkedJournalId,
   checkedPage,
-  compileDimensionRules,
-  compilePostingRules,
   journalError,
   statisticsQuantity,
   type BusinessEvent,
@@ -22,13 +20,14 @@ import {
   type OpenClearingLine,
   type ClearingRef,
   type EventCommand,
-  type JournalDraft,
-  type JournalPlan,
   type JournalReceipt,
   type Page,
   type PageQuery,
   type DimensionMap,
 } from "@erp/core/domain";
+import { cashServiceCancelPlan, cashServicePlan } from "./business-event-cash.ts";
+import { clearingMatchPreview, statisticsPreview } from "./business-event-ledger.ts";
+import { required } from "./business-event-plan.ts";
 import { JournalService, type JournalTools, type JournalConfirm } from "./journals.ts";
 import type { MasterDataRepository, MasterDataStore } from "./master-data.ts";
 export type BusinessSummary = Pick<
@@ -101,10 +100,6 @@ export interface BusinessRepository {
     details: Readonly<Record<string, unknown>>,
     at: string,
   ): Promise<void>;
-}
-function required<T>(value: T | null): T {
-  if (value === null) throw new DomainError("NOT_FOUND");
-  return value;
 }
 function checkedEvent(event: BusinessEvent) {
   checkedJournalId(event.id);
@@ -255,159 +250,20 @@ export class BusinessEventService {
     const owner = required(await repo.company(company));
     const period = await repo.period(company, event.date.slice(0, 7));
     if (!period || period.status !== "open") journalError("date", "period");
+    // Queued journals keep the journal plan's own fingerprint; no business fingerprint is added.
     if (event.operation === "journal") {
       const current = await this.journals.plan(repo, company, event);
       return { ...current, matches: [], statistics: null, clearing: [] };
     }
-    const draft: JournalDraft = {
-      id: event.id,
-      revision: 0,
-      sourceRef: event.sourceRef,
-      date: event.date,
-      documentDate: event.date,
-      taxDate: event.date,
-      memo: event.memo,
-      operation: "journal",
-      originalId: null,
-      kind: "normal",
-      headerDimensions: {},
-      lines: [],
-    };
-    let current: { fingerprint: string; plan: JournalPlan };
-    const matches: BusinessPreview["matches"][number][] = [];
-    let statistics: BusinessPreview["statistics"] = null;
-    let clearing: BusinessPreview["clearing"] = [];
-    let evidence: unknown = null;
-    if (event.operation === "cash_service") {
-      if (event.currency !== owner.currency) businessError("currency", "shape");
-      const service = required(await repo.businessMaster(company, "service", event.service));
-      const party =
-        event.party === null
-          ? null
-          : required(await repo.businessMaster(company, "party", event.party));
-      if (!service.active || (party && !party.active)) businessError("service", "reference");
-      const compiled = compilePostingRules(await repo.postingCatalog(company), event.date);
-      const cash = compiled.match(event.direction, "cash", service, party);
-      const offset = compiled.match(event.direction, "offset", service, party);
-      const accounts = await repo.accountsByCodes(company, [
-        cash.rule.account,
-        offset.rule.account,
-      ]);
-      for (const [selection, isCash] of [
-        [cash, true],
-        [offset, false],
-      ] as const) {
-        const account = accounts.find((item) => item.code === selection.rule.account);
-        if (
-          !account?.active ||
-          account.purpose !== "general" ||
-          (isCash
-            ? account.category !== "ASSET" || account.reportGroup !== "cash"
-            : account.category !== (event.direction === "receive" ? "REVENUE" : "EXPENSE"))
-        )
-          businessError(`rules.${selection.rule.meaning}`, "account");
-        matches.push(selection.explanation);
-      }
-      const receive = event.direction === "receive";
-      const master = { ...(party?.dimensions ?? {}), ...service.dimensions };
-      current = await this.journals.plan(
-        repo,
-        company,
-        {
-          ...draft,
-          lines: [
-            {
-              account: cash.rule.account,
-              debit: receive ? event.amount : "",
-              credit: receive ? "" : event.amount,
-              dimensions: event.dimensions,
-              suspense: null,
-            },
-            {
-              account: offset.rule.account,
-              debit: receive ? "" : event.amount,
-              credit: receive ? event.amount : "",
-              dimensions: event.dimensions,
-              suspense: null,
-            },
-          ],
-        },
-        [
-          { ...master, ...cash.rule.dimensions },
-          { ...master, ...offset.rule.dimensions },
-        ],
-      );
-      evidence = [service, party];
-    } else if (event.operation === "cash_service.cancel") {
-      const original = required(await repo.businessEvent(company, event.originalId));
-      if (original.event.operation !== "cash_service" || original.receipt.journalIds.length !== 1)
-        businessError("originalId", "reference");
-      current = await this.journals.plan(repo, company, {
-        ...draft,
-        operation: "reverse",
-        originalId: original.receipt.journalIds[0],
-      });
-      evidence = original.receipt;
-    } else {
-      const plan: JournalPlan = {
-        version: 1,
-        company,
-        currency: owner.currency,
-        scale: owner.scale,
-        draftId: event.id,
-        draftRevision: 0,
-        sourceRef: event.sourceRef,
-        date: event.date,
-        documentDate: event.date,
-        taxDate: event.date,
-        module: null,
-        memo: event.memo,
-        operation: "journal",
-        originalId: null,
-        journals: [],
-      };
-      if (event.operation === "statistics") {
-        const resolved = compileDimensionRules(await repo.dimensionCatalog(company)).resolve({
-          account: "LEDGER",
-          day: event.date,
-          explicit: event.dimensions,
-        });
-        if (Object.keys(resolved.dimensions).length > 32)
-          journalError("dimensions", "dimensionLimit");
-        statistics = {
-          code: event.code,
-          quantity: statisticsQuantity(event.quantity),
-          scale: 6,
-          unit: event.unit,
-          ...resolved,
-        };
-      } else {
-        const account = required(await repo.account(company, event.account));
-        if (!account.active || !["clearing", "suspense"].includes(account.purpose))
-          businessError("account", "account");
-        const lines = await repo.clearingLines(company, event.lines);
-        if (
-          lines.length !== event.lines.length ||
-          lines.some(
-            (line) => line.account !== event.account || line.balancing || line.date > event.date,
-          )
-        )
-          businessError("lines", "line");
-        if (lines.some((line) => line.matched)) businessError("lines", "source", true);
-        if (lines.reduce((sum, line) => sum + BigInt(line.debit) - BigInt(line.credit), 0n) !== 0n)
-          businessError("lines", "line");
-        clearing = event.lines;
-        evidence = [account, lines];
-      }
-      current = {
-        plan,
-        fingerprint: this.tools.hash([
-          owner,
-          period,
-          await repo.journalConfigurationStamp(company),
-        ]),
-      };
-    }
+    const { current, matches, statistics, clearing, evidence } =
+      event.operation === "cash_service"
+        ? await cashServicePlan(repo, this.journals, company, owner, event)
+        : event.operation === "cash_service.cancel"
+          ? await cashServiceCancelPlan(repo, this.journals, company, event)
+          : event.operation === "statistics"
+            ? await statisticsPreview(repo, this.tools, company, owner, period, event)
+            : await clearingMatchPreview(repo, this.tools, company, owner, period, event);
+    // `fingerprint` keeps the key position it has in `current`.
     return {
       ...current,
       fingerprint: this.tools.hash([
