@@ -66,7 +66,7 @@ function writeDist(t, hash, overrides = {}) {
   }
   writeFileSync(join(dir, `assets/index-${hash}.css`), "body{margin:0}");
   writeFileSync(join(dir, ".vite/manifest.json"), JSON.stringify(manifest));
-  const html = `<script type="module" src="/assets/index-${hash}.js"></script><link rel="modulepreload" href="/assets/shared-${hash}.js">`;
+  const html = `<script type="module" src="/assets/index-${hash}.js"></script><link rel="modulepreload" href="/assets/shared-${hash}.js"><link rel="prefetch" href="/assets/A-${hash}.js">`;
   writeFileSync(join(dir, "index.html"), html);
   return dir;
 }
@@ -86,7 +86,7 @@ test("M2: assets that differ only in their content hashes compare equal; a real 
   assert.ok(result.lines.includes("RESULT: PASS"));
 });
 
-test("M3: the first screen is the entry and its static imports, never a dynamic import", (t) => {
+test("M3: the first screen is the entry, modulepreloads and their static imports, never a prefetch or a dynamic import", (t) => {
   const build = loadBuild(writeDist(t, BASE_HASH));
   assert.deepEqual([...firstScreenClosure(build)].sort(), ["_deep.js", "_shared.js", "index.html"]);
 });
@@ -96,11 +96,12 @@ test("M6: a chunk shared by two lazy routes counts for both; first-screen chunks
   const firstScreen = firstScreenClosure(build);
   assert.deepEqual(routeAddedKeys(build, "src/A.tsx", firstScreen), ["_common.js", "src/A.tsx"]);
   assert.deepEqual(routeAddedKeys(build, "src/B.tsx", firstScreen), ["_common.js", "src/B.tsx"]);
-  const gzipOf = (key) => assetBytes(Buffer.from(chunkTexts(BASE_HASH)[key])).gzip;
-  assert.equal(
-    routeAddedBytes(build, "src/A.tsx", firstScreen),
-    gzipOf("_common.js") + gzipOf("src/A.tsx"),
-  );
+  const bytesOf = (key) => assetBytes(Buffer.from(chunkTexts(BASE_HASH)[key]));
+  const keys = ["_common.js", "src/A.tsx"];
+  assert.deepEqual(routeAddedBytes(build, "src/A.tsx", firstScreen), {
+    raw: keys.reduce((total, key) => total + bytesOf(key).raw, 0),
+    gzip: keys.reduce((total, key) => total + bytesOf(key).gzip, 0),
+  });
 });
 
 // An entry whose preload table m.f is used by two __vite__mapDeps calls, as Vite emits it.
@@ -205,5 +206,9 @@ test("M7: bundle-measure refuses short SHAs, branch names, an existing --work an
   const unknown = exitCodeOf(args(FULL_SHA, ["--verbose", "1"]));
   assert.equal(unknown.exitCode, EXIT_CODES.usage);
   assert.match(unknown.message, /unknown argument "--verbose"/);
+  const optionAsValue = ["--base", FULL_SHA, "--head", FULL_SHA, "--work", "--unknown"];
+  const missingWork = exitCodeOf(optionAsValue);
+  assert.equal(missingWork.exitCode, EXIT_CODES.usage);
+  assert.match(missingWork.message, /--work needs a value/);
   assert.equal(exitCodeOf(args(FULL_SHA)).exitCode, EXIT_CODES.pass);
 });

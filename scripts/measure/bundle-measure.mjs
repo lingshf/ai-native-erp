@@ -31,8 +31,9 @@ function readMeasureFlags(rest) {
   for (let index = 0; index < rest.length; index += 2) {
     const flag = rest[index];
     if (!MEASURE_FLAGS[flag]) throw usageError(`unknown argument "${flag}"`);
-    if (rest[index + 1] === undefined) throw usageError(`${flag} needs a value`);
-    values[MEASURE_FLAGS[flag]] = rest[index + 1];
+    const value = rest[index + 1];
+    if (value === undefined || value.startsWith("--")) throw usageError(`${flag} needs a value`);
+    values[MEASURE_FLAGS[flag]] = value;
   }
   const missing = REQUIRED_FLAGS.filter((flag) => values[MEASURE_FLAGS[flag]] === undefined);
   if (missing.length > 0) throw usageError(`missing ${missing.join(", ")}`);

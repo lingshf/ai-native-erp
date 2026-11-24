@@ -1,7 +1,5 @@
 // Compares two Vite builds made with `vite build --manifest` by the D432 / D454 rules and checks budgets.
-// Usage: node scripts/measure/bundle-compare.mjs <base-dist> <head-dist>
-//          [--first-screen ±B] [--d454] [--chunk <key>=<limit>]... [--route <key>=<limit>]...
-// Unlisted items must stay ±0. Exit codes: see EXIT_CODES and scripts/measure/README.md.
+// Usage, budget flags and exit codes: scripts/measure/README.md. Unlisted items must stay ±0.
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -13,7 +11,9 @@ export const D454_MASKED_TOLERANCE_BYTES = 10;
 const MANIFEST_PATH = join(".vite", "manifest.json");
 // Vite / Rolldown content hashes: 8 characters of [A-Za-z0-9_-] before .js / .css (same as #288).
 const HASHED_NAME = /([A-Za-z0-9_.-]+?)-[A-Za-z0-9_-]{8}\.(js|css)/g;
-const HTML_SCRIPT = /<(?:script|link)\b[^>]*?(?:src|href)="(?:\.?\/)?(assets\/[^"]+\.js)"/g;
+const ENTRY_SCRIPT = /<script\b[^>]*?\bsrc="(?:\.?\/)?(assets\/[^"]+\.js)"/g;
+const MODULE_PRELOAD =
+  /<link\b(?=[^>]*\brel="modulepreload")[^>]*?\bhref="(?:\.?\/)?(assets\/[^"]+\.js)"/g;
 const PRELOAD_TABLE = /m\.f=(\[[^\]]*\])/;
 const MAP_DEPS_CALL = /__vite__mapDeps\(\[([\d,]*)\]\)/g;
 const DEFAULT_LIMIT = Object.freeze({ text: "±0", min: 0, max: 0 });
@@ -58,11 +58,9 @@ export function loadBuild(dir) {
   }
   return { dir, chunks, html: readFileSync(join(dir, "index.html"), "utf8"), bytes: new Map() };
 }
-
 const fileBytes = (build, file) =>
   build.bytes.get(file) ??
   build.bytes.set(file, assetBytes(readFileSync(join(build.dir, file)))).get(file);
-
 function keyOfFile(build, file) {
   for (const [key, chunk] of build.chunks) if (chunk.file === file) return key;
   throw new Error(`${build.dir}: index.html refers to ${file}, which is not in the manifest`);
@@ -78,10 +76,14 @@ export function staticClosure(build, roots, seen = new Set()) {
   return seen;
 }
 
-// D432 / D454: the first screen is index.html's entry script and modulepreloads plus their static imports.
+// D432 / D454: the first screen is index.html's entry script and modulepreloads plus their static
+// imports; a prefetch (or any other <link>) is not.
 export function firstScreenClosure(build) {
-  const roots = [...build.html.matchAll(HTML_SCRIPT)].map((match) => keyOfFile(build, match[1]));
-  return staticClosure(build, roots);
+  const tags = [ENTRY_SCRIPT, MODULE_PRELOAD].flatMap((tag) => [...build.html.matchAll(tag)]);
+  return staticClosure(
+    build,
+    tags.map((tag) => keyOfFile(build, tag[1])),
+  );
 }
 
 // D432: a lazy route adds the static closure of its dynamic entry minus the first screen.
@@ -90,20 +92,22 @@ export function routeAddedKeys(build, route, firstScreen) {
 }
 
 const jsBytes = (build, key) => fileBytes(build, build.chunks.get(key).file);
-const totalOf = (build, keys, field) => sum([...keys].map((key) => jsBytes(build, key)[field]));
+const NO_BYTES = Object.freeze({ raw: 0, gzip: 0 });
+function bytesOf(build, keys) {
+  const each = [...keys].map((key) => jsBytes(build, key));
+  return { raw: sum(each.map((bytes) => bytes.raw)), gzip: sum(each.map((bytes) => bytes.gzip)) };
+}
 
-// D432: route-added JS is the masked gzip-9 sum of routeAddedKeys; a shared chunk counts for every route.
+// D432: route-added JS sums routeAddedKeys (raw and masked gzip-9); a shared chunk counts for every route.
 export function routeAddedBytes(build, route, firstScreen) {
-  return totalOf(build, routeAddedKeys(build, route, firstScreen), "gzip");
+  return bytesOf(build, routeAddedKeys(build, route, firstScreen));
 }
 
 // D432: the CSS a route loads is the CSS of its whole static closure, first screen included.
 export function routeCss(build, route) {
   const files = [...staticClosure(build, [route])].flatMap((key) => build.chunks.get(key).css);
-  return sorted(new Set(files)).map((file) => ({
-    key: unhashedName(file),
-    ...fileBytes(build, file),
-  }));
+  const withBytes = (file) => ({ key: unhashedName(file), ...fileBytes(build, file) });
+  return sorted(new Set(files)).map(withBytes);
 }
 
 // D454 ③: sort the m.f file table and every __vite__mapDeps list, so only preload order is ignored.
@@ -116,12 +120,10 @@ export function sortPreloads(text) {
     .replace(unhashedName(tableText), JSON.stringify(sorted(table)))
     .replace(MAP_DEPS_CALL, (_, list) => `__vite__mapDeps(${JSON.stringify(sortedList(list))})`);
 }
-
 const chunkText = (build, key) => readFileSync(join(build.dir, build.chunks.get(key).file), "utf8");
+const preloadFiles = (text) => JSON.parse(text.match(PRELOAD_TABLE)?.[1] ?? "[]");
 const preloadTable = (build, keys) =>
-  [...keys]
-    .flatMap((key) => JSON.parse(chunkText(build, key).match(PRELOAD_TABLE)?.[1] ?? "[]"))
-    .map(unhashedName);
+  [...keys].flatMap((key) => preloadFiles(chunkText(build, key))).map(unhashedName);
 const sortedText = (build, keys) =>
   sorted(keys)
     .map((key) => sortPreloads(chunkText(build, key)))
@@ -130,42 +132,46 @@ const sortedText = (build, keys) =>
 // D454: a first screen differing only in preload order counts as ±0 when all four rules hold.
 export function d454Verdict(base, head) {
   const keys = { base: firstScreenClosure(base), head: firstScreenClosure(head) };
-  const gzipDelta = totalOf(head, keys.head, "gzip") - totalOf(base, keys.base, "gzip");
+  const bytes = { base: bytesOf(base, keys.base), head: bytesOf(head, keys.head) };
   const passes = [
     sameSet(keys.base, keys.head) &&
       sameSet(preloadTable(base, keys.base), preloadTable(head, keys.head)),
-    totalOf(base, keys.base, "raw") === totalOf(head, keys.head, "raw"),
+    bytes.base.raw === bytes.head.raw,
     sortedText(base, keys.base) === sortedText(head, keys.head),
-    Math.abs(gzipDelta) <= D454_MASKED_TOLERANCE_BYTES,
+    Math.abs(bytes.head.gzip - bytes.base.gzip) <= D454_MASKED_TOLERANCE_BYTES,
   ];
   const rules = D454_RULES.map((rule, index) => ({ rule, pass: passes[index] }));
   return { rules, pass: passes.every(Boolean) };
 }
 
 const routeKeys = (build) => [...build.chunks].filter(([, c]) => c.isDynamicEntry).map(([k]) => k);
-
 function measuredSide(build) {
   const cssFiles = [...build.chunks.values()].flatMap((chunk) => chunk.css);
   const css = new Map(cssFiles.map((file) => [unhashedName(file), file]));
   return { build, firstScreen: firstScreenClosure(build), css };
 }
 const has = (side, key) => side.build.chunks.has(key);
-const firstScreenValue = (side) => totalOf(side.build, side.firstScreen, "gzip");
+const firstScreenValue = (side) => bytesOf(side.build, side.firstScreen);
 const routeValue = (side, key) =>
-  has(side, key) ? routeAddedBytes(side.build, key, side.firstScreen) : 0;
-const chunkValue = (side, key) => (has(side, key) ? jsBytes(side.build, key).gzip : 0);
+  has(side, key) ? routeAddedBytes(side.build, key, side.firstScreen) : NO_BYTES;
+const chunkValue = (side, key) => (has(side, key) ? jsBytes(side.build, key) : NO_BYTES);
 const cssValue = (side, key) =>
-  side.css.has(key) ? fileBytes(side.build, side.css.get(key)).gzip : 0;
+  side.css.has(key) ? fileBytes(side.build, side.css.get(key)) : NO_BYTES;
 const chunksOutsideFirstScreen = (side) =>
   [...side.build.chunks]
     .filter(([key, chunk]) => chunk.file.endsWith(".js") && !side.firstScreen.has(key))
     .map(([key]) => key);
 
-// Budget items: the first screen, every lazy route, every JS chunk outside the first screen, every CSS file.
+// Budget items: the first screen, every lazy route, every JS chunk outside the first screen, every CSS
+// file. base / head are masked gzip-9 (budgets decide on them); rawBase / rawHead are for reference.
 export function budgetItems(base, head) {
   const sides = [measuredSide(base), measuredSide(head)];
   const [b, h] = sides;
-  const row = (kind, key, value) => ({ kind, key, base: value(b, key), head: value(h, key) });
+  const row = (kind, key, value) => {
+    const [before, after] = [value(b, key), value(h, key)];
+    const raw = { rawBase: before.raw, rawHead: after.raw };
+    return { kind, key, base: before.gzip, head: after.gzip, ...raw };
+  };
   const keysOf = (pick) => sorted(new Set(sides.flatMap(pick)));
   return [
     row("first-screen", "first-screen", firstScreenValue),
@@ -186,12 +192,11 @@ export function parseLimit(text) {
 // D454 / D460: each item passes within its limit (default ±0); --d454 also passes a D454 first screen.
 export function checkBudgets(items, budgets, d454Pass = false) {
   const known = new Set(items.map((item) => `${item.kind}:${item.key}`));
-  for (const kind of ["chunk", "route"]) {
-    for (const key of budgets[kind].keys()) {
-      if (!known.has(`${kind}:${key}`))
-        throw usageError(`--${kind} ${key}: no such item in either build`);
-    }
-  }
+  const requested = ["chunk", "route"].flatMap((kind) =>
+    [...budgets[kind].keys()].map((key) => `${kind}:${key}`),
+  );
+  const missing = requested.find((id) => !known.has(id));
+  if (missing) throw usageError(`--${missing.replace(":", " ")}: no such item in either build`);
   return items.map((item) => {
     const delta = item.head - item.base;
     const limit = budgets[item.kind].get(item.key) ?? DEFAULT_LIMIT;
@@ -207,7 +212,6 @@ const BUDGET_FLAGS = {
   "--chunk": (budgets, value) => addKeyedLimit(budgets.chunk, "--chunk", value),
   "--route": (budgets, value) => addKeyedLimit(budgets.route, "--route", value),
 };
-
 function addKeyedLimit(target, flag, value) {
   const separator = value?.lastIndexOf("=") ?? -1;
   if (separator <= 0) throw usageError(`${flag} needs <key>=<limit>, got "${value}"`);
@@ -235,16 +239,14 @@ export function assetDigests(dir) {
     .map((file) => `${sha256(readFileSync(file))}  ${relative(dir, file).replaceAll("\\", "/")}`)
     .sort((a, b) => a.slice(66).localeCompare(b.slice(66)));
 }
-
 function routeCssLines(base, head) {
-  const summary = (files) => files.map((file) => `${file.key} ${file.gzip}`).join(", ");
+  const summary = (files) => files.map((file) => `${file.key} ${file.raw}/${file.gzip}`).join(", ");
   const show = (build, route) => (build.chunks.has(route) ? summary(routeCss(build, route)) : "—");
   const routes = sorted(new Set([...routeKeys(base), ...routeKeys(head)]));
   return routes.map((route) => `${route}: ${show(base, route)} → ${show(head, route)}`);
 }
-
 const budgetRow = (r) =>
-  `| ${r.kind} | ${r.key} | ${r.base} | ${r.head} | ${signed(r.delta)} | ${r.limit} | ${r.pass ? "PASS" : "FAIL"} |`;
+  `| ${r.kind} | ${r.key} | ${r.rawBase} | ${r.rawHead} | ${r.base} | ${r.head} | ${signed(r.delta)} | ${r.limit} | ${r.pass ? "PASS" : "FAIL"} |`;
 
 export function formatReport(base, head, rows, d454) {
   const firstScreen = { base: firstScreenClosure(base), head: firstScreenClosure(head) };
@@ -252,15 +254,14 @@ export function formatReport(base, head, rows, d454) {
     "## First screen (D432 / D454)",
     `JS base: ${sorted(firstScreen.base).join(", ")}`,
     `JS head: ${sorted(firstScreen.head).join(", ")}`,
-    `raw B: ${totalOf(base, firstScreen.base, "raw")} → ${totalOf(head, firstScreen.head, "raw")}`,
     ...d454.rules.map(({ rule, pass }) => `D454 ${rule}: ${pass}`),
     "",
-    "## Route CSS (masked gzip-9 B, base → head)",
+    "## Route CSS (raw B / masked gzip-9 B, base → head)",
     ...routeCssLines(base, head),
     "",
-    "## Budgets (masked gzip-9 B)",
-    "| kind | key | base | head | Δ | limit | result |",
-    "| --- | --- | --- | --- | --- | --- | --- |",
+    "## Budgets (decided on masked gzip-9 B; raw B for reference)",
+    "| kind | key | raw base | raw head | gzip base | gzip head | Δ gzip | limit | result |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...rows.map(budgetRow),
   ];
   for (const [side, build] of Object.entries({ base, head })) {
@@ -270,8 +271,7 @@ export function formatReport(base, head, rows, d454) {
 }
 
 export function compareDists(baseDir, headDir, budgets) {
-  const base = loadBuild(baseDir);
-  const head = loadBuild(headDir);
+  const [base, head] = [baseDir, headDir].map(loadBuild);
   const d454 = d454Verdict(base, head);
   const rows = checkBudgets(budgetItems(base, head), budgets, d454.pass);
   const failures = rows.filter((row) => !row.pass).length;

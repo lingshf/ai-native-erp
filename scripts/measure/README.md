@@ -43,14 +43,15 @@ node scripts/measure/bundle-compare.mjs <base-dist> <head-dist> [预算参数]
 
 ## 口径
 
-所有字节都是**屏蔽哈希后**的 gzip-9（`zlib` level 9）字节。屏蔽规则：文本中 `名字-8位哈希.js|css`
+预算一律按**屏蔽哈希后**的 gzip-9（`zlib` level 9）字节判定；报告里每项同时列出原始字节，仅供参考。屏蔽规则：文本中 `名字-8位哈希.js|css`
 一律换成 `名字-HASH.js|css`（与 #288 相同），这样只因哈希不同而变化的引用不会算作体积变化。
 
-- **首屏（D432）**：`index.html` 里 `<script>` / `<link>` 引用的 `assets/*.js`，加上它们在 manifest 中的
-  静态 `imports` 闭包。动态导入（`dynamicImports`）不算首屏。
+- **首屏（D432、D454）**：`index.html` 里入口 `<script src>` 与 `<link rel="modulepreload">` 引用的
+  `assets/*.js`，加上它们在 manifest 中的静态 `imports` 闭包。`<link rel="prefetch">` 等其他链接和动态导入
+  （`dynamicImports`）都不算首屏。
 - **路由新增（D432）**：某路由懒加载入口（manifest 的 `isDynamicEntry`）的静态导入闭包，减去首屏闭包。
   几个路由共用的 chunk 在每个路由里都算一次；首屏里已有的 chunk 不算进任何路由。
-- **路由 CSS**：路由闭包里各 chunk 的 `css` 列表，逐个文件列出，仅供核对。
+- **路由 CSS**：路由闭包里各 chunk 的 `css` 列表，逐个文件列出“原始/gzip-9”字节，仅供核对。
 - **首屏预加载顺序（D454）**：首屏只有预加载顺序不同时，同时满足以下四条即视同 ±0：
   ① 预加载集合相同（首屏闭包与 `m.f` 表的集合都相同）；② 原始字节 ±0；
   ③ 把 `m.f` 表与每个 `__vite__mapDeps` 列表各自排序后，base 与 head 的文本完全相同；
@@ -71,26 +72,25 @@ node scripts/measure/bundle-compare.mjs <base-dist> <head-dist> [预算参数]
 
 ## 示例输出
 
-同一份构建与自身比较（节选，完整输出 173 行）：
+同一份构建与自身比较（节选，完整输出 172 行）：
 
 ```text
 ## First screen (D432 / D454)
 JS base: index.html
 JS head: index.html
-raw B: 530726 → 530726
 D454 ① preload set equal: true
 D454 ② raw ±0: true
 D454 ③ text equal after sorting m.f and __vite__mapDeps: true
 D454 ④ masked gzip-9 |Δ| ≤ 10 B: true
 
-## Route CSS (masked gzip-9 B, base → head)
-src/TradeOrders.tsx: assets/TradeOrders.css 881, assets/components.css 2564, assets/index.css 2910 → …
+## Route CSS (raw B / masked gzip-9 B, base → head)
+src/TradeOrders.tsx: assets/TradeOrders.css 2977/881, assets/components.css 12422/2564, … → …
 
-## Budgets (masked gzip-9 B)
-| kind | key | base | head | Δ | limit | result |
-| --- | --- | --- | --- | --- | --- | --- |
-| first-screen | first-screen | 160942 | 160942 | 0 | ±0 | PASS |
-| route | src/Accounts.tsx | 12545 | 12545 | 0 | ±0 | PASS |
+## Budgets (decided on masked gzip-9 B; raw B for reference)
+| kind | key | raw base | raw head | gzip base | gzip head | Δ gzip | limit | result |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| first-screen | first-screen | 530726 | 530726 | 160942 | 160942 | 0 | ±0 | PASS |
+| route | src/Accounts.tsx | 37034 | 37034 | 12545 | 12545 | 0 | ±0 | PASS |
 …
 
 ## Asset SHA-256 (base: …)
