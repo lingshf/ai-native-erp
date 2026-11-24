@@ -255,7 +255,6 @@ export class BusinessEventService {
       const current = await this.journals.plan(repo, company, event);
       return { ...current, matches: [], statistics: null, clearing: [] };
     }
-    // Draft and empty ledger plan read the event before any branch awaits, as before the split.
     const draft = businessDraft(event);
     const ledger = { company, owner, period };
     const { current, matches, statistics, clearing, evidence } =
