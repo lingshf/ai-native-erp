@@ -586,7 +586,9 @@ it("bounds the paged virtual table DOM while scrolling within a full page", asyn
   // the fork's jsdom teardown, where React reads the deleted `window` (FLAKE-08). Arm it on
   // a test-owned clock and finish it while the table is still mounted.
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-  onTestFinished(() => vi.useRealTimers());
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
   fireEvent.scroll(region, { target: { scrollTop: 11_000 } });
   expect(vi.getTimerCount(), "scroll-reset debounce armed by the scroll").toBe(1);
   act(() => vi.advanceTimersByTime(150));
