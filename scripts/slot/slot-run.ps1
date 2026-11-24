@@ -16,6 +16,7 @@
 # Static preflight (S12 SLOT-02, D407 / D408): before the build, preflight.mjs checks head (with -PreflightFiles), then
 # base; its exit code 4 (input or configuration error) or 6 (new finding) ends the run with that same code before the
 # build, the dist check, the process precheck and any step. Each step gets the PSModulePath from step-env.ps1.
+# Call location (SLOT-04): R-base (-BaseRoot is the current root) or R-steps (steps file in a third worktree): exit 4, no action.
 param([Parameter(Mandatory)] [string] $OutDir, [Parameter(Mandatory)] [string] $StepsFile, [string] $BaseRoot = "", [string] $Stub = "",
   [string[]] $PreflightFiles = @(), [int[]] $Ports = @())
 # -StepsFile: a script called as  & $StepsFile -OutDir $OutDir -Root $root -BaseRoot $BaseRoot  that returns the
@@ -117,6 +118,36 @@ function Assert-PortsFree([string] $phase) {
   Say "ABORT: slot port in use ($phase)"
   exit 7
 }
+# A directory's git worktree top level (full path, no trailing separator), or $null outside any git worktree.
+function Get-WorktreeTop([string] $dir) {
+  $top = git -C $dir rev-parse --show-toplevel 2>$null
+  if ($LASTEXITCODE -ne 0 -or -not $top) { return $null }
+  return [IO.Path]::GetFullPath($top).TrimEnd('\', '/')
+}
+# Call location (SLOT-04): exit 4 before the steps file runs when R-base or R-steps holds. -eq / -notin ignore case.
+function Assert-CallLocation([string] $checkoutRoot, [string] $stepsPath, [string] $baseRootPath) {
+  $rootTop = [IO.Path]::GetFullPath($checkoutRoot).TrimEnd('\', '/')
+  $toolTop = Get-WorktreeTop $PSScriptRoot
+  $stepsTop = Get-WorktreeTop (Split-Path -Parent $stepsPath)
+  $baseTop = if ($baseRootPath) { (Get-WorktreeTop $baseRootPath) ?? $baseRootPath.TrimEnd('\', '/') }
+  $broken = @()
+  if ($baseTop -and $baseTop -eq $rootTop) { $broken += $script:RULE_BASE }
+  if ($stepsTop -and $stepsTop -notin @($rootTop, $toolTop)) { $broken += $script:RULE_STEPS }
+  $where = "root=$rootTop tool=$toolTop steps-worktree=$($stepsTop ?? 'none')"
+  if ($broken.Count -eq 0) { Say "call location ok $where"; return }
+  Say "ABORT: call location rules=$($broken -join ',') $where base-root=$($baseRootPath ? $baseRootPath : 'none'); run from the app worktree: pwsh -File $(Join-Path $PSScriptRoot 'slot-run.ps1') …"
+  exit 4
+}
+# Dist gate (roadmap §5 item 8; RUNMAIN-01 rule): the script's exit ends only that script; non-zero ends the run with 5.
+function Invoke-WebDistCheck([string] $assertScript, [string] $checkoutRoot) {
+  $line = (& $assertScript -Root $checkoutRoot) -join ' '
+  $code = $LASTEXITCODE
+  Say "dist check $line"
+  if ($code -ne 0) { Say "ABORT: dist check exit $code"; exit 5 }
+}
+$script:RULE_BASE = 'R-base'
+$script:RULE_STEPS = 'R-steps'
+$webDistScript = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\demo\assert-web-dist.ps1'))
 $script:ever = @{ [int]$PID = $true }  # SR-R1: this runner's tree starts at its own PID (kit slot-run.ps1:46)
 $script:excludedSeen = @{}
 $excluded = Join-Path $OutDir "excluded.tsv"
@@ -132,10 +163,12 @@ Say "tooling head=$(git -C $PSScriptRoot rev-parse HEAD) dir=$PSScriptRoot"
 if (-not (Test-Path -LiteralPath $StepsFile -PathType Leaf)) { Say "missing -StepsFile $StepsFile"; exit 4 }
 if (-not $Stub -and $Ports.Count -eq 0) { Say "missing -Ports: a run without -Stub must name the slot's ports (R3, D472)"; exit 4 }
 if (@($Ports | Where-Object { $_ -lt 1 -or $_ -gt 65535 }).Count) { Say "invalid -Ports $($Ports -join ',')"; exit 4 }
+if (-not (Test-Path -LiteralPath $webDistScript -PathType Leaf)) { Say "missing $webDistScript"; exit 4 }
 if ($BaseRoot) {
   if (-not (Test-Path -LiteralPath $BaseRoot -PathType Container)) { Say "missing -BaseRoot $BaseRoot"; exit 4 }
   Say "base head=$(git -C $BaseRoot rev-parse HEAD) status=[$(git -C $BaseRoot status --porcelain --untracked-files=all)]"
 }
+Assert-CallLocation $root $StepsFile $BaseRoot
 # Steps are loaded before the build so a steps file that rejects its inputs stops the run first (kit: exit 4).
 try { $steps = @(& $StepsFile -OutDir $OutDir -Root $root -BaseRoot $BaseRoot | Where-Object { $null -ne $_ }) } catch { Say "$($_.Exception.Message)"; exit 4 }
 # A steps file that yields no step would otherwise pass the precheck and report success without running anything.
@@ -151,15 +184,12 @@ else {
   $code = Invoke-Preflight 'base' $basePreflight $BaseRoot @()
   if ($code -ne 0) { Say "ABORT: preflight base exit $code"; exit $code }
 }
-# Build gate (roadmap §5 item 8): build this tree, then require packages/web/dist/index.html to be strictly
-# newer than the HEAD commit time; otherwise stop before any browser or measurement step runs.
+# Build gate (roadmap §5 item 8): build this tree, then the dist check (Invoke-WebDistCheck) before any browser or
+# measurement step runs.
 Say "build start"
 & cmd.exe /d /c "npm run build" *> (Join-Path $OutDir "build.log")
 if ($LASTEXITCODE -ne 0) { Say "ABORT: build exit $LASTEXITCODE"; exit 1 }
-$headTime = [DateTimeOffset]::Parse((git log -1 --format=%cI HEAD)).UtcDateTime
-$distTime = (Get-Item (Join-Path $root 'packages/web/dist/index.html')).LastWriteTimeUtc
-Say "dist check head-commit=$($headTime.ToString('o')) dist-index=$($distTime.ToString('o')) newer=$($distTime -gt $headTime)"
-if (-not ($distTime -gt $headTime)) { Say "ABORT: dist not newer than HEAD commit"; exit 5 }
+Invoke-WebDistCheck $webDistScript $root
 $zeros = 0; $deadline = (Get-Date).AddMinutes(15); $n = 0
 # Stub: one logged sample instead of the gate (other sessions may be working; a real run waits for 6 zeros).
 if ($Stub) { $c = Sample "precheck-stub"; Say "precheck stub counted=$c (not gating)"; $zeros = 6 }
