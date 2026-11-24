@@ -1,6 +1,6 @@
 # SLOT-06：`slot-run.ps1` 在运行期间自动做门禁快照
 
-- Sprint：S23（[计划](S23.md)）　类型：开发工具　优先级：P2　决定：[D517](S23.md#s23-期间决定)（只记录、不改判定，见“设计决定”1–4）；[D522](S23.md#s23-期间决定)（快照日志命名）　建议分支：`slot-06-slot-run-snapshot`
+- Sprint：S23（[计划](S23.md)）　类型：开发工具　优先级：P2　决定：[D517](S23.md#s23-期间决定)（只记录、不改判定，见“设计决定”1–4）；[D522](S23.md#s23-期间决定)（快照日志命名）；[D524](S23.md#s23-期间决定)（启动点与 G6 范围）　建议分支：`slot-06-slot-run-snapshot`
 - 来源：[S22 候选池](S22.md#候选池s22-之后)“`slot-run.ps1` 在运行期间自动调用 `gate-snapshot.ps1`（等 SLOT-05 经过一次 Demo 实用后再评估；会改 runner 与规则表）”。另见 [S21 回顾议题 6](../reviews/S21-retro.md)：第二窗口的快照没有父进程链，归属只能事后猜测。
 - **派发条件**：DEMO-22 的窗口已关闭，且其 run-through 已记录 SLOT-05（`gate-snapshot.ps1`）的第一次实际使用。派发前设计角色按该 run-through 复核本任务书：如果 run-through 记录了工具缺陷（例如 cwd 普遍读不到、查询出错），先由设计 PR 修订本任务书，再派发。**任何 DEMO 窗口开启到关闭之间不改、不合并 `scripts/slot/`**。
 - 迁移：**不加**。浏览器时段：**不需要**（自测只用 `-Stub` 与替身监听，不开浏览器）。
@@ -31,7 +31,7 @@
 
 ## 设计决定（产品负责人）
 
-1. **何时启动**：输入检查、调用位置检查与加载步骤都通过之后（即所有退出码 4 的路径之后，`:176` 之后），`Assert-PortsFree 'before-preflight'`（`:177`）之前，runner 用 `Start-Process` 起一个子进程：
+1. **何时启动**：输入检查、调用位置检查与加载步骤都通过之后（即启动前所有退出码 4 的路径之后，`:176` 之后；D524：`preflight.mjs` 之后返回的退出码 4 不属此列，那时快照已启动，照常停止），`Assert-PortsFree 'before-preflight'`（`:177`）之前，runner 用 `Start-Process` 起一个子进程：
 
    `pwsh -NoProfile -File <脚本目录>\gate-snapshot.ps1 -OutFile <OutDir>\gate-snapshot-<UTC 时间戳>.tsv -Ports "<端口 CSV>" -StopFile <OutDir>\gate-snapshot-<同一时间戳>.stop`
 
@@ -74,7 +74,7 @@
 
 ### 两侧都须成立的不变量
 
-- **G6 退出码 4 不起快照**：缺 `-StepsFile`、调用位置不符等退出码 4 的路径，`-OutDir` 中没有 `gate-snapshot-*` 文件，日志没有 `gate snapshot` 行。
+- **G6 启动前的退出码 4 不起快照**：缺 `-StepsFile`、调用位置不符等启动前退出码 4 的路径，`-OutDir` 中没有 `gate-snapshot-*` 文件，日志没有 `gate snapshot` 行。`preflight.mjs` 返回的退出码 4 不在本项范围内（D524）：此时有快照文件，且日志有正常停止的 `gate snapshot exit=` 行，由新增自测覆盖。
 - **G7 既有自测原样通过**：`selftest.ps1`、`selftest-ports.ps1`、`selftest-location.ps1`、`selftest-preflight.ps1`、`selftest-gate-snapshot.ps1` 在 head 上全部通过，这些文件 diff 为空。
 - **G8 清单不变**：`node scripts/slot/check-manifest.mjs` 在 base 与 head 上的输出逐字相同，末行为 `OK: …`，退出码 0。
 - **G9 范围**：`git diff --name-only` 只含“冲突域”三项；`git diff <base> <head> -- scripts/slot/gate-snapshot.ps1 scripts/slot/procs.ps1 design/roadmap.md` 为空。
