@@ -5,7 +5,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   assetBytes,
-  budgetItems,
   checkBudgets,
   compareDists,
   d454Verdict,
@@ -157,33 +156,21 @@ test("M5: a budget passes within and at its limit, fails above it, and unlisted 
   assert.deepEqual(verdicts("+7"), [false, false]);
 });
 
-test("M5: exit codes are 0 within or at the limit, 1 above it or for an unlisted change", (t) => {
+// The boundaries are covered by the lightweight test above; this one only checks the exit codes.
+test("M5: the exit code is 0 at the limit and 1 above it", (t) => {
+  const grownText = `${chunkTexts(HEAD_HASH)["src/A.tsx"]}export const more=1;`;
   const baseDir = writeDist(t, BASE_HASH);
-  const headDir = writeDist(t, HEAD_HASH, {
-    "src/A.tsx": `${chunkTexts(HEAD_HASH)["src/A.tsx"]}export const more=1;`,
-  });
-  const delta = budgetItems(loadBuild(baseDir), loadBuild(headDir)).find(
-    (i) => i.key === "src/A.tsx" && i.kind === "chunk",
-  );
-  const grown = delta.head - delta.base;
+  const headDir = writeDist(t, HEAD_HASH, { "src/A.tsx": grownText });
+  const gzipOf = (text) => assetBytes(Buffer.from(text)).gzip;
+  const grown = gzipOf(grownText) - gzipOf(chunkTexts(BASE_HASH)["src/A.tsx"]);
   assert.ok(grown > 0);
-  const exitCode = (flags) =>
-    compareDists(baseDir, headDir, parseBudgetArgs(flags).budgets).exitCode;
-  const routeA = `src/A.tsx=+${grown}`;
-  assert.equal(
-    exitCode(["--chunk", `src/A.tsx=+${grown + 1}`, "--route", routeA]),
-    EXIT_CODES.pass,
-  );
-  assert.equal(exitCode(["--chunk", `src/A.tsx=+${grown}`, "--route", routeA]), EXIT_CODES.pass);
-  assert.equal(
-    exitCode(["--chunk", `src/A.tsx=+${grown - 1}`, "--route", routeA]),
-    EXIT_CODES.budgetFail,
-  );
-  assert.equal(
-    exitCode(["--chunk", `src/A.tsx=+${grown}`]),
-    EXIT_CODES.budgetFail,
-    "route A is unlisted",
-  );
+  // Route A grows by the same bytes: its other chunk, _common, is unchanged.
+  const exitCodeAt = (limit) => {
+    const flags = ["--chunk", `src/A.tsx=+${limit}`, "--route", `src/A.tsx=+${limit}`];
+    return compareDists(baseDir, headDir, parseBudgetArgs(flags).budgets).exitCode;
+  };
+  assert.equal(exitCodeAt(grown), EXIT_CODES.pass);
+  assert.equal(exitCodeAt(grown - 1), EXIT_CODES.budgetFail);
 });
 
 test("M7: bundle-measure refuses short SHAs, branch names, an existing --work and unknown flags", () => {
