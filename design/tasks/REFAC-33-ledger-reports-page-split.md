@@ -235,7 +235,7 @@ base 数字（原始 / gzip-9 字节）：
     - 参数经确定性编码；
     - 驱动须带 REFAC-17 的自测（a）–（c），任一失败即 R4 失败。
   - **焦点**：`HTMLElement.prototype.focus` 装记录桩，保留原实现，记下每次调用的目标。
-  - **序列**：至少覆盖下面直接断言 1–10 的全部场景（驱动 B）。驱动 A 另跑 zh / en 各一遍、教学模式开与关各一遍。
+  - **序列**：至少覆盖下面直接断言 1–12 的全部场景（驱动 B；11、12 为必跑项，现有整页测试不进入资产负债表与对账表分支）。驱动 A 另跑 zh / en 各一遍、教学模式开与关各一遍。
   - **每步采样**：
     - `document.body.innerHTML`；
     - `window.location.hash`；
@@ -285,7 +285,7 @@ base 数字（原始 / gzip-9 字节）：
        - 只有 1 个 `role="alert"`，文本为 `ledger.snapshotUnavailable`；
        - `#ledger-company`、`#ledger-month`、`#ledger-account`、`#ledger-dimension`、`#ledger-value` 与“查询”按钮都带 `disabled`；
        - 此时点“查询”，并对表单直接 `fireEvent.submit`，都不发出任何请求。
-       - 之后让明细恢复为 200，点“刷新为最新账簿”：
+       - 观察到上述 409 与锁定之后，先把明细桩切换为 200，再点“刷新为最新账簿”（刷新会重置查询，点击时仍返回 409 的桩不是本条的恢复夹具）：
          - `resetQueries` 恰好 1 次，键为 `["ledger-live","DEFAULT"]`；
          - `invalidateQueries` 恰好 1 次，键为 `["ledger-periods","DEFAULT"]`；
          - 追加的 GET 依次为：`/api/v1/periods?company=DEFAULT&limit=100`、带钉值的明细、不带钉值的快照（`…&limit=500&stage=adjusted`）、带钉值的明细，共 4 个；
@@ -305,11 +305,36 @@ base 数字（原始 / gzip-9 字节）：
           - `resetQueries` 与 `invalidateQueries` 的键同直接断言 8；
           - hash 为 `#/ledger-reports?company=DEFAULT&month=2026-01`；
           - 追加的 GET 依次为：带钉值的 `trial` 报表、`/api/v1/periods?company=DEFAULT&limit=100`、不带钉值的 `trial` 报表。
+    11. **资产负债表（混合类别夹具）**：报表桩改用下列 6 行（顺序即 `buildReports` 的输入顺序；`opening` 都为 0，`closing = debit - credit`，`yearNet` 同 `closing`），覆盖 R6b 去重直接影响的两处筛选：
+        | 代码 | 名称 | 类别 | 报表类别 | 方向 | 借方 | 贷方 |
+        | --- | --- | --- | --- | --- | --- | --- |
+        | 4400 | Revenue | REVENUE | sales | CREDIT | 0 | 4000 |
+        | 1000 | Cash | ASSET | cash | DEBIT | 13000 | 0 |
+        | 6000 | Opex | EXPENSE | operatingExpense | DEBIT | 1000 | 0 |
+        | 2000 | Payable | LIABILITY | payables | CREDIT | 0 | 5000 |
+        | 3000 | Capital | EQUITY | capital | CREDIT | 0 | 7000 |
+        | 1100 | Receivable | ASSET | receivables | DEBIT | 2000 | 0 |
+
+        起始 `#/ledger-reports?company=DEFAULT&month=2026-01&view=balance-sheet`（期间一页，语言 zh）。
+        - 报表 GET 只有 1 个：`/api/v1/reports/balance-sheet?company=DEFAULT&month=2026-01&stage=adjusted`；
+        - `.kpis .kpi` 恰好 3 个，`className|textContent` 依次为 `kpi emphasis|资产150.00`、`kpi|负债50.00`、`kpi|权益（含未结转损益）100.00`；
+        - 类别表（`table[aria-label="报表类别"]`）`tbody` 恰好 4 行，`textContent` 依次为 `投入资本70.00`、`货币资金130.00`、`应付款50.00`、`应收款20.00`（`capital`、`cash`、`payables`、`receivables`，排除 `sales` 与 `operatingExpense`；保留负债与权益）；各行无 `class`；链接 `href` 为 `#/ledger-reports?company=DEFAULT&month=2026-01&stage=adjusted&watermark=5&accountRevision=8&view=balance-sheet&group=<类别>`；
+        - 科目表（`.ledger-accounts`）标题为“试算平衡”，表头依次为 科目、期初余额、本期借方、本期贷方、期末余额（无“报表方向”列）；`tbody` 恰好 4 行，依次为 `1000 · Cash`、`2000 · Payable`、`3000 · Capital`、`1100 · Receivable`（按试算行顺序，排除 4400 与 6000），每行 4 个链接都指向 `#/ledger?company=DEFAULT&month=2026-01&stage=adjusted&watermark=5&accountRevision=8&account=<代码>`；`2000` 行文本为 `2000 · Payable0.000.0050.00-50.00`。
+        - 点 `cash` 行的链接后：hash 为 `#/ledger-reports?company=DEFAULT&month=2026-01&stage=adjusted&watermark=5&accountRevision=8&view=balance-sheet&group=cash`；追加 1 个带钉值的 `balance-sheet` GET；类别表仍为同样 4 行，只有 `cash` 行带 `class="selected"`；科目表只剩 `1000 · Cash` 1 行。
+    12. **对账表**：接直接断言 11，在 `#ledger-view` 选 `reconciliation`。报表桩对 `reconciliation` 返回同一 `buildReports` 结果，但把第 2 条检查替换为 `{ id: "balanceSheet", left: 15000, right: 14000, difference: 1000, pass: false }`（`allPass: false`），以同时覆盖两种徽标。
+        - hash 为 `#/ledger-reports?company=DEFAULT&month=2026-01&stage=adjusted&watermark=5&accountRevision=8&view=reconciliation&group=`；追加 1 个 GET：`/api/v1/reports/reconciliation?company=DEFAULT&month=2026-01&stage=adjusted&watermark=5&accountRevision=8`；
+        - 不渲染 `.kpis`、类别表与 `.ledger-accounts`；
+        - `.ledger-stack` 的 `outerHTML` 逐字节为：
+          ```html
+          <section class="ledger-stack" aria-label="对账"><p class="ledger-meta">账簿水位: 5 · 科目配置版本: 8</p><div class="message-bar info"><span class="icon" aria-hidden="true">i</span><div class="text">同源账簿的数学勾稽，不是独立审计或外部对账证明。</div></div><div class="card"><header><h3>对账</h3><span class="summary">2026-01 · CNY</span></header><div class="grid-wrap"><table class="grid"><thead><tr><th>对账</th><th class="num">左方</th><th class="num">右方</th><th class="num">差额</th><th>结果</th></tr></thead><tbody><tr><th scope="row">所选阶段试算</th><td class="num">160.00</td><td class="num">160.00</td><td class="num">0.00</td><td><span class="badge success"><span aria-hidden="true">✓</span>一致</span></td></tr><tr><th scope="row">资产 = 负债 + 权益</th><td class="num">150.00</td><td class="num">140.00</td><td class="num">10.00</td><td><span class="badge danger"><span aria-hidden="true">×</span>不一致</span></td></tr><tr><th scope="row">权益变动衔接</th><td class="num">100.00</td><td class="num">100.00</td><td class="num">0.00</td><td><span class="badge success"><span aria-hidden="true">✓</span>一致</span></td></tr><tr><th scope="row">收入 - 费用 = 利润</th><td class="num">30.00</td><td class="num">30.00</td><td class="num">0.00</td><td><span class="badge success"><span aria-hidden="true">✓</span>一致</span></td></tr></tbody></table></div></div></section>
+          ```
+
+        直接断言 11、12 的每一步也进入上文“每步采样”的 DOM 逐字节比较。
 
     base 上任一直接断言不成立时，先停下并向协调者报告。不得把“两侧相同”当作通过，也不得改产品代码迁就断言。PR 正文附：
     - 驱动全文与步骤清单；
     - 两侧输出的 SHA-256 与比较结果；
-    - 直接断言 5–8（快照转网格、游标、表单、冲突）的逐步输出原文。
+    - 直接断言 5–8（快照转网格、游标、表单、冲突）与 11、12（资产负债表、对账表）的逐步输出原文。
   - **驱动原件**：PR 正文贴驱动**原文件字节的 base64**；或者同时写出两种 SHA-256：一是原始字节的，二是按 UTF-8 解码并把换行归一为 LF 之后字节的（评审从代码块复制时得到的是 LF 文本）。只给一种哈希不算满足。
 - **R5 结构规则**（静态；评审按代码与 PR 表格核对）：
   - **R5a Hook 序列**：PR 正文按组件列出 base 与 head 的 Hook 调用序列，自定义 Hook 按调用处展开，并附参数与依赖的源文本（只归一空白）。
@@ -370,7 +395,7 @@ base 数字（原始 / gzip-9 字节）：
 
 - 渲染次数不变：组件边界与 `key` 不变（决定 3），不加 `memo`，不改 Hook 与依赖（决定 2）。
 - 类别筛选改为调用同一函数，每行的判定次数不变。
-- 请求次数与时机不变（R4 直接断言 1、2、5、6、8、9、10）。
+- 请求次数与时机不变（R4 直接断言 1、2、5、6、8、9、10、11、12）。
 - 不跑 Bench。打包变化由 R7 约束。
 
 ## 可读性
@@ -410,11 +435,13 @@ base 数字（原始 / gzip-9 字节）：
   - 真实 Chrome 场景不进入总账报表页；
   - R4 与构建在本机运行，须服从协调者的时段静默通知（D442 / D480）。
 - **可行性**（S13 回顾行动 4）：
-  - 设计角色在 `c7bc920` 上用临时 jsdom 脚本（驱动 B 的写法）跑通了 R4 直接断言 1–10 的全部场景。脚本已删除，未提交。
+  - 设计角色在 `c7bc920` 上用临时 jsdom 脚本（驱动 B 的写法）跑通了 R4 直接断言 1–12 的全部场景。脚本已删除，未提交。
   - 注意事项：
     - 明细桩的维度代码须匹配 `^[A-Z][A-Z0-9_]{0,31}$`，否则 `ledgerSchema` 校验失败、网格不出现；
     - 期间分页的 `nextCursor` 须是合法月份；
-    - 409 场景须先让桩返回 409，再在恢复前点刷新。
+    - 409 场景：先让明细桩返回 409，观察提示与锁定；再把桩切换为 200；最后点“刷新为最新账簿”（同直接断言 8）。
+    - 期间桩的每项须含 `month`、`status`、`revision`（`periodSchema` 为严格对象，多出 `company` 字段即校验失败）。
+    - 直接断言 11 中类别表与科目表各有多个文本为 `130.00` 的链接，点击类别时按 `table[aria-label="报表类别"] a[href*="group=cash"]` 选取。
   - R6a、R6b 与 R7 的 base 数字见“现状”与上表，由设计角色实测。
 - PR 正文附：
   - R2 的导出比较与 `git grep` 结果；
@@ -432,6 +459,6 @@ base 数字（原始 / gzip-9 字节）：
 
 - [x] 本批只有这一项页面拆分；冲突域与在途 REFAC-30、REFAC-31、REFAC-32 逐文件不相交。
 - [x] 每条 base 失败、head 通过的检查都有 base 实测值；R7 的 base 字节已实测。
-- [x] URL 校验、默认期间、视图与阶段切换、下钻链接、钉值不符、快照转网格、游标、表单提交、409 冲突与恢复、期间分页、报表页刷新都有 base 实测过的直接断言。
+- [x] URL 校验、默认期间、视图与阶段切换、下钻链接、钉值不符、快照转网格、游标、表单提交、409 冲突与恢复、期间分页、报表页刷新、资产负债表（混合类别）与对账表（两种徽标）都有 base 实测过的直接断言。
 - [x] 可读性一节齐全；无用户可见变化。
 - [x] 不加迁移，不碰 `scripts/slot/`、`scripts/measure/`。
