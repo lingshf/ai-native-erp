@@ -196,7 +196,7 @@
 - **R4 调用序列、结果与清理等价**（送审证据，驱动不提交，不加常驻 CI 用例）：
   - **驱动**：
     - 临时 vitest 脚本，例如 `packages/infra/test/zz-r32-probe.test.ts`，送审前删除，在 base 与 head 上各运行一次。
-    - 驱动要用 `vi.mock("node:fs/promises")` 包装 `rm`（记录实参，可按开关抛错，其余转发真实实现），因此配置会把它归入 **`infra-isolated`** 项目。运行命令：`npx vitest run --project infra-isolated <file> --no-file-parallelism --silent=false`。
+    - 驱动要用 `vi.mock("node:fs/promises")` 包装 `rm`（记录实参，可按开关抛错）与 `mkdtemp`（转发真实实现，记录创建的目录，可按用例在返回前中止信号），其余转发真实实现，因此配置会把它归入 **`infra-isolated`** 项目。运行命令：`npx vitest run --project infra-isolated <file> --no-file-parallelism --silent=false`。
     - 每个用例新建 `CopilotAiAdapter`，用 `clientFactory` 注入**假运行时**：普通对象，各方法先记录调用与实参再按用例行为返回、抛错或挂起；不用 `Proxy`。
     - 用 `vi.spyOn` 记录 `signal.addEventListener` / `removeEventListener` 的调用次数，以及 `console.error` 的实参（屏蔽输出）。
     - 用例结束后检查工厂收到的 `baseDirectory` 是否仍存在。被保留的目录由驱动自己删除。
@@ -248,7 +248,8 @@
     7. **中止**（都报 `cancelled`，`forceStop`，0 次 `stop`，目录已删除）：
        - 发送中中止：以 `sendAndWait`、`forceStop` 结束；
        - `start` 挂起时中止：序列为 `factory`、`start`、`forceStop`。
-    8. **中断承诺建立之前中止**：
+    8. **中断承诺建立之前中止**（三个子例都必测）：
+       - `mkdtemp` 完成之后、调用工厂之前中止（驱动在包装的 `mkdtemp` 返回前中止信号）→ `cancelled`，0 次 `factory`、0 次运行时调用，监听 1/1，临时目录已创建且已删除，`busy` 与 `blocked` 都为 `false`；这是唯一命中 `:71` 取消检查的子例；
        - 在工厂内中止后正常返回运行时 → `cancelled`，序列为 `factory`、`start`、`forceStop`；
        - 在工厂内中止后工厂抛普通错误 → **`unavailable`**（非 `AiFailure` 映射优先，现状保留）。
     9. **终止失败**（都报 `cleanup`）：
@@ -267,7 +268,7 @@
 - **R5 结构规则**（静态，评审按代码与 PR 表格核对）：
   - **R5a 原文搬移**：以下语句序列在 base 与 head 之间逐字比较（只归一缩进）：
     - 守卫（`:45–55`）；
-    - `env` 与工厂选项（`:72–83`）；
+    - 临时目录与中止复查、`env` 与工厂选项（`:70–83`）；
     - 会话配置对象字面量（`:102–140`，含 `onEvent` 体）；
     - `run` 的其余语句（`:92–100`、`:142–163`）；
     - `checked`（`:64–68`）；
