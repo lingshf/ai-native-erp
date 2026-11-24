@@ -4,6 +4,7 @@ import { tradeWriteSchema, tradeConfigSchema, type TradeCommand } from "@erp/cor
 import { masterRequest, MasterDataFailure } from "../master-data-client.ts";
 import { tradeFieldValue, type TradeFieldName } from "./trade-draft.ts";
 import { failure, type Failure } from "./trade-failure.ts";
+import { TradeFieldIssue } from "./trade-field-issue.ts";
 import type { TradeEditorProps } from "./trade-master-types.ts";
 
 /** One render's state and setters; commands read it instead of a cached closure. */
@@ -32,8 +33,14 @@ export async function submitTradeDraft(editor: TradeEditorRender, event: FormEve
     try {
       data[field] = tradeFieldValue(field, value);
     } catch (issue) {
-      if (!(issue instanceof SyntaxError)) throw issue;
-      setError({ path: `data.${field}`, key: "trade.issue.shape", conflict: false });
+      const key =
+        issue instanceof TradeFieldIssue
+          ? issue.key
+          : issue instanceof SyntaxError
+            ? "trade.issue.shape"
+            : null;
+      if (!key) throw issue;
+      setError({ path: `data.${field}`, key, conflict: false });
       return;
     }
   }

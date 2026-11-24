@@ -1,4 +1,5 @@
 import type { CompanyDto, TradeDto } from "@erp/core/contracts";
+import { wholeDays } from "./trade-field-issue.ts";
 import type { TradeKind } from "./trade-master-types.ts";
 
 export const specific = {
@@ -77,9 +78,7 @@ export function tradeFieldValue(field: TradeFieldName, value: string): unknown {
       : field === "allowPartialDiscount"
         ? value === "true"
         : field === "dueDays" || field === "discountDays"
-          ? value.trim()
-            ? Number(value)
-            : null
+          ? wholeDays(value)
           : nullable.has(field) && !value
             ? null
             : value;
