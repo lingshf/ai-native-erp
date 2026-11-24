@@ -203,6 +203,33 @@ function CompanyDimensions({ company, t }: { company: CompanyDto; t: T }) {
     </>
   );
 }
+// TLIST-04: "Refresh list" only re-reads the current list, so it stays enabled while the editor is open.
+function DimensionActions({
+  editing,
+  onNew,
+  onRefresh,
+  t,
+}: {
+  editing: boolean;
+  onNew: () => void;
+  onRefresh: () => void;
+  t: T;
+}) {
+  return (
+    <div className="ui-master-actions">
+      <button
+        type="button"
+        className={`btn ${editing ? "btn-secondary" : "btn-primary"}`}
+        onClick={onNew}
+      >
+        {t("dim.new")}
+      </button>
+      <button type="button" className="btn btn-secondary" onClick={onRefresh}>
+        {t("master.listRefresh")}
+      </button>
+    </div>
+  );
+}
 function DimensionPane({
   company,
   kind,
@@ -215,6 +242,9 @@ function DimensionPane({
   t: T;
 }) {
   const [editing, setEditing] = useState<DimensionDto | null | undefined>();
+  const client = useQueryClient();
+  const queryKey = ["dimensions", company.code, kind, dimension];
+  const refresh = () => void client.resetQueries({ queryKey, exact: true });
   const page = usePage(company.code, kind, dimension);
   const rows = page.data?.pages.flatMap((value) => value.items) ?? [];
   const scroll = useRef<HTMLElement>(null);
@@ -233,15 +263,12 @@ function DimensionPane({
     after = virtual ? virtualizer.getTotalSize() - (measured.at(-1)?.end ?? 0) : 0;
   return (
     <>
-      <div className="ui-master-actions">
-        <button
-          type="button"
-          className={`btn ${editing === undefined ? "btn-primary" : "btn-secondary"}`}
-          onClick={() => setEditing(null)}
-        >
-          {t("dim.new")}
-        </button>
-      </div>
+      <DimensionActions
+        editing={editing !== undefined}
+        onNew={() => setEditing(null)}
+        onRefresh={refresh}
+        t={t}
+      />
       {page.isPending && <p role="status">{t("master.loading")}</p>}
       {page.isError && <Notice error={page.error} t={t} retry={() => void page.refetch()} />}
       <div className="card">

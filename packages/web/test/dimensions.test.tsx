@@ -190,3 +190,139 @@ it("shows the page description verbatim in zh and en whether teaching is off or 
     switchTo("en", "zh");
   }
 });
+// TLIST-04: "Refresh list" re-reads page one of the current dimension list, and nothing else.
+const PAGE_SIZE = 100;
+const PAGE_ROWS = PAGE_SIZE + 1; // aria-rowcount counts the header row.
+const REFRESH_TEXT = { zh: "刷新列表", en: "Refresh list" } as const;
+const beta = { ...company, code: "B", name: "Beta" };
+const valueRows = (page: number) =>
+  Array.from({ length: PAGE_SIZE }, (_, index) => ({
+    ...dimension,
+    kind: "value",
+    dimension: dimension.code,
+    code: `V${String(page * PAGE_SIZE + index).padStart(3, "0")}`,
+    name: `Value ${page * PAGE_SIZE + index}`,
+  }));
+const valuePage = (next: boolean) =>
+  response({ items: valueRows(next ? 1 : 0), nextCursor: next ? null : `V${PAGE_SIZE - 1}` });
+// Two companies, DEPT and two value pages; `answer` may override a value reply. Reads are recorded.
+function stubValuePages(answer?: () => Promise<Response> | undefined) {
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+    new DOMRect(0, 0, 1000, 480),
+  );
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  const reads: { url: URL; signal: AbortSignal }[] = [];
+  vi.stubGlobal("fetch", async (path: string, init: RequestInit) => {
+    const url = new URL(path, "http://localhost");
+    if (url.pathname === "/api/v1/companies")
+      return response({ items: [company, beta], nextCursor: null });
+    reads.push({ url, signal: init.signal as AbortSignal });
+    if (url.searchParams.get("kind") !== "value")
+      return response({ items: [dimension], nextCursor: null });
+    return (await answer?.()) ?? valuePage(url.searchParams.has("cursor"));
+  });
+  return reads;
+}
+const refreshButton = () =>
+  screen.getByRole<HTMLButtonElement>("button", { name: REFRESH_TEXT.zh });
+const newButton = () => screen.getByRole("button", { name: label("zh", "dim.new") });
+const rowCount = () => screen.getByRole("table").getAttribute("aria-rowcount");
+const readPath = ({ url }: { url: URL }) => `${url.pathname}${url.search}`;
+const firstPagePath = (code: string) =>
+  `/api/v1/dimensions?company=${code}&kind=value&limit=${PAGE_SIZE}&dimension=${dimension.code}`;
+const choose = async (text: string, value: string) =>
+  fireEvent.change(await screen.findByLabelText(text), { target: { value } });
+async function openValues() {
+  await choose(label("zh", "dim.kind"), "value");
+  await screen.findByRole("option", { name: dimension.code });
+  await choose(label("zh", "dim.parent"), dimension.code);
+  await screen.findByText("Value 0");
+}
+// Clicks Refresh list; expects exactly one more read (no kind=dimension), of page one, shown alone.
+async function expectOneReread(reads: { url: URL }[], code = company.code) {
+  const from = reads.length;
+  fireEvent.click(refreshButton());
+  await waitFor(() => expect(reads.slice(from).map(readPath)).toEqual([firstPagePath(code)]));
+  await waitFor(() => expect(rowCount()).toBe(String(PAGE_ROWS)));
+  expect(screen.getAllByText("Value 0")).toHaveLength(1);
+}
+describe("TLIST-04 financial dimensions refresh list", () => {
+  it("L2: places a secondary Refresh list button after New configuration in zh and en for both kinds", async () => {
+    stubValuePages();
+    render(<App />);
+    const expectActions = async (language: "zh" | "en") => {
+      const text = REFRESH_TEXT[language];
+      const refresh = await screen.findByRole("button", { name: text });
+      expect(refresh.parentElement?.textContent).toBe(`${label(language, "dim.new")}${text}`);
+      expect(refresh.outerHTML).toMatch(/^<button type="button" class="btn btn-secondary">/);
+    };
+    await expectActions("zh");
+    await openValues();
+    await expectActions("zh");
+    await choose(label("zh", "shell.language"), "en");
+    await expectActions("en");
+    await choose(label("en", "dim.kind"), "dimension");
+    await expectActions("en");
+  });
+  it("L3: after two value pages, re-reads only the first page and offers Load more again", async () => {
+    const reads = stubValuePages();
+    render(<App />);
+    await openValues();
+    fireEvent.click(screen.getByRole("button", { name: label("zh", "master.loadMore") }));
+    await waitFor(() => expect(rowCount()).toBe(String(2 * PAGE_SIZE + 1)));
+    await expectOneReread(reads);
+    expect(screen.getByRole("button", { name: label("zh", "master.loadMore") })).toBeTruthy();
+  });
+  it("L4 / L7: Refresh list is the native button after New and refreshes an open dirty editor without asking", async () => {
+    const confirm = vi.spyOn(window, "confirm");
+    const reads = stubValuePages();
+    render(<App />);
+    await openValues();
+    fireEvent.click(newButton());
+    const name = screen.getByLabelText<HTMLInputElement>(label("zh", "dim.name"));
+    fireEvent.change(name, { target: { value: "Unsaved draft" } });
+    expect(newButton().nextElementSibling).toBe(refreshButton());
+    expect(refreshButton().disabled).toBe(false);
+    await expectOneReread(reads);
+    expect(screen.getByLabelText(label("zh", "dim.name"))).toBe(name);
+    expect(name.value).toBe("Unsaved draft");
+    expect(confirm).not.toHaveBeenCalled();
+    const selected = (key: "dim.kind" | "dim.parent") =>
+      screen.getByLabelText<HTMLSelectElement>(label("zh", key)).value;
+    expect([selected("dim.kind"), selected("dim.parent")]).toEqual(["value", dimension.code]);
+  });
+  it("L5: a second click cancels the first request and shows page one once; a failure shows the notice", async () => {
+    const held: (() => void)[] = [];
+    let answer: (() => Promise<Response>) | undefined;
+    const reads = stubValuePages(() => answer?.());
+    render(<App />);
+    await openValues();
+    answer = () => new Promise((resolve) => held.push(() => resolve(valuePage(false))));
+    fireEvent.click(refreshButton());
+    fireEvent.click(refreshButton());
+    await waitFor(() => expect(held).toHaveLength(2));
+    expect(reads.slice(-2).map(({ signal }) => signal.aborted)).toEqual([true, false]);
+    for (const release of held) release();
+    await waitFor(() => expect(rowCount()).toBe(String(PAGE_ROWS)));
+    expect(screen.getAllByText("Value 0")).toHaveLength(1);
+    answer = () => Promise.reject(new TypeError("offline"));
+    fireEvent.click(refreshButton());
+    const alert = await screen.findByRole("alert");
+    expect(alert.contains(screen.getByText(label("zh", "master.retry")))).toBe(true);
+  });
+  it("L6: refreshes the selected second company and never the first", async () => {
+    const reads = stubValuePages();
+    render(<App />);
+    await choose(label("zh", "master.company"), beta.code);
+
+    await openValues();
+    await expectOneReread(reads, beta.code);
+  });
+});
