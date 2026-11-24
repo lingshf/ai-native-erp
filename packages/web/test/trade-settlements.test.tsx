@@ -540,3 +540,153 @@ describe("TLIST-06 refresh the open items", () => {
     expect(await screen.findByText(t("master.error"))).toBeTruthy();
   });
 });
+
+// TSET-01 (D516): a selected item missing from fully loaded open items is flagged, never auto-removed.
+const fillerItem = filler(2);
+// mockApi plus one open-item page of `item` and `fillerItem`; `state` drops one, adds a cursor or holds reads.
+type SettledPageState = { omit: string; nextCursor: string | null; hold: Promise<void> | null };
+function mockSettledPage(held?: Promise<void>) {
+  const api = mockApi(held);
+  const state: SettledPageState = { omit: "", nextCursor: null, hold: null };
+  const stub = vi.mocked(fetch);
+  const real = stub.getMockImplementation();
+  stub.mockImplementation(async (path, init) => {
+    if (!String(path).startsWith("/api/v1/trade/open-items"))
+      return real?.(path, init) as Promise<Response>;
+    await state.hold;
+    const open = [item, fillerItem].filter((row) => row.itemId !== state.omit);
+    return openItemPage(open, state.nextCursor);
+  });
+  return { ...api, state };
+}
+const draftItems = (): { itemId: string }[] =>
+  JSON.parse(window.sessionStorage.getItem(draftKey) ?? "{}").command?.items;
+const removeButton = (language: "zh" | "en" = "zh") =>
+  screen.queryByRole<HTMLButtonElement>("button", { name: label(language, "tset.removeMissing") });
+
+describe("TSET-01 selected items no longer open", () => {
+  let client = new QueryClient();
+  afterEach(() => client.clear());
+  // Selects `item` and `fillerItem` with amounts and previews; `held` is passed on to mockApi.
+  async function selectBoth(language: "zh" | "en", held?: Promise<void>) {
+    const l = (key: Parameters<typeof t>[0]) => label(language, key);
+    const api = mockSettledPage(held);
+    client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <TradeSettlements preferences={{ language, theme: "red", teaching: false }} />
+      </QueryClientProvider>,
+    );
+    await screen.findByText("INV-1");
+    fireEvent.change(screen.getByLabelText(l("tinv.party")), { target: { value: "V1" } });
+    fireEvent.change(screen.getByLabelText(l("tinv.accountingDate")), {
+      target: { value: "2026-01-25" },
+    });
+    const pick = (externalNo: string, amount: number) => {
+      fireEvent.click(screen.getByLabelText(`${l("tset.select")} ${externalNo}`));
+      const field = screen.getByLabelText(`${l("tset.amount")} ${externalNo}`);
+      fireEvent.change(field, { target: { value: String(amount) } });
+    };
+    pick("INV-1", 5650);
+    pick(fillerItem.externalNo, SECOND_PAGE_AMOUNT);
+    fireEvent.click(screen.getByRole("button", { name: l("tinv.preview") }));
+    await screen.findByRole("region", { name: l("tset.result") });
+    return api;
+  }
+  // `fillerItem` is settled elsewhere; Refresh list re-reads and the notice appears.
+  async function settleOneAndRefresh(state: SettledPageState, language: "zh" | "en" = "zh") {
+    state.omit = fillerItem.itemId;
+    fireEvent.click(refreshButton(language));
+    await waitFor(() => expect(removeButton(language)).not.toBeNull());
+  }
+  async function selectBothThenSettleOne(language: "zh" | "en" = "zh") {
+    const api = await selectBoth(language);
+    const before = { draft: window.sessionStorage.getItem(draftKey), items: draftItems() };
+    await settleOneAndRefresh(api.state, language);
+    return { ...api, before };
+  }
+  const notice = () => removeButton()?.closest('[role="status"]');
+  const card = (language: "zh" | "en" = "zh") =>
+    screen.getByText(label(language, "tset.allocated")).closest("dl")?.textContent ?? "";
+  it.each(["zh", "en"] as const)(
+    "M1/M3 (%s): a warning with count 1 and the remove button; KPIs say not open; the draft is untouched",
+    async (language) => {
+      const { before } = await selectBothThenSettleOne(language);
+      const bar = removeButton(language)?.closest('[role="status"]');
+      expect(bar?.className).toBe("message-bar warning");
+      expect(bar?.textContent).toContain(`1 ${label(language, "tset.missingNotice")}`);
+      expect(card(language).split(label(language, "tset.notOpen")).length).toBe(3);
+      expect(card(language)).not.toContain(label(language, "tset.unloaded"));
+      expect(draftItems()).toEqual(before.items);
+      expect(window.sessionStorage.getItem(draftKey)).toBe(before.draft);
+    },
+  );
+  it("M2/M5: removes only the missing item, clears the preview, focuses Refresh list and previews the rest", async () => {
+    const { before, previews } = await selectBothThenSettleOne();
+    fireEvent.click(removeButton() as HTMLButtonElement);
+    const kept = before.items.filter((selected) => selected.itemId !== fillerItem.itemId);
+    expect([kept.length, draftItems()]).toEqual([1, kept]);
+    expect(kept[0]).toMatchObject({ itemId, gross: 5650 });
+    expect(removeButton()).toBeNull();
+    expect(screen.queryByRole("region", { name: t("tset.result") })).toBeNull();
+    expect(card()).toContain("113.00");
+    expect(document.activeElement).toBe(refreshButton());
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.preview") }));
+    await waitFor(() => expect(previews).toHaveLength(2));
+    expect(previews[1]).toEqual({ ...previews[0], items: kept });
+  });
+  it("M4: while a confirmation is pending the notice shows but its button is disabled", async () => {
+    const api = await selectBoth("zh", new Promise<void>(() => {}));
+    fireEvent.click(screen.getByRole("button", { name: t("tset.confirm") }));
+    await waitFor(() => expect(api.posts).toHaveLength(1));
+    const envelope = window.sessionStorage.getItem(draftKey);
+    await settleOneAndRefresh(api.state);
+    const button = removeButton() as HTMLButtonElement;
+    expect(button.matches(":disabled")).toBe(true);
+    // A disabled button takes no focus, so Enter cannot reach it; a click must not act either.
+    button.focus();
+    fireEvent.click(button);
+    expect(document.activeElement).not.toBe(button);
+    expect(window.sessionStorage.getItem(draftKey)).toBe(envelope);
+  });
+  // Holds the next open-item read, refreshes, and records whether the notice node is ever removed.
+  async function refreshHeld(state: SettledPageState) {
+    let release = () => {};
+    state.hold = new Promise<void>((resolve) => (release = resolve));
+    const shown = notice();
+    const removals: Node[] = [];
+    const observer = new MutationObserver((records) =>
+      removals.push(...records.flatMap((r) => [...r.removedNodes])),
+    );
+    observer.observe(document.body, { childList: true, subtree: true });
+    fireEvent.click(refreshButton());
+    await waitFor(() => expect(client.isFetching()).toBe(1));
+    expect([notice(), card().split(t("tset.notOpen")).length]).toEqual([shown, 3]);
+    release();
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    observer.disconnect();
+    return { flickered: removals.some((node) => node === shown || node.contains(shown as Node)) };
+  }
+  it("M6: a refresh that still lacks the item keeps the notice in place throughout", async () => {
+    const { state } = await selectBothThenSettleOne();
+    const { flickered } = await refreshHeld(state);
+    expect(flickered).toBe(false);
+    expect(notice()?.textContent).toContain(`1 ${t("tset.missingNotice")}`);
+    expect(card()).toContain(t("tset.notOpen"));
+  });
+  it("M7: a refresh that brings the item back keeps the notice until it returns, then drops it", async () => {
+    const { state, before } = await selectBothThenSettleOne();
+    state.omit = "";
+    await refreshHeld(state);
+    expect(removeButton()).toBeNull();
+    expect(card()).toContain("226.00");
+    expect(window.sessionStorage.getItem(draftKey)).toBe(before.draft);
+  });
+  it("N1: with a next page still unloaded a missing item stays 'not loaded' and no notice shows", async () => {
+    const { state } = await selectBoth("zh");
+    Object.assign(state, { omit: fillerItem.itemId, nextCursor: SECOND_PAGE_CURSOR });
+    fireEvent.click(refreshButton());
+    await waitFor(() => expect(card()).toContain(t("tset.unloaded")));
+    expect(document.querySelector("#tset-allocation-body [role='status']")).toBeNull();
+  });
+});
