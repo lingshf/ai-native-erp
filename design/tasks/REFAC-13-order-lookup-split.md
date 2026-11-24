@@ -1,6 +1,6 @@
 # REFAC-13：拆分 `OrderLookup` 函数体（不改行为）
 
-- Sprint：S23（[计划](S23.md)）　类型：重构（页面）　优先级：P2　决定：待协调者定编号　建议分支：`refac-13-split-order-lookup`
+- Sprint：S23（[计划](S23.md)）　类型：重构（页面）　优先级：P2　决定：[D515](S23.md#s23-期间决定)（只改代码组织、不改行为，Hook 序列与组件层级对等，见“范围与决定”1–4）　建议分支：`refac-13-split-order-lookup`
 - 来源：[S22 候选池](S22.md#候选池s22-之后)第 1 项（“按 ② 拆 `OrderLookup`（143 行）；与 REFAC-10 / 11 同目录；S23 起可排”）。结构与验收照搬 [REFAC-11](REFAC-11-order-view-split.md) 和 [REFAC-12](REFAC-12-settlement-entry-split.md)，只换成“查找订单”的事实。
 - 迁移：**不加**。浏览器时段：**不需要**（理由见“证据要求”）。
 - 数据：只用虚构数据；不读取真实旧账、4173 账套或 `.bak` 文件。

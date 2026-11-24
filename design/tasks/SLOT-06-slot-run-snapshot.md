@@ -1,6 +1,6 @@
 # SLOT-06：`slot-run.ps1` 在运行期间自动做门禁快照
 
-- Sprint：S23（[计划](S23.md)）　类型：开发工具　优先级：P2　决定：待协调者定编号　建议分支：`slot-06-slot-run-snapshot`
+- Sprint：S23（[计划](S23.md)）　类型：开发工具　优先级：P2　决定：[D517](S23.md#s23-期间决定)（只记录、不改判定，见“设计决定”1–4）　建议分支：`slot-06-slot-run-snapshot`
 - 来源：[S22 候选池](S22.md#候选池s22-之后)“`slot-run.ps1` 在运行期间自动调用 `gate-snapshot.ps1`（等 SLOT-05 经过一次 Demo 实用后再评估；会改 runner 与规则表）”。另见 [S21 回顾议题 6](../reviews/S21-retro.md)：第二窗口的快照没有父进程链，归属只能事后猜测。
 - **派发条件**：DEMO-22 的窗口已关闭，且其 run-through 已记录 SLOT-05（`gate-snapshot.ps1`）的第一次实际使用。派发前设计角色按该 run-through 复核本任务书：如果 run-through 记录了工具缺陷（例如 cwd 普遍读不到、查询出错），先由设计 PR 修订本任务书，再派发。**任何 DEMO 窗口开启到关闭之间不改、不合并 `scripts/slot/`**。
 - 迁移：**不加**。浏览器时段：**不需要**（自测只用 `-Stub` 与替身监听，不开浏览器）。
@@ -54,7 +54,7 @@
 
 - tooling:slot：`scripts/slot/slot-run.ps1`、`scripts/slot/selftest-slot-snapshot.ps1`（新）、`scripts/slot/README.md`。
 - 与 S23 其他任务不相交：REFAC-13 只改 `trade-orders/`；TSET-01 只改 `trade-settlements/`、`ui/trade-labels.ts` 与其测试。
-- 与进行中 PR 的交点：DOC-22 [#317](https://github.com/lingshf/ai-native-erp/pull/317) 只改 `docs/release/README.md` 与 `docs/demo/TEMPLATE.md`，不相交。
+- 与 DOC-22 的交点：DOC-22(b) [#317](https://github.com/lingshf/ai-native-erp/pull/317)（已合并，`3ae4848`）只改 `docs/release/README.md` 与 `docs/demo/TEMPLATE.md`，不相交。
 - `scripts/slot/` 是时段 runner 所在目录：DEMO-22 与 DEMO-23 的窗口开启到关闭之间不改、不合并本任务。
 
 ## 验收
