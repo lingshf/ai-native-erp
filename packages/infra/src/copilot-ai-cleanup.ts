@@ -8,10 +8,6 @@ type CleanupScope = {
   directory: string | undefined;
   interrupted: boolean;
 };
-/**
- * Yields every cleanup promise instead of awaiting it, so the caller awaits each one directly in its
- * own frame. A wrapping async helper would add a continuation and release `busy` one tick later.
- */
 type Steps<T> = Generator<Promise<unknown>, T, unknown>;
 
 function boundedBy(settings: CleanupSettings) {
@@ -75,7 +71,6 @@ function* removeWorkspace(directory: string): Steps<boolean> {
   }
 }
 
-/** Stops the runtime, then removes the workspace once termination is confirmed; returns whether cleanup failed. */
 export function* cleanupSteps(
   { client, directory, interrupted }: CleanupScope,
   settings: CleanupSettings,

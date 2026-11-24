@@ -77,7 +77,6 @@ export class CopilotAiAdapter implements AiPort {
         this.blocked = true;
         console.error("AI runtime termination unconfirmed; AI disabled until restart.");
       });
-      // Await each yielded promise here: one continuation per cleanup await, exactly as before.
       let step = steps.next();
       while (!step.done)
         try {
