@@ -8,7 +8,7 @@
 # S3 R-base only: steps outside any git worktree, -BaseRoot = this repository's root in upper case / with a trailing
 #    separator. Each of S1–S3: exit 4, the rules listed, no marker, no port check, preflight, build, dist check or step.
 # S4 allowed forms log "call location ok": current dir and steps in the app repository; current dir and steps in this
-#    repository (artifacts/ci/, git-ignored, removed afterwards).
+#    repository (a per-run GUID directory under artifacts/ci/, git-ignored; only that directory is removed afterwards).
 # S5 a full -Stub pass run (builds once, no browser) logs "dist check web-dist: ok" and ends with 0.
 # S6 a copy of the runner whose scripts/demo/assert-web-dist.ps1 is a stand-in printing "web-dist: stale (stand-in)"
 #    and exiting 4, run from this repository (builds once): exit 5 before the precheck and any step.
@@ -28,6 +28,7 @@ function Say([string] $text) { $line = "$((Get-Date).ToUniversalTime().ToString(
 
 $script:MARKER_FILE = 'steps-file-ran.txt'
 $script:ABORT_RULES = 'ABORT: call location rules='
+$script:IN_REPO_FIXTURES = 'artifacts\ci\slot-location-selftest'
 # Log lines of the actions the check must prevent (port checks and the static preflight; Test-StoppedBeforeBuild covers the rest).
 $script:EARLY_ACTIONS = 'ports free|port busy|ports not given|port lookup|preflight'
 $script:STEPS_FILE_TEXT = @"
@@ -92,19 +93,26 @@ function Get-RuleResults([string] $PwshExe, [string] $Runner, [string] $Root, [s
 
 function Get-AllowedResults([string] $PwshExe, [string] $Runner, [string] $Root, [string] $AppSteps, [string] $AppRoot) {
   $tool = Get-GitTop $PSScriptRoot
-  $inRepoDir = Join-Path $Root 'artifacts\ci\slot-location-selftest'
-  $cases = @(
-    @{ Tag = 's4-app'; Cwd = $AppRoot; Steps = $AppSteps; Label = 'S4 current dir and steps in the app repository' },
-    @{ Tag = 's4-tool'; Cwd = $Root; Steps = (New-MarkerSteps $inRepoDir); Label = 'S4 current dir and steps in this repository' }
-  )
+  # One directory per run (a GUID under the git-ignored fixture parent): concurrent runs never share or delete files.
+  $inRepoDir = Join-Path $Root "$script:IN_REPO_FIXTURES\$([guid]::NewGuid())"
   try {
+    $cases = @(
+      @{ Tag = 's4-app'; Cwd = $AppRoot; Steps = $AppSteps; Label = 'S4 current dir and steps in the app repository' },
+      @{ Tag = 's4-tool'; Cwd = $Root; Steps = (New-MarkerSteps $inRepoDir); Label = 'S4 current dir and steps in this repository' }
+    )
     foreach ($case in $cases) {
       $r = Invoke-SlotRunner $PwshExe $Runner $case.Cwd (Join-Path $OutDir "run-$($case.Tag)") @{ StepsFile = $case.Steps; Stub = 'pass' }
       $top = Get-GitTop $case.Cwd
       $ok = $r.Log -match [regex]::Escape("call location ok root=$top tool=$tool steps-worktree=$top") -and $r.Files -contains $script:MARKER_FILE
       New-CheckResult "$($case.Label): call location ok root=$top tool=$tool steps-worktree=$top" $ok (Get-RejectionDetail $r)
     }
-  } finally { Remove-Item -Recurse -Force $inRepoDir -ErrorAction SilentlyContinue }
+  } finally { Remove-RunFixtureDir $inRepoDir }
+}
+
+# Removes this run's directory only; the shared parent goes only when empty (Directory.Delete is not recursive).
+function Remove-RunFixtureDir([string] $Dir) {
+  Remove-Item -LiteralPath $Dir -Recurse -Force -ErrorAction SilentlyContinue
+  try { [IO.Directory]::Delete((Split-Path -Parent $Dir)) } catch { }
 }
 
 # A git repository holding a copy of the runner, the files it dot-sources or calls, and a stand-in assert-web-dist.ps1.
