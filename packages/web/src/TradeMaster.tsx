@@ -1,29 +1,29 @@
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   companiesPageSchema,
   tradePageSchema,
-  tradeWriteSchema,
-  tradeConfigSchema,
   tradeKindSchema,
   type TradeDto,
-  type TradeCommand,
   type CompanyDto,
 } from "@erp/core/contracts";
-import { label, type LabelKey, type Preferences } from "./ui/index.ts";
+import { label, type Preferences } from "./ui/index.ts";
 import { masterTeaching } from "./ui/trade-master-teaching.ts";
-import { masterRequest, MasterDataFailure } from "./master-data-client.ts";
+import { masterRequest } from "./master-data-client.ts";
 import { guardHistory } from "./leave-guard-history.ts";
-import { Badge, FastTab, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
+import { Badge, MessageBar, PageHeader, TeachingTip } from "./ui/components/index.tsx";
+import { TradeEditor } from "./trade-master/trade-editor.tsx";
+import { failure } from "./trade-master/trade-failure.ts";
+import {
+  idleGuard,
+  type EditorGuard,
+  type T,
+  type TradeKind,
+} from "./trade-master/trade-master-types.ts";
 import "./pages/master.css";
 
-type T = (key: Exclude<LabelKey, "shell.httpError">) => string;
-type TradeKind = TradeDto["kind"];
 const tradeKinds = tradeKindSchema.options;
-type Failure = { path: string; key: Exclude<LabelKey, "shell.httpError">; conflict: boolean };
-type EditorGuard = { open: boolean; dirty: boolean; pending: boolean };
-const idleGuard: EditorGuard = { open: false, dirty: false, pending: false };
 function useTradeLeaveGuard(guard: EditorGuard, discard: string) {
   // Layout effect: armed in the commit that made the editor dirty (see trade-invoices/use-invoice-leave-guard.ts).
   useLayoutEffect(() => {
@@ -61,25 +61,6 @@ function useTradeLeaveGuard(guard: EditorGuard, discard: string) {
       window.removeEventListener("beforeunload", unload);
     };
   }, [guard.dirty, guard.pending, discard]);
-}
-function failure(error: unknown): Failure {
-  if (error instanceof MasterDataFailure) {
-    if (error.status === 409) return { path: "form", key: "master.conflict", conflict: true };
-    const field = error.detail?.fieldErrors[0];
-    for (const rule of [
-      "shape",
-      "window",
-      "reference",
-      "account",
-      "missingTax",
-      "ambiguousTax",
-    ] as const)
-      if (field?.messageKey === `api.error.trade.${rule}`)
-        return { path: field.path, key: `trade.issue.${rule}`, conflict: false };
-    if (error.status === 400 || error.kind === "invalid")
-      return { path: "form", key: "trade.issue.shape", conflict: false };
-  }
-  return { path: "form", key: "master.error", conflict: false };
 }
 function Notice({ error, retry, t }: { error: unknown; retry: () => void; t: T }) {
   return (
@@ -364,324 +345,5 @@ function TradePane({
         />
       )}
     </>
-  );
-}
-const specific = {
-  tradeParty: ["role", "apProfile", "arProfile", "terms", "allowedTaxCodes", "defaultDimensions"],
-  tradeProduct: [
-    "type",
-    "expenseAccount",
-    "revenueAccount",
-    "allowedTaxCodes",
-    "defaultDimensions",
-  ],
-  tradeProfile: ["side", "controlAccount", "advanceAccount", "cashAccount", "discountAccount"],
-  tradeTerms: ["dueDays", "discountDays", "discountPercent", "allowPartialDiscount"],
-  taxCode: ["mode", "rates", "deductiblePercent", "inputAccount", "outputAccount"],
-} as const;
-const choices = {
-  role: ["vendor", "customer", "both"],
-  type: ["expense", "service"],
-  side: ["AP", "AR"],
-  mode: ["ordinary", "zero", "exempt"],
-} as const;
-const nullable = new Set([
-  "apProfile",
-  "arProfile",
-  "expenseAccount",
-  "revenueAccount",
-  "inputAccount",
-  "outputAccount",
-]);
-function TradeEditor({
-  company,
-  kind,
-  initial,
-  t,
-  close,
-  lock,
-}: {
-  company: CompanyDto;
-  kind: TradeKind;
-  initial: TradeDto | null;
-  t: T;
-  close: () => void;
-  lock: (guard: EditorGuard) => void;
-}) {
-  const client = useQueryClient();
-  const fields = ["name", "from", "to", ...specific[kind]] as const;
-  const [code, setCode] = useState(initial?.code ?? "");
-  const [active, setActive] = useState(initial?.active ?? true);
-  const [draft, setDraft] = useState<Record<string, string>>(() => {
-    const value: Record<string, string> = {
-      name: "",
-      from: `${company.year}-01-01`,
-      to: `${company.year}-12-31`,
-      role: "vendor",
-      type: "expense",
-      side: "AP",
-      mode: "ordinary",
-      defaultDimensions: "{}",
-      rates: "[]",
-      dueDays: "30",
-      discountDays: "7",
-      discountPercent: "1.5",
-      allowPartialDiscount: "true",
-      deductiblePercent: "100",
-      allowedTaxCodes: "",
-    };
-    for (const field of specific[kind]) value[field] ??= "";
-    if (initial)
-      for (const [field, item] of Object.entries(initial.data))
-        value[field] =
-          field === "allowedTaxCodes" && Array.isArray(item)
-            ? item.join(",")
-            : item !== null && typeof item === "object"
-              ? JSON.stringify(item)
-              : item === null
-                ? ""
-                : String(item);
-    return value;
-  });
-  const [error, setError] = useState<Failure | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [uncertain, setUncertain] = useState(false);
-  const starting = useRef(JSON.stringify({ code, active, draft }));
-  const dirty = JSON.stringify({ code, active, draft }) !== starting.current;
-  const pendingCommand = useRef<TradeCommand | null>(null);
-  const generation = useRef(0);
-  useLayoutEffect(() => {
-    lock({ open: true, dirty, pending: busy || uncertain });
-  }, [lock, dirty, busy, uncertain]);
-  useLayoutEffect(() => () => lock(idleGuard), [lock]);
-  useEffect(
-    () => () => {
-      generation.current++;
-    },
-    [],
-  );
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (busy || uncertain) return;
-    const data: Record<string, unknown> = {};
-    for (const field of fields) {
-      const value = draft[field];
-      try {
-        data[field] =
-          field === "rates" || field === "defaultDimensions"
-            ? JSON.parse(value)
-            : field === "allowedTaxCodes"
-              ? value
-                  .split(",")
-                  .map((item) => item.trim())
-                  .filter(Boolean)
-              : field === "allowPartialDiscount"
-                ? value === "true"
-                : field === "dueDays" || field === "discountDays"
-                  ? value.trim()
-                    ? Number(value)
-                    : null
-                  : nullable.has(field) && !value
-                    ? null
-                    : value;
-      } catch (issue) {
-        if (!(issue instanceof SyntaxError)) throw issue;
-        setError({ path: `data.${field}`, key: "trade.issue.shape", conflict: false });
-        return;
-      }
-    }
-    const parsed = tradeWriteSchema.safeParse({
-      company: company.code,
-      kind,
-      code,
-      expectedRevision: initial?.revision ?? 0,
-      active,
-      data,
-    });
-    if (!parsed.success) {
-      setError({
-        path: parsed.error.issues[0]?.path.join(".") || "form",
-        key: "trade.issue.shape",
-        conflict: false,
-      });
-      return;
-    }
-    pendingCommand.current = parsed.data;
-    await persist(parsed.data);
-  }
-  async function persist(command: TradeCommand, reconcile = false) {
-    const id = ++generation.current;
-    setBusy(true);
-    setError(null);
-    let accepted = false;
-    try {
-      try {
-        await masterRequest(`/api/v1/trade/${kind}`, tradeConfigSchema, {
-          method: command.expectedRevision ? "PUT" : "POST",
-          body: command,
-        });
-      } catch (issue) {
-        if (!reconcile || !(issue instanceof MasterDataFailure) || issue.status !== 409)
-          throw issue;
-        const saved = await masterRequest(
-          `/api/v1/trade/${kind}/${encodeURIComponent(command.code)}?company=${encodeURIComponent(company.code)}`,
-          tradeConfigSchema,
-        );
-        if (
-          saved.kind !== command.kind ||
-          saved.code !== command.code ||
-          saved.revision !== command.expectedRevision + 1 ||
-          saved.active !== command.active ||
-          JSON.stringify(saved.data) !== JSON.stringify(command.data)
-        )
-          throw issue;
-      }
-      accepted = true;
-      if (generation.current === id) close();
-    } catch (issue) {
-      if (generation.current === id) {
-        setError(failure(issue));
-        setUncertain(
-          !(issue instanceof MasterDataFailure) ||
-            issue.kind !== "http" ||
-            (issue.status ?? 500) >= 500 ||
-            (reconcile && issue.status !== 409),
-        );
-      }
-    } finally {
-      if (generation.current === id) setBusy(false);
-      if (accepted || generation.current !== id)
-        void client.invalidateQueries({ queryKey: ["trade", company.code, kind] });
-    }
-  }
-  return (
-    <form className="ui-master-editor" onSubmit={(event) => void submit(event)}>
-      <FastTab
-        id="trade-editor"
-        title={t("trade.editor")}
-        summary={initial ? `${t("trade.edit")} · ${initial.code}` : t("trade.new")}
-      >
-        <p className="ui-hint">{t("trade.nullHint")}</p>
-        {kind === "tradeProfile" && <p className="ui-hint">{t("trade.discountHint")}</p>}
-        {kind === "taxCode" && <p className="ui-hint">{t("trade.rateHint")}</p>}
-        {(busy || uncertain) && (
-          <p role="status">{t(uncertain ? "trade.uncertain" : "master.saving")}</p>
-        )}
-        {uncertain && (
-          <button
-            type="button"
-            className="btn btn-secondary"
-            disabled={busy}
-            onClick={() => {
-              if (pendingCommand.current) void persist(pendingCommand.current, true);
-            }}
-          >
-            {t("trade.reconcile")}
-          </button>
-        )}
-        <fieldset disabled={busy || uncertain} className="ui-form-grid">
-          <div className="ui-field">
-            <label htmlFor="trade-code">{t("trade.code")}</label>
-            <input
-              id="trade-code"
-              value={code}
-              disabled={Boolean(initial)}
-              required
-              onChange={(event) => setCode(event.target.value)}
-            />
-          </div>
-          {fields.map((field) => {
-            const options = field in choices ? choices[field as keyof typeof choices] : null;
-            const json = field === "rates" || field === "defaultDimensions";
-            const invalid =
-              error?.path === `data.${field}` || error?.path.startsWith(`data.${field}.`);
-            const props = {
-              id: `trade-${field}`,
-              value: draft[field],
-              onChange: (event: { target: { value: string } }) =>
-                setDraft((value) => ({ ...value, [field]: event.target.value })),
-              "aria-invalid": invalid ? true : undefined,
-              "aria-describedby": invalid ? "trade-error" : undefined,
-            };
-            if (field === "allowPartialDiscount")
-              return (
-                <label key={field} className="ui-check" htmlFor={props.id}>
-                  <input
-                    id={props.id}
-                    type="checkbox"
-                    checked={draft[field] === "true"}
-                    onChange={(event) =>
-                      setDraft((value) => ({ ...value, [field]: String(event.target.checked) }))
-                    }
-                  />
-                  {t(`trade.${field}`)}
-                </label>
-              );
-            return (
-              <div key={field} className={`ui-field${json ? " ui-master-wide" : ""}`}>
-                <label htmlFor={`trade-${field}`}>{t(`trade.${field}`)}</label>
-                {options ? (
-                  <select {...props}>
-                    {options.map((option) => (
-                      <option key={option} value={option}>
-                        {t(`trade.${option}`)}
-                      </option>
-                    ))}
-                  </select>
-                ) : json ? (
-                  <textarea {...props} required />
-                ) : (
-                  <input
-                    {...props}
-                    type={field === "from" || field === "to" ? "date" : "text"}
-                    required={!nullable.has(field) && field !== "allowedTaxCodes"}
-                  />
-                )}
-              </div>
-            );
-          })}
-          <label className="ui-check" htmlFor="trade-active">
-            <input
-              id="trade-active"
-              type="checkbox"
-              checked={active}
-              onChange={(event) => setActive(event.target.checked)}
-            />
-            {t("master.active")}
-          </label>
-          {error && (
-            <p role="alert" id="trade-error" className="ui-master-error ui-master-wide">
-              {error.path}: {t(error.key)}
-            </p>
-          )}
-          <div className="ui-form-actions ui-master-wide">
-            {error?.conflict && (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => {
-                  void client.invalidateQueries({ queryKey: ["trade", company.code, kind] });
-                  close();
-                }}
-              >
-                {t("master.reload")}
-              </button>
-            )}
-            <button type="submit" className="btn btn-primary">
-              {t("dim.save")}
-            </button>
-            <button
-              type="button"
-              className="btn btn-subtle"
-              onClick={() => {
-                if (!dirty || window.confirm(t("trade.discard"))) close();
-              }}
-            >
-              {t("master.cancel")}
-            </button>
-          </div>
-        </fieldset>
-      </FastTab>
-    </form>
   );
 }
