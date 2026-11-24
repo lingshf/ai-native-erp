@@ -68,7 +68,7 @@
 
 ## 3. 评审裁定与本期决定
 
-决定原文见 [S22.md 决定表](../tasks/S22.md)（D513、D514）与 [S23.md 决定表](../tasks/S23.md#s23-期间决定)（D515–D522，D518–D522 由本 PR 写入）。时序与 SHA 角色以 [`docs/demo/v0.21.0/run-through.md`](../../docs/demo/v0.21.0/run-through.md) 为准。本评审不摘录决定内容，只列编号与归属：
+决定原文见 [S22.md 决定表](../tasks/S22.md)（D513、D514）与 [S23.md 决定表](../tasks/S23.md#s23-期间决定)（D515–D523，D518–D523 由本 PR 写入）。时序与 SHA 角色以 [`docs/demo/v0.21.0/run-through.md`](../../docs/demo/v0.21.0/run-through.md) 为准。本评审不摘录决定内容，只列编号与归属：
 
 | 编号 | 归属 | 记在 |
 | --- | --- | --- |
@@ -80,8 +80,9 @@
 | D520 | TSET-01 N7 首屏预算口径 | S23.md |
 | D521 | DEMO-22 K2 金额断言作废，改由 TLIST-06 S3 证明 | S23.md |
 | D522 | SLOT-06 快照日志命名 `.stdout.log` / `.stderr.log` | S23.md |
+| D523 | TSET-01 测试行数超上限，接受 | S23.md |
 
-下一个可用编号 D523。
+下一个可用编号 D524。
 
 ## 4. 遗留与待办
 
