@@ -882,10 +882,21 @@ KDOC-01..11 都已合并或并入（见上表）。下面是 Knowledge Lead 报�
 
 | ID | 缺口 | 优先级 | 负责 | 验收 | 依赖 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- |
-| KGAP-01 | KDOC 新增或改动的页面（`docs/operations.md`、`docs/ci.md`、`docs/ai-assistant.md`、`docs/tradeoffs.md`、`docs/flows/` 及 KDOC-05/07 改动的 `docs/user/` 页面）只做过结构对照，未经 QA 演练和事实所有者复核（[docs/README 矩阵](../../docs/README.md)仍为 partial） | P2 | QA 演练关键步骤；事实所有者复核（按[团队章程 §2](../team-charter.md#2-权威路径)：Developer、Delivery/Release、Product/Design 各管其事实）；Knowledge Lead 汇总并更新矩阵 | 每页有 QA 结论（PASS / FAIL / not_applicable，附演练所用的完整 SHA）和事实所有者的复核记录；矩阵中只有两者都有的格才改为 covered，其余保持 partial 并写明缺哪一步 | 无 | todo（候选） |
+| KGAP-01 | KDOC 新增或改动的页面已有部分 QA 证据（逐页见下方“KGAP-01 现有证据”），但都未经事实所有者单独复核，QA 也只覆盖各自写明的范围；[docs/README 矩阵](../../docs/README.md)仍为 partial。本项只补剩余范围，不重做已有且仍有效的证据 | P2 | 事实所有者复核（按[团队章程 §2](../team-charter.md#2-权威路径)：Developer、Delivery/Release、Product/Design 各管其事实）；QA 补演练剩余范围；Knowledge Lead 汇总并更新矩阵 | 矩阵的一格改为 covered，须同时满足：① 事实所有者复核通过并有记录；② 适用的 QA 为 PASS，或记为 not_applicable 并写明理由；③ 仍满足 D559 / D561（完整 SHA + 具体文件，合并后钉版本）。已有证据只在页面自该证据的 head 之后没有改动、或改动不在其写明范围内时才继续有效。结果为 `FAIL` 或阻塞的，只记录，不能转 covered | 无 | todo（候选） |
 | KGAP-02 | AI 一节的取舍没有备选：[`docs/tradeoffs.md` §3](../../docs/tradeoffs.md#3-ai-助手只产出候选不保存不过账) 标“原记录未写” | P3 | Product/Design 补记备选、代价与失效条件（与 D564 相同的方式，写入[路线图 §6.1](../roadmap.md#61-取舍补记d564)，标为事后补记）；Knowledge Lead 改链接 | 补记写明是事后补记，不改写原决定；`tradeoffs.md` §3 改为链接补记，不再出现“原记录未写” | 无 | todo（候选） |
-| KGAP-03 | M0 决定 D5（维度规则）、D6（凭证纠错）、D8（报表水位）在[决定索引](../decisions.md)中只有标题，没有摘要（原文在 [design/reviews/M0.md](../reviews/M0.md) 第 39–42 行的表中） | P3 | Product/Design | 索引中三条各有一句摘要并链接原文；摘要不改变原决定；索引由生成脚本重新生成 | 无 | todo（候选） |
+| KGAP-03 | M0 决定在[决定索引](../decisions.md)中的摘要不全：D8 已有摘要，但被截断（`design/decisions.md:37`；完整的二元组描述在 [design/reviews/M0.md](../reviews/M0.md) 第 42 行）；D5（维度规则）、D6（凭证纠错）在 M0.md 第 39–40 行只有标题和代码证据，没有规则正文。规则正文可在根 `README.md` 第 70 行（“D5 统一 subset：……”）与第 80 行（“D6 历史反向逐行精确镜像……”）找到（@ `66f3a47623e3b07f55447b06ac48fe84d153c34a`，该文件最近一次改动）；但 `design/` 中查不到 D5、D6 的原始决定记录（谁定、何时定、比较过哪些备选），这一点是**缺口** | P3 | Product/Design | D8：保留现有摘要，并补全被截断的部分，或让索引能直达完整原文。D5、D6：摘要依据 `README.md` 第 70 / 80 行的规则正文，链接到该行并钉完整 SHA；查不到原始决定记录的，如实写“原始决定记录未找到”，不补写决策过程。摘要不改变原决定；索引由生成脚本重新生成 | 无 | todo（候选） |
 | KGAP-04 | [`docs/ai-assistant.md`](../../docs/ai-assistant.md) 缺两项：GitHub Copilot 官方数据处理说明的链接；SEC-01 的评审结论 | P3 | Knowledge Lead 补官方链接（Product/Design 核对链接确为官方页面、说法不超出该页）；SEC-01 结论由其评审人提供，Knowledge Lead 转写 | 页面链接官方数据处理说明，不复述其承诺；SEC-01 有结论后写入结论及证据链接，之前保留“待评审”标注 | 后半依赖 [SEC-01](#安全候选d563) 评审结论 | todo（候选） |
+
+**KGAP-01 现有证据**（都是各 PR 合并前 head 上的评审；“剩余”是本项要补的部分）：
+
+| 页面 | 来源 PR | 现有 QA 证据 | 剩余 |
+| --- | --- | --- | --- |
+| `docs/operations.md`、`docs/migration-runbook.md` §6 / §10、`docs/user/backup-and-legacy.md` | [#374](https://github.com/lingshf/ai-native-erp/pull/374) | 评审 [6048340633](https://github.com/lingshf/ai-native-erp/pull/374#pullrequestreview-6048340633) @ `503d9f13d81b6289bf42c679d587dbc403574d09`，`QA: PASS`：用虚构数据演练过持锁启动报 `StartupError`、活动租约下恢复报 `BUSY`，以及迁移、在线备份、离线恢复与恢复后核验 | 旧账快照 / dry-run 与只导入健康检查未演练；Delivery/Release 事实复核 |
+| `docs/ai-assistant.md`、`docs/user/ledger.md` 的 AI 一节 | [#375](https://github.com/lingshf/ai-native-erp/pull/375) | 评审 [6048462623](https://github.com/lingshf/ai-native-erp/pull/375#pullrequestreview-6048462623) @ `c77bbd0ec666d5983e8580d94e7834346678baff`，`QA: PASS`：按源码重走提交前披露与配置路径；沿用此前通过的 jsdom AI 流程与假 SDK 检查；未调用真实 Copilot | Developer 与 Product/Design 事实复核；官方数据处理链接见 KGAP-04 |
+| `docs/user/` 其余页面（KDOC-05） | [#368](https://github.com/lingshf/ai-native-erp/pull/368) | 评审 [6047571650](https://github.com/lingshf/ai-native-erp/pull/368#pullrequestreview-6047571650) @ `66e15b59d98aebb49428dfe068e1fcba70137111`，`QA: PASS`：只读核对源码、现有断言与 CHANGELOG；未做界面实操 | 关键步骤的界面演练；Product/Design 事实复核 |
+| `docs/ci.md` | [#370](https://github.com/lingshf/ai-native-erp/pull/370) | 评审 [6047907715](https://github.com/lingshf/ai-native-erp/pull/370#pullrequestreview-6047907715) @ `f202df15abfd5139977998ed07060ca8fa9b5fb4`，`QA: PASS`：在精确 head 上实跑相应的 Vitest 命令 | Delivery/Release 事实复核 |
+| `docs/flows/` 付款 / 收款流程图 | [#373](https://github.com/lingshf/ai-native-erp/pull/373) | 评审 [6048059068](https://github.com/lingshf/ai-native-erp/pull/373#pullrequestreview-6048059068) @ `61c9c6147004b82353fe1738c8eb47b48ce8c99d`，`QA: PASS`：在精确 head 源码上跑过 24 个核销交互用例（jsdom，不是真实浏览器） | Product/Design 流程复核 |
+| `docs/tradeoffs.md` | [#377](https://github.com/lingshf/ai-native-erp/pull/377) | 评审 [6048644791](https://github.com/lingshf/ai-native-erp/pull/377#pullrequestreview-6048644791) @ `1e6935cd356cf690fed5067da581dad1fa8b0678`，`QA: not_applicable`：本页只做归纳和导航，没有可演练的步骤 | Product/Design 在合并提交上复核（此前的产品核对针对的是 `4fbefbd`，不是最终 head） |
 
 ## 安全候选（D563）
 
