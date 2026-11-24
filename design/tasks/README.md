@@ -809,6 +809,17 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 - **并行**：A ∥ B ∥ C，冲突域不相交，没有共享单文件（`ui/trade-labels.ts` 只有 B 改）；没有加迁移的任务；C 在 DEMO-22 窗口关闭并复核任务书后派发，DEMO 窗口期间不改 `scripts/slot/`；都不申请浏览器时段，服从 D442 / D480 时段停用通知；DEMO-23 排在它们结案之后。体积口径见 [S23.md](S23.md#l10--体积口径)。
 
+## S24：拆分 CompanyEvents + 其余待定（计划草案，版本待 S23 发布后定）
+
+计划草案见 [S24.md](S24.md)（D525 为 REFAC-14 不改行为；下一个可用编号 D526）。基线 main `2794c3a`（S23 的 TSET-01 #320 已合并；REFAC-13、SLOT-06 进行中）。S23 期间开发泳道有一个空位，先写出可立即派发的 REFAC-14；其余泳道在 S23 评审回顾之后从候选（FLAKE-09、Demo 全产物清单脚本化等）中选。
+
+| ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [REFAC-14](REFAC-14-company-events-split.md) | 拆分 `CompanyEvents` 函数体（不改行为） | 重构（页面） | P2 | 无 | `packages/web/src/business-events/company-events.tsx`、`business-events/` 下新文件 | 不加 | 不需要 | todo | — |
+| DEMO-24（无任务书） | `<S24 版本>` RC 与 Demo，验收待正式计划补写 | 发布 | P1（Sprint 末） | S23 版本已发布；开发任务已合并或移出；main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 视范围 | todo | — |
+
+- **并行**：REFAC-14 与 S23 在途的 REFAC-13（`trade-orders/`）、SLOT-06（`scripts/slot/`）冲突域逐文件不相交，没有共享单文件，路由 chunk 不同；不加迁移；不申请浏览器时段，服从 D442 / D480 时段停用通知。
+
 ## 派发顺序
 
 1. 第一批（按顺序，同时只开一个以避免 `package.json`/lock 冲突）：M0-01 → M0-02 → M0-03 → M0-04 → M0-05 → M0-06→ M0-07。M0-02 与 M0-03 可并行，后合并者重新生成 lock。
