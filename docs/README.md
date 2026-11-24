@@ -41,6 +41,8 @@
 状态：`covered`（页面存在且我核对过与当前内容相符）、`gap`（缺少）、`conflict`（与权威页或当前实现冲突）、`stale`（已知过时）、`unknown`（页面存在，我没有核对到足以下结论）、`n/a`（不适用）。
 “covered”须在证据列写出该页的完整 40 位 SHA（D559），无法钉版本的格一律写 partial 或 unknown；它只代表结构与内容对照，**不等于**事实所有者复核或 QA 实跑；本表没有任何一行经过这两步，所以它们仍是待办，不写完成度。
 
+**KDOC-05 说明**：`ui-guide`、`trade`、`teaching-mode`、`backup-and-legacy` 在 KDOC-05 中改了措辞（“main”→“版本”、发布状态、v0.17–v0.21 一节），下表这些页引用的 SHA 是改动前的版本，只能证明改动前的对照；合并后下一次改动该行时重新钉版本。
+
 事实所有者按角色：产品 = 设计/产品负责人；开发 = 开发；发布 = Delivery/Release；知识 = Knowledge Lead。
 
 | 范围 | 设计 | 实现 | 取舍 | 使用 | 事实所有者 | 证据版本 |
@@ -70,7 +72,7 @@
 | `design/tasks/`（含 `S*.md`、任务书） | 任务书、Sprint 计划、决定表 | 现行；决定散在各文件（G5） |
 | `design/reviews/` | Sprint / 任务评审与回顾 | 现行；与顶层 [`design/reviews.md`](../design/reviews.md)（公开验证记录）同名易混（D3） |
 | `design/ui/`、`design/diagrams/` | UI-1 规范与原型、架构示意图 | UI-1 stale；diagrams 属 ARCH-SME-01，随 C1 |
-| [`docs/user/`](user/README.md) | 用户文档 | 页面存在（版本见矩阵），索引页 stale（G3） |
+| [`docs/user/`](user/README.md) | 用户文档 | 页面存在（版本见矩阵）；索引页已于 KDOC-05 去掉版本叙述，指向 CHANGELOG；含[贸易主路径演练](user/trade-main-path.md) |
 | [`docs/flows/`](flows/README.md) | Mermaid 界面流程图 | 索引页写“v0.3.0”，见 G4 |
 | [`docs/release/`](release/README.md) | 流程、各版发布说明、评审与回顾 | 仅 README.md 与 v0.21.0 发布说明已钉版本（见矩阵），其余未核对 |
 | [`docs/demo/`](demo/TEMPLATE.md) | 每版 Demo 脚本与证据（v0.1.0..v0.21.0） | 证据存档，不是用户文档 |
@@ -87,7 +89,7 @@
 **缺口**
 - **G1** AI 助手没有独立设计页。
 - **G2** 取舍（决策背景与备选）散在 `design/tasks/S*.md`、`design/reviews/`，没有按主题汇总。
-- **G3** [docs/user/README](user/README.md) 的状态叙述停留在 v0.3.0 与 v0.10/v0.11 “发布候选”，而 CHANGELOG 已到 v0.21.0；[界面指南](user/ui-guide.md)最后一节是 v0.16.0，v0.17.0 之后是否有用户可见变化需要开发/产品逐版确认（我只确认页内没有 v0.17+ 字样，没有判断是否应该有）。
+- **G3** 已由 KDOC-05 处理：[docs/user/README](user/README.md) 不再维护版本叙述；[界面指南](user/ui-guide.md)补了 v0.17.0–v0.21.0 一节（经 CHANGELOG 核对，这五版的用户可见变化仅为各列表页的“刷新列表”按钮）。未经产品复核与 QA 演练，仍是 partial。
 - **G4** [flows/README](flows/README.md) 标题与结语仍写 v0.3.0；付款与收款页（含 v0.21.0 的“刷新列表”）没有独立流程图，只在贸易总图中出现。
 - **G5** 没有决定总索引：[路线图 §6](../design/roadmap.md#6-决定记录)不含 D20/D21（[发布流程](release/README.md)已自述），D484、D514 等分散在评审与任务书。
 - **G6** CI 工作流（ci、full、bench、legacy-snapshot-windows）没有独立说明页；现有覆盖：README“目录与工程命令”节（PR CI、Full、Bench 的时限与触发），未与 workflow 文件逐条核对。
@@ -95,11 +97,11 @@
 - **G8**（stale）启动文档的 schema 版本与代码不符：README 与 getting-started 原写“迁移到 019”，代码最新迁移为 `020-trade-order-invoicing-credits.sql`。本 PR 已直接改为 020（仅文档，两处各一字）；事实所有者：开发（确认 020 是当前最新）；之后每次新增迁移都要同步这两处。
 
 **重复（单一权威待定）**
-- **D1** [README](../README.md) 的业务规则小节与 [docs/user](user/README.md) 各页内容重叠。
+- **D1** 已处理（KDOC-05）：根 README 里唯一与用户文档重复的是“贸易 GUI 主路径验收”演练，已移到 [trade-main-path](user/trade-main-path.md)，README 只留指针；其余业务规则小节是开发者契约（接口、迁移、不变量），不是用户文档的副本，保留。
 - **D2** [design/tasks.md](../design/tasks.md)（历史）与 [design/tasks/README.md](../design/tasks/README.md)（现行）；[architecture](../design/architecture.md) 与 [M0 架构](../design/m0-architecture.md)。
 - **D3** `design/reviews.md` 与 `design/reviews/` 目录同名。
 - **D4** 迁移命令同时出现在 [README](../README.md#历史导入m2-03-47m2-03b-63-已合并核对见-m2-04m2-04b)、[迁移手册](migration-runbook.md)、[备份与旧账工具](user/backup-and-legacy.md)。
-- **D5** [docs/user/README](user/README.md) 的版本叙述与 [CHANGELOG](../CHANGELOG.md) 重复。
+- **D5** 已处理（KDOC-05）：版本叙述只在 [CHANGELOG](../CHANGELOG.md)，[docs/user/README](user/README.md) 改为链接。
 
 ## 五、维护
 
