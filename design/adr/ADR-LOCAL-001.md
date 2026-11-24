@@ -29,7 +29,7 @@ M0 随后删除了 PostgreSQL 实现（[M0-03](../tasks/M0-03-remove-postgres-sq
 
 | 方案 | 不采用的理由 | 采用它的代价（若采用） |
 | --- | --- | --- |
-| 双库（SQLite + PostgreSQL）并行维护 | 目标用户是本机单用户的小企业；第二种数据库的迁移、测试与 CI 成本没有对应的用户价值 | 每个迁移、仓储与基准都要写两份并在两种引擎上测，CI 时长与失败面翻倍 |
+| 双库（SQLite + PostgreSQL）并行维护 | 目标用户是本机单用户的小企业；第二种数据库的迁移、测试与 CI 成本没有对应的用户价值 | 每个迁移、仓储与基准都要写两份并在两种引擎上测，CI 时长与失败面随之增加（未经测量的估计，不是实测的翻倍） |
 | Server 档案 + OIDC + 多用户批准 | 单用户场景不需要身份与分权；loopback 无登录已是用户定的边界 | 要引入身份提供方、会话、权限模型、多用户并发与审计，运维责任落在用户身上 |
 | 先做 Server，再降级出本机版 | 与“本机优先”方向相反，且会把多用户复杂度带进每个切片 | 本机形态长期被 Server 设计牵制 |
 
@@ -38,7 +38,7 @@ M0 随后删除了 PostgreSQL 实现（[M0-03](../tasks/M0-03-remove-postgres-sq
 - **好处**：一种存储引擎、一套迁移与测试；CI 和基准只覆盖 SQLite；事务语义简单（一个写用例 = 一个 `BEGIN IMMEDIATE` 事务）。
 - **代价**：
   - 不支持多人同时使用或远程访问；
-  - better-sqlite3 是同步调用，长查询会阻塞事件循环，需要在基准中观测（M0 架构 §3）；
+  - better-sqlite3 是同步调用，长查询会占住执行它的 SQLite worker（M0-13a：1 个写 worker、若干只读 worker；HTTP 主线程不加载 better-sqlite3），不阻塞 HTTP 事件循环；但 worker 被占满时后续用例要排队，需要在基准中观测（见仓库 `README.md` 的“SQLite worker（M0-13a）”一节与 `packages/infra/src/main.ts`）；
   - 如果以后需要 Server，要重新设计身份与并发，而不是打开一个现成开关。
 - **旧文档**：ADR-SME-001..006、`architecture.md`、`architecture-migration.md`、`design.md`、`requirements.md` 中的 ARCH-SME 部分保留为历史，开头标注“已取代”并链接本 ADR；其中仍有效的 FG / OQ 需求与会计政策，按路线图开头的说明继续有效。
 

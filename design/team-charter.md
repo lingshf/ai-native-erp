@@ -31,7 +31,7 @@
 
 | 内容 | 唯一权威路径 | 维护者 | 独立核对 |
 | --- | --- | --- | --- |
-| 目标、需求、架构、ADR、UX、决定 | `design/`（[路线图](roadmap.md)、[需求](requirements.md)、[架构](architecture.md)、[`adr/`](adr/)、[`ui/`](ui/)；决定记录在路线图 §6 与各 Sprint 计划的决定表） | Product/Design | 非作者评审；开发与 QA 核可行性和可测性 |
+| 目标、需求、架构、ADR、UX、决定 | `design/`（[路线图](roadmap.md)、[M0 架构](m0-architecture.md)与 [ADR-LOCAL-001](adr/ADR-LOCAL-001.md)、[产品准则](product-guidelines.md)、[`ui/`](ui/)、各任务书；[需求](requirements.md)只有 FG / OQ 需求与会计政策仍有效，其 ARCH-SME 部分与 [`architecture.md`](architecture.md)、[ADR-SME](adr/ADR-SME-001.md) 一样已被取代，仅作历史参考；决定记录在路线图 §6 与各 Sprint 计划的决定表） | Product/Design | 非作者评审；开发与 QA 核可行性和可测性 |
 | **唯一待办** | **[`design/tasks/README.md`](tasks/README.md)**（任务总表），以及它链接的 Sprint 计划 `design/tasks/S*.md` 与任务书 `design/tasks/<ID>-*.md` | Product/Design 负责顺序与含义，并照录执行字段；Team Leader 提供执行证据（§4） | 团队在交接时核对 |
 | 验收与测试证据 | [`design/test-cases.md`](test-cases.md) 与 PR 正文中的证据 | QA（评审会话 `5ec013bf`；D560 起已接手 `test-cases.md`） | 非作者评审；Product/Design 确认意图 |
 | 系统入口、用户 / 开发 / 运维指南、交接路径 | `docs/README.md`（**尚未建立**，由 Knowledge Lead 新建）及它映射的页面（现有 `docs/user/`、`docs/flows/`、`docs/performance/`、`docs/migration-runbook.md` 等） | Knowledge Lead 负责整合；设计、开发、版本管理提供事实 | 模块负责人核对事实；QA 演练关键步骤；非作者评审 |
