@@ -2,6 +2,8 @@
 
 版本管理（Release Manager）维护本流程。版本与 tag 规则来自协调者的决定 D20（按里程碑划分 Sprint；SemVer，tag 写作 `vX.Y.Z`，修复用 Z 位）与 D21（tag 打在发布 PR 合并后的 squash 提交）。**这两条目前没有收录在[路线图 §6 决定记录](../../design/roadmap.md#6-决定记录)**（该表无 D20/D21），实际落实记录见 [CHANGELOG](../../CHANGELOG.md) 各版本说明和 `docs/release/v*-release-notes.md`（“按 D21，tag … 打在本发布 PR 合并后的 squash 提交上”）。待协调者把 D20/D21 补进 §6 后，这里改为链接到该表。
 
+> **历史口径说明（D555）**：D20 中“按里程碑划分 Sprint”是历史措辞，已不适用。自 D555 起，Sprint、里程碑与版本分开记录，没有强制的一对一映射，见[团队章程 §5](../../design/team-charter.md#5-sprint里程碑版本分开记录)。SemVer 与 D21 的 tag 规则继续有效。
+
 ## 顺序
 
 1. **发布候选（RC）**：开一个发布 PR，只改文档与发布文件（CHANGELOG、`docs/user`、`docs/flows`、`docs/demo`、`docs/release`）。走评审与 CI。
