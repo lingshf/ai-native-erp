@@ -16,7 +16,6 @@ import {
   roundTradeRatio,
   formatMicros,
   formatMinor,
-  matchTradeOrderLine,
   normalizeExternalInvoice,
   quantityMicros,
   selectTradeTax,
@@ -62,6 +61,10 @@ import {
 } from "@erp/core/domain";
 import { readTradeReport, readTradeReconciliation, tradeReportDates } from "./trade-reporting.ts";
 import { prepareTradeAction } from "./trade-adjustments.ts";
+import { invoiceAccountRoleInputs } from "./trade-invoice-account-roles.ts";
+import { calculateInvoice } from "./trade-invoice-calculation.ts";
+import { invoiceDraft, invoiceJournalLines } from "./trade-invoice-journal.ts";
+import { invoicePoMatch, matchInvoiceOrder } from "./trade-invoice-order-match.ts";
 import type { JournalPreview, JournalService, JournalTools } from "./journals.ts";
 import type { MasterDataRepository, MasterDataStore } from "./master-data.ts";
 
@@ -881,199 +884,25 @@ export class TradeDocumentService {
       day,
       command.taxDate,
     );
-    const calculation = calculateTrade({
-      side: command.side === "AP" ? "ap" : "ar",
-      currency: command.currency,
-      accountingCurrency: company.currency,
+    const calculation = calculateInvoice(command, company, resolved);
+    const { order, matches } = await matchInvoiceOrder(repo, command, calculation);
+    const poMatch = invoicePoMatch(command, order, matches);
+    const { journalLines, master, controlIndexes, lines } = invoiceJournalLines({
+      command,
+      party,
+      profile,
+      resolved,
+      calculation,
+      matches,
       scale: company.scale,
-      priceMode: command.priceIncludesTax ? "inclusive" : "exclusive",
-      rounding: command.rounding,
-      lines: command.lines.map((line, index) => ({
-        id: line.lineId,
-        quantity: line.quantity,
-        unitPrice: line.unitPrice,
-        discountPercent: line.discountPercent,
-        taxableCharges: line.taxableCharge,
-        tax: {
-          code: resolved[index].tax.tax.code,
-          treatment:
-            resolved[index].tax.tax.data.mode === "ordinary"
-              ? "standard"
-              : resolved[index].tax.tax.data.mode,
-          ratePercent: resolved[index].tax.rate.ratePercent,
-          deductiblePercent: resolved[index].tax.tax.data.deductiblePercent,
-        },
-      })),
-    });
-    if (calculation.gross <= 0) tradeDocumentError("lines", "shape");
-    let order: TradeOrder | null = null;
-    const matches: TradeLineMatch[] = [];
-    if (command.orderId !== null) {
-      order = await repo.tradeOrder(command.company, command.orderId);
-      if (!order) tradeDocumentError("orderId", "order");
-      if (
-        command.accountingDate < order.orderDate ||
-        command.accountingDate < (await repo.tradeOrderLatestDate(command.company, order.orderId))
-      )
-        tradeDocumentError("accountingDate", "reference");
-      if (
-        order.side !== command.side ||
-        order.party !== command.party ||
-        order.currency !== command.currency
-      )
-        tradeDocumentError("orderId", "order");
-      const referenced = [
-        ...new Set(command.lines.flatMap((line) => (line.orderLineId ? [line.orderLineId] : []))),
-      ];
-      const invoiced = new Map(
-        (await repo.tradeOrderInvoiced(command.company, order.orderId, referenced)).map((row) => [
-          row.orderLineId,
-          row.micros,
-        ]),
-      );
-      for (const [index, line] of command.lines.entries()) {
-        const orderLine = order.lines.find((item) => item.lineId === line.orderLineId);
-        if (!orderLine || orderLine.product !== line.product)
-          tradeDocumentError(`lines.${index}.orderLineId`, "orderLine");
-        matches.push(
-          matchTradeOrderLine({
-            lineId: line.lineId,
-            path: `lines.${index}`,
-            order: orderLine,
-            previouslyInvoiced: invoiced.get(orderLine.lineId) ?? 0n,
-            quantity: line.quantity,
-            invoiceNet: calculation.lines[index].net,
-          }),
-        );
-      }
-    }
-    const outside = matches.some((match) => !match.withinTolerance);
-    if (outside !== (command.matchingException !== null))
-      tradeDocumentError("matchingException", outside ? "price" : "exception");
-    const poMatch: PoMatch = order === null ? "notApplicable" : outside ? "exception" : "matched";
-    const scale = company.scale;
-    const journalLines: JournalInputLine[] = [];
-    const master: DimensionMap[] = [];
-    const push = (
-      account: string,
-      side: "debit" | "credit",
-      minor: number,
-      dims: DimensionMap,
-      defaults: DimensionMap,
-    ) => {
-      if (minor === 0) return;
-      const money = formatMinor(minor, scale);
-      journalLines.push({
-        account,
-        debit: side === "debit" ? money : "",
-        credit: side === "credit" ? money : "",
-        dimensions: dims,
-        suspense: null,
-      });
-      master.push(defaults);
-    };
-    const controlSide = command.side === "AP" ? "credit" : "debit",
-      lineSide = command.side === "AP" ? "debit" : "credit";
-    const controlIndexes: number[] = [];
-    for (const [index, line] of command.lines.entries()) {
-      if (!calculation.lines[index].gross) continue;
-      controlIndexes.push(journalLines.length);
-      push(
-        profile.data.controlAccount,
-        controlSide,
-        calculation.lines[index].gross,
-        line.dimensions,
-        { ...party.data.defaultDimensions, ...resolved[index].product.data.defaultDimensions },
-      );
-    }
-    const lines: TradeDocumentLine[] = command.lines.map((line, index) => {
-      const calc = calculation.lines[index];
-      const { product, account, tax } = resolved[index];
-      const defaults = { ...party.data.defaultDimensions, ...product.data.defaultDimensions };
-      push(
-        account,
-        lineSide,
-        command.side === "AP" ? calc.expense : calc.net,
-        line.dimensions,
-        defaults,
-      );
-      const taxMinor = command.side === "AP" ? calc.deductibleTax : calc.tax;
-      const taxAccount =
-        command.side === "AP" ? tax.tax.data.inputAccount : tax.tax.data.outputAccount;
-      if (taxMinor > 0) {
-        if (taxAccount === null) tradeDocumentError(`lines.${index}.taxCode`, "account");
-        push(taxAccount, lineSide, taxMinor, line.dimensions, defaults);
-      }
-      const match = matches[index];
-      return {
-        lineId: line.lineId,
-        lineNo: index + 1,
-        product: product.code,
-        account,
-        taxCode: tax.tax.code,
-        taxRateId: tax.rate.id,
-        ratePercent: tax.rate.ratePercent,
-        quantity: line.quantity,
-        unitPrice: line.unitPrice,
-        discountPercent: line.discountPercent,
-        taxableCharge: line.taxableCharge,
-        net: calc.net,
-        tax: calc.tax,
-        gross: calc.gross,
-        deductibleTax: calc.deductibleTax,
-        orderId: command.orderId,
-        orderLineId: line.orderLineId,
-        expectedNet: match ? match.expectedNet : null,
-        matchStatus: match ? (match.withinTolerance ? "matched" : "exception") : "notApplicable",
-      };
     });
     const external = normalizeExternalInvoice(command.externalInvoice);
-    const accounts = await this.accountRoles(repo, command.company, [
-      {
-        code: profile.data.controlAccount,
-        role: "controlAccount",
-        side: command.side,
-        path: "party",
-      },
-      ...resolved.flatMap(({ account, tax }, index) => {
-        const calc = calculation.lines[index];
-        const taxAccount =
-          command.side === "AP" ? tax.tax.data.inputAccount : tax.tax.data.outputAccount;
-        const taxMinor = command.side === "AP" ? calc.deductibleTax : calc.tax;
-        return [
-          {
-            code: account,
-            role: (command.side === "AP" ? "expenseAccount" : "revenueAccount") as TradeAccountRole,
-            path: `lines.${index}.product`,
-          },
-          ...(taxMinor > 0 && taxAccount !== null
-            ? [
-                {
-                  code: taxAccount,
-                  role: (command.side === "AP"
-                    ? "inputAccount"
-                    : "outputAccount") as TradeAccountRole,
-                  path: `lines.${index}.taxCode`,
-                },
-              ]
-            : []),
-        ];
-      }),
-    ]);
-    const draft: JournalDraft = {
-      id: command.documentId,
-      revision: 0,
-      sourceRef: `TRADE-${command.side}-INV:${command.documentId}`,
-      date: command.accountingDate,
-      documentDate: command.documentDate,
-      taxDate: command.taxDate,
-      memo: `${command.side} invoice ${external}`.slice(0, 200),
-      kind: "normal",
-      operation: "journal",
-      originalId: null,
-      headerDimensions: command.headerDimensions,
-      lines: journalLines,
-    };
+    const accounts = await this.accountRoles(
+      repo,
+      command.company,
+      invoiceAccountRoleInputs(command, profile, resolved, calculation),
+    );
+    const draft = invoiceDraft(command, external, journalLines);
     const journal = await this.journals.adapter("TRADE").plan(repo, command.company, draft, master);
     const dueDate = addTradeDays(command.documentDate, terms.data.dueDays);
     const discountDate = addTradeDays(command.documentDate, terms.data.discountDays);
