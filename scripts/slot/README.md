@@ -23,7 +23,7 @@ E2E 独占时段（[路线图 §5](../../design/roadmap.md#5-团队流程)“E2E
 | `selftest-location.ps1`           | 调用位置自检与 dist 检查自测（S21 SLOT-04 S1–S6）：R-base / R-steps 命中时零动作退出码 4，合法形式记 `call location ok`，dist 检查经 `assert-web-dist.ps1` | Windows         |
 | `gate-snapshot.ps1`               | 窗口门禁快照（S22 SLOT-05，D507）：node 进程、父进程链、cwd、CPU 秒数与指定端口的监听者写成 TSV；只记录，不判定归属                                        | Windows         |
 | `selftest-gate-snapshot.ps1`      | `gate-snapshot.ps1` 自测（G1–G7、G4b、G6b）：父进程链与 cwd、字段格式、逐端点监听、停止文件、节拍、参数错误、查询出错、TSV 写失败与时限                    | Windows         |
-| `selftest-slot-snapshot.ps1`      | runner 自动快照自测（S23 SLOT-06，D517）：端口被占仍为 7 且快照有占用者、无遗留子进程、端口去重、慢快照超时、启动前退出码 4 不起快照；评审项 G11–G14       | Windows         |
+| `selftest-slot-snapshot.ps1`      | runner 自动快照自测（S23 SLOT-06，D517）：端口被占仍为 7 且快照有占用者、无遗留子进程、端口去重、慢快照超时、启动前退出码 4 不起快照；评审项 G11–G15       | Windows         |
 | `steps.d387.ps1`                  | D387 回归步骤：用 `powershell.exe` 原样运行 v0.11.0 Demo 的三个无浏览器替身                                                                                | Windows         |
 | const rows = compareWithBaseline( |
     countByKey(findings, (found) => found.key),

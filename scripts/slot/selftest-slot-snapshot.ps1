@@ -1,28 +1,23 @@
 # Automatic gate snapshot self-test (S23 SLOT-06, D517, D524). Standalone:
 #   pwsh -File scripts/slot/selftest-slot-snapshot.ps1 -OutDir DIR_OUTSIDE_REPO
-# Task book G1–G6 and G10, review checks G11–G14; each label states what it asserts. A stand-in node listens on a free port P
+# Task book G1–G6 and G10, review checks G11–G15; each label states what it asserts. A stand-in node listens on a free port P
 #   for G1 (snapshot 1 holds its listener, node row and the depth-1 row of its parent, this selftest), G2, G4 and G5 (first
 #   snapshot 60 s slow: about 45 s by design, 15 s start wait + 30 s stop budget); G3 and G10 share one -Stub build.
 # G11: a real preflight.mjs exit 4 (D524) keeps its snapshot. G12 (stop step) and G14 (start step) run the runner's code with stand-in
-#   process, taskkill, Say, New-Item / Start-Process (a child pwsh for G12's failing log write). G13 judges one live table with procs.ps1 Counted.
+#   process, taskkill, Say, New-Item / Start-Process (a child pwsh for G12's failing log write). G13 judges one live table with procs.ps1 Counted; G15: its fixture leaves nothing when it throws.
 # Only processes this script starts are stopped. Exit 0 when every check passes, 1 otherwise.
 param([Parameter(Mandatory)] [string] $OutDir)
 if ($PSVersionTable.PSVersion.Major -lt 7 -or -not $IsWindows) { Write-Host "selftest-slot-snapshot.ps1 needs PowerShell 7 on Windows"; exit 2 }
 $ErrorActionPreference = 'Stop'
-# Reused helpers: New-CheckResult, Invoke-SlotRunner; Counted (G13).
-. (Join-Path $PSScriptRoot 'selftest-preflight.ps1')
-. (Join-Path $PSScriptRoot 'procs.ps1')
-
-$script:SNAPSHOT_PREVIEW_PORT = 4173
-$script:SLOW_FIRST_SNAPSHOT_SECONDS = 60
+. (Join-Path $PSScriptRoot 'selftest-preflight.ps1'); . (Join-Path $PSScriptRoot 'procs.ps1')  # reused: New-CheckResult, Invoke-SlotRunner; Counted (G13)
+$script:SNAPSHOT_PREVIEW_PORT = 4173; $script:SLOW_FIRST_SNAPSHOT_SECONDS = 60
 $script:STAND_IN_PID = 4194303  # never a real process (not a multiple of 4): G12's kill target, G13's runner row
 $script:G12_STOP_SECONDS = 2; $script:G12_KILL_RESERVE_MILLISECONDS = 500; $script:G12_TIMER_SLACK_MILLISECONDS = 250; $script:G12_SLOW_KILL_MILLISECONDS = 1100; $script:G12_LIMIT_MILLISECONDS = $script:G12_STOP_SECONDS * 1000 + $script:G12_TIMER_SLACK_MILLISECONDS  # scaled stop budget: G12's stand-in really waits
 $script:LEFTOVER_QUERY = "SELECT ProcessId, CommandLine FROM Win32_Process WHERE Name = 'pwsh.exe'"
 $OutDir = [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutDir))
 $repoRoot = [IO.Path]::GetFullPath((git -C $PSScriptRoot rev-parse --show-toplevel)).TrimEnd('\', '/') + '\'
 if (($OutDir.TrimEnd('\', '/') + '\').StartsWith($repoRoot, [StringComparison]::OrdinalIgnoreCase)) { Write-Host "-OutDir must be outside the repository ($repoRoot)"; exit 4 }
-New-Item -ItemType Directory -Force $OutDir | Out-Null
-$log = Join-Path $OutDir 'selftest-slot-snapshot.log'
+New-Item -ItemType Directory -Force $OutDir | Out-Null; $log = Join-Path $OutDir 'selftest-slot-snapshot.log'
 function Say([string] $text) { $line = "$((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.fffZ')) $text"; Write-Host $line; Add-Content $log $line }
 # A port no process listens on right now (the OS picks it; released before use).
 function Get-FreePort { $probe = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 0); $probe.Start(); try { $probe.LocalEndpoint.Port } finally { $probe.Stop() } }
@@ -74,8 +69,7 @@ function Get-BusyPortResults([hashtable] $Ctx, [int] $Port, $StandIn) {
 }
 # pwsh -File binds "-Ports P,4173" as one integer, so this wrapper splits a CSV and calls the runner with int[].
 function New-PortCsvWrapper([string] $Runner, [string] $WorkDir) {
-  $wrapper = Join-Path $WorkDir 'ports-csv.ps1'
-  Set-Content $wrapper "param([string] `$OutDir, [string] `$StepsFile, [string] `$Stub, [string] `$PortCsv)`n& '$Runner' -OutDir `$OutDir -StepsFile `$StepsFile -Stub `$Stub -Ports ([int[]](`$PortCsv -split ','))`nexit `$LASTEXITCODE"; return $wrapper
+  $wrapper = Join-Path $WorkDir 'ports-csv.ps1'; Set-Content $wrapper "param([string] `$OutDir, [string] `$StepsFile, [string] `$Stub, [string] `$PortCsv)`n& '$Runner' -OutDir `$OutDir -StepsFile `$StepsFile -Stub `$Stub -Ports ([int[]](`$PortCsv -split ','))`nexit `$LASTEXITCODE"; return $wrapper
 }
 function Get-DuplicatePortResult([hashtable] $Ctx, [int] $Port) {
   $r = Invoke-SnapshotRun $Ctx 'run-with-4173' @{ PortCsv = "$Port,$($script:SNAPSHOT_PREVIEW_PORT)" } (New-PortCsvWrapper $Ctx.Runner $Ctx.WorkDir); $snapshot = $r.Snapshot
@@ -84,14 +78,12 @@ function Get-DuplicatePortResult([hashtable] $Ctx, [int] $Port) {
   New-CheckResult "G4 -Ports $Port,$($script:SNAPSHOT_PREVIEW_PORT): exit 7, no early exit 3, each 4173 listener once per snapshot" $ok "exit=$($r.Code) tsv=[$($snapshot.Path)] 4173-rows=$($previewRows.Count) groups=$(@($previewRows | Group-Object snapshot, pid, localAddress).Count)"
 }
 function Get-SlowSnapshotResult([hashtable] $Ctx, [int] $Port) {
-  $env:GATE_SNAPSHOT_SLOW_FIRST_SECONDS = "$($script:SLOW_FIRST_SNAPSHOT_SECONDS)"
-  try { $r = Invoke-SnapshotRun $Ctx 'run-slow' @{ Ports = $Port } } finally { Remove-Item Env:GATE_SNAPSHOT_SLOW_FIRST_SECONDS -ErrorAction SilentlyContinue }
+  $env:GATE_SNAPSHOT_SLOW_FIRST_SECONDS = "$($script:SLOW_FIRST_SNAPSHOT_SECONDS)"; try { $r = Invoke-SnapshotRun $Ctx 'run-slow' @{ Ports = $Port } } finally { Remove-Item Env:GATE_SNAPSHOT_SLOW_FIRST_SECONDS -ErrorAction SilentlyContinue }
   $ordered = Test-LogOrder $r.Log 'gate snapshot not ready after 15 s' 'gate snapshot stop timeout after 30 s; stopped pid=\d+'; $ok = $r.Code -eq 7 -and $ordered -and $r.Left -eq 0
   New-CheckResult "G5 first snapshot slowed by $($script:SLOW_FIRST_SNAPSHOT_SECONDS) s: exit 7, not ready after 15 s, stop timeout after 30 s, none left" $ok "exit=$($r.Code) ordered=$ordered left=$($r.Left)"
 }
 function Get-FreePortResults([hashtable] $Ctx, [int] $Port) {
-  $r = Invoke-SnapshotRun $Ctx 'run-free' @{ Ports = $Port }; $snapshot = $r.Snapshot
-  $free = @($snapshot.Rows | Where-Object { $_.kind -eq 'listen' -and $_.pid -eq 'none' } | ForEach-Object port | Sort-Object -Unique)
+  $r = Invoke-SnapshotRun $Ctx 'run-free' @{ Ports = $Port }; $snapshot = $r.Snapshot; $free = @($snapshot.Rows | Where-Object { $_.kind -eq 'listen' -and $_.pid -eq 'none' } | ForEach-Object port | Sort-Object -Unique)
   $ok = $r.Code -eq 0 -and $snapshot.Path -and $free -contains "$Port" -and $free -contains "$($script:SNAPSHOT_PREVIEW_PORT)" -and $r.Log -match 'gate snapshot exit=0 gate-snapshot done '
   $buildSeconds = if ($build = Get-Item -LiteralPath (Join-Path $r.RunDir 'build.log') -ErrorAction SilentlyContinue) { [Math]::Round(($build.LastWriteTime - $build.CreationTime).TotalSeconds, 1) } else { 'none' }
   New-CheckResult "G3 port $Port free: exit 0, pid=none listeners for $Port and 4173, snapshot exit 0 logged" $ok "exit=$($r.Code) build=${buildSeconds}s free=[$($free -join ',')] $(($r.Log -split "`n" | Where-Object { $_ -match 'gate snapshot exit=' }) -join ' ')"
@@ -100,8 +92,7 @@ function Get-FreePortResults([hashtable] $Ctx, [int] $Port) {
 # The PIDs a processes.tsv detail cell lists as counted ("pid:name:cmdline [owner] | …", slot-run.ps1 Sample).
 function Get-CountedPids([string] $Detail) { @([regex]::Matches($Detail, '(?:^| \| )(\d+):') | ForEach-Object { $_.Groups[1].Value }) }
 function Get-NotCountedResult([string] $RunDir, [string] $Log) {
-  $snapshotPid = [regex]::Match($Log, 'gate snapshot started pid=(\d+)').Groups[1].Value
-  $samples = @(Read-TsvRows (Join-Path $RunDir 'processes.tsv')); $countedPids = @($samples | ForEach-Object { Get-CountedPids $_.detail })
+  $snapshotPid = [regex]::Match($Log, 'gate snapshot started pid=(\d+)').Groups[1].Value; $samples = @(Read-TsvRows (Join-Path $RunDir 'processes.tsv')); $countedPids = @($samples | ForEach-Object { Get-CountedPids $_.detail })
   $mismatched = @($samples | Where-Object { [int]$_.counted -ne @(Get-CountedPids $_.detail).Count }).Count
   $excludedPids = @(Read-TsvRows (Join-Path $RunDir 'excluded.tsv') | ForEach-Object pid); $aliveOverSamples = $Log.IndexOf('gate snapshot started') -lt $Log.IndexOf('runner-tree n=') -and $Log.LastIndexOf('runner-tree n=') -lt $Log.IndexOf('gate snapshot exit=')
   $ok = [bool]$snapshotPid -and $samples.Count -gt 0 -and $aliveOverSamples -and $mismatched -eq 0 -and $countedPids -notcontains $snapshotPid -and $excludedPids -notcontains $snapshotPid
@@ -163,11 +154,25 @@ function Get-Judgement([object[]] $Rows, [int] $SnapshotPid) {
   $script:ever = @{ [int]$script:STAND_IN_PID = $true }; $script:foreignSeen = @{}; $hits = @(Counted -All $rows)
   "counted=[$((@($hits.ProcessId) | Sort-Object) -join ',')] excluded=[$((@($script:lastExcluded.ProcessId) | Sort-Object) -join ',')] verdict=$(if ($hits.Count) { 'exit 2' } else { 'continue' })"
 }
+# Ends what G13 started even when a step throws: stop file and 30 s wait for the snapshot, then Stop-Process on either still running (only these PIDs).
+function Stop-EquivalenceFixture($Counted, $Snapshot, [string] $StopFile) {
+  try { if ($Snapshot) { New-Item -ItemType File -Force $StopFile | Out-Null; $null = $Snapshot.WaitForExit(30000) } }
+  finally { foreach ($p in @($Snapshot, $Counted) | Where-Object { $_ -and -not $_.HasExited }) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } }
+}
+function Get-FixtureCleanupResult([hashtable] $Ctx) {  # G13 whose snapshot start, then stop file, throws: every process it started has exited
+  $cases = foreach ($failing in 'Start-Process', 'New-Item') { $started = [Collections.Generic.List[object]]::new()
+    function Start-Process { if ($failing -eq 'Start-Process' -and $args[0] -eq $Ctx.Pwsh) { throw 'stand-in snapshot start failed' }; $p = Microsoft.PowerShell.Management\Start-Process @args; $started.Add($p); $p }
+    function New-Item { if ($failing -eq 'New-Item') { throw 'stand-in stop file failed' }; Microsoft.PowerShell.Management\New-Item @args }
+    $thrown = try { $null = Get-CountedEquivalenceResult $Ctx } catch { $_.Exception.Message }
+    [pscustomobject]@{ Failing = $failing; Thrown = "$thrown"; Started = $started.Count; Left = @($started | Where-Object { -not $_.WaitForExit(5000) }).Count; Pids = "$($started.Id)" } }
+  $ok = "$($cases.Started)" -eq '1 2' -and "$($cases.Left)" -eq '0 0' -and @($cases | Where-Object Thrown -NotMatch "^stand-in ").Count -eq 0
+  New-CheckResult 'G15 G13 fixture: snapshot start / stop file throws -> the error propagates, every process G13 started has exited' $ok "$(($cases | ForEach-Object { "$($_.Failing): thrown=[$($_.Thrown)] started=[$($_.Pids)] left=$($_.Left)" }) -join '; ')"
+}
 function Get-CountedEquivalenceResult([hashtable] $Ctx) {
-  $files = Join-Path $Ctx.WorkDir 'equivalence-snapshot'; $counted = Start-Process (Get-Command node).Source '-e "setInterval(() => {}, 1000)"' -WorkingDirectory $Ctx.Root -WindowStyle Hidden -PassThru
-  $snapshot = Start-Process $Ctx.Pwsh "-NoProfile -File `"$(Join-Path $PSScriptRoot 'gate-snapshot.ps1')`" -OutFile `"$files.tsv`" -Ports $($script:SNAPSHOT_PREVIEW_PORT) -StopFile `"$files.stop`"" -WindowStyle Hidden -PassThru
-  try { Start-Sleep -Seconds 2; $live = @(Get-CimInstance Win32_Process) }
-  finally { New-Item -ItemType File -Force "$files.stop" | Out-Null; if (-not $snapshot.WaitForExit(30000)) { Stop-Process -Id $snapshot.Id -Force }; Stop-Process -Id $counted.Id -Force }
+  $files = Join-Path $Ctx.WorkDir 'equivalence-snapshot'; $counted = $snapshot = $null
+  try { $counted = Start-Process (Get-Command node).Source '-e "setInterval(() => {}, 1000)"' -WorkingDirectory $Ctx.Root -WindowStyle Hidden -PassThru
+    $snapshot = Start-Process $Ctx.Pwsh "-NoProfile -File `"$(Join-Path $PSScriptRoot 'gate-snapshot.ps1')`" -OutFile `"$files.tsv`" -Ports $($script:SNAPSHOT_PREVIEW_PORT) -StopFile `"$files.stop`"" -WindowStyle Hidden -PassThru
+    Start-Sleep -Seconds 2; $live = @(Get-CimInstance Win32_Process) } finally { Stop-EquivalenceFixture $counted $snapshot "$files.stop" }
   $with = Get-Judgement $live $snapshot.Id; $without = Get-Judgement @($live | Where-Object ProcessId -NE $snapshot.Id) $snapshot.Id
   $ok = @($live.ProcessId) -contains $snapshot.Id -and $with -eq $without -and $with -match "counted=\[([\d,]*,)?$($counted.Id)(,|\])"
   New-CheckResult "G13 same process table with / without the snapshot pid=$($snapshot.Id): same counted, excluded and verdict (stand-in node pid=$($counted.Id) counted)" $ok "with=[$with] without=[$without]"
@@ -178,23 +183,18 @@ function Get-ExitFourResult([hashtable] $Ctx) {
   $clean = { param($r) $r.Code -eq 4 -and $r.Log -notmatch 'gate snapshot' -and @($r.Files | Where-Object { $_ -like 'gate-snapshot-*' }).Count -eq 0 }
   New-CheckResult 'G6 exit 4 before the snapshot start (missing -StepsFile; -BaseRoot is the root): no gate-snapshot file or log line' ((& $clean $missing) -and (& $clean $location)) "exit=$($missing.Code),$($location.Code)"
 }
-
 $ctx = @{ Pwsh = (Get-Process -Id $PID).Path; Runner = Join-Path $PSScriptRoot 'slot-run.ps1'; Steps = Join-Path $PSScriptRoot 'steps.example.ps1'; Root = $repoRoot.TrimEnd('\'); WorkDir = $OutDir }
 Say "selftest-slot-snapshot start head=$(git -C $PSScriptRoot rev-parse HEAD) outdir=$OutDir"
 $total = [Diagnostics.Stopwatch]::StartNew(); $port = Get-FreePort; $standIn = Start-ListenerStandIn $port $OutDir
 try {
   $results = @(Measure-Checks 'G1+G2' { Get-BusyPortResults $ctx $port $standIn })
-  $results += Measure-Checks 'G4' { Get-DuplicatePortResult $ctx $port }
-  $results += Measure-Checks 'G5' { Get-SlowSnapshotResult $ctx $port }
+  $results += Measure-Checks 'G4' { Get-DuplicatePortResult $ctx $port }; $results += Measure-Checks 'G5' { Get-SlowSnapshotResult $ctx $port }
 } finally { Stop-Process -Id $standIn.Id -Force -ErrorAction SilentlyContinue; $standIn.WaitForExit(5000) | Out-Null }
 $results += Measure-Checks 'G3+G10 (one -Stub build)' { Get-FreePortResults $ctx $port }
-$results += Measure-Checks 'G11' { Get-PreflightExitFourResult $ctx $port }
-$results += Measure-Checks 'G6' { Get-ExitFourResult $ctx }
-$results += Measure-Checks 'G13' { Get-CountedEquivalenceResult $ctx }
+$results += Measure-Checks 'G11' { Get-PreflightExitFourResult $ctx $port }; $results += Measure-Checks 'G6' { Get-ExitFourResult $ctx }
+$results += Measure-Checks 'G13' { Get-CountedEquivalenceResult $ctx }; $results += Measure-Checks 'G15' { Get-FixtureCleanupResult $ctx }
 $snapshotSource = Get-RunnerSnapshotSource $ctx.Runner; . ([scriptblock]::Create($snapshotSource))
-$results += Measure-Checks 'G12' { Get-StopFailureResult $OutDir $ctx.Pwsh $snapshotSource }
-$results += Measure-Checks 'G14' { Get-StartFailureResult $OutDir }
+$results += Measure-Checks 'G12' { Get-StopFailureResult $OutDir $ctx.Pwsh $snapshotSource }; $results += Measure-Checks 'G14' { Get-StartFailureResult $OutDir }
 foreach ($c in $results) { Say "$(if ($c.Ok) { 'PASS' } else { 'FAIL' }) $($c.Label) $($c.Detail)" }
-$failed = @($results | Where-Object { -not $_.Ok }).Count
-Say "summary: $($results.Count) checks; $($results.Count - $failed) PASS, $failed FAIL; total $([Math]::Round($total.Elapsed.TotalSeconds, 1)) s"
+$failed = @($results | Where-Object { -not $_.Ok }).Count; Say "summary: $($results.Count) checks; $($results.Count - $failed) PASS, $failed FAIL; total $([Math]::Round($total.Elapsed.TotalSeconds, 1)) s"
 exit [int]($failed -ne 0)
