@@ -18,11 +18,7 @@ export interface LedgerContext {
   readonly owner: Company;
   readonly period: Period;
 }
-export function emptyBusinessPlan(
-  company: string,
-  owner: Company,
-  event: BusinessEvent,
-): JournalPlan {
+function emptyBusinessPlan(company: string, owner: Company, event: BusinessEvent): JournalPlan {
   return {
     version: 1,
     company,
@@ -57,9 +53,9 @@ export async function statisticsPreview(
   tools: JournalTools,
   context: LedgerContext,
   event: StatisticsEvent,
-  plan: JournalPlan,
 ): Promise<BusinessEventPart> {
-  const { company } = context;
+  const { company, owner } = context;
+  const plan = emptyBusinessPlan(company, owner, event);
   const resolved = compileDimensionRules(await repo.dimensionCatalog(company)).resolve({
     account: "LEDGER",
     day: event.date,
@@ -81,9 +77,9 @@ export async function clearingMatchPreview(
   tools: JournalTools,
   context: LedgerContext,
   event: ClearingEvent,
-  plan: JournalPlan,
 ): Promise<BusinessEventPart> {
-  const { company } = context;
+  const { company, owner } = context;
+  const plan = emptyBusinessPlan(company, owner, event);
   const account = required(await repo.account(company, event.account));
   if (!account.active || !["clearing", "suspense"].includes(account.purpose))
     businessError("account", "account");
