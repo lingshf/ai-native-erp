@@ -29,16 +29,17 @@
 2. **复用 `Gate01Cwd`**：新脚本 dot-source 同目录的 `procs.ps1`，只调用 `[Gate01Cwd]::Get`，不改 `procs.ps1`，不复制那段 C#。
 3. **命令行**：
    ```powershell
-   pwsh -NoProfile -File scripts\slot\gate-snapshot.ps1 -OutFile <新文件.tsv> -Ports <端口>[,<端口>…] (-Once | -StopFile <路径>) [-IntervalSeconds 60] [-MaxMinutes 180]
+   pwsh -NoProfile -File scripts\slot\gate-snapshot.ps1 -OutFile <新文件.tsv> -Ports "<端口>[,<端口>…]" (-Once | -StopFile <路径>) [-IntervalSeconds 60] [-MaxMinutes 180]
    ```
    - `-OutFile` 必须是**不存在的新文件**，所在目录必须已存在，不覆盖、不追加。
    - `-Ports` 必填，列出本次要核对的监听端口（窗口申请里写“批准端口和 4173”）。工具里**不写死任何端口**。
+   - **`-Ports` 是一个字符串参数（`[string]`），按逗号分隔的 CSV 由工具自己解析**，不依赖 PowerShell 的数组绑定：`pwsh -File` 把参数作为字符串传入，不会把 `P,Q` 绑定成整型数组。解析规则：按 `,` 切分，每项去掉首尾空白后须是 1–65535 的十进制整数；空项（如 `"4204,"`）、非数字、超出范围或重复的端口都按参数错误处理（退出码 3，不写文件）。申请与执行中统一写成带引号的一个参数，例如 `-Ports "4204,4173"`。
    - `-Once` 只做一次快照（开窗前门禁）；`-StopFile` 用于窗口内每隔 `-IntervalSeconds` 秒做一次快照，直到该文件出现，或达到 `-MaxMinutes` 上限。`-Once` 与 `-StopFile` 必须二选一。
    - 第一次快照立即做；之后每次在上一次开始后满 `-IntervalSeconds` 秒时进行，不累积漂移。
-4. **每次快照的内容**：
+4. **每次快照的内容**（每次快照写完立即落盘，窗口内可随时读到已完成的快照）：
    - **node 进程**：`Name` 为 `node.exe` 的全部进程，每个一行，`depth=0`。
    - **父进程链**：每个 node 进程沿 `ParentProcessId` 向上逐级记录，`depth=1, 2, …`，直到第一个非 node 进程（含该进程）后停止。遇到以下情况也停止，并在该行 `note` 列写明原因，不推测：父进程不存在（`parent-exited`）、父进程比子进程晚创建（`pid-reused`）、深度达到 32（`depth-cap`）。同一快照内多个 node 进程共享的祖先也逐个链记录，不去重，便于逐链阅读。
-   - **端口监听**：`-Ports` 中每个端口的**每个** Listen 状态端点各一行（`kind=listen`），`localAddress` 写该端点的本地地址（如 `127.0.0.1`、`::1`、`0.0.0.0`），`pid` 写其 `OwningProcess`；同一端口有多个监听地址或多个监听进程时逐个成行，不合并。该端口没有任何监听时写一行，`pid=none`、`localAddress` 为空。
+   - **端口监听**：`-Ports` 中每个端口的**每个** Listen 状态端点各一行（`kind=listen`），`localAddress` 写该端点的本地地址（如 `127.0.0.1`、`::1`、`0.0.0.0`），`pid` 写其 `OwningProcess`；同一端口有多个监听地址或多个监听进程时逐个成行，不合并。该端口没有任何监听时写一行，`pid=none`、`localAddress` 为空。某端口的查询出错时，该端口只写一行 `kind=error`（`port` 填该端口），**不写** `pid=none`：查询失败是“无法判定”，不是“空闲”。
    - **空快照**：没有任何 node 进程时写一行 `kind=none`，保证每次快照至少有一行，按分钟可查。
 5. **TSV 列（固定顺序，首行表头）**：`snapshot`、`takenAt`、`kind`（`node` / `ancestor` / `listen` / `none` / `error`）、`pid`、`ppid`、`depth`、`name`、`created`、`cpuSeconds`、`exe`、`cwd`、`cmdline`、`port`、`localAddress`、`note`。
    - `takenAt` 与 `created` 都写带时区偏移的 ISO 8601（`ToString('o')`）；
@@ -51,11 +52,13 @@
    | --- | --- | --- |
    | 0 | 全部快照完成，没有查询出错 | 写 |
    | 2 | 不是 Windows，或不是 PowerShell 7（与 `slot-run.ps1` 相同） | 不写 |
-   | 3 | 参数错误：`-OutFile` 已存在或目录不存在；`-Once` 与 `-StopFile` 没有二选一；端口不是 1–65535 的整数；`-IntervalSeconds` < 1 | 不写 |
+   | 3 | 参数错误：`-OutFile` 已存在或目录不存在；`-Once` 与 `-StopFile` 没有二选一；`-Ports` 的 CSV 中有空项、非整数、不在 1–65535 或重复的端口；`-IntervalSeconds` < 1 | 不写 |
    | 8 | 至少一次进程查询或端口查询出错（沿用 D475 端口查询失败的退出码）。出错的那次写一行 `kind=error`，`note` 是异常消息；工具继续完成其余快照 | 写 |
    | 9 | 达到 `-MaxMinutes` 上限时 `-StopFile` 仍未出现。已写的快照保留 | 写 |
 
-   结束时向控制台打印一行摘要：`gate-snapshot done snapshots=<n> rows=<n> errors=<n> exit=<码>`。
+   - **优先级**：退出码按 `8 > 9 > 0` 取一个。窗口内先有查询出错、之后又达到 `-MaxMinutes` 上限时退出 **8**，不是 9；是否达到上限由摘要中的 `timedOut` 单独说明，两条事实都不丢。
+
+   结束时向控制台打印一行摘要：`gate-snapshot done snapshots=<n> rows=<n> errors=<n> timedOut=<true|false> exit=<码>`。
 7. **不做的事**：
    - 不起 node，不开端口，不访问网络；
    - 不读取账套与 `logs/` 以外的文件；
@@ -88,11 +91,11 @@
 | --- | --- | --- | --- |
 | G1 | 自测起两级 node 进程：父进程 cwd 为临时目录 A，子进程 cwd 为临时目录 B。`-Once` 之后，TSV 中子进程那条链依次是 `node depth=0 cwd=B`、`ancestor depth=1`（父 node，cwd=A）、`ancestor depth=2`（第一个非 node 进程，即自测的 pwsh），并在此结束 | 失败：没有工具 | 通过 |
 | G2 | G1 中各行的 `created` 可解析为带偏移的时间；`cpuSeconds` 是非负数；`cmdline` 不含制表符与换行 | 失败 | 通过 |
-| G3 | 自测在一个空闲端口 P 上起两个 node 监听（分别绑定 `127.0.0.1` 与 `::1`），另取一个空闲端口 Q：`-Ports P,Q` 产生 P 的两行 `kind=listen`（`localAddress` 分别为 `127.0.0.1` 与 `::1`，`pid` 等于各自的监听进程）与 Q 的一行 `pid=none`（`localAddress` 为空）；本机不能绑定 `::1` 时，改用 G6 同样的替身注入两条监听记录验证逐端点成行，并在 PR 正文说明 | 失败 | 通过 |
-| G4 | `-StopFile` 加 `-IntervalSeconds 1`：自测约 2.5 s 后创建停止文件，得到 ≥ 2 次快照，`snapshot` 从 1 起连续，退出码 0 | 失败 | 通过 |
-| G5 | 参数错误分别得到退出码 3 且不写文件：`-OutFile` 已存在；`-Once` 与 `-StopFile` 都给或都不给；端口 `0` 与 `70000` | 失败 | 通过 |
-| G6 | 用自测的替身（例如通过参数注入，使端口查询抛异常）模拟查询出错：退出码 8，TSV 中有 `kind=error` 行，其余行照常写出 | 失败 | 通过 |
-| G7 | `-MaxMinutes` 上限：使用替身时钟或允许的最小值（由开发定，在 PR 正文说明）使上限先到，得到退出码 9，已写的快照保留 | 失败 | 通过 |
+| G3 | 自测**以子进程方式**用与开窗申请相同的公开调用 `pwsh -NoProfile -File scripts\slot\gate-snapshot.ps1 -OutFile <新文件> -Ports "P,Q" -Once` 运行（不在进程内直接调用函数、不绕过参数绑定），退出码 0。自测在一个空闲端口 P 上起两个 node 监听（分别绑定 `127.0.0.1` 与 `::1`），另取一个空闲端口 Q：`-Ports P,Q` 产生 P 的两行 `kind=listen`（`localAddress` 分别为 `127.0.0.1` 与 `::1`，`pid` 等于各自的监听进程）与 Q 的一行 `pid=none`（`localAddress` 为空）；本机不能绑定 `::1` 时，改用 G6 同样的替身注入两条监听记录验证逐端点成行，并在 PR 正文说明 | 失败 | 通过 |
+| G4 | `-StopFile` 加 `-IntervalSeconds 1`：自测轮询 TSV，**等到 `snapshot=2` 的行实际写出**后才创建停止文件（等待上限 30 s，超时则用例失败并写明“30 s 内未见第 2 次快照”，不得提前发停止信号）；之后工具在停止文件出现后 ≤ 15 s 内退出，退出码 0，`snapshot` 从 1 起连续、≥ 2 次，摘要 `timedOut=false`。判定只依据已写出的快照与退出码，不依据固定的等待时间，慢机上同样成立 | 失败 | 通过 |
+| G5 | 参数错误分别得到退出码 3 且不写文件，全部经 `pwsh -NoProfile -File` 调用：`-OutFile` 已存在；`-Once` 与 `-StopFile` 都给或都不给；`-Ports` 为 `"0"`、`"70000"`、`"abc"`、`"4204,"`、`"4204,4204"` | 失败 | 通过 |
+| G6 | 用自测的替身（例如通过参数注入，使端口查询抛异常）模拟查询出错：退出码 8，TSV 中出错端口只有 `kind=error` 行、没有该端口的 `pid=none` 行，其余行照常写出 | 失败 | 通过 |
+| G7 | `-MaxMinutes` 上限：使用替身时钟或允许的最小值（由开发定，在 PR 正文说明）使上限先到，得到退出码 9、摘要 `timedOut=true`，已写的快照保留；再把 G6 的查询出错替身与上限同时使用，得到退出码 **8**、摘要 `errors≥1 timedOut=true`（验证 8 > 9 的优先级） | 失败 | 通过 |
 
 - G6、G7 的替身只在自测中使用。注入方式由开发定，但必须是参数或环境变量这类显式入口，不改动正式路径的行为；PR 正文写明注入方式。
 
@@ -123,7 +126,7 @@
 - ⑤：退出码、列名、`depth` 上限 32 与默认间隔 60 用具名变量。
 - **测试耗时**（[S20 回顾行动 6](../reviews/S20-retro.md#行动项汇总)，见[任务书模板“测试在满载下的耗时”](TEMPLATE.md#证据要求)）：
   - 自测总耗时 ≤ 60 s，G4 的等待用停止文件加轮询，不用固定的长 sleep；
-  - PR 正文附自测总耗时与每个用例的耗时；单个用例 > 2 s 的写明原因（G4 本身要等待约 2.5 s）。
+  - PR 正文附自测总耗时与每个用例的耗时；单个用例 > 2 s 的写明原因（G4 要等第 2 次快照实际写出，耗时取决于机器，PR 正文写实测值）。
 
 ## 用户可见变化
 
