@@ -1,0 +1,524 @@
+$ node C:\GithubCopilot\copilot-worktrees\ai-native-erp\lingshf-animated-disco\scripts\measure\bundle-measure.mjs --base 7c7cafd72092bfb04fc4fb895df05218bfeaca53 --head eac0c373b236e290e214a8128566d9da00cf6cd7 --work C:\Users\shaoling\AppData\Local\Temp\demo22\bundle --route src/TradeSettlements.tsx=+200 --chunk src/TradeSettlements.tsx=+200 --d454
+## Lockfile
+$ git rev-parse 7c7cafd72092bfb04fc4fb895df05218bfeaca53:package-lock.json   (cwd C:\GithubCopilot\copilot-worktrees\ai-native-erp\lingshf-animated-disco)
+07c1aee8b9c3392b88c25f9bb670adbbc8f19201
+exit 0
+$ git rev-parse eac0c373b236e290e214a8128566d9da00cf6cd7:package-lock.json   (cwd C:\GithubCopilot\copilot-worktrees\ai-native-erp\lingshf-animated-disco)
+07c1aee8b9c3392b88c25f9bb670adbbc8f19201
+exit 0
+
+## Build provenance: base
+$ git worktree add --detach C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\base 7c7cafd72092bfb04fc4fb895df05218bfeaca53   (cwd C:\GithubCopilot\copilot-worktrees\ai-native-erp\lingshf-animated-disco)
+HEAD is now at 7c7cafd tooling: SLOT-05 窗口门禁与每分钟快照工具 gate-snapshot.ps1 (S22) (#312)
+Preparing worktree (detached HEAD 7c7cafd)
+Updating files:  27% (557/1994)
+Updating files:  28% (559/1994)
+Updating files:  29% (579/1994)
+Updating files:  30% (599/1994)
+Updating files:  31% (619/1994)
+Updating files:  32% (639/1994)
+Updating files:  33% (659/1994)
+Updating files:  34% (678/1994)
+Updating files:  35% (698/1994)
+Updating files:  36% (718/1994)
+Updating files:  37% (738/1994)
+Updating files:  38% (758/1994)
+Updating files:  39% (778/1994)
+Updating files:  40% (798/1994)
+Updating files:  40% (807/1994)
+Updating files:  41% (818/1994)
+Updating files:  42% (838/1994)
+Updating files:  43% (858/1994)
+Updating files:  44% (878/1994)
+Updating files:  45% (898/1994)
+Updating files:  46% (918/1994)
+Updating files:  47% (938/1994)
+Updating files:  48% (958/1994)
+Updating files:  49% (978/1994)
+Updating files:  50% (997/1994)
+Updating files:  51% (1017/1994)
+Updating files:  52% (1037/1994)
+Updating files:  53% (1057/1994)
+Updating files:  54% (1077/1994)
+Updating files:  55% (1097/1994)
+Updating files:  56% (1117/1994)
+Updating files:  57% (1137/1994)
+Updating files:  58% (1157/1994)
+Updating files:  59% (1177/1994)
+Updating files:  60% (1197/1994)
+Updating files:  61% (1217/1994)
+Updating files:  62% (1237/1994)
+Updating files:  63% (1257/1994)
+Updating files:  64% (1277/1994)
+Updating files:  65% (1297/1994)
+Updating files:  66% (1317/1994)
+Updating files:  67% (1336/1994)
+Updating files:  68% (1356/1994)
+Updating files:  69% (1376/1994)
+Updating files:  70% (1396/1994)
+Updating files:  71% (1416/1994)
+Updating files:  71% (1423/1994)
+Updating files:  72% (1436/1994)
+Updating files:  73% (1456/1994)
+Updating files:  74% (1476/1994)
+Updating files:  75% (1496/1994)
+Updating files:  76% (1516/1994)
+Updating files:  77% (1536/1994)
+Updating files:  78% (1556/1994)
+Updating files:  79% (1576/1994)
+Updating files:  80% (1596/1994)
+Updating files:  81% (1616/1994)
+Updating files:  82% (1636/1994)
+Updating files:  83% (1656/1994)
+Updating files:  84% (1675/1994)
+Updating files:  85% (1695/1994)
+Updating files:  86% (1715/1994)
+Updating files:  87% (1735/1994)
+Updating files:  88% (1755/1994)
+Updating files:  89% (1775/1994)
+Updating files:  90% (1795/1994)
+Updating files:  91% (1815/1994)
+Updating files:  92% (1835/1994)
+Updating files:  93% (1855/1994)
+Updating files:  94% (1875/1994)
+Updating files:  95% (1895/1994)
+Updating files:  96% (1915/1994)
+Updating files:  97% (1935/1994)
+Updating files:  98% (1955/1994)
+Updating files:  99% (1975/1994)
+Updating files: 100% (1994/1994)
+Updating files: 100% (1994/1994), done.
+exit 0
+$ git rev-parse HEAD   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\base)
+7c7cafd72092bfb04fc4fb895df05218bfeaca53
+exit 0
+$ git status --porcelain   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\base)
+(no output)
+exit 0
+$ git rev-parse HEAD:package-lock.json   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\base)
+07c1aee8b9c3392b88c25f9bb670adbbc8f19201
+exit 0
+$ node -v   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\base)
+v26.13.0
+exit 0
+$ npm -v   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\base)
+11.20.0
+exit 0
+os: Windows_NT 10.0.26300 (Windows 11 Enterprise)
+$ npm ci --no-audit --no-fund   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\base)
+
+added 230 packages in 37s
+exit 0
+$ git status --porcelain   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\base)
+(no output)
+exit 0
+$ npm run build --workspace @erp/web -- --manifest   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\base)
+
+> @erp/web@0.1.0 build
+> vite build --manifest
+
+[36mvite v8.3.6 [32mbuilding client environment for production...[36m[39m
+transforming...
+✓ 329 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                    0.45 kB │ gzip:   0.29 kB
+dist/.vite/manifest.json                           9.99 kB │ gzip:   1.34 kB
+dist/assets/Accounts-0Trj-Hyg.css                  0.89 kB │ gzip:   0.37 kB
+dist/assets/master-l0PINZ8G.css                    1.77 kB │ gzip:   0.73 kB
+dist/assets/TradeReports-B2X2bxpq.css              1.86 kB │ gzip:   0.60 kB
+dist/assets/ledger-BsKUGf7q.css                    2.08 kB │ gzip:   0.73 kB
+dist/assets/PeriodClose-Cnfbimgu.css               2.24 kB │ gzip:   0.73 kB
+dist/assets/trade-settlements-KB9rSY3-.css         2.86 kB │ gzip:   0.82 kB
+dist/assets/TradeOrders-DnGspDwj.css               2.97 kB │ gzip:   0.88 kB
+dist/assets/Migration-Dt5F-mml.css                 5.03 kB │ gzip:   1.15 kB
+dist/assets/TradeInvoices-d2093p3n.css             5.27 kB │ gzip:   1.24 kB
+dist/assets/virtual-rows-C9RttyBw.css              5.81 kB │ gzip:   1.60 kB
+dist/assets/index-DhcDIMA7.css                    10.50 kB │ gzip:   2.92 kB
+dist/assets/components-BSHRe5rS.css               12.42 kB │ gzip:   2.57 kB
+dist/assets/useQuery-D2KqWgMQ.js                   0.09 kB │ gzip:   0.10 kB
+dist/assets/decimal-format-BWPY7JQR.js             0.20 kB │ gzip:   0.18 kB
+dist/assets/leave-guard-history-BSy0N2j7.js        0.39 kB │ gzip:   0.26 kB
+dist/assets/master-data-client-BhlmIUOe.js         0.71 kB │ gzip:   0.45 kB
+dist/assets/use-invoice-leave-guard-DOLns0TG.js    1.02 kB │ gzip:   0.54 kB
+dist/assets/useInfiniteQuery-SLk4ETkN.js           1.15 kB │ gzip:   0.49 kB
+dist/assets/virtual-rows-DEHDQSuR.js               1.34 kB │ gzip:   0.66 kB
+dist/assets/components-C7nCpgCt.js                 1.68 kB │ gzip:   0.74 kB
+dist/assets/reports-data-KV8Q1dN5.js               1.94 kB │ gzip:   0.94 kB
+dist/assets/dialogs-Bqf5nbAd.js                    4.65 kB │ gzip:   1.86 kB
+dist/assets/Migration-CnTenXNe.js                  5.11 kB │ gzip:   1.87 kB
+dist/assets/useBaseQuery-CH9q_afc.js               7.89 kB │ gzip:   2.89 kB
+dist/assets/Dimensions--ZcabrD1.js                11.17 kB │ gzip:   3.78 kB
+dist/assets/Reports-I3pR8RS-.js                   11.74 kB │ gzip:   3.67 kB
+dist/assets/TradeReports-C8xW4mJQ.js              11.87 kB │ gzip:   3.49 kB
+dist/assets/PeriodClose-DuDdGfU9.js               12.46 kB │ gzip:   4.31 kB
+dist/assets/Accounts-34fpnGhh.js                  12.63 kB │ gzip:   3.82 kB
+dist/assets/esm-Cmea6eGb.js                       12.95 kB │ gzip:   4.28 kB
+dist/assets/TradeMaster-Y0PNiFWC.js               12.98 kB │ gzip:   4.71 kB
+dist/assets/TradeSettlements-BPfOvlnE.js          14.82 kB │ gzip:   5.14 kB
+dist/assets/LedgerReports-B1An0tPY.js             17.60 kB │ gzip:   4.98 kB
+dist/assets/TradeAdjustments-Cf4S4Nc7.js          19.50 kB │ gzip:   6.35 kB
+dist/assets/BusinessEvents-CclXIBOr.js            29.94 kB │ gzip:   6.96 kB
+dist/assets/Journals-sXIVT0yV.js                  30.91 kB │ gzip:   8.48 kB
+dist/assets/TradeInvoices-Fnz6MyCY.js             41.08 kB │ gzip:  11.75 kB
+dist/assets/TradeOrders-CrsPJWG3.js               43.04 kB │ gzip:  13.33 kB
+dist/assets/index-BtE_HD_U.js                    530.72 kB │ gzip: 163.03 kB
+
+[32m✓ built in 764ms[39m
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+exit 0
+$ git status --porcelain   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\base)
+(no output)
+exit 0
+
+## Build provenance: head
+$ git worktree add --detach C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\head eac0c373b236e290e214a8128566d9da00cf6cd7   (cwd C:\GithubCopilot\copilot-worktrees\ai-native-erp\lingshf-animated-disco)
+HEAD is now at eac0c37 TLIST-06：付款与收款页分配页签加“刷新列表” (#316)
+Preparing worktree (detached HEAD eac0c37)
+Updating files:  30% (604/1995)
+Updating files:  31% (619/1995)
+Updating files:  32% (639/1995)
+Updating files:  33% (659/1995)
+Updating files:  34% (679/1995)
+Updating files:  35% (699/1995)
+Updating files:  36% (719/1995)
+Updating files:  37% (739/1995)
+Updating files:  38% (759/1995)
+Updating files:  39% (779/1995)
+Updating files:  40% (798/1995)
+Updating files:  41% (818/1995)
+Updating files:  42% (838/1995)
+Updating files:  43% (858/1995)
+Updating files:  44% (878/1995)
+Updating files:  45% (898/1995)
+Updating files:  46% (918/1995)
+Updating files:  47% (938/1995)
+Updating files:  48% (958/1995)
+Updating files:  49% (978/1995)
+Updating files:  50% (998/1995)
+Updating files:  51% (1018/1995)
+Updating files:  52% (1038/1995)
+Updating files:  53% (1058/1995)
+Updating files:  54% (1078/1995)
+Updating files:  55% (1098/1995)
+Updating files:  55% (1107/1995)
+Updating files:  56% (1118/1995)
+Updating files:  57% (1138/1995)
+Updating files:  58% (1158/1995)
+Updating files:  59% (1178/1995)
+Updating files:  60% (1197/1995)
+Updating files:  61% (1217/1995)
+Updating files:  62% (1237/1995)
+Updating files:  63% (1257/1995)
+Updating files:  64% (1277/1995)
+Updating files:  65% (1297/1995)
+Updating files:  66% (1317/1995)
+Updating files:  67% (1337/1995)
+Updating files:  68% (1357/1995)
+Updating files:  69% (1377/1995)
+Updating files:  70% (1397/1995)
+Updating files:  71% (1417/1995)
+Updating files:  72% (1437/1995)
+Updating files:  73% (1457/1995)
+Updating files:  74% (1477/1995)
+Updating files:  75% (1497/1995)
+Updating files:  76% (1517/1995)
+Updating files:  77% (1537/1995)
+Updating files:  78% (1557/1995)
+Updating files:  79% (1577/1995)
+Updating files:  80% (1596/1995)
+Updating files:  80% (1611/1995)
+Updating files:  81% (1616/1995)
+Updating files:  81% (1620/1995)
+Updating files:  82% (1636/1995)
+Updating files:  83% (1656/1995)
+Updating files:  84% (1676/1995)
+Updating files:  85% (1696/1995)
+Updating files:  86% (1716/1995)
+Updating files:  87% (1736/1995)
+Updating files:  88% (1756/1995)
+Updating files:  89% (1776/1995)
+Updating files:  90% (1796/1995)
+Updating files:  91% (1816/1995)
+Updating files:  92% (1836/1995)
+Updating files:  93% (1856/1995)
+Updating files:  94% (1876/1995)
+Updating files:  95% (1896/1995)
+Updating files:  96% (1916/1995)
+Updating files:  97% (1936/1995)
+Updating files:  98% (1956/1995)
+Updating files:  98% (1972/1995)
+Updating files:  99% (1976/1995)
+Updating files: 100% (1995/1995)
+Updating files: 100% (1995/1995), done.
+exit 0
+$ git rev-parse HEAD   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\head)
+eac0c373b236e290e214a8128566d9da00cf6cd7
+exit 0
+$ git status --porcelain   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\head)
+(no output)
+exit 0
+$ git rev-parse HEAD:package-lock.json   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\head)
+07c1aee8b9c3392b88c25f9bb670adbbc8f19201
+exit 0
+$ node -v   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\head)
+v26.13.0
+exit 0
+$ npm -v   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\head)
+11.20.0
+exit 0
+os: Windows_NT 10.0.26300 (Windows 11 Enterprise)
+$ npm ci --no-audit --no-fund   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\head)
+
+added 230 packages in 47s
+exit 0
+$ git status --porcelain   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\head)
+(no output)
+exit 0
+$ npm run build --workspace @erp/web -- --manifest   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\head)
+
+> @erp/web@0.1.0 build
+> vite build --manifest
+
+[36mvite v8.3.6 [32mbuilding client environment for production...[36m[39m
+transforming...
+✓ 330 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                    0.45 kB │ gzip:   0.29 kB
+dist/.vite/manifest.json                           9.99 kB │ gzip:   1.34 kB
+dist/assets/Accounts-0Trj-Hyg.css                  0.89 kB │ gzip:   0.37 kB
+dist/assets/master-l0PINZ8G.css                    1.77 kB │ gzip:   0.73 kB
+dist/assets/TradeReports-B2X2bxpq.css              1.86 kB │ gzip:   0.60 kB
+dist/assets/ledger-BsKUGf7q.css                    2.08 kB │ gzip:   0.73 kB
+dist/assets/PeriodClose-Cnfbimgu.css               2.24 kB │ gzip:   0.73 kB
+dist/assets/trade-settlements-KB9rSY3-.css         2.86 kB │ gzip:   0.82 kB
+dist/assets/TradeOrders-DnGspDwj.css               2.97 kB │ gzip:   0.88 kB
+dist/assets/Migration-Dt5F-mml.css                 5.03 kB │ gzip:   1.15 kB
+dist/assets/TradeInvoices-d2093p3n.css             5.27 kB │ gzip:   1.24 kB
+dist/assets/virtual-rows-C9RttyBw.css              5.81 kB │ gzip:   1.60 kB
+dist/assets/index-DhcDIMA7.css                    10.50 kB │ gzip:   2.92 kB
+dist/assets/components-BSHRe5rS.css               12.42 kB │ gzip:   2.57 kB
+dist/assets/useQuery-DVn0rQoP.js                   0.09 kB │ gzip:   0.10 kB
+dist/assets/decimal-format-BWPY7JQR.js             0.20 kB │ gzip:   0.18 kB
+dist/assets/leave-guard-history-CDccTch_.js        0.39 kB │ gzip:   0.27 kB
+dist/assets/master-data-client-BQIsvIGJ.js         0.71 kB │ gzip:   0.45 kB
+dist/assets/use-invoice-leave-guard-BswI_0ED.js    1.02 kB │ gzip:   0.54 kB
+dist/assets/useInfiniteQuery-BfP9hA7w.js           1.15 kB │ gzip:   0.49 kB
+dist/assets/virtual-rows-DaSsps_D.js               1.34 kB │ gzip:   0.66 kB
+dist/assets/components-B4lbPz2C.js                 1.68 kB │ gzip:   0.74 kB
+dist/assets/reports-data-l67MD1Pm.js               1.94 kB │ gzip:   0.94 kB
+dist/assets/dialogs-DJAi966c.js                    4.65 kB │ gzip:   1.86 kB
+dist/assets/Migration-BZJ9_Mn3.js                  5.11 kB │ gzip:   1.87 kB
+dist/assets/useBaseQuery-CkwJz1OL.js               7.89 kB │ gzip:   2.89 kB
+dist/assets/Dimensions-BYUR8ww7.js                11.17 kB │ gzip:   3.79 kB
+dist/assets/Reports-B2hIjMUg.js                   11.74 kB │ gzip:   3.67 kB
+dist/assets/TradeReports-B81skM1n.js              11.87 kB │ gzip:   3.49 kB
+dist/assets/PeriodClose-D9u3ILmr.js               12.46 kB │ gzip:   4.31 kB
+dist/assets/Accounts-vB1Jcwxh.js                  12.63 kB │ gzip:   3.82 kB
+dist/assets/esm-B_8MPJdt.js                       12.95 kB │ gzip:   4.28 kB
+dist/assets/TradeMaster-JD7o7GwR.js               12.98 kB │ gzip:   4.71 kB
+dist/assets/TradeSettlements-CvrUZxhZ.js          15.07 kB │ gzip:   5.21 kB
+dist/assets/LedgerReports-Dk46jkVa.js             17.60 kB │ gzip:   4.98 kB
+dist/assets/TradeAdjustments-BsI3Lq09.js          19.50 kB │ gzip:   6.35 kB
+dist/assets/BusinessEvents-CXqDsdQH.js            29.94 kB │ gzip:   6.96 kB
+dist/assets/Journals-G_6BuAXl.js                  30.91 kB │ gzip:   8.48 kB
+dist/assets/TradeInvoices-CGqVy7BJ.js             41.08 kB │ gzip:  11.75 kB
+dist/assets/TradeOrders-1NCvLUQu.js               43.04 kB │ gzip:  13.33 kB
+dist/assets/index-Zd7N3mpV.js                    530.72 kB │ gzip: 163.04 kB
+
+[32m✓ built in 685ms[39m
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+exit 0
+$ git status --porcelain   (cwd C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\head)
+(no output)
+exit 0
+
+## Comparison: base 7c7cafd72092bfb04fc4fb895df05218bfeaca53 → head eac0c373b236e290e214a8128566d9da00cf6cd7
+## First screen (D432 / D454)
+JS base: index.html
+JS head: index.html
+D454 ① preload set equal: true
+D454 ② raw ±0: true
+D454 ③ text equal after sorting m.f and __vite__mapDeps: true
+D454 ④ masked gzip-9 |Δ| ≤ 10 B: true
+
+## Route CSS (raw B / masked gzip-9 B, base → head)
+src/Accounts.tsx: assets/Accounts.css 893/377, assets/components.css 12422/2564, assets/index.css 10506/2910 → assets/Accounts.css 893/377, assets/components.css 12422/2564, assets/index.css 10506/2910
+src/BusinessEvents.tsx: assets/components.css 12422/2564, assets/index.css 10506/2910, assets/virtual-rows.css 5817/1591 → assets/components.css 12422/2564, assets/index.css 10506/2910, assets/virtual-rows.css 5817/1591
+src/Dimensions.tsx: assets/components.css 12422/2564, assets/index.css 10506/2910, assets/master.css 1772/730 → assets/components.css 12422/2564, assets/index.css 10506/2910, assets/master.css 1772/730
+src/Journals.tsx: assets/components.css 12422/2564, assets/index.css 10506/2910, assets/virtual-rows.css 5817/1591 → assets/components.css 12422/2564, assets/index.css 10506/2910, assets/virtual-rows.css 5817/1591
+src/LedgerReports.tsx: assets/components.css 12422/2564, assets/index.css 10506/2910, assets/ledger.css 2082/729, assets/virtual-rows.css 5817/1591 → assets/components.css 12422/2564, assets/index.css 10506/2910, assets/ledger.css 2082/729, assets/virtual-rows.css 5817/1591
+src/Migration.tsx: assets/Migration.css 5033/1149, assets/components.css 12422/2564, assets/index.css 10506/2910 → assets/Migration.css 5033/1149, assets/components.css 12422/2564, assets/index.css 10506/2910
+src/PeriodClose.tsx: assets/PeriodClose.css 2242/735, assets/components.css 12422/2564, assets/index.css 10506/2910, assets/virtual-rows.css 5817/1591 → assets/PeriodClose.css 2242/735, assets/components.css 12422/2564, assets/index.css 10506/2910, assets/virtual-rows.css 5817/1591
+src/Reports.tsx: assets/components.css 12422/2564, assets/index.css 10506/2910, assets/ledger.css 2082/729 → assets/components.css 12422/2564, assets/index.css 10506/2910, assets/ledger.css 2082/729
+src/TradeAdjustments.tsx: assets/components.css 12422/2564, assets/index.css 10506/2910, assets/trade-settlements.css 2861/823 → assets/components.css 12422/2564, assets/index.css 10506/2910, assets/trade-settlements.css 2861/823
+src/TradeInvoices.tsx: assets/TradeInvoices.css 5277/1246, assets/components.css 12422/2564, assets/index.css 10506/2910 → assets/TradeInvoices.css 5277/1246, assets/components.css 12422/2564, assets/index.css 10506/2910
+src/TradeMaster.tsx: assets/components.css 12422/2564, assets/index.css 10506/2910, assets/master.css 1772/730 → assets/components.css 12422/2564, assets/index.css 10506/2910, assets/master.css 1772/730
+src/TradeOrders.tsx: assets/TradeOrders.css 2977/881, assets/components.css 12422/2564, assets/index.css 10506/2910 → assets/TradeOrders.css 2977/881, assets/components.css 12422/2564, assets/index.css 10506/2910
+src/TradeReports.tsx: assets/TradeReports.css 1867/602, assets/components.css 12422/2564, assets/index.css 10506/2910, assets/virtual-rows.css 5817/1591 → assets/TradeReports.css 1867/602, assets/components.css 12422/2564, assets/index.css 10506/2910, assets/virtual-rows.css 5817/1591
+src/TradeSettlements.tsx: assets/components.css 12422/2564, assets/index.css 10506/2910, assets/trade-settlements.css 2861/823 → assets/components.css 12422/2564, assets/index.css 10506/2910, assets/trade-settlements.css 2861/823
+src/ui/components/index.tsx: assets/components.css 12422/2564, assets/index.css 10506/2910 → assets/components.css 12422/2564, assets/index.css 10506/2910
+
+## Budgets (decided on masked gzip-9 B; raw B for reference)
+| kind | key | raw base | raw head | gzip base | gzip head | Δ gzip | limit | result |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| first-screen | first-screen | 530726 | 530726 | 160944 | 160944 | 0 | ±0 | PASS |
+| route | src/Accounts.tsx | 37034 | 37034 | 12545 | 12545 | 0 | ±0 | PASS |
+| route | src/BusinessEvents.tsx | 62286 | 62286 | 19041 | 19041 | 0 | ±0 | PASS |
+| route | src/Dimensions.tsx | 35571 | 35571 | 12504 | 12504 | 0 | ±0 | PASS |
+| route | src/Journals.tsx | 63255 | 63255 | 20521 | 20521 | 0 | ±0 | PASS |
+| route | src/LedgerReports.tsx | 45390 | 45390 | 15343 | 15343 | 0 | ±0 | PASS |
+| route | src/Migration.tsx | 15494 | 15494 | 5990 | 5990 | 0 | ±0 | PASS |
+| route | src/PeriodClose.tsx | 41566 | 41566 | 15381 | 15381 | 0 | ±0 | PASS |
+| route | src/Reports.tsx | 24521 | 24521 | 8744 | 8744 | 0 | ±0 | PASS |
+| route | src/TradeAdjustments.tsx | 34305 | 34305 | 12538 | 12538 | 0 | ±0 | PASS |
+| route | src/TradeInvoices.tsx | 69141 | 69141 | 22378 | 22378 | 0 | ±0 | PASS |
+| route | src/TradeMaster.tsx | 37776 | 37776 | 13691 | 13691 | 0 | ±0 | PASS |
+| route | src/TradeOrders.tsx | 57129 | 57129 | 19218 | 19218 | 0 | ±0 | PASS |
+| route | src/TradeReports.tsx | 41077 | 41077 | 14670 | 14670 | 0 | ±0 | PASS |
+| route | src/TradeSettlements.tsx | 42584 | 42834 | 15566 | 15632 | +66 | +200 | PASS |
+| route | src/ui/components/index.tsx | 1684 | 1684 | 735 | 735 | 0 | ±0 | PASS |
+| chunk | _decimal-format.js | 200 | 200 | 187 | 187 | 0 | ±0 | PASS |
+| chunk | _dialogs.js | 4654 | 4654 | 1816 | 1816 | 0 | ±0 | PASS |
+| chunk | _esm.js | 12957 | 12957 | 4248 | 4248 | 0 | ±0 | PASS |
+| chunk | _leave-guard-history.js | 397 | 397 | 263 | 263 | 0 | ±0 | PASS |
+| chunk | _master-data-client.js | 711 | 711 | 448 | 448 | 0 | ±0 | PASS |
+| chunk | _reports-data.js | 1948 | 1948 | 944 | 944 | 0 | ±0 | PASS |
+| chunk | _use-invoice-leave-guard.js | 1020 | 1020 | 527 | 527 | 0 | ±0 | PASS |
+| chunk | _useBaseQuery.js | 7893 | 7893 | 2863 | 2863 | 0 | ±0 | PASS |
+| chunk | _useInfiniteQuery.js | 1152 | 1152 | 476 | 476 | 0 | ±0 | PASS |
+| chunk | _useQuery.js | 96 | 96 | 104 | 104 | 0 | ±0 | PASS |
+| chunk | _virtual-rows.js | 1340 | 1340 | 640 | 640 | 0 | ±0 | PASS |
+| chunk | src/Accounts.tsx | 12637 | 12637 | 3775 | 3775 | 0 | ±0 | PASS |
+| chunk | src/BusinessEvents.tsx | 29947 | 29947 | 6871 | 6871 | 0 | ±0 | PASS |
+| chunk | src/Dimensions.tsx | 11174 | 11174 | 3734 | 3734 | 0 | ±0 | PASS |
+| chunk | src/Journals.tsx | 30916 | 30916 | 8351 | 8351 | 0 | ±0 | PASS |
+| chunk | src/LedgerReports.tsx | 17609 | 17609 | 4885 | 4885 | 0 | ±0 | PASS |
+| chunk | src/Migration.tsx | 5110 | 5110 | 1840 | 1840 | 0 | ±0 | PASS |
+| chunk | src/PeriodClose.tsx | 12464 | 12464 | 4237 | 4237 | 0 | ±0 | PASS |
+| chunk | src/Reports.tsx | 11748 | 11748 | 3622 | 3622 | 0 | ±0 | PASS |
+| chunk | src/TradeAdjustments.tsx | 19500 | 19500 | 6282 | 6282 | 0 | ±0 | PASS |
+| chunk | src/TradeInvoices.tsx | 41083 | 41083 | 11583 | 11583 | 0 | ±0 | PASS |
+| chunk | src/TradeMaster.tsx | 12982 | 12982 | 4658 | 4658 | 0 | ±0 | PASS |
+| chunk | src/TradeOrders.tsx | 43048 | 43048 | 13198 | 13198 | 0 | ±0 | PASS |
+| chunk | src/TradeReports.tsx | 11879 | 11879 | 3422 | 3422 | 0 | ±0 | PASS |
+| chunk | src/TradeSettlements.tsx | 14822 | 15072 | 5062 | 5128 | +66 | +200 | PASS |
+| chunk | src/ui/components/index.tsx | 1684 | 1684 | 735 | 735 | 0 | ±0 | PASS |
+| chunk | assets/Accounts.css | 893 | 893 | 377 | 377 | 0 | ±0 | PASS |
+| chunk | assets/Migration.css | 5033 | 5033 | 1149 | 1149 | 0 | ±0 | PASS |
+| chunk | assets/PeriodClose.css | 2242 | 2242 | 735 | 735 | 0 | ±0 | PASS |
+| chunk | assets/TradeInvoices.css | 5277 | 5277 | 1246 | 1246 | 0 | ±0 | PASS |
+| chunk | assets/TradeOrders.css | 2977 | 2977 | 881 | 881 | 0 | ±0 | PASS |
+| chunk | assets/TradeReports.css | 1867 | 1867 | 602 | 602 | 0 | ±0 | PASS |
+| chunk | assets/components.css | 12422 | 12422 | 2564 | 2564 | 0 | ±0 | PASS |
+| chunk | assets/index.css | 10506 | 10506 | 2910 | 2910 | 0 | ±0 | PASS |
+| chunk | assets/ledger.css | 2082 | 2082 | 729 | 729 | 0 | ±0 | PASS |
+| chunk | assets/master.css | 1772 | 1772 | 730 | 730 | 0 | ±0 | PASS |
+| chunk | assets/trade-settlements.css | 2861 | 2861 | 823 | 823 | 0 | ±0 | PASS |
+| chunk | assets/virtual-rows.css | 5817 | 5817 | 1591 | 1591 | 0 | ±0 | PASS |
+
+## Asset SHA-256 (base: C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\base\packages\web\dist)
+177715571db398984785e9485773e688a8dc5211df1012adc0dea9fbc8ffaee2  .vite/manifest.json
+a45d3c6f3055de1dfa27882a921e31a96b8917b0c296a063e2ccf2f437d91c42  assets/Accounts-0Trj-Hyg.css
+2f27d1a78dbe887ff65f56b28e573ce1d203ea3aa8c170baaccce9a94da4a31a  assets/Accounts-34fpnGhh.js
+67906c1de094e85a9e7681a864389875a64d1f59d987e4ea0448fd5018fde3c1  assets/BusinessEvents-CclXIBOr.js
+178e0e55f249655ab5ea929a8016f20bb00e7ff829bcc6cb774d4590cabc1e02  assets/components-BSHRe5rS.css
+c5b53c3b4ca7d26d0c3c92a17f808e8decc5b1dc055e7ac9e452f8163cff2cb1  assets/components-C7nCpgCt.js
+b72104bc45ee8d4f81cc618c9d30e5366093dface3d7a8639512e988e996f642  assets/decimal-format-BWPY7JQR.js
+dc91959a1ddb46c008dcac5f7e731fb807acf294120128107528a577882c4a1e  assets/dialogs-Bqf5nbAd.js
+ce798ac385b234d2f395bd5f1b8dd62d6eeb3db3469d1ec1ea284372726a2db9  assets/Dimensions--ZcabrD1.js
+8269018cc30f1c3a96e2304ab8c5e043946b115cd79e2b2846705a7aa76cdf9b  assets/esm-Cmea6eGb.js
+e6d77ab589d9827583c8dc17f3064cc2216c7ff1bc3223b7d839d8f13e0c7710  assets/index-BtE_HD_U.js
+0644489a33a53bf5e22390b76eb53653e51554b8a1f537d0313181c81f67c7d3  assets/index-DhcDIMA7.css
+a3ad19e550dd8f56a5d14191774c7e69352b4ce7064861a6a84c7a0f53870f88  assets/Journals-sXIVT0yV.js
+5db8745bbeb0b8890af7e5b7eff35d9116f6d2a1687a348be8f51ad3c5b7d43f  assets/leave-guard-history-BSy0N2j7.js
+a8cd21d4fddf2cd8b3cc8e824439a7b24ac94ce6cf1293a523cfd12d25c6c511  assets/ledger-BsKUGf7q.css
+650094ffce09a3606fb28629cc8335adb29970aac830d37567273b568bbcd7b9  assets/LedgerReports-B1An0tPY.js
+e17ba234baf96d00038c86eb338f12b54f35a632a829cf19bfd1bf220152157c  assets/master-data-client-BhlmIUOe.js
+21592bd9d0ee77f17244e56d66d1c1ddd4e7d94bb940b199ab0253d9c01c8f43  assets/master-l0PINZ8G.css
+e8e4003ff7d75b7e98405f3049997cea39f4b0d5b0287cd994dc57bdcda0046b  assets/Migration-CnTenXNe.js
+ab4640c83f45c2c71a0a3dca8e58039ea11de8e80613158f749527594bca3fee  assets/Migration-Dt5F-mml.css
+557ae4e3804f9916c237e700e019455ec46db18d05aabefd99fd57d808a67b12  assets/PeriodClose-Cnfbimgu.css
+07c84b706e7832741e533214ed0604d5c57e07d15004146b1ba7135798f31271  assets/PeriodClose-DuDdGfU9.js
+91cf9d5bcad8a651b773f7e334817edbe3f198ad2495fbc267bc5f0ba07b7654  assets/reports-data-KV8Q1dN5.js
+84546a96f454708e032894ab62a014f141c626e8d5eae23d477e542993cc9c84  assets/Reports-I3pR8RS-.js
+7bf3610192fa27a88024be09e8280c9c2305dd23bd3bdfcc4edcff7abf85eb70  assets/trade-settlements-KB9rSY3-.css
+3a71302edcfde58d01ded615a7c3b349731b645b025ab5627351619da35729cc  assets/TradeAdjustments-Cf4S4Nc7.js
+1a513808af7c94bc31c391a9031657492b2c4e04bd1b65f3c5da0228cee093bf  assets/TradeInvoices-d2093p3n.css
+34bd8390ad0331e49759c309fc0c4bbdb942d7c86a8b2c9a6147282fa7f43b6a  assets/TradeInvoices-Fnz6MyCY.js
+6f9b888787e1ae98621fe51881c14c9f10868a721c9b8f9325c99770581e7c27  assets/TradeMaster-Y0PNiFWC.js
+31f61326d7db8f94e4b805e147d01642ff9064d81bc14d6db8c15b5ff5b72d5f  assets/TradeOrders-CrsPJWG3.js
+fb6d8cb4438b53c0d2112382cc21e80e27a56e56e8dc29169283529f324d6177  assets/TradeOrders-DnGspDwj.css
+252682e0662f7287aae8dd9e85bb0e5c064941695bafe8af3b1cc7a333d453ea  assets/TradeReports-B2X2bxpq.css
+16137aecdfd0b61d6614a7ee1a852b998b1c03a77e9b1397e45e0aabad37b563  assets/TradeReports-C8xW4mJQ.js
+ab4e403908f9da64c974949c709c9bcb48e37cae84936593fb0061e971f7c562  assets/TradeSettlements-BPfOvlnE.js
+88a3cefe30ce41a2652ac56d40a5864f09ee672963909fb2d7c19c98c5d43a55  assets/use-invoice-leave-guard-DOLns0TG.js
+26d7e0f319b6d3fb510643d7130f8da5ef82ed6aa83a7cb14f0d843d1ad373d2  assets/useBaseQuery-CH9q_afc.js
+a1480ea0ea95b2964352dc481a757420d78cc9e5e8959fd8ee8a5658da8e2dd3  assets/useInfiniteQuery-SLk4ETkN.js
+4f642c6c138beadf10ecf978dff0b0fda48fd387ca320f75955ccdb7de71a912  assets/useQuery-D2KqWgMQ.js
+c3573378f8b488d157152afc6b05f4388b2ac524fa8ede697014adb1f0f1a6fe  assets/virtual-rows-C9RttyBw.css
+6369cfedf8f1753b9fff36b12fd1e758f23858f7388c5fc4236451a240b664c4  assets/virtual-rows-DEHDQSuR.js
+be6d1686f1b10537ee0f74e84a883a60f845f76c5032630eea71a89c449bb2f4  favicon.svg
+cd10b59771469d8c8a5604d7aff4163c73776b96413e28adca62cab501e83c63  index.html
+
+## Asset SHA-256 (head: C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\head\packages\web\dist)
+7b4b088ba00a009b8143ebcaed37bbdee2415fb0687021903471452d770dab9f  .vite/manifest.json
+a45d3c6f3055de1dfa27882a921e31a96b8917b0c296a063e2ccf2f437d91c42  assets/Accounts-0Trj-Hyg.css
+821931c6b6a336b6130b4256512e7fcca5ae6a152b925a1b31c0f804610a6b56  assets/Accounts-vB1Jcwxh.js
+cf95100946e4dcdb257aa8913dca5b5215c100dfd9ae49882574e7983bc61322  assets/BusinessEvents-CXqDsdQH.js
+9ef2c6e6b712f5002256d6e249675b756ffb1a95974abe9f39747d563445c135  assets/components-B4lbPz2C.js
+178e0e55f249655ab5ea929a8016f20bb00e7ff829bcc6cb774d4590cabc1e02  assets/components-BSHRe5rS.css
+b72104bc45ee8d4f81cc618c9d30e5366093dface3d7a8639512e988e996f642  assets/decimal-format-BWPY7JQR.js
+8bd78989e1cd765ae2d6bbdfaad14f24bc0e2d59b0eb3310c09ee2a562c848e9  assets/dialogs-DJAi966c.js
+d52e1b84513c2207fdb495e855603f327d7916386e7300f0d85ee04b20d95a3a  assets/Dimensions-BYUR8ww7.js
+fe0b093f0acb72324d1c3f166f013180590a70b8312951ea1386a3d71d8f608f  assets/esm-B_8MPJdt.js
+0644489a33a53bf5e22390b76eb53653e51554b8a1f537d0313181c81f67c7d3  assets/index-DhcDIMA7.css
+0d51531e2ad0c5e9444e263fe69b92caedecfe8696f17a1dd61965597d6e5341  assets/index-Zd7N3mpV.js
+dae430b88cdb9b0b3f49539b298ef7042eddab3bda82e2fa4cb3ea7af21049e7  assets/Journals-G_6BuAXl.js
+fc79bd354fac74638429ded38840384c06f442eb0b71d3bf353436db4f55515b  assets/leave-guard-history-CDccTch_.js
+a8cd21d4fddf2cd8b3cc8e824439a7b24ac94ce6cf1293a523cfd12d25c6c511  assets/ledger-BsKUGf7q.css
+6d47e308791414219ba7d561d78f8c415131a985699e49d287a158c0d325e62d  assets/LedgerReports-Dk46jkVa.js
+81c96695cfab1a3fd70bbf63531ba2524d6de504a7a795e6a2502e47a91cf35c  assets/master-data-client-BQIsvIGJ.js
+21592bd9d0ee77f17244e56d66d1c1ddd4e7d94bb940b199ab0253d9c01c8f43  assets/master-l0PINZ8G.css
+f124f732e535603d7ff68e76d12733390be8df7f6c09cf7902f123ec9abe5178  assets/Migration-BZJ9_Mn3.js
+ab4640c83f45c2c71a0a3dca8e58039ea11de8e80613158f749527594bca3fee  assets/Migration-Dt5F-mml.css
+557ae4e3804f9916c237e700e019455ec46db18d05aabefd99fd57d808a67b12  assets/PeriodClose-Cnfbimgu.css
+efd95262ff9fe5733e55603b4651dc00be5fe72aa92e37b5996be51da6857430  assets/PeriodClose-D9u3ILmr.js
+ed51a4eede57a65e512a9676aeb001f099a0c385a6350ee0f2433eb0183ade0e  assets/Reports-B2hIjMUg.js
+83fe996aa1ef49a118db71be510ab4737ba35ddd6782dd63728e445c3ee5c266  assets/reports-data-l67MD1Pm.js
+7bf3610192fa27a88024be09e8280c9c2305dd23bd3bdfcc4edcff7abf85eb70  assets/trade-settlements-KB9rSY3-.css
+a3ac1ce7229a8fa85b9774d6f4900de1cdfc65d8d54b2fb3443ea53a2212118c  assets/TradeAdjustments-BsI3Lq09.js
+37a7a67cc17e87ecb96263b562d5c6d8900de39d7af91441d12b73ed89e082ea  assets/TradeInvoices-CGqVy7BJ.js
+1a513808af7c94bc31c391a9031657492b2c4e04bd1b65f3c5da0228cee093bf  assets/TradeInvoices-d2093p3n.css
+2d6186734ce52518c61b060b7464ca8fbf040baebeb7311dd83aa0a32e33ce92  assets/TradeMaster-JD7o7GwR.js
+1ab395b03780a0500ea36e6800b4ca1da8d7bd72b1d7b4f1695b4f49bd04187c  assets/TradeOrders-1NCvLUQu.js
+fb6d8cb4438b53c0d2112382cc21e80e27a56e56e8dc29169283529f324d6177  assets/TradeOrders-DnGspDwj.css
+252682e0662f7287aae8dd9e85bb0e5c064941695bafe8af3b1cc7a333d453ea  assets/TradeReports-B2X2bxpq.css
+fb5dec41317415cea0e5f4b73519593abe9865a0837137e393da3dd4b66a78e9  assets/TradeReports-B81skM1n.js
+0eef1272ddf2924296383ab035dabf842109a214cc815d266f275493aabaf03d  assets/TradeSettlements-CvrUZxhZ.js
+ac231fefecbf28d3d3d73d19f7cbc07a9fc4be62439fcd97e70b615d7d1ccc9a  assets/use-invoice-leave-guard-BswI_0ED.js
+3a4e9a328fa5b73845120b31961fcd29f9da6ae1ac356df14d35088e42b82875  assets/useBaseQuery-CkwJz1OL.js
+d69f664ce6db3e9b4f3553560038bde5e68561fbf9ed68c6dcb2d48117078e44  assets/useInfiniteQuery-BfP9hA7w.js
+f3be513509ffd054442826ede0c31f3f3542e9e8af15f136ffdff3f143deea0d  assets/useQuery-DVn0rQoP.js
+c3573378f8b488d157152afc6b05f4388b2ac524fa8ede697014adb1f0f1a6fe  assets/virtual-rows-C9RttyBw.css
+0e1d384390f2db88c12593c2ceab276d8faf29dda055ef2d55109a97c6b5f0fd  assets/virtual-rows-DaSsps_D.js
+be6d1686f1b10537ee0f74e84a883a60f845f76c5032630eea71a89c449bb2f4  favicon.svg
+2b4af4fd2c43d5dce2c5bdd9461697e58901fe43782fcf7a0daf71716231cbaa  index.html
+
+RESULT: PASS
+
+## Cleanup (not run by this script)
+git -C "C:\GithubCopilot\copilot-worktrees\ai-native-erp\lingshf-animated-disco" worktree remove --force "C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\base"
+git -C "C:\GithubCopilot\copilot-worktrees\ai-native-erp\lingshf-animated-disco" worktree remove --force "C:\Users\shaoling\AppData\Local\Temp\demo22\bundle\head"
+Remove-Item -Recurse -Force "C:\Users\shaoling\AppData\Local\Temp\demo22\bundle"   # or: rm -rf "C:\Users\shaoling\AppData\Local\Temp\demo22\bundle"
+exit code 0
+exit=0
