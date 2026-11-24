@@ -151,8 +151,16 @@
     1. **重复检查的短路**：`paymentId` 已是付款的用例中，调用记录只有 1 条 `tradePayment`；已是动作的只有 `tradePayment`、`tradeAction` 两条；已是未结项的依次为 `tradePayment`、`tradeAction`、`openItem` 三条。三者都抛 `DomainError`，`code` 为 `CONFLICT`，`issue` 为 `{scope: "tradeDocument", path: "paymentId", rule: "duplicate"}`。
     2. **不读付款条件**：所有用例的调用记录中，`repo.tradeConfig` 的 `kind` 参数只出现 `tradeParty` 与 `tradeProfile`，不出现 `tradeTerms`（决定 4）。
     3. **日记账行顺序**：2 张 AP 发票且第 2 张取折扣的用例中，`plan` 调用记录的草稿 `lines` 依次为“第 1 张控制科目（借）、第 2 张控制科目（借）、现金（贷）、折扣（贷）”；2 段发票用例中两段控制科目行相邻且在现金行之前。PR 正文写出期望科目序列与推导。
-    4. **`latestSettlementDate` 的位置**：每个选择项恰好 1 次，紧跟该项的 `openItem` 之后；“记账日早于未结项记账日”的用例中，该项的 `latestSettlementDate` 出现 **0** 次。
-    5. **科目角色**：`accountsByCodes` 恰好 1 次；其代码数组为“控制科目（按选择项顺序去重）、现金科目、折扣科目”，现金或折扣为 0 时不含对应科目；`tradeOpeningItems` 在非期初用例中出现 0 次，在 D30 用例中出现 1 次。
+    4. **`latestSettlementDate` 的位置**（按 base `:432–444` 的检查顺序）：
+       - 某选择项通过“不存在、往来方、币种、版本、余额 / 状态、早于未结项记账日”6 项检查时，该项的 `latestSettlementDate` 恰好 1 次，紧跟该项的 `openItem` 之后（含“记账日早于已有核销的最近日期”用例：它是最后一条记录，随后抛错）；
+       - 该项在这 6 项检查中任一项失败时，该项的 `latestSettlementDate` 出现 **0** 次，抛错前的最后一条记录就是该项的 `openItem`。例如版本不符：调用记录止于该项的 `openItem`，随后抛 `CONFLICT`、`items.<n>` / `stale`，不出现该项的 `latestSettlementDate`，也不出现 `accountsByCodes`。
+    5. **科目角色**（只数 `plan` 记录**之前**的调用；`plan` 收到的是同一个包装后的 `repo`，其内部的 `accountsByCodes` 等记在 `plan` 之后，只参与两侧逐字节比较，不计入本条）：
+       - `accountsByCodes`：在进入科目角色阶段前抛错的用例（重复、公司币种、往来方、档案、`TRADE-PAY:` 来源、第 4 条所列各项检查、日期、混合、折扣不可用、合计超限）中出现 **0** 次；科目角色不符、维度核对失败与成功用例中恰好 1 次。其代码数组为“控制科目（按选择项顺序去重）、现金科目、折扣科目”，现金或折扣为 0 时不含对应科目。
+       - `tradeOpeningItems`（base `accountRoles` 先试主角色，主角色不符且该用途带 `alternate` 时才查一次）：
+         - 所有控制科目主角色都相符的用例（M1 成功用例）、现金或折扣科目角色不符（这些用途不带 `alternate`，抛 `party` / `account`）：**0** 次；
+         - D30 用例：恰好 1 次，参数为全部选择项的 `itemId`（按选择项顺序），返回的 `$set` 含该期初项；
+         - **非期初项的控制科目角色不符**：恰好 1 次，紧跟 `accountsByCodes` 之后，参数为全部选择项的 `itemId`，返回编码为 `{"$set": []}`（空集合），它是最后一条记录，随后抛 `DomainError`、`code` 为 `INVALID_INPUT`、`issue` 为 `{scope: "tradeDocument", path: "items", rule: "account"}`。
+       - 以上已在 base `5be9496` 上用委托包装实测（单张 AP 发票：版本不符、把控制科目 2100 改为预付类、把现金科目 1000 改为应付类、成功各一次），PR 正文附各用例的调用记录。
     6. **指纹输入**：成功用例中 `tools.hash` 恰好 2 次；第 1 次参数为 `["trade-settlement-v1", command]`；第 2 次参数为 7 个元素的数组、首元素为 `"trade-settlement-preview-v1"`、第 2 个元素等于第 1 次的返回值。`plan` 之前抛错的用例中 `tools.hash` 与 `plan` 都出现 0 次。
     7. **错误的 `code` 与 `issue` 分开断言**：`code` 是 `DomainError` 的错误码，`rule` 是 `issue.rule`，两者不得混写。`issue.scope` 都为 `"tradeDocument"`。按 base 实际行为：
        - `code` 为 `CONFLICT`：重复（`paymentId` / `duplicate`，含 `TRADE-PAY:` 来源）、版本不符（`items.1` / `stale`）；

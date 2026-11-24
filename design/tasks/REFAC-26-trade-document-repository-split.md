@@ -206,8 +206,9 @@
     - **发票与未结项查询**：`tradeDocument`、`tradeDocumentByReceipt`、`tradeDocumentByExternal` 各存在与不存在；`tradeDocumentPage` 不带过滤、按往来方、带游标；`openItem` 存在与不存在；`openItemPage` 不带游标、带游标，`limit` 等于与小于行数。
     - **已损坏的存储行**（独立的合成用例）：
       - 不可变表禁止 `UPDATE` / `DELETE`，因此**不得**改已有行，也**不得**关闭或删除触发器、关闭外键。
-      - 做法：在该用例自己的库中，用驱动自己的 SQL **插入一条独立的坏行**，使某个行映射的 `int` 或 `str` 失败（例如一张新发票的 `trade_document_lines` 某金额列为 `9007199254740993`，或 `open_items` 某金额列超出安全整数），然后对它调用对应的读方法。
-      - 插入语句与列值写入 PR 正文。若约束或触发器使该行无法插入，换一张读路径经过 `int` / `str` 的表重试；仍不可行时写明约束名与错误原文并报协调者，不得绕过，也不得静默删去该用例。
+      - **不用超出安全整数的整数**：连接开了 `defaultSafeIntegers(true)`，读出的是 `bigint`，base 的 `int` 对 `bigint` 直接 `Number(value)`（舍入、不抛错），这样的行不会触发失败。本任务也不得改映射去“修”精度。
+      - 做法：在该用例自己的库中（外键开启、触发器保留），先经服务正常过账一张发票，再用驱动自己的 SQL **插入一条独立的新发票行**：从该发票第 1 行 `INSERT … SELECT` 复制其余列，`line_id` 取新值（如 `'BAD-BLOB'`）、`line_no` 取该发票现有最大值 + 1，`unit_price` 为 BLOB `X'00'`（该列是无 `typeof` 检查的 `TEXT`，BLOB 原样保存）。然后对该发票调用 `tradeDocument`，行映射的 `str(row.unit_price)` 因值不是字符串而抛错。
+      - 插入语句、`changes` 与 `SELECT typeof(unit_price)` 的结果写入 PR 正文。已在 base `5be9496` 上实测：插入 `changes = 1`、`typeof` 为 `blob`，插入前 `tradeDocument` 正常返回，插入后抛 `StorageError`、`code` 为 `STORAGE_FAILURE`。若在实际合并基上该行无法插入，写明约束名与错误原文并报协调者，不得绕过，也不得静默删去该用例。
     - **只含 `query` 的连接**：传入只有 `query` 方法的普通对象，构造后调用一次 `openItemPage`。
   - **判定**：base 与 head 每个用例的记录与库内状态逐字节相同。PR 正文附两侧输出的 SHA-256 与比较结果。并且**直接断言**，只比两侧相同不够：
     1. **发票写入顺序**：无订单 n 行、k 段时，调用记录依次为：1 条 `INSERT INTO trade_documents`、n 条 `INSERT INTO trade_document_lines`、1 条 `INSERT INTO open_items`、1 条 `INSERT INTO trade_invoice_terms`、k 条 `INSERT INTO trade_control_segments`，共 n + k + 3 次；不带 `controlSegments` 时 k = 1。关联订单的用例在其后依次出现开票状态查询与每张订单 1 条 `UPDATE trade_order_invoicing`，订单 id 各只出现一次。
@@ -222,7 +223,7 @@
     5. **0 次查询的分支**：`tradeOpeningItems([])` 返回空 `Set`、`tradeOrderInvoiced([])` 与 `tradeConfigsByCodes(…, [])` 返回 `[]`、`refreshTradeOrderInvoicing(…, [])`，调用记录都为 0 次；不存在的 `tradeDocument` 恰好 1 次并返回 `null`。
     6. **集合返回值**：两个期初项的 `tradeOpeningItems` 用例中，编码后的 `$set` 恰好含这两个 id，与空数组用例的编码不同。
     7. **游标与上限**：`openItemPage` 的 `LIMIT` 参数为 `limit + 1`。
-    8. **已损坏的存储行**：插入坏行本身成功；随后读方法两侧都抛 `StorageError`、`code` 为 `STORAGE_FAILURE`。这是 base 的现有行为，本任务保留。
+    8. **已损坏的存储行**：插入 BLOB `unit_price` 的新发票行本身成功（`changes = 1`，`typeof(unit_price) = 'blob'`）；插入前 `tradeDocument` 两侧都正常返回，插入后两侧都抛 `StorageError`、`code` 为 `STORAGE_FAILURE`。这是 base 的现有行为，本任务保留。
     9. **方法名**：调用记录中的方法名只有 `query`；只含 `query` 的连接用例不抛错，且返回值与完整连接上同一调用的返回值相同。
 
     base 上任一直接断言不成立，先停下并向协调者报告，不得把“两侧相同”当作通过。PR 正文附驱动、用例清单、比较结果与直接断言结果。
