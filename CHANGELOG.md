@@ -6,9 +6,11 @@
 
 ## [Unreleased]
 
-## [0.20.0] - 未发布（RC，待协调者授权）
+## [0.20.0] - 2026-11-23
 
-> **发布候选（DEMO-21）**：RC 范围终点固定为完整 SHA `a1a12448207372d6792b2497da852d08418c552b`（[#309](https://github.com/lingshf/ai-native-erp/pull/309)）。tag 目标与日期待协调者授权后按 D484 / D458 填写。
+> **已发布**：tag `v0.20.0`（annotated，tag 对象 `97e9a23d2a3f78cda15bd1601ab2b0233779adc3`）打在 `90c762f05de39723852d1a381058301cab4da997`（[#310](https://github.com/lingshf/ai-native-erp/pull/310) 的最终头，位于 `release/v0.20.0` 分支上；D484）；发布日 2026-11-23。main 上的 #310 squash 提交 `2ce7821000066d73a563de16a9d9f8601e704495` 不是 tag 目标，但两者的树相同（均为 `23b709c82788b84cd64c42088f274602b4cad1bc`，`git rev-parse` 核对）。Release：<https://github.com/lingshf/ai-native-erp/releases/tag/v0.20.0>。tag 对 tag 的版本差异（D483，`git diff --shortstat`，无路径过滤）：[v0.19.0..v0.20.0](https://github.com/lingshf/ai-native-erp/compare/v0.19.0..v0.20.0)（两点）64 个文件，+3827/−77；[v0.19.0...v0.20.0](https://github.com/lingshf/ai-native-erp/compare/v0.19.0...v0.20.0)（三点，合并基 `6156759c2aef6b9805aca70ba5505490e2bd4c5b`）92 个文件，+5506/−71；`git rev-list --count` 两点 14、三点 20。
+>
+> **发布候选（DEMO-21）**：RC 范围终点固定为完整 SHA `a1a12448207372d6792b2497da852d08418c552b`（[#309](https://github.com/lingshf/ai-native-erp/pull/309)）。
 >
 > **版本号**：TLIST-05（[#301](https://github.com/lingshf/ai-native-erp/pull/301)，`f9024d5fd320396a328ee7a91a20b2c79042006c`）是用户可见的小功能，取 minor（0.19.0 → 0.20.0）。FLAKE-08 `49f3254`、SLOT-04 `5b6a4bf`、#307 `013d681`、DOC-21 `276fd3b` 对该终点的 `git merge-base --is-ancestor` 退出码均为 0；TLIST-05 同为 0。协调者预期是补丁版本，已告知并认可 v0.20.0。
 >
