@@ -62,13 +62,13 @@ pwsh -NoProfile -File scripts\slot\selftest-gate-snapshot.ps1   # 自测（起 n
 
 - **`gate-snapshot.ps1`**（S22 SLOT-05）：`-OutFile` 须是新文件（目录已存在）；`-Ports` 是一个带引号的 CSV 字符串（如 `-Ports "4204,4173"`），工具里不写死端口。每次快照立即追加到 TSV，列为 `snapshot takenAt kind pid ppid depth name created cpuSeconds exe cwd cmdline port localAddress note`：每个 node 进程一行（`kind=node`），其父进程链逐级到第一个非 node 进程（`kind=ancestor`，`note` 写 `parent-exited` / `pid-reused` / `depth-cap` 时链提前结束）；每个端口的每个 Listen 端点一行，无监听时 `pid=none`；没有 node 进程时一行 `kind=none`。cwd 取自 `procs.ps1` 的 `[Gate01Cwd]::Get`，读不到的值写 `unreadable`。只记录，不判定归属，不结束进程。
 
-  | 退出码 | 含义（多个成立时按 8 > 9 > 0 取一个；时限另见摘要 `timedOut`） | 写文件 |
-  | ------ | ------------------------------------------------------------------------------------------------------- | ------ |
-  | 0      | 全部快照完成，没有查询出错                                                                              | 写     |
-  | 2      | 不是 Windows 或不是 PowerShell 7                                                                        | 不写   |
+  | 退出码 | 含义（多个成立时按 8 > 9 > 0 取一个；时限另见摘要 `timedOut`）                                                                                   | 写文件 |
+  | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
+  | 0      | 全部快照完成，没有查询出错                                                                                                                       | 写     |
+  | 2      | 不是 Windows 或不是 PowerShell 7                                                                                                                 | 不写   |
   | 3      | 参数错误：`-OutFile` 已存在或目录不存在；`-Once` 与 `-StopFile` 不是二选一；`-Ports` 有空项、非整数、超出 1–65535 或重复；`-IntervalSeconds` < 1 | 不写   |
-  | 8      | 至少一次进程或端口查询出错（该处写 `kind=error`，不写 `pid=none`），其余快照照常完成                    | 写     |
-  | 9      | 到 `-MaxMinutes` 时停止文件仍未出现                                                                     | 写     |
+  | 8      | 至少一次进程或端口查询出错（该处写 `kind=error`，不写 `pid=none`），其余快照照常完成                                                             | 写     |
+  | 9      | 到 `-MaxMinutes` 时停止文件仍未出现                                                                                                              | 写     |
 
   结束时打印 `gate-snapshot done snapshots=… rows=… errors=… timedOut=… exit=…`。自测替身只经环境变量注入：`GATE_SNAPSHOT_FAIL_PORTS`（这些端口的查询报错）、`GATE_SNAPSHOT_SECONDS_PER_MINUTE`（替身时钟）；正式使用不设置。
 
