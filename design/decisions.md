@@ -27,9 +27,9 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 
 | 编号 | 类型 | 摘要（仅表行） | 位置 |
 | --- | --- | --- | --- |
-| D1 | 表 | 一个总账模型，结账方式作为公司设置 | [design/reviews/M0.md:35](reviews/M0.md)；[design/roadmap.md:199](roadmap.md) |
-| D2 | 表 | Dependabot | [design/reviews/M0.md:36](reviews/M0.md)；[design/roadmap.md:200](roadmap.md) |
-| D3 | 表 | 4173 原账套不动 | [design/reviews/M0.md:37](reviews/M0.md)；[design/roadmap.md:201](roadmap.md) |
+| D1 | 表 | 一个总账模型，结账方式作为公司设置 | [design/reviews/M0.md:35](reviews/M0.md)；[design/roadmap.md:199](roadmap.md)；[design/roadmap.md:217](roadmap.md) |
+| D2 | 表 | Dependabot | [design/reviews/M0.md:36](reviews/M0.md)；[design/roadmap.md:200](roadmap.md)；[design/roadmap.md:218](roadmap.md) |
+| D3 | 表 | 4173 原账套不动 | [design/reviews/M0.md:37](reviews/M0.md)；[design/roadmap.md:201](roadmap.md)；[design/roadmap.md:219](roadmap.md) |
 | D4 | 表 | 存储与迁移版本 | [design/reviews/M0.md:38](reviews/M0.md) |
 | D5 | 表 | 维度规则 | [design/reviews/M0.md:39](reviews/M0.md) |
 | D6 | 表 | 凭证纠错 | [design/reviews/M0.md:40](reviews/M0.md) |
@@ -46,7 +46,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D17 | 无 | | |
 | D18 | 提及 | | [design/reviews/M1.md:46](reviews/M1.md)；[design/tasks/M1-R3-trade-report-capacity.md:14](tasks/M1-R3-trade-report-capacity.md)；[docs/performance/legacy-reconciliation-bench.md:46](../docs/performance/legacy-reconciliation-bench.md) 等 12 处 |
 | D19 | 无 | | |
-| D20 | 提及 | SemVer，tag 写作 `vX.Y.Z`，修复用 Z 位；“按里程碑划分 Sprint”已由 D555 取代（同页第 5 行） | [docs/release/README.md:3](../docs/release/README.md)；[design/tasks/PROC-01-release-claims-and-demo.md:10](tasks/PROC-01-release-claims-and-demo.md)；[docs/README.md:61](../docs/README.md) 等 6 处 |
+| D20 | 提及 | SemVer，tag 写作 `vX.Y.Z`，修复用 Z 位；“按里程碑划分 Sprint”已由 D555 取代（同页第 5 行） | [docs/release/README.md:3](../docs/release/README.md)；[design/tasks/PROC-01-release-claims-and-demo.md:10](tasks/PROC-01-release-claims-and-demo.md)；[docs/README.md:63](../docs/README.md) 等 6 处 |
 | D21 | 提及 | tag 打在发布 PR 合并后的 squash 提交上 | [docs/release/README.md:3](../docs/release/README.md)；[design/reviews/S7.md:124](reviews/S7.md)；[design/tasks/PROC-01-release-claims-and-demo.md:10](tasks/PROC-01-release-claims-and-demo.md) 等 30 处 |
 | D22 | 无 | | |
 | D23 | 无 | | |
@@ -77,7 +77,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D48 | 无 | | |
 | D49 | 无 | | |
 | D50 | 无 | | |
-| D51 | 表 | M1-R3 带核销/调整历史和并发后，账龄、余额和对账报表超出 D18 预算，是否允许新增迁移 | [design/roadmap.md:207](roadmap.md) |
+| D51 | 表 | M1-R3 带核销/调整历史和并发后，账龄、余额和对账报表超出 D18 预算，是否允许新增迁移 | [design/roadmap.md:207](roadmap.md)；[design/roadmap.md:220](roadmap.md) |
 | D52 | 无 | | |
 | D53 | 无 | | |
 | D54 | 无 | | |
@@ -590,3 +590,5 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D561 | 表 | KDOC 文档页的钉版本口径：在 KDOC PR 中，本 PR 改动的页在 `docs/README.md` 覆盖矩阵中… | [design/tasks/S24.md:202](tasks/S24.md) |
 | D562 | 表 | KDOC-03 落地：新增决定索引，用脚本从 `design/`、`docs/` 与 `CHANGELOG.md` 生成… | [design/tasks/S24.md:203](tasks/S24.md) |
 | D563 | 表 | AI 讲解与教学模式（#372 §6b）：服务端**不**按教学模式拦截 `/api/v1/ai/explain`，界面… | [design/tasks/S24.md:204](tasks/S24.md) |
+| D564 | 表 | KDOC-09 核对（#377）：D1、D2、D3、D51 原记录缺备选、代价、失效条件，由设计角色补记到路线图 §6.… | [design/tasks/S24.md:205](tasks/S24.md) |
+| D565 | 表 | 重构 PR 中登记的现存缺陷立为候选：BUG-01（#371 孤立 `value`）、BUG-02a–d（#364 AI… | [design/tasks/S24.md:206](tasks/S24.md) |
