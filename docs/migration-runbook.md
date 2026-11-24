@@ -98,7 +98,7 @@ npm run storage:admin -- legacy-reconcile --snapshot-dir <WORK>\snapshot --targe
 
 ## 6. 备份并校验目标库
 
-备份命令及其规则见[运维与故障排查](operations.md#备份与恢复)（`backup <WORK>\target.sqlite <WORK>\target-backup.sqlite`）；备份后校验：
+备份命令及其规则见[运维与故障排查](operations.md#备份与恢复)；备份后校验：
 
 ```powershell
 npm run storage:admin -- verify --provider sqlite --file <WORK>\target-backup.sqlite
