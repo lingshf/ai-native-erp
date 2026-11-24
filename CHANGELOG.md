@@ -6,15 +6,19 @@
 
 ## [Unreleased]
 
-> **发布候选（DEMO-20，未发布）**：RC 范围终点固定为完整 SHA `6156759c2aef6b9805aca70ba5505490e2bd4c5b`（MEAS-01 [#298](https://github.com/lingshf/ai-native-erp/pull/298)）。TLIST-04 `ea24f87`、REFAC-11 `6fbc2da`、MEAS-01 `6156759` 对该终点的 `git merge-base --is-ancestor` 退出码均为 0，所以版本号取 minor（0.18.0 → 0.19.0）。tag 目标按 D484：打在 `release/v0.19.0` 上审核通过的 RC 头，授权前不打。
+## [0.19.0] - 2026-11-23
+
+> **已发布**：tag `v0.19.0`（annotated，tag 对象 `a858945bdb7f25072a259e31d64609be350d97a6`）打在 `10292ede0906f96d26806bdd9bb7e8b4e72279c8`（[#302](https://github.com/lingshf/ai-native-erp/pull/302) 的最终头，位于 `release/v0.19.0` 分支上；D484 / D510）；发布日 2026-11-23。main 上的 #302 squash 提交 `c6d5e2469ac2efd389e1560e81cae29c5d8c4719` 不是 tag 目标：它的树 `3b4bac63c806417e781ebaee4e9dd966e28541a9` 与 tag 树 `8fd3b054e2469a93baea53a1b8491fe87bdef046` 不同，差异是 `c6d5e24` 多含 TLIST-05（[#301](https://github.com/lingshf/ai-native-erp/pull/301)，延后，不在 v0.19.0 内）。`git diff --name-only 6156759c2aef6b9805aca70ba5505490e2bd4c5b 10292ede0906f96d26806bdd9bb7e8b4e72279c8 -- packages scripts` 为空（已核对）。Release：<https://github.com/lingshf/ai-native-erp/releases/tag/v0.19.0>。完整版本差异：[v0.18.0..v0.19.0](https://github.com/lingshf/ai-native-erp/compare/v0.18.0..v0.19.0)（两点，60 个文件，+4280/−208，`git diff --shortstat v0.18.0 v0.19.0`）；合并基对比：[v0.18.0...v0.19.0](https://github.com/lingshf/ai-native-erp/compare/v0.18.0...v0.19.0)（三点，自合并基 `3f8f2ff9fd010ff63fb8d891b4a4b1209d4cd0ee`，87 个文件，+5655/−206，会重现 v0.18.0 已发布的 DEMO-19 文档路径，因两个发布分支分叉）。
+>
+> **发布候选（DEMO-20）**：RC 范围终点固定为完整 SHA `6156759c2aef6b9805aca70ba5505490e2bd4c5b`（MEAS-01 [#298](https://github.com/lingshf/ai-native-erp/pull/298)）。TLIST-04 `ea24f87`、REFAC-11 `6fbc2da`、MEAS-01 `6156759` 对该终点的 `git merge-base --is-ancestor` 退出码均为 0，所以版本号取 minor（0.18.0 → 0.19.0）。tag 目标按 D484：打在 `release/v0.19.0` 上审核通过的 RC 头（已于 D510 授权并打好，见上）。
 >
 > v0.18.0 不在 main 上（D484），它与 main 的合并基是 `3f8f2ff9fd010ff63fb8d891b4a4b1209d4cd0ee`。对照 `git log --oneline --first-parent v0.18.0..6156759c2aef6b9805aca70ba5505490e2bd4c5b`（**固定在该完整 SHA 上共 8 行**，每行一个 PR）：
 > - 有条目：[#296](https://github.com/lingshf/ai-native-erp/pull/296)（TLIST-04，新增）、[#299](https://github.com/lingshf/ai-native-erp/pull/299)（REFAC-11，变更，无用户可见变化）、[#298](https://github.com/lingshf/ai-native-erp/pull/298)（MEAS-01，变更，开发工具，无用户可见变化）。
 > - 已发布、只改日期或只改设计 / 流程文档，**不需要条目**，单列：[#293](https://github.com/lingshf/ai-native-erp/pull/293)（v0.18.0 的 RC 与 Demo，已随 v0.18.0 发布）、[#295](https://github.com/lingshf/ai-native-erp/pull/295)（v0.18.0 发布日与链接，只改日期）、[#294](https://github.com/lingshf/ai-native-erp/pull/294)（S20 计划，设计）、[#297](https://github.com/lingshf/ai-native-erp/pull/297)（S19 评审与回顾，设计）、[#300](https://github.com/lingshf/ai-native-erp/pull/300)（S21 计划，设计）。
 >
-> 窗口后合并的 [#301](https://github.com/lingshf/ai-native-erp/pull/301)（TLIST-05，`f9024d5fd320396a328ee7a91a20b2c79042006c`）**延后**：它不是 RC 范围终点 `6156759…` 的祖先（`git merge-base --is-ancestor f9024d5… 6156759…` 退出码 1），不进入 v0.19.0。
+> 冻结后、开窗前合并的（#301 于 2026-11-23 17:20:02 PST 合并，窗口 17:25:43 PST 才开）[#301](https://github.com/lingshf/ai-native-erp/pull/301)（TLIST-05，`f9024d5fd320396a328ee7a91a20b2c79042006c`）**延后**：它不是 RC 范围终点 `6156759…` 的祖先（`git merge-base --is-ancestor f9024d5… 6156759…` 退出码 1），不进入 v0.19.0。
 >
-> 与 `3f8f2ff` 相比，`git diff --shortstat 3f8f2ff9fd010ff63fb8d891b4a4b1209d4cd0ee 6156759c2aef6b9805aca70ba5505490e2bd4c5b -- packages scripts` 为 14 个文件（+1280/−196）。没有迁移。完整版本差异（两点）与合并基对比（三点，D483）的链接和数字在 tag 创建后核对填入。Demo 与窗口证据在 [docs/demo/v0.19.0](docs/demo/v0.19.0/README.md)（D480 窗口已于 2026-11-23 运行并关闭：步骤 1–3 实测退出码 0；步骤 4 依据 `slot-summary-real.log` 第 122 行 `demo-capture exit=0` 与第 123 行 `runner done` 确认完成，runner 退出码未单独记录（D508），15 项检查 0 失败，6 张截图；D504 重测 PASS：Dimensions +103 B、TradeOrders +204 B、首屏与其余 ±0）。两处 `npm ci` 的控制台输出未保存，按 D500 先例接受（D506），替代证据见 run-through。
+> 与 `3f8f2ff` 相比，`git diff --shortstat 3f8f2ff9fd010ff63fb8d891b4a4b1209d4cd0ee 6156759c2aef6b9805aca70ba5505490e2bd4c5b -- packages scripts` 为 14 个文件（+1280/−196）。没有迁移。完整版本差异（两点）与合并基对比（三点，D483）的链接和数字见上。Demo 与窗口证据在 [docs/demo/v0.19.0](docs/demo/v0.19.0/README.md)（D480 窗口已于 2026-11-23 运行并关闭：步骤 1–3 实测退出码 0；步骤 4 依据 `slot-summary-real.log` 第 122 行 `demo-capture exit=0` 与第 123 行 `runner done` 确认完成，runner 退出码未单独记录（D508），15 项检查 0 失败，6 张截图；D504 重测 PASS：Dimensions +103 B、TradeOrders +204 B、首屏与其余 ±0）。两处 `npm ci` 的控制台输出未保存，按 D500 先例接受（D506），替代证据见 run-through。
 
 S20 Sprint：一项用户可见的小功能（TLIST-04）、一项只拆分文件的重构（REFAC-11）和一项开发工具（MEAS-01）。**无迁移，无依赖变化**，已有账套不需要 migrate，不改过账规则与任何金额、数量口径。
 
@@ -682,7 +686,8 @@ M1 贸易里程碑完成（M1-01..07，M1-R 评审通过，无阻塞项）。产
 - 旧快照未配置提示、凭证空列表文案和根 README 迁移版本说明已在 v0.2.0 修复（见 `[0.2.0]`）；v0.1.0 原发布基线不包含这些修复。
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
-[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/lingshf/ai-native-erp/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/lingshf/ai-native-erp/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/lingshf/ai-native-erp/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/lingshf/ai-native-erp/compare/v0.15.0...v0.16.0
