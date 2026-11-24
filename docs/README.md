@@ -76,7 +76,7 @@
 | `design/ui/`、`design/diagrams/` | UI-1 规范与原型、架构示意图 | UI-1 stale；diagrams 属 ARCH-SME-01，随 C1 |
 | [`docs/user/`](user/README.md) | 用户文档 | 页面存在（版本见矩阵）；索引页已于 KDOC-05 去掉版本叙述，指向 CHANGELOG；含[贸易主路径演练](user/trade-main-path.md) |
 | [`docs/ai-assistant.md`](ai-assistant.md) | AI 助手 | partial（钉合并提交 `4d3bd90bd79a518c2e6648383e327fc1a0fb4f83`；KDOC-04 新增） |
-| [`docs/tradeoffs.md`](tradeoffs.md) | 取舍汇总 | partial–pin after merge（KDOC-09 新增） |
+| [`docs/tradeoffs.md`](tradeoffs.md) | 取舍汇总 | partial（钉合并提交 `6debbdf551242c269cbb22401b34f27a028f6e91`；KDOC-09 新增；设计/产品已核对，未经 QA） |
 | [`docs/operations.md`](operations.md) | 运维与故障排查 | partial（钉合并提交 `66f3a47623e3b07f55447b06ac48fe84d153c34a`；KDOC-07 新增） |
 | [`docs/ci.md`](ci.md) | CI 说明 | partial（钉版本 `08d9cf34e3623f01803d143caa14bfcb923d2561`；对照 workflow 与 `scripts/ci.ts`，未经复核） |
 | [`docs/flows/`](flows/README.md) | Mermaid 界面流程图 | 索引页；新增付款与收款流程，见 G4（partial，合并后钉版本） |
