@@ -88,7 +88,7 @@ Add-Content "$W\logs\slot-run.out.log" "exit=$LASTEXITCODE"
 | 类别 | 条数 | 说明 |
 | --- | --- | --- |
 | 已入库、原字节匹配 | 28 | blob 的 SHA-256 等于清单值（`.log`、`.json`、8 张 PNG；`.gitattributes` 对 `logs/*.log` 为 `-text`） |
-| 已入库、换行复原后匹配 | 5 | `gate-snapshots.tsv`、`gate-snapshots-w1.tsv`、`processes-real.tsv`、`demo-capture-start-rev.txt`、`demo-capture-end-rev.txt`：`* text=auto eol=lf` 在提交时把 CRLF 改成 LF；把 blob 的每个 `\n` 逐字节还原为 `\r\n` 后 SHA-256 与清单一致（rev 文件原为“SHA + `\n` + `\r\n`”，复原后的 SHA-256 为 `98080B3EE04DD126080C3AF29CA1A33514653DF6F175195ED277E582DA73DD42`） |
+| 已入库、换行复原后匹配 | 5 | `gate-snapshots.tsv`、`gate-snapshots-w1.tsv`、`processes-real.tsv`、`demo-capture-start-rev.txt`、`demo-capture-end-rev.txt`：`* text=auto eol=lf` 在提交时把 CRLF 改成 LF；复原方法分两种：3 个 TSV 把 blob 中**每个** `\n` 逐字节替换为 `\r\n`；2 个 rev 文件的 blob 为 42 字节（40 位 SHA + `\n\n`），**只把最后一个 `\n` 替换为 `\r\n`**、保留第一个 `\n`，得 43 字节（与清单一致；全部替换会得 44 字节，哈希不符）。复原后 SHA-256 均与清单一致，rev 文件为 `98080B3EE04DD126080C3AF29CA1A33514653DF6F175195ED277E582DA73DD42` |
 | **已入库小计** | **33** | |
 | 未入库 | 39 | `out\excluded.tsv` 1、`shots-dry` 9、`shots-dry-w1` 9、`stub-out` 10、`stub-out-w1` 10；只留清单哈希，原因见逐项表。`shots-dry` 的 9 项中 8 张 PNG 有 7 张与步骤 2 入库的同名文件 SHA-256 相同（`queue-en-green-1440.png` 例外），`shots-dry` 的 JSON 是另一次运行；`shots-skip` 目录没有清单条目，不能算作已留哈希 |
 | 合计 | 72 | 33 + 39 |
