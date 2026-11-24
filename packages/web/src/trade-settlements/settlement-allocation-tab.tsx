@@ -4,6 +4,7 @@ import type { Money, T } from "./settlement-model.ts";
 import { settlementTotals } from "./settlement-items.ts";
 import { SettlementRow, SettlementSpacerRow } from "./settlement-row.tsx";
 import { SettlementKpis, SettlementTableHead } from "./settlement-table-parts.tsx";
+import { SettlementListToolbar } from "./settlement-list-toolbar.tsx";
 import type { OpenItems } from "./use-open-items.ts";
 
 type SettlementAllocationTabProps = {
@@ -23,6 +24,7 @@ export function SettlementAllocationTab(props: SettlementAllocationTabProps) {
   const { due, allocated } = settlementTotals(command.items, rows);
   return (
     <FastTab id="tset-allocation" title={t("tset.allocation")}>
+      <SettlementListToolbar t={t} onRefresh={() => void page.refetch()} />
       <fieldset disabled={locked} className="tset-allocation">
         <p className="tset-hint">{t("tset.minorHint")}</p>
         <SettlementKpis

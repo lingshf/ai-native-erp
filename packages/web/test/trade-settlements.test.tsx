@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, type InfiniteData } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   tradeSettlementCommandSchema,
@@ -8,6 +8,7 @@ import {
 } from "@erp/core/contracts";
 import { App } from "../src/App.tsx";
 import { TradeSettlements } from "../src/TradeSettlements.tsx";
+import { ROW_HEIGHT_PX } from "../src/trade-settlements/settlement-model.ts";
 import { label, type LabelKey } from "../src/ui/index.ts";
 import { settlementTeaching } from "../src/ui/trade-settlement-teaching.ts";
 
@@ -358,5 +359,184 @@ describe("trade payments and receipts", () => {
     expect(confirm).toHaveBeenCalledWith(t("trade.leaveConfirm"));
     expect(window.location.hash).toBe("#/trade-settlements");
     expect(screen.getByLabelText<HTMLInputElement>(`${t("tset.amount")} INV-1`).value).toBe("5650");
+  });
+});
+
+// TLIST-06: "Refresh list" re-reads the loaded open-item pages and leaves the draft alone.
+const PAGE_SIZE = 100;
+const LOADED_PAGES = 2;
+const SECOND_PAGE_CURSOR = "OPEN-2";
+const SECOND_PAGE_AMOUNT = 4321;
+const REDUCED_BALANCE = 9040;
+const draftKey = "erp.tradeSettlements.v1.DEFAULT";
+const openItemsUrl = `/api/v1/trade/open-items?company=DEFAULT&status=open&limit=${PAGE_SIZE}`;
+const secondPageUrl = `${openItemsUrl}&cursor=${SECOND_PAGE_CURSOR}`;
+// Open items are numbered: 1 is `item`, 2–100 fill page one and 101–200 are page two.
+const filler = (n: number) => ({
+  ...item,
+  itemId: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+  externalNo: `FILL-${n}`,
+});
+const fillers = (from: number, count: number) =>
+  Array.from({ length: count }, (_, offset) => filler(from + offset));
+const secondPageItem = filler(PAGE_SIZE + 1);
+const openItemPage = (items: unknown[], nextCursor: string | null = null) =>
+  response({ items, nextCursor });
+// mockApi plus two open-item pages; `state` changes `item`'s page-one balance or fails reads.
+function mockOpenItemPages(unknownFirst: boolean | Promise<void> = false) {
+  const api = mockApi(unknownFirst);
+  const state = { balance: item.remainingGross, fail: false };
+  const stub = vi.mocked(fetch);
+  const real = stub.getMockImplementation();
+  stub.mockImplementation(async (path, init) => {
+    const url = String(path);
+    if (!url.startsWith("/api/v1/trade/open-items")) return real?.(path, init) as Promise<Response>;
+    if (state.fail) return response({}, 500);
+    if (url.includes("cursor=")) return openItemPage(fillers(PAGE_SIZE + 1, PAGE_SIZE));
+    const first = [{ ...item, remainingGross: state.balance }, ...fillers(2, PAGE_SIZE - 1)];
+    return openItemPage(first, SECOND_PAGE_CURSOR);
+  });
+  const urls = () => stub.mock.calls.map(([url]) => String(url));
+  const reads = () => urls().filter((url) => url.startsWith("/api/v1/trade/open-items")).length;
+  return { ...api, state, urls, reads };
+}
+const field = (key: "tset.select" | "tset.amount") =>
+  screen.getByLabelText<HTMLInputElement>(`${t(key)} ${secondPageItem.externalNo}`);
+async function editSecondPageItem() {
+  fireEvent.change(screen.getByLabelText(t("tinv.party")), { target: { value: "V1" } });
+  const table = document.querySelector("#tset-allocation-body .accounts-scroll") as Element;
+  fireEvent.scroll(table, { target: { scrollTop: PAGE_SIZE * ROW_HEIGHT_PX } });
+  fireEvent.click(await waitFor(() => field("tset.select")));
+  fireEvent.change(field("tset.amount"), { target: { value: String(SECOND_PAGE_AMOUNT) } });
+}
+const refreshButton = (language: "zh" | "en" = "zh") =>
+  screen.getByRole("button", { name: label(language, "master.listRefresh") });
+const kpis = () => screen.getByText(t("tset.allocated")).closest("dl")?.textContent ?? "";
+const disabled = (name: string) => screen.getByRole("button", { name }).matches(":disabled");
+const expectFollows = (first: Node | null | undefined, next: Node | null) =>
+  expect(next && first?.compareDocumentPosition(next)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+async function previewPartial() {
+  await selectPartial();
+  fireEvent.click(screen.getByRole("button", { name: t("tinv.preview") }));
+  await waitFor(() => expect(disabled(t("tset.confirm"))).toBe(false));
+}
+
+describe("TLIST-06 refresh the open items", () => {
+  let client = new QueryClient();
+  const mount = (language: "zh" | "en" = "zh") => {
+    client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <TradeSettlements preferences={{ language, theme: "red", teaching: false }} />
+      </QueryClientProvider>,
+    );
+  };
+  afterEach(() => client.clear());
+  const openItemsKey = ["tradeOpenItems", "DEFAULT"];
+  const loadedPages = () =>
+    client.getQueryData<InfiniteData<{ items: unknown[] }>>(openItemsKey)?.pages ?? [];
+  // Clicks Refresh list and waits until the re-read data is stored and rendered.
+  async function refreshAndSettle() {
+    const updates = () => client.getQueryState(openItemsKey)?.dataUpdateCount ?? 0;
+    const before = updates();
+    fireEvent.click(refreshButton());
+    await waitFor(() => expect([updates() > before, client.isFetching()]).toEqual([true, 0]));
+  }
+  it.each(["zh", "en"] as const)(
+    "S2 (%s): one Refresh list button, in the allocation tab before the table and outside its fieldset",
+    async (language) => {
+      mockOpenItemPages();
+      mount(language);
+      await screen.findByText("INV-1");
+      const button = refreshButton(language);
+      expect(button.closest("#tset-allocation-body")).not.toBeNull();
+      expect(button.closest("fieldset")).toBeNull();
+      expectFollows(button, document.querySelector("#tset-allocation-body table"));
+    },
+  );
+  it("S3: re-reads both loaded pages in order and keeps them (due stays known), the selection and its amount", async () => {
+    // A 480 px viewport lets the virtualizer render the rows around the scroll position.
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(480);
+    const { urls } = mockOpenItemPages();
+    mount();
+    await screen.findByText("INV-1");
+    fireEvent.click(screen.getByRole("button", { name: t("master.loadMore") }));
+    await waitFor(() => expect(loadedPages()).toHaveLength(LOADED_PAGES));
+    await editSecondPageItem();
+    const draft = window.sessionStorage.getItem(draftKey);
+    expect(draft).toContain(`"gross":${SECOND_PAGE_AMOUNT}`);
+    const before = urls().length;
+    await refreshAndSettle();
+    expect(urls().slice(before)).toEqual([openItemsUrl, secondPageUrl]);
+    expect(loadedPages().flatMap((page) => page.items)).toHaveLength(LOADED_PAGES * PAGE_SIZE);
+    const edited = [field("tset.select").checked, field("tset.amount").value];
+    expect(edited).toEqual([true, String(SECOND_PAGE_AMOUNT)]);
+    expect(window.sessionStorage.getItem(draftKey)).toBe(draft);
+    expect(kpis()).toContain("113.00");
+  });
+  it("S4: shows a selected item's reduced balance and neither clears nor recomputes the preview", async () => {
+    const { previews, state } = mockOpenItemPages();
+    mount();
+    await previewPartial();
+    const result = () => screen.getByRole("region", { name: t("tset.result") }).textContent;
+    const shown = result();
+    state.balance = REDUCED_BALANCE;
+    fireEvent.click(refreshButton());
+    const row = screen.getByLabelText(`${t("tset.select")} INV-1`).closest("tr");
+    await waitFor(() => expect(row?.textContent).toContain("90.40"));
+    expect(kpis()).toContain("90.40");
+    expect(result()).toBe(shown);
+    expect(previews).toHaveLength(1);
+  });
+  it("S5: stays enabled while a confirmation is pending and leaves the envelope and buttons alone", async () => {
+    const ask = vi.spyOn(window, "confirm");
+    let lose = () => {};
+    const { posts } = mockOpenItemPages(new Promise<void>((resolve) => (lose = resolve)));
+    mount();
+    await previewPartial();
+    fireEvent.click(screen.getByRole("button", { name: t("tset.confirm") }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    const envelope = window.sessionStorage.getItem(draftKey);
+    const buttons = () => [disabled(t("tinv.preview")), disabled(t("tset.confirm"))];
+    const before = buttons();
+    expect(refreshButton().matches(":disabled")).toBe(false);
+    await refreshAndSettle();
+    expect(screen.getByLabelText(`${t("tset.select")} INV-1`).matches(":disabled")).toBe(true);
+    expect(buttons()).toEqual(before);
+    expect(window.sessionStorage.getItem(draftKey)).toBe(envelope);
+    expect(ask).not.toHaveBeenCalled();
+    lose();
+    await screen.findByRole("button", { name: t("tinv.retryConfirm") });
+  });
+  it("S6: keeps the unknown-outcome notice and retries with the same envelope after a refresh", async () => {
+    const { posts } = mockOpenItemPages(true);
+    mount();
+    await previewPartial();
+    fireEvent.click(screen.getByRole("button", { name: t("tset.confirm") }));
+    await screen.findByRole("button", { name: t("tinv.retryConfirm") });
+    await refreshAndSettle();
+    expect(screen.getByText(t("tinv.uncertain"))).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: t("tinv.retryConfirm") }));
+    await screen.findByRole("status");
+    expect(posts).toStrictEqual([posts[0], posts[0]]);
+  });
+  it("S7: a native button between the general tab and the table; two clicks show one copy, a failure the error bar", async () => {
+    const { state, reads } = mockOpenItemPages();
+    mount();
+    await screen.findByText("INV-1");
+    const button = refreshButton();
+    const lastGeneral = [...document.querySelectorAll("#tset-general-body input")].at(-1);
+    expect([button.tagName, button.getAttribute("type")]).toEqual(["BUTTON", "button"]);
+    expectFollows(lastGeneral, button);
+    expectFollows(button, document.querySelector("#tset-allocation-body tbody input"));
+    const before = reads();
+    fireEvent.click(button);
+    fireEvent.click(button);
+    await waitFor(() => expect([reads() - before, client.isFetching()]).toEqual([2, 0]));
+    expect(screen.getAllByText("INV-1")).toHaveLength(1);
+    expect(document.querySelectorAll("#tset-allocation-body tbody tr")).toHaveLength(PAGE_SIZE);
+    state.fail = true;
+    fireEvent.click(button);
+    expect(await screen.findByText(t("master.error"))).toBeTruthy();
   });
 });
