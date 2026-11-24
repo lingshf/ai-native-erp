@@ -21,12 +21,41 @@ import { MessageBar } from "../ui/components/index.tsx";
 import { formatMinor } from "../reports-data.ts";
 import { BusinessError } from "./business-error.tsx";
 import { EventEditor } from "./editors.tsx";
-import { companyQuery, PageControls, PageTable, usePage } from "./list.tsx";
+import { companyQuery, PageControls, PageTable, pageKey, usePage } from "./list.tsx";
 import { BusinessSettings } from "./settings.tsx";
 import type { T } from "./types.ts";
 // 待转队列操作列：窄屏表格横向滚动时，浏览器聚焦只滚到按钮“部分可见”就停；让焦点按钮完整进入可见区，焦点环不被裁切
 const revealFocused = (event: FocusEvent<HTMLButtonElement>) =>
   event.currentTarget.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+const queueStatuses = ["pending", "failed", "transferred", "withdrawn"] as const;
+type QueueStatus = (typeof queueStatuses)[number];
+type StatusFilterProps = {
+  value: QueueStatus;
+  disabled: boolean;
+  change: (next: QueueStatus) => void;
+  t: T;
+};
+function QueueStatusFilter({ value, disabled, change, t }: StatusFilterProps) {
+  return (
+    <label className="ui-field jv-status">
+      <span className="label">{t("business.queue")}</span>
+      <select
+        disabled={disabled}
+        value={value}
+        onChange={(event) => {
+          const next = queueStatuses.find((item) => item === event.target.value);
+          if (next) change(next);
+        }}
+      >
+        {queueStatuses.map((item) => (
+          <option key={item} value={item}>
+            {t(`business.${item}`)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
 type Review =
   | { preview: BusinessPreviewDto; event: BusinessEventDto; key: string }
   | { preview: BusinessPreviewDto; queueId: string };
@@ -53,7 +82,7 @@ export function CompanyEvents({
   const [detail, setDetail] = useState<BusinessResultDto | null>(null),
     [entry, setEntry] = useState<JournalDetailDto | null>(null);
   const [withdraw, setWithdraw] = useState<{ id: string; reason: string } | null>(null),
-    [status, setStatus] = useState<"pending" | "failed" | "transferred" | "withdrawn">("pending");
+    [status, setStatus] = useState<QueueStatus>("pending");
   const [busy, setBusy] = useState(false),
     [uncertain, setUncertain] = useState(false),
     [configEditing, setConfigEditing] = useState(false),
@@ -63,11 +92,12 @@ export function CompanyEvents({
     returnFocus = useRef<HTMLElement | null>(null);
   const editing = Boolean(draft || review || withdraw || configEditing);
   const listing = usePage("events", company.code, businessEventsPageSchema, "", view === "events");
+  const queueQuery = `&status=${status}`;
   const queue = usePage(
     "transfer-queue",
     company.code,
     transferQueuePageSchema,
-    `&status=${status}`,
+    queueQuery,
     view === "queue",
   );
   const dimensions = usePage("dimensions", company.code, dimensionPageSchema, "&kind=dimension");
@@ -263,6 +293,7 @@ export function CompanyEvents({
           <PageTable
             page={listing}
             t={t}
+            refreshKey={pageKey(company.code, "events")}
             title={t("business.title")}
             header={[t("journal.sourceRef"), t("journal.date"), t("business.title"), ""]}
             render={(item) => (
@@ -316,32 +347,11 @@ export function CompanyEvents({
       )}
       {view === "queue" && (
         <>
-          <label className="ui-field jv-status">
-            <span className="label">{t("business.queue")}</span>
-            <select
-              disabled={editing || busy}
-              value={status}
-              onChange={(event) => {
-                const next = event.target.value;
-                if (
-                  next === "pending" ||
-                  next === "failed" ||
-                  next === "transferred" ||
-                  next === "withdrawn"
-                )
-                  setStatus(next);
-              }}
-            >
-              {(["pending", "failed", "transferred", "withdrawn"] as const).map((item) => (
-                <option key={item} value={item}>
-                  {t(`business.${item}`)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <QueueStatusFilter value={status} disabled={editing || busy} change={setStatus} t={t} />
           <PageTable
             page={queue}
             t={t}
+            refreshKey={pageKey(company.code, "transfer-queue", queueQuery)}
             title={t("business.queue")}
             className="be-queue"
             header={[t("journal.sourceRef"), t("journal.date"), t("business.queue"), ""]}
