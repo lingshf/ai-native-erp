@@ -64,4 +64,34 @@ TLIST-06 单独符合 +200 B 的上限（+66 B）。整个 Sprint 的 +841 B 超
 
 ## 窗口
 
-待批准后填写：协调者的开窗批准原文（逐字）与时间、逐字命令、退出码、窗口内每分钟快照（`gate-snapshot.ps1 -StopFile`）、关窗时间、截图、D492 清单。
+**批准（D480，协调者，2026-11-23 约 20:18 PST 转达）原文：**“批准 DEMO-22 开窗（D480），端口 4204，按你提交的命令逐字执行，只改一处：快照脚本路径改用 demo22-tool 下的 scripts\slot\gate-snapshot.ps1，与 slot-run 同一基线 3ae4848，其余参数不变。REFAC-13 和 TSET-01 两位开发已收到暂停通知，但消息要到他们下一个回合边界才生效。所以先跑一次 gate-snapshot -Once -Ports "4204,4173"，两个端口都是 pid=none 才开始步骤 1，否则停下回报。 D519（体积）：放行。TLIST-06 本身 +66 B，在 +200 B 内；Sprint 累计 +841 B 中有 +775 B 来自 REFAC-12，那次拆分已按它自己的预算评审批准；首屏 +2 B，在 D454 的 10 B 内。在 run-through 和发布说明里写明这一例外和原因，不改产品代码。不重试，失败即停。开窗、关窗各通知我一次。”
+
+**D519 体积例外：** Sprint 累计 `TradeSettlements` +841 B 超过 +200 B，原因是 REFAC-12 在同一路由上的拆分（+775 B，已按其自身预算评审批准）；TLIST-06 本身 +66 B，首屏 +2 B（D454 ≤10 B）。协调者放行，产品代码未改。
+
+**时间线（PST，本机时间）：**
+
+| 时间 | 事件 |
+| --- | --- |
+| 20:18:26 | 开窗前门禁：`pwsh -NoProfile -File "$T\scripts\slot\gate-snapshot.ps1" -OutFile "$W\logs\gate-pre-window.tsv" -Once -Ports "4204,4173"`，exit 0，errors=0，4204 与 4173 各一行 `pid=none`（`logs/gate-pre-window.tsv`）。开窗，已通知协调者 |
+| 20:18:40 | 启动窗口快照（异步）：`pwsh -NoProfile -File "$T\scripts\slot\gate-snapshot.ps1" -OutFile "$W\logs\gate-window.tsv" -StopFile "$W\logs\gate.stop" -Ports "4204,4173"`，启动前 OutFile 与 StopFile 均不存在 |
+| 20:18:43–20:19:29 | 步骤 1：`powershell.exe -NoProfile -File docs\demo\v0.21.0\scripts\run-main.ps1 -Shots "$W\shots-dry" -Port 4204 *> "$W\logs\capture-dry-run.out.log"`，紧接 `Add-Content … "exit=$LASTEXITCODE"`；exit=0，capture exit 0，4 张图，`port 4204 released` |
+| 20:19:36–20:21:43 | 步骤 2：`pwsh -NoProfile -File "$T\scripts\slot\slot-run.ps1" -OutDir "$W\out" -StepsFile "$A\docs\demo\v0.21.0\scripts\steps-demo22.ps1" -BaseRoot $T -Ports 4204 *> "$W\logs\slot-run.out.log"`，紧接 `Add-Content … "exit=$LASTEXITCODE"`；exit=0，`step demo-capture exit=0 counted-after=0` |
+| 20:21:46 | 关窗：创建 `gate.stop`；快照进程 `snapshots=4 rows=129 errors=0 timedOut=false exit=0`。已通知协调者 |
+
+无失败、无重试、无管道。快照原始记录：`logs/gate-window.tsv`（SHA-256 `1093D2F9436022E96DD6C92C221EFEF6B5740C4DB31CC7D7B17DD28B0F76CC52`）；`logs/capture-dry-run.out.log`（`0ED3FEE170CB113CD0B802CDDF9F2BD0B1570BAD708AC5828804BBA2963DB844`）；`logs/slot-run.out.log`（`FBE71A884D9676376A116BC9FE23E111A2497A5DEB5A679ED70C0D82B0622640`）；步骤 2 的附属日志为 `logs/slot-*`。
+
+**窗口内键盘证据（真实 Chrome，`shots/capture-log-main.json`，`settlements-keyboard-record`）：**
+
+| 项 | 结果 |
+| --- | --- |
+| K1 | 起点 `button[aria-controls=tset-allocation-body]`，Tab 后落在“Refresh list”；Enter 与 Space 各产生 1 次 `/api/v1/trade/open-items?company=DEFAULT&status=open&limit=100` |
+| K2 | 草稿金额 `on` → 刷新后仍为 `on`，勾选保持，草稿未清空 |
+| K3 | 锁定态 fieldset disabled，“刷新列表”仍可用；刷新后“安全重试过账”仍显示、fieldset 仍禁用 |
+
+readiness：`openItems 8`，DEFAULT 账套的未结项、PO-C1 部分开票/10→6 均满足。
+
+**截图：** `shots/`（步骤 1）：`settlements-zh-red-1440/390.png`、`settlements-en-green-1440/390.png`；`shots-slot/` 是步骤 2 同脚本在 slot-run 中的第二次产物。按钮位于 fieldset 之前、表格之前；390 宽度无横向溢出（`documentScrollWidth` 390）。
+
+**D492 清单（窗口内，删除前）：** 步骤 1 的账套 `C:\Users\shaoling\AppData\Local\Temp\erp-demo-a8f2f654-1469-446b-81e4-5fdb6aa5852d`：`demo.sqlite` 647168 B（`CE55C639…5953`）、`demo.sqlite-wal` 1878752 B（`52E018EF…028D`）、`demo.sqlite-shm` 32768 B（`061A691C…1A60`），`demo.sqlite.users\` 下 2 个 0 字节文件（`E3B0C442…B855`）；`-wal`、`-shm` 均 present。完整 SHA-256 见 `logs/capture-dry-run.out.log`；步骤 2 的清单见 `logs/slot-demo-capture.out.log`。
+
+**未做：** `-Stub pass` 演练（本版本 SLOT 无改动）。

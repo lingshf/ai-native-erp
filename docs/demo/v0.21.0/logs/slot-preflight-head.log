@@ -1,0 +1,5 @@
+preflight root=C:\GithubCopilot\copilot-worktrees\ai-native-erp\demo22-app
+preflight tsconfig=C:\GithubCopilot\copilot-worktrees\ai-native-erp\demo22-app\scripts\slot\tsconfig.preflight.json baseline=C:\GithubCopilot\copilot-worktrees\ai-native-erp\demo22-app\scripts\slot\preflight-baseline.json
+tsc errors=0
+tdz files=37 findings=0
+preflight result exit=0 new-keys=0 reduced-keys=0
