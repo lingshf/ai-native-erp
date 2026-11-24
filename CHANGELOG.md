@@ -16,7 +16,7 @@
 > - 有条目：[#301](https://github.com/lingshf/ai-native-erp/pull/301)（TLIST-05，新增）、[#304](https://github.com/lingshf/ai-native-erp/pull/304)（SLOT-04，变更，开发工具，无用户可见变化）、[#303](https://github.com/lingshf/ai-native-erp/pull/303)（FLAKE-08，修复，测试基础设施）、[#305](https://github.com/lingshf/ai-native-erp/pull/305)、[#307](https://github.com/lingshf/ai-native-erp/pull/307)、[#309](https://github.com/lingshf/ai-native-erp/pull/309)（发布 / Demo 流程文档）。
 > - **不需要条目**，单列：[#302](https://github.com/lingshf/ai-native-erp/pull/302)（v0.19.0 的 RC，已随 v0.19.0 发布）、[#306](https://github.com/lingshf/ai-native-erp/pull/306)（S20 评审与回顾，设计）、[#308](https://github.com/lingshf/ai-native-erp/pull/308)（S22 计划，设计）。
 >
-> Demo 与窗口证据在 [docs/demo/v0.20.0](docs/demo/v0.20.0/README.md)，窗口结果（含第一窗口的失败与原因）和体积重测只写在其 [run-through](docs/demo/v0.20.0/run-through.md)，此处不重复。
+> Demo 与窗口证据在 [docs/demo/v0.20.0](docs/demo/v0.20.0/README.md)，窗口结果（含第一窗口的失败与原因）、D492 清单和体积重测只写在其 [run-through](docs/demo/v0.20.0/run-through.md)，此处不重复；两点 / 三点版本差异（D483）见 [发布说明](docs/release/v0.20.0-release-notes.md)。
 
 S21 Sprint 的用户可见改动只有 TLIST-05。**无迁移，无依赖变化**，已有账套不需要 migrate，不改过账规则与任何金额、数量口径。
 
