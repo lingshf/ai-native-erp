@@ -8,10 +8,10 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | --- | --- | --- |
 | 表 | 在某张决定表里有以该编号开头的一行（路线图 §6、`reviews/M0.md`、各 Sprint 计划或评审的决定表，以及 Demo 运行记录表） | 取该行第一段文字，过长时截到第一个“；”或“。”，否则截断加“…” |
 | 条目 | 没有表行，但有以加粗文字开头、加粗或其后括号里含该编号的列表项（多为回顾行动、流程规则、评审核对） | 不自动摘取，按位置阅读 |
-| 提及 | 只在正文中被引用，没有专门的记录行 | 空 |
+| 提及 | 只在正文中被引用，没有专门的记录行 | 空；规则原文只写在正文里的编号（目前是 D20、D21），由脚本指定原文位置排在第一处并给出摘要 |
 | 无 | 仓库内没有任何记录。多为协调者在会话中作出、未写入仓库的决定（如独占时段的逐次批准） | 空 |
 
-- “位置”列按表行、条目的顺序列出最多 3 处，`design/` 先于 `docs/` 与 `CHANGELOG.md`；超过 3 处写总数。行号对应本页所在的提交，之后的改动可能使行号漂移，以文件内搜索编号为准（`git grep -n -w D123 -- design docs CHANGELOG.md`）。
+- “位置”列按表行、条目的顺序列出最多 3 处，各类型都是 `design/` 先于 `docs/` 与 `CHANGELOG.md`，再按文件名与行号；“提及”类若有指定的原文位置则排第一，同一行多次引用只算一处；超过 3 处写总数。行号对应本页所在的提交，之后的改动可能使行号漂移，以文件内搜索编号为准（`git grep -n -w D123 -- design docs CHANGELOG.md`）。
 - 同名但不是决定的编号已排除：[S12 计划](tasks/S12.md) 中 UI 文案任务的验收项 D1–D6，以及[任务总表](tasks/README.md)、[`docs/README.md`](../docs/README.md) 中 KDOC 缺口编号 D1–D5（重复项）。D11 及以下只认表行与条目，不收正文提及。
 - 本页由脚本生成，脚本原文与运行输出附在 KDOC-03 的 PR 正文中。今后记录新决定的 PR 在本页末尾补一行（类型、摘要、位置），不必重新生成；需要全量刷新时重跑脚本。
 
@@ -39,15 +39,15 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D10 | 表 | M2 草案评审第三轮的两项分歧 | [design/roadmap.md:203](roadmap.md)；[design/tasks/M2-04-legacy-reconciliation.md:18](tasks/M2-04-legacy-reconciliation.md) |
 | D11 | 条目 |  | [design/reviews/S11.md:53](reviews/S11.md)；[design/reviews/S12.md:67](reviews/S12.md)；[design/reviews/S13.md:67](reviews/S13.md) 等 14 处 |
 | D12 | 提及 | | [design/tasks/M0-R2-test-speedup.md:21](tasks/M0-R2-test-speedup.md) |
-| D13 | 提及 | | [design/reviews/S4-retro.md:44](reviews/S4-retro.md)；[design/reviews/S4-retro.md:46](reviews/S4-retro.md)；[design/reviews/S4-retro.md:49](reviews/S4-retro.md) 等 19 处 |
+| D13 | 提及 | | [design/reviews/S4-retro.md:44](reviews/S4-retro.md)；[design/reviews/S4-retro.md:46](reviews/S4-retro.md)；[design/reviews/S4-retro.md:49](reviews/S4-retro.md) 等 17 处 |
 | D14 | 无 | | |
-| D15 | 提及 | | [CHANGELOG.md:634](../CHANGELOG.md)；[CHANGELOG.md:675](../CHANGELOG.md)；[CHANGELOG.md:679](../CHANGELOG.md) 等 21 处 |
+| D15 | 提及 | | [design/reviews/M1.md:70](reviews/M1.md)；[design/reviews/M1.md:78](reviews/M1.md)；[design/reviews/M1.md:100](reviews/M1.md) 等 21 处 |
 | D16 | 无 | | |
 | D17 | 无 | | |
 | D18 | 提及 | | [design/reviews/M1.md:46](reviews/M1.md)；[design/tasks/M1-R3-trade-report-capacity.md:14](tasks/M1-R3-trade-report-capacity.md)；[docs/performance/legacy-reconciliation-bench.md:46](../docs/performance/legacy-reconciliation-bench.md) 等 12 处 |
 | D19 | 无 | | |
-| D20 | 提及 | | [design/tasks/PROC-01-release-claims-and-demo.md:10](tasks/PROC-01-release-claims-and-demo.md)；[docs/README.md:61](../docs/README.md)；[docs/README.md:94](../docs/README.md) 等 8 处 |
-| D21 | 提及 | | [CHANGELOG.md:207](../CHANGELOG.md)；[CHANGELOG.md:227](../CHANGELOG.md)；[CHANGELOG.md:383](../CHANGELOG.md) 等 31 处 |
+| D20 | 提及 | SemVer，tag 写作 `vX.Y.Z`，修复用 Z 位；“按里程碑划分 Sprint”已由 D555 取代（同页第 5 行） | [docs/release/README.md:3](../docs/release/README.md)；[design/tasks/PROC-01-release-claims-and-demo.md:10](tasks/PROC-01-release-claims-and-demo.md)；[docs/README.md:61](../docs/README.md) 等 6 处 |
+| D21 | 提及 | tag 打在发布 PR 合并后的 squash 提交上 | [docs/release/README.md:3](../docs/release/README.md)；[design/reviews/S7.md:124](reviews/S7.md)；[design/tasks/PROC-01-release-claims-and-demo.md:10](tasks/PROC-01-release-claims-and-demo.md) 等 30 处 |
 | D22 | 无 | | |
 | D23 | 无 | | |
 | D24 | 无 | | |
@@ -58,7 +58,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D29 | 无 | | |
 | D30 | 表 | M2-03b 规范与 M1 模型的六处冲突/空白（不新增迁移） | [design/roadmap.md:206](roadmap.md)；[design/tasks/M2-03b-legacy-opening-open-items.md:8](tasks/M2-03b-legacy-opening-open-items.md)；[design/tasks/M2-03b-legacy-opening-open-items.md:115](tasks/M2-03b-legacy-opening-open-items.md) 等 5 处 |
 | D31 | 提及 | | [design/tasks/REFAC-31-business-event-compute-split.md:118](tasks/REFAC-31-business-event-compute-split.md) |
-| D32 | 提及 | | [design/tasks/REFAC-31-business-event-compute-split.md:118](tasks/REFAC-31-business-event-compute-split.md)；[design/tasks/REFAC-31-business-event-compute-split.md:118](tasks/REFAC-31-business-event-compute-split.md) |
+| D32 | 提及 | | [design/tasks/REFAC-31-business-event-compute-split.md:118](tasks/REFAC-31-business-event-compute-split.md) |
 | D33 | 无 | | |
 | D34 | 无 | | |
 | D35 | 无 | | |
@@ -105,7 +105,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D76 | 无 | | |
 | D77 | 提及 | | [design/reviews/S5.md:93](reviews/S5.md)；[design/tasks/S5-i-grid-table-component-rules.md:28](tasks/S5-i-grid-table-component-rules.md)；[design/tasks/UI-11b-s5g-leftover-button-checkbox.md:12](tasks/UI-11b-s5g-leftover-button-checkbox.md) |
 | D78 | 无 | | |
-| D79 | 提及 | | [CHANGELOG.md:592](../CHANGELOG.md)；[design/reviews/S4.md:41](reviews/S4.md)；[docs/release/v0.4.0-release-notes.md:51](../docs/release/v0.4.0-release-notes.md) |
+| D79 | 提及 | | [design/reviews/S4.md:41](reviews/S4.md)；[CHANGELOG.md:592](../CHANGELOG.md)；[docs/release/v0.4.0-release-notes.md:51](../docs/release/v0.4.0-release-notes.md) |
 | D80 | 无 | | |
 | D81 | 无 | | |
 | D82 | 无 | | |
@@ -138,7 +138,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D109 | 无 | | |
 | D110 | 提及 | | [design/tasks/S5-f-shell-components-global-rules.md:13](tasks/S5-f-shell-components-global-rules.md)；[design/tasks/S5-f-shell-components-global-rules.md:16](tasks/S5-f-shell-components-global-rules.md)；[design/tasks/S5-i-grid-table-component-rules.md:10](tasks/S5-i-grid-table-component-rules.md) 等 4 处 |
 | D111 | 无 | | |
-| D112 | 提及 | | [CHANGELOG.md:551](../CHANGELOG.md)；[design/reviews/S5.md:24](reviews/S5.md)；[design/reviews/S5.md:66](reviews/S5.md) 等 11 处 |
+| D112 | 提及 | | [design/reviews/S5.md:24](reviews/S5.md)；[design/reviews/S5.md:66](reviews/S5.md)；[design/reviews/S5.md:75](reviews/S5.md) 等 9 处 |
 | D113 | 无 | | |
 | D114 | 无 | | |
 | D115 | 条目 |  | [design/roadmap.md:139](roadmap.md) |
@@ -269,7 +269,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D240 | 无 | | |
 | D241 | 无 | | |
 | D242 | 表 | TINV-01 | [design/reviews/S8.md:86](reviews/S8.md) |
-| D243 | 提及 | | [design/reviews/S8.md:30](reviews/S8.md)；[design/reviews/S8.md:30](reviews/S8.md)；[design/tasks/README.md:461](tasks/README.md) 等 4 处 |
+| D243 | 提及 | | [design/reviews/S8.md:30](reviews/S8.md)；[design/tasks/README.md:461](tasks/README.md) |
 | D244 | 条目 |  | [design/reviews/S8.md:50](reviews/S8.md) |
 | D245 | 提及 | | [design/reviews/S8.md:30](reviews/S8.md) |
 | D246 | 无 | | |
@@ -309,7 +309,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D280 | 条目 |  | [design/tasks/GATE-01-minimal-resident-gate.md:72](tasks/GATE-01-minimal-resident-gate.md)；[CHANGELOG.md:403](../CHANGELOG.md) |
 | D281 | 无 | | |
 | D282 | 条目 |  | [design/tasks/GATE-01-minimal-resident-gate.md:72](tasks/GATE-01-minimal-resident-gate.md)；[CHANGELOG.md:403](../CHANGELOG.md) |
-| D283 | 提及 | | [design/reviews/S9.md:43](reviews/S9.md)；[design/reviews/S9.md:111](reviews/S9.md)；[design/reviews/S9.md:111](reviews/S9.md) |
+| D283 | 提及 | | [design/reviews/S9.md:43](reviews/S9.md)；[design/reviews/S9.md:111](reviews/S9.md) |
 | D284 | 条目 |  | [design/reviews/S9.md:60](reviews/S9.md) |
 | D285 | 表 | TINV-04 | [design/reviews/S9.md:116](reviews/S9.md) |
 | D286 | 无 | | |
@@ -341,7 +341,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D312 | 表 | （slot-3） | [design/reviews/S10.md:115](reviews/S10.md)；[design/reviews/S10-retro.md:46](reviews/S10-retro.md)；[design/reviews/S10.md:60](reviews/S10.md) |
 | D313 | 无 | | |
 | D314 | 提及 | | [design/reviews/S10-retro.md:15](reviews/S10-retro.md)；[design/reviews/S10-retro.md:49](reviews/S10-retro.md)；[design/reviews/S10-retro.md:53](reviews/S10-retro.md) 等 6 处 |
-| D315 | 提及 | | [design/reviews/S10-retro.md:49](reviews/S10-retro.md)；[design/reviews/S10-retro.md:50](reviews/S10-retro.md)；[design/reviews/S10-retro.md:55](reviews/S10-retro.md) 等 9 处 |
+| D315 | 提及 | | [design/reviews/S10-retro.md:49](reviews/S10-retro.md)；[design/reviews/S10-retro.md:50](reviews/S10-retro.md)；[design/reviews/S10-retro.md:55](reviews/S10-retro.md) 等 8 处 |
 | D316 | 提及 | | [design/reviews/S10-retro.md:49](reviews/S10-retro.md)；[design/reviews/S10-retro.md:53](reviews/S10-retro.md)；[design/reviews/S10-retro.md:87](reviews/S10-retro.md) 等 14 处 |
 | D317 | 表 | （slot-4） | [design/reviews/S10.md:116](reviews/S10.md) |
 | D318 | 条目 |  | [design/reviews/S10.md:61](reviews/S10.md) |
@@ -358,10 +358,10 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D329 | 无 | | |
 | D330 | 表 | / D332 / D333 | [design/reviews/S10.md:122](reviews/S10.md) |
 | D331 | 提及 | | [docs/demo/v0.10.0/run-through.md:29](../docs/demo/v0.10.0/run-through.md)；[docs/demo/v0.10.0/run-through.md:63](../docs/demo/v0.10.0/run-through.md) |
-| D332 | 提及 | | [design/reviews/S10-retro.md:21](reviews/S10-retro.md)；[design/reviews/S10-retro.md:24](reviews/S10-retro.md)；[design/reviews/S10-retro.md:71](reviews/S10-retro.md) 等 12 处 |
+| D332 | 提及 | | [design/reviews/S10-retro.md:21](reviews/S10-retro.md)；[design/reviews/S10-retro.md:24](reviews/S10-retro.md)；[design/reviews/S10-retro.md:71](reviews/S10-retro.md) 等 10 处 |
 | D333 | 提及 | | [design/reviews/S10-retro.md:22](reviews/S10-retro.md)；[design/reviews/S10-retro.md:23](reviews/S10-retro.md)；[design/reviews/S10-retro.md:71](reviews/S10-retro.md) 等 9 处 |
 | D334 | 提及 | | [design/reviews/S10-retro.md:81](reviews/S10-retro.md)；[design/tasks/PROC-08-s10-retro-actions.md:17](tasks/PROC-08-s10-retro-actions.md)；[design/tasks/PROC-08-s10-retro-actions.md:26](tasks/PROC-08-s10-retro-actions.md) 等 4 处 |
-| D335 | 提及 | | [CHANGELOG.md:307](../CHANGELOG.md)；[CHANGELOG.md:343](../CHANGELOG.md)；[design/reviews/S10.md:5](reviews/S10.md) 等 5 处 |
+| D335 | 提及 | | [design/reviews/S10.md:5](reviews/S10.md)；[CHANGELOG.md:307](../CHANGELOG.md)；[CHANGELOG.md:343](../CHANGELOG.md) 等 5 处 |
 | D336 | 提及 | | [design/reviews/S10.md:5](reviews/S10.md)；[design/tasks/README.md:585](tasks/README.md)；[design/tasks/S11.md:6](tasks/S11.md) |
 | D337 | 无 | | |
 | D338 | 表 | S10 回顾行动项如何采纳；S11 第三个开发名额与版本号 | [design/roadmap.md:209](roadmap.md)；[design/roadmap.md:147](roadmap.md)；[design/roadmap.md:187](roadmap.md) 等 5 处 |
@@ -396,7 +396,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D367 | 条目 |  | [design/reviews/S11.md:70](reviews/S11.md) |
 | D368 | 提及 | | [design/tasks/README.md:604](tasks/README.md)；[design/tasks/S12.md:3](tasks/S12.md)；[design/tasks/S12.md:19](tasks/S12.md) |
 | D369 | 条目 |  | [design/tasks/S12.md:7](tasks/S12.md)；[design/tasks/S12.md:8](tasks/S12.md) |
-| D370 | 提及 | | [CHANGELOG.md:287](../CHANGELOG.md)；[design/reviews/S11.md:110](reviews/S11.md)；[design/reviews/S12.md:26](reviews/S12.md) 等 9 处 |
+| D370 | 提及 | | [design/reviews/S11.md:110](reviews/S11.md)；[design/reviews/S12.md:26](reviews/S12.md)；[design/tasks/README.md:604](tasks/README.md) 等 9 处 |
 | D371 | 提及 | | [design/reviews/S11.md:111](reviews/S11.md)；[design/reviews/S12.md:14](reviews/S12.md)；[design/reviews/S12.md:27](reviews/S12.md) 等 8 处 |
 | D372 | 提及 | | [docs/demo/v0.11.0/run-through.md:60](../docs/demo/v0.11.0/run-through.md)；[docs/demo/v0.11.0/run-through.md:76](../docs/demo/v0.11.0/run-through.md)；[docs/demo/v0.11.0/run-through.md:90](../docs/demo/v0.11.0/run-through.md) |
 | D373 | 条目 |  | [design/reviews/S11.md:71](reviews/S11.md)；[docs/demo/v0.11.0/run-through.md:73](../docs/demo/v0.11.0/run-through.md) |
@@ -424,7 +424,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D395 | 表 | Demo | [design/reviews/S11.md:144](reviews/S11.md) |
 | D396 | 表 | TORD-06 B8 | [design/reviews/S12.md:160](reviews/S12.md)；[design/reviews/S12.md:75](reviews/S12.md) |
 | D397 | 无 | | |
-| D398 | 提及 | | [CHANGELOG.md:207](../CHANGELOG.md)；[CHANGELOG.md:227](../CHANGELOG.md)；[CHANGELOG.md:307](../CHANGELOG.md) 等 13 处 |
+| D398 | 提及 | | [design/reviews/S11.md:6](reviews/S11.md)；[design/reviews/S11.md:108](reviews/S11.md)；[design/reviews/S12.md:43](reviews/S12.md) 等 12 处 |
 | D399 | 表 | TINV-07 A7 | [design/reviews/S12.md:161](reviews/S12.md)；[design/reviews/S12.md:74](reviews/S12.md) |
 | D400 | 条目 |  | [design/roadmap.md:146](roadmap.md)；[design/roadmap.md:176](roadmap.md) |
 | D401 | 条目 |  | [design/reviews/S12.md:76](reviews/S12.md) |
@@ -442,7 +442,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D413 | 表 | （R2） | [design/reviews/S12.md:166](reviews/S12.md)；[design/reviews/S12.md:79](reviews/S12.md) |
 | D414 | 条目 |  | [design/reviews/S12.md:80](reviews/S12.md) |
 | D415 | 提及 | | [CHANGELOG.md:264](../CHANGELOG.md) |
-| D416 | 提及 | | [design/roadmap.md:56](roadmap.md)；[design/tasks/README.md:624](tasks/README.md)；[design/tasks/README.md:626](tasks/README.md) 等 6 处 |
+| D416 | 提及 | | [design/roadmap.md:56](roadmap.md)；[design/tasks/README.md:624](tasks/README.md)；[design/tasks/README.md:626](tasks/README.md) 等 4 处 |
 | D417 | 条目 |  | [design/tasks/S13.md:7](tasks/S13.md) |
 | D418 | 条目 |  | [design/tasks/S13.md:8](tasks/S13.md) |
 | D419 | 条目 |  | [design/tasks/S13.md:9](tasks/S13.md)；[CHANGELOG.md:243](../CHANGELOG.md) |
