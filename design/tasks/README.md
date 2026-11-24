@@ -772,9 +772,10 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [FLAKE-08](FLAKE-08-virtualizer-timer-after-teardown.md) | 虚拟列表防抖定时器在 jsdom 拆除后触发（main Full 偶发 `window is not defined`） | 修复（测试基础设施） | P1 | 无 | `packages/web/test/setup.ts` 和 / 或 `packages/web/test/ledger-reports.test.tsx` | 不加 | 不需要 | done | [#303](https://github.com/lingshf/ai-native-erp/pull/303)（`49f32541c27ba2265146a056f468d2c478c8fb20`） |
 | [TLIST-05](TLIST-05-business-events-refresh.md) | 业务事件与待转队列加“刷新列表” | 功能（列表） | P2 | 无 | `business-events/list.tsx`、`business-events/company-events.tsx`、`business-events.test.tsx` | 不加 | 不需要 | done | [#301](https://github.com/lingshf/ai-native-erp/pull/301)（`f9024d5`） |
 | DOC-21（无任务书） | 送审清单写入证据格式四条，验收见 [S21.md](S21.md#doc-21-验收) | 文档（发布流程） | P2 | 无 | `docs/release/README.md` | 不加 | 不需要 | done | [#305](https://github.com/lingshf/ai-native-erp/pull/305)（`276fd3b`） |
-| DEMO-21（无任务书） | `<S21 版本>` RC 与 Demo，验收见 [S21.md](S21.md#demo-21-验收) | 发布 | P1（Sprint 末） | `<S20 版本>` 已发布；每个开发任务与 DOC-21 已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | todo | — |
+| DEMO-21（无任务书） | `<S21 版本>` RC 与 Demo，验收见 [S21.md](S21.md#demo-21-验收) | 发布 | P1（Sprint 末） | `<S20 版本>` 已发布；每个开发任务与 DOC-21 已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | done | [#310](https://github.com/lingshf/ai-native-erp/pull/310)（`2ce7821`；tag `v0.20.0` → `90c762f`） |
 
 - **并行**：A ∥ B ∥ C，冲突域不相交，没有共享单文件；A 在 DEMO-20 窗口关闭后才派发，DEMO 窗口期间不改 `scripts/slot/`；都不申请浏览器时段，服从 D442 / D480 时段停用通知；DEMO-21 排在它们结案之后。体积口径见 [S21.md](S21.md#l10--体积口径)。
+- **Sprint 评审与回顾**：[S21 评审](../reviews/S21-review.md)（通过：三个开发任务、DOC-21 与 RC 已合并，v0.20.0 已发布；打回 12、待证据 0；D512 / D512 补充）、[S21 回顾](../reviews/S21-retro.md)（行动 1 清理临时账套前留文件清单与哈希、记录批准与关窗的精确时刻，行动 2 capture 新脚本先在窗口外验证焦点路径，落到 S22 DEMO-22；行动 3 回顾行动写成条款时技术断言先实测，落到设计与版本管理）。
 
 ## S22：窗口门禁快照工具 + 拆分 SettlementEntry + 付款与收款“刷新列表”（版本待 S21 发布后定）
 
@@ -785,7 +786,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | [SLOT-05](SLOT-05-gate-snapshot.md) | 窗口门禁与每分钟快照工具 `gate-snapshot.ps1` | 开发工具 | P1 | SLOT-04 #304 已合并；不在 DEMO 窗口内派发或合并 | `scripts/slot/gate-snapshot.ps1`（新）、`scripts/slot/selftest-gate-snapshot.ps1`（新）、`scripts/slot/README.md` | 不加 | 不需要 | todo | — |
-| [REFAC-12](REFAC-12-settlement-entry-split.md) | 拆分 `SettlementEntry` 函数体（不改行为） | 重构（页面） | P2 | 无 | `packages/web/src/TradeSettlements.tsx`、`packages/web/src/trade-settlements/`（新） | 不加 | 不需要 | todo | — |
+| [REFAC-12](REFAC-12-settlement-entry-split.md) | 拆分 `SettlementEntry` 函数体（不改行为） | 重构（页面） | P2 | 无 | `packages/web/src/TradeSettlements.tsx`、`packages/web/src/trade-settlements/`（新） | 不加 | 不需要 | done | [#311](https://github.com/lingshf/ai-native-erp/pull/311)（`9c05266`） |
 | [TLIST-06](TLIST-06-settlements-refresh.md) | 付款与收款页加“刷新列表” | 功能（列表） | P2 | REFAC-12 已合并 | `trade-settlements/` 下的分配页签与查询文件、`trade-settlements.test.tsx` | 不加 | 不需要 | todo | — |
 | DOC-22（无任务书） | 送审清单加 `git grep` 自查；Demo 模板第 23 条引用快照工具，验收见 [S22.md](S22.md#doc-22-验收) | 文档（发布流程） | P2 | (b) 须 SLOT-05 已合并 | `docs/release/README.md`、`docs/demo/TEMPLATE.md` | 不加 | 不需要 | todo | — |
 | DEMO-22（无任务书） | `<S22 版本>` RC 与 Demo，验收见 [S22.md](S22.md#demo-22-验收) | 发布 | P1（Sprint 末） | `<S21 版本>` 已发布；每个开发任务与 DOC-22 已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | todo | — |
