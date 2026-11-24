@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterAll, afterEach, beforeAll, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { BusinessEventDto, BusinessPreviewDto, BusinessResultDto } from "@erp/core/contracts";
 import { App } from "../src/App.tsx";
 import { label } from "../src/ui/index.ts";
@@ -566,4 +566,171 @@ it("shows the page description verbatim in zh and en whether teaching is off or 
     assertHeader("en", teaching);
     switchTo("en", "zh");
   }
+});
+// TLIST-05: "Refresh list" re-reads page one of the current business events or transfer queue list.
+const PAGE_SIZE = 100;
+const PAGE_ROWS = PAGE_SIZE + 1; // aria-rowcount counts the header row.
+const QUEUE_ROWS = 2; // one queue row per status plus the header row.
+const REFRESH_TEXT = { zh: "刷新列表", en: "Refresh list" } as const;
+const eventRows = (page: number) =>
+  Array.from({ length: PAGE_SIZE }, (_, index) => ({
+    id: `20000000-0000-4000-8000-${String(page * PAGE_SIZE + index).padStart(12, "0")}`,
+    sourceRef: `EV-${String(page * PAGE_SIZE + index).padStart(3, "0")}`,
+    date: "2026-01-15",
+    memo: "Event",
+    operation: "journal",
+    status: "posted",
+    createdAt,
+  }));
+const eventPage = (next: boolean) =>
+  response({ items: eventRows(next ? 1 : 0), nextCursor: next ? null : "EV-099" });
+const queuePage = (status: string | null) =>
+  response({
+    items: [
+      { id, sourceRef: `Q-${status}`, date: "2026-01-15", memo: "Queued", createdAt, status },
+    ].map((row) => ({
+      ...row,
+      revision: 1,
+      journalIds: [],
+      fingerprint: null,
+      error: null,
+      reason: null,
+    })),
+    nextCursor: null,
+  });
+// Two event pages and one queue row per status; `answer` may override an events reply. Reads are recorded.
+function stubEventPages(answer?: () => Promise<Response> | undefined) {
+  window.history.replaceState(null, "", "/#/events");
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+    new DOMRect(0, 0, 1000, 480),
+  );
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  const reads: { url: URL; signal: AbortSignal }[] = [];
+  vi.stubGlobal("fetch", async (path: string, init: RequestInit) => {
+    const url = new URL(path, "http://localhost");
+    if (url.pathname === "/api/v1/companies")
+      return response({ items: [company], nextCursor: null });
+    reads.push({ url, signal: init.signal as AbortSignal });
+    if (url.pathname === "/api/v1/transfer-queue") return queuePage(url.searchParams.get("status"));
+    if (url.pathname !== "/api/v1/events") return response({ items: [], nextCursor: null });
+    return (await answer?.()) ?? eventPage(url.searchParams.has("cursor"));
+  });
+  return reads;
+}
+const refreshButton = (language: "zh" | "en" = "zh") =>
+  screen.getByRole<HTMLButtonElement>("button", { name: REFRESH_TEXT[language] });
+const newCash = () =>
+  screen.getByRole<HTMLButtonElement>("button", {
+    name: `${label("zh", "business.new")} · ${label("zh", "business.cash_service")}`,
+  });
+const statusSelect = () => document.querySelector(".jv-status select") as HTMLSelectElement;
+const rowCount = () => screen.getByRole("table").getAttribute("aria-rowcount");
+const readPath = ({ url }: { url: URL }) => `${url.pathname}${url.search}`;
+const firstPage = (path: string, query = "") =>
+  `/api/v1/${path}?company=${company.code}&limit=${PAGE_SIZE}${query}`;
+const openView = (language: "zh" | "en", view: "business.queue" | "business.settings") =>
+  fireEvent.click(screen.getByRole("button", { name: label(language, view) }));
+// Clicks Refresh list; expects exactly one more read, of page one of `path`, shown alone.
+async function expectOneReread(reads: { url: URL }[], path: string, query = "") {
+  const from = reads.length;
+  fireEvent.click(refreshButton());
+  await waitFor(() => expect(reads.slice(from).map(readPath)).toEqual([firstPage(path, query)]));
+  await waitFor(() => expect(rowCount()).toBe(String(path === "events" ? PAGE_ROWS : QUEUE_ROWS)));
+}
+describe("TLIST-05 business events refresh list", () => {
+  it("L2: shows Refresh list before the events and queue tables in zh and en, not in settings or the editor list", async () => {
+    stubEventPages();
+    render(<App />);
+    for (const language of ["zh", "en"] as const) {
+      await screen.findByText("EV-000");
+      expect(refreshButton(language).parentElement?.nextElementSibling?.className).toBe("card");
+      openView(language, "business.queue");
+      await screen.findByText("Q-pending");
+      expect(refreshButton(language).parentElement?.nextElementSibling?.className).toBe("card");
+      openView(language, "business.settings");
+      expect(screen.queryByRole("button", { name: REFRESH_TEXT[language] })).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: label(language, "business.title") }));
+      if (language === "zh")
+        fireEvent.change(screen.getByLabelText(label("zh", "shell.language")), {
+          target: { value: "en" },
+        });
+    }
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: `${label("en", "business.new")} · ${label("en", "business.clearing.match")}`,
+      }),
+    );
+    for (const [key, value] of [
+      ["journal.account", "1000"],
+      ["journal.date", "2026-01-15"],
+    ] as const)
+      fireEvent.change(screen.getByLabelText(label("en", key)), { target: { value } });
+    fireEvent.click(screen.getByRole("button", { name: label("en", "business.openItems") }));
+    await screen.findByText(label("en", "business.empty"));
+    expect(screen.getAllByRole("button", { name: REFRESH_TEXT.en })).toHaveLength(1);
+  });
+  it("L3: after two event pages, re-reads only the first page and offers Load more again", async () => {
+    const reads = stubEventPages();
+    render(<App />);
+    await screen.findByText("EV-000");
+    fireEvent.click(screen.getByRole("button", { name: label("zh", "master.loadMore") }));
+    await waitFor(() => expect(rowCount()).toBe(String(2 * PAGE_SIZE + 1)));
+    await expectOneReread(reads, "events");
+    expect(screen.getAllByText("EV-000")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: label("zh", "master.loadMore") })).toBeTruthy();
+  });
+  it("L4 / L7: in the queue, the native button after the status filter re-reads only the chosen status", async () => {
+    const reads = stubEventPages();
+    render(<App />);
+    await screen.findByText("EV-000");
+    openView("zh", "business.queue");
+    fireEvent.change(statusSelect(), { target: { value: "failed" } });
+    await screen.findByText("Q-failed");
+    expect(statusSelect().closest("label")?.nextElementSibling).toBe(refreshButton().parentElement);
+    expect(refreshButton().outerHTML).toMatch(/^<button type="button" class="btn btn-secondary">/);
+    await expectOneReread(reads, "transfer-queue", "&status=failed");
+    expect(statusSelect().value).toBe("failed");
+  });
+  it("L5 / L7: refreshes with a dirty draft editor open, without asking or changing the editor", async () => {
+    const confirm = vi.spyOn(window, "confirm");
+    const reads = stubEventPages();
+    render(<App />);
+    await screen.findByText("EV-000");
+    fireEvent.click(newCash());
+    const memo = screen.getByLabelText<HTMLInputElement>(label("zh", "journal.memo"));
+    fireEvent.change(memo, { target: { value: "Unsaved draft" } });
+    expect(newCash().parentElement?.nextElementSibling).toBe(refreshButton().parentElement);
+    expect(refreshButton().disabled).toBe(false);
+    expect(newCash().disabled).toBe(true);
+    await expectOneReread(reads, "events");
+    expect(screen.getByLabelText(label("zh", "journal.memo"))).toBe(memo);
+    expect(memo.value).toBe("Unsaved draft");
+    expect(confirm).not.toHaveBeenCalled();
+  });
+  it("L6: a second click cancels the first request and shows page one once; a failure shows the notice", async () => {
+    const held: (() => void)[] = [];
+    let answer: (() => Promise<Response>) | undefined;
+    const reads = stubEventPages(() => answer?.());
+    render(<App />);
+    await screen.findByText("EV-000");
+    answer = () => new Promise((resolve) => held.push(() => resolve(eventPage(false))));
+    fireEvent.click(refreshButton());
+    fireEvent.click(refreshButton());
+    await waitFor(() => expect(held).toHaveLength(2));
+    expect(reads.slice(-2).map(({ signal }) => signal.aborted)).toEqual([true, false]);
+    for (const release of held) release();
+    await waitFor(() => expect(rowCount()).toBe(String(PAGE_ROWS)));
+    expect(screen.getAllByText("EV-000")).toHaveLength(1);
+    answer = () => Promise.reject(new TypeError("offline"));
+    fireEvent.click(refreshButton());
+    await screen.findByRole("alert");
+    expect(screen.getByRole("button", { name: label("zh", "master.retry") })).toBeTruthy();
+  });
 });

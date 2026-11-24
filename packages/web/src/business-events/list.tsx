@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import type { ContractSchema } from "@erp/core/contracts";
 import { masterRequest } from "../master-data-client.ts";
 import { VirtualRows } from "../journals/virtual-rows.tsx";
 import { BusinessError } from "./business-error.tsx";
 import type { T } from "./types.ts";
 export const companyQuery = (company: string) => `company=${encodeURIComponent(company)}`;
+export const pageKey = (company: string, path: string, query = "") =>
+  ["business", company, path, query] as const;
 export function usePage<T>(
   path: string,
   company: string,
@@ -14,7 +16,7 @@ export function usePage<T>(
   enabled = true,
 ) {
   return useInfiniteQuery({
-    queryKey: ["business", company, path, query],
+    queryKey: pageKey(company, path, query),
     enabled,
     initialPageParam: "",
     queryFn: ({ pageParam, signal }) =>
@@ -61,6 +63,21 @@ export function PageControls({ page, t }: { page: Listing<unknown>; t: T }) {
     </>
   );
 }
+// TLIST-05: re-reads only the first page of this list; stays enabled while an editor is open.
+function ListRefresh({ queryKey, t }: { queryKey: readonly unknown[]; t: T }) {
+  const client = useQueryClient();
+  return (
+    <div className="toolbar-row">
+      <button
+        type="button"
+        className="btn btn-secondary"
+        onClick={() => void client.resetQueries({ queryKey, exact: true })}
+      >
+        {t("master.listRefresh")}
+      </button>
+    </div>
+  );
+}
 export function PageTable<Item>({
   page,
   title,
@@ -68,6 +85,7 @@ export function PageTable<Item>({
   render,
   t,
   className,
+  refreshKey,
 }: {
   page: Listing<Item>;
   title: string;
@@ -75,10 +93,12 @@ export function PageTable<Item>({
   render: (item: Item, index: number) => ReactNode;
   t: T;
   className?: string;
+  refreshKey?: readonly unknown[];
 }) {
   const items = page.data?.pages.flatMap((p) => p.items) ?? [];
   return (
     <>
+      {refreshKey && <ListRefresh queryKey={refreshKey} t={t} />}
       <div className="card">
         <VirtualRows
           items={items}
