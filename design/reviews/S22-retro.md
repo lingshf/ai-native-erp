@@ -51,7 +51,7 @@ TSET-01 任务书 N7 同时要求“首屏 ±0”和“`trade-labels.ts` 所在 
 
 - [#311](https://github.com/lingshf/ai-native-erp/pull/311)（REFAC-12）送审说明：默认并发下 `trade-reports` / `trade-invoice-detail` 出现 1–3 个超时，`--maxWorkers=4` 或 `2` 时通过。
 - [#316](https://github.com/lingshf/ai-native-erp/pull/316)（TLIST-06）：`journals` / `trade-orders` 在负载下偶发超时。
-- [#320](https://github.com/lingshf/ai-native-erp/pull/320)（TSET-01，S23）N4：本机 16 核，`npx vitest run --project web --maxWorkers=8` 连跑 3 次都是 exit 0、`Tests  384 passed (384)`；默认并行（`maxWorkers` 16）出现间歇失败，head 上一次为 `1 failed | 383 passed (384)`，base `fcf2db8` 上同一命令连跑 3 次为“2 失败、全过、全过”。失败用例分散在不同文件（`trade-period-admission`、TINV-06 / TINV-07 等），base 与 head 都有，与改动无关。正文早先的“17 failed”样本是与 `bundle-measure.mjs` 构建并跑时得到的，已作废，不计入。
+- [#320](https://github.com/lingshf/ai-native-erp/pull/320)（TSET-01，S23）N4：本机 16 核，`npx vitest run --project web --maxWorkers=8` 连跑 3 次都是 exit 0、`Tests  384 passed (384)`；默认并行（`maxWorkers` 16）出现间歇失败，head 上一次为 `1 failed | 383 passed (384)`，base `fcf2db8` 上同一命令连跑 3 次为“2 失败、全过、全过”。失败用例分散在不同文件（`trade-period-admission`、TINV-06 / TINV-07 等），base 与 head 都有，与改动无关。
 - main Full 同期 8 / 8 绿，没有出现这些失败。
 
 **根因（推断）**
