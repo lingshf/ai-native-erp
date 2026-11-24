@@ -1,6 +1,6 @@
 # REFAC-14：拆分 `CompanyEvents` 函数体（不改行为）
 
-- Sprint：S24（[计划草案](S24.md)）　类型：重构（页面）　优先级：P2　决定：待协调者指定（下一个可用编号 D525；建议记本任务书“范围与决定”1–4 的核心口径）　建议分支：`refac-14-split-company-events`
+- Sprint：S24（[计划草案](S24.md)）　类型：重构（页面）　优先级：P2　决定：[D525](S24.md#s24-期间决定)（只改代码组织、不改行为；见“范围与决定”1–4）　建议分支：`refac-14-split-company-events`
 - 来源：[S23 候选池](S23.md#候选池s23-之后)第 1 项（“按 ② 拆 `CompanyEvents`（563 行）……一个 Sprint 一个”）。结构与验收照搬 [REFAC-13](REFAC-13-order-lookup-split.md) 与 [REFAC-12](REFAC-12-settlement-entry-split.md)，只换成“业务事件”的事实；另按 [S22 回顾行动 3](../reviews/S22-retro.md#行动项汇总)（随 #323 入库）写出 chunk 归属与首屏预算，按行动 4 写出本机全量 web 测试命令。
 - 迁移：**不加**。浏览器时段：**不需要**（理由见“证据要求”）。
 - 数据：只用虚构数据；不读取真实旧账、4173 账套或 `.bak` 文件。
@@ -73,7 +73,7 @@ base 数字（屏蔽哈希后的 gzip-9 / 原始字节）：首屏 161114 / 5311
 
 ## 范围与决定
 
-1. **不改行为**。以下全部不变：DOM 结构、类名、文本、属性（含 `id`、`aria-*`、`role`、`disabled`、`maxLength`、`required`）；请求的方法、URL、请求体与发出顺序（含幂等键与 `confirmation` 值）；查询缓存的键与作废范围；`working` 防重入与 `alive` 检查的位置；焦点行为（`returnFocus` 的记录与归还、`revealFocused`）；`lock` 的调用时机。只改代码组织，不修 bug；拆分时发现的疑似缺陷登记在 PR 正文，留作后续任务。
+1. **不改行为**（D525）。以下全部不变：DOM 结构、类名、文本、属性（含 `id`、`aria-*`、`role`、`disabled`、`maxLength`、`required`）；请求的方法、URL、请求体与发出顺序（含幂等键与 `confirmation` 值）；查询缓存的键与作废范围；`working` 防重入与 `alive` 检查的位置；焦点行为（`returnFocus` 的记录与归还、`revealFocused`）；`lock` 的调用时机。只改代码组织，不修 bug；拆分时发现的疑似缺陷登记在 PR 正文，留作后续任务。
 2. **Hook 顺序不变**：Hook 可以留在 `CompanyEvents`，也可以放进它顶层无条件调用的自定义 Hook（例如 `useCompanyEvents`）。**展示组件不得调用任何 Hook**；不新增 `useCallback`、`useMemo`、`memo`。展开自定义 Hook 后，Hook 调用序列（种类、先后、参数与依赖的源文本，空白归一）与“现状”所列 base 序列逐项相同（R5a）；`usePage` 按一次调用计，不展开其内部。`:116` 的“为什么”注释随 `useLayoutEffect` 搬移，内容不变。
 3. **命令函数**：`run`、`complete`、`rejected`、`fresh`、`preview`、`confirm` 可以搬进自定义 Hook，或搬到同目录的普通模块函数（以参数接收状态、setter 与 ref）；每次渲染仍读取当次状态，不改为缓存的闭包。`await` 的先后、`alive` 检查与状态写入的顺序都不变。允许把纯计算抽成纯函数（例如由操作生成新草稿、由 `review` 生成确认请求、判断“已知拒绝”），输入输出逐项不变。**不合并**“现状”所列的相近处理：列表“查看”与“原事件”链接对 `entry` 的处理不同，队列“撤回”不经 `run`，须原样保留。
 4. **组件层级对等**：新组件一律在模块顶层定义。抽出的组件只替换“现状”所列 10 个子表达式之一（或其中一个子表达式内部的一段，例如队列行的操作按钮）；只渲染该表达式原来渲染的内容，不把相邻兄弟合成一个返回 Fragment 的组件。条件渲染的条件（`view === …`、`error !== undefined && !review && !withdraw`、`busy`、`detail`、`review`、`withdraw`、`item.status === "pending" || item.status === "failed"`）留在父级原位置，或留在被抽出组件内与原来相同的位置。
@@ -101,7 +101,7 @@ base 数字（屏蔽哈希后的 gzip-9 / 原始字节）：首屏 161114 / 5311
 | 编号 | 检查 | base `2794c3a` | head 要求 |
 | --- | --- | --- | --- |
 | R6a | `node fnlen.cjs packages/web/src`（口径同 S16–S23）中 `CompanyEvents` 的行数 | **563**（失败） | ≤ 80，且 `company-events.tsx` 与新文件中没有本任务新增或改动的函数 > 80（原样搬移的 `BusinessPlan` 82 行除外，见决定 6） |
-| R6b | `CompanyEvents` 及其新抽出的组件、Hook 与模块函数中，表示撤回原因最大长度的 `200` 与“已知拒绝”界限的 `500` | 2 处（`:173`、`:573`，失败） | 0 处，改用具名常量（决定 5） |
+| R6b | `CompanyEvents` 及其新抽出的组件、Hook 与模块函数中，“已知拒绝”的状态界限 `500` 与撤回原因最大长度 `200` | 2 处（`:173` 的 `500`、`:573` 的 `200`，失败） | 0 处，改用具名常量（决定 5） |
 
 ### 两侧都须成立的不变量
 
@@ -110,19 +110,23 @@ base 数字（屏蔽哈希后的 gzip-9 / 原始字节）：首屏 161114 / 5311
 - **R3 既有测试原样通过**：`business-events.test.tsx` 的 10 个用例、`journals.test.tsx`、`App.test.tsx` 与 Web 全部 jsdom 测试通过；测试文件 diff 为空。本机全量命令见“测试命令”。
 - **R4 DOM、请求与焦点等价**（送审证据，脚本不提交，不加常驻 CI 用例）：
   - **驱动**：临时 jsdom 驱动脚本，借用 `business-events.test.tsx` 的渲染方式与桩，在 base 与 head 上按同一序列操作。`fetch` 桩改为**受控响应**，采样边界同 [REFAC-10 R4](REFAC-10-order-list-split.md#验收)。
+  - **固定 UUID**：base 在 `:183`（新草稿 `id`）与 `:212`（确认幂等键 `review.key`）调用 `crypto.randomUUID()`，两者都进请求体。驱动在每个场景开始时把 `crypto.randomUUID` 替换为同一确定序列（例如 `00000000-0000-4000-8000-000000000001` 起递增），两侧相同，做法同 [REFAC-12 R4](REFAC-12-settlement-entry-split.md#验收)。请求体中的草稿 `id` 与 `idempotencyKey` **原样保留**，不得删除、改写或归一化。采样另记每次 `randomUUID` 调用的序号与调用时所在步骤。
+  - **记录 `lock`**：驱动传入的 `lock` 为记录桩，按调用顺序记下（步骤、参数），含卸载时清理调用的 `lock(false)`。不用 DOM 中按钮的 `disabled` 代替：子页按钮直接取 `editing || busy`（`:256`），漏掉 `lock` 调用也不会改变它。
+  - **记录 `scrollIntoView`**：jsdom 没有实现 `scrollIntoView`，base 用 `?.` 调用（`:29`）。驱动在两侧都给 `HTMLElement.prototype.scrollIntoView` 装同一个记录桩，记下每次调用的目标元素（标签、可访问名称、所在行的事件 ID）与参数原文（base 为 `{ block: "nearest", inline: "nearest" }`）。
   - **序列**至少包含：
     - 三个视图来回切换（含“设置”）；
     - 新建现金服务草稿 → 预览 → 确认成功（核对请求体中的 `idempotencyKey` 与 `confirmation`、两个查询键被作废）；
-    - 确认被拒（409，`review` 关闭）与确认结果不明（500 或网络错误，`uncertain` 后再次确认成功）；
+    - 确认被拒（409，`review` 关闭）与确认结果不明（500 或网络错误，`uncertain` 后再次确认成功）。断言重试请求的 `idempotencyKey` 与首次确认的相同；关闭对话框后重新预览会取序列中的下一个值，断言新键与旧键不同；
     - 事件列表“查看” → 详情中“查看凭证”（出现 `entry`）→ 点“原事件”链接（`entry` **保留**）；再从列表“查看”（`entry` 清空）；
     - 冲销已过账的现金服务（`fresh` 带 `originalId`）；
     - 待转队列：切换状态筛选；“预览” → “转入”成功；“撤回” → 输入原因 → 确认成功；撤回被拒；
-    - 对话框关闭后焦点回到打开它的按钮；队列操作按钮获得焦点时调用 `revealFocused`；
+    - 对话框关闭后焦点回到打开它的按钮；队列“查看”“预览”“撤回”按钮各用 `element.focus()` 获得一次焦点，断言每次都有一条 `scrollIntoView` 记录、目标为该按钮、参数如上；焦点落到非队列按钮时没有新记录；
     - 第一次“查看”未应答时再点另一行（`working` 防重入，第二次不发请求）；
     - 深链接 `initialId`（含在应答前卸载，`AbortController` 生效）与 `initialQueue`；
+    - 编辑草稿中、确认请求未应答时各采一次 `lock` 记录，之后卸载组件，断言最后一条为 `lock(false)`；
     - zh / en 各一遍。
-  - **每步采样**：DOM（`document.body.innerHTML`）与焦点；累计请求日志（序号、方法、URL、请求体、结果）；查询缓存（`queryKey`、`status`、`isInvalidated`，按键排序）。页面锁定（`lock`）由 DOM 中视图切换按钮的 `disabled` 体现。
-  - **判定**：base 与 head 逐步、逐项、逐字节相同。PR 正文附脚本全文、步骤清单、两侧输出的 SHA-256 与比较结果，以及“原事件链接保留凭证”和“确认结果不明后重试”两组场景的逐步输出原文。
+  - **每步采样**：DOM（`document.body.innerHTML`）与焦点；累计请求日志（序号、方法、URL、请求体、结果）；查询缓存（`queryKey`、`status`、`isInvalidated`，按键排序）；累计 `lock` 记录；累计 `scrollIntoView` 记录；累计 `randomUUID` 调用记录。
+  - **判定**：base 与 head 逐步、逐项、逐字节相同。PR 正文附脚本全文、步骤清单、两侧输出的 SHA-256 与比较结果，以及“原事件链接保留凭证”“确认结果不明后重试（含幂等键复用断言）”“`lock` 与卸载解锁”“队列按钮 `scrollIntoView`”四组场景的逐步输出原文。
 - **R5 结构规则**（静态，评审按代码与 PR 表格核对）：
   - **R5a Hook 序列**：PR 正文列出 base 与 head 的 Hook 调用序列（自定义 Hook 按调用处展开），两侧逐行相同；base 一侧须与“现状”所列一致。
   - **R5b 展示组件无 Hook**：新抽出的组件中没有任何 `use*` 调用；PR 正文附 Babel AST 检查脚本的输出。
