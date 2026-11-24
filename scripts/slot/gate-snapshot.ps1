@@ -3,18 +3,13 @@
 #   pwsh -NoProfile -File scripts\slot\gate-snapshot.ps1 -OutFile <new.tsv> -Ports "<port>[,<port>…]" (-Once | -StopFile <path>)
 #        [-IntervalSeconds 60] [-MaxMinutes 180]
 # Exit (priority 8 > 9 > 0): 0 all snapshots done; 2 not Windows / not PowerShell 7; 3 bad arguments (nothing written);
-# 8 at least one process or port query failed (a kind=error row); 9 -MaxMinutes reached before -StopFile appeared.
-# Self-test stand-ins (selftest-gate-snapshot.ps1 only; unset in real use): GATE_SNAPSHOT_FAIL_PORTS="<port>[,…]" makes
-# the lookup of those ports throw; GATE_SNAPSHOT_SECONDS_PER_MINUTE=<n> counts each -MaxMinutes minute as n seconds.
+# 8 a process or port query failed (a kind=error row) or the TSV could not be created or appended (stops at once);
+# 9 -MaxMinutes reached before -StopFile appeared. GATE_SNAPSHOT_* env vars are self-test stand-ins (README; unset in use).
 param([string] $OutFile, [string] $Ports, [switch] $Once, [string] $StopFile, [int] $IntervalSeconds = 60, [int] $MaxMinutes = 180)
-$SecondsPerMinute = 60
-$ExitOk = 0; $ExitPlatform = 2; $ExitArguments = 3; $ExitQueryFailed = 8; $ExitTimedOut = 9
+$ExitOk = 0; $ExitPlatform = 2; $ExitArguments = 3; $ExitFailed = 8; $ExitTimedOut = 9
 $Columns = 'snapshot', 'takenAt', 'kind', 'pid', 'ppid', 'depth', 'name', 'created', 'cpuSeconds', 'exe', 'cwd', 'cmdline', 'port', 'localAddress', 'note'
-$DepthCap = 32
-$Unreadable = 'unreadable'
-$NodeName = 'node.exe'
-$StopPollMilliseconds = 250
-$Utf8NoBom = [Text.UTF8Encoding]::new($false)
+$SecondsPerMinute = 60; $DepthCap = 32; $StopPollMilliseconds = 250
+$Unreadable = 'unreadable'; $NodeName = 'node.exe'; $Utf8NoBom = [Text.UTF8Encoding]::new($false)
 
 if (-not $IsWindows -or $PSVersionTable.PSVersion.Major -lt 7) { Write-Host 'gate-snapshot.ps1 needs PowerShell 7 on Windows'; exit $ExitPlatform }
 
@@ -84,42 +79,36 @@ function Get-ProcessRows {
   foreach ($node in $nodes) { ConvertTo-ProcessRow $node 'node' 0; Get-AncestorRows $node $byId }
 }
 
-# All Listen endpoints in one query (one query per port costs about 1 s each); a failure is the error message.
-function Get-ListenEndpoints {
-  try { return @{ Endpoints = @(Get-NetTCPConnection -State Listen -ErrorAction Stop) } }
-  catch {
-    if ($_.CategoryInfo.Category -eq 'ObjectNotFound') { return @{ Endpoints = @() } }
-    return @{ Failure = $_.Exception.Message }
-  }
+# All Listen endpoints in one CIM query: an empty result is "no listener"; any exception, of any category, is a failure.
+function Get-ListenEndpoints([string] $failCategory) {
+  try {
+    if ($failCategory) { throw [Management.Automation.ErrorRecord]::new([Exception]::new("injected listen query failure ($failCategory)"), 'GateSnapshotStandIn', $failCategory, $null) }
+    return @{ Endpoints = @(Get-CimInstance -Namespace ROOT/StandardCimv2 -ClassName MSFT_NetTCPConnection -Filter 'State=2' -ErrorAction Stop) }
+  } catch { return @{ Failure = "[$($_.CategoryInfo.Category)] $($_.Exception.Message)" } }
 }
 
 # One row per Listen endpoint of each port; pid=none when nothing listens; only kind=error when the query fails.
-function Get-PortRows([int[]] $portList, [int[]] $failPorts) {
-  $lookup = Get-ListenEndpoints
+function Get-PortRows([int[]] $portList, [string] $failCategory) {
+  $lookup = Get-ListenEndpoints $failCategory
   foreach ($port in $portList) {
-    $failure = if ($failPorts -contains $port) { 'injected port lookup failure (GATE_SNAPSHOT_FAIL_PORTS)' } else { $lookup.Failure }
-    if ($failure) { @{ kind = 'error'; port = $port; note = "port query failed: $failure" }; continue }
+    if ($lookup.Failure) { @{ kind = 'error'; port = $port; note = "port query failed: $($lookup.Failure)" }; continue }
     $endpoints = @($lookup.Endpoints | Where-Object LocalPort -EQ $port)
     if (-not $endpoints) { @{ kind = 'listen'; pid = 'none'; port = $port; localAddress = '' } }
     foreach ($c in $endpoints) { @{ kind = 'listen'; pid = $c.OwningProcess; port = $port; localAddress = $c.LocalAddress } }
   }
 }
 
-function ConvertTo-TsvLine([hashtable] $row) {
-  ($Columns | ForEach-Object { "$($row[$_])" -replace '[\t\r\n]+', ' ' }) -join "`t"
-}
-
+function ConvertTo-TsvLine([hashtable] $row) { ($Columns | ForEach-Object { "$($row[$_])" -replace '[\t\r\n]+', ' ' }) -join "`t" }
 function New-TsvFile([string] $path) {
   $stream = [IO.File]::Open($path, [IO.FileMode]::CreateNew)
   try { $bytes = $Utf8NoBom.GetBytes(($Columns -join "`t") + "`n"); $stream.Write($bytes, 0, $bytes.Length) } finally { $stream.Dispose() }
 }
 
-# Takes one snapshot and appends it to the TSV at once; returns its rows.
-function Invoke-Snapshot([string] $path, [int] $number, [int[]] $portList, [int[]] $failPorts) {
+function Get-SnapshotRows([int] $number, [int[]] $portList, [hashtable] $standIn) {
   $takenAt = (Get-Date).ToString('o')
-  $rows = @(Get-ProcessRows) + @(Get-PortRows $portList $failPorts)
+  if ($number -eq 1) { Start-Sleep -Seconds $standIn.SlowFirstSeconds }
+  $rows = @(Get-ProcessRows) + @(Get-PortRows $portList $standIn.FailListenQuery)
   foreach ($row in $rows) { $row.snapshot = $number; $row.takenAt = $takenAt }
-  [IO.File]::AppendAllText($path, (($rows | ForEach-Object { ConvertTo-TsvLine $_ }) -join "`n") + "`n", $Utf8NoBom)
   return , $rows
 }
 
@@ -133,25 +122,39 @@ function Wait-NextSnapshot([datetime] $due, [datetime] $deadline, [string] $stop
   }
 }
 
+# Snapshots until -Once, the stop file or the deadline. The next one is due -IntervalSeconds after the previous one
+# actually started (a slow snapshot is never caught up). A failed TSV append ends the loop; that snapshot is not counted.
+function Invoke-SnapshotLoop([string] $path, [int[]] $portList, [bool] $once, [string] $stopPath, [datetime] $deadline, [hashtable] $standIn) {
+  $s = @{ Snapshots = 0; Rows = 0; Errors = 0; End = 'due' }
+  while ($s.End -eq 'due') {
+    $started = Get-Date
+    $rows = Get-SnapshotRows ($s.Snapshots + 1) $portList $standIn
+    try { [IO.File]::AppendAllText($path, (($rows | ForEach-Object { ConvertTo-TsvLine $_ }) -join "`n") + "`n", $Utf8NoBom) }
+    catch { Write-Host "gate-snapshot: TSV write failed: $($_.Exception.Message)"; $s.Errors++; $s.End = 'write-failed'; break }
+    $s.Snapshots++; $s.Rows += $rows.Count; $s.Errors += @($rows | Where-Object { $_.kind -eq 'error' }).Count
+    $s.End = if ($once) { 'once' } else { Wait-NextSnapshot $started.AddSeconds($IntervalSeconds) $deadline $stopPath }
+  }
+  return $s
+}
+
+# Prints the summary line and exits with the highest-priority code (8 > 9 > 0).
+function Exit-WithSummary([hashtable] $s) {
+  $timedOut = $s.End -eq 'deadline'
+  $exit = if ($s.Errors) { $ExitFailed } elseif ($timedOut) { $ExitTimedOut } else { $ExitOk }
+  Write-Host "gate-snapshot done snapshots=$($s.Snapshots) rows=$($s.Rows) errors=$($s.Errors) timedOut=$("$timedOut".ToLower()) exit=$exit"
+  exit $exit
+}
+
 $OutFile = if ($OutFile) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutFile) }
 $portList = ConvertFrom-PortCsv $Ports
 $argumentError = Get-ArgumentError $OutFile $Ports $portList $Once.IsPresent $StopFile $IntervalSeconds
 if ($argumentError) { Write-Host "gate-snapshot: $argumentError"; exit $ExitArguments }
 if ($StopFile) { $StopFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($StopFile) }
-$failPorts = if ($env:GATE_SNAPSHOT_FAIL_PORTS) { @(ConvertFrom-PortCsv $env:GATE_SNAPSHOT_FAIL_PORTS) } else { @() }
-$minuteSeconds = if ($env:GATE_SNAPSHOT_SECONDS_PER_MINUTE) { [int]$env:GATE_SNAPSHOT_SECONDS_PER_MINUTE } else { $SecondsPerMinute }
+$standIn = @{ FailListenQuery = $env:GATE_SNAPSHOT_FAIL_LISTEN_QUERY; SlowFirstSeconds = [int]$env:GATE_SNAPSHOT_SLOW_FIRST_SECONDS
+  MinuteSeconds = if ($env:GATE_SNAPSHOT_SECONDS_PER_MINUTE) { [int]$env:GATE_SNAPSHOT_SECONDS_PER_MINUTE } else { $SecondsPerMinute } }
 . (Join-Path $PSScriptRoot 'procs.ps1') # only [Gate01Cwd]::Get is used
 
-New-TsvFile $OutFile
-$start = Get-Date
-$deadline = $start.AddSeconds($MaxMinutes * $minuteSeconds)
-$snapshots = 0; $rowCount = 0; $errors = 0; $wait = 'due'
-while ($wait -eq 'due') {
-  $rows = Invoke-Snapshot $OutFile ($snapshots + 1) $portList $failPorts
-  $snapshots++; $rowCount += $rows.Count; $errors += @($rows | Where-Object { $_.kind -eq 'error' }).Count
-  $wait = if ($Once) { 'once' } else { Wait-NextSnapshot $start.AddSeconds($snapshots * $IntervalSeconds) $deadline $StopFile }
-}
-$timedOut = $wait -eq 'deadline'
-$exit = if ($errors) { $ExitQueryFailed } elseif ($timedOut) { $ExitTimedOut } else { $ExitOk }
-Write-Host "gate-snapshot done snapshots=$snapshots rows=$rowCount errors=$errors timedOut=$("$timedOut".ToLower()) exit=$exit"
-exit $exit
+try { New-TsvFile $OutFile }
+catch { Write-Host "gate-snapshot: TSV create failed: $($_.Exception.Message)"; Exit-WithSummary @{ Snapshots = 0; Rows = 0; Errors = 1; End = 'create-failed' } }
+$deadline = (Get-Date).AddSeconds($MaxMinutes * $standIn.MinuteSeconds)
+Exit-WithSummary (Invoke-SnapshotLoop $OutFile $portList $Once.IsPresent $StopFile $deadline $standIn)
