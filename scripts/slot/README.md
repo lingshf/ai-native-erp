@@ -21,6 +21,8 @@ E2E 独占时段（[路线图 §5](../../design/roadmap.md#5-团队流程)“E2E
 | `selftest-preflight.ps1`          | `selftest.ps1` 第 5 部分：子进程环境（I1）、tsc 基线键（I3）、TDZ 夹具（I4）、静态检查接入 runner（I5）                                                    | Windows         |
 | `selftest-ports.ps1`              | 端口硬检查自测（S16 SLOT-03 S5）：端口被替身占用时退出码 7，替身结束后不是 7，非 `-Stub` 不给 `-Ports` 时退出码 4，模拟端口查询失败时退出码 8（D475）      | Windows         |
 | `selftest-location.ps1`           | 调用位置自检与 dist 检查自测（S21 SLOT-04 S1–S6）：R-base / R-steps 命中时零动作退出码 4，合法形式记 `call location ok`，dist 检查经 `assert-web-dist.ps1` | Windows         |
+| `gate-snapshot.ps1`               | 窗口门禁快照（S22 SLOT-05，D507）：node 进程、父进程链、cwd、CPU 秒数与指定端口的监听者写成 TSV；只记录，不判定归属                                        | Windows         |
+| `selftest-gate-snapshot.ps1`      | `gate-snapshot.ps1` 自测（G1–G7）：父进程链与 cwd、字段格式、逐端点监听、停止文件、参数错误、查询出错与时限                                                | Windows         |
 | `steps.d387.ps1`                  | D387 回归步骤：用 `powershell.exe` 原样运行 v0.11.0 Demo 的三个无浏览器替身                                                                                | Windows         |
 | const rows = compareWithBaseline( |
     countByKey(findings, (found) => found.key),
@@ -52,7 +54,23 @@ node scripts/slot/tdz-fixtures.mjs
 
 # 清单检查（任意 OS）
 node scripts/slot/check-manifest.mjs [--roadmap design/roadmap.md] [--code scripts/slot/procs.ps1]
+
+# 窗口门禁快照：开窗前 -Once；窗口内 -StopFile（每 -IntervalSeconds 秒一次，停止文件出现或到 -MaxMinutes 为止）
+pwsh -NoProfile -File scripts\slot\gate-snapshot.ps1 -OutFile <新文件.tsv> -Ports "<端口>[,<端口>…]" (-Once | -StopFile <路径>) [-IntervalSeconds 60] [-MaxMinutes 180]
+pwsh -NoProfile -File scripts\slot\selftest-gate-snapshot.ps1   # 自测（起 node，占一个临时端口；只查询 4173）
 ```
+
+- **`gate-snapshot.ps1`**（S22 SLOT-05）：`-OutFile` 须是新文件（目录已存在）；`-Ports` 是一个带引号的 CSV 字符串（如 `-Ports "4204,4173"`），工具里不写死端口。每次快照立即追加到 TSV，列为 `snapshot takenAt kind pid ppid depth name created cpuSeconds exe cwd cmdline port localAddress note`：每个 node 进程一行（`kind=node`），其父进程链逐级到第一个非 node 进程（`kind=ancestor`，`note` 写 `parent-exited` / `pid-reused` / `depth-cap` 时链提前结束）；每个端口的每个 Listen 端点一行，无监听时 `pid=none`；没有 node 进程时一行 `kind=none`。cwd 取自 `procs.ps1` 的 `[Gate01Cwd]::Get`，读不到的值写 `unreadable`。只记录，不判定归属，不结束进程。
+
+  | 退出码 | 含义（多个成立时按 8 > 9 > 0 取一个；时限另见摘要 `timedOut`） | 写文件 |
+  | ------ | ------------------------------------------------------------------------------------------------------- | ------ |
+  | 0      | 全部快照完成，没有查询出错                                                                              | 写     |
+  | 2      | 不是 Windows 或不是 PowerShell 7                                                                        | 不写   |
+  | 3      | 参数错误：`-OutFile` 已存在或目录不存在；`-Once` 与 `-StopFile` 不是二选一；`-Ports` 有空项、非整数、超出 1–65535 或重复；`-IntervalSeconds` < 1 | 不写   |
+  | 8      | 至少一次进程或端口查询出错（该处写 `kind=error`，不写 `pid=none`），其余快照照常完成                    | 写     |
+  | 9      | 到 `-MaxMinutes` 时停止文件仍未出现                                                                     | 写     |
+
+  结束时打印 `gate-snapshot done snapshots=… rows=… errors=… timedOut=… exit=…`。自测替身只经环境变量注入：`GATE_SNAPSHOT_FAIL_PORTS`（这些端口的查询报错）、`GATE_SNAPSHOT_SECONDS_PER_MINUTE`（替身时钟）；正式使用不设置。
 
 - **需 pwsh 7**（D347）：只能在 Windows 的 PowerShell 7 上运行：`selftest.ps1` 与 `slot-run.ps1` 在非 Windows 上立即以退出码 2 结束（“只能在 Windows 运行”）；在 Windows PowerShell 5.1 上同样以退出码 2 结束，因为 `procs.ps1`（与 D316 kit 相同）用了只有 .NET Core 才有的 `[IO.Path]::GetFullPath(path, base)`，5.1 下所有 git 工作树（`.git` 是文件）都会被当成“无仓库”。D316 kit 也一直在 PowerShell 7 下运行。它用 WMI 启动替身进程（node.exe 及其改名副本），在 `%TEMP%\slot-selftest-*`、`%LOCALAPPDATA%\Programs\slot-selftest-*` 与 `scripts/slot/selftest/` 下建临时文件；结束时只停止这些替身进程的进程树并删除这些临时目录，不碰其他进程。输出逐项 `PASS` / `FAIL` 与 `summary` 行，有 FAIL 时退出码 1。
 - `-ReferenceProcs`：D316 kit 的 `procs.ps1` 副本（按 LF 计算 SHA-256 须为 `906A4B70…90A6F8`，否则失败）。它用 `git -C <所在目录>` 定位本仓库，所以副本须放在本仓库某个工作树内，建议 `artifacts/ci/gate01-ref/procs.ps1`（`artifacts/ci/` 已被 git 忽略，不入库）。给出时，自测的每个快照同时交给 kit 的 `Counted`，计数集合与排除集合须逐 PID 相同（`EQUIV` 项）；R3 下 kit 计数而本目录判 SR-X6 的 PID 算一致（`r3-sr-x6=` 列出），其余仍须逐 PID 相同。第 1 部分中 kit 参考结果为“计数，SR-C3”的用例改为期望“排除，SR-X6”，逐项标“R3 差异”，`summary` 后一行列出这些用例。
