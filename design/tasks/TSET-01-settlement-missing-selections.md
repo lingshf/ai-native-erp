@@ -62,7 +62,7 @@
 
 | 编号 | 场景 | head 要求 |
 | --- | --- | --- |
-| M1 | 选中同一伙伴的两项（例如 `item` 与一个 `filler`）并改金额；桩改为下一次只返回其中一项且没有下一页；按“刷新列表” | 出现一个 `role="status"` 的警告提示条，数量为 1，含“移除这些项”按钮；KPI 显示 `tset.notOpen`，不再出现 `tset.unloaded` |
+| M1 | 选中同一伙伴的两项（例如 `item` 与一个 `filler`）并改金额；桩改为下一次只返回其中一项且没有下一页；按“刷新列表” | 出现一个 `role="status"` 的警告提示条，数量为 1，含“移除这些项”按钮；KPI 显示 `tset.notOpen`，不再出现 `tset.unloaded`；比较两个时点的草稿——第一次按“刷新列表”之前，与按“移除这些项”（M2）之前——已选项与金额、`sessionStorage` 草稿两者逐项相同，以此直接证明刷新不会自动移除 |
 | M2 | 接 M1，按“移除这些项” | 草稿只剩仍在未结项中的一项，金额不变；`sessionStorage` 草稿同步；提示条消失；KPI 显示数字；预览被清除；`document.activeElement` 是“刷新列表”按钮 |
 | M3 | 同 M1，语言为英文 | 提示条与按钮显示英文标签，KPI 显示 “Includes items no longer open” |
 | M4 | 存在待确认信封（`locked`）时出现缺失项 | 提示条显示，按钮 `:disabled`；按 Enter 或点击都不改草稿 |
