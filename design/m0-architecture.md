@@ -1,6 +1,6 @@
 # M0 目标架构
 
-范围：M0 结束时仓库的形态。只写必须统一的约定；各切片的细节在其任务文档里。遵循[产品准则](product-guidelines.md)，取代旧 [architecture.md](architecture.md) 中的双库/NestJS/Server 设计。
+范围：M0 结束时仓库的形态。只写必须统一的约定；各切片的细节在其任务文档里。遵循[产品准则](product-guidelines.md)，取代旧 [architecture.md](architecture.md) 中的双库/NestJS/Server 设计（理由与失效条件见 [ADR-LOCAL-001](adr/ADR-LOCAL-001.md)）。本文是唯一现行架构文档，旧 `architecture.md` 只作历史参考。
 
 ## 1. 包与分层
 

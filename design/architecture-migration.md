@@ -1,5 +1,7 @@
 # ARCH-MIGRATION-01：分阶段架构实施
 
+> **已取代（superseded，D560）**：本文中的双数据库（SQLite / PostgreSQL）、Server 档案、OIDC 身份与多用户批准设计已被 [ADR-LOCAL-001](adr/ADR-LOCAL-001.md) 取代：只做 SQLite、本机单用户、loopback 无登录。现行架构以 [M0 架构](m0-architecture.md)为准，方向以[路线图](roadmap.md)为准。本文保留为历史记录；其中的 FG / OQ 需求与会计政策按路线图开头的说明继续有效。
+
 ## 当前授权、事实与模型计划
 
 用户已委托执行推荐方案、恢复贸易及在完整备份/核对后切换原本机预览。DC01..04为“协调者代为决定，可调整”，不是所有阶段已过门禁。先交付Local单人SQLite，并提供PostgreSQL/本地OIDC虚构账号的Server Compose试点；运维/OIDC责任人为用户。性能/恢复预算是目标非SLA，未测或不达标如实记录。GL优先，现有会计语义不因架构迁移改变。
