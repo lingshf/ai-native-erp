@@ -25,8 +25,12 @@ import {
   type PageQuery,
   type DimensionMap,
 } from "@erp/core/domain";
-import { cashServiceCancelPlan, cashServicePlan } from "./business-event-cash.ts";
-import { clearingMatchPreview, statisticsPreview } from "./business-event-ledger.ts";
+import { businessDraft, cashServiceCancelPlan, cashServicePlan } from "./business-event-cash.ts";
+import {
+  clearingMatchPreview,
+  emptyBusinessPlan,
+  statisticsPreview,
+} from "./business-event-ledger.ts";
 import { required } from "./business-event-plan.ts";
 import { JournalService, type JournalTools, type JournalConfirm } from "./journals.ts";
 import type { MasterDataRepository, MasterDataStore } from "./master-data.ts";
@@ -255,14 +259,29 @@ export class BusinessEventService {
       const current = await this.journals.plan(repo, company, event);
       return { ...current, matches: [], statistics: null, clearing: [] };
     }
+    // Draft and empty ledger plan read the event before any branch awaits, as before the split.
+    const draft = businessDraft(event);
+    const ledger = { company, owner, period };
     const { current, matches, statistics, clearing, evidence } =
       event.operation === "cash_service"
-        ? await cashServicePlan(repo, this.journals, company, owner, event)
+        ? await cashServicePlan(repo, this.journals, company, owner, event, draft)
         : event.operation === "cash_service.cancel"
-          ? await cashServiceCancelPlan(repo, this.journals, company, event)
+          ? await cashServiceCancelPlan(repo, this.journals, company, event, draft)
           : event.operation === "statistics"
-            ? await statisticsPreview(repo, this.tools, company, owner, period, event)
-            : await clearingMatchPreview(repo, this.tools, company, owner, period, event);
+            ? await statisticsPreview(
+                repo,
+                this.tools,
+                ledger,
+                event,
+                emptyBusinessPlan(company, owner, event),
+              )
+            : await clearingMatchPreview(
+                repo,
+                this.tools,
+                ledger,
+                event,
+                emptyBusinessPlan(company, owner, event),
+              );
     // `fingerprint` keeps the key position it has in `current`.
     return {
       ...current,

@@ -13,7 +13,16 @@ import {
 import { required, type BusinessEventPart } from "./business-event-plan.ts";
 import type { JournalTools } from "./journals.ts";
 import type { MasterDataRepository } from "./master-data.ts";
-function emptyBusinessPlan(company: string, owner: Company, event: BusinessEvent): JournalPlan {
+export interface LedgerContext {
+  readonly company: string;
+  readonly owner: Company;
+  readonly period: Period;
+}
+export function emptyBusinessPlan(
+  company: string,
+  owner: Company,
+  event: BusinessEvent,
+): JournalPlan {
   return {
     version: 1,
     company,
@@ -35,24 +44,22 @@ function emptyBusinessPlan(company: string, owner: Company, event: BusinessEvent
 async function ledgerPlan(
   repo: MasterDataRepository,
   tools: JournalTools,
-  company: string,
-  owner: Company,
-  period: Period,
-  event: BusinessEvent,
+  { company, owner, period }: LedgerContext,
+  plan: JournalPlan,
 ): Promise<BusinessEventPart["current"]> {
   return {
-    plan: emptyBusinessPlan(company, owner, event),
+    plan,
     fingerprint: tools.hash([owner, period, await repo.journalConfigurationStamp(company)]),
   };
 }
 export async function statisticsPreview(
   repo: MasterDataRepository,
   tools: JournalTools,
-  company: string,
-  owner: Company,
-  period: Period,
+  context: LedgerContext,
   event: StatisticsEvent,
+  plan: JournalPlan,
 ): Promise<BusinessEventPart> {
+  const { company } = context;
   const resolved = compileDimensionRules(await repo.dimensionCatalog(company)).resolve({
     account: "LEDGER",
     day: event.date,
@@ -66,17 +73,17 @@ export async function statisticsPreview(
     unit: event.unit,
     ...resolved,
   };
-  const current = await ledgerPlan(repo, tools, company, owner, period, event);
+  const current = await ledgerPlan(repo, tools, context, plan);
   return { current, matches: [], statistics, clearing: [], evidence: null };
 }
 export async function clearingMatchPreview(
   repo: MasterDataRepository,
   tools: JournalTools,
-  company: string,
-  owner: Company,
-  period: Period,
+  context: LedgerContext,
   event: ClearingEvent,
+  plan: JournalPlan,
 ): Promise<BusinessEventPart> {
+  const { company } = context;
   const account = required(await repo.account(company, event.account));
   if (!account.active || !["clearing", "suspense"].includes(account.purpose))
     businessError("account", "account");
@@ -89,7 +96,7 @@ export async function clearingMatchPreview(
   if (lines.some((line) => line.matched)) businessError("lines", "source", true);
   if (lines.reduce((sum, line) => sum + BigInt(line.debit) - BigInt(line.credit), 0n) !== 0n)
     businessError("lines", "line");
-  const current = await ledgerPlan(repo, tools, company, owner, period, event);
+  const current = await ledgerPlan(repo, tools, context, plan);
   return {
     current,
     matches: [],

@@ -10,7 +10,7 @@ import {
 import { required, type BusinessEventPart, type JournalPlanner } from "./business-event-plan.ts";
 import type { MasterDataRepository } from "./master-data.ts";
 type PostingSelection = ReturnType<ReturnType<typeof compilePostingRules>["match"]>;
-function businessDraft(event: BusinessEvent): JournalDraft {
+export function businessDraft(event: BusinessEvent): JournalDraft {
   return {
     id: event.id,
     revision: 0,
@@ -53,13 +53,14 @@ async function checkedCashAccounts(
   return matches;
 }
 function cashServiceDraft(
+  draft: JournalDraft,
   event: CashServiceEvent,
   cash: PostingSelection,
   offset: PostingSelection,
 ): JournalDraft {
   const receive = event.direction === "receive";
   return {
-    ...businessDraft(event),
+    ...draft,
     lines: [
       {
         account: cash.rule.account,
@@ -84,6 +85,7 @@ export async function cashServicePlan(
   company: string,
   owner: Company,
   event: CashServiceEvent,
+  draft: JournalDraft,
 ): Promise<BusinessEventPart> {
   if (event.currency !== owner.currency) businessError("currency", "shape");
   const service = required(await repo.businessMaster(company, "service", event.service));
@@ -97,7 +99,7 @@ export async function cashServicePlan(
   const offset = compiled.match(event.direction, "offset", service, party);
   const matches = await checkedCashAccounts(repo, company, event, cash, offset);
   const master = { ...(party?.dimensions ?? {}), ...service.dimensions };
-  const current = await journals.plan(repo, company, cashServiceDraft(event, cash, offset), [
+  const current = await journals.plan(repo, company, cashServiceDraft(draft, event, cash, offset), [
     { ...master, ...cash.rule.dimensions },
     { ...master, ...offset.rule.dimensions },
   ]);
@@ -108,12 +110,13 @@ export async function cashServiceCancelPlan(
   journals: JournalPlanner,
   company: string,
   event: CancelCashEvent,
+  draft: JournalDraft,
 ): Promise<BusinessEventPart> {
   const original = required(await repo.businessEvent(company, event.originalId));
   if (original.event.operation !== "cash_service" || original.receipt.journalIds.length !== 1)
     businessError("originalId", "reference");
   const current = await journals.plan(repo, company, {
-    ...businessDraft(event),
+    ...draft,
     operation: "reverse",
     originalId: original.receipt.journalIds[0],
   });
