@@ -811,7 +811,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 ## S24：拆分 CompanyEvents + 其余待定（计划草案，版本待 S23 发布后定）
 
-计划草案见 [S24.md](S24.md)（D525 为 REFAC-14 不改行为；D526 为 #326 中 trade-orders 串行失败判为原有偶发；D527 为 FLAKE-09 的原因推断与修法；D528 为 REFAC-15 不改行为；D529 为 MEAS-02 不改行为；D530、D531 为 FLAKE-09 补充（预加载 `beforeAll` 60 000 ms、`asyncUtilTimeout` 5000 ms）；D532 为 REFAC-16 不改行为；D533 为 REFAC-17 不改行为；D534 为 REFAC-18 不改行为；D535 为 REFAC-19 不改行为、SQL 逐字节不变；D536 为 REFAC-20 不改行为与错误先后；D537 为 REFAC-18 R4 直接断言 4 改为 4a、4b；D538 为 `dueDays` / `discountDays` 空值与契约不一致的口径（以契约为准，列入候选 P3，REFAC-18 合并后再排）；D539 为 TMAS-01 的天数校验口径；D540 为 REFAC-21 不改行为、SQL 逐字节不变；D541 为 REFAC-22 不改行为；D542 为 REFAC-23 不改行为；D543 为 REFAC-24 不改行为；D544 为 REFAC-25 不改行为、SQL 逐字节不变；D545 为 REFAC-23 R4 直接断言 1 按 base 实际错误（`trade-calculator` / `lines` / `decimal`）改写（协调者代定）；D546 为 REFAC-26 不改行为、SQL 逐字节不变；D547 为 REFAC-27 不改行为；D548 为 REFAC-28 不改行为；D549 为 REFAC-29 不改行为；D550 为 REFAC-30 不改行为与错误先后；D551 为 REFAC-31 不改行为、调用序列与错误先后；D552 为 REFAC-32 不改行为、调用序列与清理行为；D553 为 REFAC-33 不改行为、DOM、请求与冲突锁定；D554 为 REFAC-34 不改行为、HTTP 响应、服务调用与守卫先后；D555 为团队迁移与[团队章程](../team-charter.md)；D556 为知识待办 KDOC 的排序与 C1 的处理；D557 为纯重构的 UI / 性能适用规则与六项事实的唯一记录位置；D558 为 KDOC-07 依赖 KDOC-05、KDOC-10 并入 KDOC-05；D559 为 #365 文档入口的证据口径；D560 为 KDOC-01、KDOC-02、KDOC-11 的落地（[ADR-LOCAL-001](../adr/ADR-LOCAL-001.md)、旧文档标为已取代、`test-cases.md` 交给 QA、UI-1 状态更正）；D561 为 KDOC 文档页的钉版本口径（本 PR 改动的页在 `docs/README.md` 矩阵中标 partial（合并后钉版本），下一个 KDOC PR 换成合并提交的完整 SHA）；D562 为 KDOC-03 的落地（[决定索引](../decisions.md)、`tasks.md` 与 `reviews.md` 标为历史、新增 [`reviews/README.md`](../reviews/README.md)）；D563 为 AI 讲解只在界面按教学模式限制、服务端不加检查，SDK 子进程环境变量列为安全评审候选 SEC-01（P2）；D564 为 D1、D2、D3、D51 的取舍补记（[路线图 §6.1](../roadmap.md#61-取舍补记d564)）；D565 为缺陷候选 BUG-01..03 及其期望行为；下一个可用编号 D566）。REFAC-14 按 main `2794c3a` 写，已由 #326 合并；FLAKE-09 与 REFAC-15 按 main `ac8ac00` 写（REFAC-13 #325 已合并）；MEAS-02 按 main `e4a9fec` 写（SLOT-06 #322 已合并）。FLAKE-09 #330、MEAS-02 #331、REFAC-15 #332 已合并，合并后检查已完成；REFAC-16、REFAC-17 按 main `914f041` 写，已由 #334、#335 合并；REFAC-18、REFAC-19、REFAC-20 按 main `f3a7646` 写，已由 [#339](https://github.com/lingshf/ai-native-erp/pull/339)、[#338](https://github.com/lingshf/ai-native-erp/pull/338)、[#337](https://github.com/lingshf/ai-native-erp/pull/337) 合并；TMAS-01、REFAC-21、REFAC-22 按 main `37362e7` 写，TMAS-01 已由 [#342](https://github.com/lingshf/ai-native-erp/pull/342) 合并，REFAC-21、REFAC-22 已由 [#343](https://github.com/lingshf/ai-native-erp/pull/343)、[#344](https://github.com/lingshf/ai-native-erp/pull/344) 合并（main `e89b0b4`）；REFAC-23 按 main `3c9f5fd` 写，已由 [#347](https://github.com/lingshf/ai-native-erp/pull/347) 合并；REFAC-24、REFAC-25 按 main `e89b0b4` 写，REFAC-25 已由 [#348](https://github.com/lingshf/ai-native-erp/pull/348) 合并（main `5be9496`）；REFAC-24 已由 [#349](https://github.com/lingshf/ai-native-erp/pull/349) 合并；REFAC-26、REFAC-27 按 main `5be9496` 写（[#350](https://github.com/lingshf/ai-native-erp/pull/350) 已合并）；REFAC-28 按 main `b74d526` 写，已由 [#352](https://github.com/lingshf/ai-native-erp/pull/352) 合并（main `7eb7b42`）；REFAC-29 按 main `7eb7b42` 写（[#355](https://github.com/lingshf/ai-native-erp/pull/355) 已合并，main `0de5134`）；REFAC-30 按 main `0de5134` 写（[#356](https://github.com/lingshf/ai-native-erp/pull/356) 已合并）；REFAC-26 已由 [#354](https://github.com/lingshf/ai-native-erp/pull/354) 合并（main `2c4406c`）；REFAC-31 按 main `2c4406c` 写（[#357](https://github.com/lingshf/ai-native-erp/pull/357) 已合并，main `502c547`）；REFAC-32 按 main `502c547` 写（[#359](https://github.com/lingshf/ai-native-erp/pull/359) 已合并）；REFAC-29 已由 [#358](https://github.com/lingshf/ai-native-erp/pull/358) 合并（main `95e76ba`）；REFAC-33 按 main `c7bc920` 写（[#361](https://github.com/lingshf/ai-native-erp/pull/361) 已合并，main `c978a95`），提前写好，有开发名额时派发；REFAC-34 按 main `c978a95` 写，提前写好，有开发名额时派发。`release/v0.22.0` 已固定在 `3566ddb`，之后 main 上的合并不影响 DEMO-23 RC。三项并行的理由见 [S24 泳道](S24.md#泳道)。
+计划草案见 [S24.md](S24.md)（D525 为 REFAC-14 不改行为；D526 为 #326 中 trade-orders 串行失败判为原有偶发；D527 为 FLAKE-09 的原因推断与修法；D528 为 REFAC-15 不改行为；D529 为 MEAS-02 不改行为；D530、D531 为 FLAKE-09 补充（预加载 `beforeAll` 60 000 ms、`asyncUtilTimeout` 5000 ms）；D532 为 REFAC-16 不改行为；D533 为 REFAC-17 不改行为；D534 为 REFAC-18 不改行为；D535 为 REFAC-19 不改行为、SQL 逐字节不变；D536 为 REFAC-20 不改行为与错误先后；D537 为 REFAC-18 R4 直接断言 4 改为 4a、4b；D538 为 `dueDays` / `discountDays` 空值与契约不一致的口径（以契约为准，列入候选 P3，REFAC-18 合并后再排）；D539 为 TMAS-01 的天数校验口径；D540 为 REFAC-21 不改行为、SQL 逐字节不变；D541 为 REFAC-22 不改行为；D542 为 REFAC-23 不改行为；D543 为 REFAC-24 不改行为；D544 为 REFAC-25 不改行为、SQL 逐字节不变；D545 为 REFAC-23 R4 直接断言 1 按 base 实际错误（`trade-calculator` / `lines` / `decimal`）改写（协调者代定）；D546 为 REFAC-26 不改行为、SQL 逐字节不变；D547 为 REFAC-27 不改行为；D548 为 REFAC-28 不改行为；D549 为 REFAC-29 不改行为；D550 为 REFAC-30 不改行为与错误先后；D551 为 REFAC-31 不改行为、调用序列与错误先后；D552 为 REFAC-32 不改行为、调用序列与清理行为；D553 为 REFAC-33 不改行为、DOM、请求与冲突锁定；D554 为 REFAC-34 不改行为、HTTP 响应、服务调用与守卫先后；D555 为团队迁移与[团队章程](../team-charter.md)；D556 为知识待办 KDOC 的排序与 C1 的处理；D557 为纯重构的 UI / 性能适用规则与六项事实的唯一记录位置；D558 为 KDOC-07 依赖 KDOC-05、KDOC-10 并入 KDOC-05；D559 为 #365 文档入口的证据口径；D560 为 KDOC-01、KDOC-02、KDOC-11 的落地（[ADR-LOCAL-001](../adr/ADR-LOCAL-001.md)、旧文档标为已取代、`test-cases.md` 交给 QA、UI-1 状态更正）；D561 为 KDOC 文档页的钉版本口径（本 PR 改动的页在 `docs/README.md` 矩阵中标 partial（合并后钉版本），下一个 KDOC PR 换成合并提交的完整 SHA）；D562 为 KDOC-03 的落地（[决定索引](../decisions.md)、`tasks.md` 与 `reviews.md` 标为历史、新增 [`reviews/README.md`](../reviews/README.md)）；D563 为 AI 讲解只在界面按教学模式限制、服务端不加检查，SDK 子进程环境变量列为安全评审候选 SEC-01（P2）；D564 为 D1、D2、D3、D51 的取舍补记（[路线图 §6.1](../roadmap.md#61-取舍补记d564)）；D565 为缺陷候选 BUG-01..03 及其期望行为；D566 为[里程碑收尾检查与回顾](#里程碑收尾检查与回顾d566)；下一个可用编号 D567）。REFAC-14 按 main `2794c3a` 写，已由 #326 合并；FLAKE-09 与 REFAC-15 按 main `ac8ac00` 写（REFAC-13 #325 已合并）；MEAS-02 按 main `e4a9fec` 写（SLOT-06 #322 已合并）。FLAKE-09 #330、MEAS-02 #331、REFAC-15 #332 已合并，合并后检查已完成；REFAC-16、REFAC-17 按 main `914f041` 写，已由 #334、#335 合并；REFAC-18、REFAC-19、REFAC-20 按 main `f3a7646` 写，已由 [#339](https://github.com/lingshf/ai-native-erp/pull/339)、[#338](https://github.com/lingshf/ai-native-erp/pull/338)、[#337](https://github.com/lingshf/ai-native-erp/pull/337) 合并；TMAS-01、REFAC-21、REFAC-22 按 main `37362e7` 写，TMAS-01 已由 [#342](https://github.com/lingshf/ai-native-erp/pull/342) 合并，REFAC-21、REFAC-22 已由 [#343](https://github.com/lingshf/ai-native-erp/pull/343)、[#344](https://github.com/lingshf/ai-native-erp/pull/344) 合并（main `e89b0b4`）；REFAC-23 按 main `3c9f5fd` 写，已由 [#347](https://github.com/lingshf/ai-native-erp/pull/347) 合并；REFAC-24、REFAC-25 按 main `e89b0b4` 写，REFAC-25 已由 [#348](https://github.com/lingshf/ai-native-erp/pull/348) 合并（main `5be9496`）；REFAC-24 已由 [#349](https://github.com/lingshf/ai-native-erp/pull/349) 合并；REFAC-26、REFAC-27 按 main `5be9496` 写（[#350](https://github.com/lingshf/ai-native-erp/pull/350) 已合并）；REFAC-28 按 main `b74d526` 写，已由 [#352](https://github.com/lingshf/ai-native-erp/pull/352) 合并（main `7eb7b42`）；REFAC-29 按 main `7eb7b42` 写（[#355](https://github.com/lingshf/ai-native-erp/pull/355) 已合并，main `0de5134`）；REFAC-30 按 main `0de5134` 写（[#356](https://github.com/lingshf/ai-native-erp/pull/356) 已合并）；REFAC-26 已由 [#354](https://github.com/lingshf/ai-native-erp/pull/354) 合并（main `2c4406c`）；REFAC-31 按 main `2c4406c` 写（[#357](https://github.com/lingshf/ai-native-erp/pull/357) 已合并，main `502c547`）；REFAC-32 按 main `502c547` 写（[#359](https://github.com/lingshf/ai-native-erp/pull/359) 已合并）；REFAC-29 已由 [#358](https://github.com/lingshf/ai-native-erp/pull/358) 合并（main `95e76ba`）；REFAC-33 按 main `c7bc920` 写（[#361](https://github.com/lingshf/ai-native-erp/pull/361) 已合并，main `c978a95`），提前写好，有开发名额时派发；REFAC-34 按 main `c978a95` 写，提前写好，有开发名额时派发。`release/v0.22.0` 已固定在 `3566ddb`，之后 main 上的合并不影响 DEMO-23 RC。三项并行的理由见 [S24 泳道](S24.md#泳道)。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -897,6 +897,65 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | BUG-02d | 回答之后才到的 `tool.*`/`subagent.*` 事件或中止会把 `interrupted` 置为 true，清理从 `stop` 改走 `forceStop`（#364 疑似缺陷 4，仅代码阅读） | **判为可接受**：会话已关闭全部工具，回答后出现这类事件属异常，强停更稳妥；结果不变。只补测试固定此行为，并在代码中注明原因 | P3 | 同 BUG-02a | 同 BUG-02a | 同 BUG-02a | todo（候选） |
 | BUG-03a | 未配置服务时，报表路由与 `GET /api/v1/trade/open-items/:itemId/actions` 先解析查询，坏查询返回 400；其余路由先返回 503（[#376](https://github.com/lingshf/ai-native-erp/pull/376) 疑似缺陷 1） | 仅限 REFAC-34 拆分出的贸易单据路由，顺序统一为：① 现有本机来源与方法检查（403/405，`boundary.assert`）保持最先、不移动不放宽；② 服务可用（503）；③ 请求校验（坏查询或 ID 返回 400）。其他贸易端点不在范围内 | P3 | UI、性能：not_applicable（只改服务端检查顺序） | REFAC-34 合并后 | REFAC-34 拆分后的贸易单据路由文件（`packages/infra/src/http/` 下）及其测试 | todo（候选） |
 | BUG-03b | `orderId` 有校验，`documentId`（发票详情）与 `itemId`（未结项详情、动作）未校验直接交给服务（#376 疑似缺陷 2） | 仅限 REFAC-34 路由：按各自实际 ID 格式校验（实施前从现行数据确认格式，不另造），非法时返回 400，与 `orderId` 一致；校验位于 403/405 与 503 之后（顺序同 BUG-03a） | P3 | 同 BUG-03a | 同 BUG-03a | 同 BUG-03a；可与 BUG-03a 合为一个任务 | todo（候选） |
+
+## 里程碑收尾检查与回顾（D566）
+
+用户要求四个团队都执行：里程碑收尾时做一次合并的“结果对目标”检查与回顾。它**补充**现有 Sprint 评审与回顾（RC → Demo → Review → Retro），不取代、不取消它们。Team Leader（协调者）提供证据，设计角色转录。
+
+| ID | 内容 | 负责 | 产出 | 状态 |
+| --- | --- | --- | --- | --- |
+| MCLOSE-01 | 按下文 1–8 对当前检查点做一次收尾检查与回顾 | Team Leader 主持；各实际在岗角色自查；Knowledge Lead 跨模块协调；设计角色转录 | `design/reviews/milestone-closeout-post-M1.md`（执行时新建） | todo |
+
+### 1. 里程碑基线（**待用户确认**）
+
+- 事实：M1 已完成；M2 待用户授权；S4–S24 与 KDOC 没有归入任何里程碑。
+- 建议的候选基线：把“M1 之后的工程化与知识整理”作为当前的结果检查点。
+  - 范围：S24 的 REFAC 任务（REFAC-14..34，见上文 S24 任务表）；KDOC（D556，见上文 KDOC 表）；[缺陷候选](#缺陷候选d565)（D565，BUG-01..03）；[SEC-01](#安全候选d563)。
+  - 基线提交：main `9b8fa9739b0c07cf2b346719b19c36b55ad00ebc`（写入本节时的 main）。
+- 用户确认前，上述只是候选，不作为检查依据。
+- Sprint 结束、打 tag 或出 RC，都**不等于**里程碑完成。
+
+### 2. 触发条件
+
+以下三条同时满足才触发：
+
+1. 用户已确认基线；
+2. 范围内每个任务都已合并，或已由协调者明确移出范围；
+3. main 的 Full 运行为绿。
+
+不会自动触发，也没有定时任务。
+
+### 3. 结果检查
+
+对照基线分四组列出：**已验收**、**未完成**、**新增**、**延后**。每项偏差写明原因和影响。没有可靠分母时不给百分比；提交数不算验收进度。
+
+### 4. 每个实际在岗角色自查
+
+角色：TL、Design、每位 Developer、QA、Reviewer、Delivery、Knowledge。一人兼多个角色时，按角色分别自查。
+
+- 各角色检查自己负责的代码、测试、配置、文档、决定和交接，列出过时、遗漏或需细化之处，并附证据。
+- 某项不适用时写明原因。
+- 自查不替代独立评审或 QA。
+
+### 5. Knowledge Lead
+
+协调跨模块的缺口、重复、冲突和过时内容，以及系统设计、实现、取舍、使用说明四方面的覆盖情况。
+
+### 6. TL 对齐
+
+- TL 收集分歧。
+- TL 确认每位成员读的是同一版本的目标、范围、接口、验收标准和最新决定。
+- 每位成员在自己的角色内给出确认；群发消息不算确认。
+
+### 7. 发现项
+
+- 每个发现项都写入本 Backlog，带负责人、优先级、验收标准和目标里程碑。
+- 修复走正常的评审与 QA 流程。
+- 回顾不扩大重构范围，也不授予任何新的合并、发布或部署权限。
+
+### 8. 产出
+
+结果写入 `design/reviews/milestone-closeout-post-M1.md`（执行时新建）。本项状态从 todo 开始。
 
 ## 派发顺序
 
