@@ -1,5 +1,9 @@
 # 中小企业ERP目标架构 ARCH-SME-01
 
+> **已取代（superseded，D560）**：本文中的双数据库（SQLite / PostgreSQL）、Server 档案、OIDC 身份与多用户批准设计已被 [ADR-LOCAL-001](adr/ADR-LOCAL-001.md) 取代：只做 SQLite、本机单用户、loopback 无登录。现行架构以 [M0 架构](m0-architecture.md)为准，方向以[路线图](roadmap.md)为准。本文保留为历史记录；其中的 FG / OQ 需求与会计政策按路线图开头的说明继续有效。
+>
+> **与 M0 架构的关系（D2 去重）**：[m0-architecture.md](m0-architecture.md) 是唯一现行架构文档；本文件只作历史参考，不再更新。两者冲突时以 M0 架构为准。
+
 **状态：宏观独立G3已释放EXCEPTION (user-approved MODEL01)，用户已委托执行DC-01..04及后续迁移。** 三项设计结论均PASS，具体缺陷已关闭；MODEL01仅涉及评审模型身份不能独立核实。M-TRADE获准恢复，原未提交成果保留移植；原账须完整备份/核对且ID3和只读源保留后才能切换。每阶段仍独立G3/G5/G6；当前正做[实施基线](architecture-migration.md)，不是上述新功能已经可用，更不代表44FG已完成。
 
 入口：[选型ADR](adr/ADR-SME-001.md) · [项目状态](project.md) · [任务](tasks.md) · [验收](test-cases.md#arch-sme-01-计划验收) · [评审](reviews.md) · [总览图](diagrams/sme-overview.svg)。

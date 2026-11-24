@@ -1,5 +1,7 @@
 # ADR-SME-001..006：中小企业ERP选型提案
 
+> **已取代（superseded，D560）**：本文中的双数据库（SQLite / PostgreSQL）、Server 档案、OIDC 身份与多用户批准设计已被 [ADR-LOCAL-001](ADR-LOCAL-001.md) 取代：只做 SQLite、本机单用户、loopback 无登录。现行架构以 [M0 架构](../m0-architecture.md)为准，方向以[路线图](../roadmap.md)为准。本文保留为历史记录；其中的 FG / OQ 需求与会计政策按路线图开头的说明继续有效。
+
 状态：ACCEPTED（协调者受用户委托代为决定，可调整），ARCH-SME-01宏观独立G3已释放MODEL01例外；不是已安装/已实施选型。首Local SQLite，同时Server Compose/PostgreSQL/本地开发OIDC试点，GL优先；预算是目标非SLA，运维/OIDC责任人为用户。关联[架构与验收](../architecture.md)及[阶段实施](../architecture-migration.md)。作者实际gpt-6.1-sol；独立评审请求claude-opus-5.5，实际身份不能独立核实时沿用户MODEL01，仅豁免身份核实。
 
 ## ADR-SME-001：模块化单体而非先拆微服务

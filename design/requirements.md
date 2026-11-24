@@ -1,5 +1,7 @@
 # Requirements
 
+> **已取代（superseded，D560）**：本文中的双数据库（SQLite / PostgreSQL）、Server 档案、OIDC 身份与多用户批准设计已被 [ADR-LOCAL-001](adr/ADR-LOCAL-001.md) 取代：只做 SQLite、本机单用户、loopback 无登录。现行架构以 [M0 架构](m0-architecture.md)为准，方向以[路线图](roadmap.md)为准。本文保留为历史记录；其中的 FG / OQ 需求与会计政策按路线图开头的说明继续有效。
+
 ## ARCH-SME-01：独立前端、分层业务与双数据库架构（已委托实施）
 
 用户已授权按推荐方案执行ARCH-M00..09，并恢复M-TRADE/TASK24；完整备份/哈希与余额核对、保留ID3及只读原库后切换原预览。DC01..04均为**协调者代为决定，可调整**：React/Vite/TS、Nest/Fastify、Kysely；首交付Local SQLite，另提供PG+本地开发OIDC的Server Compose试点（仅虚构账号），运维/OIDC责任人为用户；预算采为目标非SLA；GL优先。各阶段G3/G5/G6与真实验收不能省略，未完成44FG不宣称完成。
