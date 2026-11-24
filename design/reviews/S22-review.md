@@ -7,13 +7,13 @@
   - 设计：D513 同步 [#315](https://github.com/lingshf/ai-native-erp/pull/315)；S23 计划 [#318](https://github.com/lingshf/ai-native-erp/pull/318)（按 S20 评审对 #300 的口径，计划 PR 计入它合并时所在的 Sprint，S23 评审不再重复计入）；
   - 发布流程文档：DOC-22(b) [#317](https://github.com/lingshf/ai-native-erp/pull/317)（DOC-22(a) #309 已计入 S21 评审）；
   - 版本管理：RC 与 Demo [#319](https://github.com/lingshf/ai-native-erp/pull/319)。
-  - 不计入：v0.21.0 日期 PR [#321](https://github.com/lingshf/ai-native-erp/pull/321)（核对时仍在评审，1 次打回，合并后计入 S23 评审）；TSET-01 [#320](https://github.com/lingshf/ai-native-erp/pull/320)（S23 任务，未合并）。
-- **v0.21.0 已发布**：annotated tag `v0.21.0`（tag 对象 `416b3090cb89bf8451f7a77ce09e9082b845c108`）指向 `01b16dbf36dd4feab80aee05f9583cfe9bc1de13`，即 `release/v0.21.0` 上 #319 审核通过的 RC head，不在 main 上（D484）。Release 发布于 2026-11-24T04:45:26Z。发布日期由 #321 写入（评审中）。
+  - 不计入：v0.21.0 日期 PR [#321](https://github.com/lingshf/ai-native-erp/pull/321)（1 次打回，本 PR 送审后合并为 main `91f066e629fa54dba5da3913a126624670ec4351`，计入 S23 评审）；TSET-01 [#320](https://github.com/lingshf/ai-native-erp/pull/320)（S23 任务，未合并）。
+- **v0.21.0 已发布**：annotated tag `v0.21.0`（tag 对象 `416b3090cb89bf8451f7a77ce09e9082b845c108`）指向 `01b16dbf36dd4feab80aee05f9583cfe9bc1de13`，即 `release/v0.21.0` 上 #319 审核通过的 RC head，不在 main 上（D484）。Release 发布于 2026-11-24T04:45:26Z。发布日期由 #321 写入（已合并，v0.21.0 发布收尾完成）。
 - 只核对事实，只改 `design/` 文档，不改业务代码，不碰 CHANGELOG、`docs/release/` 与 `docs/demo/`。
 
 ## 1. 结论
 
-**S22 通过。** SLOT-05、REFAC-12、TLIST-06 三项开发任务与 DOC-22 (a)(b) 全部合并，验收满足；DEMO-22 的 RC 与 Demo 已合并，v0.21.0 已打 tag 并发布。日期 PR #321 在评审中，不阻塞本结论。没有设计侧阻塞项。
+**S22 通过。** SLOT-05、REFAC-12、TLIST-06 三项开发任务与 DOC-22 (a)(b) 全部合并，验收满足；DEMO-22 的 RC 与 Demo 已合并，v0.21.0 已打 tag 并发布。日期 PR #321 已合并。没有设计侧阻塞项。
 
 - **用户可见变化 1 项**：TLIST-06 在付款与收款页的分配页签加“刷新列表” / “Refresh list”（D513：只重读未结项，不清草稿、预览与待确认信封）。版本取 MINOR（0.20.0 → 0.21.0，D514），与 S22 计划“TLIST-06 在冻结范围内取下一个 MINOR”一致。
 - **迁移 0 个**（仍为 `020-trade-order-invoicing-credits.sql`，下一个可用编号 021；`git diff --name-only v0.20.0 v0.21.0` 中没有 `.sql` 文件）。
@@ -68,7 +68,7 @@
 
 ## 3. 评审裁定与本期决定
 
-决定原文见 [S22.md 决定表](../tasks/S22.md)（D513、D514）与 [S23.md 决定表](../tasks/S23.md#s23-期间决定)（D515–D521，D518–D521 由本 PR 写入）。时序与 SHA 角色以 [`docs/demo/v0.21.0/run-through.md`](../../docs/demo/v0.21.0/run-through.md) 为准。本评审不摘录决定内容，只列编号与归属：
+决定原文见 [S22.md 决定表](../tasks/S22.md)（D513、D514）与 [S23.md 决定表](../tasks/S23.md#s23-期间决定)（D515–D522，D518–D522 由本 PR 写入）。时序与 SHA 角色以 [`docs/demo/v0.21.0/run-through.md`](../../docs/demo/v0.21.0/run-through.md) 为准。本评审不摘录决定内容，只列编号与归属：
 
 | 编号 | 归属 | 记在 |
 | --- | --- | --- |
@@ -79,14 +79,15 @@
 | D519 | DEMO-22 体积例外 | S23.md（DEMO-22 在 S23 计划期间开窗，按编号顺序记入现行决定表） |
 | D520 | TSET-01 N7 首屏预算口径 | S23.md |
 | D521 | DEMO-22 K2 金额断言作废，改由 TLIST-06 S3 证明 | S23.md |
+| D522 | SLOT-06 快照日志命名 `.stdout.log` / `.stderr.log` | S23.md |
 
-下一个可用编号 D522。
+下一个可用编号 D523。
 
 ## 4. 遗留与待办
 
 | 项 | 处理 | 落点 |
 | --- | --- | --- |
-| v0.21.0 日期 PR #321 | 评审中（1 次打回），合并后计入 S23 评审 | S23 |
+| v0.21.0 日期 PR #321 | 已合并（`91f066e`，1 次打回），计入 S23 评审 | S23 |
 | v0.21.0 不在 main 上（D484） | DEMO-23 按冻结的 RC 范围终点逐行分类并写明合并基（同 DEMO-22） | S23 DEMO-23 |
 | K2 修正后的 capture 脚本未在真实浏览器验证（D521） | 不补取证；DEMO-23 若复用该脚本，按[回顾行动 2](S22-retro.md#行动项汇总)先在窗口外校验定位 | S23 DEMO-23 |
 | 放行时刻与快照启动时刻没有原始记录 | 已由协调者接受；回顾行动 1 | S23 DEMO-23 |

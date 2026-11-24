@@ -1,6 +1,6 @@
 # SLOT-06：`slot-run.ps1` 在运行期间自动做门禁快照
 
-- Sprint：S23（[计划](S23.md)）　类型：开发工具　优先级：P2　决定：[D517](S23.md#s23-期间决定)（只记录、不改判定，见“设计决定”1–4）　建议分支：`slot-06-slot-run-snapshot`
+- Sprint：S23（[计划](S23.md)）　类型：开发工具　优先级：P2　决定：[D517](S23.md#s23-期间决定)（只记录、不改判定，见“设计决定”1–4）；[D522](S23.md#s23-期间决定)（快照日志命名）　建议分支：`slot-06-slot-run-snapshot`
 - 来源：[S22 候选池](S22.md#候选池s22-之后)“`slot-run.ps1` 在运行期间自动调用 `gate-snapshot.ps1`（等 SLOT-05 经过一次 Demo 实用后再评估；会改 runner 与规则表）”。另见 [S21 回顾议题 6](../reviews/S21-retro.md)：第二窗口的快照没有父进程链，归属只能事后猜测。
 - **派发条件**：DEMO-22 的窗口已关闭，且其 run-through 已记录 SLOT-05（`gate-snapshot.ps1`）的第一次实际使用。派发前设计角色按该 run-through 复核本任务书：如果 run-through 记录了工具缺陷（例如 cwd 普遍读不到、查询出错），先由设计 PR 修订本任务书，再派发。**任何 DEMO 窗口开启到关闭之间不改、不合并 `scripts/slot/`**。
 - 迁移：**不加**。浏览器时段：**不需要**（自测只用 `-Stub` 与替身监听，不开浏览器）。
@@ -38,7 +38,7 @@
    - 时间戳格式 `yyyyMMddTHHmmssfffZ`，使同一 `-OutDir` 的多次运行各有新文件（`-OutDir` 允许复用）；
    - `<端口 CSV>` 是 `-Ports` 与 4173 的并集，**去重**后升序，用逗号连接（`gate-snapshot.ps1` 拒绝重复端口）；`-Stub` 且未给 `-Ports` 时只有 `4173`；
    - `-IntervalSeconds`、`-MaxMinutes` 用工具默认值（60 / 180）；
-   - 子进程的标准输出与错误重定向到 `<OutDir>\gate-snapshot-<时间戳>.out.log` / `.err.log`；
+   - 子进程的标准输出与错误重定向到 `<OutDir>\gate-snapshot-<时间戳>.stdout.log` / `.stderr.log`（D522：不用 `.out.log` / `.err.log`，因为既有自测把任何 `*.out.log` 视为“步骤已运行”，沿用会让 8 项既有自测失败）；
    - `-Stub` 下同样启动（自测依赖它）。
 2. **等第一次快照写完再继续**：启动后等待 TSV 中出现第一次快照（表头之后至少一行），或子进程已退出，最多 15 s（具名常量）。日志写一行：`gate snapshot started pid=… file=… ports=…`；超时写 `gate snapshot not ready after 15 s`；子进程提前退出写 `gate snapshot exited early exit=…`。三种情况都继续运行，不改变 runner 的流程。启动快照最多等 15 s：第一次快照在 15 s 内写出时，它在端口检查之前，退出码 7 时 TSV 中有占用者的进程与父进程链；超时或提前退出时不保证这一点，只留上述日志行（G5 即超时情形）。
 3. **何时停止**：从启动之后起，runner 的**每一条**结束路径（包括 `exit 1 / 2 / 3 / 5 / 6 / 7 / 8`、`exit 0` 与未捕获异常）都经过同一个停止步骤：建停止文件，等子进程退出，最多 30 s（具名常量）；然后把子进程的退出码与它的 `gate-snapshot done …` 摘要行写进 `slot-summary.log`：`gate snapshot exit=<n> <摘要行原文>`。超时写 `gate snapshot stop timeout after 30 s; stopped pid=…`，只结束这个子进程的进程树。实现建议：把启动之后的主流程放进 `try { … } finally { <停止步骤> }`（行为见“现状”的实测）；也可以把主流程抽成函数后在 `try` 中调用。
