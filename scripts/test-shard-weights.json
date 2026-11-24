@@ -34,6 +34,7 @@
   "packages/infra/test/http/migration-gui.slow.test.ts": 7529,
   "packages/infra/test/http/migration.test.ts": 1240,
   "packages/infra/test/http/navigate-ready.test.ts": 26,
+  "packages/infra/test/http/trade-document-guards.test.ts": 1000,
   "packages/infra/test/http/trade-gui-en-green-1.slow.test.ts": 6920,
   "packages/infra/test/http/trade-gui-en-green-2.slow.test.ts": 30124,
   "packages/infra/test/http/trade-gui-smoke.slow.test.ts": 9000,
