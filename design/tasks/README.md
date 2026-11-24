@@ -768,8 +768,8 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [SLOT-04](SLOT-04-call-location-check.md) | `slot-run.ps1` 调用位置自检 + dist 检查改用 `assert-web-dist.ps1` | 开发工具 | P1 | DEMO-20 窗口已关闭 | `scripts/slot/slot-run.ps1`、`scripts/slot/selftest-location.ps1`（新）、`scripts/slot/README.md` | 不加 | 不需要 | todo | — |
-| [FLAKE-08](FLAKE-08-virtualizer-timer-after-teardown.md) | 虚拟列表防抖定时器在 jsdom 拆除后触发（main Full 偶发 `window is not defined`） | 修复（测试基础设施） | P1 | 无 | `packages/web/test/setup.ts` 和 / 或 `packages/web/test/ledger-reports.test.tsx` | 不加 | 不需要 | todo | — |
+| [SLOT-04](SLOT-04-call-location-check.md) | `slot-run.ps1` 调用位置自检 + dist 检查改用 `assert-web-dist.ps1` | 开发工具 | P1 | DEMO-20 窗口已关闭 | `scripts/slot/slot-run.ps1`、`scripts/slot/selftest-location.ps1`（新）、`scripts/slot/README.md` | 不加 | 不需要 | done | [#304](https://github.com/lingshf/ai-native-erp/pull/304)（`5b6a4bf63fb11c967e0c681380580faf7a2e9340`） |
+| [FLAKE-08](FLAKE-08-virtualizer-timer-after-teardown.md) | 虚拟列表防抖定时器在 jsdom 拆除后触发（main Full 偶发 `window is not defined`） | 修复（测试基础设施） | P1 | 无 | `packages/web/test/setup.ts` 和 / 或 `packages/web/test/ledger-reports.test.tsx` | 不加 | 不需要 | done | [#303](https://github.com/lingshf/ai-native-erp/pull/303)（`49f32541c27ba2265146a056f468d2c478c8fb20`） |
 | [TLIST-05](TLIST-05-business-events-refresh.md) | 业务事件与待转队列加“刷新列表” | 功能（列表） | P2 | 无 | `business-events/list.tsx`、`business-events/company-events.tsx`、`business-events.test.tsx` | 不加 | 不需要 | done | [#301](https://github.com/lingshf/ai-native-erp/pull/301)（`f9024d5`） |
 | DOC-21（无任务书） | 送审清单写入证据格式四条，验收见 [S21.md](S21.md#doc-21-验收) | 文档（发布流程） | P2 | 无 | `docs/release/README.md` | 不加 | 不需要 | done | [#305](https://github.com/lingshf/ai-native-erp/pull/305)（`276fd3b`） |
 | DEMO-21（无任务书） | `<S21 版本>` RC 与 Demo，验收见 [S21.md](S21.md#demo-21-验收) | 发布 | P1（Sprint 末） | `<S20 版本>` 已发布；每个开发任务与 DOC-21 已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | todo | — |
