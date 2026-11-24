@@ -32,11 +32,11 @@
 | 内容 | 唯一权威路径 | 维护者 | 独立核对 |
 | --- | --- | --- | --- |
 | 目标、需求、架构、ADR、UX、决定 | `design/`（[路线图](roadmap.md)、[需求](requirements.md)、[架构](architecture.md)、[`adr/`](adr/)、[`ui/`](ui/)；决定记录在路线图 §6 与各 Sprint 计划的决定表） | Product/Design | 非作者评审；开发与 QA 核可行性和可测性 |
-| **唯一待办** | **[`design/tasks/README.md`](tasks/README.md)**（任务总表），以及它链接的 Sprint 计划 `design/tasks/S*.md` 与任务书 `design/tasks/<ID>-*.md` | Product/Design 负责顺序与含义；Team Leader 在同一任务 ID 上记录执行证据 | 团队在交接时核对 |
+| **唯一待办** | **[`design/tasks/README.md`](tasks/README.md)**（任务总表），以及它链接的 Sprint 计划 `design/tasks/S*.md` 与任务书 `design/tasks/<ID>-*.md` | Product/Design 负责顺序与含义，并照录执行字段；Team Leader 提供执行证据（§4） | 团队在交接时核对 |
 | 验收与测试证据 | [`design/test-cases.md`](test-cases.md) 与 PR 正文中的证据 | QA | 非作者评审；Product/Design 确认意图 |
 | 系统入口、用户 / 开发 / 运维指南、交接路径 | `docs/README.md`（**尚未建立**，由 Knowledge Lead 新建）及它映射的页面（现有 `docs/user/`、`docs/flows/`、`docs/performance/`、`docs/migration-runbook.md` 等） | Knowledge Lead 负责整合；设计、开发、版本管理提供事实 | 模块负责人核对事实；QA 演练关键步骤；非作者评审 |
 | 变更日志、发布说明、Demo 与发布执行记录 | [`CHANGELOG.md`](../CHANGELOG.md)、`docs/release/`、`docs/demo/` | Delivery/Release | 非作者评审核一致性；QA 验产物 |
-| 章程、Sprint 记录 | 本文件、`design/tasks/S*.md`、`design/reviews/` | Team Leader（Sprint 计划的任务内容由 Product/Design 撰写） | 受影响的角色确认 |
+| 章程、Sprint 记录 | 本文件、`design/tasks/S*.md`、`design/reviews/` | Team Leader（Sprint 计划的任务内容由 Product/Design 撰写；任务的六项事实记在任务总表，见 §4） | 受影响的角色确认 |
 
 关于唯一待办：
 
@@ -48,10 +48,14 @@
 
 在路线图 §5 现有 DoD（可读性 ①–⑥、证明附原文、数字出现即附证据等）之外，按共享质量标准补齐以下各项。只对改动范围与风险适用的项要求证据：
 
-1. **设计前置**（负责人 Product/Design；派发前由非作者评审核对）。任务书须写清下面三项。没有 UI 范围、或不涉及性能的，标 `not_applicable` 并写理由。具体写法见[任务书模板“设计阶段质量项”](tasks/TEMPLATE.md#设计阶段质量项)。
+1. **设计前置**（负责人 Product/Design；派发前由非作者评审核对）。任务书须写清下面三项，适用与否按改动触及的范围与风险判断，不按任务类型一概而论（D557）。具体写法见[任务书模板“设计阶段质量项”](tasks/TEMPLATE.md#设计阶段质量项)。
    - **UI**：主路径、信息层级、沿用现有设计语言、交互状态（空、加载、错误、禁用）、窗口宽度、键盘与焦点、中英文、红绿主题、教学模式。
    - **功能边界**：模块职责、接口与依赖、数据流、读写与状态归属、失败边界。
    - **性能**：关键路径、工作量假设、预算与验证方法。预算未知时标 `to_confirm`，写明负责人，不编造数字。
+   - **纯重构**（不改行为）：只有不触及任何页面、也不触及有性能预算的路径时，才可把 UI 与性能标 `not_applicable`，理由写具体的无影响依据。两个例外：
+     - **页面拆分**（如 REFAC-33）：UI 项适用，须提供真实渲染与交互证据（焦点、键盘、状态切换），由 QA 核对；输出等价证明不能替代。
+     - **触及已有性能预算的路径**（如 bundle-measure 覆盖的体积）：性能项适用，须引用该预算并提交测量（按路线图 §5 R7）。
+   - **`to_confirm` 阻断就绪**：实质性的 `to_confirm`（会影响设计取舍的预算或口径）未确认前，受影响的任务不算就绪、不派发；只写负责人不等于就绪。
 2. **实现质量**（负责人 Developer；Code Reviewer 对确切修订核对）：
    - SOLID 适度、可读，不为挂名而加接口、工厂或继承层。
    - TypeScript 用原生类型，不留没有理由的 `any`。
@@ -79,7 +83,9 @@
 
 任务总表现有的“状态”列（`todo` → `in-progress` → `in-review` → `done`）继续作为摘要视图：
 
-- 自 D555 起，新任务在 Sprint 计划的任务行或任务书中分别记录六项事实。
+- **唯一记录位置**（D557）：自 D557 起，每个新任务的六项事实只记在[任务总表](tasks/README.md)该任务所在 Sprint 一节的“执行记录”表中，以任务 ID 为行，一事实一列。表头为 `| ID | implementation_complete | merged | accepted | done | released | deployed |`；每格写“状态 · 证据链接 · 修订或环境 · 观察者 · 时间”，尚无证据的写 `pending`。Sprint 计划 `S*.md`、任务书、PR 正文与协调者看板只链接或展示这一行，不另记。
+- **写入路径**：Team Leader 提供证据（PR、head、合并提交、评审与 QA 链接、发布 tag 等）；Product/Design 在同步任务表时照录到该行，不改写结论，也不对证据做判断。这是“任务表只由设计角色修改”的例外，**只限执行字段**；任务的含义、范围与顺序仍只由 Product/Design 决定。
+- 协调者的 team-dashboard 只是这张表的视图，不是第二个权威来源。
 - 摘要列写 `done` 的前提是 `done` 事实为 `passed`。
 - 已结案的历史任务不追溯改写。
 
@@ -103,8 +109,8 @@
 ## 7. 迁移范围与缺口
 
 - **在途任务不受影响**：REFAC-31 至 REFAC-34 的任务书、验收与冲突域不改，按原文执行和评审。
-- **设计阶段质量项**：从 D555 之后的下一份任务书起加入；纯重构把 UI 与性能标为 `not_applicable` 并写理由。
+- **设计阶段质量项**：从 D555 之后的下一份任务书起加入；纯重构的适用规则见 §3 第 1 项（D557）。
 - **已知缺口**（登记在唯一待办，由各负责人处理）：
   - `docs/README.md` 系统入口与覆盖矩阵尚未建立。负责人：Knowledge Lead。
   - `design/test-cases.md` 的维护者由设计角色移交给 QA，需要一次交接。负责人：Team Leader 协调。
-  - 六项生命周期事实的首次实际记录从下一个新任务开始。负责人：Team Leader。
+  - 六项生命周期事实的首次实际记录从下一个新任务开始，记在任务总表的“执行记录”表（§4）。证据：Team Leader；照录：Product/Design。
