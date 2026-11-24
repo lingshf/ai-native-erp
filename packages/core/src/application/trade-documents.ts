@@ -10,23 +10,15 @@ import {
   checkedTradeOrder,
   checkedTradeSettlement,
   checkedTradeAction,
-  allocateTradeSegments,
-  tradeDimensionKey,
   tradeSegments,
-  roundTradeRatio,
   formatMicros,
-  formatMinor,
   normalizeExternalInvoice,
-  quantityMicros,
   selectTradeTax,
   tradeDocumentError,
   tradeEffective,
   tradeOrderInvoicingStatuses,
   type Account,
   type Company,
-  type DimensionMap,
-  type JournalDraft,
-  type JournalInputLine,
   type OpenItem,
   type Page,
   type PageQuery,
@@ -65,6 +57,17 @@ import { invoiceAccountRoleInputs } from "./trade-invoice-account-roles.ts";
 import { calculateInvoice } from "./trade-invoice-calculation.ts";
 import { invoiceDraft, invoiceJournalLines } from "./trade-invoice-journal.ts";
 import { invoicePoMatch, matchInvoiceOrder } from "./trade-invoice-order-match.ts";
+import {
+  assertNewSettlementPayment,
+  settlementSelections,
+  settlementTotals,
+} from "./trade-settlement-allocation.ts";
+import {
+  checkSettlementDimensions,
+  settlementAccountRoleInputs,
+  settlementDraft,
+  settlementJournalLines,
+} from "./trade-settlement-journal.ts";
 import type { JournalPreview, JournalService, JournalTools } from "./journals.ts";
 import type { MasterDataRepository, MasterDataStore } from "./master-data.ts";
 
@@ -384,12 +387,7 @@ export class TradeDocumentService {
     });
   }
   private async prepareSettlement(repo: Repo, command: TradeSettlementCommand) {
-    if (
-      (await repo.tradePayment(command.company, command.paymentId)) ||
-      (await repo.tradeAction(command.company, command.paymentId)) ||
-      (await repo.openItem(command.company, command.paymentId))
-    )
-      tradeDocumentError("paymentId", "duplicate", true);
+    await assertNewSettlementPayment(repo, command);
     const company = await this.company(repo, command.company, command.currency);
     const party = await this.config(
       repo,
@@ -412,138 +410,29 @@ export class TradeDocumentService {
     if (profile.data.side !== command.side) tradeDocumentError("party", "party");
     if (await repo.journalSourceExists(command.company, `TRADE-PAY:${command.paymentId}`))
       tradeDocumentError("paymentId", "duplicate", true);
-    const allocations: TradeSettlementAllocation[] = [];
-    const controls: OpenItem[] = [];
-    const controlLines: { index: number; dimensions: DimensionMap }[] = [];
-    const lines: JournalInputLine[] = [];
-    const ap = command.side === "AP";
-    const push = (account: string, debit: boolean, amount: number, dimensions: DimensionMap) => {
-      if (amount === 0) return;
-      lines.push({
-        account,
-        debit: debit ? formatMinor(amount, company.scale) : "",
-        credit: debit ? "" : formatMinor(amount, company.scale),
-        dimensions,
-        suspense: null,
-      });
-    };
-    for (const [index, selection] of command.items.entries()) {
-      const path = `items.${index}`;
-      const item = await repo.openItem(command.company, selection.itemId);
-      if (!item) tradeDocumentError(path, "reference");
-      if (item.party !== command.party || item.side !== command.side)
-        tradeDocumentError(path, "party");
-      if (item.currency !== command.currency) tradeDocumentError(path, "currency");
-      if (item.revision !== selection.revision) tradeDocumentError(path, "stale", true);
-      if (selection.gross > item.remainingGross || item.status !== "open")
-        tradeDocumentError(path, "quantity");
-      if (command.accountingDate < item.accountingDate)
-        tradeDocumentError("accountingDate", "reference");
-      // Accounting dates, not wall-clock acceptance times, define the dependency chain.
-      if ((await repo.latestSettlementDate(command.company, item.itemId)) > command.accountingDate)
-        tradeDocumentError("accountingDate", "reference");
-      const gross = selection.gross;
-      if (controls.length && (controls[0].kind === "invoice") !== (item.kind === "invoice"))
-        tradeDocumentError(path, "reference");
-      const net =
-        gross === item.remainingGross
-          ? item.remainingNet
-          : roundTradeRatio(BigInt(item.remainingNet) * BigInt(gross), BigInt(item.remainingGross));
-      const tax = gross - net;
-      const discountAvailable =
-        item.kind === "invoice" &&
-        command.accountingDate >= item.documentDate &&
-        command.accountingDate <= item.discountDate &&
-        quantityMicros(item.discountPercent) > 0n &&
-        (item.allowPartialDiscount || (item.remainingGross === item.gross && gross === item.gross));
-      if (selection.takeDiscount && !discountAvailable)
-        tradeDocumentError(`${path}.takeDiscount`, "reference");
-      const discount = selection.takeDiscount
-        ? roundTradeRatio(BigInt(net) * quantityMicros(item.discountPercent), 100_000_000n)
-        : 0;
-      const segments = allocateTradeSegments(item, gross);
-      allocations.push({
-        segments,
-        itemId: item.itemId,
-        revision: item.revision,
-        gross,
-        net,
-        tax,
-        discount,
-        cash: gross - discount,
-        discountAvailable,
-        discountDate: item.discountDate,
-        settledGross: item.gross - item.remainingGross + gross,
-        remainingGross: item.remainingGross - gross,
-        remainingNet: item.remainingNet - net,
-        remainingTax: item.remainingTax - tax,
-      });
-      controls.push(item);
-      for (const segment of segments) {
-        controlLines.push({ index: lines.length, dimensions: segment.dimensions });
-        push(
-          item.controlAccount,
-          item.kind === "invoice" ? ap : !ap,
-          segment.gross,
-          segment.dimensions,
-        );
-      }
-    }
-    const sum = (key: "gross" | "cash" | "discount") => {
-      const value = allocations.reduce((n, a) => n + BigInt(a[key]), 0n);
-      if (value > BigInt(Number.MAX_SAFE_INTEGER)) tradeDocumentError("items", "shape");
-      return Number(value);
-    };
-    const gross = sum("gross"),
-      cash = sum("cash"),
-      discount = sum("discount");
-    const accounts = await this.accountRoles(repo, command.company, [
-      ...controls.map((item) => ({
-        code: item.controlAccount,
-        role: item.kind === "advance" ? ("advanceAccount" as const) : ("controlAccount" as const),
-        // D30: a legacy opening item may sit on either same-side trade account role.
-        alternate:
-          item.kind === "advance" ? ("controlAccount" as const) : ("advanceAccount" as const),
-        openingItem: item.itemId,
-        side: command.side,
-        path: "items",
-      })),
-      ...(cash
-        ? [{ code: profile.data.cashAccount, role: "cashAccount" as const, path: "party" }]
-        : []),
-      ...(discount
-        ? [{ code: profile.data.discountAccount, role: "discountAccount" as const, path: "party" }]
-        : []),
-    ]);
-    push(profile.data.cashAccount, controls[0].kind === "invoice" ? !ap : ap, cash, {});
-    push(profile.data.discountAccount, !ap, discount, {});
-    const draft: JournalDraft = {
-      id: command.paymentId,
-      revision: 0,
-      sourceRef: `TRADE-PAY:${command.paymentId}`,
-      date: command.accountingDate,
-      documentDate: command.documentDate,
-      taxDate: command.taxDate,
-      memo: `${command.side} book settlement ${command.party}`,
-      kind: "normal",
-      operation: "journal",
-      originalId: null,
-      headerDimensions: {},
-      lines,
-    };
+    const selections = await settlementSelections(repo, command);
+    const { allocations, controls } = selections;
+    const totals = settlementTotals(allocations);
+    const { gross, cash, discount } = totals;
+    const accounts = await this.accountRoles(
+      repo,
+      command.company,
+      settlementAccountRoleInputs(command, profile, controls, totals),
+    );
+    const { lines, controlLines } = settlementJournalLines(
+      command,
+      profile,
+      selections,
+      totals,
+      company.scale,
+    );
     const journal = await this.journals.adapter("TRADE").plan(
       repo,
       command.company,
-      draft,
+      settlementDraft(command, lines),
       lines.map(() => ({})),
     );
-    for (const { index, dimensions } of controlLines) {
-      if (
-        tradeDimensionKey(journal.plan.journals[0].lines[index].dimensions) !==
-        tradeDimensionKey(dimensions)
-      )
-        tradeDocumentError(`items.${index}.dimensions`, "account");
-    }
+    checkSettlementDimensions(journal, controlLines);
     const commandHash = this.tools.hash(["trade-settlement-v1", command]);
     const fingerprint = this.tools.hash([
       "trade-settlement-preview-v1",
