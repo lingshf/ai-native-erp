@@ -3,8 +3,7 @@ import {
   checkedDimensionDay,
   checkedExpectedRevision,
   checkedMinor,
-  compileDimensionRules,
-  dimensionBalance,
+  type compileDimensionRules,
   type Account,
   type Company,
   type DimensionConfig,
@@ -12,6 +11,9 @@ import {
   type Period,
   type BusinessOperation,
 } from "./index.ts";
+import { journalPlanContext, plannedJournal } from "./journal-plan-context.ts";
+import { correctionJournals } from "./journal-plan-corrections.ts";
+import { businessLines } from "./journal-plan-lines.ts";
 
 export type JournalOperation = "journal" | "reverse" | "replace" | "reclassify";
 export interface JournalFieldIssue {
@@ -184,23 +186,6 @@ export function journalDates(draft: Pick<JournalDraft, "date" | "documentDate" |
     taxDate: draft.taxDate ?? draft.date,
   };
 }
-function amount(text: string, scale: number, path: string): number {
-  const match = /^(0|[1-9]\d*)(?:\.(\d+))?$/u.exec(text || "0");
-  if (!match || (match[2]?.length ?? 0) > scale) journalError(path, "money");
-  const exact = BigInt(`${match[1]}${(match[2] ?? "").padEnd(scale, "0")}`);
-  if (exact > BigInt(Number.MAX_SAFE_INTEGER)) journalError(path, "money");
-  return checkedMinor(exact, scale);
-}
-function totals(lines: readonly JournalLine[]) {
-  const exactDebit = lines.reduce((sum, line) => sum + BigInt(line.debit), 0n);
-  const exactCredit = lines.reduce((sum, line) => sum + BigInt(line.credit), 0n);
-  if (exactDebit > BigInt(Number.MAX_SAFE_INTEGER) || exactCredit > BigInt(Number.MAX_SAFE_INTEGER))
-    journalError("lines", "money");
-  const debit = checkedMinor(exactDebit, 0),
-    credit = checkedMinor(exactCredit, 0);
-  if (!debit || debit !== credit) journalError("lines", "balance");
-  return { debit, credit };
-}
 export function checkedJournalDay(day: string, path: string, rule: "shape" | "suspense" = "shape") {
   try {
     checkedDimensionDay(day, path);
@@ -225,7 +210,7 @@ export function buildJournalPlan(input: {
     readonly periodModules?: readonly ("trade" | "tax")[];
   };
 }): JournalPlan {
-  const { draft, company, period, original, corrections } = input;
+  const { draft, company, period } = input;
   const historicalImport = input.adapter?.module === "LEGACY";
   checkedJournalDraft(draft, historicalImport ? 2000 : 500);
   if (!draft.sourceRef.trim() || !draft.memo.trim()) journalError("sourceRef", "shape");
@@ -237,211 +222,12 @@ export function buildJournalPlan(input: {
     journalError("date", "period");
   if (input.adapter?.periodModules?.some((module) => !period.modules.includes(module)))
     journalError("date", "period");
-  const accounts = new Map(input.accounts.map((account) => [account.code, account]));
-  const compiled = compileDimensionRules(
-    historicalImport
-      ? input.catalog.map((config) =>
-          config.kind === "dimension" || config.kind === "value"
-            ? { ...config, active: true }
-            : config,
-        )
-      : input.catalog,
-  );
-  const balance = input.catalog.find(
-    (item): item is Extract<DimensionConfig, { kind: "balance" }> => item.kind === "balance",
-  );
-  function resolve(
-    raw: Pick<JournalInputLine, "account" | "dimensions">,
-    index: number,
-    header: DimensionMap,
-  ) {
-    try {
-      const resolved = compiled.resolve({
-        account: raw.account,
-        day: draft.date,
-        header,
-        explicit: raw.dimensions,
-        master: input.master?.[index],
-      });
-      if (Object.keys(resolved.dimensions).length > 32)
-        journalError(`lines.${index}.dimensions`, "dimensionLimit");
-      return resolved;
-    } catch (error) {
-      if (
-        error instanceof DomainError &&
-        error.issue &&
-        "scope" in error.issue &&
-        error.issue.scope === "dimensions"
-      )
-        throw new DomainError(error.code, {
-          ...error.issue,
-          path: `lines.${index}.${error.issue.path}`,
-        });
-      throw error;
-    }
-  }
-  function business(): readonly JournalLine[] {
-    if (draft.lines.length < 2) journalError("lines", "shape");
-    const lines: JournalLine[] = draft.lines.map((raw, index) => {
-      const account = accounts.get(raw.account);
-      if (!account || (!historicalImport && !account.active))
-        journalError(`lines.${index}.account`, "account");
-      if (
-        account.purpose === "control"
-          ? !account.controlModule || !input.adapter?.controlModules.includes(account.controlModule)
-          : !historicalImport && !account.manualAllowed
-      )
-        journalError(`lines.${index}.account`, "manual");
-      if (account.purpose === "suspense") {
-        if (!raw.suspense?.owner.trim() || !raw.suspense.reason.trim())
-          journalError(`lines.${index}.suspense`, "suspense");
-        checkedJournalDay(
-          raw.suspense.reviewDate,
-          `lines.${index}.suspense.reviewDate`,
-          "suspense",
-        );
-      }
-      const debit = amount(raw.debit, company.scale, `lines.${index}.debit`);
-      const credit = amount(raw.credit, company.scale, `lines.${index}.credit`);
-      if ((debit === 0 && credit === 0) || (debit > 0 && credit > 0))
-        journalError(`lines.${index}`, "money");
-      return {
-        account: raw.account,
-        debit,
-        credit,
-        ...resolve(raw, index, draft.headerDimensions),
-        role: "business",
-        suspense: raw.suspense,
-        balancing: null,
-        historical: null,
-        group: null,
-      };
-    });
-    totals(lines);
-    let candidates: ReturnType<typeof dimensionBalance>;
-    try {
-      candidates = dimensionBalance(
-        balance,
-        draft.date,
-        lines,
-        balance ? (accounts.get(balance.account) ?? null) : null,
-      );
-    } catch (error) {
-      if (
-        error instanceof DomainError &&
-        error.issue &&
-        "scope" in error.issue &&
-        error.issue.scope === "dimensions" &&
-        error.issue.path === "account"
-      )
-        journalError("balance.account", "balanceAccount");
-      throw error;
-    }
-    for (const candidate of candidates) {
-      const resolved = resolve(candidate, lines.length, {});
-      if (
-        !balance ||
-        resolved.dimensions[balance.dimension] !== candidate.dimensions[balance.dimension]
-      )
-        journalError("lines", "balance");
-      lines.push({
-        account: candidate.account,
-        debit: candidate.debit,
-        credit: candidate.credit,
-        ...resolved,
-        role: "balance",
-        suspense: null,
-        historical: null,
-        group: null,
-        balancing: {
-          dimension: balance.dimension,
-          value: candidate.dimensions[balance.dimension],
-          businessNet: candidate.businessNet,
-          configurationRevision: candidate.configurationRevision,
-        },
-      });
-    }
-    totals(lines);
-    return lines;
-  }
-  const spec = (
-    lines: readonly JournalLine[],
-    role: PlannedJournal["role"],
-    kind = draft.kind,
-  ): PlannedJournal => ({ kind, role, lines, ...totals(lines) });
-  let journals: readonly PlannedJournal[];
-  if (draft.operation === "journal") journals = [spec(business(), "normal")];
-  else {
-    if (
-      !original ||
-      original.kind === "closing" ||
-      original.id !== draft.originalId ||
-      original.module !== (input.adapter?.module ?? null) ||
-      original.role === "reversal" ||
-      (original.role === "reclassification" && draft.operation !== "reverse")
-    )
-      journalError("originalId", "source");
-    const active = new Map<string, boolean>();
-    for (const edge of [...corrections].sort((a, b) => b.sequence - a.sequence))
-      active.set(
-        edge.originalId,
-        Boolean(active.get(edge.originalId)) ||
-          edge.operation !== "reclassify" ||
-          !active.get(edge.outputId),
-      );
-    if (active.get(original.id)) journalError("originalId", "correction", true);
-    const latestDate = corrections.reduce(
-      (latest, edge) => (edge.date > latest ? edge.date : latest),
-      original.date,
-    );
-    if (draft.date < latestDate) journalError("date", "correction");
-    // D6: mirror immutable evidence; current defaults/availability must not prevent undoing history.
-    const reversed: JournalLine[] = original.lines.map((line, index) => {
-      if (!accounts.has(line.account)) journalError(`lines.${index}.account`, "account");
-      return {
-        ...line,
-        debit: line.credit,
-        credit: line.debit,
-        role: "historical",
-        historical: { entryId: original.id, lineNo: index + 1 },
-        group: null,
-      };
-    });
-    for (const [index, line] of reversed.entries()) {
-      const source = original.lines[index];
-      if (
-        line.account !== source.account ||
-        line.debit !== source.credit ||
-        line.credit !== source.debit ||
-        JSON.stringify(line.dimensions) !== JSON.stringify(source.dimensions) ||
-        JSON.stringify(line.dimensionOrigins) !== JSON.stringify(source.dimensionOrigins)
-      )
-        journalError(`lines.${index}`, "correction");
-    }
-    if (draft.operation === "reverse") journals = [spec(reversed, "reversal", original.kind)];
-    else {
-      const fresh = business();
-      if (draft.operation === "replace")
-        journals = [spec(reversed, "reversal", original.kind), spec(fresh, "normal")];
-      else {
-        const economic = (lines: readonly JournalLine[]) =>
-          lines
-            .filter((line) => line.role === "business")
-            .reduce((sum, line) => sum + BigInt(line.debit), 0n);
-        if (economic(fresh) !== economic(original.lines)) journalError("lines", "amount");
-        journals = [
-          spec(
-            [
-              ...reversed.map((line) => ({ ...line, group: "originalReverse" as const })),
-              ...fresh.map((line) => ({ ...line, group: "newAllocation" as const })),
-            ],
-            "reclassification",
-            original.kind,
-          ),
-        ];
-      }
-    }
-  }
+  const context = journalPlanContext(input, historicalImport);
+  // correctionJournals builds new business lines only after the mirror self-check; error precedence relies on it.
+  const journals =
+    draft.operation === "journal"
+      ? [plannedJournal(context, businessLines(context), "normal")]
+      : correctionJournals(context);
   const turnover =
     BigInt(checkedMinor(input.turnover, 0)) +
     journals.reduce((sum, journal) => sum + BigInt(journal.debit), 0n);
