@@ -14,7 +14,7 @@
 >
 > 窗口后合并的 [#301](https://github.com/lingshf/ai-native-erp/pull/301)（TLIST-05，`f9024d5fd320396a328ee7a91a20b2c79042006c`）**延后**：它不是 RC 范围终点 `6156759…` 的祖先（`git merge-base --is-ancestor f9024d5… 6156759…` 退出码 1），不进入 v0.19.0。
 >
-> 与 `3f8f2ff` 相比，`git diff --shortstat 3f8f2ff9fd010ff63fb8d891b4a4b1209d4cd0ee 6156759c2aef6b9805aca70ba5505490e2bd4c5b -- packages scripts` 为 14 个文件（+1280/−196）。没有迁移。完整版本差异（两点）与合并基对比（三点，D483）的链接和数字在 tag 创建后核对填入。Demo 与窗口证据在 [docs/demo/v0.19.0](docs/demo/v0.19.0/README.md)（D480 窗口已于 2026-11-23 运行并关闭：步骤 1–4 退出码均 0，15 项检查 0 失败，6 张截图；D504 重测 PASS：Dimensions +103 B、TradeOrders +204 B、首屏与其余 ±0）。两处 `npm ci` 的控制台输出未保存，按 D500 先例接受（D506），替代证据见 run-through。
+> 与 `3f8f2ff` 相比，`git diff --shortstat 3f8f2ff9fd010ff63fb8d891b4a4b1209d4cd0ee 6156759c2aef6b9805aca70ba5505490e2bd4c5b -- packages scripts` 为 14 个文件（+1280/−196）。没有迁移。完整版本差异（两点）与合并基对比（三点，D483）的链接和数字在 tag 创建后核对填入。Demo 与窗口证据在 [docs/demo/v0.19.0](docs/demo/v0.19.0/README.md)（D480 窗口已于 2026-11-23 运行并关闭：步骤 1–3 实测退出码 0；步骤 4 依据 `slot-summary-real.log` 第 122 行 `demo-capture exit=0` 与第 123 行 `runner done` 确认完成，runner 退出码未单独记录（D508），15 项检查 0 失败，6 张截图；D504 重测 PASS：Dimensions +103 B、TradeOrders +204 B、首屏与其余 ±0）。两处 `npm ci` 的控制台输出未保存，按 D500 先例接受（D506），替代证据见 run-through。
 
 S20 Sprint：一项用户可见的小功能（TLIST-04）、一项只拆分文件的重构（REFAC-11）和一项开发工具（MEAS-01）。**无迁移，无依赖变化**，已有账套不需要 migrate，不改过账规则与任何金额、数量口径。
 
