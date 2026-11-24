@@ -789,13 +789,14 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [REFAC-12](REFAC-12-settlement-entry-split.md) | 拆分 `SettlementEntry` 函数体（不改行为） | 重构（页面） | P2 | 无 | `packages/web/src/TradeSettlements.tsx`、`packages/web/src/trade-settlements/`（新） | 不加 | 不需要 | done | [#311](https://github.com/lingshf/ai-native-erp/pull/311)（`9c05266`） |
 | [TLIST-06](TLIST-06-settlements-refresh.md) | 付款与收款页加“刷新列表” | 功能（列表） | P2 | REFAC-12 已合并 | `trade-settlements/` 下的分配页签与查询文件、`trade-settlements.test.tsx` | 不加 | 不需要 | done | [#316](https://github.com/lingshf/ai-native-erp/pull/316)（`eac0c37`） |
 | DOC-22（无任务书） | 送审清单加 `git grep` 自查；Demo 模板第 23 条引用快照工具，验收见 [S22.md](S22.md#doc-22-验收) | 文档（发布流程） | P2 | (b) 须 SLOT-05 已合并 | `docs/release/README.md`、`docs/demo/TEMPLATE.md` | 不加 | 不需要 | done | (a) [#309](https://github.com/lingshf/ai-native-erp/pull/309)（`a1a1244`）；(b) [#317](https://github.com/lingshf/ai-native-erp/pull/317)（`3ae4848`） |
-| DEMO-22（无任务书） | `<S22 版本>` RC 与 Demo，验收见 [S22.md](S22.md#demo-22-验收) | 发布 | P1（Sprint 末） | `<S21 版本>` 已发布；每个开发任务与 DOC-22 已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | todo | — |
+| DEMO-22（无任务书） | `<S22 版本>` RC 与 Demo，验收见 [S22.md](S22.md#demo-22-验收) | 发布 | P1（Sprint 末） | `<S21 版本>` 已发布；每个开发任务与 DOC-22 已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | done | [#319](https://github.com/lingshf/ai-native-erp/pull/319)（`0494020`；tag `v0.21.0` → `01b16db`） |
 
 - **并行**：A ∥ B，冲突域不相交，没有共享单文件；B 内 REFAC-12 合并后才开 TLIST-06，REFAC-12 未在 RC 冻结前合并则 TLIST-06 顺延 S23；A 在 #304 合并且 DEMO-21 窗口关闭后派发，DEMO 窗口期间不改 `scripts/slot/`；都不申请浏览器时段，服从 D442 / D480 时段停用通知；DEMO-22 排在它们结案之后。体积口径见 [S22.md](S22.md#l10--体积口径)。
+- **Sprint 评审与回顾**：[S22 评审](../reviews/S22-review.md)（通过：三个开发任务、DOC-22 与 RC 已合并，v0.21.0 已发布；打回 11、待证据 1；D513–D521）、[S22 回顾](../reviews/S22-retro.md)（行动 1 时刻与清单由命令写进日志、清理前一次产出全产物清单，行动 2 真实浏览器只验焦点与按键、取值先断言元素，落到 S23 DEMO-23；行动 3 任务书写明 chunk 归属与首屏预算、行动 4 本机全量 web 测试用指定命令，落到 S24 计划；行动 5 回应评审逐句对照；FLAKE-09 入候选池）。
 
 ## S23：拆分 OrderLookup + 付款与收款页提示已不在未结项中的已选项 + slot-run 自动门禁快照（版本待 v0.21.0 发布后定）
 
-计划与任务书见 [S23.md](S23.md)（D514 = S22 版本定为 v0.21.0；S23 决定 D515 REFAC-13、D516 TSET-01、D517 SLOT-06，下一个可用编号 D518）。基线 main `eac0c37`（S22 的 REFAC-12 #311、SLOT-05 #312、TLIST-06 #316 已合并），rebase 到 `3ae4848`（DOC-22(b) #317 已合并，只改 `docs/`）；DEMO-22 未发布。三条开发泳道 A（REFAC-13，存量拆分）、B（TSET-01，小步界面打磨）、C（SLOT-06，SLOT-05 经 DEMO-22 实用后的后续），冲突域逐文件不相交，都不加迁移。`<S23 版本>` 在 v0.21.0 发布后由协调者定。
+计划与任务书见 [S23.md](S23.md)（D514 = S22 版本定为 v0.21.0；S23 决定 D515 REFAC-13、D516 TSET-01、D517 SLOT-06；D518–D524 在 S23 期间由协调者指定，见 [S23 决定表](S23.md#s23-期间决定)，下一个可用编号 D525）。基线 main `eac0c37`（S22 的 REFAC-12 #311、SLOT-05 #312、TLIST-06 #316 已合并），rebase 到 `3ae4848`（DOC-22(b) #317 已合并，只改 `docs/`）；DEMO-22 未发布（起草时；之后 v0.21.0 已发布，#319 = `0494020`，tag → `01b16db`）。三条开发泳道 A（REFAC-13，存量拆分）、B（TSET-01，小步界面打磨）、C（SLOT-06，SLOT-05 经 DEMO-22 实用后的后续），冲突域逐文件不相交，都不加迁移。`<S23 版本>` 在 v0.21.0 发布后由协调者定。
 
 **不在本 Sprint**：M2-05 真实演练与 M2-06（仍待用户决定 A / B / C）；Demo 脚本删除账套前写文件清单的脚本化（先看 DEMO-22 的实现）；`-HASH` 口径文档（版本管理文档任务）；`bundle-compare.mjs` 拆分；`scripts/measure` 接入 CI；多订单合并开票（加迁移）；门禁判定检查器。
 
