@@ -1,7 +1,7 @@
 # FLAKE-08：jsdom 卸载后虚拟列表防抖定时器触发，main Full 报 `window is not defined`
 
 - Sprint：S21（[计划](S21.md)）　类型：测试稳定性　优先级：P1　决定：待协调者定编号　建议分支：`flake-08-virtualizer-timer-teardown`
-- 来源：main Full [run 45291279585](https://github.com/lingshf/ai-native-erp/actions/runs/45291279585)（`5664fea`，unit 分片 2/6）：该分片 26 个文件、191 个测试全部通过，但 Vitest 报 “Errors 1”，`ReferenceError: window is not defined`，被归到 `packages/web/test/shell-targets.test.ts`，作业失败。同一提交重跑为绿。同类先例：[FLAKE-03](FLAKE-03-navigate-target-page-ready.md)。
+- 来源：main Full [run 45291279585](https://github.com/lingshf/ai-native-erp/actions/runs/45291279585)（`5664fea`，unit 分片 2/6）：该分片 26 个文件、191 个测试全部通过，但 Vitest 报 “Errors 1”，`ReferenceError: window is not defined`，被归到 `packages/web/test/shell-targets.test.ts`，作业失败。该 run 是 `run_attempt=1`、结论 failure，**没有**同 SHA 重跑；已知的是随后各提交的 main Full 为绿（`5398eb8` run 45292823039 起）。此 run 不重跑，只引用。同类先例：[FLAKE-03](FLAKE-03-navigate-target-page-ready.md)。
 - 迁移：**不加**。浏览器时段：**不需要**。
 - 数据：只用测试内的虚构数据；不读取真实旧账、4173 账套或 `.bak` 文件。
 
@@ -52,10 +52,12 @@
 
 - **F4 范围**：`git diff --name-only <合并基>..<head>` 只含“范围”所列文件；不改 `packages/web/src/**`、`vitest.config.ts`、`package.json` / lock、分片权重；不新增测试文件。
 - **F5 禁止项**：diff 中没有决定 4 所列做法（PR 正文逐项写“无”）。
-- **F6 web 全量**：`npx vitest run --project web` 全部通过、“Errors 0”；`ledger-reports.test.tsx` 既有测试的断言不删、不放宽。
-- **F7 main Full**：PR 的 Full 与合并提交上的 main Full 都为绿。
-- **F8 观察**：合并后至 S21 评审期间，main Full 不再出现 `window is not defined`；S21 评审列出期间 main Full 的 run 编号与结论（只核对引用，不为此重跑）。
-- **F9 PR 正文**须含：“用户可见变化：无”；“可读性”一节；F1–F3 的命令与未截断输出；修法选择的理由。
+三类证据分工明确，互不替代，不新增 CI 作业（`full.yml` 只在 main push 与定时触发，PR 上没有 Full；PR 门禁是 `ci.yml` 的 `verify`）：
+
+- **F6 本地证据（开发机）**：F2 的确定复现两侧各 5/5（base 失败、head 无错误），以及 head 上 `npx vitest run --project web` 全部通过、“Errors 0”；`ledger-reports.test.tsx` 既有测试的断言不删、不放宽。贴命令与未截断汇总行。
+- **F7 PR verify**：PR 的 `verify` 作业为绿（它跑受影响测试，不是 Full，不能代替 F6）。
+- **F8 合并后的 main Full**：合并提交上的 main Full 为绿；合并后至 S21 评审期间，main Full 不再出现 `window is not defined`。S21 评审列出期间 main Full 的 run 编号与结论（只核对引用，不为此重跑；历史 run 45291279585 同样只引用）。
+- **F9 PR 正文**须含：F6 / F7 / F8 三类证据分列（F8 在合并后由协调者或 S21 评审补记）；“用户可见变化：无”；“可读性”一节；F1–F3 的命令与未截断输出；修法选择的理由。
 
 ## e2e 断言
 
@@ -80,5 +82,5 @@
 
 ## 证据要求
 
-- 不需要浏览器时段。F1–F3 在开发机上执行；F7 以 CI 记录为准。
+- 不需要浏览器时段。F1–F3、F6 在开发机上执行；F7 以 PR 的 `verify` 记录为准；F8 以合并后的 main Full 记录为准。
 - **可行性**（S13 回顾行动 4）：设计角色**没有**试做 F2。`isolate: false` 时同一 fork 内的文件顺序由分片排序器决定；若 `--maxWorkers=1` 加文件列表不能稳定复现，可用 `TEST_FILE_ORDER` 或临时探针文件（在嫌疑测试之后立即结束的极短文件）。三种都不能稳定复现时，按决定 1 停下报告。

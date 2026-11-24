@@ -15,7 +15,7 @@
   - `:144` `Assert-PortsFree 'before-preflight'`（端口忙 7、查询失败 8）；`:145–153` head / base 预检；
   - `:156–158` `npm run build`；`:159–162` dist 检查：`packages/web/dist/index.html` 的修改时间须严格晚于 HEAD 提交时间，否则 `ABORT: dist not newer than HEAD commit`，退出码 5；
   - 之后是进程预检采样与各步骤。
-- 调用位置**没有任何检查**。DEMO-19 的 4b（固定来源：[DEMO-19 run-through §2](../../docs/demo/v0.18.0/run-through.md)）在 tool worktree 内调用，`-BaseRoot` 也是 tool worktree，`-StepsFile` 是 app worktree 的 `docs/demo/v0.18.0/scripts/steps-demo19.ps1`。步骤以 `dir = $Root`（即 tool worktree）运行 `docs\demo\v0.18.0\scripts\run-main.ps1`，该路径在 tool worktree 中不存在；失败发生在端口检查、预检、构建、采样**之后**。
+- 调用位置**没有任何检查**。DEMO-19 的 4b（固定来源：[DEMO-19 run-through §2 时间线表](../../docs/demo/v0.18.0/run-through.md) 与 `docs/demo/v0.18.0/logs/slot-failed2-summary.log:1–4`，不重跑）：当前目录是 tool worktree（`runner start head=` 与 `tooling head=` 都是 `3f8f2ff`），`-BaseRoot` 是 **app** worktree（`base head=0b82b18`），`-StepsFile` 是 app worktree 的 `docs/demo/v0.18.0/scripts/steps-demo19.ps1`。步骤以 `dir = $Root`（即 tool worktree）运行 `docs\demo\v0.18.0\scripts\run-main.ps1`，该路径在 tool worktree 中不存在；失败发生在端口检查、预检、构建、采样**之后**。
 - 正确的调用形式（D499）：在 app worktree 内用 `pwsh` 调用 tool worktree 的 `scripts\slot\slot-run.ps1`。此时 `$root` 是 app worktree，`$PSScriptRoot` 在 tool worktree，步骤文件在 app worktree。
 - 其他合法形式（必须继续可用）：
   - 步骤文件来自 runner 自己的目录（`scripts/slot/steps.*.ps1`），当前目录是被测 worktree（DEMO-15 起的“工具头与被测头分离”）；
@@ -30,7 +30,7 @@
 2. **两条规则**（任一成立即中止），不解析步骤内容、不按模式开关：
    - **R-base**：给了 `-BaseRoot`，且它与 `$root` 是同一目录（`-BaseRoot` 在 git worktree 内时取其 `rev-parse --show-toplevel`，否则取规范化的完整路径；比较不区分大小写、不计末尾分隔符）。base 与 head 是同一棵树时，base 一侧的预检与对比没有意义。
    - **R-steps**：`-StepsFile` 位于某个 git worktree 内，且该 worktree 的顶层既不是 `$root`，也不是 runner 自己所在 worktree 的顶层（`git -C $PSScriptRoot rev-parse --show-toplevel`）。不在任何 git worktree 内的步骤文件（如 `%TEMP%` 下的自测文件）不受此条限制。
-   - DEMO-19 4b 同时命中两条；D499 的正确形式与“其他合法形式”都不命中。
+   - **DEMO-19 的真实 4b 只命中 R-steps**：步骤文件在 app worktree，既不是当前 root（tool），也不是 tool 顶层；`-BaseRoot` 是 app，与 root 不同，不命中 R-base。D499 的正确形式（4c：当前目录 app，`-BaseRoot` tool）与“其他合法形式”都不命中。R-base 防的是另一种可能的误用（在 base 所在目录调用），DEMO 中尚未发生过。
 3. **退出码与日志**：中止用退出码 **4**（输入或配置错误，与 `:132–142` 同类），日志一行以 `ABORT: call location` 开头，写明命中的规则名、`root`、`tool`、步骤文件所在 worktree（或 `none`）、`BaseRoot` 的完整路径，并附正确形式的提示：`run from the app worktree: pwsh -File <tool>\scripts\slot\slot-run.ps1 …`。通过时写一行 `call location ok root=… tool=… steps-worktree=…`（DEMO-21 演练据此取证）。
 4. **dist 检查**：`:159–162` 改为调用 runner 所在 worktree 的 `scripts/demo/assert-web-dist.ps1 -Root $root`（按 `$PSScriptRoot` 定位），把它输出的整行 `web-dist: …` 记为 `dist check web-dist: …`；它的退出码不为 0 时写 `ABORT: dist check exit <n>`，runner 以退出码 **5** 结束（约定不变，`README.md` 与下游文档无需改退出码表）。调用不得结束 runner 进程本身（脚本内的 `exit` 只结束被调脚本）。`assert-web-dist.ps1` 不存在时按输入错误以退出码 4 结束。日志关键词 `dist check` 保留，`Test-StoppedBeforeBuild` 不改。
 5. **不改**：`procs.ps1`、规则版本 `$script:SlotRuleVersion`、`preflight*`、`step-env.ps1`、`steps.*.ps1`、既有三份自测、`check-manifest.mjs`、`scripts/demo/**`、`design/roadmap.md` 规则表、`docs/`。
@@ -57,8 +57,8 @@ S1–S6 都由 `selftest-location.ps1` 执行，每条一行 `PASS` / `FAIL` 与
 
 | 编号 | 断言 | base（S21 送审时的实际合并基） | head |
 | --- | --- | --- | --- |
-| S1 | 4b 形态：当前目录是 runner 所在仓库，`-StepsFile` 在临时 app 仓库，`-BaseRoot` = runner 所在仓库，`-Stub pass -Ports <空闲端口>`：退出码 4，日志有 `ABORT: call location` 且列出 R-base 与 R-steps，标记文件**不存在**，日志无 `port`、`preflight`、`build start`、`dist check`、`precheck`、`step ` | 失败：步骤文件被执行（标记存在），以 `produced no steps` 结束 | 通过 |
-| S2 | 只命中 R-steps：同 S1 但不给 `-BaseRoot`：退出码 4，`ABORT: call location` 只列 R-steps，标记不存在 | 失败 | 通过 |
+| S1 | **构造用例（不是历史重现）**，两条规则同时命中：当前目录是 runner 所在仓库，`-StepsFile` 在临时 app 仓库，`-BaseRoot` = runner 所在仓库，`-Stub pass -Ports <空闲端口>`：退出码 4，日志有 `ABORT: call location` 且列出 R-base 与 R-steps，标记文件**不存在**，日志无 `port`、`preflight`、`build start`、`dist check`、`precheck`、`step ` | 失败：步骤文件被执行（标记存在），以 `produced no steps` 结束 | 通过 |
+| S2 | **真实 4b 的参数形态**，只命中 R-steps：当前目录是 runner 所在仓库（充当 tool），`-StepsFile` 在临时 app 仓库，`-BaseRoot` = 该临时 app 仓库，`-Stub pass -Ports <空闲端口>`：退出码 4，`ABORT: call location` 只列 R-steps，标记文件不存在，日志无 `port`、`preflight`、`build start`、`dist check`、`precheck`、`step ` | 失败：步骤文件被执行（标记存在），以 `produced no steps` 结束 | 通过 |
 | S3 | 只命中 R-base：步骤文件在 `%TEMP%`（不在 git worktree 内），`-BaseRoot` 是当前仓库根（大小写或末尾分隔符不同的写法各一次）：退出码 4，只列 R-base，标记不存在 | 失败 | 通过 |
 | S4 | 正确形式不被误拦：当前目录是临时 app 仓库，步骤文件在 app 仓库内；以及当前目录是 runner 所在仓库、步骤文件是 `scripts/slot/steps.example.ps1` 的复制（同一仓库内）：日志有 `call location ok`，各项原文正确 | 失败：base 没有 `call location ok` 行 | 通过 |
 | S5 | dist 检查改用脚本（一次完整 `-Stub pass` 运行，含构建）：日志有 `dist check web-dist: ok`，退出码 0 | 失败：base 的行是 `dist check head-commit=… newer=True`，没有 `web-dist:` | 通过 |
@@ -71,7 +71,7 @@ S1–S6 都由 `selftest-location.ps1` 执行，每条一行 `PASS` / `FAIL` 与
 - **S7 既有自测**：head 上 `selftest.ps1`、`selftest-preflight.ps1`、`selftest-ports.ps1` 全部通过（附未截断汇总）；它们的文件不改。
 - **S8 清单**：`node scripts/slot/check-manifest.mjs` 退出码 0（附输出）。
 - **S9 范围**：`git diff --name-only <合并基>..<head>` 只含“范围”所列三个文件。不加迁移；不改 `packages/`、CI 配置、`package.json` / lock。
-- **S10 PR 正文**须含：“用户可见变化：无”；“可读性”一节；S1–S6 与自测代码 `file:line` 对照表；DEMO-19 4b 命令按决定 2 的推演（引用 run-through 原文，固定来源，不重跑）。
+- **S10 PR 正文**须含：“用户可见变化：无”；“可读性”一节；S1–S6 与自测代码 `file:line` 对照表；DEMO-19 4b 与 4c 两条真实命令按决定 2 的推演（4b 只命中 R-steps，4c 都不命中；引用 run-through 原文与 `slot-failed2-summary.log`，固定来源，不重跑），并写明 S1 是构造用例、S2 对应真实 4b 的参数形态。
 
 ## e2e 断言
 
