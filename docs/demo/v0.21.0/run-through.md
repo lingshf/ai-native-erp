@@ -26,7 +26,7 @@
 
 | 键盘步骤 | 焦点起点（确定元素） | 键 | 期望目标 | 窗口外验证 |
 | --- | --- | --- | --- | --- |
-| K1 | “核销分配”页签头按钮（`aria-controls=tset-allocation-body`） | Tab | “刷新列表”（有 / 无选择均如此） | 用例 K1/K2 通过 |
+| K1 | “核销分配”页签头按钮（`aria-controls=tset-allocation-body`） | Tab | “刷新列表”（有 / 无选择均如此） | 用例 K1 通过；K2 的“选中保持”在窗口外未单独验证，金额保持见 TLIST-06 S3 |
 | K3 | 同上，确认待定、表格锁定 | Tab | “刷新列表” | 用例 K3 通过 |
 | K1 Enter / 空格 | “刷新列表” | Enter / Space | 各 1 次未结项第一页请求 | jsdom 无法证明浏览器的按键激活，留给窗口内的真实 Chrome（D487） |
 
@@ -85,7 +85,7 @@ TLIST-06 单独符合 +200 B 的上限（+66 B）。整个 Sprint 的 +841 B 超
 | 项 | 结果 |
 | --- | --- |
 | K1 | 起点 `button[aria-controls=tset-allocation-body]`，Tab 后落在“Refresh list”；Enter 与 Space 各产生 1 次 `/api/v1/trade/open-items?company=DEFAULT&status=open&limit=100` |
-| K2 | 草稿金额 `on` → 刷新后仍为 `on`，勾选保持，草稿未清空 |
+| K2 | 选中状态：刷新后仍勾选（`k2StillChecked: true`）。**金额断言无效，作废（D521）**：日志里的 `k2AmountBefore/After = on` 是 checkbox 的值，不是核销金额，不能当作“金额不变”的证据 |
 | K3 | 锁定态 fieldset disabled，“刷新列表”仍可用；刷新后“安全重试过账”仍显示、fieldset 仍禁用 |
 
 readiness：`openItems 8`，DEFAULT 账套的未结项、PO-C1 部分开票/10→6 均满足。
@@ -98,12 +98,12 @@ readiness：`openItems 8`，DEFAULT 账套的未结项、PO-C1 部分开票/10�
 
 ## 评审 6033643731（绑定 3ea8a12）的修正
 
-**1. K2 的 `on`：capture 脚本选择器问题，不是产品缺陷。**
+**1. K2 的 `on`：capture 脚本选择器问题，不是产品缺陷。D521（协调者代定）：不再开窗；窗口内 K2 的“金额不变”断言无效；真实浏览器证据只认焦点路径和 Enter / 空格激活（K1、K3，以及 K2 的焦点路径与 Enter 请求、选中保持）；“刷新后选择与金额保持”改由产品测试 TLIST-06 S3 证明（7 passed，exit 0，`logs/s3-vitest.out.log`）。截图只展示按钮位置与布局，不依赖 `on` 值。**
 - 原选择器 `tbody input` 加 `filter({ hasNot: locator("[type=checkbox]") })`：`hasNot` 检查的是子孙元素，`input` 没有子孙，所以不会排除任何元素，`.first()` 取到的是行首的选择 checkbox，其未设 value，`inputValue()` 返回浏览器默认值 `on`。所以窗口里的 `k2AmountBefore/After = on` 是 checkbox 的值，不是核销金额，那一项等式没有证明金额不变。
 - 产品侧：`packages/web/src/trade-settlements/settlement-row.tsx` 中，金额输入框是选中后才渲染的 `type="number"`（`aria-label` 为“核销总额 + 单号”），checkbox 另是 `type="checkbox"`；产品代码无缺陷。
 - 脚本已改为 `tbody input[type=number]`（`capture.mjs`，`node --check` exit 0）。
 - 窗口外影响说明（现有产品测试，未改测试）：`packages/web/test/trade-settlements.test.tsx` 的 TLIST-06 用例 S3 断言刷新后保留选择和金额。在 `demo22-app`（产品代码与 `3ae4848` 相同）根目录执行 `npx vitest run packages/web/test/trade-settlements.test.tsx -t "TLIST-06" *> "$env:TEMP\demo22\logs\s3-vitest.out.log"`，紧接 `Add-Content … "exit=$LASTEXITCODE"`：7 passed | 8 skipped，exit 0（`logs/s3-vitest.out.log`）。注：先从 `packages\web` 目录执行过一次，因缺少根配置的 jsdom 环境报 `window is not defined`（exit 1），已覆盖为根目录执行的结果。
-- 窗口内真实 Chrome 的有效证据范围：K1（Enter、空格各 1 次请求）、K2 的“选中状态保持”（`k2StillChecked: true`）、K3 有效；K2 的“金额不变”在真实浏览器里没有有效取证，只有上述 jsdom 测试覆盖，修正后的脚本未在真实浏览器里重跑。若需要真实浏览器取证，须另行申请窗口（D480），本次没有开窗。
+- 窗口内真实 Chrome 的有效证据范围：K1（Enter、空格各 1 次请求）、K2 的“选中状态保持”（`k2StillChecked: true`）、K3 有效；K2 的“金额不变”在真实浏览器里没有有效取证，只有上述 jsdom 测试覆盖，修正后的脚本未在真实浏览器里重跑。D521：不再开窗，不补真实浏览器取证。
 
 **2. 快照命令与时间点。**
 - `$T` 展开为 `C:\GithubCopilot\copilot-worktrees\ai-native-erp\demo22-tool`（基线 `3ae4848`），实际执行的是 `pwsh -NoProfile -File "C:\GithubCopilot\copilot-worktrees\ai-native-erp\demo22-tool\scripts\slot\gate-snapshot.ps1" -OutFile "C:\Users\shaoling\AppData\Local\Temp\demo22\logs\gate-window.tsv" -StopFile "C:\Users\shaoling\AppData\Local\Temp\demo22\logs\gate.stop" -Ports "4204,4173"`；开窗前门禁同样用该路径，参数为 `-OutFile "…\logs\gate-pre-window.tsv" -Once -Ports "4204,4173"`。没有使用 lingshf-animated-disco 下的脚本。
