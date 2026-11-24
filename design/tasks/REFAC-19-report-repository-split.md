@@ -102,7 +102,8 @@
     - `reportBalances`：`unadjusted`、`adjusted`、`postClosing` 三个阶段 × `watermark` 有 / 无，共 6 个；含已结账期间（期末结账分录影响非 0）；
     - `reportStages`：有调整分录与结账分录的月份；`watermark` 有 / 无；
     - `ledgerPage`：三个阶段的首页；`limit` 恰好等于行数与小于行数（有 / 无 `nextCursor`）；用上一页 `nextCursor` 取第二页（前缀余额查询）；维度过滤（有值与 `null` 值）；同一分录多行跨页；
-    - `ledgerPage` 错误：游标超长（> 2048）、非 base64url / 非 JSON、非规范编码、游标中公司 / 科目 / 月份 / 阶段 / 维度各不符一个、`watermark` 或 `accountRevision` 与游标不符、快照过期（`checkedReportSnapshot` 拒绝）；
+    - `ledgerPage` 错误：游标超长（> 2048）、非 base64url / 非 JSON、非规范编码、游标中公司 / 科目 / 月份 / 阶段 / 维度各不符一个、`watermark` 或 `accountRevision` 与游标不符；
+    - `ledgerPage` 快照过期（单列）：不带游标、显式传入 `watermark` 大于最新水位或 `accountRevision` 与最新不同，`checkedReportSnapshot` 抛 `CONFLICT`（`packages/core/src/domain/reports.ts:34–35`）；
     - **只含 `query` 的连接**：照 `legacy-import-bench.mjs:210` 的写法，传入只有 `query` 方法的普通对象，构造并调用一次 `reportBalances`。
   - **判定**：base 与 head 每个用例的记录逐字节相同（PR 正文附两侧输出的 SHA-256 与比较结果）；并且**直接断言**（只比两侧相同不够）：
     1. 调用次数：`reportSnapshot` 1 次 `query`；`reportBalances` 2 次；`reportStages` 3 次；`ledgerPage` 首页 3 次（快照、合计、明细），带游标的页 4 次（多前缀余额）；
@@ -110,7 +111,8 @@
     3. 调用记录中的方法名只有 `query`；只含 `query` 的连接用例不抛错，且返回值与完整连接上同一调用的返回值相同；
     4. `reportBalances` 的 SQL：`watermark` 有时第一条 SQL 含 `AND l.entry_id IN (SELECT id FROM journal_entries WHERE company_id=? AND sequence<=?) GROUP BY l.account_code`，`unadjusted` 时含 `kind='adjusting'` 的排除条件；`adjusted` 或 `postClosing` 且无 `watermark` 时第一条 SQL 与 `REPORT_BALANCES_SQL` 逐字节相同；
     5. 第二页：首行的 `balance` 等于第一页末行的 `balance` 加该行借方减贷方（PR 正文写出该用例的数值与推导）；
-    6. 每个错误用例的错误种类与 `code` 与用例名所述一致。
+    6. 快照过期用例：调用记录中 `query` 恰好 **1** 次（`latestSnapshot`），错误为 `DomainError`、`code` 为 `CONFLICT`；与直接断言 2 的 0 次查询、`INVALID_INPUT` 区分；
+    7. 每个错误用例的错误种类与 `code` 与用例名所述一致。
     base 上任一直接断言不成立，先停下并向协调者报告。PR 正文附驱动、用例清单、比较结果与直接断言结果。
   - **驱动原件**：PR 正文贴驱动**原文件字节的 base64**，或同时写出两种 SHA-256：原始字节、按 UTF-8 解码并把换行归一为 LF 后的字节。只给一种哈希不算满足。
 - **R5 结构规则**（静态，评审按代码与 PR 表格核对）：

@@ -122,9 +122,9 @@ base 数字（屏蔽哈希后的原始 / gzip-9 字节，输出原文行）：
     - 编辑已有记录（`revision > 0`）：代码输入禁用，保存发 `PUT`；
     - 保存挂起：字段组禁用、出现 `role="status"`；同一时刻再次派发 `submit` 只发出 1 个请求；挂起期间点击页面内的同源链接（驱动 B 自行在文档中放一个）；放行成功 → 编辑器关闭，`["trade", <公司>, <类别>]` 被失效并重新请求；
     - 保存返回 409 → 冲突错误条与“重新加载”按钮 → 点击“重新加载”；
-    - 保存返回 500 → `uncertain`：状态文案为 `trade.uncertain`，出现“对账” → 点击“对账”，重发返回 409，`GET` 返回**相符**记录 → 编辑器关闭；另一遍 `GET` 返回**不符**记录 → 仍为 `uncertain`；网络拒绝 → `uncertain`；
+    - 保存返回 500 → `uncertain`：状态文案为 `trade.uncertain`，出现“对账” → 点击“对账”，重发返回 409，`GET` 返回**相符**记录 → 编辑器关闭；另一遍 `GET` 返回合法但**不符**的记录 → base 重新抛出重发得到的 409（`:523–533`），编辑器不关闭、`uncertain` 变为 `false`（`:544–549`：409 是 `http` 且 `reconcile && status !== 409` 不成立）、进入冲突态（`failure` 对 409 给出 `conflict: true`，`:67`）并出现“重新加载”按钮，不再显示“对账” → 点击“重新加载”；网络拒绝 → `uncertain`；
     - 取消：草稿未改时点击取消；改动后点击取消，`confirm` 先返回 `false`（草稿保留）再返回 `true`（关闭）；
-    - **卸载时的在途保存**（驱动 B）：保存挂起时卸载根组件，然后放行成功响应；
+    - **卸载时的在途保存**（驱动 B）：两遍。（i）保存挂起时卸载根组件，然后放行**成功**响应；（ii）重新挂载，保存挂起时卸载根组件，然后放行**失败**响应（`500`）。卸载使 `generation.current` 自增（`:459`），两遍中 `generation.current !== id` 都成立；
     - zh / en 各一遍；教学模式开与关各一遍（驱动 A）。
   - **每步采样**：DOM（`document.body.innerHTML`）；累计请求日志（序号、方法、URL、请求体原文、结果）；查询缓存（`queryKey`、`status`、`isInvalidated`，按键排序）；驱动 B 的守卫记录与两个下拉的 `disabled`；`confirm` 与焦点调用记录；`console.error` 调用记录。
   - **判定**：base 与 head 逐步、逐项、逐字节相同；并且**直接断言**（只比两侧相同不够）：
@@ -132,9 +132,9 @@ base 数字（屏蔽哈希后的原始 / gzip-9 字节，输出原文行）：
     2. 防重入：两次 `submit` 只记 1 个请求；
     3. 非法 JSON：没有发出请求；错误条文本以 `data.rates: ` 开头；`#trade-rates` 带 `aria-invalid="true"` 与 `aria-describedby="trade-error"`；
     4. 请求体：往来方的 `allowedTaxCodes` 为 `["VAT","ZERO"]`；付款条件的 `dueDays` 为 `null`、`allowPartialDiscount` 为 `false`；产品的 `expenseAccount` 为 `null`；
-    5. 对账：重发的方法与请求体与首次请求逐字节相同，随后恰好 1 个 `GET /api/v1/trade/<类别>/<代码>?company=<公司>`；相符时关闭，不符时仍为 `uncertain` 且不关闭；
+    5. 对账：重发的方法与请求体与首次请求逐字节相同，随后恰好 1 个 `GET /api/v1/trade/<类别>/<代码>?company=<公司>`；相符时关闭；不符时编辑器不关闭，状态文案不再是 `trade.uncertain`（`uncertain` 为 `false`），没有“对账”按钮，错误条为 `master.conflict` 的当前语言文本且出现“重新加载”按钮，点击后 `["trade", <公司>, <类别>]` 被失效；这是 base 的现有行为，本任务保留，不改产品代码；
     6. 取消：未改动时 `confirm` 调用 0 次；改动后调用 2 次，文案均为 `trade.discard` 的当前语言文本；第一次之后草稿仍在；
-    7. 卸载时的在途保存：放行后 `["trade", <公司>, <类别>]` 被失效（`generation.current !== id` 分支），`console.error` 无新增记录。
+    7. 卸载时的在途保存：（i）放行成功响应后 `["trade", <公司>, <类别>]` 被失效 1 次；（ii）放行失败响应后该键**仍被失效 1 次**——此时 `accepted` 为 `false`，失效只来自 `generation.current !== id` 分支（`:553`），因此删掉该分支会使（ii）失败，而（i）不能区分（成功时 `accepted` 已为 `true`）；两遍都没有 `setError` / `setBusy` 的效果（组件已卸载），`console.error` 无新增记录，`confirm` 调用 0 次。
     base 上任一直接断言不成立，先停下并向协调者报告，不得把“两侧相同”当作通过。PR 正文附驱动全文、步骤清单、两侧输出的 SHA-256 与比较结果，以及“守卫记录”“对账”“卸载时的在途保存”三组场景的逐步输出原文。
   - **驱动原件**：PR 正文贴驱动**原文件字节的 base64**，或同时写出两种 SHA-256：原始字节、按 UTF-8 解码并把换行归一为 LF 后的字节（评审从代码块复制时得到的是 LF 文本）。只给一种哈希不算满足。
 - **R5 结构规则**（静态，评审按代码与 PR 表格核对）：
