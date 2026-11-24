@@ -29,7 +29,7 @@
 | `"-1"`、`"3651"` | `safeParse` 的 `min` / `max` 失败，显示通用提示 | 同上 |
 | `"30.0"`、`"1e2"`、`"0x10"` | `Number` 得 30、100、16，**静默保存** | 用户输入的不是整数天数，却被改写后保存 |
 
-jsdom 不执行原生 `required`，因此测试中空串也会走到 `null` 分支，见 [D537](S24.md#s24-期间决定) 4a。
+测试中直接 `fireEvent.submit` 绕过 `required`，因此空串也会走到 `null` 分支，见 [D537](S24.md#s24-期间决定) 4a。
 
 ### chunk 归属与首屏（S22 回顾行动 3，base 实测）
 
@@ -120,7 +120,7 @@ base 数字（屏蔽哈希后的原始 / gzip-9 字节，输出原文行）：
 ### base 失败、head 通过
 
 V1–V6 写成 `trade-master.test.tsx` 中的新用例：
-- 新建付款条件，按用例填写天数字段，再以 `submit` 派发保存（jsdom 不执行原生 `required`）。
+- 新建付款条件，按用例填写天数字段，再直接 `fireEvent.submit` 保存（绕过 `required`）。
 - “0 次请求”指保存接口的 `POST` / `PUT` 次数。
 - “专用提示”指错误条全文等于 `data.<字段>: ` 加当前语言的 `trade.issue.wholeDays` 文本，且该输入框带 `aria-invalid="true"` 与 `aria-describedby="trade-error"`。
 

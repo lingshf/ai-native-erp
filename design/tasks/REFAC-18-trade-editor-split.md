@@ -118,7 +118,7 @@ base 数字（屏蔽哈希后的原始 / gzip-9 字节，输出原文行）：
   - **确认与焦点**：`window.confirm` 换成**记录桩**，按脚本依次返回预设值并记下每次调用的文案；`HTMLElement.prototype.focus` 装记录桩（保留原实现），记下每次调用的目标与次数。
   - **序列**至少包含：
     - 列表首屏 → 新建往来方：依次填名称、日期、`role`（`select`）、`allowedTaxCodes`（`"VAT, ,ZERO"`）、`defaultDimensions`（JSON）；保存成功（`POST`）；
-    - 新建付款条件（D537）：`allowPartialDiscount` 取消勾选，`dueDays` 留空 → 以 `submit` 派发保存（jsdom 不执行原生 `required` 校验）→ 不发请求、字段错误；再填入 `dueDays`（如 `"30"`）→ 保存；新建税码：`rates` 填**非法 JSON** → 保存（不发请求，字段错误）→ 改正后保存；新建过账配置（出现 `trade.discountHint`）；新建产品（`expenseAccount` 留空）；
+    - 新建付款条件（D537）：`allowPartialDiscount` 取消勾选，`dueDays` 留空 → 直接 `fireEvent.submit` 保存（绕过 `required`）→ 不发请求、字段错误；再填入 `dueDays`（如 `"30"`）→ 保存；新建税码：`rates` 填**非法 JSON** → 保存（不发请求，字段错误）→ 改正后保存；新建过账配置（出现 `trade.discountHint`）；新建产品（`expenseAccount` 留空）；
     - 编辑已有记录（`revision > 0`）：代码输入禁用，保存发 `PUT`；
     - 保存挂起：字段组禁用、出现 `role="status"`；同一时刻再次派发 `submit` 只发出 1 个请求；挂起期间点击页面内的同源链接（驱动 B 自行在文档中放一个）；放行成功 → 编辑器关闭，`["trade", <公司>, <类别>]` 被失效并重新请求；
     - 保存返回 409 → 冲突错误条与“重新加载”按钮 → 点击“重新加载”；

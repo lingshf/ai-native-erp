@@ -249,7 +249,7 @@ base 数字（原始 / gzip-9 字节）：
       2. 填代码与名称；
       3. 类别改为 `LIABILITY`，再改为 `EXPENSE`；
       4. 用途改为 `control` → 出现 `#account-module`，“允许手工录入”被禁用并取消勾选；
-      5. 不选模块就以 `submit` 派发保存（jsdom 不执行原生 `required` 校验）；
+      5. 不选模块就直接 `fireEvent.submit` 保存（绕过 `required`）；
       6. 选模块后保存成功（`POST`）。
     - **用途改回**：用途改为 `control` 再改回 `general` → `#account-module` 消失，`manualAllowed` 仍为 `false`。
     - **非法代码**：代码填 `"12"` 后派发 `submit`。
