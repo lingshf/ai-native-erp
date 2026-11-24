@@ -138,7 +138,7 @@ function Test-StopFileG4 {
 
 function Start-CadenceRun {
   $out = New-OutPath 'cadence'; $stop = Join-Path $Work 'cadence.flag'; $slowFirst = @{ GATE_SNAPSHOT_SLOW_FIRST_SECONDS = "$CadenceSlowFirstSeconds" }
-  $run = Start-GateSnapshot 'cadence' @('-OutFile', $out, '-Ports', "$freePort", '-StopFile', $stop, '-IntervalSeconds', "$CadenceIntervalSeconds") $slowFirst
+  $run = Start-GateSnapshot 'cadence' @('-OutFile', $out, '-Ports', "$(Get-FreePort)", '-StopFile', $stop, '-IntervalSeconds', "$CadenceIntervalSeconds") $slowFirst
   [pscustomobject]@{ Run = $run; Out = $out; Stop = $stop }
 }
 function Test-CadenceG4b($cadence) {
@@ -204,10 +204,10 @@ function Test-MaxMinutesG7 {
 $total = [Diagnostics.Stopwatch]::StartNew()
 New-Item -ItemType Directory -Force $DirA, $DirB | Out-Null
 try {
+  $cadence = Start-CadenceRun # runs alongside G1-G4 to keep the self-test within 60 s
   Invoke-Case 'G1 -Once: child node (cwd B) -> parent node (cwd A) -> selftest pwsh, chain ends' { Test-ChainG1 }
   Invoke-Case 'G2 created has an offset, cpuSeconds >= 0, cmdline without tab/newline' { Test-FieldsG2 }
   Invoke-Case 'G3 -Ports "P,Q,4173": P per endpoint (127.0.0.1, ::1), Q pid=none, 4173 queried, no error' { Test-PortsG3 }
-  $cadence = Start-CadenceRun # overlaps G4 to keep the self-test within 60 s
   Invoke-Case 'G4 -StopFile -IntervalSeconds 1: stop after snapshot 2, exit 0, consecutive, timedOut=false' { Test-StopFileG4 }
   Invoke-Case 'G4b cadence: after a slow snapshot the next is due interval after its start, no catch-up' { Test-CadenceG4b $cadence }
   Invoke-Case 'G5 bad arguments: exit 3, nothing written' { Test-ArgumentsG5 }
