@@ -4,7 +4,7 @@
 //   (2) 390 px：两个视图 × 中英文，页面 scrollWidth ≤ 390，按钮 left ≥ 0 且 right ≤ 390（各一张截图与记录）。
 //   (3) 原生键盘取证（page.keyboard.press，不用 click 触发刷新）：
 //       业务事件视图：Tab 从最后一个“新增 · …”按钮到“刷新列表”，Enter 与空格各触发 1 次第一页请求（/api/v1/events，不带 cursor）；
-//       草稿编辑器打开时，Tab 同样到达“刷新列表”，Enter 触发 1 次请求且编辑器保持打开；
+//       草稿编辑器打开时，先在“摘要”输入一段文字，再 Tab（从“刷新列表”之前最近的可聚焦元素）到达“刷新列表”，Enter 触发 1 次请求，编辑器保持打开且摘要文字不变；
 //       待转队列视图：状态下拉选“失败”，Tab 到“刷新列表”，Enter 与空格各触发 1 次 /api/v1/transfer-queue（status=failed）请求，下拉仍为“失败”。
 // 用法：node docs/demo/v0.20.0/scripts/capture.mjs <地址> <输出目录> <day yyyy-mm-dd>
 // 前提：账套已由 run-main.ps1 的 prepare.mjs 与 seed 脚本预置（只有 DEFAULT 账套；没有业务事件，表格显示空状态）。
@@ -41,7 +41,9 @@ const ev = {
   newPrefix: { zh: "新增 ·", en: "New ·" },
   cash: { zh: "新增 · 现金服务", en: "New · Cash service" },
   failed: { zh: "失败", en: "Failed" },
+  memo: { zh: "摘要", en: "Memo" },
 };
+const draftText = "DEMO-21 draft memo";
 async function contextFor(lang, theme, width) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: 1 });
   await context.addInitScript((value) => window.localStorage.setItem("erp.workspace.preferences.v1", value), JSON.stringify({ language: lang, theme, teaching: true }));
@@ -185,22 +187,34 @@ try {
     record.eventsSpaceRequests = await keyAndCountRequests(page, "Space", isEventsPage1);
     must(record.eventsSpaceRequests.length === 1, `键盘取证：空格应触发 1 次 /api/v1/events 第一页请求，实际 ${JSON.stringify(record.eventsSpaceRequests)}`);
 
-    // 草稿编辑器打开：“新增 · …”和视图切换按钮被禁用，焦点从页面开头 Tab，最多 12 次内应到达“刷新列表”。
+    // 草稿编辑器打开：“新增 · …”和视图切换按钮被禁用。焦点放在“刷新列表”之前最近的、仍可聚焦的元素上，再按一次 Tab，必须到达“刷新列表”。
     await page.getByRole("button", { name: ev.cash[lang], exact: true }).click();
     await page.locator("fieldset.jv-event").waitFor({ state: "visible", timeout: 10000 });
     record.refreshDisabledWithEditor = await page.getByRole("button", { name: refreshLabel, exact: true }).isDisabled();
     must(!record.refreshDisabledWithEditor, "键盘取证：编辑器打开时“刷新列表”应可用");
-    await page.evaluate(() => document.activeElement?.blur());
-    record.editorOpenTabSequence = [];
-    for (let i = 0; i < 12 && record.editorOpenTabSequence.at(-1) !== refreshLabel; i += 1) {
-      await page.keyboard.press("Tab");
-      record.editorOpenTabSequence.push(await focusedText(page));
-    }
-    must(record.editorOpenTabSequence.at(-1) === refreshLabel, `键盘取证：编辑器打开时 Tab 应能到达“${refreshLabel}”，序列 ${JSON.stringify(record.editorOpenTabSequence)}`);
+    // 草稿内容：先在“摘要”里输入一段文字，刷新后必须原样保留（不清空草稿）。
+    const memo = page.locator("fieldset.jv-event").getByLabel(ev.memo[lang], { exact: true });
+    await memo.fill(draftText);
+    record.draftBefore = await memo.inputValue();
+    must(record.draftBefore === draftText, `键盘取证：草稿摘要输入失败，实际“${record.draftBefore}”`);
+    record.editorOpenFocusStart = await page.evaluate((label) => {
+      const refresh = [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === label);
+      const focusable = [...document.querySelectorAll("button, select, input, textarea, a[href], [tabindex]")].filter((n) => !n.disabled && n.tabIndex >= 0);
+      const before = focusable.filter((n) => n.compareDocumentPosition(refresh) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const last = before.at(-1);
+      last?.focus();
+      return last ? `${last.tagName.toLowerCase()}:${(last.textContent || last.value || "").trim().slice(0, 40)}` : "";
+    }, refreshLabel);
+    must(record.editorOpenFocusStart !== "", "键盘取证：编辑器打开时，“刷新列表”之前没有可聚焦元素");
+    await page.keyboard.press("Tab");
+    record.editorOpenFocusAfterTab = await focusedText(page);
+    must(record.editorOpenFocusAfterTab === refreshLabel, `键盘取证：编辑器打开时 Tab 后焦点应到“${refreshLabel}”，起点 ${record.editorOpenFocusStart}，实际“${record.editorOpenFocusAfterTab}”`);
     record.editorOpenEnterRequests = await keyAndCountRequests(page, "Enter", isEventsPage1);
     must(record.editorOpenEnterRequests.length === 1, `键盘取证：编辑器打开时 Enter 应触发 1 次请求，实际 ${JSON.stringify(record.editorOpenEnterRequests)}`);
     record.editorStillOpen = await page.locator("fieldset.jv-event").isVisible();
     must(record.editorStillOpen, "键盘取证：刷新后编辑器应仍然打开");
+    record.draftAfter = await memo.inputValue();
+    must(record.draftAfter === draftText, `键盘取证：刷新后草稿摘要应保持“${draftText}”，实际“${record.draftAfter}”`);
     await context.close();
 
     // 待转队列视图（新 context，编辑器未打开）：状态下拉选“失败”，Tab 到“刷新列表”。
