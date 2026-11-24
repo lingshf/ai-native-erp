@@ -285,9 +285,19 @@ base 数字（原始 / gzip-9 字节）：
        - 类别改为 `LIABILITY` 后，`#account-report` 的值为 `payables`，`#account-side` 为 `CREDIT`；
        - 改为 `EXPENSE` 后，两者分别为 `costOfSales`、`DEBIT`；
        - 用途改回 `general` 后，“允许手工录入”仍未勾选。
-    5. **字段错误**：对每个带错误的字段 `<p>`：
-       - `#account-<p>` 带 `aria-invalid="true"` 与 `aria-describedby="account-<p>-error"`；
-       - `#account-<p>-error` 的文本为映射后标签的当前语言文本；
+    5. **字段错误**：控件 ID 与契约字段名不完全相同，按下表定位控件（或用标签 `getByLabelText` 定位），不得改产品 DOM：
+
+       | 字段 `<p>` | 控件 | 错误节点 |
+       | --- | --- | --- |
+       | `code` | `#account-code` | `#account-code-error` |
+       | `category` | `#account-category` | `#account-category-error` |
+       | `normalSide` | `#account-side` | `#account-normalSide-error` |
+       | `purpose` | `#account-purpose` | `#account-purpose-error` |
+       | `contraOf` | `#account-contra` | `#account-contraOf-error` |
+
+       对每个带错误的字段 `<p>`：
+       - 其控件带 `aria-invalid="true"` 与 `aria-describedby="account-<p>-error"`（例如 `#account-side` 指向 `account-normalSide-error`）；
+       - 错误节点 `#account-<p>-error` 的文本为映射后标签的当前语言文本；
        - 其他字段**不**带 `aria-invalid`；
        - `#account-module` 的 `aria-describedby` 始终为 `account-module-hint`。
     6. **冲突**：错误条为 `master.conflict` 的当前语言文本，并有“重新加载”按钮。点击后编辑器关闭，`invalidateQueries` 恰好记 1 次，键为 `["accounts", <公司>]`。500 与网络拒绝时没有“重新加载”按钮，编辑器不关闭，`busy` 复位。

@@ -162,7 +162,12 @@ V1–V6 写成 `trade-master.test.tsx` 中的新用例：
 - **R8 质量门**：
   - **R8a 合并前**：`typecheck`、`lint`、`check:boundaries`、CI-02 预检通过；PR CI（`ci.yml`）绿。
   - **R8b 合并后检查（不作合并门）**：合并后第一次覆盖该合并提交的 main Full 须绿，含 `trade-gui` 真实 Chrome 场景；失败时报协调者，按 D456 暂停后续合并。
-- **R4 键盘与焦点**（行为证据，不新增常驻用例）：PR 正文附 V3 用例中的一段记录：用 Tab 从“折扣天数”回到“到期天数”、按 Enter 提交后，焦点仍在原输入框，错误条以 `role="alert"` 播报。这与现有 `trade.issue.shape` 的行为相同，本任务不改焦点逻辑，只记录不变。
+- **R4 键盘与焦点**（行为证据，不新增常驻用例；真实键盘与 V3 的合成提交分开取证）：
+  - **纯空格，真实键盘**：在“到期天数”输入 `"   "`（V3 的纯空格输入），Tab 到“折扣天数”，再 Shift+Tab 回到“到期天数”，按 Enter 提交。断言：0 次请求；焦点仍在 `#trade-dueDays`；出现 `role="alert"` 的错误条节点，文本为专用提示（base 为通用提示）。jsdom 只断言该节点存在及其文本，不声称实测了读屏播报。
+  - **空串，分两项检查**：
+    - 原生拦截：`dueDays` 为 `""` 时，`#trade-dueDays` 的 `validity.valueMissing` 为 `true`，表单 `checkValidity()` 为 `false`。真实按 Enter 会被原生 `required` 在提交前拦下，不生成应用的错误条，所以空串不用 Enter 取证；
+    - 合成提交：直接 `fireEvent.submit` 绕过 `required`，即 V3 的空串用例。
+  - 两侧焦点行为与现有 `trade.issue.shape` 相同；本任务不改焦点逻辑，只记录不变。PR 正文附上述记录。
 
 ### 测试命令（S22 回顾行动 4）
 

@@ -209,7 +209,7 @@
       - `journalBusinessEvent`：`operation = 'journal'` 时为 `null`，其他操作返回 id；
       - `businessCancelled`：真与假；
       - `businessEvents`：首页与第二页，状态覆盖 `cancelled`、`recorded`、`posted` 与队列状态；
-      - **已损坏的存储行**：用驱动自己的 SQL 把一条事件的 `preview` 改成不合契约的 JSON，再调用 `businessEvent`。两侧的错误逐字节相同。
+      - **已损坏的存储行**（独立的合成用例）：`business_events` 禁止任何 `UPDATE` / `DELETE`（`005-business-events.sql:108–109` 的触发器抛 `immutable event`），因此**不得**改已有行，也**不得**关闭或删除触发器。做法：在该用例自己的库中，用驱动自己的 SQL `INSERT` 一条新事件，`preview` 为合法 JSON 对象，但不符合 `businessPreviewSchema`（它是 `z.strictObject`，例如 `{}` 或多一个未知键），其余列合法；再对这条事件调用 `businessEvent`。两侧的错误逐字节相同。插入语句与列值写入 PR 正文。
     - **队列**：
       - `saveQueue`：新建、更新、`CONFLICT`；`plan` 为 `null` 与非 `null` 各一个；
       - `queueItem`：`transfer_plan` 为 `null` 与非 `null`，以及不存在；
@@ -222,7 +222,7 @@
     - **只含 `query` 的连接**：传入只有 `query` 方法的普通对象，构造后调用一次 `businessMasters`。
   - **判定**：base 与 head 每个用例的记录与库内状态逐字节相同。PR 正文附两侧输出的 SHA-256 与比较结果。并且**直接断言**，只比两侧相同不够：
     1. **调用次数**：
-       - 读方法各 1 次 `query`；
+       - 读方法各 1 次 `query`，但空 `clearingLines` 除外：`clearingLines(company, [])` 为 **0** 次（见断言 2）；
        - `saveBusinessMaster` / `savePostingRule` / `saveQueue` 各 1 次，包括 `CONFLICT` 时；
        - `insertBusinessEffects` 为“统计事实 0 或 1 次 + 清账行数”次；
        - `businessAudit` 1 次。
@@ -235,7 +235,7 @@
        - `queuePage` 第二页的参数数组第 3、4 项等于上一页 `nextCursor` 按 `"~"` 切分的两段；
        - `openClearingLines` 第二页参数第 4 项是数值（`typeof === "number"`），等于游标 `":"` 后的部分。
     5. **键与方法**：调用记录中的方法名只有 `query`；只含 `query` 的连接用例不抛错，且返回值与完整连接上同一调用的返回值相同。
-    6. **已损坏的存储行**：两侧都抛错，且错误的构造器与 `code` 在 PR 正文写明；这是 base 的现有行为，本任务保留。
+    6. **已损坏的存储行**：插入坏行本身成功（不触发 `immutable event`）；随后 `businessEvent` 两侧都抛错，错误的构造器与 `code` 在 PR 正文写明。这是 base 的现有行为，本任务保留。
 
     base 上任一直接断言不成立，先停下并向协调者报告。PR 正文附驱动、用例清单、比较结果与直接断言结果。
   - **驱动原件**：PR 正文贴驱动**原文件字节的 base64**；或者同时写出两种 SHA-256：原始字节的，以及按 UTF-8 解码并把换行归一为 LF 后的字节的。只给一种哈希不算满足。
