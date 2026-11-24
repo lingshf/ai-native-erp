@@ -102,8 +102,8 @@
   - **记录与编码**（复用 REFAC-17）：每个用例按发生顺序记录仓储调用、`journals.plan` 调用（实参不含 `repo`）、`hash` 调用（实参）与结果——返回值（确定性 JSON 编码，含键顺序）或抛出的错误（构造器名、`code`、`issue` 全部字段——`undefined` 也要编码、`message`）；同一驱动连续两次运行的输出逐字节相同。驱动须带 REFAC-17 的自测（a）–（c）。任一自测失败即 R4 失败。
   - **用例**至少包含：
     - 成功路径：凭证直通（`operation: "journal"` 的两行草稿 `1000` / `3000`）；现金服务 `receive` 与 `pay`，各有无 `party`；冲销一笔已确认的现金服务；统计（`code: "H"`、`quantity: "-3.125"`）；清账匹配（复制 `1000` 为 `1280`、用途 `clearing`，过账两张凭证使 `1280` 一借一贷 10，引用这两行）；
-    - `compute` 内每个 `businessError` / `journalError` / `required` 调用点至少一个失败用例；统计事件的 `dimensionLimit`（`:375`）若因 `checkedEvent` 已限制显式维度而无法经 `compute` 的合法前置触发，PR 正文写明原因并报协调者，不得静默删去；
-    - **错误先后**：下列“直接断言”3–9 的输入。
+    - `compute` 内每个 `businessError` / `journalError` / `required` 调用点至少一个失败用例，都用真实 SQLite 仓储构造，不以静态调用点计数替代；统计事件的 `dimensionLimit`（`:375`）**必测**，夹具见直接断言 11（`checkedEvent` 只查 code、quantity、unit，HTTP 契约的 32 项限制只约束显式维度，`resolve` 还会合并 `LEDGER` 默认维度，故可合法触发）；
+    - **错误先后**：下列“直接断言”3–11 的输入。
   - **判定**：base 与 head 每个用例的记录逐字节相同（PR 正文附两侧输出的 SHA-256 与比较结果）；并且**直接断言**（只比两侧相同不够；以下期望值都由设计角色在 base `2c4406c` 上用临时驱动实测，驱动已删除）。下文“外层序列”只列 `compute` 自己发起的仓储调用与 `plan`、`hash`，`plan` 内部的仓储调用另列；错误写作 `code` / `issue.scope` / `issue.path` / `issue.rule`：
     1. **凭证直通**：外层序列为 `company`、`period`、`plan`（3 个实参）；`plan` 内部依次 `company`、`dimensionCatalog`、`accountsByCodes(["1000","3000"])`、`period`、`journalConfigurationStamp`、`journalTurnover`，然后 1 次 `hash`（首元素 `"journal-plan-v1"`）；**`businessStamp` 0 次、`hash` 共 1 次**；结果 `fingerprint` 等于 `plan` 返回的 `fingerprint`；结果键为 `fingerprint, plan, matches, statistics, clearing`，`matches` 为 `[]`、`statistics` 为 `null`、`clearing` 为 `[]`；
     2. **现金服务 `receive`、无 `party`**：外层序列为 `company`、`period`、`businessMaster`（1 次）、`postingCatalog`、`accountsByCodes(["1000","4000"])`、`plan`（4 个实参）、`businessStamp`、`hash`（9 个元素，首元素 `"business-plan-v1"`）；结果键为 `fingerprint, plan, matches, statistics, clearing`，`matches` 长度 2；结果 `fingerprint` 与 `plan` 返回的不同；同一库状态下同一事件调用两次，`fingerprint` 相同；
@@ -113,8 +113,9 @@
     6. **科目角色**：把 pay offset 规则的科目改为 `1000` → `pay` 事件报 `business` / `rules.offset` / `account`，`accountsByCodes` 只调用 1 次、实参 `["1000","1000"]`；再把 pay cash 规则改为 `5000` → 报 `rules.cash` / `account`（cash 先于 offset），实参 `["5000","1000"]`；两者 `plan` 都是 0 次；
     7. **统计**：外层序列为 `company`、`period`、`dimensionCatalog`、`journalConfigurationStamp`、`hash`（3 个元素，首元素为公司对象）、`businessStamp`、`hash`（9 个元素）；`plan` 0 次；结果键为 **`plan, fingerprint, matches, statistics, clearing`**；`statistics` 键为 `code, quantity, scale, unit, dimensions, dimensionOrigins`；
     8. **清账匹配成功**：外层序列为 `company`、`period`、`account`、`clearingLines`、`journalConfigurationStamp`、`hash`（3 个元素）、`businessStamp`、`hash`（9 个元素）；结果键以 `plan, fingerprint` 开头；**`result.clearing === event.lines`**（同一引用）；
-    9. **清账错误先后**：科目 `1000`（用途 `general`）→ `business` / `account` / `account`，仓储调用为 `company`、`period`、`account`（**0 次 `clearingLines`**）；引用一行 `1280` 借 10 与另一张凭证的 `1280` 借 7 → `lines` / `line`；引用不存在的行号 9 → `lines` / `line`；先确认一次清账匹配后再用同一组引用 → `CONFLICT` / `lines` / `source`；已匹配行加借贷不平的行 → `CONFLICT` / `source`（已匹配检查先于借贷和检查）；已匹配行加不存在的行号 → `INVALID_INPUT` / `line`（行数检查先于已匹配检查）；以上都在 `clearingLines` 之后报错，`hash` 0 次；
+    9. **清账错误先后**：科目 `1000`（用途 `general`）→ `business` / `account` / `account`，仓储调用为 `company`、`period`、`account`（**0 次 `clearingLines`**）；引用一行 `1280` 借 10 与另一张凭证的 `1280` 借 7 → `lines` / `line`；引用不存在的行号 9 → `lines` / `line`；先确认一次清账匹配后再用同一组引用 → `CONFLICT` / `lines` / `source`；已匹配行加借贷不平的行 → `CONFLICT` / `source`（已匹配检查先于借贷和检查）；已匹配行加不存在的行号 → `INVALID_INPUT` / `line`（行数检查先于已匹配检查）；**除普通科目 `1000` 一例（0 次 `clearingLines`）外**，其余各例都在 1 次 `clearingLines` 之后报错；全部各例 `hash` 0 次；
     10. **冲销**：外层序列为 `company`、`period`、`businessEvent`、`plan`（3 个实参）、`businessStamp`、`hash`（9 个元素）；`plan` 内部含 `journalEntry`、`journalChain`；结果键为 `fingerprint, plan, …`；原事件为已确认的统计事件 → `business` / `originalId` / `reference`；原事件不存在 → `NOT_FOUND`；两者都在 `businessEvent` 之后、`plan` 0 次。
+    11. **统计维度上限**（另建公司 A 的夹具，经 `DimensionService.save` 这一公开保存入口）：建 33 个维度 `D00`–`D32`，各有值 `V`；保存 `kind: "defaults"`、`code: "LEDGER"`、`values` 为 `D00`–`D31` 各取 `V`（32 个）。统计事件 `dimensions: {}` → `preview` 成功，`statistics.dimensions` 有 32 个键；`dimensions: { D32: "V" }` → `preview` 与直接 `compute` 都报 `DomainError` / `INVALID_INPUT` / `journals` / `dimensions` / `dimensionLimit`，`message` 为 `Invalid projection input.`，直接 `compute` 的仓储调用为 `company`、`period`、`dimensionCatalog`，`hash` 0 次、`businessStamp` 0 次；`dimensions: { D00: "V" }`（与默认重叠）→ 成功，仍为 32 个键，外层序列同断言 7。
     base 上任一直接断言不成立，先停下并向协调者报告。PR 正文附驱动、用例清单、比较结果与直接断言结果。
   - **驱动原件**：PR 正文贴驱动**原文件字节的 base64**，或同时写出两种 SHA-256：原始字节、按 UTF-8 解码并把换行归一为 LF 后的字节。只给一种哈希不算满足。
 - **R5 结构规则**（静态，评审按代码与 PR 表格核对）：
@@ -162,7 +163,7 @@ node scripts/measure/bundle-measure.mjs --base <合并基全 SHA> --head <head �
 ## 证据要求
 
 - **不需要浏览器时段**：行为等价由 R3 与 R4（调用序列、返回值、错误及错误先后逐字节等价及直接断言）证明；业务事件的 e2e 场景在 main Full 中运行，作合并后检查（R8b）。R4 与构建在本机运行，须服从协调者的时段静默通知（D442 / D480）。
-- **可行性**（S13 回顾行动 4）：设计角色已在 `2c4406c` 上用临时 vitest 驱动（`npx vitest run --project infra <file> --no-file-parallelism --silent=false`）实测 R4 直接断言 1–10 全部成立，驱动已删除、未提交；`business-events.test.ts` 在同一提交上 5 个用例通过。科目角色用例通过 `saveRule` 改规则所指的科目构造，不改科目本身。
+- **可行性**（S13 回顾行动 4）：设计角色已在 `2c4406c` 上用临时 vitest 驱动（`npx vitest run --project infra <file> --no-file-parallelism --silent=false`）实测 R4 直接断言 1–11 全部成立，驱动已删除、未提交；`business-events.test.ts` 在同一提交上 5 个用例通过。科目角色用例通过 `saveRule` 改规则所指的科目构造，不改科目本身。
 - PR 正文附：R2 导出比较与 `git grep` 结果；R3 汇总行；R4 驱动（原件 base64 或两种 SHA-256）、用例清单、比较结果与直接断言结果；R5a–R5d 各表；R6 行数表（base 与 head 两列）；R7 的 `bundle-measure.mjs` 完整输出与退出码；可读性一节。R8b 合并后补到 PR 评论。
 
 ## 设计自查
