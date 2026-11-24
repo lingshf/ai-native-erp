@@ -12,7 +12,7 @@ import {
   tradeSettlementReceiptSchema,
 } from "@erp/core/contracts";
 import type { LocalFinanceBoundary } from "./legacy.ts";
-import { parse, type TradeDocumentReady } from "./trade-document-http.ts";
+import { parse, parseTradeId, type TradeDocumentReady } from "./trade-document-http.ts";
 
 export function registerTradeActionRoutes(
   server: FastifyInstance,
@@ -36,10 +36,10 @@ export function registerTradeActionRoutes(
     "/api/v1/trade/open-items/:itemId/actions",
     async (request, reply) => {
       boundary.assert(request, reply, ["GET"]);
+      const app = ready(request);
       const { company } = parse(tradeCompanyQuerySchema, request.query);
-      return tradeActionListSchema.parse(
-        await ready(request).actions(company, request.params.itemId),
-      );
+      const itemId = parseTradeId(request.params.itemId);
+      return tradeActionListSchema.parse(await app.actions(company, itemId));
     },
   );
   server.all("/api/v1/trade/settlements/preview", async (request, reply) => {

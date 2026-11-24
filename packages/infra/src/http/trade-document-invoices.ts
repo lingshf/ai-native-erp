@@ -12,7 +12,7 @@ import {
   tradeInvoiceReceiptSchema,
 } from "@erp/core/contracts";
 import type { LocalFinanceBoundary } from "./legacy.ts";
-import { parse, type TradeDocumentReady } from "./trade-document-http.ts";
+import { parse, parseTradeId, type TradeDocumentReady } from "./trade-document-http.ts";
 
 export function registerInvoiceRoutes(
   server: FastifyInstance,
@@ -54,7 +54,8 @@ export function registerInvoiceRoutes(
       boundary.assert(request, reply, ["GET"]);
       const app = ready(request);
       const { company } = parse(tradeCompanyQuerySchema, request.query);
-      return tradeInvoiceDetailSchema.parse(await app.detail(company, request.params.documentId));
+      const documentId = parseTradeId(request.params.documentId);
+      return tradeInvoiceDetailSchema.parse(await app.detail(company, documentId));
     },
   );
   server.all("/api/v1/trade/open-items", async (request, reply) => {

@@ -4,11 +4,24 @@ import type { ContractSchema } from "@erp/core/contracts";
 import { DomainError } from "@erp/core/domain";
 import { httpError } from "./errors.ts";
 
+// Same lowercase UUIDv4 shape the services check with checkedJournalId; legacy opening item ids
+// (openingItemId) are generated in this shape too.
+const tradeId = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+
+function invalidInput(): DomainError {
+  return new DomainError("INVALID_INPUT", { scope: "tradeDocument", path: "form", rule: "shape" });
+}
+
 export function parse<T>(schema: ContractSchema<T>, value: unknown): T {
   const parsed = schema.safeParse(value);
-  if (!parsed.success)
-    throw new DomainError("INVALID_INPUT", { scope: "tradeDocument", path: "form", rule: "shape" });
+  if (!parsed.success) throw invalidInput();
   return parsed.data;
+}
+
+/** Validates a `documentId` / `itemId` path parameter before it reaches the service. */
+export function parseTradeId(value: string): string {
+  if (!tradeId.test(value)) throw invalidInput();
+  return value;
 }
 
 export function tradeDocumentReady(service: ApplicationServices["tradeDocs"] | undefined) {
