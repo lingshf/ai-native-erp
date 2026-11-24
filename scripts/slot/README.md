@@ -4,23 +4,24 @@ E2E 独占时段（[路线图 §5](../../design/roadmap.md#5-团队流程)“E2E
 
 不进 Vitest、不进 CI；唯一例外是开跑前静态检查（`preflight.mjs`），PR CI 的 verify 也运行它（S15 CI-02，见[下文](#开跑前静态检查s12-slot-02d407--d408)）。
 
-| 文件                              | 作用                                                                                                                                                  | 平台            |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
-| `procs.ps1`                       | 候选、归属与排除判定（`Counted`），每个判定出口标注 SR 编号                                                                                           | Windows         |
-| `slot-run.ps1`                    | 时段运行器：构建门禁、预检（连续 6 次计数为 0）、逐步运行并每 10 s 采样                                                                               | Windows         |
-| `steps.example.ps1`               | `-StepsFile` 示例（步骤列表；kit 中为 GATE-01 专用列表）                                                                                              | Windows         |
-| `steps.gate01.ps1`                | 原样复现 D316 kit 的 GATE-01 七个步骤（D347）；需要 `-BaseRoot` 下有 `artifacts/ci/gate01/` 工具，否则退出码 4                                        | Windows         |
-| `selftest.ps1`                    | 自测：kit 原有 27 项 + 每条 SR 规则的正例与反例 + 可选的与 D316 kit 逐 PID 对照                                                                       | Windows         |
-| `check-manifest.mjs`              | 清单检查：判定出口与路线图规则表、规则版本逐一对照                                                                                                    | 任意 OS（Node） |
-| `preflight.mjs`、`preflight/`     | 开跑前静态检查（S12 SLOT-02，D407 / D408）：tsc 与 TDZ，对照基线                                                                                      | 任意 OS（Node） |
-| `tsconfig.preflight.json`         | 静态检查的 tsc 范围：`npm run typecheck` 不覆盖的场景与 `*.slow.test.ts` 文件                                                                         | —               |
-| `preflight-baseline.json`         | 静态检查基线：既有 tsc 错误与 TDZ 发现的计数，只减不增                                                                                                | —               |
-| `fixtures/`                       | TDZ 回归夹具（`tdz-*.ts.txt`，按内容解析，不进 lint 与 typecheck）与 I1 的 `PSModulePath` 探针                                                        | —               |
-| `tdz-fixtures.mjs`                | TDZ 夹具检查：逐个夹具输出 `PASS` / `FAIL`                                                                                                            | 任意 OS（Node） |
-| `step-env.ps1`                    | 步骤子进程环境：每步重置 `PSModulePath`                                                                                                               | Windows         |
-| `selftest-preflight.ps1`          | `selftest.ps1` 第 5 部分：子进程环境（I1）、tsc 基线键（I3）、TDZ 夹具（I4）、静态检查接入 runner（I5）                                               | Windows         |
-| `selftest-ports.ps1`              | 端口硬检查自测（S16 SLOT-03 S5）：端口被替身占用时退出码 7，替身结束后不是 7，非 `-Stub` 不给 `-Ports` 时退出码 4，模拟端口查询失败时退出码 8（D475） | Windows         |
-| `steps.d387.ps1`                  | D387 回归步骤：用 `powershell.exe` 原样运行 v0.11.0 Demo 的三个无浏览器替身                                                                           | Windows         |
+| 文件                              | 作用                                                                                                                                                       | 平台            |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| `procs.ps1`                       | 候选、归属与排除判定（`Counted`），每个判定出口标注 SR 编号                                                                                                | Windows         |
+| `slot-run.ps1`                    | 时段运行器：构建门禁、预检（连续 6 次计数为 0）、逐步运行并每 10 s 采样                                                                                    | Windows         |
+| `steps.example.ps1`               | `-StepsFile` 示例（步骤列表；kit 中为 GATE-01 专用列表）                                                                                                   | Windows         |
+| `steps.gate01.ps1`                | 原样复现 D316 kit 的 GATE-01 七个步骤（D347）；需要 `-BaseRoot` 下有 `artifacts/ci/gate01/` 工具，否则退出码 4                                             | Windows         |
+| `selftest.ps1`                    | 自测：kit 原有 27 项 + 每条 SR 规则的正例与反例 + 可选的与 D316 kit 逐 PID 对照                                                                            | Windows         |
+| `check-manifest.mjs`              | 清单检查：判定出口与路线图规则表、规则版本逐一对照                                                                                                         | 任意 OS（Node） |
+| `preflight.mjs`、`preflight/`     | 开跑前静态检查（S12 SLOT-02，D407 / D408）：tsc 与 TDZ，对照基线                                                                                           | 任意 OS（Node） |
+| `tsconfig.preflight.json`         | 静态检查的 tsc 范围：`npm run typecheck` 不覆盖的场景与 `*.slow.test.ts` 文件                                                                              | —               |
+| `preflight-baseline.json`         | 静态检查基线：既有 tsc 错误与 TDZ 发现的计数，只减不增                                                                                                     | —               |
+| `fixtures/`                       | TDZ 回归夹具（`tdz-*.ts.txt`，按内容解析，不进 lint 与 typecheck）与 I1 的 `PSModulePath` 探针                                                             | —               |
+| `tdz-fixtures.mjs`                | TDZ 夹具检查：逐个夹具输出 `PASS` / `FAIL`                                                                                                                 | 任意 OS（Node） |
+| `step-env.ps1`                    | 步骤子进程环境：每步重置 `PSModulePath`                                                                                                                    | Windows         |
+| `selftest-preflight.ps1`          | `selftest.ps1` 第 5 部分：子进程环境（I1）、tsc 基线键（I3）、TDZ 夹具（I4）、静态检查接入 runner（I5）                                                    | Windows         |
+| `selftest-ports.ps1`              | 端口硬检查自测（S16 SLOT-03 S5）：端口被替身占用时退出码 7，替身结束后不是 7，非 `-Stub` 不给 `-Ports` 时退出码 4，模拟端口查询失败时退出码 8（D475）      | Windows         |
+| `selftest-location.ps1`           | 调用位置自检与 dist 检查自测（S21 SLOT-04 S1–S6）：R-base / R-steps 命中时零动作退出码 4，合法形式记 `call location ok`，dist 检查经 `assert-web-dist.ps1` | Windows         |
+| `steps.d387.ps1`                  | D387 回归步骤：用 `powershell.exe` 原样运行 v0.11.0 Demo 的三个无浏览器替身                                                                                | Windows         |
 | const rows = compareWithBaseline( |
     countByKey(findings, (found) => found.key),
     allowedCounts,
@@ -38,6 +39,9 @@ pwsh -File scripts/slot/selftest.ps1 [-OutDir $env:TEMP\slot-selftest-out] [-Ref
 # 端口硬检查自测（会以 -Stub 跑一次构建，不开浏览器）
 pwsh -File scripts/slot/selftest-ports.ps1 -OutDir $env:TEMP\slot-selftest-ports-out
 
+# 调用位置与 dist 检查自测（S5 / S6 各以 -Stub 构建一次，不开浏览器）
+pwsh -File scripts/slot/selftest-location.ps1 -OutDir $env:TEMP\slot-selftest-location-out
+
 # 时段运行（先按路线图 §5 申请时段，申请写明规则版本 R3）；在被测应用的工作树中执行
 pwsh -File scripts/slot/slot-run.ps1 -OutDir $env:TEMP\slot-<任务>-<日期> -StepsFile <步骤文件> -Ports 4203 [-BaseRoot <base 工作树>] [-PreflightFiles <路径>[,<路径>…]]
 # 演练：-Stub pass 或 -Stub fail:<步骤名>，步骤换成 node 一行脚本，不开浏览器；-Stub 下 -Ports 可省略
@@ -54,12 +58,13 @@ node scripts/slot/check-manifest.mjs [--roadmap design/roadmap.md] [--code scrip
 - `-ReferenceProcs`：D316 kit 的 `procs.ps1` 副本（按 LF 计算 SHA-256 须为 `906A4B70…90A6F8`，否则失败）。它用 `git -C <所在目录>` 定位本仓库，所以副本须放在本仓库某个工作树内，建议 `artifacts/ci/gate01-ref/procs.ps1`（`artifacts/ci/` 已被 git 忽略，不入库）。给出时，自测的每个快照同时交给 kit 的 `Counted`，计数集合与排除集合须逐 PID 相同（`EQUIV` 项）；R3 下 kit 计数而本目录判 SR-X6 的 PID 算一致（`r3-sr-x6=` 列出），其余仍须逐 PID 相同。第 1 部分中 kit 参考结果为“计数，SR-C3”的用例改为期望“排除，SR-X6”，逐项标“R3 差异”，`summary` 后一行列出这些用例。
 - **`-Ports`**（R3，D472）：时段要用的端口，例如 `-Ports 4203`（多个端口在 `pwsh -File` 下写成 `-Ports 4203,4204`）。非 `-Stub` 运行不给时构建前以退出码 4 结束（`missing -Ports`）；端口不在 1–65535 时同样是 4。检查两次：加载步骤后、静态检查与进程预检之前（`phase=before-preflight`）；进程预检通过后、第一个步骤之前（`phase=before-steps`）。任一端口有 `Listen` 状态的 TCP 连接（任意地址，IPv4 / IPv6）就以**退出码 7** 结束，不等待、不重试（D444），日志每个占用写一行 `port busy phase=… port=… address=… pid=… name=… cmdline=[…] verdict=[<SR 判定>]`，再写 `ABORT: slot port in use (…)`；端口空闲时写 `ports free phase=… ports=…`。端口查询本身失败（`Get-NetTCPConnection` 报错，无论是非终止错误还是异常）时不当作空闲：每条错误写一行 `port lookup failed phase=… id=[…] category=[…] exception=[…] message=[…]`，再写 `ABORT: port lookup failed (…)`，以**退出码 8** 结束，不重试、不开跑（D475）；退出码 7 只表示确认有监听。`-Stub` 下给了 `-Ports` 同样检查；没给时记 `ports not given (stub) phase=…`。
 - **被测应用与时段工具可分开**：仓库根取自调用时的当前目录（构建、dist 检查、步骤的 `-Root` 与 `runner start head=` 都用它），`procs.ps1`、`preflight.mjs` 从脚本所在目录加载。在被测应用的工作树中执行 `pwsh -File <工具工作树>\scripts\slot\slot-run.ps1 …` 即可；`slot-summary.log` 的 `runner start head=…` 是被测应用的 HEAD，下一行 `tooling head=…` 是脚本所在工作树的 HEAD。
-- **runner 退出码**：0 全部步骤通过；1 构建失败、有步骤失败或 runner 异常；2 步骤期间采样到计数进程，或平台 / PowerShell 版本不符；3 进程预检 15 分钟超时；4 输入或配置错误（含缺 `-Ports`）；5 dist 不比 HEAD 提交新；6 静态检查有新发现；**7 时段端口被占用**（R3，确认有监听）；**8 端口查询失败**（R3，D475）。
+- **调用位置自检**（S21 SLOT-04）：输入检查之后、执行步骤文件之前检查两条规则，任一成立即以**退出码 4** 结束，零动作（不执行步骤文件、不查端口、不预检、不构建、不采样）：**R-base** 给了 `-BaseRoot` 且它（在 git 工作树内取其顶层）与当前仓库根是同一目录（不区分大小写、不计末尾分隔符）；**R-steps** `-StepsFile` 所在 git 工作树既不是当前仓库根，也不是脚本所在工作树（不在 git 工作树内的步骤文件不受限）。日志写 `ABORT: call location rules=… root=… tool=… steps-worktree=… base-root=…` 与正确形式：在 app 工作树内执行 `pwsh -File <工具工作树>\scripts\slot\slot-run.ps1 …`；通过时写 `call location ok root=… tool=… steps-worktree=…`。
+- **runner 退出码**：0 全部步骤通过；1 构建失败、有步骤失败或 runner 异常；2 步骤期间采样到计数进程，或平台 / PowerShell 版本不符；3 进程预检 15 分钟超时；4 输入或配置错误（含缺 `-Ports`）；5 dist 检查未通过（调用 `scripts/demo/assert-web-dist.ps1`，日志 `dist check web-dist: …`；它的退出码非 0 时写 `ABORT: dist check exit <n>`；缺这个脚本时为 4）；6 静态检查有新发现；**7 时段端口被占用**（R3，确认有监听）；**8 端口查询失败**（R3，D475）。
 - `check-manifest.mjs` 退出码：0 一致；1 有出口缺编号、有表外编号、表内编号没有出口，或规则版本不一致；2 输入不可用（文件不存在、找不到规则表或版本）。判定出口按代码结构识别（`Get-Owner` / `Get-UnreadableOwner` / `Get-SystemExclusion` 中返回非空的 `return`，`Counted` 中的 `continue`、`@{ Kind = … }`、运行器树扩展与排除汇总），不依赖标注本身。
 
 ## 开跑前静态检查（S12 SLOT-02，D407 / D408）
 
-`slot-run.ps1` 的顺序：输入检查 → 加载步骤 → 端口检查（R3）→ **静态检查（先 head，再 base）** → 构建 → dist 检查 → 进程预检 → 端口再检查（R3）→ 逐步运行。`-Stub` 演练同样真跑静态检查。
+`slot-run.ps1` 的顺序：输入检查 → 调用位置自检（SLOT-04）→ 加载步骤 → 端口检查（R3）→ **静态检查（先 head，再 base）** → 构建 → dist 检查（`assert-web-dist.ps1`）→ 进程预检 → 端口再检查（R3）→ 逐步运行。`-Stub` 演练同样真跑静态检查。
 
 **PR CI 也运行**（S15 CI-02）：`.github/workflows/ci.yml` 的 verify 在 `Typecheck` 之后运行 `node scripts/slot/preflight.mjs --root .`（不带 `--files`），退出码判定与时段相同：0 通过，4 或 6 让 verify 失败。这样 `test/support/**` 与 `*.slow.test.ts` 的类型错误在合并前暴露。时段 runner 的第一步静态检查不变，不因 CI 已跑而省略。
 
