@@ -581,37 +581,21 @@ it("bounds the paged virtual table DOM while scrolling within a full page", asyn
   await screen.findByText("ROW-0");
   const count = () => region.querySelectorAll("tbody tr:not([aria-hidden])").length;
   expect(count()).toBeLessThanOrEqual(Math.ceil(440 / 44) + 2 * 5 + 1);
+  // The scroll arms @tanstack/virtual-core's 150 ms scroll-reset debounce, which is never
+  // cleared on unmount. Left on the real clock, this file's last scroll could fire it after
+  // the fork's jsdom teardown, where React reads the deleted `window` (FLAKE-08). Arm it on
+  // a test-owned clock and finish it while the table is still mounted.
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  onTestFinished(() => vi.useRealTimers());
   fireEvent.scroll(region, { target: { scrollTop: 11_000 } });
+  expect(vi.getTimerCount(), "scroll-reset debounce armed by the scroll").toBe(1);
+  act(() => vi.advanceTimersByTime(150));
+  expect(vi.getTimerCount(), "scroll-reset debounce still pending").toBe(0);
+  vi.useRealTimers();
   await screen.findByText("ROW-250");
   expect(screen.queryByText("ROW-0")).toBeNull();
   expect(count()).toBeLessThanOrEqual(Math.ceil(440 / 44) + 2 * 5 + 1);
   expect(screen.getByRole("table").getAttribute("aria-rowcount")).toBe("501");
-});
-it("leaves no scroll-reset timer pending once a scrolling virtual table test has ended", async () => {
-  geometry();
-  const timers = vi.spyOn(globalThis, "setTimeout");
-  render(
-    <VirtualRows
-      forceVirtual
-      items={Array.from({ length: 500 }, (_, index) => index)}
-      title="Scrolled ledger"
-      header={["Row"]}
-      render={(index) => <td>ROW-{index}</td>}
-    />,
-  );
-  await screen.findByText("ROW-0");
-  fireEvent.scroll(screen.getByRole("region", { name: "Scrolled ledger" }), {
-    target: { scrollTop: 11_000 },
-  });
-  await screen.findByText("ROW-250");
-  const scheduled = timers.mock.results.flatMap((result) =>
-    result.type === "return" ? [result.value as unknown as { _destroyed: boolean }] : [],
-  );
-  expect(scheduled.length).toBeGreaterThan(0);
-  onTestFinished(() => {
-    const pending = scheduled.filter((timer) => !timer._destroyed).length;
-    expect(pending, "timers still pending after the test ended").toBe(0);
-  });
 });
 it("gives both virtual spacer cells the component class instead of relying on global td rules", async () => {
   geometry();
