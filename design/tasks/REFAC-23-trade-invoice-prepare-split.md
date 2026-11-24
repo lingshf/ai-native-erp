@@ -88,7 +88,7 @@
 - 取证所需的观测点和新增测试文件：无（R4 驱动不提交）。
 - 受影响的 e2e 断言（S13 回顾行动 1）：经过发票预览与确认的 `trade-gui` 场景（“现状”）**必须继续成立**；合并前由 R3 与 R4 保证，合并后由 R8b 的 main Full 复核；**须随本任务改**：无。
 - 受影响的文档引用（D460）：`git grep -n -F "trade-documents.ts" -- docs design` 中指向 `packages/core` 的行都是当时的事实记录，不改。
-- 与在岗任务不相交：
+- 与写任务书时在岗的任务不相交（两者此后已由 [#343](https://github.com/lingshf/ai-native-erp/pull/343)、[#344](https://github.com/lingshf/ai-native-erp/pull/344) 合并，main `e89b0b4`；R3 / R4 / R7 的 base 取最终送审 head 的实际合并基）：
   - REFAC-21 只改 `packages/infra/src/storage/business-events.ts` 与同目录 `business-*.ts`；
   - REFAC-22 只改 `packages/web/src/Accounts.tsx` 与 `accounts/`。
 
@@ -123,16 +123,18 @@
     - **维度**：往来方与产品都有默认维度且有同名键（覆盖“产品覆盖往来方”）；带 `headerDimensions` 与行维度；
     - **错误**：`gross <= 0`；第 2 行税额 > 0 而税科目为 `null`（`lines.1.taxCode`）；科目角色不符（`this.accountRoles` 报错）；无订单而 `matchingException` 非 `null`；
     - **订单**：完全匹配；超出容差且带 `matchingException`；超出容差而不带（`price`）；容差内却带（`exception`）；订单不存在；`accountingDate` 早于 `orderDate`；早于订单的最近开票日期；方向、往来方、币种不符各一个；第 2 行的 `orderLineId` 不存在与产品不符各一个；两行引用同一 `orderLineId`（覆盖 `referenced` 去重）；
-    - **其他**：`externalInvoice` 归一后使 `memo` 超过 200 字符（若契约长度上限使之不可达，PR 正文写明并删去该项）；付款条件 `dueDays` / `discountDays` 非 0。
+    - **其他**：`memo` 截断：`externalInvoice = "\uFB03".repeat(70)`（原始长度 70，在契约上限 100 内；base 的 `normalizeExternalInvoice` 按 NFKC 归一并转大写后为 210 字符，加前缀 `AP invoice ` 共 221 字符）；付款条件 `dueDays` / `discountDays` 非 0。
   - **判定**：base 与 head 每个用例的记录逐字节相同（PR 正文附两侧输出的 SHA-256 与比较结果）；并且**直接断言**（只比两侧相同不够）：
-    1. **`gross <= 0`**：错误为 `lines` / `shape`；调用记录中没有 `tradeOrder`、`tradeOrderInvoiced`，也没有 `adapter` / `plan`。
+    1. **`gross <= 0`**：`DomainError`、`code` 为 `INVALID_INPUT`、`issue.path` / `issue.rule` 为 `lines` / `shape`；调用记录中没有 `tradeOrder`、`tradeOrderInvoiced`，也没有 `adapter` / `plan`。
     2. **`||` 短路**：`accountingDate` 早于 `orderDate` 的用例中 `tradeOrderLatestDate` 出现 **0** 次；完全匹配的用例中出现 1 次。
     3. **日记账行顺序**：2 行 AP 含税无订单用例中，`plan` 调用记录的草稿 `lines` 依次为“控制科目、控制科目、第 1 行费用科目、第 1 行税科目、第 2 行费用科目、第 2 行税科目”；返回值 `controlIndexes` 为 `[0, 1]`；`master` 与 `lines` 等长。PR 正文写出该用例的期望科目序列与推导。
     4. **零额不推入**：零税额行用例中草稿 `lines` 比非零用例少 1 行，`master` 同样少 1 项。
-    5. **税科目缺失**：错误路径为 `lines.1.taxCode`、`code` 为 `account`；调用记录中没有 `adapter` / `plan`。
+    5. **税科目缺失**：抛出 `DomainError`，`code` 为 `INVALID_INPUT`，`issue` 为 `{scope: "tradeDocument", path: "lines.1.taxCode", rule: "account"}`（base `packages/core/src/application/trade-documents.ts:1004` 调用 `tradeDocumentError`，见 `packages/core/src/domain/trade-documents.ts:30–39`）；调用记录中没有 `adapter` / `plan`。
     6. **指纹输入**：`tools.hash` 恰好 2 次；第 1 次参数的首元素为 `"trade-invoice-v1"`；第 2 次参数为 10 个元素的数组、首元素为 `"trade-invoice-preview-v1"`、第 2 个元素等于第 1 次的返回值。
-    7. **`memo`**：超长用例中草稿 `memo` 长度为 200（若该用例已按上条删去，本断言随之删去）。
-    8. 每个错误用例的 `code` 与 `path` / `rule` 与用例名所述一致；`poMatch` 与每行 `matchStatus` 与用例名所述一致。
+    7. **`memo`**：上述 `"\uFB03".repeat(70)` 用例中，`plan` 调用记录的草稿 `memo` 长度为 200，且等于 base 上 `` `AP invoice ${external}` `` 的前 200 个字符。
+    8. **错误的 `code` 与 `issue` 分开断言**：`code` 是 `DomainError` 的错误码，`rule` 是 `issue.rule`，两者不得混写。`prepare` 中的错误都经 `tradeDocumentError(path, rule)` 抛出且不传 `conflict`，因此 base 上每个错误用例都应为 `DomainError`、`code` 为 `INVALID_INPUT`、`issue.scope` 为 `"tradeDocument"`；`issue.path` / `issue.rule` 逐个与用例名所述一致：`gross <= 0` → `lines` / `shape`；订单不存在、方向 / 往来方 / 币种不符 → `orderId` / `order`；日期早于订单或最近开票日 → `accountingDate` / `reference`；订单行不存在或产品不符 → `lines.1.orderLineId` / `orderLine`；超出容差而不带例外 → `matchingException` / `price`；容差内或无订单却带例外 → `matchingException` / `exception`；税科目缺失 → `lines.1.taxCode` / `account`；科目角色不符 → 该科目所在输入项的 `path` / `account`（PR 正文写出具体 `path`）。成功用例的 `poMatch` 与每行 `matchStatus` 与用例名所述一致。
+
+    以上 `code`、`issue` 都按 base 实际抛出的错误写；任何一项在 base 上不成立时，先停下并报协调者，**不得**改产品代码的错误来迁就断言。
 
     base 上任一直接断言不成立，先停下并向协调者报告。PR 正文附驱动、用例清单、比较结果与直接断言结果。
 - **R5 结构规则**（静态，评审按代码与 PR 表格核对）：
