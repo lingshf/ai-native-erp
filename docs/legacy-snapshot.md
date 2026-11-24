@@ -6,9 +6,7 @@ use the user's old checkout, or inspect existing backup files.
 
 On Windows, with an explicitly authorized, stopped and isolated source:
 
-```powershell
-npm run storage:admin -- legacy-snapshot --source-dir C:\isolated\source --out-dir C:\private\new-snapshot
-```
+The command is maintained only in [the migration runbook §2](migration-runbook.md) (Chinese).
 
 Both paths are mandatory; output must not exist or be inside source. The source
 contains `teaching.sqlite` and `erp.sqlite` and their optional `-wal`/`-shm`.

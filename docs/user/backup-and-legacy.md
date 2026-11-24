@@ -6,18 +6,11 @@
 
 ## 备份与恢复（M0-R5）
 
-```powershell
-npm run storage:admin -- backup <db> <out>
-npm run storage:admin -- restore <db> <in>   # 先停止服务
-```
-
-备份使用 SQLite 在线备份并校验；输出已存在、与目标同名或为保留路径时拒绝。恢复需离线，替换前自动生成带时间戳的完整 `.bak`，失败则校验回滚。不要手动删除 WAL/SHM/journal 文件。
+命令、保护规则与锁处理见 [运维与故障排查](../operations.md#备份与恢复)。
 
 ## 旧账快照（M2-01）
 
-```powershell
-npm run storage:admin -- legacy-snapshot --source-dir <已停写的隔离源目录> --out-dir <不存在的新目录>
-```
+命令见 [迁移操作手册 §2](../migration-runbook.md)。
 
 仅 Windows；两个路径必填，无默认值；源目录须已停止并隔离（独占句柄，冲突则 `SOURCE_BUSY`），残留 `-journal` 则拒绝。**对真实旧账的操作须另行取得授权**，开发和 CI 只用虚构夹具。生成的快照与备份不得提交到 Git。详见 [legacy-snapshot.md](../legacy-snapshot.md)。
 
@@ -27,13 +20,9 @@ npm run storage:admin -- legacy-snapshot --source-dir <已停写的隔离源目�
 
 ## 隔离导入与核对（M2-03 / M2-04）
 
-```powershell
-npm run storage:admin -- legacy-import --snapshot-dir <已验证快照目录> --target <全新目标.sqlite> --drafts import-as-draft --receipts archive-only --source-events archive-only --transfer-queue archive-only --seals archive-only --audit archive-only
-npm run storage:admin -- legacy-reconcile --snapshot-dir <同一快照目录> --target <目标.sqlite> --check
-npm run storage:admin -- legacy-reconcile --snapshot-dir <同一快照目录> --target <目标.sqlite> --confirm <用户确认.json>
-```
+导入与核对命令（含六项决定、`--check`、`--confirm`、期初明细文件 `--opening-items`）见 [迁移操作手册 §4–§5](../migration-runbook.md)；本节只解释规则。
 
-此示例显式保留草稿，其他五类只归档；它不是对真实旧账操作的授权。不可映射对象仍须先解决才能执行导入。只使用虚构夹具开发、测试和性能验收。
+手册中的示例是虚构夹具上的演示，不是对真实旧账操作的授权。不可映射对象仍须先解决才能执行导入。只使用虚构夹具开发、测试和性能验收。
 
 只接受已校验 SHA 的快照、新目标路径和全部六项决定，不读取活动旧账、4173 或 `.bak`；拒绝合并或覆盖已有业务库。同一工具的未完成导入可用同一命令断点续跑。全程持有独占维护锁；硬终止遗留的锁须由操作员确认进程已停止后处理，不会自动删锁。历史凭证来源显示为 `LEGACY`，原结转只落账一次，不补造业务回执、不重复生成结转；`archive-only` 的证据留在原只读快照中。
 
@@ -107,7 +96,7 @@ M2-04 门禁不变：有 AP/AR 控制科目而 run 无 `opening=done` 时仍判 
 
 ## 导入演练与操作手册（v0.13.0，M2-05a #227、M2-05b #232）
 
-- **新命令**：`npm run storage:admin -- legacy-import --snapshot-dir DIR --dry-run`。不带选项时输出快照 SHA 和六个导入选项各自会影响的条数；带齐六个选项时输出可执行性、各对象计数、草稿与原因。**不写任何目标库**；选项不全，或同时给了 `--target`，按用法错误拒绝。
+- **新命令**：导入演练（dry-run），命令见[迁移操作手册 §3](../migration-runbook.md)。不带选项时输出快照 SHA 和六个导入选项各自会影响的条数；带齐六个选项时输出可执行性、各对象计数、草稿与原因。**不写任何目标库**；选项不全，或同时给了 `--target`，按用法错误拒绝。
 - **[迁移操作手册](../migration-runbook.md)**：规则、授权门槛、各步命令、错误码、回滚条件、证据存放与耗时预算。
 - **只在虚构夹具上验证**：演练全程使用虚构数据（100 万行 GL + 10 万条期初的 Bench 也是虚构的），没有连接任何真实旧账。**真实旧账的演练和切换（M2-05 的真实部分、M2-06）仍需用户另行授权，未进行。**
 - **导入变快、变省内存**：期初未结项的校验在 10 万条规模下由估算约 9 小时降到约 27 秒（D430）；期初项分批（每批 1000）在单一写事务内写入，Bench 中导入峰值内存由 566 MiB 降到 427 MiB，回到 512 MiB 预算内（M2-05b，D434）。导入结果、命令行参数、错误码不变。
