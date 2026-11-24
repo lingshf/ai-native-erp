@@ -845,7 +845,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 ## 知识与文档待办（KDOC，D556）
 
-来源：Knowledge Lead 在 [#365](https://github.com/lingshf/ai-native-erp/pull/365) 中的覆盖审计。所有 KDOC 项都排在在途与待派的 REFAC 之后（P3），只改文档，不占开发名额。冲突域不涉及代码，可以与 REFAC 并行。下表的顺序就是优先级。排序理由：
+排序与 C1 的处理见 D556；KDOC-05 / KDOC-07 的依赖与 KDOC-10 并入 KDOC-05 见 D558。来源：Knowledge Lead 在 [#365](https://github.com/lingshf/ai-native-erp/pull/365) 中的覆盖审计。所有 KDOC 项都排在在途与待派的 REFAC 之后（P3），只改文档，不占开发名额。冲突域不涉及代码，可以与 REFAC 并行。下表的顺序就是优先级。排序理由：
 
 - 先消除“写错了”的冲突，再补缺口，最后去重；
 - 缺口按使用频率排：用户、运维、开发；
@@ -865,15 +865,15 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | 2 | KDOC-02 | `design/test-cases.md` 交给 QA（评审会话 `5ec013bf`）：确认现有内容、维护方式与今后的更新时机（[团队章程 §7](../team-charter.md#7-迁移范围与缺口)） | Team Leader 协调；Product/Design 交出、QA 接收 | 无 | `design/test-cases.md` 开头 | todo |
 | 3 | KDOC-03 | G5 全部决定的索引；D2 前半（`design/tasks.md` 标为历史记录，指向任务总表）；D3（`reviews.md` 与 `reviews/` 同名，改名或加指引） | Knowledge Lead | KDOC-01 | `design/` 下新增索引页、`design/tasks.md` 开头、`design/reviews.md` | todo |
 | 4 | KDOC-04 | G1 AI 助手设计页（范围、数据流、隐私边界、失败与降级） | Product/Design 提供事实；Knowledge Lead 整合 | KDOC-01（ADR-SME-005 中的 AI 部分被取代后由本页接替） | `design/` 下新增页面 | todo |
-| 5 | KDOC-05 | G3 用户文档 `docs/user` 更新到当前版本；D1 README 业务规则与 `docs/user` 去重，README 改为链接 | Knowledge Lead；Developer 与 Product/Design 核对事实；QA 演练关键步骤 | 无 | `docs/user/`、`README.md` 业务规则段 | todo |
+| 5 | KDOC-05 | G3 用户文档 `docs/user` 更新到当前版本；D1 README 业务规则与 `docs/user` 去重，README 改为链接；并入原 KDOC-10（D5）：`docs/user/README.md` 中的版本叙述与 `CHANGELOG.md` 去重，以 CHANGELOG 为准、用户文档改为链接（D558） | Knowledge Lead；Developer 与 Product/Design 核对事实；QA 演练关键步骤；Delivery/Release 核对 CHANGELOG 措辞 | 无 | `docs/user/`（含 `docs/user/README.md`、`docs/user/backup-and-legacy.md`）、`README.md` 业务规则段、`CHANGELOG.md` | todo |
 | 6 | KDOC-06 | G4 流程图更新到当前版本，补付款、收款流程图 | Knowledge Lead；Product/Design 核对流程 | KDOC-05 | `docs/flows/` | todo |
-| 7 | KDOC-07 | G7 运维与排障页（启动、备份与恢复、常见错误）；D4 迁移命令三处合一，保留一处权威说明，其余改为链接 | Knowledge Lead；Delivery/Release 提供事实；QA 演练 | 无 | `docs/` 下新增运维页、`docs/migration-runbook.md` 及另两处迁移命令所在段落 | todo |
+| 7 | KDOC-07 | G7 运维与排障页（启动、备份与恢复、常见错误）；D4 迁移命令三处合一，保留一处权威说明，其余改为链接 | Knowledge Lead；Delivery/Release 提供事实；QA 演练 | KDOC-05 已合并（共享 `docs/user/backup-and-legacy.md`，D558） | `docs/` 下新增运维页、`docs/migration-runbook.md` 及另两处迁移命令所在段落（含 `docs/user/backup-and-legacy.md`） | todo |
 | 8 | KDOC-08 | G6 CI 说明页（分层、触发、分片、Bench、失败时怎么办） | Knowledge Lead；Delivery/Release 提供事实 | 无 | `docs/` 下新增 CI 页（不改 `.github/workflows/`） | todo |
 | 9 | KDOC-09 | G2 按主题汇总取舍（每个主题：备选、理由、代价、失效条件），链接到 ADR 与决定记录，不复制原文 | Knowledge Lead；Product/Design 核对 | KDOC-01、KDOC-03、KDOC-04 | `design/` 下新增页面 | todo |
-| 10 | KDOC-10 | D5 版本叙述与 CHANGELOG 去重：以 CHANGELOG 为准，路线图等处的版本叙述改为链接 | Delivery/Release；Knowledge Lead 整合 | 无 | `design/roadmap.md` 版本叙述段、`CHANGELOG.md` | todo |
+| 10 | KDOC-10 | 已并入 KDOC-05（D558）：目标改为 `docs/user/README.md` 与 `CHANGELOG.md`，不改路线图 | — | — | — | 已并入 KDOC-05 |
 | 11 | KDOC-11 | UI-1 规范页状态仍为“待评审”（`design/ui/README.md:3`）：核对实际评审记录后更新状态 | Product/Design；非作者评审 | 无 | `design/ui/README.md` 开头 | todo |
 
-- **共享文件串行**：KDOC-01 与 KDOC-03 都改 `design/` 根目录下的文档，按顺序做；KDOC-05 与 KDOC-06 按顺序做；其余各项冲突域不相交。
+- **共享文件串行**：KDOC-01 与 KDOC-03 都改 `design/` 根目录下的文档，按顺序做；KDOC-05 与 KDOC-06 按顺序做；KDOC-05 与 KDOC-07 共用 `docs/user/backup-and-legacy.md`，KDOC-07 在 KDOC-05 合并后才开始（D558）；其余各项冲突域不相交。
 - **评审**：每项都由非作者评审。Knowledge Lead 写的文档，事实由对应负责人核对（[团队章程 §2](../team-charter.md#2-权威路径)）。
 
 ## 派发顺序
