@@ -23,6 +23,7 @@ E2E 独占时段（[路线图 §5](../../design/roadmap.md#5-团队流程)“E2E
 | `selftest-location.ps1`           | 调用位置自检与 dist 检查自测（S21 SLOT-04 S1–S6）：R-base / R-steps 命中时零动作退出码 4，合法形式记 `call location ok`，dist 检查经 `assert-web-dist.ps1` | Windows         |
 | `gate-snapshot.ps1`               | 窗口门禁快照（S22 SLOT-05，D507）：node 进程、父进程链、cwd、CPU 秒数与指定端口的监听者写成 TSV；只记录，不判定归属                                        | Windows         |
 | `selftest-gate-snapshot.ps1`      | `gate-snapshot.ps1` 自测（G1–G7、G4b、G6b）：父进程链与 cwd、字段格式、逐端点监听、停止文件、节拍、参数错误、查询出错、TSV 写失败与时限                    | Windows         |
+| `selftest-slot-snapshot.ps1`      | runner 自动快照自测（S23 SLOT-06，D517，G1–G6、G10）：端口被占仍为 7 且第 1 次快照有占用者、无遗留子进程、端口去重、慢快照的启动 / 停止超时、退出码 4 不起快照 | Windows         |
 | `steps.d387.ps1`                  | D387 回归步骤：用 `powershell.exe` 原样运行 v0.11.0 Demo 的三个无浏览器替身                                                                                | Windows         |
 | const rows = compareWithBaseline( |
     countByKey(findings, (found) => found.key),
@@ -43,6 +44,9 @@ pwsh -File scripts/slot/selftest-ports.ps1 -OutDir $env:TEMP\slot-selftest-ports
 
 # 调用位置与 dist 检查自测（S5 / S6 各以 -Stub 构建一次，不开浏览器）
 pwsh -File scripts/slot/selftest-location.ps1 -OutDir $env:TEMP\slot-selftest-location-out
+
+# runner 自动快照自测（以 -Stub 构建一次，不开浏览器；G5 约 45 s）
+pwsh -File scripts/slot/selftest-slot-snapshot.ps1 -OutDir $env:TEMP\slot-selftest-slot-snapshot-out
 
 # 时段运行（先按路线图 §5 申请时段，申请写明规则版本 R3）；在被测应用的工作树中执行
 pwsh -File scripts/slot/slot-run.ps1 -OutDir $env:TEMP\slot-<任务>-<日期> -StepsFile <步骤文件> -Ports 4203 [-BaseRoot <base 工作树>] [-PreflightFiles <路径>[,<路径>…]]
@@ -78,6 +82,7 @@ pwsh -NoProfile -File scripts\slot\selftest-gate-snapshot.ps1   # 自测（起 n
 - **被测应用与时段工具可分开**：仓库根取自调用时的当前目录（构建、dist 检查、步骤的 `-Root` 与 `runner start head=` 都用它），`procs.ps1`、`preflight.mjs` 从脚本所在目录加载。在被测应用的工作树中执行 `pwsh -File <工具工作树>\scripts\slot\slot-run.ps1 …` 即可；`slot-summary.log` 的 `runner start head=…` 是被测应用的 HEAD，下一行 `tooling head=…` 是脚本所在工作树的 HEAD。
 - **调用位置自检**（S21 SLOT-04）：输入检查之后、执行步骤文件之前检查两条规则，任一成立即以**退出码 4** 结束，零动作（不执行步骤文件、不查端口、不预检、不构建、不采样）：**R-base** 给了 `-BaseRoot` 且它（在 git 工作树内取其顶层）与当前仓库根是同一目录（不区分大小写、不计末尾分隔符）；**R-steps** `-StepsFile` 所在 git 工作树既不是当前仓库根，也不是脚本所在工作树（不在 git 工作树内的步骤文件不受限）。日志写 `ABORT: call location rules=… root=… tool=… steps-worktree=… base-root=…` 与正确形式：在 app 工作树内执行 `pwsh -File <工具工作树>\scripts\slot\slot-run.ps1 …`；通过时写 `call location ok root=… tool=… steps-worktree=…`。
 - **runner 退出码**：0 全部步骤通过；1 构建失败、有步骤失败或 runner 异常；2 步骤期间采样到计数进程，或平台 / PowerShell 版本不符；3 进程预检 15 分钟超时；4 输入或配置错误（含缺 `-Ports`）；5 dist 检查未通过（调用 `scripts/demo/assert-web-dist.ps1`，日志 `dist check web-dist: …`；它的退出码非 0 时写 `ABORT: dist check exit <n>`；缺这个脚本时为 4）；6 静态检查有新发现；**7 时段端口被占用**（R3，确认有监听）；**8 端口查询失败**（R3，D475）。
+- **自动门禁快照**（S23 SLOT-06，D517；只记录、不改判定）：所有退出码 4 的检查之后、第一次端口检查之前，runner 起 `gate-snapshot.ps1 -StopFile`，写 `<OutDir>\gate-snapshot-<UTC yyyyMMddTHHmmssfffZ>.tsv`；端口是 `-Ports` 与 4173 的并集（去重升序，`-Stub` 不给 `-Ports` 时只有 4173）。日志写 `gate snapshot started pid=… file=… ports=…`，再等第一次快照最多 15 s（超时写 `gate snapshot not ready after 15 s`，子进程提前退出写 `gate snapshot exited early exit=…`），都继续运行。此后每条结束路径（含 `exit 0` 与 runner 异常）都建停止文件、等子进程最多 30 s，写 `gate snapshot exit=<n> gate-snapshot done …`；超时只结束这个子进程的进程树，写 `gate snapshot stop timeout after 30 s; stopped pid=…`。runner 的判定、退出码与既有日志行不变，退出最多推迟 30 s；快照子进程属 SR-R1，不计数也不排除。人工在窗口内另起的 `gate-snapshot.ps1` 照旧，两者写不同的文件。
 - `check-manifest.mjs` 退出码：0 一致；1 有出口缺编号、有表外编号、表内编号没有出口，或规则版本不一致；2 输入不可用（文件不存在、找不到规则表或版本）。判定出口按代码结构识别（`Get-Owner` / `Get-UnreadableOwner` / `Get-SystemExclusion` 中返回非空的 `return`，`Counted` 中的 `continue`、`@{ Kind = … }`、运行器树扩展与排除汇总），不依赖标注本身。
 
 ## 开跑前静态检查（S12 SLOT-02，D407 / D408）
@@ -106,6 +111,7 @@ runner 在 pwsh 7 中运行，子进程会继承 pwsh 7 的 `PSModulePath`；步
 - 日志与时段现场数据**只写到仓库外的目录**（`-OutDir`，例如 `%TEMP%` 下）；`OutDir` 在仓库内时两个脚本都拒绝运行（退出码 4）。`slot-run.ps1` 在入口把相对的 `-OutDir`、`-StepsFile`、`-BaseRoot` 按调用时的当前目录解析成绝对路径，校验与写入都用这个路径（运行器随后切到仓库根，日志也不会移位或写进工作树；D354）。`-StepsFile` 没有产出任何步骤时，构建前以退出码 4 结束（D354）。不提交任何日志或采样输出。
 - 用完**归档，不删除**（S10 回顾行动 1/2）：例如上传到取证 gist 或附到 PR，并在 PR 正文中链接。
 - `slot-run.ps1` 的输出：`slot-summary.log`（开头 `runner start head=… rules=R3 ports=…` 与 `tooling head=…`；每次采样一行 `runner-tree n=…`；每个被排除的 PID 首次出现时一行 `excluded pid=… rule=SR-X… name=… reason=[…] cmdline=[…]`）、`processes.tsv`（每次采样的计数、计数进程及其规则、排除数、运行器树进程数，以及最后一列 `sr-x6`：该次采样中归属不明而被排除的进程数）、`excluded.tsv`（每次采样的每个排除进程，含 `rule` 列），以及各步骤的输出。SR-R1 只出现在 `runner-tree` 行，不出现在排除日志里。
+- `slot-run.ps1` 的自动快照（SLOT-06）：每次运行一组 `gate-snapshot-<时间戳>.tsv`、`.stdout.log`、`.stderr.log`（不用 `.out.log`：那是步骤输出的命名，自测据此判断步骤是否运行）与停止文件 `.stop`，同一 `-OutDir` 复用时各次运行文件不同。
 - **SR-X6 的原因字段**（R3）：`name= pid= ppid= created= exe= cwd= cmdline=[…]`，读不到的值写 `unreadable`；整条链没有仓库证据的情形另写 `ancestors-walked=<上溯层数>`。命令行读不到的情形不另读 cwd（与命令行在同一处进程内存，读不到），写 `cwd=unreadable`。
 - `selftest.ps1` 的输出：`<OutDir>/selftest.log`（缺省 `%TEMP%\slot-selftest-out-<时间>`）。
 
