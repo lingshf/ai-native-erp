@@ -22,7 +22,7 @@ npm run start:local
 
 `verify`依次检查 Biome、严格类型、目录导入边界、完整 Vitest，最后构建 Web。测试与启动直接执行 TS 源码，不需要中间 JS 构建。API 默认监听 `http://127.0.0.1:4180` 并托管 Web 构建产物；未构建前端时明确返回 503，不回退旧页面。开发时在第二终端运行 `npm run dev --workspace @erp/web`，Vite 固定 5173/strictPort，代理到 4180。
 
-`start:local`不自动加载`.env`，示例环境项见`.env.example`；只向当前进程显式提供新目标库的绝对路径。启动仅校验最新 schema，不自动迁移；旧目标库须先显式 migrate 升级到 019，已发布迁移与 checksum 不变。未提供 `ERP_SQLITE_FILE` 时只启动未配置壳，health 标记`data:unconfigured`，财务请求明确 503，不创建账簿。
+`start:local`不自动加载`.env`，示例环境项见`.env.example`；只向当前进程显式提供新目标库的绝对路径。启动仅校验最新 schema，不自动迁移；旧目标库须先显式 migrate 升级到 020，已发布迁移与 checksum 不变。未提供 `ERP_SQLITE_FILE` 时只启动未配置壳，health 标记`data:unconfigured`，财务请求明确 503，不创建账簿。
 
 首次连接有效的新目标库时建立固定 LOCAL tenant/book 下的 DEFAULT 月度教学公司（CNY、精度 2、当前财年）、八个内置科目和 12 个开放期间；**不创建示例凭证**。重复启动不覆盖已有主数据。不要把原账或快照选为目标库；不会隐式导入旧账，也不会改动其他副本的凭证或草稿。
 
