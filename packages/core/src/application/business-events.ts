@@ -27,7 +27,7 @@ import {
 } from "@erp/core/domain";
 import { businessDraft, cashServiceCancelPlan, cashServicePlan } from "./business-event-cash.ts";
 import { clearingMatchPreview, statisticsPreview } from "./business-event-ledger.ts";
-import { required } from "./business-event-plan.ts";
+import { required, waitFor, type RepositorySteps } from "./business-event-plan.ts";
 import { JournalService, type JournalTools, type JournalConfirm } from "./journals.ts";
 import type { MasterDataRepository, MasterDataStore } from "./master-data.ts";
 export type BusinessSummary = Pick<
@@ -135,6 +135,51 @@ function checkedEvent(event: BusinessEvent) {
         businessError("lines", "shape");
     }
   } else businessError("operation", "shape");
+}
+function* businessPreviewSteps(
+  repo: MasterDataRepository,
+  journals: JournalService,
+  tools: JournalTools,
+  company: string,
+  event: EventCommand,
+): RepositorySteps<BusinessPreview> {
+  const owner = required(yield* waitFor(repo.company(company)));
+  const period = yield* waitFor(repo.period(company, event.date.slice(0, 7)));
+  if (!period || period.status !== "open") journalError("date", "period");
+  // Queued journals keep the journal plan's own fingerprint; no business fingerprint is added.
+  if (event.operation === "journal") {
+    const current = yield* waitFor(journals.plan(repo, company, event));
+    return { ...current, matches: [], statistics: null, clearing: [] };
+  }
+  const draft = businessDraft(event);
+  const ledger = { company, owner, period };
+  const part =
+    event.operation === "cash_service"
+      ? cashServicePlan(repo, journals, company, owner, event, draft)
+      : event.operation === "cash_service.cancel"
+        ? cashServiceCancelPlan(repo, journals, company, event, draft)
+        : event.operation === "statistics"
+          ? statisticsPreview(repo, tools, ledger, event)
+          : clearingMatchPreview(repo, tools, ledger, event);
+  const { current, matches, statistics, clearing, evidence } = yield* part;
+  // `fingerprint` keeps the key position it has in `current`.
+  return {
+    ...current,
+    fingerprint: tools.hash([
+      "business-plan-v1",
+      company,
+      event,
+      current.fingerprint,
+      yield* waitFor(repo.businessStamp(company)),
+      matches,
+      statistics,
+      clearing,
+      evidence,
+    ]),
+    matches,
+    statistics,
+    clearing,
+  };
 }
 export class BusinessEventService {
   private readonly journals: JournalService;
@@ -247,42 +292,10 @@ export class BusinessEventService {
     company: string,
     event: EventCommand,
   ): Promise<BusinessPreview> {
-    const owner = required(await repo.company(company));
-    const period = await repo.period(company, event.date.slice(0, 7));
-    if (!period || period.status !== "open") journalError("date", "period");
-    // Queued journals keep the journal plan's own fingerprint; no business fingerprint is added.
-    if (event.operation === "journal") {
-      const current = await this.journals.plan(repo, company, event);
-      return { ...current, matches: [], statistics: null, clearing: [] };
-    }
-    const draft = businessDraft(event);
-    const ledger = { company, owner, period };
-    const { current, matches, statistics, clearing, evidence } =
-      event.operation === "cash_service"
-        ? await cashServicePlan(repo, this.journals, company, owner, event, draft)
-        : event.operation === "cash_service.cancel"
-          ? await cashServiceCancelPlan(repo, this.journals, company, event, draft)
-          : event.operation === "statistics"
-            ? await statisticsPreview(repo, this.tools, ledger, event)
-            : await clearingMatchPreview(repo, this.tools, ledger, event);
-    // `fingerprint` keeps the key position it has in `current`.
-    return {
-      ...current,
-      fingerprint: this.tools.hash([
-        "business-plan-v1",
-        company,
-        event,
-        current.fingerprint,
-        await repo.businessStamp(company),
-        matches,
-        statistics,
-        clearing,
-        evidence,
-      ]),
-      matches,
-      statistics,
-      clearing,
-    };
+    const steps = businessPreviewSteps(repo, this.journals, this.tools, company, event);
+    let step = steps.next();
+    while (!step.done) step = steps.next((await step.value) as never);
+    return step.value;
   }
   preview(company: string, event: BusinessEvent) {
     checkedCode(company);

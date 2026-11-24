@@ -8,6 +8,10 @@ export interface BusinessEventPart {
   readonly clearing: BusinessPreview["clearing"];
   readonly evidence: unknown;
 }
+export type RepositorySteps<T> = Generator<Promise<unknown>, T, never>;
+export function* waitFor<T>(pending: Promise<T>): Generator<Promise<T>, T, T> {
+  return yield pending;
+}
 export function required<T>(value: T | null): T {
   if (value === null) throw new DomainError("NOT_FOUND");
   return value;

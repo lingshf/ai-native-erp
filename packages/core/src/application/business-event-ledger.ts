@@ -10,7 +10,12 @@ import {
   type Period,
   type StatisticsEvent,
 } from "@erp/core/domain";
-import { required, type BusinessEventPart } from "./business-event-plan.ts";
+import {
+  required,
+  waitFor,
+  type BusinessEventPart,
+  type RepositorySteps,
+} from "./business-event-plan.ts";
 import type { JournalTools } from "./journals.ts";
 import type { MasterDataRepository } from "./master-data.ts";
 export interface LedgerContext {
@@ -37,26 +42,30 @@ function emptyBusinessPlan(company: string, owner: Company, event: BusinessEvent
     journals: [],
   };
 }
-async function ledgerPlan(
+function* ledgerPlan(
   repo: MasterDataRepository,
   tools: JournalTools,
   { company, owner, period }: LedgerContext,
   plan: JournalPlan,
-): Promise<BusinessEventPart["current"]> {
+): RepositorySteps<BusinessEventPart["current"]> {
   return {
     plan,
-    fingerprint: tools.hash([owner, period, await repo.journalConfigurationStamp(company)]),
+    fingerprint: tools.hash([
+      owner,
+      period,
+      yield* waitFor(repo.journalConfigurationStamp(company)),
+    ]),
   };
 }
-export async function statisticsPreview(
+export function* statisticsPreview(
   repo: MasterDataRepository,
   tools: JournalTools,
   context: LedgerContext,
   event: StatisticsEvent,
-): Promise<BusinessEventPart> {
+): RepositorySteps<BusinessEventPart> {
   const { company, owner } = context;
   const plan = emptyBusinessPlan(company, owner, event);
-  const resolved = compileDimensionRules(await repo.dimensionCatalog(company)).resolve({
+  const resolved = compileDimensionRules(yield* waitFor(repo.dimensionCatalog(company))).resolve({
     account: "LEDGER",
     day: event.date,
     explicit: event.dimensions,
@@ -69,21 +78,21 @@ export async function statisticsPreview(
     unit: event.unit,
     ...resolved,
   };
-  const current = await ledgerPlan(repo, tools, context, plan);
+  const current = yield* ledgerPlan(repo, tools, context, plan);
   return { current, matches: [], statistics, clearing: [], evidence: null };
 }
-export async function clearingMatchPreview(
+export function* clearingMatchPreview(
   repo: MasterDataRepository,
   tools: JournalTools,
   context: LedgerContext,
   event: ClearingEvent,
-): Promise<BusinessEventPart> {
+): RepositorySteps<BusinessEventPart> {
   const { company, owner } = context;
   const plan = emptyBusinessPlan(company, owner, event);
-  const account = required(await repo.account(company, event.account));
+  const account = required(yield* waitFor(repo.account(company, event.account)));
   if (!account.active || !["clearing", "suspense"].includes(account.purpose))
     businessError("account", "account");
-  const lines = await repo.clearingLines(company, event.lines);
+  const lines = yield* waitFor(repo.clearingLines(company, event.lines));
   if (
     lines.length !== event.lines.length ||
     lines.some((line) => line.account !== event.account || line.balancing || line.date > event.date)
@@ -92,12 +101,7 @@ export async function clearingMatchPreview(
   if (lines.some((line) => line.matched)) businessError("lines", "source", true);
   if (lines.reduce((sum, line) => sum + BigInt(line.debit) - BigInt(line.credit), 0n) !== 0n)
     businessError("lines", "line");
-  const current = await ledgerPlan(repo, tools, context, plan);
-  return {
-    current,
-    matches: [],
-    statistics: null,
-    clearing: event.lines,
-    evidence: [account, lines],
-  };
+  const clearing = event.lines;
+  const current = yield* ledgerPlan(repo, tools, context, plan);
+  return { current, matches: [], statistics: null, clearing, evidence: [account, lines] };
 }
