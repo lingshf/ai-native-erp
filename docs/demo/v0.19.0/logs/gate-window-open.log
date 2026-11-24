@@ -1,0 +1,9 @@
+window-open (D505) 2026-11-23T17:25:43.7213419-08:00
+22720 cpuSec=0.52 cmd="C:\Program Files\nodejs\node.exe" "C:\Program Files\nodejs/node_modules/npm/bin/npm-cli.js" start
+17516 cpuSec=1.61 cmd=node  src/server.js
+67836 cpuSec=0.58 cmd="C:\Program Files\nodejs\node.exe" "C:\Program Files\nodejs/node_modules/npm/bin/npm-cli.js" start
+68596 cpuSec=0.73 cmd=node  --env-file-if-exists=.env server.js
+71336 cpuSec=0.59 cmd="C:\Program Files\nodejs\node.exe" dist/server.js
+68508 cpuSec=0.39 cmd="C:\Program Files\nodejs\node.exe" --env-file-if-exists=.env dist/server.js
+4056 cpuSec=1.23 cmd="C:\Program Files\nodejs\node.exe" "C:\Program Files\nodejs/node_modules/npm/bin/npx-cli.js" playwright test
+listen 4204/4173: []
