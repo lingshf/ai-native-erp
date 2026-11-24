@@ -746,18 +746,19 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 ## S20：测量脚本入库 + 拆分 OrderView + 财务维度“刷新列表”（建议 v0.19.0）
 
-计划与任务书见 [S20.md](S20.md)（S20 新决定自 D502 起，D502 已用于 MEAS-01 M9 哈希掩码口径，下一个可用 D503；D496–D501 已由 DEMO-19 时段与 v0.18.0 发布使用）。基线 main `3f8f2ff`（S19 两个开发任务与 DOC-19 都已合并；DEMO-19 / v0.18.0 进行中）。三条泳道 A（MEAS-01）、B（REFAC-11）、C（TLIST-04），都不加迁移，可同时派给 3 名开发。TLIST-04 未合并则发 v0.18.1。
+计划与任务书见 [S20.md](S20.md)（S20 新决定自 D502 起，D502–D511 已用（D502 MEAS-01 M9 哈希掩码口径；D503–D510 DEMO-20 时段与 v0.19.0 发布；D511 采纳 S20 回顾行动 5、7），下一个可用 D512；D496–D501 已由 DEMO-19 时段与 v0.18.0 发布使用）。基线 main `3f8f2ff`（S19 两个开发任务与 DOC-19 都已合并；DEMO-19 / v0.18.0 进行中）。三条泳道 A（MEAS-01）、B（REFAC-11）、C（TLIST-04），都不加迁移，可同时派给 3 名开发。TLIST-04 未合并则发 v0.18.1。
 
 **不在本 Sprint**：M2-05 真实演练与 M2-06（仍待用户决定 A / B / C）；`OrderLookup` 等其他函数体拆分；结算、业务事件等列表的“刷新列表”；`slot-run.ps1` 改用新的 dist 检查脚本；把测量脚本接入 CI 或任务书模板；OQ-01 后续域。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [MEAS-01](MEAS-01-bundle-measure-script.md) | 体积测量脚本入库（S18 回顾行动 4） | 开发工具 | P1 | 无 | `scripts/measure/**`、`packages/infra/test/tooling/bundle-compare.test.ts`、`scripts/test-shard-weights.json`（加一行） | 不加 | 不需要 | todo | — |
+| [MEAS-01](MEAS-01-bundle-measure-script.md) | 体积测量脚本入库（S18 回顾行动 4） | 开发工具 | P1 | 无 | `scripts/measure/**`、`packages/infra/test/tooling/bundle-compare.test.ts`、`scripts/test-shard-weights.json`（加一行） | 不加 | 不需要 | done | [#298](https://github.com/lingshf/ai-native-erp/pull/298)（`6156759`） |
 | [REFAC-11](REFAC-11-order-view-split.md) | 拆分订单详情 `OrderView` 函数体，不改行为 | 重构（页面） | P2 | 无 | `trade-orders/order-view.tsx` 与同目录新文件 | 不加 | 不需要 | done | [#299](https://github.com/lingshf/ai-native-erp/pull/299)（`6fbc2da`） |
 | [TLIST-04](TLIST-04-dimensions-refresh.md) | 财务维度加“刷新列表” | 功能（列表） | P2 | 无 | `Dimensions.tsx`、`dimensions.test.tsx` | 不加 | 不需要 | done | [#296](https://github.com/lingshf/ai-native-erp/pull/296)（`ea24f87`） |
-| DEMO-20（无任务书） | v0.19.0 RC 与 Demo（TLIST-04 未合并则 v0.18.1），验收见 [S20.md](S20.md#demo-20-验收) | 发布 | P1（Sprint 末） | v0.18.0 已发布；每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | todo | — |
+| DEMO-20（无任务书） | v0.19.0 RC 与 Demo（TLIST-04 未合并则 v0.18.1），验收见 [S20.md](S20.md#demo-20-验收) | 发布 | P1（Sprint 末） | v0.18.0 已发布；每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | done | [#302](https://github.com/lingshf/ai-native-erp/pull/302)（`c6d5e24`；tag `v0.19.0` → `release/v0.19.0` 的 `10292ed`，D510） |
 
 - **并行**：A ∥ B ∥ C，冲突域不相交；共享单文件 `scripts/test-shard-weights.json` 只有 A 改；都不申请浏览器时段，服从 D442 / D480 时段停用通知；DEMO-20 排在它们结案之后。体积口径见 [S20.md](S20.md#l10--体积口径)。
+- **Sprint 评审与回顾**：[S20 评审](../reviews/S20-review.md)（通过：三个开发任务与 RC 已合并，v0.19.0 已授权发布；打回 8、待证据 1；D502–D510）、[S20 回顾](../reviews/S20-retro.md)（行动 1 `npm ci` 输出存文件、行动 2 门禁父进程与每分钟快照、行动 3 批准命令不加管道、行动 4 `-SkipCapture` 开窗前完成、行动 5 同一事实只写一处（D511），落到 S21 DEMO-21；行动 6 测试满载耗时条款、行动 7 设计文档核对固定来源（D511），落到设计侧）。
 
 ## S21：时段 runner 调用位置自检 + main Full 偶发失败根治 + 业务事件“刷新列表”（建议 S20 之后的下一个 MINOR）
 
@@ -769,8 +770,8 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | [SLOT-04](SLOT-04-call-location-check.md) | `slot-run.ps1` 调用位置自检 + dist 检查改用 `assert-web-dist.ps1` | 开发工具 | P1 | DEMO-20 窗口已关闭 | `scripts/slot/slot-run.ps1`、`scripts/slot/selftest-location.ps1`（新）、`scripts/slot/README.md` | 不加 | 不需要 | todo | — |
 | [FLAKE-08](FLAKE-08-virtualizer-timer-after-teardown.md) | 虚拟列表防抖定时器在 jsdom 拆除后触发（main Full 偶发 `window is not defined`） | 修复（测试基础设施） | P1 | 无 | `packages/web/test/setup.ts` 和 / 或 `packages/web/test/ledger-reports.test.tsx` | 不加 | 不需要 | todo | — |
-| [TLIST-05](TLIST-05-business-events-refresh.md) | 业务事件与待转队列加“刷新列表” | 功能（列表） | P2 | 无 | `business-events/list.tsx`、`business-events/company-events.tsx`、`business-events.test.tsx` | 不加 | 不需要 | todo | — |
-| DOC-21（无任务书） | 送审清单写入证据格式四条，验收见 [S21.md](S21.md#doc-21-验收) | 文档（发布流程） | P2 | 无 | `docs/release/README.md` | 不加 | 不需要 | todo | — |
+| [TLIST-05](TLIST-05-business-events-refresh.md) | 业务事件与待转队列加“刷新列表” | 功能（列表） | P2 | 无 | `business-events/list.tsx`、`business-events/company-events.tsx`、`business-events.test.tsx` | 不加 | 不需要 | done | [#301](https://github.com/lingshf/ai-native-erp/pull/301)（`f9024d5`） |
+| DOC-21（无任务书） | 送审清单写入证据格式四条，验收见 [S21.md](S21.md#doc-21-验收) | 文档（发布流程） | P2 | 无 | `docs/release/README.md` | 不加 | 不需要 | done | [#305](https://github.com/lingshf/ai-native-erp/pull/305)（`276fd3b`） |
 | DEMO-21（无任务书） | `<S21 版本>` RC 与 Demo，验收见 [S21.md](S21.md#demo-21-验收) | 发布 | P1（Sprint 末） | `<S20 版本>` 已发布；每个开发任务与 DOC-21 已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | todo | — |
 
 - **并行**：A ∥ B ∥ C，冲突域不相交，没有共享单文件；A 在 DEMO-20 窗口关闭后才派发，DEMO 窗口期间不改 `scripts/slot/`；都不申请浏览器时段，服从 D442 / D480 时段停用通知；DEMO-21 排在它们结案之后。体积口径见 [S21.md](S21.md#l10--体积口径)。
