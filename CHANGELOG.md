@@ -6,7 +6,24 @@
 
 ## [Unreleased]
 
-（暂无）
+> **发布候选（DEMO-20，未发布）**：RC 范围终点固定为完整 SHA `6156759c2aef6b9805aca70ba5505490e2bd4c5b`（MEAS-01 [#298](https://github.com/lingshf/ai-native-erp/pull/298)）。TLIST-04 `ea24f87`、REFAC-11 `6fbc2da`、MEAS-01 `6156759` 对该终点的 `git merge-base --is-ancestor` 退出码均为 0，所以版本号取 minor（0.18.0 → 0.19.0）。tag 目标按 D484：打在 `release/v0.19.0` 上审核通过的 RC 头，授权前不打。
+>
+> v0.18.0 不在 main 上（D484），它与 main 的合并基是 `3f8f2ff9fd010ff63fb8d891b4a4b1209d4cd0ee`。对照 `git log --oneline --first-parent v0.18.0..6156759c2aef6b9805aca70ba5505490e2bd4c5b`（**固定在该完整 SHA 上共 8 行**，每行一个 PR）：
+> - 有条目：[#296](https://github.com/lingshf/ai-native-erp/pull/296)（TLIST-04，新增）、[#299](https://github.com/lingshf/ai-native-erp/pull/299)（REFAC-11，变更，无用户可见变化）、[#298](https://github.com/lingshf/ai-native-erp/pull/298)（MEAS-01，变更，开发工具，无用户可见变化）。
+> - 已发布、只改日期或只改设计 / 流程文档，**不需要条目**，单列：[#293](https://github.com/lingshf/ai-native-erp/pull/293)（v0.18.0 的 RC 与 Demo，已随 v0.18.0 发布）、[#295](https://github.com/lingshf/ai-native-erp/pull/295)（v0.18.0 发布日与链接，只改日期）、[#294](https://github.com/lingshf/ai-native-erp/pull/294)（S20 计划，设计）、[#297](https://github.com/lingshf/ai-native-erp/pull/297)（S19 评审与回顾，设计）、[#300](https://github.com/lingshf/ai-native-erp/pull/300)（S21 计划，设计）。
+>
+> 与 `3f8f2ff` 相比，`git diff --shortstat 3f8f2ff9fd010ff63fb8d891b4a4b1209d4cd0ee 6156759c2aef6b9805aca70ba5505490e2bd4c5b -- packages scripts` 为 14 个文件（+1280/−196）。没有迁移。完整版本差异（两点）与合并基对比（三点，D483）的链接和数字在 tag 创建后核对填入。Demo 与窗口证据在 [docs/demo/v0.19.0](docs/demo/v0.19.0/README.md)（窗口前为草稿，不含截图）。
+
+S20 Sprint：一项用户可见的小功能（TLIST-04）、一项只拆分文件的重构（REFAC-11）和一项开发工具（MEAS-01）。**无迁移，无依赖变化**，已有账套不需要 migrate，不改过账规则与任何金额、数量口径。
+
+### Added（用户可见）
+
+- **财务维度页多一个“刷新列表”按钮（TLIST-04，[#296](https://github.com/lingshf/ai-native-erp/pull/296)，合并提交 `ea24f87`）**：“财务维度”页的“新建配置”之后多一个“刷新列表”按钮（英文 “Refresh list”）。点它按当前公司、类型与上级维度从第一页重新读取列表；所选项和正在编辑的内容保留，不弹确认，编辑器打开时仍可用。Tab 顺序在“新建配置”之后多一站。数字取自 #296 正文：`Dimensions` 路由块 +103 B（上限 +200 B），首屏、其他块与 CSS ±0。
+
+### Changed（无用户可见变化）
+
+- **订单详情内部拆分（REFAC-11，[#299](https://github.com/lingshf/ai-native-erp/pull/299)，合并提交 `6fbc2da`）**：`OrderView` 的函数体拆到 `packages/web/src/trade-orders/` 下的新文件（`order-view.tsx` 212 → 49 行，另有 Hook、事实、订单行与操作文件），只搬移，DOM、文案、样式、键盘与请求不变。依据 #299 正文 R4（5 个场景 base 与 head 逐字节相同，jsdom 证明）；订单页路由块 +204 B（预算 +900 B，`-HASH` 口径，D502）。
+- **测量脚本入库（MEAS-01，[#298](https://github.com/lingshf/ai-native-erp/pull/298)，合并提交 `6156759`）**：`scripts/measure/` 新增 `bundle-compare.mjs`、`bundle-measure.mjs` 与 README，统一包体积测量口径（只开发工具，不影响运行时与界面）；另有一个 tooling 测试。`git diff --stat 5664fea f4aa1e0 -- packages/web` 输出为空（#298 正文）。
 
 ## [0.18.0] - 2026-11-23
 
