@@ -1,6 +1,6 @@
 # Implementation tasks
 
-> **历史记录，不是待办（D561，KDOC-03）。** 本文件是 M0 重启之前 ARCH-M0x / TASK 阶段的实施记录，不再登记新任务，内容不再更新。现行唯一待办是[任务总表](tasks/README.md)（见[团队章程 §2](team-charter.md#2-权威路径)）；全部决定的位置见[决定索引](decisions.md)。
+> **历史记录，不是待办（D562，KDOC-03）。** 本文件是 M0 重启之前 ARCH-M0x / TASK 阶段的实施记录，不再登记新任务，内容不再更新。现行唯一待办是[任务总表](tasks/README.md)（见[团队章程 §2](team-charter.md#2-权威路径)）；全部决定的位置见[决定索引](decisions.md)。
 
 ## 当前授权：ARCH-M00起逐阶段实施
 

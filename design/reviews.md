@@ -1,6 +1,6 @@
 # 公开验证记录
 
-> **历史记录（D561，KDOC-03）。** 本文件是 M0 重启之前 ARCH-M0x 阶段的公开验证记录，内容不再更新。它与同名目录 [`reviews/`](reviews/README.md) 无关：现行的里程碑评审、Sprint 评审与回顾都在 `reviews/` 目录下，见其 [README](reviews/README.md)。
+> **历史记录（D562，KDOC-03）。** 本文件是 M0 重启之前 ARCH-M0x 阶段的公开验证记录，内容不再更新。它与同名目录 [`reviews/`](reviews/README.md) 无关：现行的里程碑评审、Sprint 评审与回顾都在 `reviews/` 目录下，见其 [README](reviews/README.md)。
 
 本文件只保留可公开的产品验证结论。私有研究资料、原始来源案例、机器路径、内部依赖地址及宿主操作记录不随代码发布。它不是原本机审查日志的逐字副本。
 

@@ -1,6 +1,6 @@
 # 决定索引
 
-D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D561，KDOC-03）。本页只是索引：决定的原文与生效范围以“位置”列链接的记录为准，本页不复述、不改写。下一个可用编号只在[任务总表](tasks/README.md)的 S24 摘要行写一处，本页不写。
+D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562，KDOC-03）。本页只是索引：决定的原文与生效范围以“位置”列链接的记录为准，本页不复述、不改写。下一个可用编号只在[任务总表](tasks/README.md)的 S24 摘要行写一处，本页不写。
 
 ## 怎么读
 
@@ -46,7 +46,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D561�
 | D17 | 无 | | |
 | D18 | 提及 | | [design/reviews/M1.md:46](reviews/M1.md)；[design/tasks/M1-R3-trade-report-capacity.md:14](tasks/M1-R3-trade-report-capacity.md)；[docs/performance/legacy-reconciliation-bench.md:46](../docs/performance/legacy-reconciliation-bench.md) 等 12 处 |
 | D19 | 无 | | |
-| D20 | 提及 | | [design/tasks/PROC-01-release-claims-and-demo.md:10](tasks/PROC-01-release-claims-and-demo.md)；[docs/README.md:59](../docs/README.md)；[docs/README.md:92](../docs/README.md) 等 8 处 |
+| D20 | 提及 | | [design/tasks/PROC-01-release-claims-and-demo.md:10](tasks/PROC-01-release-claims-and-demo.md)；[docs/README.md:61](../docs/README.md)；[docs/README.md:94](../docs/README.md) 等 8 处 |
 | D21 | 提及 | | [CHANGELOG.md:207](../CHANGELOG.md)；[CHANGELOG.md:227](../CHANGELOG.md)；[CHANGELOG.md:383](../CHANGELOG.md) 等 31 处 |
 | D22 | 无 | | |
 | D23 | 无 | | |
@@ -587,4 +587,6 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D561�
 | D558 | 表 | KDOC 修正：KDOC-05 与 KDOC-07 共用 `docs/user/backup-and-legacy.md`… | [design/tasks/S24.md:199](tasks/S24.md) |
 | D559 | 表 | #365 文档入口的证据口径：覆盖矩阵中每个标为“已覆盖”的格都要引用完整 SHA 与具体文件，否则降级为 partia… | [design/tasks/S24.md:200](tasks/S24.md) |
 | D560 | 表 | KDOC-01、KDOC-02、KDOC-11 落地：新增 ADR-LOCAL-001（保持 SQLite 本机单用户，… | [design/tasks/S24.md:201](tasks/S24.md) |
-| D561 | 表 | KDOC-03 落地：新增决定索引，用脚本从 `design/`、`docs/` 与 `CHANGELOG.md` 生成… | [design/tasks/S24.md:202](tasks/S24.md) |
+| D561 | 表 | KDOC 文档页的钉版本口径：在 KDOC PR 中，本 PR 改动的页在 `docs/README.md` 覆盖矩阵中… | [design/tasks/S24.md:202](tasks/S24.md) |
+| D562 | 表 | KDOC-03 落地：新增决定索引，用脚本从 `design/`、`docs/` 与 `CHANGELOG.md` 生成… | [design/tasks/S24.md:203](tasks/S24.md) |
+| D563 | 表 | AI 讲解与教学模式（#372 §6b）：服务端**不**按教学模式拦截 `/api/v1/ai/explain`，界面… | [design/tasks/S24.md:204](tasks/S24.md) |
