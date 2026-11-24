@@ -1,6 +1,6 @@
 # TLIST-06：付款与收款页加“刷新列表”
 
-- Sprint：S22（[计划](S22.md)）　类型：功能（列表，小步打磨）　优先级：P2　决定：待协调者定编号　建议分支：`tlist-06-settlements-refresh`
+- Sprint：S22（[计划](S22.md)）　类型：功能（列表，小步打磨）　优先级：P2　决定：[D513](S22.md#s22-期间决定)（刷新只做 `page.refetch()`，不清草稿、预览和信封；即下文设计决定 2、4、5）　建议分支：`tlist-06-settlements-refresh`
 - 来源：[S21 候选池](S21.md#候选池s21-之后)“按 ② 拆 `SettlementEntry`，再给结算加‘刷新列表’”。写法照搬 [TLIST-05](TLIST-05-business-events-refresh.md)（#301）/ [TLIST-03](TLIST-03-accounts-refresh.md)（#288）。
 - **前置**：[REFAC-12](REFAC-12-settlement-entry-split.md) 已合并。本任务以 REFAC-12 合并后的 main 为 base，在同一泳道接着做；REFAC-12 未在 S22 的 RC 冻结前合并时，本任务顺延到 S23（见 [S22 计划](S22.md#泳道)）。
 - 迁移：**不加**。浏览器时段：**不需要**（原生键盘与 390 宽度由 DEMO-22 的浏览器运行取证，见“证据要求”）。
