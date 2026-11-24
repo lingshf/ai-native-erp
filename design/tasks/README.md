@@ -729,7 +729,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 - **并行**：A ∥ B ∥ C，冲突域两两不相交，开发同时在岗不超过 3 人；没有共享单文件；都不申请浏览器时段，服从 D442 / D480 时段停用通知；DEMO-18 排在它们结案之后，FIX-TADJ-BUSY（#278）的 `[Unreleased]` 条目转入新版本，不重复添加（D484）。
 - **Sprint 评审与回顾**：[S18 评审](../reviews/S18.md)（通过：三个开发任务与 RC 已合并，v0.17.0 已发布；打回 11、待证据 1，main Full 零失败；D488–D494）、[S18 回顾](../reviews/S18-retro.md)（行动 1 清理前记录并保留时段产物哈希（D492）、行动 2 `npm ci` 在窗口开启前完成（D493）；行动 3 RC 数字自查（D495，送审清单由 S19 文档任务 DOC-19 写入）；行动 4 测量脚本入库（S20 候选）；S20 候选见回顾末节）。
 
-## S19：拆分 OrderList + 科目表“刷新列表”（建议 v0.18.0）
+## S19：拆分 OrderList + 科目表“刷新列表”（v0.18.0，D501）
 
 计划与任务书见 [S19.md](S19.md)（计划 [#287](https://github.com/lingshf/ai-native-erp/pull/287) = `19cd963`；S19 新决定自 D496 起）。基线 main `1638445`（S18 三个开发任务都已合并）。两条泳道 A（REFAC-10）、B（TLIST-03），都不加迁移；第三个开发位置空着，理由见 [S19.md](S19.md#为什么只有两个开发任务)。TLIST-03 未合并则发 v0.17.1。
 
@@ -739,13 +739,14 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | [REFAC-10](REFAC-10-order-list-split.md) | 拆分订单列表 `OrderList` 函数体，不改行为 | 重构（页面） | P2 | 无 | `trade-orders/order-list.tsx` 与同目录新文件 | 不加 | 不需要 | done | [#291](https://github.com/lingshf/ai-native-erp/pull/291)（`6787f52`） |
 | [TLIST-03](TLIST-03-accounts-refresh.md) | 科目表加“刷新列表” | 功能（列表） | P2 | 无 | `Accounts.tsx`、`ui/master-labels.ts`、`accounts.test.tsx` | 不加 | 不需要 | done | [#288](https://github.com/lingshf/ai-native-erp/pull/288)（`bd8d71f`） |
-| DEMO-19（无任务书） | v0.18.0 RC 与 Demo（TLIST-03 未合并则 v0.17.1），验收见 [S19.md](S19.md#demo-19-验收) | 发布 | P1（Sprint 末） | v0.17.0 已发布；每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | 进行中 | — |
+| DEMO-19（无任务书） | v0.18.0 RC 与 Demo（TLIST-03 未合并则 v0.17.1），验收见 [S19.md](S19.md#demo-19-验收) | 发布 | P1（Sprint 末） | v0.17.0 已发布；每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | done | [#293](https://github.com/lingshf/ai-native-erp/pull/293)（`5398eb8`；tag `v0.18.0` → `release/v0.18.0` 的 `422d24b`）；发布日 [#295](https://github.com/lingshf/ai-native-erp/pull/295)（`e2a30eb`） |
 
 - **并行**：A ∥ B，冲突域不相交，没有共享单文件；都不申请浏览器时段，服从 D442 / D480 时段停用通知；DEMO-19 排在它们结案之后。
+- **Sprint 评审与回顾**：[S19 评审](../reviews/S19.md)（通过：两个开发任务、DOC-19 与 RC 已合并，v0.18.0 已发布；打回 8、待证据 1，S19 范围 main Full 零失败；D496–D501）、[S19 回顾](../reviews/S19-retro.md)（行动 1 开窗申请附逐字命令（`pwsh`，在 app worktree 内调用 tool 的 `slot-run`）、行动 3 清单列出临时账套实际路径（D500）、行动 4 证据格式四条，均落到 S20 DEMO-20；行动 2 `slot-run.ps1` 调用位置自检为 S21 候选）。
 
 ## S20：测量脚本入库 + 拆分 OrderView + 财务维度“刷新列表”（建议 v0.19.0）
 
-计划与任务书见 [S20.md](S20.md)（S20 新决定自 D500 起；D496–D499 已由 DEMO-19 时段使用）。基线 main `3f8f2ff`（S19 两个开发任务与 DOC-19 都已合并；DEMO-19 / v0.18.0 进行中）。三条泳道 A（MEAS-01）、B（REFAC-11）、C（TLIST-04），都不加迁移，可同时派给 3 名开发。TLIST-04 未合并则发 v0.18.1。
+计划与任务书见 [S20.md](S20.md)（S20 新决定自 D502 起，D502 已用于 MEAS-01 M9 哈希掩码口径，下一个可用 D503；D496–D501 已由 DEMO-19 时段与 v0.18.0 发布使用）。基线 main `3f8f2ff`（S19 两个开发任务与 DOC-19 都已合并；DEMO-19 / v0.18.0 进行中）。三条泳道 A（MEAS-01）、B（REFAC-11）、C（TLIST-04），都不加迁移，可同时派给 3 名开发。TLIST-04 未合并则发 v0.18.1。
 
 **不在本 Sprint**：M2-05 真实演练与 M2-06（仍待用户决定 A / B / C）；`OrderLookup` 等其他函数体拆分；结算、业务事件等列表的“刷新列表”；`slot-run.ps1` 改用新的 dist 检查脚本；把测量脚本接入 CI 或任务书模板；OQ-01 后续域。
 
