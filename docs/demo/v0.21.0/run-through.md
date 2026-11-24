@@ -170,9 +170,38 @@ readiness：`openItems 8`，DEFAULT 账套的未结项、PO-C1 部分开票/10�
 截图原件与入库逐字节一致（`-text` 二进制）：`shots/`（步骤 1，原件在 `%TEMP%\demo22\shots-dry`）`settlements-en-green-1440.png` 127852 B `7D321DC33A5B56FDB8D62EFE01C57EF30C98C88B2EBDA2F27C6673425FC0B8FB`、`settlements-en-green-390.png` 86276 B `F956FC79260018C8BF557378750CB84720C48E28D29A71CD98B5CD0FB28C869D`、`settlements-zh-red-1440.png` 122223 B `393FAF7E34014068C49E84122D13CD7673965F3601D40AFA001EFEE20AF65DDA`、`settlements-zh-red-390.png` 85112 B `43A75C539A4C3B5CA585937367FF8449D778B06F51F1EADE5238C9AE0C0AA8D4`、`capture-log-main.json` 4330 B `533D390176093479E20B90557AFC9AA515B04B60C5CA1147E604E1B68DA27B35`；`shots-slot/`（步骤 2，原件在 `%TEMP%\demo22\out\shots`）`settlements-en-green-1440.png` 127478 B `3120D06DFC213FEF686ECC88A5A7C199597A40B9B8C4878AEEDD6022E38DF334`、`settlements-en-green-390.png` 86315 B `D9A2078FF3F62B40CB3D3553FD6EBBB9D6F4D83832DB14DB2162B9A7C38C85D5`、`settlements-zh-red-1440.png` 121282 B `D887FC6E849395D751F1524A2615F0E673DC1DC49262D1DCBEAC321EFC60E917`、`settlements-zh-red-390.png` 85123 B `AE021871D58E35B3072E861B52B44767C08CEBC1B489A2C3EAB986B601BC66B0`、`capture-log-main.json` 4330 B（与步骤 1 的同哈希）。
 
 缺口：账套文件本身没有留存，窗口内也没有在清理前对 `out\` 之外的目录（例如 Chrome 的临时用户目录）做清单，那部分没有元数据。
+
+**入库日志全表（HEAD blob，`docs/demo/v0.21.0/logs/`，共 22 个文件；行数 = 以 LF 计的文本行数；告警 = 完整 `git diff --check` 的 `path:line:` 条数，合计 1710，涉及 21 个文件，`slot-processes.tsv` 为 0）。** 前置（窗口外）产物是 `build-app.log`、`bundle-measure-*.out.log`、`focus-path-jsdom.out.log`、`gate-pre.tsv`、`npm-ci-*.log`、`skipcapture.out.log`；其余是窗口内产物或窗口后的测试（`s3-vitest.out.log`）：
+
+| 文件 | 字节 | SHA-256 | 行数 | 告警 |
+| --- | --- | --- | --- | --- |
+| `build-app.log` | 3889 | `B1F7FA71658B871564FED71055ED80427E4CC243C1D69834FFEA2B13A8668F3B` | 61 | 61 |
+| `bundle-measure-sprint.out.log` | 33739 | `1CDB26C15AE4156070FDB8145EDEF96311B513ED0CCAD618EC0105AC092E3673` | 516 | 516 |
+| `bundle-measure-tlist06.out.log` | 34011 | `78E5ED7F45223EAD3C7867DA4336571606EE6690F9310A2C5141364D826FBEE0` | 524 | 524 |
+| `capture-dry-run.out.log` | 3469 | `0ED3FEE170CB113CD0B802CDDF9F2BD0B1570BAD708AC5828804BBA2963DB844` | 52 | 52 |
+| `focus-path-jsdom.out.log` | 3181 | `8F093FE6E06E7BD62FAF97E49A96DA6B19CA9A98483DA808ABD50FE9D0CDC6DD` | 27 | 27 |
+| `gate-pre-window.tsv` | 16470 | `238F444566DDBB6CA9FE1190B22CBCFEDDFF03F1D7226F38D9415158F91F73AA` | 19 | 18 |
+| `gate-pre.tsv` | 14529 | `5F1AD195007C0CDA944488DD58670566CB812C3B8332A7502CCD8518DDC5F05D` | 17 | 16 |
+| `gate-window.out.log` | 80 | `4E71B704EB5A1E11B7ECA45B6DB51DDB04D9AE2179CA707C508ABF699905614E` | 2 | 2 |
+| `gate-window.tsv` | 83888 | `1093D2F9436022E96DD6C92C221EFEF6B5740C4DB31CC7D7B17DD28B0F76CC52` | 130 | 129 |
+| `npm-ci-app.log` | 159 | `1955BFC5AD631F71FD7A1BE1428F30D62B88E2CDAE8E9D85EC72F4E1EAEC7985` | 8 | 8 |
+| `npm-ci-tool.log` | 106 | `D395D348B690F5DBAF43D7F31981CB8E0AECB61811D15929FFA31BD8777C7B7E` | 6 | 6 |
+| `s3-vitest.out.log` | 265 | `61AC62E4E990136530BB500F78084FD0EC6CBC2E69A7B5464FAB8084FC2867F5` | 10 | 10 |
+| `skipcapture.out.log` | 3471 | `F23E2445649DE6EDC24937A5904AD4CDF99B07391A53C838C416980D82E3F15A` | 51 | 51 |
+| `slot-build.log` | 3881 | `7325C4B2C360E19D8F3E67E97EBACD4BDAC72C545E3505DBD56AA519448D5C6E` | 60 | 60 |
+| `slot-demo-capture-end-rev.txt` | 42 | `E123ECB20BFDA47BCEC958752AA958337FD49F525B623E4BB3C2D5F34E4ED9B6` | 2 | 1 |
+| `slot-demo-capture-start-rev.txt` | 42 | `E123ECB20BFDA47BCEC958752AA958337FD49F525B623E4BB3C2D5F34E4ED9B6` | 2 | 1 |
+| `slot-demo-capture.out.log` | 3425 | `7966CD62807BF8C7786369FA47B1B8B5D2C1F24B6D1D93624F65E2434AE67769` | 51 | 15 |
+| `slot-preflight-base.log` | 392 | `F08B302B7AC1B1DFFD9A8616534E2B5F9F6732901D066AD375159A5B1CAC907E` | 5 | 5 |
+| `slot-preflight-head.log` | 389 | `D6FF23F4B2A720C2A39496450075368B50A59443BE62B13164026485C13AF7CA` | 5 | 5 |
+| `slot-processes.tsv` | 539 | `96240A41F3301FE45FD3864BC7698F336AF62A70FDB853774B58EB0D19AAB3FD` | 11 | 0 |
+| `slot-run.out.log` | 51964 | `FBE71A884D9676376A116BC9FE23E111A2497A5DEB5A679ED70C0D82B0622640` | 102 | 102 |
+| `slot-slot-summary.log` | 51956 | `947A079647C808D5AF8FB868E9CE80E34592166D8C8B907951B6CDAF434BA7DC` | 101 | 101 |
+
+行数与告警不等：告警按 `git diff --check` 实测计数；两者的差异原因（行尾空白、Tab 或混合行尾）未逐文件核查，不下结论。窗口外产物的原件与 blob 的字节对应关系未逐一比对，仅给出 blob 的元数据。
 - `%TEMP%` 下还有 4 个我未创建于本窗口、也未触碰的 `erp-demo-*` 目录，不属于本窗口清单。
 
 **4. D495 的 `git diff --check`（D511 做法：不改原始日志，按原样给出排除规则）。**
-- 完整命令 `git diff --check 3ae4848d36c4c06c2e208173e58ed2cac3771564 <head>`：exit 2。告警全部落在 `docs/demo/v0.21.0/logs/` 下的原始日志（未改一字节，按 D511 保持原样；行尾为 CRLF 或有 Tab 分隔）。按文件的告警条数（`git diff --check` 的 `path:line:` 行数，共 20 个文件，均在 `docs/demo/v0.21.0/logs/`）：build-app.log 61、bundle-measure-sprint.out.log 516、bundle-measure-tlist06.out.log 524、capture-dry-run.out.log 52、focus-path-jsdom.out.log 27、gate-pre-window.tsv 18、gate-pre.tsv 16、gate-window.out.log 2、gate-window.tsv 129、npm-ci-app.log 8、npm-ci-tool.log 6、s3-vitest.out.log 10、skipcapture.out.log 51、slot-build.log 60、slot-demo-capture-end-rev.txt 1、slot-demo-capture-start-rev.txt 1、slot-demo-capture.out.log 15、slot-preflight-base.log 5、slot-preflight-head.log 5、slot-run.out.log 102、slot-slot-summary.log 101；非 `logs/` 路径为 0。
+- 完整命令 `git diff --check 3ae4848d36c4c06c2e208173e58ed2cac3771564 <head>`：exit 2。告警全部落在 `docs/demo/v0.21.0/logs/` 下的原始日志（未改一字节，按 D511 保持原样；行尾为 CRLF 或有 Tab 分隔）。按文件的告警条数（`git diff --check` 的 `path:line:` 行数，实测：完整输出 3418 行，其中 `path:line:` 告警 1710 条，涉及 21 个文件，全部在 `docs/demo/v0.21.0/logs/`）：build-app.log 61、bundle-measure-sprint.out.log 516、bundle-measure-tlist06.out.log 524、capture-dry-run.out.log 52、focus-path-jsdom.out.log 27、gate-pre-window.tsv 18、gate-pre.tsv 16、gate-window.out.log 2、gate-window.tsv 129、npm-ci-app.log 8、npm-ci-tool.log 6、s3-vitest.out.log 10、skipcapture.out.log 51、slot-build.log 60、slot-demo-capture-end-rev.txt 1、slot-demo-capture-start-rev.txt 1、slot-demo-capture.out.log 15、slot-preflight-base.log 5、slot-preflight-head.log 5、slot-run.out.log 102、slot-slot-summary.log 101；非 `logs/` 路径为 0。
 - 排除规则命令 `git diff --check 3ae4848d36c4c06c2e208173e58ed2cac3771564 <head> -- . ':!docs/demo/v0.21.0/logs'`：exit 0。
 - 具体 head 的两条命令输出写在 PR 正文。
