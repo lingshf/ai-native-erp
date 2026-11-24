@@ -1,5 +1,7 @@
 # Proposed design
 
+> **已取代（superseded，D560）**：本文中的双数据库（SQLite / PostgreSQL）、Server 档案、OIDC 身份与多用户批准设计已被 [ADR-LOCAL-001](adr/ADR-LOCAL-001.md) 取代：只做 SQLite、本机单用户、loopback 无登录。现行架构以 [M0 架构](m0-architecture.md)为准，方向以[路线图](roadmap.md)为准。本文保留为历史记录；其中的 FG / OQ 需求与会计政策按路线图开头的说明继续有效。
+
 当前用户已委托执行ARCH-M00..09、恢复贸易及在完整保护旧账/ID3后切换预览。宏观架构见[architecture](architecture.md)，详细设计和FR/TC见[architecture-migration](architecture-migration.md)。M00/M01/M02已限定验收发布。D-AM03/FR-AM03-01..08/TC-AM03-01..14的revision3独立G3及T11 r2/T12 r3/T13 r4各G5均释放MODEL01，当前r4组合规范/质量G6亦已释放MODEL01，代码a608ee1已完成保护交付、安全及快进main，精确新clone实际361/真实70/native/build/types通过；状态文档另行发布核验；当前证据见[项目](project.md)、[评审](reviews.md)。所核详细D全文8709809b…33560未改，旧标题“计划/待审”保留当时设计状态，不覆盖此门禁记录。M03不开放Server、真实身份或业务写入；本轮实际修复Vite默认CORS行为以符合原同源设计，没有扩展会计政策或改原账。
 
 ## ARCH-SME-01：新的长期架构提案入口
