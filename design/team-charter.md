@@ -33,7 +33,7 @@
 | --- | --- | --- | --- |
 | 目标、需求、架构、ADR、UX、决定 | `design/`（[路线图](roadmap.md)、[需求](requirements.md)、[架构](architecture.md)、[`adr/`](adr/)、[`ui/`](ui/)；决定记录在路线图 §6 与各 Sprint 计划的决定表） | Product/Design | 非作者评审；开发与 QA 核可行性和可测性 |
 | **唯一待办** | **[`design/tasks/README.md`](tasks/README.md)**（任务总表），以及它链接的 Sprint 计划 `design/tasks/S*.md` 与任务书 `design/tasks/<ID>-*.md` | Product/Design 负责顺序与含义，并照录执行字段；Team Leader 提供执行证据（§4） | 团队在交接时核对 |
-| 验收与测试证据 | [`design/test-cases.md`](test-cases.md) 与 PR 正文中的证据 | QA | 非作者评审；Product/Design 确认意图 |
+| 验收与测试证据 | [`design/test-cases.md`](test-cases.md) 与 PR 正文中的证据 | QA（评审会话 `5ec013bf`；D560 起已接手 `test-cases.md`） | 非作者评审；Product/Design 确认意图 |
 | 系统入口、用户 / 开发 / 运维指南、交接路径 | `docs/README.md`（**尚未建立**，由 Knowledge Lead 新建）及它映射的页面（现有 `docs/user/`、`docs/flows/`、`docs/performance/`、`docs/migration-runbook.md` 等） | Knowledge Lead 负责整合；设计、开发、版本管理提供事实 | 模块负责人核对事实；QA 演练关键步骤；非作者评审 |
 | 变更日志、发布说明、Demo 与发布执行记录 | [`CHANGELOG.md`](../CHANGELOG.md)、`docs/release/`、`docs/demo/` | Delivery/Release | 非作者评审核一致性；QA 验产物 |
 | 章程、Sprint 记录 | 本文件、`design/tasks/S*.md`、`design/reviews/` | Team Leader（Sprint 计划的任务内容由 Product/Design 撰写；任务的六项事实记在任务总表，见 §4） | 受影响的角色确认 |
@@ -112,5 +112,5 @@
 - **设计阶段质量项**：从 D555 之后的下一份任务书起加入；纯重构的适用规则见 §3 第 1 项（D557）。
 - **已知缺口**（登记在唯一待办，由各负责人处理）：
   - `docs/README.md` 系统入口与覆盖矩阵尚未建立。负责人：Knowledge Lead。
-  - `design/test-cases.md` 的维护者由设计角色移交给 QA，需要一次交接。负责人：Team Leader 协调。
+  - `design/test-cases.md` 的维护者由设计角色移交给 QA：已于 D560（KDOC-02）完成，文件开头已注明，用例内容未改。
   - 六项生命周期事实的首次实际记录从下一个新任务开始，记在任务总表的“执行记录”表（§4）。证据：Team Leader；照录：Product/Design。
