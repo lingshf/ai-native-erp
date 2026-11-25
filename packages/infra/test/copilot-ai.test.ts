@@ -199,33 +199,51 @@ it("BUG-02c: keeps the answer but disables AI until restart when termination is 
   await expect(adapter.complete(input, live())).rejects.toMatchObject({ reason: "cleanup" });
 });
 
+type Late = "event" | "abort";
+type Moment = "as the race settles" | "one microtask later";
+
+// The adapter's first Promise.race accepts the answer; interfere once it settles, either in the
+// race's own settlement callback (before the adapter resumes) or one microtask after that.
+function interfereAfterAnswer(
+  kind: Late,
+  moment: Moment,
+  controller: AbortController,
+  seen: { config?: SessionConfig },
+) {
+  const interfere = () => {
+    if (kind === "abort") controller.abort();
+    else
+      seen.config?.onEvent?.({
+        type: "tool.execution_start",
+        id: "late",
+        timestamp: new Date().toISOString(),
+        parentId: null,
+        data: { toolCallId: "call", toolName: "shell", arguments: {} },
+      } as Parameters<NonNullable<SessionConfig["onEvent"]>>[0]);
+  };
+  const race = Promise.race.bind(Promise);
+  vi.spyOn(Promise, "race").mockImplementationOnce((values) => {
+    const settled = race(values as Promise<unknown>[]);
+    void settled.then(() =>
+      moment === "as the race settles" ? interfere() : queueMicrotask(interfere),
+    );
+    return settled;
+  });
+}
+
 it.each([
-  ["a tool event", "event"],
-  ["an abort", "abort"],
+  ["a tool event", "event", "as the race settles", "forceStop"],
+  ["an abort", "abort", "as the race settles", "forceStop"],
+  ["a tool event", "event", "one microtask later", "stop"],
+  ["an abort", "abort", "one microtask later", "stop"],
 ] as const)(
-  "BUG-02d: %s arriving after the answer keeps the answer but force-stops the runtime",
-  async (_, kind) => {
+  "BUG-02d: %s (%s) arriving after the answer %s keeps the answer and uses %s",
+  async (_, kind, moment, expected) => {
     const controller = new AbortController();
     const { runtime, seen, stop, forceStop } = fakeRuntime();
-    const race = Promise.race.bind(Promise);
-    // The first race is the adapter accepting the answer; interfere right after it settles.
-    vi.spyOn(Promise, "race").mockImplementationOnce((values) => {
-      const settled = race(values as Promise<unknown>[]);
-      void settled.then(() => {
-        if (kind === "abort") controller.abort();
-        else
-          seen.config?.onEvent?.({
-            type: "tool.execution_start",
-            id: "late",
-            timestamp: new Date().toISOString(),
-            parentId: null,
-            data: { toolCallId: "call", toolName: "shell", arguments: {} },
-          } as Parameters<NonNullable<SessionConfig["onEvent"]>>[0]);
-      });
-      return settled;
-    });
+    interfereAfterAnswer(kind, moment, controller, seen);
     expect(await adapterFor(runtime).complete(input, controller.signal)).toBe(answer);
-    expect(forceStop).toHaveBeenCalledOnce();
-    expect(stop).not.toHaveBeenCalled();
+    expect(forceStop).toHaveBeenCalledTimes(expected === "forceStop" ? 1 : 0);
+    expect(stop).toHaveBeenCalledTimes(expected === "stop" ? 1 : 0);
   },
 );

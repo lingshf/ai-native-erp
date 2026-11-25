@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { AiFailure, type AiPort } from "@erp/core/application";
 import { cleanupSteps } from "./copilot-ai-cleanup.ts";
 import { isolatedClient } from "./copilot-ai-client.ts";
-import { type CallState, createCallState, interruptionOf } from "./copilot-ai-interruption.ts";
+import { createCallState, interruptionOf } from "./copilot-ai-interruption.ts";
 import { runTextSession } from "./copilot-ai-session.ts";
 
 export interface CopilotTextSession {
@@ -69,39 +69,33 @@ export class CopilotAiAdapter implements AiPort {
     const state = createCallState();
     const cancel = () => state.rejectRun("cancelled");
     signal.addEventListener("abort", cancel, { once: true });
+    const resources: Resources = { client: undefined, directory: undefined };
+    let outcome: Outcome;
     try {
-      const resources: Resources = { client: undefined, directory: undefined };
-      const outcome = await this.attempt(model, input, state, signal, resources);
-      // BUG-02d (accepted): a tool/subagent event or abort arriving after the answer still marks
-      // the call interrupted, so cleanup force-stops instead of stopping. The session disables
-      // every tool, so such late events are abnormal and force-stopping is the safer choice.
+      try {
+        resources.directory = await mkdtemp(join(tmpdir(), "erp-ai-"));
+        if (signal.aborted) throw new AiFailure("cancelled");
+        resources.client = this.createClient(resources.directory, signal);
+        const interruption = interruptionOf(state);
+        outcome = {
+          answer: await Promise.race([
+            runTextSession(resources.client, model, input, state, signal),
+            interruption,
+          ]),
+        };
+      } catch (error) {
+        outcome = { failure: error instanceof AiFailure ? error : new AiFailure("unavailable") };
+      }
+      // Keep this synchronous after the race settles: no await may separate it from the race, or
+      // events arriving later would change whether cleanup stops or force-stops.
+      signal.removeEventListener("abort", cancel);
+      // BUG-02d (accepted): a tool/subagent event or abort arriving after the answer but before this
+      // point still marks the call interrupted, so cleanup force-stops instead of stopping. The
+      // session disables every tool, so such late events are abnormal and force-stopping is safer.
       const interrupted = state.interrupted || signal.aborted;
       return settle(outcome, await this.cleanUp({ ...resources, interrupted }));
     } finally {
-      signal.removeEventListener("abort", cancel);
       this.busy = false;
-    }
-  }
-
-  private async attempt(
-    model: string,
-    input: CompletionInput,
-    state: CallState,
-    signal: AbortSignal,
-    resources: Resources,
-  ): Promise<Outcome> {
-    try {
-      resources.directory = await mkdtemp(join(tmpdir(), "erp-ai-"));
-      if (signal.aborted) throw new AiFailure("cancelled");
-      resources.client = this.createClient(resources.directory, signal);
-      const interruption = interruptionOf(state);
-      const answer = await Promise.race([
-        runTextSession(resources.client, model, input, state, signal),
-        interruption,
-      ]);
-      return { answer };
-    } catch (error) {
-      return { failure: error instanceof AiFailure ? error : new AiFailure("unavailable") };
     }
   }
 
