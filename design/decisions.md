@@ -616,3 +616,6 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D585 | 表 | MCF-13、MCF-18a、MCF-18b 的规则按 #404 原文落入团队章程 §3 第 7、8 项：Reviewe… | [design/tasks/S25.md:54](tasks/S25.md) |
 | D586 | 表 | #401（MCF-02）Demo 时段直接运行 `run-main.ps1`、未经 slot-run，且试运行 1–9 … | [design/tasks/S25.md:55](tasks/S25.md) |
 | D587 | 表 | D7（业务事件待转）缺备选，与 D5、D6、D8 同类，并入 KGAP-03 的范围 | [design/tasks/S25.md:56](tasks/S25.md) |
+| D588 | 表 | M1 之后的贸易设计（订单 TORD、从订单开票 TINV、TSET-01 等）散在各 Sprint 任务书，没有一页汇… | [design/tasks/S25.md:57](tasks/S25.md) |
+| D589 | 表 | 关闭 C1（ADR-SME-001 等历史页与现行架构冲突）：这些页已有 D560 的“已取代”页首 | [design/tasks/S25.md:58](tasks/S25.md) |
+| D590 | 表 | 授权 Release 为 MCF-12 修改根 `README.md`，条件：保留现有锚点 | [design/tasks/S25.md:59](tasks/S25.md) |
