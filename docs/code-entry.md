@@ -37,7 +37,7 @@
   - `copilot-ai-session.ts`：`runTextSession`，系统提示与事件监控。
   - `copilot-ai-cleanup.ts`：`cleanupSteps`，终止与清理；只有无法确认 CLI 进程已终止（`forceStop` 失败或超时，`copilot-ai-cleanup.ts:53-57` → `copilot-ai.ts:112-115`）时，适配器才被禁用直到重启；`stop()` 出错或临时目录删除失败只让当前调用失败，若答案已收到则只记日志（`settle`，`copilot-ai.ts:39-43`）。
 - 流程：守卫（模型为空或 `auto`、提供方不是 copilot → `unavailable`；已取消、已禁用 `cleanup`、占线 `busy`）→ 临时目录 → 隔离客户端 → 会话与中断竞速 → 同步判定是否中断 → 清理。
-- 扩展点：测试通过 `clientFactory` 注入假运行时；`cleanupTimeoutMs`（默认 5000 ms）只限制 `stop` / `forceStop`；`sendAndWait` 另有 300000 ms 超时（`copilot-ai-session.ts`），请求整体超时由服务层的 `AI_TIMEOUT_MS` 决定。行为与取舍见 [AI 助手](ai-assistant.md)，本页不重复。
+- 扩展点：测试通过 `clientFactory` 注入假运行时；`cleanupTimeoutMs`（默认 5000 ms）只限制 `stop` / `forceStop`；`sendAndWait` 另有 300000 ms 超时（`copilot-ai-session.ts`），服务层另有 `AI_TIMEOUT_MS`（`main.ts` 读取，默认 30000 ms，`ai-assistant.ts` 的 `ask`）：计时器在 `reads.context` 之后才开始，只与适配器的 `complete` 竞速，不含读取上下文、草稿解析与预览，超时后也不等待清理完成。行为与取舍见 [AI 助手](ai-assistant.md)，本页不重复。
 - 测试：`packages/infra/test/copilot-ai.test.ts`、`packages/infra/test/copilot-ai-client.test.ts`。
 
 ## 3. 贸易单据路由（REFAC-34）
