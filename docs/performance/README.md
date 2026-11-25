@@ -20,7 +20,7 @@
 | 内容 | 命令 / 入口 | 记录 |
 | --- | --- | --- |
 | 100 万 GL 行合成库生成 | `npm run bench:generate-ledger -- <新文件>` | [根 README“性能证据”](../../README.md#性能证据) |
-| 完整 Bench（含 journals、business-events、reports 场景） | `npm run bench`（运行 `packages/infra/bench/sqlite.ts`；不读取上一条的输出文件）。reports 场景：设置 `ERP_BENCH_FIXTURE`（CI 的 bench.yml 使用）时复制该文件及同名 `.json` 摘要作为 fixture；未设置时本次运行内生成合成 fixture | 同上；CI 为 [bench.yml](../../.github/workflows/bench.yml) |
+| 完整 Bench（含 journals、business-events、reports 场景） | `npm run bench`（运行 `packages/infra/bench/sqlite.ts`；不会自动复用上一条的输出）。reports 场景：设置 `ERP_BENCH_FIXTURE`（CI 的 bench.yml 使用）时，解析 `<fixture>.json`，只复制数据库文件，不复制 JSON；未设置时在运行内自行生成数据 | 同上；CI 为 [bench.yml](../../.github/workflows/bench.yml) |
 | 贸易 100 万 GL + 1000 伙伴 + 10 万未结项（M1-07、M1-R3） | `node packages\infra\bench\trade-http.ts` | [贸易基准](trade-e2e-bench.md)，原始数据 [trade-bench.json](trade-bench.json) |
 | 旧账导入后的对账（M2-04） | `node packages\infra\bench\reconciliation.ts OUTPUT.json` | [对账基准](legacy-reconciliation-bench.md) |
 | 迁移演练（dry-run、导入、核对） | `node scripts/bench-migration-rehearsal.mjs` | [迁移手册 §9](../migration-runbook.md)；工件 `artifacts/ci/migration-rehearsal.json` |
