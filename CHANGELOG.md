@@ -6,6 +6,16 @@
 
 ## [Unreleased]
 
+## [0.22.0] - 待定
+
+> **草稿（RC，MCF-02，D573）**：尚未发布，没有 tag。取代 elease/v0.22.0（固定在 `3566ddb` 的旧 RC，已过时，不再使用）；新 RC 分支是 `release/v0.22.0-rc2`。发布日期与 tag 须经用户授权后才填。
+>
+> **版本号**：minor（0.21.0 → 0.22.0）：有用户可见的功能与行为变化（TSET-01、TMAS-01、BUG-01、BUG-02、BUG-03、SEC-02）。
+>
+> **RC 范围终点**固定为完整 SHA `13a4199ec1e6b45904f0106e905d7d5cf21fb11c`（[#396](https://github.com/lingshf/ai-native-erp/pull/396)，覆盖它的 main Full 为绿，run 45529505073）。v0.21.0 的 tag 指向 `01b16dbf36dd4feab80aee05f9583cfe9bc1de13`（在 `release/v0.21.0`，不在 main 上），与范围终点的合并基是 `3ae4848d36c4c06c2e208173e58ed2cac3771564`，所以对照用 `git log --oneline --first-parent 3ae4848d36c4c06c2e208173e58ed2cac3771564..13a4199ec1e6b45904f0106e905d7d5cf21fb11c`（78 个提交；与 `v0.21.0..` 的 first-parent 结果相同）。范围内每个 PR 的分类见下面各条与“不需要条目”一行。
+>
+> 之后 main 上的提交不在 RC 范围：[#398](https://github.com/lingshf/ai-native-erp/pull/398)（`6023f50`，只改 `design/`）。无迁移（迁移登记最新仍是 020）、无依赖变化（范围内没有 `package.json`、`package-lock.json` 或迁移文件改动）。
+
 ### Changed（用户可见，行为变化）
 
 - **AI 助手交给 Copilot SDK 的环境变量改为显式白名单**（SEC-02，D568，[#391](https://github.com/lingshf/ai-native-erp/pull/391)，合并提交 `70acd04`）：只交出明确设置且非空的 `COPILOT_GITHUB_TOKEN`，未设置时交出空环境；不再交出 `GH_TOKEN`、`GITHUB_TOKEN`、其他凭据、`PATH` 等平台变量、代理与证书变量、ERP 配置等本进程变量（指 ERP 交给 SDK 的环境；Windows 系统仍会为子进程补入 `PATH` 等少量系统变量）；传输方式固定为 stdio，不使用 SDK 的 `gitHubToken` 选项。**影响**：以前靠 `GH_TOKEN`、`GITHUB_TOKEN` 或其他继承变量使 AI 可用的部署，升级后 AI 可能不可用（`AI_UNAVAILABLE`，手工记账不受影响）。**迁移**：可改设 `COPILOT_GITHUB_TOKEN`；不保证恢复以前所有认证方式（原生 CLI 对补入键的依赖、真实认证兼容、存量登录、`gh` 回退、代理与自定义 CA 均未验证）。见 [AI 助手 §5](docs/ai-assistant.md#5-启用与配置)。无迁移脚本，无依赖变化。
