@@ -30,6 +30,18 @@ export interface CopilotTextRuntime {
   forceStop(): Promise<void>;
 }
 
+type CompletionInput = Parameters<AiPort["complete"]>[0];
+type Outcome = { answer: string } | { failure: AiFailure };
+type Resources = { client: CopilotTextRuntime | undefined; directory: string | undefined };
+type CleanupScope = Resources & { interrupted: boolean };
+
+// BUG-02c: a cleanup failure overrides a failed outcome but never a received answer; it is only logged.
+function settle(outcome: Outcome, cleanupFailed: boolean): string {
+  if ("failure" in outcome) throw cleanupFailed ? new AiFailure("cleanup") : outcome.failure;
+  if (cleanupFailed) console.error("AI runtime cleanup failed after the answer; answer kept.");
+  return outcome.answer;
+}
+
 export class CopilotAiAdapter implements AiPort {
   private busy = false;
   private blocked = false;
@@ -42,7 +54,7 @@ export class CopilotAiAdapter implements AiPort {
   constructor(options: CopilotAiAdapter["options"] = {}) {
     this.options = options;
   }
-  async complete(input: Parameters<AiPort["complete"]>[0], signal: AbortSignal): Promise<string> {
+  async complete(input: CompletionInput, signal: AbortSignal): Promise<string> {
     const model = this.options.model?.trim();
     if (
       !model ||
@@ -54,41 +66,61 @@ export class CopilotAiAdapter implements AiPort {
     if (this.blocked) throw new AiFailure("cleanup");
     if (this.busy) throw new AiFailure("busy");
     this.busy = true;
-    let directory: string | undefined, client: CopilotTextRuntime | undefined;
-    let answer: string | undefined, failure: AiFailure | undefined;
     const state = createCallState();
     const cancel = () => state.rejectRun("cancelled");
     signal.addEventListener("abort", cancel, { once: true });
+    const resources: Resources = { client: undefined, directory: undefined };
+    let outcome: Outcome;
     try {
-      directory = await mkdtemp(join(tmpdir(), "erp-ai-"));
-      if (signal.aborted) throw new AiFailure("cancelled");
-      client = isolatedClient(directory, this.options);
-      const interruption = interruptionOf(state);
-      answer = await Promise.race([
-        runTextSession(client, model, input, state, signal),
-        interruption,
-      ]);
-    } catch (error) {
-      failure = error instanceof AiFailure ? error : new AiFailure("unavailable");
-    } finally {
+      try {
+        resources.directory = await mkdtemp(join(tmpdir(), "erp-ai-"));
+        if (signal.aborted) throw new AiFailure("cancelled");
+        resources.client = this.createClient(resources.directory, signal);
+        const interruption = interruptionOf(state);
+        outcome = {
+          answer: await Promise.race([
+            runTextSession(resources.client, model, input, state, signal),
+            interruption,
+          ]),
+        };
+      } catch (error) {
+        outcome = { failure: error instanceof AiFailure ? error : new AiFailure("unavailable") };
+      }
+      // Keep this synchronous after the race settles: no await may separate it from the race, or
+      // events arriving later would change whether cleanup stops or force-stops.
       signal.removeEventListener("abort", cancel);
-      const scope = { client, directory, interrupted: state.interrupted || signal.aborted };
-      const steps = cleanupSteps(scope, this.options, () => {
-        this.blocked = true;
-        console.error("AI runtime termination unconfirmed; AI disabled until restart.");
-      });
-      let step = steps.next();
-      while (!step.done)
-        try {
-          step = steps.next(await step.value);
-        } catch (error) {
-          step = steps.throw(error);
-        }
+      // BUG-02d (accepted): a tool/subagent event or abort arriving after the answer but before this
+      // point still marks the call interrupted, so cleanup force-stops instead of stopping. The
+      // session disables every tool, so such late events are abnormal and force-stopping is safer.
+      const interrupted = state.interrupted || signal.aborted;
+      return settle(outcome, await this.cleanUp({ ...resources, interrupted }));
+    } finally {
       this.busy = false;
-      if (step.value) failure = new AiFailure("cleanup");
     }
-    if (failure) throw failure;
-    if (answer === undefined) throw new AiFailure("response");
-    return answer;
+  }
+
+  private createClient(directory: string, signal: AbortSignal): CopilotTextRuntime {
+    try {
+      return isolatedClient(directory, this.options);
+    } catch (error) {
+      // BUG-02a: an abort during the factory call wins over the factory's own plain error.
+      if (signal.aborted && !(error instanceof AiFailure)) throw new AiFailure("cancelled");
+      throw error;
+    }
+  }
+
+  private async cleanUp(scope: CleanupScope): Promise<boolean> {
+    const steps = cleanupSteps(scope, this.options, () => {
+      this.blocked = true;
+      console.error("AI runtime termination unconfirmed; AI disabled until restart.");
+    });
+    let step = steps.next();
+    while (!step.done)
+      try {
+        step = steps.next(await step.value);
+      } catch (error) {
+        step = steps.throw(error);
+      }
+    return step.value;
   }
 }
