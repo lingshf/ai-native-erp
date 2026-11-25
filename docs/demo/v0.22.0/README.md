@@ -11,7 +11,7 @@
 | BUG-01 | 总账明细：维度代码为空时“维度值”禁用，Tab 越过它；填写维度后才可输入；清空维度同时清空并禁用 | `shots/bug01-*` |
 | BUG-03 | 仅调整 API 校验顺序，界面上不可见，**不截图** | — |
 
-共 17 张 PNG，每项均有 zh/red 与 en/green、1440 与 390 宽度截图；键盘取证在 en/green 1440 运行中完成（TSET-01 还有 `-after-remove`）。
+截图数量见 run-through；每项均有 zh/red 与 en/green、1440 与 390 宽度截图；键盘取证在 en/green 1440 运行中完成（TSET-01 还有 `-after-remove`）。
 
 ## 环境
 
