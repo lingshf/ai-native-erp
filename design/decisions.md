@@ -607,3 +607,5 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D578 | 表 | MCLOSE-01：KGAP-01 的 QA 措辞作为候选（Knowledge Lead，P2）：#365、#368、#… | [design/tasks/S24.md:219](tasks/S24.md) |
 | D579 | 表 | MCLOSE-01 目标里程碑：MCF 中未定里程碑的 P1/P2 项定为 S25，P3 项定为“Backlog（S25… | [design/tasks/S24.md:220](tasks/S24.md) |
 | D580 | 表 | 接受 S25 计划：目标为 v0.22.0 基于当前 main 新切 RC 且 CHANGELOG 完整，并补齐 MCL… | [design/tasks/S25.md:49](tasks/S25.md) |
+| D581 | 表 | MCF-01（#396）覆盖 v0.21.0 以来所有缺 CHANGELOG 条目的 PR，不限于收尾 R1 列出的几项 | [design/tasks/S25.md:50](tasks/S25.md) |
+| D582 | 表 | MCF-17 结案：REFAC-34 的 R8b 已确认 | [design/tasks/S25.md:51](tasks/S25.md) |
