@@ -9,8 +9,8 @@
 | 热读 p95 ≤ 1 s；≤100 行预览/确认各 p95 ≤ 2 s；100 万 GL 行合成基准（目标，非 SLA） | [路线图](../../design/roadmap.md) 第 9 行 |
 | 性能考虑已落实**且**预算有证据或明确“未测” | [产品准则 PG-05](../../design/product-guidelines.md) 第 59 行 |
 | 预算的 80% 为预警线：读 800 ms、预览/确认 1,600 ms、对账 120 s 预算的 96 s | D18：[贸易基准](trade-e2e-bench.md)（含 1,600 ms 一行）与[对账基准](legacy-reconciliation-bench.md)的原文；[决定索引](../../design/decisions.md)有 D18 行，但只列出提及位置，缺决定正文 |
-| 旧账迁移耗时与内存：快照 ≤ 60 s；dry-run ≤ 120 s、峰值 RSS ≤ 512 MB；导入 ≤ 10 min、RSS ≤ 512 MB；确认核对 ≤ 120 s | [迁移手册 §9](../migration-runbook.md) 表 |
-| 完整 Bench 验收线（保留 20% 余量）：480 s、各进程 RSS < 409.6 MiB、HTTP p95 ≤ 800 ms | [根 README](../../README.md)“历史导入”一节 |
+| 旧账迁移耗时与内存：快照 ≤ 60 s；dry-run ≤ 120 s、峰值 RSS ≤ 512 MB；导入 ≤ 10 min、RSS ≤ 512 MB；确认核对 ≤ 120 s | [迁移手册 §9](../migration-runbook.md) 表。手册写 “MB”，实际门禁为 512 MiB（`bench-migration-rehearsal.mjs` 的 `PEAK_RSS_BUDGET_MIB = 512`）；以代码为准 |
+| 单独运行 `legacy-import-bench.mjs --execute` 的验收线（保留 20% 余量）：480 s、各进程 RSS < 409.6 MiB、HTTP p95 ≤ 800 ms；不带 `--execute` 时为 120 s、512 MiB（代码 `limits`）。这不是 `npm run bench`，迁移演练也不调用它 | [根 README](../../README.md)“历史导入”一节；代码 `packages/infra/test/support/legacy-import-bench.mjs` |
 | 原五路径相对回退 p50 ≤ 10%（#26）；p95/p99 各自 1 s / 2 s 绝对预算 | [根 README“性能证据”](../../README.md#性能证据) |
 | 各基准场景自带预算（如 `budgetMs`、`readBudgetMs`） | `packages/infra/bench/` 下各脚本，例如 `sqlite.ts`、`journals.ts`、`business-events.ts` |
 | PR CI ≤ 10 分钟；完整套件与基准在 main/每晚（路线图第 36 行），基准为每晚/手动（第 70 行与 [bench.yml](../../.github/workflows/bench.yml)） | [路线图](../../design/roadmap.md) |
@@ -20,12 +20,12 @@
 | 内容 | 命令 / 入口 | 记录 |
 | --- | --- | --- |
 | 100 万 GL 行合成库生成 | `npm run bench:generate-ledger -- <新文件>` | [根 README“性能证据”](../../README.md#性能证据) |
-| 完整 Bench（含 journals、business-events、reports 场景） | `npm run bench`（运行 `packages/infra/bench/sqlite.ts`；不读取上一条的输出文件） | 同上；CI 为 [bench.yml](../../.github/workflows/bench.yml) |
+| 完整 Bench（含 journals、business-events、reports 场景） | `npm run bench`（运行 `packages/infra/bench/sqlite.ts`；不读取上一条的输出文件）。reports 场景：设置 `ERP_BENCH_FIXTURE`（CI 的 bench.yml 使用）时复制该文件及同名 `.json` 摘要作为 fixture；未设置时本次运行内生成合成 fixture | 同上；CI 为 [bench.yml](../../.github/workflows/bench.yml) |
 | 贸易 100 万 GL + 1000 伙伴 + 10 万未结项（M1-07、M1-R3） | `node packages\infra\bench\trade-http.ts` | [贸易基准](trade-e2e-bench.md)，原始数据 [trade-bench.json](trade-bench.json) |
 | 旧账导入后的对账（M2-04） | `node packages\infra\bench\reconciliation.ts OUTPUT.json` | [对账基准](legacy-reconciliation-bench.md) |
 | 迁移演练（dry-run、导入、核对） | `node scripts/bench-migration-rehearsal.mjs` | [迁移手册 §9](../migration-runbook.md)；工件 `artifacts/ci/migration-rehearsal.json` |
 | 旧账快照耗时 | `node scripts/bench-legacy-snapshot.mjs` | [迁移手册 §9](../migration-runbook.md) |
-| 导入基准支持代码 | `packages/infra/test/support/legacy-import-bench.mjs` | 被迁移演练使用，无独立记录页 |
+| 旧账导入基准 | `node packages/infra/test/support/legacy-import-bench.mjs [--execute]`（独立运行，迁移演练不调用） | 验收线见 §1；无独立记录页 |
 | 预付/取消确认采样（非门槛） | `node packages\infra\bench\trade-adjustments.ts` | 口径见[根 README](../../README.md)“预付、贷项、专用取消与反向”一节；无独立结果页 |
 | 并发真实浏览器 E2E 干扰调查 | — | [E2E-01](e2e-01-concurrent-e2e.md)：测试稳定性调查，不是性能基准 |
 
