@@ -91,7 +91,7 @@
 | `design/ui/`、`design/diagrams/` | UI-1 规范与原型、架构示意图 | UI-1 stale；diagrams 属 ARCH-SME-01，随 C1 |
 | [`docs/user/`](user/README.md) | 用户文档 | 页面存在（版本见矩阵）；索引页已于 KDOC-05 去掉版本叙述，指向 CHANGELOG；含[贸易主路径演练](user/trade-main-path.md) |
 | [`docs/ai-assistant.md`](ai-assistant.md) | AI 助手 | partial（钉合并提交 `6f34423e142baa1ae24e134253a84b8295ec4bc0`；KGAP-04、SEC-02、MCF-06 改动） |
-| [`docs/tradeoffs.md`](tradeoffs.md) | 取舍汇总 | partial（KDOC-09 新增；钉合并提交 `d98347a398e32fe0a2222bd594116440078ae7ce`，含 SEC-02 对 §3 的改动与 MCF-09 新增的 §8、改写的设计/产品核对不覆盖 SEC-02 改动；SEC-02 部分见“QA 范围”表 #391，其余 QA 证据未在此汇总） |
+| [`docs/tradeoffs.md`](tradeoffs.md) | 取舍汇总 | partial（KDOC-09 新增；钉合并提交 `d98347a398e32fe0a2222bd594116440078ae7ce`，含 SEC-02 对 §3 的改动；MCF-09 新增 §8 并改写“已知缺口”；设计/产品核对不覆盖 SEC-02 改动；SEC-02 部分见“QA 范围”表 #391，其余 QA 证据未在此汇总） |
 | [`docs/code-entry.md`](code-entry.md) | 代码入口、扩展点与调试（三处 REFAC 拆分模块） | partial（MCF-08 新增；钉合并提交 `37bb41731fa46f59084e4d5600ec5fc28666e7d6`；Developer 只读事实复核已完成，对照 `664b37c`） |
 | [`docs/operations.md`](operations.md) | 运维与故障排查 | partial（钉合并提交 `66f3a47623e3b07f55447b06ac48fe84d153c34a`；KDOC-07 新增） |
 | [`docs/ci.md`](ci.md) | CI 说明 | partial（钉版本 `08d9cf34e3623f01803d143caa14bfcb923d2561`；对照 workflow 与 `scripts/ci.ts`，未经复核） |
