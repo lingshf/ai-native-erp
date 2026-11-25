@@ -1,6 +1,6 @@
 # 任务总表（团队进度权威来源）
 
-规则：一个任务 = 一个分支 = 一个 PR；状态 `todo` → `in-progress` → `in-review` → `done`，`blocked` 写原因。本表只由设计角色修改（开发/评审角色在 PR 中报告，设计角色同步）；例外是执行字段：自 D557 起，新任务的六项生命周期事实记在所在 Sprint 一节的“执行记录”表中，由 Team Leader 提供证据、设计角色照录，任务的含义与顺序仍只由设计角色决定。本表是团队唯一待办；角色与六项事实的定义见[团队章程](../team-charter.md#4-六项生命周期事实)。方向与流程见 [路线图](../roadmap.md)，目标架构见 [M0 架构](../m0-architecture.md)。
+规则：一个任务 = 一个分支 = 一个 PR；状态 `todo` → `in-progress` → `in-review` → `done`，`blocked` 写原因；只交付了一部分的写 `done（部分：已交付 …；未交付 … → 去向）`，不写裸 `done`（MCF-15）。本表只由设计角色修改（开发/评审角色在 PR 中报告，设计角色同步）；例外是执行字段：自 D557 起，新任务的六项生命周期事实记在所在 Sprint 一节的“执行记录”表中，由 Team Leader 提供证据、设计角色照录，任务的含义与顺序仍只由设计角色决定。本表是团队唯一待办；角色与六项事实的定义见[团队章程](../team-charter.md#4-六项生命周期事实)。方向与流程见 [路线图](../roadmap.md)，目标架构见 [M0 架构](../m0-architecture.md)。
 
 PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通过 + 满足任务文档验收标准。
 
@@ -845,7 +845,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 ## S25：v0.22.0 重新切 RC + 收尾发现项补证（D580）
 
-计划见 [S25.md](S25.md)（D580 为接受 S25 计划；D581 为 MCF-01 覆盖 v0.21.0 以来所有缺 CHANGELOG 条目的 PR；D582 为 MCF-17 结案与 MCF-20；下一个可用编号 D583）。范围是[收尾发现项](#收尾发现项mclose-01)中的 P1/P2，顺序与泳道见 [S25 泳道](S25.md#泳道按冲突域)；各项状态仍记在该表中。v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 须用户授权。
+计划见 [S25.md](S25.md)（D580 为接受 S25 计划；D581 为 MCF-01 覆盖 v0.21.0 以来所有缺 CHANGELOG 条目的 PR；D582 为 MCF-17 结案与 MCF-20；D583 为 #401 的 Demo 范围；D584 为接受 MCF-16 拆分方案；下一个可用编号 D585）。范围是[收尾发现项](#收尾发现项mclose-01)中的 P1/P2，顺序与泳道见 [S25 泳道](S25.md#泳道按冲突域)；各项状态仍记在该表中。v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 须用户授权。
 
 ## 知识与文档待办（KDOC，D556）
 
@@ -1034,9 +1034,9 @@ KDOC-01..11 都已合并或并入（见上表）。下面是 Knowledge Lead 报�
 | MCF-11 | G8 条目可以精简（§5 过时） | P3 | Knowledge Lead | 并入 MCF-03 | 同 MCF-03 | 并入 MCF-03 |
 | MCF-12 | 根 README 的业务规则段与 `docs/user/` 重叠（§5 重复） | P3 | Knowledge Lead；Product/Design 确认权威位置 | 每条规则只留一个权威位置，另一处改为链接 | Backlog（S25 规划时排序） | todo（候选） |
 | MCF-13 | 附在计划批准里的反馈可能没有送达子会话，导致 SEC-02 改动了主机防火墙（TL 自查，D571） | P2 | Team Leader | 计划批准的条件一律另发一条消息重申；开发者在 `plan.md` 开头复述约束；下一次计划批准有此记录 | S25；规则自本 PR 合并起适用 | todo（候选） |
-| MCF-14 | 决定索引 `design/decisions.md` 由仓库外的脚本生成，无法复现（Design 自查 PD-1） | P2 | Product/Design 提供脚本；Delivery/Release 评审入库 | 生成脚本入库，`design/decisions.md` 开头写明重新生成的命令；在该提交上重新生成，结果与已提交内容一致 | S25 | todo（候选） |
-| MCF-15 | 任务书证据类型与受影响文档写得不够细；部分交付被写成裸 done（Design 自查 PD-2、PD-3） | P3 | Product/Design | 任务书模板要求逐条写明证据类型与平台、受影响文档及其同步时点；部分交付的状态格写明交付范围 | Backlog（S25 规划时排序）；触发：下一份任务书 | todo（候选） |
-| MCF-16 | `design/tasks/README.md` 体量过大，所有状态同步都改它，状态 PR 只能排队（Design 自查 PD-6） | P3 | Product/Design 提方案；Team Leader 同意后实施 | 提出拆分方案（如状态表移到各节文件）并经 TL 同意；实施时链接不断 | Backlog（S25 规划时排序）；须在 M2 前 | todo（候选） |
+| MCF-14 | 决定索引 `design/decisions.md` 由仓库外的脚本生成，无法复现（Design 自查 PD-1） | P2 | Product/Design 提供脚本；Delivery/Release 评审入库 | 生成脚本入库，`design/decisions.md` 开头写明重新生成的命令；在该提交上重新生成，结果与已提交内容一致 | S25 | done（[#400](https://github.com/lingshf/ai-native-erp/pull/400)，`f294dd7`；`scripts/gen-decisions-index.mjs`，参数非法或会缩表时退出码 2 且不写文件；此后新增决定的 PR 须重新生成并通过 `--check`） |
+| MCF-15 | 任务书证据类型与受影响文档写得不够细；部分交付被写成裸 done（Design 自查 PD-2、PD-3） | P3 | Product/Design | 任务书模板要求逐条写明证据类型与平台、受影响文档及其同步时点；部分交付的状态格写明交付范围 | Backlog（S25 规划时排序）；触发：下一份任务书 | done（本 PR：[任务书模板](TEMPLATE.md)加“受影响的文档”、验收的证据类型与平台表、自查第 19 项；本表开头加部分交付的状态写法） |
+| MCF-16 | `design/tasks/README.md` 体量过大，所有状态同步都改它，状态 PR 只能排队（Design 自查 PD-6） | P3 | Product/Design 提方案；Team Leader 同意后实施 | 提出拆分方案（如状态表移到各节文件）并经 TL 同意；实施时链接不断 | Backlog（S25 规划时排序）；须在 M2 前 | in-progress（方案已接受，D584：[MCF-16-tasks-readme-split.md](MCF-16-tasks-readme-split.md)；#402 合并后紧接着另开 PR 实施，在 S25 内落地） |
 | MCF-17 | REFAC-31、REFAC-34 的 R8b 未补证（V4，D576） | P2 | Reviewer / QA | 逐项列出 REFAC-31 业务事件场景与测试文件或场景名的映射，以及真实 Chrome 运行证据；REFAC-34 同样处理；缺证据的记为“未确认”，不用 main Full 绿灯代替 | S25 | done（D582：REFAC-34 R8b 已确认，[#376 评论 7150062675](https://github.com/lingshf/ai-native-erp/pull/376#issuecomment-7150062675)；REFAC-31 六行 R8b 都映射到 app/HTTP 测试但无真实 Chrome 断言，永久记为“未确认”，[#362 评论 7150062662](https://github.com/lingshf/ai-native-erp/pull/362#issuecomment-7150062662)；后续见 MCF-20） |
 | MCF-18a | 任务书要求的 R8b 补证没有在合并前把关（V4，D576）：合并前的证据计划 | P2 | Team Leader（派发时要求）；Developer 执行；Reviewer 核对 | 任务书要求 R8b 时，PR 在合并前写明 R8b 的证据计划：场景清单、对应测试文件或场景名、运行环境（如真实 Chrome）与责任人，并附能在合并前取得的证据；评审结论写明 R8b 的状态。这是合并前 DoD 检查项 | S25；规则自本 PR 合并起适用 | todo（候选） |
 | MCF-18b | 同上：合并后才有的 main Full 结果（V4，D576） | P2 | Team Leader 记录；Reviewer 核对 | 合并后在 PR 或任务行中记下覆盖该合并提交的 main Full run ID 与结论；失败按现有流程处理。main Full 绿灯只证明合并后检查通过，不代替 MCF-18a 的 R8b 证据 | S25；规则自本 PR 合并起适用 | todo（候选） |

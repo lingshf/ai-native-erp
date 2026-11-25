@@ -548,7 +548,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D517 | 表 | SLOT-06：`slot-run.ps1` 在所有退出码 4 的检查之后、端口检查之前自动起 `gate-snapsh`… | [design/tasks/S23.md:167](tasks/S23.md) |
 | D518 | 表 | TSET-01 焦点方案 | [design/reviews/S22-review.md:78](reviews/S22-review.md)；[design/tasks/S23.md:168](tasks/S23.md) |
 | D519 | 表 | DEMO-22 体积例外 | [design/reviews/S22-review.md:79](reviews/S22-review.md)；[design/tasks/S23.md:169](tasks/S23.md) |
-| D520 | 表 | TSET-01 N7 首屏预算口径 | [design/reviews/S22-review.md:80](reviews/S22-review.md)；[design/tasks/S23.md:170](tasks/S23.md)；[design/tasks/TEMPLATE.md:117](tasks/TEMPLATE.md) |
+| D520 | 表 | TSET-01 N7 首屏预算口径 | [design/reviews/S22-review.md:80](reviews/S22-review.md)；[design/tasks/S23.md:170](tasks/S23.md)；[design/tasks/TEMPLATE.md:124](tasks/TEMPLATE.md) |
 | D521 | 表 | DEMO-22 K2 金额断言作废，改由 TLIST-06 S3 证明 | [design/reviews/S22-review.md:81](reviews/S22-review.md)；[design/tasks/S23.md:171](tasks/S23.md)；[design/reviews/S22-retro.md:25](reviews/S22-retro.md) 等 4 处 |
 | D522 | 表 | SLOT-06 快照日志命名 `.stdout.log` / `.stderr.log` | [design/reviews/S22-review.md:82](reviews/S22-review.md)；[design/tasks/S23.md:172](tasks/S23.md) |
 | D523 | 表 | TSET-01 测试行数超上限，接受 | [design/reviews/S22-review.md:83](reviews/S22-review.md)；[design/tasks/S23.md:173](tasks/S23.md) |
@@ -594,7 +594,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D563 | 表 | AI 讲解与教学模式（#372 §6b）：服务端**不**按教学模式拦截 `/api/v1/ai/explain`，界面… | [design/tasks/S24.md:204](tasks/S24.md) |
 | D564 | 表 | KDOC-09 核对（#377）：D1、D2、D3、D51 原记录缺备选、代价、失效条件，由设计角色补记到路线图 §6.… | [design/tasks/S24.md:205](tasks/S24.md) |
 | D565 | 表 | 重构 PR 中登记的现存缺陷立为候选：BUG-01（#371 孤立 `value`）、BUG-02a–d（#364 AI… | [design/tasks/S24.md:206](tasks/S24.md) |
-| D566 | 表 | 用户要求（四个团队）：里程碑收尾时做一次合并的结果对目标检查与回顾，补充而不取代 Sprint 评审与回顾 | [design/tasks/S24.md:207](tasks/S24.md) |
+| D566 | 表 | 用户要求（四个团队）：里程碑收尾时做一次合并的结果对目标检查与回顾，补充而不取代 Sprint 评审与回顾 | [design/tasks/S24.md:207](tasks/S24.md)；[design/tasks/MCF-16-tasks-readme-split.md:26](tasks/MCF-16-tasks-readme-split.md) |
 | D567 | 表 | KDOC-01..11 全部合并或并入后，把 Knowledge Lead 报告的剩余文档缺口登记为候选 KGAP-01… | [design/tasks/S24.md:208](tasks/S24.md) |
 | D568 | 表 | 接受 SEC-01 安全评审结论（#364 评论 7148351359），SEC-01 改为 done | [design/tasks/S24.md:209](tasks/S24.md)；[CHANGELOG.md:11](../CHANGELOG.md) |
 | D569 | 表 | KGAP-04 记为 done，状态格写明交付范围：#386（`13a437b`）交付 SEC-01 结论引用与官方负责… | [design/tasks/S24.md:210](tasks/S24.md) |
@@ -611,3 +611,5 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D580 | 表 | 接受 S25 计划：目标为 v0.22.0 基于当前 main 新切 RC 且 CHANGELOG 完整，并补齐 MCL… | [design/tasks/S25.md:49](tasks/S25.md) |
 | D581 | 表 | MCF-01（#396）覆盖 v0.21.0 以来所有缺 CHANGELOG 条目的 PR，不限于收尾 R1 列出的几项 | [design/tasks/S25.md:50](tasks/S25.md) |
 | D582 | 表 | MCF-17 结案：REFAC-34 的 R8b 已确认 | [design/tasks/S25.md:51](tasks/S25.md) |
+| D583 | 表 | v0.22.0 RC2（#401，MCF-02）的 Demo 范围为 TSET-01、TMAS-01、BUG-01，BU… | [design/tasks/S25.md:52](tasks/S25.md) |
+| D584 | 表 | 接受 MCF-16 拆分方案（MCF-16-tasks-readme-split.md）原文：目录 `design/ta`… | [design/tasks/S25.md:53](tasks/S25.md) |
