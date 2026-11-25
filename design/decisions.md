@@ -585,7 +585,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D554 | 表 | REFAC-34 只改贸易单据路由 `registerTradeDocumentRoutes` 的代码组织、不改行为：每… | [design/tasks/S24.md:195](tasks/S24.md) |
 | D555 | 表 | 团队迁移到 agile-ai-team `unified-agile-v1`：角色绑定、唯一待办（`design/tas`… | [design/tasks/S24.md:196](tasks/S24.md) |
 | D556 | 表 | 知识待办 KDOC-01..11 的排序（排在 REFAC 之后，P3） | [design/tasks/S24.md:197](tasks/S24.md) |
-| D557 | 表 | 设计阶段质量项的适用规则：纯重构只有不触及页面、也不触及有性能预算的路径时，才可把 UI / 性能标 `not_appl`… | [design/tasks/S24.md:198](tasks/S24.md)；[design/team-charter.md:86](team-charter.md) |
+| D557 | 表 | 设计阶段质量项的适用规则：纯重构只有不触及页面、也不触及有性能预算的路径时，才可把 UI / 性能标 `not_appl`… | [design/tasks/S24.md:198](tasks/S24.md)；[design/team-charter.md:94](team-charter.md) |
 | D558 | 表 | KDOC 修正：KDOC-05 与 KDOC-07 共用 `docs/user/backup-and-legacy.md`… | [design/tasks/S24.md:199](tasks/S24.md) |
 | D559 | 表 | #365 文档入口的证据口径：覆盖矩阵中每个标为“已覆盖”的格都要引用完整 SHA 与具体文件，否则降级为 partia… | [design/tasks/S24.md:200](tasks/S24.md) |
 | D560 | 表 | KDOC-01、KDOC-02、KDOC-11 落地：新增 ADR-LOCAL-001（保持 SQLite 本机单用户，… | [design/tasks/S24.md:201](tasks/S24.md) |
