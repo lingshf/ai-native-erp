@@ -1,0 +1,75 @@
+web-dist: ok C:\GithubCopilot\copilot-worktrees\ai-native-erp\demo23-app\packages\web\dist\index.html dist-index=2026-11-25T02:09:54.3356112Z head-commit=2026-11-25T02:08:52.0000000Z
+demo-account-path=C:\Users\shaoling\AppData\Local\Temp\erp-demo-f6fb74f7-ed25-4363-8840-2f572ffd433b
+prepared C:\Users\shaoling\AppData\Local\Temp\erp-demo-f6fb74f7-ed25-4363-8840-2f572ffd433b\demo.sqlite 2026
+ready port=4205 pid=65424 start=18:12:05
+posted PARTY AP-DEMO 11300
+posted PARTY2 AP-DEMO2 11300
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+GET /api/v1/trade/orders/PO-I1/invoicing?company=DEFAULT 200
+GET /api/v1/trade/orders/PO-I2/invoicing?company=DEFAULT 200
+GET /api/v1/trade/orders/PO-I3/invoicing?company=DEFAULT 200
+seed-invoicing ok: PO-I1 L1 4/10 L2 0/4; PO-I2 L1 10/10; PO-I3 L1 0/5
+POST /api/v1/trade/tradeProduct 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+GET /api/v1/trade/orders/SO-I1/invoicing?company=DEFAULT 200
+GET /api/v1/trade/orders/SO-I2/invoicing?company=DEFAULT 200
+seed-sales ok: SO-I1 L1 4/10 L2 0/4; SO-I2 L1 10/10 (AR, PARTY2)
+POST /api/v1/trade/orders 201
+POST /api/v1/trade/invoices/preview 200
+POST /api/v1/trade/invoices 201
+GET /api/v1/trade/orders?company=DEFAULT&limit=100 200
+GET /api/v1/trade/orders/PO-C1/invoicing?company=DEFAULT 200
+GET /api/v1/trade/open-items?company=DEFAULT&limit=100 200
+POST /api/v1/trade/actions/preview 200
+POST /api/v1/trade/actions 201
+GET /api/v1/trade/orders?company=DEFAULT&limit=100 200
+GET /api/v1/trade/orders/PO-C1/invoicing?company=DEFAULT 200
+seed-credit ok: PO-C1 L1 贷项前 full 10/10 → 贷项 4 后 partial 6/10
+readiness ok: company DEFAULT; orders exist for invoicing none / partial / full; PO-C1 partial (seed-credit asserts 10 -> 6; credited 4)
+entries 0
+CAPTURE FAILED: locator.check: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('tbody input[type=checkbox]').nth(1)
+    - locator resolved to <input disabled type="checkbox" aria-label="采用现金折扣 3f63b7ba-c81b-4c10-a288-37f0847b660f"/>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+      - waiting 100ms
+    57 × waiting for element to be visible, enabled and stable
+       - element is not enabled
+     - retrying click action
+       - waiting 500ms
+
+inventory-before-delete path=C:\Users\shaoling\AppData\Local\Temp\erp-demo-f6fb74f7-ed25-4363-8840-2f572ffd433b at=2026-11-24 18:12:46
+inventory file=C:\Users\shaoling\AppData\Local\Temp\erp-demo-f6fb74f7-ed25-4363-8840-2f572ffd433b\demo.sqlite bytes=647168 sha256=2C562EBBD7CCA1A9F0DF53FC9EC745EB66B5942D82DCFD0DBCA4604333B0DE4E
+inventory file=C:\Users\shaoling\AppData\Local\Temp\erp-demo-f6fb74f7-ed25-4363-8840-2f572ffd433b\demo.sqlite.users\65424-47407c0f-5da2-4b9b-bf9c-1a1be394598d bytes=0 sha256=E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855
+inventory file=C:\Users\shaoling\AppData\Local\Temp\erp-demo-f6fb74f7-ed25-4363-8840-2f572ffd433b\demo.sqlite.users\65424-b75ef83d-13f9-405b-8bea-7b08209fa321 bytes=0 sha256=E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855
+inventory file=C:\Users\shaoling\AppData\Local\Temp\erp-demo-f6fb74f7-ed25-4363-8840-2f572ffd433b\demo.sqlite-shm bytes=32768 sha256=841950B75FA869310A372C5FA8721BD62D1672893C7C081D691B1A42FD0DFF65
+inventory file=C:\Users\shaoling\AppData\Local\Temp\erp-demo-f6fb74f7-ed25-4363-8840-2f572ffd433b\demo.sqlite-wal bytes=1878752 sha256=92382B5E626063CFB75D3E9D13B8E0B28BA049A9A8D2A1612E58FEB6B6C610FE
+inventory demo.sqlite-wal present
+inventory demo.sqlite-shm present
+inventory-end
+port 4205 released
+capture failed, exit 1
+At C:\GithubCopilot\copilot-worktrees\ai-native-erp\demo23-app\docs\demo\v0.22.0\scripts\run-main.ps1:40 char:112
++ ...  ($LASTEXITCODE) { throw "capture failed, exit $LASTEXITCODE" }; "cap ...
++                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (capture failed, exit 1:String) [], RuntimeException
+    + FullyQualifiedErrorId : capture failed, exit 1
+ 

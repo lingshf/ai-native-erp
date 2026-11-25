@@ -1,0 +1,4 @@
+snapshot	takenAt	kind	pid	ppid	depth	name	created	cpuSeconds	exe	cwd	cmdline	port	localAddress	note
+1	2026-11-24T18:09:58.7282829-08:00	none												no node process
+1	2026-11-24T18:09:58.7282829-08:00	listen	none									4205		
+1	2026-11-24T18:09:58.7282829-08:00	listen	none									4173		

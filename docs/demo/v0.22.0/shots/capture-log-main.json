@@ -1,0 +1,395 @@
+[
+ {
+  "name": "tset01-zh-red-1440",
+  "step": "page",
+  "record": {
+   "feature": "tset01",
+   "lang": "zh",
+   "theme": "red",
+   "width": 1440,
+   "rowsBefore": 5,
+   "pickedBefore": 1,
+   "hiddenItemId": "c4dadbe1-e8a7-4bde-8913-9b6417bfbd4e",
+   "hash": "#/trade-settlements?company=DEFAULT",
+   "heading": "付款与收款",
+   "documentScrollWidth": 1440
+  }
+ },
+ {
+  "name": "tset01-en-green-1440",
+  "step": "keyboard",
+  "record": {
+   "feature": "tset01",
+   "lang": "en",
+   "theme": "green",
+   "width": 1440,
+   "rowsBefore": 5,
+   "pickedBefore": 1,
+   "hiddenItemId": "c4dadbe1-e8a7-4bde-8913-9b6417bfbd4e",
+   "hash": "#/trade-settlements?company=DEFAULT",
+   "heading": "Payments and receipts",
+   "documentScrollWidth": 1440,
+   "tabStopsToRemove": 1,
+   "checkedBeforeRemove": 0,
+   "checkedAfterRemove": 0,
+   "noticeGone": true,
+   "focusAfterRemove": "Refresh list"
+  }
+ },
+ {
+  "name": "tset01-zh-red-390",
+  "step": "page",
+  "record": {
+   "feature": "tset01",
+   "lang": "zh",
+   "theme": "red",
+   "width": 390,
+   "rowsBefore": 5,
+   "pickedBefore": 1,
+   "hiddenItemId": "c4dadbe1-e8a7-4bde-8913-9b6417bfbd4e",
+   "hash": "#/trade-settlements?company=DEFAULT",
+   "heading": "付款与收款",
+   "documentScrollWidth": 390
+  }
+ },
+ {
+  "name": "tset01-en-green-390",
+  "step": "page",
+  "record": {
+   "feature": "tset01",
+   "lang": "en",
+   "theme": "green",
+   "width": 390,
+   "rowsBefore": 5,
+   "pickedBefore": 1,
+   "hiddenItemId": "c4dadbe1-e8a7-4bde-8913-9b6417bfbd4e",
+   "hash": "#/trade-settlements?company=DEFAULT",
+   "heading": "Payments and receipts",
+   "documentScrollWidth": 390
+  }
+ },
+ {
+  "name": "tmas01-zh-red-1440",
+  "step": "page",
+  "record": {
+   "feature": "tmas01",
+   "lang": "zh",
+   "theme": "red",
+   "width": 1440,
+   "hash": "#/trade?company=DEFAULT",
+   "heading": "贸易主数据",
+   "documentScrollWidth": 1440,
+   "cases": [
+    {
+     "text": "30.0",
+     "alert": "data.dueDays: 请输入 0–3650 的整数。",
+     "postsSoFar": 0
+    },
+    {
+     "text": "1e2",
+     "alert": "data.dueDays: 请输入 0–3650 的整数。",
+     "postsSoFar": 0
+    },
+    {
+     "text": "0x10",
+     "alert": "data.dueDays: 请输入 0–3650 的整数。",
+     "postsSoFar": 0
+    },
+    {
+     "text": "3651",
+     "alert": "data.dueDays: 请输入 0–3650 的整数。",
+     "postsSoFar": 0
+    }
+   ],
+   "posts": []
+  }
+ },
+ {
+  "name": "tmas01-en-green-1440",
+  "step": "keyboard",
+  "record": {
+   "feature": "tmas01",
+   "lang": "en",
+   "theme": "green",
+   "width": 1440,
+   "hash": "#/trade?company=DEFAULT",
+   "heading": "Trade master data",
+   "documentScrollWidth": 1440,
+   "cases": [
+    {
+     "text": "30.0",
+     "alert": "data.dueDays: Enter a whole number from 0 to 3650.",
+     "postsSoFar": 0
+    },
+    {
+     "text": "1e2",
+     "alert": "data.dueDays: Enter a whole number from 0 to 3650.",
+     "postsSoFar": 0
+    },
+    {
+     "text": "0x10",
+     "alert": "data.dueDays: Enter a whole number from 0 to 3650.",
+     "postsSoFar": 0
+    },
+    {
+     "text": "3651",
+     "alert": "data.dueDays: Enter a whole number from 0 to 3650.",
+     "postsSoFar": 0
+    }
+   ],
+   "posts": []
+  }
+ },
+ {
+  "name": "tmas01-zh-red-390",
+  "step": "page",
+  "record": {
+   "feature": "tmas01",
+   "lang": "zh",
+   "theme": "red",
+   "width": 390,
+   "hash": "#/trade?company=DEFAULT",
+   "heading": "贸易主数据",
+   "documentScrollWidth": 390,
+   "cases": [
+    {
+     "text": "30.0",
+     "alert": "data.dueDays: 请输入 0–3650 的整数。",
+     "postsSoFar": 0
+    },
+    {
+     "text": "1e2",
+     "alert": "data.dueDays: 请输入 0–3650 的整数。",
+     "postsSoFar": 0
+    },
+    {
+     "text": "0x10",
+     "alert": "data.dueDays: 请输入 0–3650 的整数。",
+     "postsSoFar": 0
+    },
+    {
+     "text": "3651",
+     "alert": "data.dueDays: 请输入 0–3650 的整数。",
+     "postsSoFar": 0
+    }
+   ],
+   "posts": []
+  }
+ },
+ {
+  "name": "tmas01-en-green-390",
+  "step": "page",
+  "record": {
+   "feature": "tmas01",
+   "lang": "en",
+   "theme": "green",
+   "width": 390,
+   "hash": "#/trade?company=DEFAULT",
+   "heading": "Trade master data",
+   "documentScrollWidth": 390,
+   "cases": [
+    {
+     "text": "30.0",
+     "alert": "data.dueDays: Enter a whole number from 0 to 3650.",
+     "postsSoFar": 0
+    },
+    {
+     "text": "1e2",
+     "alert": "data.dueDays: Enter a whole number from 0 to 3650.",
+     "postsSoFar": 0
+    },
+    {
+     "text": "0x10",
+     "alert": "data.dueDays: Enter a whole number from 0 to 3650.",
+     "postsSoFar": 0
+    },
+    {
+     "text": "3651",
+     "alert": "data.dueDays: Enter a whole number from 0 to 3650.",
+     "postsSoFar": 0
+    }
+   ],
+   "posts": []
+  }
+ },
+ {
+  "name": "bug01-zh-red-1440",
+  "step": "page",
+  "record": {
+   "feature": "bug01",
+   "lang": "zh",
+   "theme": "red",
+   "width": 1440,
+   "hash": "#/ledger?company=DEFAULT&month=2026-12&account=1000&stage=adjusted&watermark=8&accountRevision=14",
+   "valueDisabledEmpty": true,
+   "tabFromEmptyDimension": "查询",
+   "hashAfterQueryEmpty": "#/ledger?company=DEFAULT&month=2026-12&account=1000&stage=adjusted&watermark=8&accountRevision=14",
+   "invalidShown": 0,
+   "valueEnabledWithDimension": true,
+   "valueTyped": "X1",
+   "valueAfterClearDimension": "",
+   "valueDisabledAfterClear": true
+  }
+ },
+ {
+  "name": "bug01-en-green-1440",
+  "step": "keyboard",
+  "record": {
+   "feature": "bug01",
+   "lang": "en",
+   "theme": "green",
+   "width": 1440,
+   "hash": "#/ledger?company=DEFAULT&month=2026-12&account=1000&stage=adjusted&watermark=8&accountRevision=14",
+   "valueDisabledEmpty": true,
+   "tabFromEmptyDimension": "Query",
+   "hashAfterQueryEmpty": "#/ledger?company=DEFAULT&month=2026-12&account=1000&stage=adjusted&watermark=8&accountRevision=14",
+   "invalidShown": 0,
+   "valueEnabledWithDimension": true,
+   "valueTyped": "X1",
+   "valueAfterClearDimension": "",
+   "valueDisabledAfterClear": true
+  }
+ },
+ {
+  "name": "bug01-zh-red-390",
+  "step": "page",
+  "record": {
+   "feature": "bug01",
+   "lang": "zh",
+   "theme": "red",
+   "width": 390,
+   "hash": "#/ledger?company=DEFAULT&month=2026-12&account=1000&stage=adjusted&watermark=8&accountRevision=14",
+   "valueDisabledEmpty": true,
+   "tabFromEmptyDimension": "查询",
+   "hashAfterQueryEmpty": "#/ledger?company=DEFAULT&month=2026-12&account=1000&stage=adjusted&watermark=8&accountRevision=14",
+   "invalidShown": 0,
+   "valueEnabledWithDimension": true,
+   "valueTyped": "X1",
+   "valueAfterClearDimension": "",
+   "valueDisabledAfterClear": true
+  }
+ },
+ {
+  "name": "bug01-en-green-390",
+  "step": "page",
+  "record": {
+   "feature": "bug01",
+   "lang": "en",
+   "theme": "green",
+   "width": 390,
+   "hash": "#/ledger?company=DEFAULT&month=2026-12&account=1000&stage=adjusted&watermark=8&accountRevision=14",
+   "valueDisabledEmpty": true,
+   "tabFromEmptyDimension": "Query",
+   "hashAfterQueryEmpty": "#/ledger?company=DEFAULT&month=2026-12&account=1000&stage=adjusted&watermark=8&accountRevision=14",
+   "invalidShown": 0,
+   "valueEnabledWithDimension": true,
+   "valueTyped": "X1",
+   "valueAfterClearDimension": "",
+   "valueDisabledAfterClear": true
+  }
+ },
+ {
+  "checks": [
+   {
+    "check": "tset01-zh-red-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "tset01-zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "tset01-en-green-1440 页面无横向溢出",
+    "ok": true,
+    "detail": 0
+   },
+   {
+    "check": "tset01-en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "tset01-zh-red-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "tset01-zh-red-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "tset01-en-green-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "tset01-en-green-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "tmas01-zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "tmas01-en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "tmas01-zh-red-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "tmas01-zh-red-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "tmas01-en-green-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "tmas01-en-green-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "bug01-zh-red-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "bug01-en-green-1440 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "bug01-zh-red-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "bug01-zh-red-390 无页面错误",
+    "ok": true,
+    "detail": []
+   },
+   {
+    "check": "bug01-en-green-390 页面 scrollWidth ≤ 390",
+    "ok": true,
+    "detail": 390
+   },
+   {
+    "check": "bug01-en-green-390 无页面错误",
+    "ok": true,
+    "detail": []
+   }
+  ]
+ }
+]
