@@ -612,3 +612,4 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D581 | 表 | MCF-01（#396）覆盖 v0.21.0 以来所有缺 CHANGELOG 条目的 PR，不限于收尾 R1 列出的几项 | [design/tasks/S25.md:50](tasks/S25.md) |
 | D582 | 表 | MCF-17 结案：REFAC-34 的 R8b 已确认 | [design/tasks/S25.md:51](tasks/S25.md) |
 | D583 | 表 | v0.22.0 RC2（#401，MCF-02）的 Demo 范围为 TSET-01、TMAS-01、BUG-01，BU… | [design/tasks/S25.md:52](tasks/S25.md) |
+| D584 | 表 | 接受 MCF-16 拆分方案（MCF-16-tasks-readme-split.md）原文：目录 `design/ta`… | [design/tasks/S25.md:53](tasks/S25.md) |
