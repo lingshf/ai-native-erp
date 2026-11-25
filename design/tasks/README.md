@@ -1019,7 +1019,7 @@ KDOC-01..11 都已合并或并入（见上表）。下面是 Knowledge Lead 报�
 | --- | --- | --- | --- | --- | --- | --- |
 | MCF-01 | CHANGELOG `[Unreleased]` 缺 BUG-01 #382、BUG-02a–d #387、BUG-03a/b #383 与 REFAC-31/32/34 的条目（R1，D572） | P1 | Delivery/Release 写；非作者 Reviewer 核对（原开发会话已归档） | 一个只改文档的 PR 补齐上述条目；Reviewer 逐条确认描述与已合并的 diff 一致；纯重构按 CHANGELOG 惯例写明“无用户可见变化” | v0.22.0 RC 之前 | todo（候选） |
 | MCF-02 | 冻结在 `3566ddb` 的 DEMO-23 RC 已过时（R2，D573） | P2 | Delivery/Release | v0.22.0 改基于从当前 main（含 MCF-01）新切的 RC；旧 RC 标为已取代；打 tag 与发布 Release 仍须用户授权，本项不授予 | v0.22.0；依赖 MCF-01 | todo（候选） |
-| MCF-03 | `docs/README.md` G5 仍写“没有决定总索引”，但 KDOC-03（#369）已交付 `design/decisions.md`（R3） | P3 | Knowledge Lead；Delivery/Release 确认 R3 所指 | G5 改为指向决定索引并写明仍缺的部分；若 Release 指的是别的缺口，另行登记 | 下一批文档 PR | todo（候选） |
+| MCF-03 | 删除 `docs/README.md` 中过时的 G5（矩阵行“团队流程与决定记录”与 G5 列表项），并顺带清理 G8 中已不成立的部分（R3，Release 已确认 R3 只指过时的 G5；KDOC-03 #369 已交付 `design/decisions.md`） | P3 | Knowledge Lead | G5 的矩阵行与列表项已删除，`docs/README.md` 中不再有指向 G5 的引用；G8 只保留仍成立的同步要求 | 下一批文档 PR | todo（候选） |
 | MCF-04 | 每次钉版本都单开 PR（K3，D574 修订 D561） | P3 | Knowledge Lead | 此后钉版本在同一 PR 的下一轮完成，或每个里程碑批量钉一次；不再为单次钉版本开 PR；D561 的其余要求（完整 SHA + 具体文件）不变 | 立即生效 | todo（候选） |
 | MCF-05 | SEC-02 对 F22、§6.3 与 `docs/ai-assistant.md` §3/§5/§7 的改写，以及 D570/D571 的措辞，未经事实所有者与设计核对（K2、§5 取舍、自查 PD-7） | P2 | Developer 事实（TL 指派，原开发会话已归档）；Product/Design 核对 D570/D571 措辞 | 逐项对照 `70acd04` 的代码与测试给出复核记录；措辞与 D570/D571 一致；不一致之处走文档 PR 修正 | 下一检查点 | todo（候选） |
 | MCF-06 | KDOC 页 QA 措辞过宽（Q4，D578） | P2 | Knowledge Lead | #365、#368、#375 的 PASS 写明只覆盖阅读路径、源码和现有测试；`docs/README.md` 的笼统“未经 QA 演练”逐页列出；#386 的事实核对写明只覆盖 `7aabc4f` 上的两项；矩阵保持 partial | 下一批文档 PR | todo（候选） |
@@ -1027,7 +1027,7 @@ KDOC-01..11 都已合并或并入（见上表）。下面是 Knowledge Lead 报�
 | MCF-08 | REFAC 拆分后没有代码入口、扩展点与调试的说明页（§5 实现） | P2 | Knowledge Lead 写；Developer 事实复核（TL 指派） | 新页按模块列出入口文件与扩展点（钉完整 SHA）；所列调试命令在该 SHA 上实跑通过；经事实所有者复核 | 下一检查点 | todo（候选） |
 | MCF-09 | G2 未解决：矩阵中“gap（G2）”各行的取舍主题未逐一核对（§5 取舍） | P2 | Product/Design 核对；Knowledge Lead 更新 | 逐行核对后改状态或写明缺口；AI 备选见 KGAP-02，M0 决定摘要见 KGAP-03，不重复 | 下一检查点；与 KGAP-02/03 协调 | todo（候选） |
 | MCF-10 | 性能页状态为 unknown（§5 使用） | P3 | Knowledge Lead；Developer 事实复核 | 链接现有基准与预算（钉 SHA），或明确标为缺口；不新造阈值 | 下一检查点 | todo（候选） |
-| MCF-11 | G8 条目可以精简（§5 过时） | P3 | Knowledge Lead | G8 只保留仍有效的同步要求，已完成的部分删去 | 下一批文档 PR | todo（候选） |
+| MCF-11 | G8 条目可以精简（§5 过时） | P3 | Knowledge Lead | 并入 MCF-03 | 同 MCF-03 | 并入 MCF-03 |
 | MCF-12 | 根 README 的业务规则段与 `docs/user/` 重叠（§5 重复） | P3 | Knowledge Lead；Product/Design 确认权威位置 | 每条规则只留一个权威位置，另一处改为链接 | 下一检查点 | todo（候选） |
 | MCF-13 | 附在计划批准里的反馈可能没有送达子会话，导致 SEC-02 改动了主机防火墙（TL 自查，D571） | P2 | Team Leader | 计划批准的条件一律另发一条消息重申；开发者在 `plan.md` 开头复述约束；下一次计划批准有此记录 | 立即生效 | todo（候选） |
 | MCF-14 | 决定索引 `design/decisions.md` 由仓库外的脚本生成，无法复现（Design 自查 PD-1） | P2 | Product/Design 提供脚本；Delivery/Release 评审入库 | 生成脚本入库，`design/decisions.md` 开头写明重新生成的命令；在该提交上重新生成，结果与已提交内容一致 | 下一检查点 | todo（候选） |

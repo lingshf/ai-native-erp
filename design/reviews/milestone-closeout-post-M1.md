@@ -128,7 +128,7 @@
 | --- | --- | --- | --- |
 | R1 | P1 | CHANGELOG `[Unreleased]` 没有 BUG-01 [#382](https://github.com/lingshf/ai-native-erp/pull/382)、BUG-02a–d [#387](https://github.com/lingshf/ai-native-erp/pull/387)、BUG-03a/b [#383](https://github.com/lingshf/ai-native-erp/pull/383)、REFAC-31/32/34 的条目（转录人核对：`[Unreleased]` 目前只有 SEC-02 一条） | MCF-01（D572） |
 | R2 | P2 | 冻结在 `3566ddb` 的 DEMO-23 RC 已过时，main 之后有产品改动 | MCF-02（D573） |
-| R3 | P3 | G5 没有总的决定索引 | MCF-03。转录人核对：索引已由 KDOC-03（[#369](https://github.com/lingshf/ai-native-erp/pull/369)，`577891c`）交付为 [`design/decisions.md`](../decisions.md)，但 `docs/README.md` 的 G5 条仍写“没有决定总索引”，这一条已过时。按过时条目处理 |
+| R3 | P3 | G5 没有总的决定索引 | MCF-03（Release 已确认 R3 只指过时的 G5 条目：删除 G5 矩阵行与列表项，并清理 G8）。转录人核对：索引已由 KDOC-03（[#369](https://github.com/lingshf/ai-native-erp/pull/369)，`577891c`）交付为 [`design/decisions.md`](../decisions.md)，但 `docs/README.md` 的 G5 条仍写“没有决定总索引”，这一条已过时。按过时条目处理 |
 
 CI/CD、部署与回滚：本检查点不适用（没有发布或部署）。
 
@@ -149,7 +149,7 @@ CI/CD、部署与回滚：本检查点不适用（没有发布或部署）。
 | 取舍 | G2 未解决；SEC-02 / D570 的措辞未经设计核对 | P2 | G2 → MCF-09；SEC-02 / D570 措辞 → MCF-05 |
 | 使用 | 官方数据处理说明缺失 | P3 | 已按 D569 保留为已知缺口，不另立项 |
 | 使用 | 性能页为 unknown | P3 | MCF-10 |
-| 过时 | G8 可以精简 | P3 | MCF-11 |
+| 过时 | G8 可以精简 | P3 | 并入 MCF-03 |
 | 冲突 | 未发现 | — | — |
 | 重复 | 根 README 的业务规则段与 `docs/user/` 重叠 | P3 | MCF-12 |
 | 缺 QA | 运维、迁移手册、CI 说明、AI 助手四页没有在安全数据上演练 | P2 | 并入 KGAP-01（逐页“剩余”栏），不另立项 |
@@ -157,9 +157,9 @@ CI/CD、部署与回滚：本检查点不适用（没有发布或部署）。
 ## 6. TL 对齐
 
 - 分歧：
-  - R3 与 KDOC-03 已交付的决定索引：转录人核对后认定是 `docs/README.md` G5 条目过时（见 4.6），按 MCF-03 处理。若 Release 指的是别的缺口，请在 MCF-03 中说明。
+  - R3 与 KDOC-03 已交付的决定索引：转录人核对后认定是 `docs/README.md` G5 条目过时（见 4.6）；Release 已确认，无其他缺口，按 MCF-03 处理。
   - REFAC-31/34 的 R8b：TL 决定不用绿灯补记（D576）。
-- 同一版本确认：_待收集。_ 每位成员需在自己的角色内确认读的是本页 head、[D566](../tasks/README.md#里程碑收尾检查与回顾d566) 与截至 D578 的决定。群发消息不算确认。
+- 同一版本确认：Delivery/Release 已确认，无异议；其他成员 _待收集。_ 每位成员需在自己的角色内确认读的是本页 head、[D566](../tasks/README.md#里程碑收尾检查与回顾d566) 与截至 D578 的决定。群发消息不算确认。
 
 ## 7. 发现项
 
