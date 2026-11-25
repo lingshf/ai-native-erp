@@ -37,8 +37,8 @@ flowchart LR
 
 **未验证或未记录**，如实保留为缺口：
 
-- 交给 SDK 的环境变量只去掉三个键（F22）；SDK 子进程是否原样收到本进程环境未验证，是否改白名单是安全评审候选 SEC-01（事实清单 §6-3）。**不要**据此认为子进程收到全部变量，也不要认为已被隔离。
-- Copilot 服务端如何保存和使用这些数据，仓库无记录，请查阅 GitHub Copilot 官方的数据处理说明。事实清单 §6-4 未记录具体链接，本页**暂缺该链接**，也不推断服务端行为。
+- 交给 SDK 的环境变量：**现行行为（SEC-02 合并前）**仍是只去掉三个键（F22），其余已设置的变量一并交给 SDK 工厂；SDK 子进程是否原样收到本进程环境未验证。SEC-01 安全评审已完成并经 Product/Design 验收（[评审：#364 评论 7148351359](https://github.com/lingshf/ai-native-erp/issues/364#issuecomment-7148351359)；验收：D568，见[决定索引](../design/decisions.md)与事实清单 §6-3）：结论是改为显式白名单，由 [SEC-02](../design/tasks/SEC-02-copilot-env-allowlist.md) 实施，**尚未实施**，白名单未生效。**不要**据此认为子进程收到全部变量，也不要认为已被隔离或已改白名单。SEC-02 合并后本节再按新行为改写。
+- Copilot 服务端如何保存和使用这些数据，仓库无记录，本页不复述也不推断，请以 GitHub 官方说明为准：[Application card: GitHub Copilot Agents（含 Copilot SDK 与 CLI）](https://docs.github.com/copilot/responsible-use/copilot-cli)。该链接是否确为合适的官方页面待 Product/Design 核对。
 
 ## 4. 教学模式
 
@@ -72,4 +72,4 @@ flowchart LR
 - 发送内容的边界见第 3 节（起草与讲解不同，讲解含全部科目余额），且不开放任何工具：牺牲模型自主性，换取“只产出候选”的可审计边界。
 - 候选不自动保存：多一步人工，换取过账责任始终在用户。
 - 讲解的教学模式限制只在前端（D563），服务端不加固。
-- 缺口：SEC-01 环境白名单评审未做；Copilot 服务端数据处理无仓库内记录；本页未经 QA 演练，也未经事实所有者复核。
+- 缺口：SEC-02 环境白名单尚未实施（SEC-01 评审已验收，见第 3 节）；Copilot 服务端数据处理只链接官方页面，链接待 Product/Design 核对；本页未经 QA 演练，也未经事实所有者复核。
