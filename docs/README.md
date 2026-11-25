@@ -76,7 +76,7 @@
 | `design/ui/`、`design/diagrams/` | UI-1 规范与原型、架构示意图 | UI-1 stale；diagrams 属 ARCH-SME-01，随 C1 |
 | [`docs/user/`](user/README.md) | 用户文档 | 页面存在（版本见矩阵）；索引页已于 KDOC-05 去掉版本叙述，指向 CHANGELOG；含[贸易主路径演练](user/trade-main-path.md) |
 | [`docs/ai-assistant.md`](ai-assistant.md) | AI 助手 | partial（KGAP-04、SEC-02 改动，合并后钉版本；`4d3bd90…` 为改动前） |
-| [`docs/tradeoffs.md`](tradeoffs.md) | 取舍汇总 | partial（钉合并提交 `6debbdf551242c269cbb22401b34f27a028f6e91`；KDOC-09 新增；设计/产品已核对，未经 QA） |
+| [`docs/tradeoffs.md`](tradeoffs.md) | 取舍汇总 | partial（KDOC-09 新增；SEC-02 改动 §3，合并后钉版本；`6debbdf551242c269cbb22401b34f27a028f6e91` 为改动前；设计/产品核对不覆盖 SEC-02 改动，未经 QA） |
 | [`docs/operations.md`](operations.md) | 运维与故障排查 | partial（钉合并提交 `66f3a47623e3b07f55447b06ac48fe84d153c34a`；KDOC-07 新增） |
 | [`docs/ci.md`](ci.md) | CI 说明 | partial（钉版本 `08d9cf34e3623f01803d143caa14bfcb923d2561`；对照 workflow 与 `scripts/ci.ts`，未经复核） |
 | [`docs/flows/`](flows/README.md) | Mermaid 界面流程图 | 索引页；新增付款与收款流程，见 G4（partial；`docs/flows/README.md` 钉 `8ed9d1b0fdfd053acf87f82dcaca3c0efeebb011`） |
@@ -93,7 +93,7 @@
 - **C1**：[ADR-SME-001..006](../design/adr/ADR-SME-001.md)、[architecture](../design/architecture.md)、[architecture-migration](../design/architecture-migration.md)、[design](../design/design.md)、[requirements](../design/requirements.md) 描述 PostgreSQL / Server Compose / OIDC 试点与 M04..M09，而[路线图页首](../design/roadmap.md)与 [README](../README.md) 明确当前只做 SQLite、单用户、无登录，并称这些页已被取代。取舍这一目标没有一页既说明“为什么不再走双库/Server”又给出失效条件。
 
 **缺口**
-- **G1** 已由 KDOC-04 处理：新增 [AI 助手](ai-assistant.md)。仍缺：整页事实复核（仅 KGAP-04 两项已由设计核对，见矩阵）、整页 QA（#375 范围内 PASS 不扩大）；KGAP-04 已补 SEC-01 评审与验收引用；SEC-02 已实施环境白名单（第 3、5、7 节已改写，未复核）和 Copilot Agents 负责任使用说明链接（服务端数据处理仍为缺口）。
+- **G1** 已由 KDOC-04 处理：新增 [AI 助手](ai-assistant.md)。仍缺：整页事实复核（仅 KGAP-04 两项已由设计核对，见矩阵）、整页 QA（#375 范围内 PASS 不扩大）；KGAP-04 已补 SEC-01 评审与验收引用和 Copilot Agents 负责任使用说明链接（服务端数据处理仍为缺口）。SEC-02 已实施环境白名单，改写了第 3、5、7 节（未复核）；Windows 平台补入项按 D570 列为已知例外。
 - **G2** 已由 KDOC-09 部分处理：新增[取舍汇总](tradeoffs.md)（存储与单用户、总账模型、AI、教学模式、旧账迁移、报表索引、依赖升级七个主题）。D1、D2、D3、D51 的补记已引用路线图 §6.1（D564）。仍缺：AI 一节的备选原记录未写，M0 其余决定未归纳。设计/产品核对已完成（#377 评论）。各行的“gap（G2）”格仍保留，直到相应主题被核对。
 - **G3** 已由 KDOC-05 处理：[docs/user/README](user/README.md) 不再维护版本叙述；[界面指南](user/ui-guide.md)补了 v0.17.0–v0.21.0 一节（经 CHANGELOG 核对，这五版的用户可见变化仅为各列表页的“刷新列表”按钮）。G3 不再是 stale（#368 已合并）；未经产品复核与 QA 演练，相关页为 partial（已钉版本）。
 - **G4** 已由 KDOC-06 处理：[flows/README](flows/README.md) 不再标 v0.3.0，新增[付款与收款流程](flows/settlement-flow.md)（含 v0.21.0 的“刷新列表”、结果未知与离开页面）。仍缺：对该图的开发复核与 QA 演练；其余各图未逐一对照现行界面。
