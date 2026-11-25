@@ -8,7 +8,7 @@
 
 ### Changed（用户可见，行为变化）
 
-- **AI 助手交给 Copilot SDK 的环境变量改为显式白名单**（SEC-02，D568）：只交出明确设置且非空的 `COPILOT_GITHUB_TOKEN`，未设置时交出空环境；不再交出 `GH_TOKEN`、`GITHUB_TOKEN`、其他凭据、代理与证书变量、ERP 配置等本进程变量；传输方式固定为 stdio，不使用 SDK 的 `gitHubToken` 选项。**影响**：以前靠 `GH_TOKEN`、`GITHUB_TOKEN` 或其他继承变量使 AI 可用的部署，升级后 AI 可能不可用（`AI_UNAVAILABLE`，手工记账不受影响）。**迁移**：可改设 `COPILOT_GITHUB_TOKEN`；不保证恢复以前所有认证方式（真实认证兼容、存量登录、`gh` 回退、代理与自定义 CA 均未验证）。见 [AI 助手 §5](docs/ai-assistant.md#5-启用与配置)。无迁移脚本，无依赖变化。
+- **AI 助手交给 Copilot SDK 的环境变量改为显式白名单**（SEC-02，D568）：只交出明确设置且非空的 `COPILOT_GITHUB_TOKEN`，未设置时交出空环境；不再交出 `GH_TOKEN`、`GITHUB_TOKEN`、其他凭据、`PATH` 等平台变量、代理与证书变量、ERP 配置等本进程变量（指 ERP 交给 SDK 的环境；Windows 系统仍会为子进程补入 `PATH` 等少量系统变量）；传输方式固定为 stdio，不使用 SDK 的 `gitHubToken` 选项。**影响**：以前靠 `GH_TOKEN`、`GITHUB_TOKEN` 或其他继承变量使 AI 可用的部署，升级后 AI 可能不可用（`AI_UNAVAILABLE`，手工记账不受影响）。**迁移**：可改设 `COPILOT_GITHUB_TOKEN`；不保证恢复以前所有认证方式（原生 CLI 对补入键的依赖、真实认证兼容、存量登录、`gh` 回退、代理与自定义 CA 均未验证）。见 [AI 助手 §5](docs/ai-assistant.md#5-启用与配置)。无迁移脚本，无依赖变化。
 
 ## [0.21.0] - 2026-11-23
 
