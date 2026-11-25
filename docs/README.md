@@ -58,6 +58,8 @@
 
 **剩余缺口（QA 与复核）**：（1）没有真实浏览器的页面步骤演练，#373、#375 只有 jsdom / 假 SDK；（2）没有真实 Copilot 调用，Windows 原生 CLI 离线启动未验证（D571）；（3）旧账快照、dry-run、仅导入的健康验证没有演练（#374）；（4）没有 workflow 实际运行或按页面排查失败的演练（#370）；（5）`ai-assistant.md` 整页事实复核与整页 QA 未做，#391 改写后的第 3、5、7 节只有上表的 D570/D571 范围；（6）本表之外页面的 QA 证据未汇总。
 
+**MCF-12 的改动（D590）**：根 `README.md` “当前业务与统一规则”一节改动三处（账龄分档、保存冲突、预览操作改为指向 `docs/user/` 的一句话加链接）并加权威位置说明；标题锚点未变。该 README 的合并提交待合并后钉版本；矩阵中已有的 README 钉点只覆盖未改动的小节。
+
 **KDOC-07 的改动（D561）**：新增 `operations.md`，改动 `backup-and-legacy.md` 与根 `README.md`（“目标存储工具”“历史导入”两节改为链接）。另改动 `migration-runbook.md`（§6、新增 §10）、`user/getting-started.md`、`user/trade-main-path.md`、`legacy-snapshot.md`（快照命令改为链接）。这些页已在 KDOC-04 按 #374 合并提交 `66f3a47623e3b07f55447b06ac48fe84d153c34a` 钉版本，仍为 partial；README 其他小节未重新核对。`ledger.md`、`settlement-flow.md` 已钉到 KDOC-06 合并提交（见各行）。
 
 事实所有者按角色：产品 = 设计/产品负责人；开发 = 开发；发布 = Delivery/Release；知识 = Knowledge Lead。

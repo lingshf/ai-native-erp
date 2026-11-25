@@ -48,7 +48,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D17 | 无 | | |
 | D18 | 提及 | | [design/reviews/M1.md:46](reviews/M1.md)；[design/tasks/M1-R3-trade-report-capacity.md:14](tasks/M1-R3-trade-report-capacity.md)；[docs/performance/legacy-reconciliation-bench.md:46](../docs/performance/legacy-reconciliation-bench.md) 等 12 处 |
 | D19 | 无 | | |
-| D20 | 提及 | SemVer，tag 写作 `vX.Y.Z`，修复用 Z 位；“按里程碑划分 Sprint”已由 D555 取代（同页第 5 行） | [docs/release/README.md:3](../docs/release/README.md)；[design/tasks/PROC-01-release-claims-and-demo.md:10](tasks/PROC-01-release-claims-and-demo.md)；[docs/README.md:78](../docs/README.md) 等 5 处 |
+| D20 | 提及 | SemVer，tag 写作 `vX.Y.Z`，修复用 Z 位；“按里程碑划分 Sprint”已由 D555 取代（同页第 5 行） | [docs/release/README.md:3](../docs/release/README.md)；[design/tasks/PROC-01-release-claims-and-demo.md:10](tasks/PROC-01-release-claims-and-demo.md)；[docs/README.md:80](../docs/README.md) 等 5 处 |
 | D21 | 提及 | tag 打在发布 PR 合并后的 squash 提交上 | [docs/release/README.md:3](../docs/release/README.md)；[design/reviews/S7.md:124](reviews/S7.md)；[design/tasks/PROC-01-release-claims-and-demo.md:10](tasks/PROC-01-release-claims-and-demo.md) 等 31 处 |
 | D22 | 无 | | |
 | D23 | 无 | | |
@@ -617,5 +617,5 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D586 | 表 | #401（MCF-02）Demo 时段直接运行 `run-main.ps1`、未经 slot-run，且试运行 1–9 … | [design/tasks/S25.md:55](tasks/S25.md) |
 | D587 | 表 | D7（业务事件待转）缺备选，与 D5、D6、D8 同类，并入 KGAP-03 的范围 | [design/tasks/S25.md:56](tasks/S25.md) |
 | D588 | 表 | M1 之后的贸易设计（订单 TORD、从订单开票 TINV、TSET-01 等）散在各 Sprint 任务书，没有一页汇… | [design/tasks/S25.md:57](tasks/S25.md) |
-| D589 | 表 | 关闭 C1（ADR-SME-001 等历史页与现行架构冲突）：这些页已有 D560 的“已取代”页首 | [design/tasks/S25.md:58](tasks/S25.md)；[docs/README.md:109](../docs/README.md) |
+| D589 | 表 | 关闭 C1（ADR-SME-001 等历史页与现行架构冲突）：这些页已有 D560 的“已取代”页首 | [design/tasks/S25.md:58](tasks/S25.md)；[docs/README.md:111](../docs/README.md) |
 | D590 | 表 | 授权 Release + Knowledge Lead（同一会话，以 KL 身份落文）为 MCF-12 修改根 `REA`… | [design/tasks/S25.md:59](tasks/S25.md) |
