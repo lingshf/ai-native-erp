@@ -21,6 +21,7 @@
   "packages/infra/test/application/trade-order-credit-invoicing.test.ts": 1200,
   "packages/infra/test/application/workers.test.ts": 5387,
   "packages/infra/test/configuration.test.ts": 1,
+  "packages/infra/test/copilot-ai-client.test.ts": 1,
   "packages/infra/test/copilot-ai.test.ts": 5,
   "packages/infra/test/http/api.test.ts": 1343,
   "packages/infra/test/http/business-events.test.ts": 266,

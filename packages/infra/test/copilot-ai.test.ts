@@ -76,9 +76,6 @@ afterEach(() => {
 it("maps candidate context to an isolated explicit-model text-only SDK session without credential/config/tool discovery", async () => {
   let options: CopilotClientOptions | undefined;
   const { runtime, seen, stop, forceStop } = fakeRuntime();
-  vi.stubEnv("Ai_Api_Key", "not-forwarded");
-  vi.stubEnv("Ai_Base_Url", "not-forwarded");
-  vi.stubEnv("Copilot_Cli_Path", "not-forwarded");
   const adapter = new CopilotAiAdapter({
     model,
     clientFactory: (value) => {
@@ -89,11 +86,6 @@ it("maps candidate context to an isolated explicit-model text-only SDK session w
   expect(await adapter.complete(input, live())).toBe(answer);
   expect(options).toMatchObject({ mode: "empty", logLevel: "none" });
   expect(options?.workingDirectory).toBe(options?.baseDirectory);
-  expect(
-    Object.keys(options?.env ?? {}).some((key) =>
-      ["AI_API_KEY", "AI_BASE_URL", "COPILOT_CLI_PATH"].includes(key.toUpperCase()),
-    ),
-  ).toBe(false);
   expect(seen.config).toMatchObject({
     model,
     allowedModels: [model],
