@@ -594,3 +594,4 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D565 | 表 | 重构 PR 中登记的现存缺陷立为候选：BUG-01（#371 孤立 `value`）、BUG-02a–d（#364 AI… | [design/tasks/S24.md:206](tasks/S24.md) |
 | D566 | 表 | 用户要求（四个团队）：里程碑收尾时做一次合并的结果对目标检查与回顾，补充而不取代 Sprint 评审与回顾 | [design/tasks/S24.md:207](tasks/S24.md) |
 | D567 | 表 | KDOC-01..11 全部合并或并入后，把 Knowledge Lead 报告的剩余文档缺口登记为候选 KGAP-01… | [design/tasks/S24.md:208](tasks/S24.md) |
+| D568 | 表 | 接受 SEC-01 安全评审结论（#364 评论 7148351359），SEC-01 改为 done | [design/tasks/S24.md:209](tasks/S24.md) |
