@@ -48,7 +48,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D17 | 无 | | |
 | D18 | 提及 | | [design/reviews/M1.md:46](reviews/M1.md)；[design/tasks/M1-R3-trade-report-capacity.md:14](tasks/M1-R3-trade-report-capacity.md)；[docs/performance/legacy-reconciliation-bench.md:46](../docs/performance/legacy-reconciliation-bench.md) 等 12 处 |
 | D19 | 无 | | |
-| D20 | 提及 | SemVer，tag 写作 `vX.Y.Z`，修复用 Z 位；“按里程碑划分 Sprint”已由 D555 取代（同页第 5 行） | [docs/release/README.md:3](../docs/release/README.md)；[design/tasks/PROC-01-release-claims-and-demo.md:10](tasks/PROC-01-release-claims-and-demo.md)；[docs/README.md:63](../docs/README.md) 等 6 处 |
+| D20 | 提及 | SemVer，tag 写作 `vX.Y.Z`，修复用 Z 位；“按里程碑划分 Sprint”已由 D555 取代（同页第 5 行） | [docs/release/README.md:3](../docs/release/README.md)；[design/tasks/PROC-01-release-claims-and-demo.md:10](tasks/PROC-01-release-claims-and-demo.md)；[docs/README.md:78](../docs/README.md) 等 6 处 |
 | D21 | 提及 | tag 打在发布 PR 合并后的 squash 提交上 | [docs/release/README.md:3](../docs/release/README.md)；[design/reviews/S7.md:124](reviews/S7.md)；[design/tasks/PROC-01-release-claims-and-demo.md:10](tasks/PROC-01-release-claims-and-demo.md) 等 30 处 |
 | D22 | 无 | | |
 | D23 | 无 | | |
