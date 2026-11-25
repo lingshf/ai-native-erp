@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### Changed（用户可见，行为变化）
+
+- **AI 助手交给 Copilot SDK 的环境变量改为显式白名单**（SEC-02，D568）：只交出明确设置且非空的 `COPILOT_GITHUB_TOKEN`，未设置时交出空环境；不再交出 `GH_TOKEN`、`GITHUB_TOKEN`、其他凭据、代理与证书变量、ERP 配置等本进程变量；传输方式固定为 stdio，不使用 SDK 的 `gitHubToken` 选项。**影响**：以前靠 `GH_TOKEN`、`GITHUB_TOKEN` 或其他继承变量使 AI 可用的部署，升级后 AI 可能不可用（`AI_UNAVAILABLE`，手工记账不受影响）。**迁移**：可改设 `COPILOT_GITHUB_TOKEN`；不保证恢复以前所有认证方式（真实认证兼容、存量登录、`gh` 回退、代理与自定义 CA 均未验证）。见 [AI 助手 §5](docs/ai-assistant.md#5-启用与配置)。无迁移脚本，无依赖变化。
+
 ## [0.21.0] - 2026-11-23
 
 > **已发布**：tag `v0.21.0`（annotated，tag 对象 `416b3090cb89bf8451f7a77ce09e9082b845c108`）打在 `01b16dbf36dd4feab80aee05f9583cfe9bc1de13`（[#319](https://github.com/lingshf/ai-native-erp/pull/319) 的最终头，位于 `release/v0.21.0`；D484）；main 上的 squash 提交 `0494020` 不是 tag 目标。Release：<https://github.com/lingshf/ai-native-erp/releases/tag/v0.21.0>。tag 对 tag 的版本差异（D483，`git diff --shortstat`，无路径过滤）：[v0.20.0..v0.21.0](https://github.com/lingshf/ai-native-erp/compare/v0.20.0..v0.21.0)（两点）70 个文件，+4519/−550；[v0.20.0...v0.21.0](https://github.com/lingshf/ai-native-erp/compare/v0.20.0...v0.21.0)（三点，合并基 `a1a12448207372d6792b2497da852d08418c552b`）111 个文件，+6957/−548；`git rev-list --count` 两点 18、三点 23。

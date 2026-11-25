@@ -37,7 +37,7 @@ flowchart LR
 
 **未验证或未记录**，如实保留为缺口：
 
-- 交给 SDK 的环境变量：**现行行为（SEC-02 合并前）**仍是只去掉三个键（F22），其余已设置的变量一并交给 SDK 工厂；SDK 子进程是否原样收到本进程环境未验证。SEC-01 安全评审已完成并经 Product/Design 验收（[评审：#364 评论 7148351359](https://github.com/lingshf/ai-native-erp/issues/364#issuecomment-7148351359)；验收：D568，见[决定索引](../design/decisions.md)与事实清单 §6-3）：结论是改为显式白名单，由 [SEC-02](../design/tasks/SEC-02-copilot-env-allowlist.md) 实施，**尚未实施**，白名单未生效。**不要**据此认为子进程收到全部变量，也不要认为已被隔离或已改白名单。SEC-02 合并后本节再按新行为改写。
+- 交给 SDK 的环境变量（F22）：**SEC-02 起**，适配器交给 SDK 工厂的 `env` 是显式白名单，只含你明确设置的 `COPILOT_GITHUB_TOKEN`；未设置时是空对象，本进程其他变量（`GH_TOKEN`、`GITHUB_TOKEN`、`PATH` 等系统变量、代理与证书变量、`ERP_SQLITE_FILE` 等 ERP 配置、其他凭据）都不交出。传输方式固定为 stdio。这只是“适配器 → SDK 工厂”这一段的收紧：SDK 自己会补入 `COPILOT_HOME` 等运行键，Windows 上 Node 启动子进程时还会补入 `PATH`、`SYSTEMROOT` 等系统变量（证据见 SEC-02 的 PR），**不要**据此认为子进程环境已完全隔离。仍未验证：真实认证是否兼容（令牌、存量登录、`gh` 回退）；代理与自定义 CA；子进程环境的端到端隔离。SEC-02 之前（历史）：适配器只去掉三个键，其余变量一并交给 SDK 工厂。来源：SEC-01 评审（[#364 评论 7148351359](https://github.com/lingshf/ai-native-erp/issues/364#issuecomment-7148351359)）与 D568（见[决定索引](../design/decisions.md)、[SEC-02](../design/tasks/SEC-02-copilot-env-allowlist.md)）。
 - Copilot 服务端如何保存和使用这些数据，仓库无记录，本页不复述也不推断，仅链接 GitHub 官方的 Copilot Agents 负责任使用说明：[Responsible use of GitHub Copilot Agents](https://docs.github.com/en/copilot/responsible-use/agents)。它不是服务端数据处理说明，数据保存与使用仍是缺口。
 
 ## 4. 教学模式
@@ -56,6 +56,8 @@ flowchart LR
 
 另需数据库已打开（见[运维与故障排查](operations.md)的 health 说明）。上述条件不满足时不构建 AI 服务，不阻止启动，两个接口返回通用 `UNAVAILABLE`（503），手工记账不受影响（F33）。Copilot 认证不是启用条件，而是完成请求所需：服务已启用但未认证、模型不可用时，请求按下表 `unavailable` 返回 `AI_UNAVAILABLE`（503）。环境变量通用说明见[运维与故障排查](operations.md#启动与环境变量)。
 
+**Copilot 认证与环境变量（SEC-02 起，行为变化）**：AI 适配器只把 `COPILOT_GITHUB_TOKEN`（明确设置且非空时）交给 Copilot SDK，不再把服务进程的其他环境变量一并交出（F22）。以前如果靠 `GH_TOKEN`、`GITHUB_TOKEN` 或其他继承来的变量让 AI 可用，升级后 AI 可能变为不可用（`AI_UNAVAILABLE`）。迁移方法：可改为设置 `COPILOT_GITHUB_TOKEN`。这**不保证**能恢复以前所有的认证方式：令牌认证是否兼容、存量登录、`gh` 回退、代理与自定义 CA 都未验证。Windows 上键名不分大小写；其他平台须写成大写的 `COPILOT_GITHUB_TOKEN`。
+
 ## 6. 失败与排查
 
 | 原因 | HTTP | 可重试 | 常见情形（F28–F32） |
@@ -72,5 +74,6 @@ flowchart LR
 - 发送内容的边界见第 3 节（起草与讲解不同，讲解含全部科目余额），且不开放任何工具：牺牲模型自主性，换取“只产出候选”的可审计边界。
 - 候选不自动保存：多一步人工，换取过账责任始终在用户。
 - 讲解的教学模式限制只在前端（D563），服务端不加固。
-- 缺口：SEC-02 环境白名单尚未实施（SEC-01 评审已验收，见第 3 节）；Copilot 服务端数据处理仍无记录（只链接 Copilot Agents 负责任使用说明，不能替代）；本页未经 QA 演练。
-- 复核记录（范围仅限两项）：设计在 [#386 评论 7148480305](https://github.com/lingshf/ai-native-erp/pull/386#issuecomment-7148480305) 核对了官方链接是否属实，以及第 3、7 节是否符合 SEC-02 任务书 R7 时点 2；核对时的 head 是 7aabc4f，之后的措辞修改未另行复核。不扩大到整页，也不代表做过 QA 演练。
+- 交给 SDK 的环境变量只留 `COPILOT_GITHUB_TOKEN`（SEC-02，第 3、5 节）：牺牲靠 `GH_TOKEN` / `GITHUB_TOKEN` 等继承变量“碰巧可用”的兼容性，换取缺省最小的交出范围。
+- 缺口：真实认证兼容、代理与自定义 CA、SDK 子进程环境的端到端隔离仍未验证（第 3 节）；Copilot 服务端数据处理仍无记录（只链接 Copilot Agents 负责任使用说明，不能替代）；本页未经 QA 演练。
+- 复核记录（范围仅限两项）：设计在 [#386 评论 7148480305](https://github.com/lingshf/ai-native-erp/pull/386#issuecomment-7148480305) 核对了官方链接是否属实，以及第 3、7 节是否符合 SEC-02 任务书 R7 时点 2；核对时的 head 是 7aabc4f，之后的措辞修改未另行复核。不扩大到整页，也不代表做过 QA 演练。第 3、5、7 节已由 SEC-02 按新行为改写，上述核对不覆盖改写后的内容。
