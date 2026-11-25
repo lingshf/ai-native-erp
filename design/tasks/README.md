@@ -927,7 +927,7 @@ KDOC-01..11 都已合并或并入（见上表）。下面是 Knowledge Lead 报�
 
 | ID | 内容 | 负责 | 产出 | 状态 |
 | --- | --- | --- | --- | --- |
-| MCLOSE-01 | 按下文 1–8 对当前检查点做一次收尾检查与回顾 | Team Leader 主持；各实际在岗角色自查；Knowledge Lead 跨模块协调；设计角色转录 | [`design/reviews/milestone-closeout-post-M1.md`](../reviews/milestone-closeout-post-M1.md) | 进行中（第 6 节确认待 TL 收集；发现项见[下表](#收尾发现项mclose-01)） |
+| MCLOSE-01 | 按下文 1–8 对当前检查点做一次收尾检查与回顾 | Team Leader 主持；各实际在岗角色自查；Knowledge Lead 跨模块协调；设计角色转录 | [`design/reviews/milestone-closeout-post-M1.md`](../reviews/milestone-closeout-post-M1.md) | 完成（#394，f72950d；发现项见[下表](#收尾发现项mclose-01)） |
 
 ### 1. 里程碑基线（**用户已确认**）
 
