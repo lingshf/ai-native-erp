@@ -1,6 +1,6 @@
 # 任务总表（团队进度权威来源）
 
-规则：一个任务 = 一个分支 = 一个 PR；状态 `todo` → `in-progress` → `in-review` → `done`，`blocked` 写原因；只交付了一部分的写 `done（部分：已交付 …；未交付 … → 去向）`，不写裸 `done`（MCF-15）。本表只由设计角色修改（开发/评审角色在 PR 中报告，设计角色同步）；例外是执行字段：自 D557 起，新任务的六项生命周期事实记在所在 Sprint 一节的“执行记录”表中，由 Team Leader 提供证据、设计角色照录，任务的含义与顺序仍只由设计角色决定。本表是团队唯一待办；角色与六项事实的定义见[团队章程](../team-charter.md#4-六项生命周期事实)。方向与流程见 [路线图](../roadmap.md)，目标架构见 [M0 架构](../m0-architecture.md)。
+规则：一个任务 = 一个分支 = 一个 PR；状态 `todo` → `in-progress` → `in-review` → `done`，`blocked` 写原因；只交付了一部分的写 `done（部分：已交付 …；未交付 … → 去向）`，不写裸 `done`（MCF-15）。本表只由设计角色修改（开发/评审角色在 PR 中报告，设计角色同步）；例外是执行字段：自 D557 起，新任务的六项生命周期事实记在所在 Sprint 一节的“执行记录”表中，由 Team Leader 提供证据、设计角色照录，任务的含义与顺序仍只由设计角色决定。本文件与 [`backlog/`](backlog/) 下各文件共同构成团队唯一待办（MCF-16，D584），上述修改权限与执行字段的规定同样适用于这些文件和[里程碑收尾检查](milestone-closeout.md)；角色与六项事实的定义见[团队章程](../team-charter.md#4-六项生命周期事实)。方向与流程见 [路线图](../roadmap.md)，目标架构见 [M0 架构](../m0-architecture.md)。
 
 PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通过 + 满足任务文档验收标准。
 
@@ -845,203 +845,67 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 ## S25：v0.22.0 重新切 RC + 收尾发现项补证（D580）
 
-计划见 [S25.md](S25.md)（D580 为接受 S25 计划；D581 为 MCF-01 覆盖 v0.21.0 以来所有缺 CHANGELOG 条目的 PR；D582 为 MCF-17 结案与 MCF-20；D583 为 #401 的 Demo 范围；D584 为接受 MCF-16 拆分方案；下一个可用编号 D585）。范围是[收尾发现项](#收尾发现项mclose-01)中的 P1/P2，顺序与泳道见 [S25 泳道](S25.md#泳道按冲突域)；各项状态仍记在该表中。v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 须用户授权。
+计划、决定与编号指针见 [S25.md](S25.md#s25-期间决定)。范围是[收尾发现项](backlog/MCF.md)中的 P1/P2，顺序与泳道见 [S25 泳道](S25.md#泳道按冲突域)；各项状态仍记在该表中。v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 须用户授权。
 
 ## 知识与文档待办（KDOC，D556）
 
-排序与 C1 的处理见 D556；KDOC-05 / KDOC-07 的依赖与 KDOC-10 并入 KDOC-05 见 D558。来源：Knowledge Lead 在 [#365](https://github.com/lingshf/ai-native-erp/pull/365) 中的覆盖审计。所有 KDOC 项都排在在途与待派的 REFAC 之后（P3），只改文档，不占开发名额。冲突域不涉及代码，可以与 REFAC 并行。下表的顺序就是优先级。排序理由：
-
-- 先消除“写错了”的冲突，再补缺口，最后去重；
-- 缺口按使用频率排：用户、运维、开发；
-- 互相依赖的项排在被依赖项之后。
-
-**C1 的处理（D556，产品负责人决定）**：
-
-- **把旧的双库 / Server 设计标为已取代**：ADR-SME-001..006、`architecture.md`、`architecture-migration.md`、`design.md` 与 `requirements.md` 中的 ARCH-SME 部分，都标为“已取代（superseded）”。
-- **新增一份 ADR**，说明为什么不走双库、Server、OIDC 路线，以及在什么条件下这些理由不再成立。
-- **依据**：路线图 [§1 不变的产品方向](../roadmap.md#1-不变的产品方向)（只做 SQLite、本机单用户、loopback 无登录）是用户定的方向。[M0 架构](../m0-architecture.md) 已写明取代旧架构中的双库 / NestJS / Server 设计。因此这只是让文档状态与既定方向一致，不是新的价值或范围取舍，不需要再问用户。
-- **不删除旧文档**：保留为历史记录，以便追溯。
-- **失效条件**写成待核实的假设，例如：出现多用户并发、远程或多设备访问的需求；数据量超出 SQLite 已测的基准预算；出现必须登录或分权的合规要求。出现任一条时，重新评估，并由用户决定。
-
-| 顺序 | ID | 标题 | 负责（执行） | 依赖 | 冲突域 | 状态 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 1 | KDOC-01 | C1：旧双库 / Server / OIDC 文档标为已取代，新增 ADR“保持 SQLite 单机、不走双库 / Server 路线”及失效条件；同时解决 D2 后半（`architecture.md` 与 `m0-architecture.md` 并存） | Product/Design（ADR 与状态标注）；Knowledge Lead 整合入口链接 | 无 | `design/adr/`、`design/architecture*.md`、`design/design.md`、`design/requirements.md` 的状态段 | done（[#367](https://github.com/lingshf/ai-native-erp/pull/367)，main `a6037b0`） |
-| 2 | KDOC-02 | `design/test-cases.md` 交给 QA（评审会话 `5ec013bf`）：确认现有内容、维护方式与今后的更新时机（[团队章程 §7](../team-charter.md#7-迁移范围与缺口)） | Team Leader 协调；Product/Design 交出、QA 接收 | 无 | `design/test-cases.md` 开头 | done（[#367](https://github.com/lingshf/ai-native-erp/pull/367)，main `a6037b0`） |
-| 3 | KDOC-03 | G5 全部决定的索引；D2 前半（`design/tasks.md` 标为历史记录，指向任务总表）；D3（`reviews.md` 与 `reviews/` 同名，改名或加指引） | Product/Design（D562 改派，全部在 `design/` 下）；Knowledge Lead 接收交接并评审 | KDOC-01 | `design/decisions.md`（新增）、`design/tasks.md` 开头、`design/reviews.md` 开头、`design/reviews/README.md`（新增） | done（[#369](https://github.com/lingshf/ai-native-erp/pull/369)，main `577891c`） |
-| 4 | KDOC-04 | G1 AI 助手设计页（范围、数据流、隐私边界、失败与降级） | Product/Design 提供事实；Knowledge Lead 整合 | KDOC-01（ADR-SME-005 中的 AI 部分被取代后由本页接替） | `design/` 下新增页面 | done（事实清单 [#372](https://github.com/lingshf/ai-native-erp/pull/372)，main `bc89191`；页面 [#375](https://github.com/lingshf/ai-native-erp/pull/375)，main `4d3bd90`） |
-| 5 | KDOC-05 | G3 用户文档 `docs/user` 更新到当前版本；D1 README 业务规则与 `docs/user` 去重，README 改为链接；并入原 KDOC-10（D5）：`docs/user/README.md` 中的版本叙述与 `CHANGELOG.md` 去重，以 CHANGELOG 为准、用户文档改为链接（D558） | Knowledge Lead；Developer 与 Product/Design 核对事实；QA 演练关键步骤；Delivery/Release 核对 CHANGELOG 措辞 | 无 | `docs/user/`（含 `docs/user/README.md`、`docs/user/backup-and-legacy.md`）、`README.md` 业务规则段、`CHANGELOG.md` | done（[#368](https://github.com/lingshf/ai-native-erp/pull/368)，含原 KDOC-10，main `04b576b`） |
-| 6 | KDOC-06 | G4 流程图更新到当前版本，补付款、收款流程图 | Knowledge Lead；Product/Design 核对流程 | KDOC-05 | `docs/flows/` | done（[#373](https://github.com/lingshf/ai-native-erp/pull/373)，main `8ed9d1b`） |
-| 7 | KDOC-07 | G7 运维与排障页（启动、备份与恢复、常见错误）；D4 迁移命令三处合一，保留一处权威说明，其余改为链接 | Knowledge Lead；Delivery/Release 提供事实；QA 演练 | KDOC-05 已合并（共享 `docs/user/backup-and-legacy.md`，D558） | `docs/` 下新增运维页、`docs/migration-runbook.md` 及另两处迁移命令所在段落（含 `docs/user/backup-and-legacy.md`） | done（[#374](https://github.com/lingshf/ai-native-erp/pull/374)，main `66f3a47`） |
-| 8 | KDOC-08 | G6 CI 说明页（分层、触发、分片、Bench、失败时怎么办） | Knowledge Lead；Delivery/Release 提供事实 | 无 | `docs/` 下新增 CI 页（不改 `.github/workflows/`） | done（[#370](https://github.com/lingshf/ai-native-erp/pull/370)，main `08d9cf3`） |
-| 9 | KDOC-09 | G2 按主题汇总取舍（每个主题：备选、理由、代价、失效条件），链接到 ADR 与决定记录，不复制原文 | Knowledge Lead；Product/Design 核对 | KDOC-01、KDOC-03、KDOC-04 | `design/` 下新增页面 | done（[#377](https://github.com/lingshf/ai-native-erp/pull/377)，main `6debbdf`） |
-| 10 | KDOC-10 | 已并入 KDOC-05（D558）：目标改为 `docs/user/README.md` 与 `CHANGELOG.md`，不改路线图 | — | — | — | 已并入 KDOC-05 |
-| 11 | KDOC-11 | UI-1 规范页状态仍为“待评审”（`design/ui/README.md:3`）：核对实际评审记录后更新状态 | Product/Design；非作者评审 | 无 | `design/ui/README.md` 开头 | done（[#367](https://github.com/lingshf/ai-native-erp/pull/367)，main `a6037b0`） |
-
-- **共享文件串行**：KDOC-01 与 KDOC-03 都改 `design/` 根目录下的文档，按顺序做；KDOC-05 与 KDOC-06 按顺序做；KDOC-05 与 KDOC-07 共用 `docs/user/backup-and-legacy.md`，KDOC-07 在 KDOC-05 合并后才开始（D558）；其余各项冲突域不相交。
-- **评审**：每项都由非作者评审。Knowledge Lead 写的文档，事实由对应负责人核对（[团队章程 §2](../team-charter.md#2-权威路径)）。
+已移至 [backlog/KDOC.md](backlog/KDOC.md)（MCF-16，D584）。
 
 ## 文档缺口候选（D567）
 
-KDOC-01..11 都已合并或并入（见上表）。下面是 Knowledge Lead 报告的剩余缺口，先登记为候选；派发时机由 Team Leader 按开发名额决定，只改文档，不占开发名额。“covered”的判定仍按 D559（完整 SHA + 具体文件）与 D561（pin after merge）。
-
-| ID | 缺口 | 优先级 | 负责 | 验收 | 依赖 | 状态 |
-| --- | --- | --- | --- | --- | --- | --- |
-| KGAP-01 | KDOC 新增或改动的页面已有部分 QA 证据（逐页见下方“KGAP-01 现有证据”），但都未经事实所有者单独复核，QA 也只覆盖各自写明的范围；[docs/README 矩阵](../../docs/README.md)仍为 partial。本项只补剩余范围，不重做已有且仍有效的证据 | P2 | 事实所有者复核（按[团队章程 §2](../team-charter.md#2-权威路径)：Developer、Delivery/Release、Product/Design 各管其事实）；QA 补演练剩余范围；Knowledge Lead 汇总并更新矩阵 | 矩阵的一格改为 covered，须同时满足：① 事实所有者复核通过并有记录；② 适用的 QA 为 PASS，或记为 not_applicable 并写明理由；③ 仍满足 D559 / D561（完整 SHA + 具体文件，合并后钉版本）。已有证据只在页面自该证据的 head 之后没有改动、或改动不在其写明范围内时才继续有效。结果为 `FAIL` 或阻塞的，只记录，不能转 covered | 无 | todo（候选） |
-| KGAP-02 | AI 一节的取舍没有备选：[`docs/tradeoffs.md` §3](../../docs/tradeoffs.md#3-ai-助手只产出候选不保存不过账) 标“原记录未写” | P3 | Product/Design 补记备选、代价与失效条件（与 D564 相同的方式，写入[路线图 §6.1](../roadmap.md#61-取舍补记d564)，标为事后补记）；Knowledge Lead 改链接 | 补记写明是事后补记，不改写原决定；`tradeoffs.md` §3 改为链接补记，不再出现“原记录未写” | 无 | todo（候选） |
-| KGAP-03 | M0 决定在[决定索引](../decisions.md)中的摘要不全：D8 已有摘要，但被截断（`design/decisions.md:37`；完整的二元组描述在 [design/reviews/M0.md](../reviews/M0.md) 第 42 行）；D5（维度规则）、D6（凭证纠错）在 M0.md 第 39–40 行只有标题和代码证据，没有规则正文。规则正文可在根 `README.md` 第 70 行（“D5 统一 subset：……”）与第 80 行（“D6 历史反向逐行精确镜像……”）找到（@ `66f3a47623e3b07f55447b06ac48fe84d153c34a`，该文件最近一次改动）；但 `design/` 中查不到 D5、D6 的原始决定记录（谁定、何时定、比较过哪些备选），这一点是**缺口** | P3 | Product/Design | D8：保留现有摘要，并补全被截断的部分，或让索引能直达完整原文。D5、D6：摘要依据 `README.md` 第 70 / 80 行的规则正文，链接到该行并钉完整 SHA；查不到原始决定记录的，如实写“原始决定记录未找到”，不补写决策过程。摘要不改变原决定；索引由生成脚本重新生成 | 无 | todo（候选） |
-| KGAP-04 | [`docs/ai-assistant.md`](../../docs/ai-assistant.md) 缺两项：GitHub Copilot 官方数据处理说明的链接；SEC-01 的评审结论 | P3 | Knowledge Lead 补官方链接（Product/Design 核对链接确为官方页面、说法不超出该页）；SEC-01 结论由其评审人提供，Knowledge Lead 转写 | 页面链接官方数据处理说明，不复述其承诺；SEC-01 有结论后写入结论及证据链接，之前保留“待评审”标注 | 后半依赖 [SEC-01](#安全候选d563) 评审结论 | done（D569：#386 `13a437b` 交付 SEC-01 结论引用与官方负责任使用链接 [responsible-use/agents](https://docs.github.com/en/copilot/responsible-use/agents)；“官方服务端数据处理说明”暂无专门官方页面，作为已知缺口保留在 [`docs/ai-assistant.md`](../../docs/ai-assistant.md) §7 与 [`docs/README.md`](../../docs/README.md) G1，不另开任务，出现官方页面时补链接） |
-
-**KGAP-01 现有证据**（都是各 PR 合并前 head 上的评审；“剩余”是本项要补的部分）：
-
-| 页面 | 来源 PR | 现有 QA 证据 | 剩余 |
-| --- | --- | --- | --- |
-| `docs/operations.md`、`docs/migration-runbook.md` §6 / §10、`docs/user/backup-and-legacy.md` | [#374](https://github.com/lingshf/ai-native-erp/pull/374) | 评审 [6048340633](https://github.com/lingshf/ai-native-erp/pull/374#pullrequestreview-6048340633) @ `503d9f13d81b6289bf42c679d587dbc403574d09`，`QA: PASS`：用虚构数据演练过持锁启动报 `StartupError`、活动租约下恢复报 `BUSY`，以及迁移、在线备份、离线恢复与恢复后核验 | 旧账快照 / dry-run 与只导入健康检查未演练；Delivery/Release 事实复核 |
-| `docs/ai-assistant.md`、`docs/user/ledger.md` 的 AI 一节 | [#375](https://github.com/lingshf/ai-native-erp/pull/375) | 评审 [6048462623](https://github.com/lingshf/ai-native-erp/pull/375#pullrequestreview-6048462623) @ `c77bbd0ec666d5983e8580d94e7834346678baff`，`QA: PASS`：按源码重走提交前披露与配置路径；沿用此前通过的 jsdom AI 流程与假 SDK 检查；未调用真实 Copilot | Developer 与 Product/Design 事实复核；官方数据处理链接见 KGAP-04 |
-| `docs/user/` 其余页面（KDOC-05） | [#368](https://github.com/lingshf/ai-native-erp/pull/368) | 评审 [6047571650](https://github.com/lingshf/ai-native-erp/pull/368#pullrequestreview-6047571650) @ `66e15b59d98aebb49428dfe068e1fcba70137111`，`QA: PASS`：只读核对源码、现有断言与 CHANGELOG；未做界面实操 | 关键步骤的界面演练；Product/Design 事实复核 |
-| `docs/ci.md` | [#370](https://github.com/lingshf/ai-native-erp/pull/370) | 评审 [6047907715](https://github.com/lingshf/ai-native-erp/pull/370#pullrequestreview-6047907715) @ `f202df15abfd5139977998ed07060ca8fa9b5fb4`，`QA: PASS`：在精确 head 上实跑相应的 Vitest 命令 | Delivery/Release 事实复核 |
-| `docs/flows/` 付款 / 收款流程图 | [#373](https://github.com/lingshf/ai-native-erp/pull/373) | 评审 [6048059068](https://github.com/lingshf/ai-native-erp/pull/373#pullrequestreview-6048059068) @ `61c9c6147004b82353fe1738c8eb47b48ce8c99d`，`QA: PASS`：在精确 head 源码上跑过 24 个核销交互用例（jsdom，不是真实浏览器） | Product/Design 流程复核 |
-| `docs/tradeoffs.md` | [#377](https://github.com/lingshf/ai-native-erp/pull/377) | 评审 [6048644791](https://github.com/lingshf/ai-native-erp/pull/377#pullrequestreview-6048644791) @ `1e6935cd356cf690fed5067da581dad1fa8b0678`，`QA: not_applicable`：本页只做归纳和导航，没有可演练的步骤 | Product/Design 在合并提交上复核（此前的产品核对针对的是 `4fbefbd`，不是最终 head） |
+已移至 [backlog/KGAP.md](backlog/KGAP.md)（MCF-16，D584）。
 
 ## 安全候选（D563）
 
-排在在途 REFAC 之后；先由非作者做安全评审，评审结论出来后再决定是否立实施任务。
-
-| ID | 标题 | 优先级 | 负责 | 依赖 | 冲突域 | 状态 |
-| --- | --- | --- | --- | --- | --- | --- |
-| SEC-01 | AI 适配器交给 Copilot SDK 的环境变量（历史基线，SEC-02 之前；现行规则见 SEC-02，D577）：当时只去掉 `AI_API_KEY`、`AI_BASE_URL`、`COPILOT_CLI_PATH`（不分大小写，`packages/infra/src/copilot-ai.ts:72–83` @ `a6037b0`），其余已设置的变量（如 `ERP_SQLITE_FILE`）一并交给 SDK 工厂；SDK 子进程是否原样收到未验证（[事实清单 F22](../ai-assistant-facts.md)）。评审要回答：是否改为白名单；白名单含哪些键（含 SDK 认证与运行必需的变量）；改后如何在 CI 中用假 SDK 断言传入的键集合 | P2 | 安全评审：Team Leader 指派的非作者评审；验收：Product/Design；实施（若立项）：Developer | 实施须在 REFAC-32 合并后（同一文件） | `packages/infra/src/copilot-ai.ts` 与 `copilot-ai-*.ts`、`packages/infra/test/copilot-ai.test.ts` | done（评审结论 [#364 评论 7148351359](https://github.com/lingshf/ai-native-erp/issues/364#issuecomment-7148351359) 已由 Product/Design 接受，D568；实施见 SEC-02） |
-| [SEC-02](SEC-02-copilot-env-allowlist.md) | SDK 工厂 `env` 改为显式白名单：只在明确设置时放 `COPILOT_GITHUB_TOKEN`，否则为空对象；别名与平台运行键不默认转交；CI 用假工厂断言精确键集合；两平台分别给出替身启动路径与原生 CLI 离线启动证据；同步事实清单与 AI 指南（D568） | P2 | Developer 实施；非作者评审；QA；Product/Design 验收；Delivery/Release 核对 CHANGELOG | BUG-02a–d 全部合并后（同一组文件，串行） | `packages/infra/src/copilot-ai-client.ts` 与 `copilot-ai*.ts`、`packages/infra/test/copilot-ai.test.ts`、`docs/ai-assistant.md` §3 / §5 / §7、`design/ai-assistant-facts.md` F22 与 §6.3、`CHANGELOG.md` | done（#391，`70acd04`；Windows R6a 平台补入项按 D570 列为已知例外；Windows R6b 未验证（D571），R6b 验收只用 Linux 证据） |
+已移至 [backlog/SEC.md](backlog/SEC.md)（MCF-16，D584）。
 
 ## 缺陷候选（D565）
 
-来自重构 PR 中“疑似缺陷”的现存行为，基线与重构后一致（不是重构引入）。排在在途 REFAC 之后；每项实施前补任务书，并按 D557 写设计期质量项。“期望”一栏是产品负责人对目标行为的决定。
-
-| ID | 现象（来源） | 期望 | 优先级 | 质量项 | 依赖 | 冲突域 | 状态 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| BUG-01 | 总账明细筛选只填“值”、不填“维度”时，提交写出孤立的 `value=N`，页面显示无效 URL 提示（[#371](https://github.com/lingshf/ai-native-erp/pull/371) 疑似缺陷 1，R4 `B7:value-only`） | 未选维度时“值”输入禁用并清空，提交不写 `value`；手工打开含孤立 `value` 的 URL 仍显示现有无效提示（URL 校验不放宽） | P2 | UI：适用（禁用态沿用现有样式，无新文案，键盘 Tab 跳过禁用字段，中英一致）；性能：not_applicable（不改查询） | REFAC-33 已合并（#371） | `packages/web/src/ledger-reports/ledger-filter-form.tsx`、`ledger-grid.tsx` 及其测试 | done（[#382](https://github.com/lingshf/ai-native-erp/pull/382)，main `4b2a7a8`） |
-| BUG-02a | AI 请求在工厂调用开始后被中止、工厂随后抛普通错误时，结果为 `unavailable` 而非 `cancelled`（[#364](https://github.com/lingshf/ai-native-erp/pull/364) 疑似缺陷 1） | 只针对此竞态：工厂调用尚未返回时发生中止、随后工厂抛普通错误，结果报 `cancelled` 而不是 `unavailable`。其他规则不变：回答后才到的中止仍按 BUG-02d；终止未确认或清理失败的现行处理（含 `cleanup` 结果与禁用 AI）不受影响，若要改须另行决定 | P3 | UI、性能：not_applicable（不改页面，不在预算路径；结果码已有双语文案） | REFAC-32 合并后；与 SEC-01 同文件，串行 | `packages/infra/src/copilot-ai*.ts`、`packages/infra/test/copilot-ai.test.ts` | done（#387，`dc14aca`） |
-| BUG-02b | `answer === undefined` 分支在现有路径中不可达，R4 插桩唯一未命中点（#364 疑似缺陷 2） | 按适配器实际控制流判断，不按 SDK 类型：SDK 返回空回复在 SDK 边界可能合法，但适配器的 `typeof text` 检查已先把它转为 `response`（`copilot-ai.ts:154–164`、`:221–223` @ `a6037b0`）。须核实在成功路径上末尾的 `answer === undefined` 检查确实不可达；若删除，保留并测试运行期对缺失/非法回复的 `response` 拒绝，不为让死分支可达而改代码 | P3 | 同 BUG-02a | 同 BUG-02a | 同 BUG-02a | done（#387，`dc14aca`） |
-| BUG-02c | 会话已返回回答，但 `stop` 报错、抛错或超时，成功回答被覆盖为 `cleanup`，用户看到“清理失败”（#364 疑似缺陷 3，R4 #9） | 已拿到的回答照常返回；清理失败只写日志。终止未确认时仍按现行规则禁用 AI 直到重启（安全规则不变） | P2 | UI：not_applicable（沿用现有回答展示）；性能：not_applicable | 同 BUG-02a | 同 BUG-02a | done（#387，`dc14aca`） |
-| BUG-02d | 回答之后才到的 `tool.*`/`subagent.*` 事件或中止会把 `interrupted` 置为 true，清理从 `stop` 改走 `forceStop`（#364 疑似缺陷 4，仅代码阅读） | **判为可接受**：会话已关闭全部工具，回答后出现这类事件属异常，强停更稳妥；结果不变。只补测试固定此行为，并在代码中注明原因 | P3 | 同 BUG-02a | 同 BUG-02a | 同 BUG-02a | done（#387，`dc14aca`） |
-| BUG-03a | 未配置服务时，报表路由与 `GET /api/v1/trade/open-items/:itemId/actions` 先解析查询，坏查询返回 400；其余路由先返回 503（[#376](https://github.com/lingshf/ai-native-erp/pull/376) 疑似缺陷 1） | 仅限 REFAC-34 拆分出的贸易单据路由，顺序统一为：① 现有本机来源与方法检查（403/405，`boundary.assert`）保持最先、不移动不放宽；② 服务可用（503）；③ 请求校验（坏查询或 ID 返回 400）。其他贸易端点不在范围内 | P3 | UI、性能：not_applicable（只改服务端检查顺序） | REFAC-34 合并后 | REFAC-34 拆分后的贸易单据路由文件（`packages/infra/src/http/` 下）及其测试 | done（[#383](https://github.com/lingshf/ai-native-erp/pull/383)，main `612f46d`） |
-| BUG-03b | `orderId` 有校验，`documentId`（发票详情）与 `itemId`（未结项详情、动作）未校验直接交给服务（#376 疑似缺陷 2） | 仅限 REFAC-34 路由：按各自实际 ID 格式校验（实施前从现行数据确认格式，不另造），非法时返回 400，与 `orderId` 一致；校验位于 403/405 与 503 之后（顺序同 BUG-03a） | P3 | 同 BUG-03a | 同 BUG-03a | 同 BUG-03a；可与 BUG-03a 合为一个任务 | done（[#383](https://github.com/lingshf/ai-native-erp/pull/383)，与 BUG-03a 同一 PR，main `612f46d`） |
+已移至 [backlog/BUG.md](backlog/BUG.md)（MCF-16，D584）。
 
 ## 里程碑收尾检查与回顾（D566）
 
-用户要求四个团队都执行：里程碑收尾时做一次合并的“结果对目标”检查与回顾。它**补充**现有 Sprint 评审与回顾（RC → Demo → Review → Retro），不取代、不取消它们。Team Leader（协调者）提供证据，设计角色转录。
-
-| ID | 内容 | 负责 | 产出 | 状态 |
-| --- | --- | --- | --- | --- |
-| MCLOSE-01 | 按下文 1–8 对当前检查点做一次收尾检查与回顾 | Team Leader 主持；各实际在岗角色自查；Knowledge Lead 跨模块协调；设计角色转录 | [`design/reviews/milestone-closeout-post-M1.md`](../reviews/milestone-closeout-post-M1.md) | 完成（#394，f72950d；发现项见[下表](#收尾发现项mclose-01)） |
+已移至 [milestone-closeout.md](milestone-closeout.md)（MCF-16，D584）。
 
 ### 1. 里程碑基线（**用户已确认**）
 
-- 来源：用户通过 M2 的 ask_user 确认了回顾基线“**M1 之后的工程化与知识整理**”，由 TL 转达。
-- 事实：M1 已完成；M2 待用户授权；S4–S24 与 KDOC 没有归入任何里程碑。
-- **正式验收范围**（只有这些进入验收分母）：
-  - S24 的 [REFAC-31](REFAC-31-business-event-compute-split.md)、[REFAC-32](REFAC-32-copilot-ai-complete-split.md)、[REFAC-34](REFAC-34-trade-document-routes-split.md)；
-  - KDOC（D556，见上文 KDOC 表）；
-  - [缺陷候选](#缺陷候选d565)（D565，BUG-01..03）；
-  - [SEC-01](#安全候选d563)。
-- 基线提交：main `9b8fa9739b0c07cf2b346719b19c36b55ad00ebc`（登记确认时的 main）。
-- 不在范围内：M2-05/06 及其他尚未授权的任务；Dependabot；DEMO-24 与发布工作。
-- 这次确认**只针对回顾基线**：不批准任何 M2 开发，也不增加任何合并、发布或部署权限。
-- 关于 REFAC-33 与 REFAC-14..30：原提案只列了当时未完成的任务，漏掉了已合并的 REFAC-33（#371）和 REFAC-14..30。这是提案的遗漏，**不改变范围**。它们只放在下文“[历史成果对照](#历史成果对照)”中，不算“已验收”。若要把它们纳入正式范围，必须明确写出，不得默认加入。
-- Sprint 结束、打 tag 或出 RC，都**不等于**里程碑完成。
+已移至 [milestone-closeout.md](milestone-closeout.md#1-里程碑基线用户已确认)。
 
 ### 2. 触发条件（结果回顾与交付验收分开）
 
-- **正常情况**：范围内每一项都已结案，且覆盖范围内最后一个合并提交的 main Full 运行为绿 → 进行收尾回顾。“结案”指以下二者之一：
-  - 已合并；
-  - 有已记录、已被接受的**不实施处置**，并满足该项适用的证据要求（例如 SEC-01 这类只做评审的项，以非作者评审结论为证据；D565 缺陷候选可在核实后以不立项结案）。
-  - 本条不强制任何项合并或移出范围，也不意味着授予实施权限；是否实施仍按各项原有的派发与授权规则。
-- **受阻情况**：某个门禁一直不通过，或缺陷一直未关闭 → 可以进行回顾，但必须标明“**阶段性**”，并持续记录哪些门禁未通过。阶段性回顾**不算**里程碑完成。
-- **移出范围**：协调者可以提议移出某些项；对用户已确认范围的任何实质性删减，都需要用户确认。不得为了宣布完成而把未完成的任务移出范围。
-- 不会自动触发，也没有定时任务。
+已移至 [milestone-closeout.md](milestone-closeout.md#2-触发条件结果回顾与交付验收分开)。
 
 ### 历史成果对照
 
-仅作历史背景：**不进入**正式验收分母，**不扩大**已确认范围。按任务记录合并事实、原有验收证据和当时适用的 DoD；缺证据的标为未知。评审结论都以 COMMENTED 状态提交，正文写 `VERDICT: APPROVED`；“QA”列只认 PR 评审或评论中的 `QA: PASS / not_applicable`。
-
-| 任务 | PR | 合并提交 | 精确 head 评审 | QA | 适用 DoD | 原验收 |
-| --- | --- | --- | --- | --- | --- | --- |
-| REFAC-14 | [#326](https://github.com/lingshf/ai-native-erp/pull/326) | `ac8ac00e8bfd4c8694b662e82a834550909e8f2f` | [6034349199](https://github.com/lingshf/ai-native-erp/pull/326#pullrequestreview-6034349199)：`VERDICT: APPROVED` @ `53833bf`（= 合并前 head） | 无记录 | 当时任务书的验收标准（早于章程 #366） | **未知**（缺 QA 结论） |
-| REFAC-15 | [#332](https://github.com/lingshf/ai-native-erp/pull/332) | `914f0410c083c734faa907815c67054b4aa811ed` | [6035325756](https://github.com/lingshf/ai-native-erp/pull/332#pullrequestreview-6035325756)：`VERDICT: APPROVED` @ `786afed`（= 合并前 head） | 无记录 | 当时任务书的验收标准（早于章程 #366） | **未知**（缺 QA 结论） |
-| REFAC-16 | [#334](https://github.com/lingshf/ai-native-erp/pull/334) | `affb8a3914ed07196f703574983ce3b849566b5e` | [6035898774](https://github.com/lingshf/ai-native-erp/pull/334#pullrequestreview-6035898774)：`VERDICT: APPROVED` @ `a5e5000`（= 合并前 head） | 无记录 | 当时任务书的验收标准（早于章程 #366） | **未知**（缺 QA 结论） |
-| REFAC-17 | [#335](https://github.com/lingshf/ai-native-erp/pull/335) | `f3a764636a39ea8c2e9622b8e9f9782f16aa076a` | [6036219176](https://github.com/lingshf/ai-native-erp/pull/335#pullrequestreview-6036219176)：`VERDICT: APPROVED` @ `9616770`（= 合并前 head） | 无记录 | 当时任务书的验收标准（早于章程 #366） | **未知**（缺 QA 结论） |
-| REFAC-18 | [#339](https://github.com/lingshf/ai-native-erp/pull/339) | `a80d16f478722bec881b9cf54a793d95347cd7d9` | [6036985159](https://github.com/lingshf/ai-native-erp/pull/339#pullrequestreview-6036985159)：`VERDICT: APPROVED` @ `c10d17a`（= 合并前 head） | 无记录 | 当时任务书的验收标准（早于章程 #366） | **未知**（缺 QA 结论） |
-| REFAC-19 | [#338](https://github.com/lingshf/ai-native-erp/pull/338) | `2b96afa4e4a1e4356af10f15e6a420ea578d3fbc` | [6036956443](https://github.com/lingshf/ai-native-erp/pull/338#pullrequestreview-6036956443)：`VERDICT: APPROVED` @ `a91e631`（= 合并前 head） | 无记录 | 当时任务书的验收标准（早于章程 #366） | **未知**（缺 QA 结论） |
-| REFAC-20 | [#337](https://github.com/lingshf/ai-native-erp/pull/337) | `37362e7a5c5bebefe127d08fdf3a8acdcff8b4e2` | [6036995257](https://github.com/lingshf/ai-native-erp/pull/337#pullrequestreview-6036995257)：`VERDICT: APPROVED` @ `89b83b5`（= 合并前 head） | 无记录 | 当时任务书的验收标准（早于章程 #366） | **未知**（缺 QA 结论） |
-| REFAC-21 | [#343](https://github.com/lingshf/ai-native-erp/pull/343) | `663c9872dc10925292939a6c657c20628e568cce` | [6037660309](https://github.com/lingshf/ai-native-erp/pull/343#pullrequestreview-6037660309)：`VERDICT: APPROVED` @ `56c6f2b`（= 合并前 head） | 无记录 | 当时任务书的验收标准（早于章程 #366） | **未知**（缺 QA 结论） |
-| REFAC-22 | [#344](https://github.com/lingshf/ai-native-erp/pull/344) | `e89b0b43e5ab73c8520d04633bd3f1a8db454083` | [6037713270](https://github.com/lingshf/ai-native-erp/pull/344#pullrequestreview-6037713270)：`VERDICT: APPROVED` @ `f44c82d`（= 合并前 head） | 无记录 | 当时任务书的验收标准（早于章程 #366） | **未知**（缺 QA 结论） |
-| REFAC-23 | [#347](https://github.com/lingshf/ai-native-erp/pull/347) | `2f46d193e7bdbbdf4c188e6463e6c9da2a6432c4` | [6041345496](https://github.com/lingshf/ai-native-erp/pull/347#pullrequestreview-6041345496)：`VERDICT: APPROVED` @ `984e8b8`（= 合并前 head） | 无记录 | 当时任务书的验收标准（早于章程 #366） | **未知**（缺 QA 结论） |
-| REFAC-24 | [#349](https://github.com/lingshf/ai-native-erp/pull/349) | `430e130788dac16a6d2fa8233df9fbcf18191505` | [6041474849](https://github.com/lingshf/ai-native-erp/pull/349#pullrequestreview-6041474849)：`VERDICT: APPROVED` @ `48b1bfd`（= 合并前 head） | 无记录 | 当时任务书的验收标准（早于章程 #366） | **未知**（缺 QA 结论） |
-| REFAC-25 | [#348](https://github.com/lingshf/ai-native-erp/pull/348) | `5be94963cbdf76b8df4209b000c57e5142e12617` | [6041413871](https://github.com/lingshf/ai-native-erp/pull/348#pullrequestreview-6041413871)：`VERDICT: APPROVED` @ `343bab3`（= 合并前 head） | 无记录 | 当时任务书的验收标准（早于章程 #366） | **未知**（缺 QA 结论） |
-| REFAC-26 | [#354](https://github.com/lingshf/ai-native-erp/pull/354) | `2c4406c22ccfcde9a0d73e546c5a34aae44ede20` | [6045435212](https://github.com/lingshf/ai-native-erp/pull/354#pullrequestreview-6045435212)：`VERDICT: APPROVED` @ `88862f6`（= 合并前 head） | 无记录 | 当时任务书的验收标准（早于章程 #366） | **未知**（缺 QA 结论） |
-| REFAC-27 | [#353](https://github.com/lingshf/ai-native-erp/pull/353) | `f3169c3ada0625d1653e7fcd130d301f0bf04509` | [6045029357](https://github.com/lingshf/ai-native-erp/pull/353#pullrequestreview-6045029357)：`VERDICT: APPROVED` @ `ae20971`（= 合并前 head） | 无记录 | 当时任务书的验收标准（早于章程 #366） | **未知**（缺 QA 结论） |
-| REFAC-28 | [#352](https://github.com/lingshf/ai-native-erp/pull/352) | `7eb7b42f761dea093f6a29f6c85ec0506368bf49` | [6044980911](https://github.com/lingshf/ai-native-erp/pull/352#pullrequestreview-6044980911)：`VERDICT: APPROVED` @ `842c046`（= 合并前 head） | 无记录 | 当时任务书的验收标准（早于章程 #366） | **未知**（缺 QA 结论） |
-| REFAC-29 | [#358](https://github.com/lingshf/ai-native-erp/pull/358) | `95e76bade32f4edd56204c12a46ce41c31507aae` | [6045992440](https://github.com/lingshf/ai-native-erp/pull/358#pullrequestreview-6045992440)：`VERDICT: APPROVED` @ `94e903d`（= 合并前 head） | 无记录 | 当时任务书的验收标准（早于章程 #366） | **未知**（缺 QA 结论） |
-| REFAC-30 | [#360](https://github.com/lingshf/ai-native-erp/pull/360) | `3bbab1ef7a5c5bb68c6ab47104cd76f4d40d8549` | [6046817240](https://github.com/lingshf/ai-native-erp/pull/360#pullrequestreview-6046817240)：`VERDICT: APPROVED` @ `ba8c0d3`（= 合并前 head） | 无记录 | 当时任务书的验收标准（早于章程 #366） | **未知**（缺 QA 结论） |
-| REFAC-33 | [#371](https://github.com/lingshf/ai-native-erp/pull/371) | `ab306460f9607403498fd54d0b0a2614b97c5b96` | [6047861626](https://github.com/lingshf/ai-native-erp/pull/371#pullrequestreview-6047861626)：`VERDICT: APPROVED` @ `d746daf`（= 合并前 head） | `QA: PASS`（同一评审） | 章程 D555/D557（#366 之后合并） | 原验收证据齐全 |
+已移至 [milestone-closeout.md](milestone-closeout.md#历史成果对照)。
 
 ### 3. 结果检查
 
-只对照第 1 节的正式验收范围，分四组列出：**已验收**、**未完成**、**新增**、**延后**；“历史成果对照”中的任务不进入任何一组。每项偏差写明原因和影响。没有可靠分母时不给百分比；提交数不算验收进度。
+已移至 [milestone-closeout.md](milestone-closeout.md#3-结果检查)。
 
 ### 4. 每个实际在岗角色自查
 
-角色：TL、Design、每位 Developer、QA、Reviewer、Delivery、Knowledge。一人兼多个角色时，按角色分别自查。
-
-- 各角色检查自己负责的代码、测试、配置、文档、决定和交接，列出过时、遗漏或需细化之处，并附证据。
-- 某项不适用时写明原因。
-- 自查不替代独立评审或 QA。
+已移至 [milestone-closeout.md](milestone-closeout.md#4-每个实际在岗角色自查)。
 
 ### 5. Knowledge Lead
 
-协调跨模块的缺口、重复、冲突和过时内容，以及系统设计、实现、取舍、使用说明四方面的覆盖情况。
+已移至 [milestone-closeout.md](milestone-closeout.md#5-knowledge-lead)。
 
 ### 6. TL 对齐
 
-- TL 收集分歧。
-- TL 确认每位成员读的是同一版本的目标、范围、接口、验收标准和最新决定。
-- 每位成员在自己的角色内给出确认；群发消息不算确认。
+已移至 [milestone-closeout.md](milestone-closeout.md#6-tl-对齐)。
 
 ### 7. 发现项
 
-- 每个发现项都写入本 Backlog，带负责人、优先级、验收标准和目标里程碑。
-- 修复走正常的评审与 QA 流程。
-- 回顾不扩大重构范围，也不授予任何新的合并、发布或部署权限。
+已移至 [milestone-closeout.md](milestone-closeout.md#7-发现项)。
 
 ### 8. 产出
 
-结果写入 `design/reviews/milestone-closeout-post-M1.md`（执行时新建）。本项状态从 todo 开始。
+已移至 [milestone-closeout.md](milestone-closeout.md#8-产出)。
 
 ## 收尾发现项（MCLOSE-01）
 
-来自[收尾检查与回顾](../reviews/milestone-closeout-post-M1.md)第 4–5 节，按 D575 登记为候选；目标按 D579：未定里程碑的 P1/P2 为 S25，P3 为“Backlog（S25 规划时排序）”，执行触发点写在同一格。修复走正常的评审与 QA 流程；派发时机由 Team Leader 决定。本表不授予合并、发布或部署权限。K1、K2 的页面复核与“缺 QA”并入 [KGAP-01](#文档缺口候选d567)，官方数据处理说明按 D569 保留为已知缺口，都不重复立项。
-
-| ID | 发现 | 优先级 | 负责 | 验收 | 目标 | 状态 |
-| --- | --- | --- | --- | --- | --- | --- |
-| MCF-01 | CHANGELOG `[Unreleased]` 缺 BUG-01 #382、BUG-02a–d #387、BUG-03a/b #383 与 REFAC-31/32/34 的条目（R1，D572） | P1 | Delivery/Release 写；非作者 Reviewer 核对（原开发会话已归档） | 一个只改文档的 PR 补齐上述条目；Reviewer 逐条确认描述与已合并的 diff 一致；纯重构按 CHANGELOG 惯例写明“无用户可见变化” | v0.22.0 RC 之前 | todo（候选） |
-| MCF-02 | 冻结在 `3566ddb` 的 DEMO-23 RC 已过时（R2，D573） | P2 | Delivery/Release | v0.22.0 改基于从当前 main（含 MCF-01）新切的 RC；旧 RC 标为已取代；打 tag 与发布 Release 仍须用户授权，本项不授予 | v0.22.0；依赖 MCF-01 | todo（候选） |
-| MCF-03 | 更新 `docs/README.md` 中过时的 G5：矩阵行“团队流程与决定记录”只改其中的 G5 格或措辞，该行其余有效内容（路线图 §5、任务总表与钉版本证据）保留；删除缺口清单中的 G5 项；并顺带清理 G8 中已不成立的部分（迁移号 020）（R3，Release 已确认 R3 只指过时的 G5；KDOC-03 #369 已交付 `design/decisions.md`） | P3 | Knowledge Lead | 矩阵该行的 G5 格改为指向已有的[决定索引](../decisions.md)（写明仍缺的部分，若有），同一行其他格不变；缺口清单中的 G5 项删除，`docs/README.md` 中不再有说“没有决定总索引”的文字；G8 只保留仍成立的同步要求 | Backlog（S25 规划时排序）；触发：下一批文档 PR | todo（候选） |
-| MCF-04 | 每次钉版本都单开 PR（K3，D574 修订 D561） | P3 | Knowledge Lead | 此后钉版本在同一 PR 的下一轮完成，或每个里程碑批量钉一次；不再为单次钉版本开 PR；D561 的其余要求（完整 SHA + 具体文件）不变 | Backlog（S25 规划时排序）；规则自本 PR 合并起适用 | todo（候选） |
-| MCF-05 | SEC-02 对 F22、§6.3 与 `docs/ai-assistant.md` §3/§5/§7 的改写，以及 D570/D571 的措辞，未经事实所有者与设计核对（K2、§5 取舍、自查 PD-7） | P2 | Developer 事实（TL 指派，原开发会话已归档）；Product/Design 核对 D570/D571 措辞 | 逐项对照 `70acd04` 的代码与测试给出复核记录；措辞与 D570/D571 一致；不一致之处走文档 PR 修正 | S25 | done（复核：[#391 评论 7150097720](https://github.com/lingshf/ai-native-erp/pull/391#issuecomment-7150097720) 事实 24 项中 22 项一致、D570/D571 四项约束成立；措辞核对 [7150057314](https://github.com/lingshf/ai-native-erp/pull/391#issuecomment-7150057314)；F22 两处不符与 §6.3 的 D571 句、Node 版本已在 `design/ai-assistant-facts.md` 修正；`docs/ai-assistant.md` §3 的 D571 句与 Node 版本并入 MCF-06） |
-| MCF-06 | KDOC 页 QA 措辞过宽（Q4，D578） | P2 | Knowledge Lead | #365、#368、#375 的 PASS 写明只覆盖阅读路径、源码和现有测试；`docs/README.md` 的笼统“未经 QA 演练”逐页列出；#386 的事实核对写明只覆盖 `7aabc4f` 上的两项；矩阵保持 partial | S25；触发：下一批文档 PR | todo（候选） |
-| MCF-07 | `docs/README.md` 矩阵中架构 / 总账 / 贸易 / 存储四行的设计列为 unknown；矩阵中 UI-1 的两格仍标 stale，但 UI-1 规范页的页首状态已由 KDOC-11 更新，过时的是矩阵（§5 系统设计） | P3 | Product/Design 核对；Knowledge Lead 更新矩阵 | 先修矩阵：UI-1 两格按规范页现状改写（钉完整 SHA）；四行各自给出状态与证据（完整 SHA + 具体文件），查不到的写明缺口 | Backlog（S25 规划时排序） | todo（候选） |
-| MCF-08 | REFAC 拆分后没有代码入口、扩展点与调试的说明页（§5 实现） | P2 | Knowledge Lead 写；Developer 事实复核（TL 指派） | 新页按模块列出入口文件与扩展点（钉完整 SHA）；所列调试命令在该 SHA 上实跑通过；经事实所有者复核 | S25 | todo（候选） |
-| MCF-09 | G2 未解决：矩阵中“gap（G2）”各行的取舍主题未逐一核对（§5 取舍） | P2 | Product/Design 核对；Knowledge Lead 更新 | 逐行核对后改状态或写明缺口；AI 备选见 KGAP-02，M0 决定摘要见 KGAP-03，不重复 | S25；与 KGAP-02/03 协调 | todo（候选） |
-| MCF-10 | 性能页状态为 unknown（§5 使用） | P3 | Knowledge Lead；Developer 事实复核 | 链接现有基准与预算（钉 SHA），或明确标为缺口；不新造阈值 | Backlog（S25 规划时排序） | todo（候选） |
-| MCF-11 | G8 条目可以精简（§5 过时） | P3 | Knowledge Lead | 并入 MCF-03 | 同 MCF-03 | 并入 MCF-03 |
-| MCF-12 | 根 README 的业务规则段与 `docs/user/` 重叠（§5 重复） | P3 | Knowledge Lead；Product/Design 确认权威位置 | 每条规则只留一个权威位置，另一处改为链接 | Backlog（S25 规划时排序） | todo（候选） |
-| MCF-13 | 附在计划批准里的反馈可能没有送达子会话，导致 SEC-02 改动了主机防火墙（TL 自查，D571） | P2 | Team Leader | 计划批准的条件一律另发一条消息重申；开发者在 `plan.md` 开头复述约束；下一次计划批准有此记录 | S25；规则自本 PR 合并起适用 | todo（候选） |
-| MCF-14 | 决定索引 `design/decisions.md` 由仓库外的脚本生成，无法复现（Design 自查 PD-1） | P2 | Product/Design 提供脚本；Delivery/Release 评审入库 | 生成脚本入库，`design/decisions.md` 开头写明重新生成的命令；在该提交上重新生成，结果与已提交内容一致 | S25 | done（[#400](https://github.com/lingshf/ai-native-erp/pull/400)，`f294dd7`；`scripts/gen-decisions-index.mjs`，参数非法或会缩表时退出码 2 且不写文件；此后新增决定的 PR 须重新生成并通过 `--check`） |
-| MCF-15 | 任务书证据类型与受影响文档写得不够细；部分交付被写成裸 done（Design 自查 PD-2、PD-3） | P3 | Product/Design | 任务书模板要求逐条写明证据类型与平台、受影响文档及其同步时点；部分交付的状态格写明交付范围 | Backlog（S25 规划时排序）；触发：下一份任务书 | done（本 PR：[任务书模板](TEMPLATE.md)加“受影响的文档”、验收的证据类型与平台表、自查第 19 项；本表开头加部分交付的状态写法） |
-| MCF-16 | `design/tasks/README.md` 体量过大，所有状态同步都改它，状态 PR 只能排队（Design 自查 PD-6） | P3 | Product/Design 提方案；Team Leader 同意后实施 | 提出拆分方案（如状态表移到各节文件）并经 TL 同意；实施时链接不断 | Backlog（S25 规划时排序）；须在 M2 前 | in-progress（方案已接受，D584：[MCF-16-tasks-readme-split.md](MCF-16-tasks-readme-split.md)；#402 合并后紧接着另开 PR 实施，在 S25 内落地） |
-| MCF-17 | REFAC-31、REFAC-34 的 R8b 未补证（V4，D576） | P2 | Reviewer / QA | 逐项列出 REFAC-31 业务事件场景与测试文件或场景名的映射，以及真实 Chrome 运行证据；REFAC-34 同样处理；缺证据的记为“未确认”，不用 main Full 绿灯代替 | S25 | done（D582：REFAC-34 R8b 已确认，[#376 评论 7150062675](https://github.com/lingshf/ai-native-erp/pull/376#issuecomment-7150062675)；REFAC-31 六行 R8b 都映射到 app/HTTP 测试但无真实 Chrome 断言，永久记为“未确认”，[#362 评论 7150062662](https://github.com/lingshf/ai-native-erp/pull/362#issuecomment-7150062662)；后续见 MCF-20） |
-| MCF-18a | 任务书要求的 R8b 补证没有在合并前把关（V4，D576）：合并前的证据计划 | P2 | Team Leader（派发时要求）；Developer 执行；Reviewer 核对 | 任务书要求 R8b 时，PR 在合并前写明 R8b 的证据计划：场景清单、对应测试文件或场景名、运行环境（如真实 Chrome）与责任人，并附能在合并前取得的证据；评审结论写明 R8b 的状态。这是合并前 DoD 检查项 | S25；规则自本 PR 合并起适用 | todo（候选） |
-| MCF-18b | 同上：合并后才有的 main Full 结果（V4，D576） | P2 | Team Leader 记录；Reviewer 核对 | 合并后在 PR 或任务行中记下覆盖该合并提交的 main Full run ID 与结论；失败按现有流程处理。main Full 绿灯只证明合并后检查通过，不代替 MCF-18a 的 R8b 证据 | S25；规则自本 PR 合并起适用 | todo（候选） |
-| MCF-19 | F22 中的代码提交钉点仍须按 #391 的承诺重钉 | P3 | Knowledge Lead | F22 内引用的代码提交钉到当前实现的完整 SHA；按 D574 放进下一批钉版本完成 | Backlog（S25 规划时排序）；触发：下一批钉版本（D574） | done（随 MCF-05 修正：F22 代码钉点改为合并提交 `70acd042726080ca1281bb857b6ce94321454a60`，两文件在 `e4f7c25` 与 `70acd04` 之间无差异） |
-| MCF-20 | REFAC-31 的 R8b 业务事件没有真实 Chrome 断言（MCF-17，D582） | P3 | Developer | R8b 的六行各至少有一条真实 Chrome 断言，并在 Full 中运行 | Backlog | todo（候选） |
+已移至 [backlog/MCF.md](backlog/MCF.md)（MCF-16，D584）。
 
 ## 派发顺序
 
