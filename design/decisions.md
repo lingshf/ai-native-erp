@@ -606,3 +606,4 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D577 | 表 | MCLOSE-01：Backlog 中 SEC-01 的“现在只去掉……”改为历史基线措辞，由设计在收尾 PR 中修改 | [design/tasks/S24.md:218](tasks/S24.md) |
 | D578 | 表 | MCLOSE-01：KGAP-01 的 QA 措辞作为候选（Knowledge Lead，P2）：#365、#368、#… | [design/tasks/S24.md:219](tasks/S24.md) |
 | D579 | 表 | MCLOSE-01 目标里程碑：MCF 中未定里程碑的 P1/P2 项定为 S25，P3 项定为“Backlog（S25… | [design/tasks/S24.md:220](tasks/S24.md) |
+| D580 | 表 | 接受 S25 计划：目标为 v0.22.0 基于当前 main 新切 RC 且 CHANGELOG 完整，并补齐 MCL… | [design/tasks/S25.md:49](tasks/S25.md) |
