@@ -598,3 +598,10 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D569 | 表 | KGAP-04 记为 done，状态格写明交付范围：#386（`13a437b`）交付 SEC-01 结论引用与官方负责… | [design/tasks/S24.md:210](tasks/S24.md) |
 | D570 | 表 | SEC-02 Windows R6a：接受由同机同 Node 版本 `env: {}` 对照 spawn 实测证实的平台… | [design/tasks/S24.md:211](tasks/S24.md) |
 | D571 | 表 | SEC-02 R6b：Windows 防火墙下的运行不计入验收，只记为流程偏差 | [design/tasks/S24.md:212](tasks/S24.md) |
+| D572 | 表 | MCLOSE-01 R1：Delivery/Release 用一个只改文档的 PR 补齐 CHANGELOG `[Unr`… | [design/tasks/S24.md:213](tasks/S24.md) |
+| D573 | 表 | MCLOSE-01 R2：v0.22.0 改基于从当前 main 新切的 RC，DEMO-23 RC `3566ddb`… | [design/tasks/S24.md:214](tasks/S24.md) |
+| D574 | 表 | MCLOSE-01 K3：修订 D561，钉版本在同一 PR 的下一轮完成，或每个里程碑批量钉 | [design/tasks/S24.md:215](tasks/S24.md) |
+| D575 | 表 | MCLOSE-01：其余 P2/P3 发现转为 Backlog 候选，各带负责人、优先级、验收标准与目标里程碑 | [design/tasks/S24.md:216](tasks/S24.md) |
+| D576 | 表 | MCLOSE-01 R8b：REFAC-31、REFAC-34 的 R8b 不用 main Full 绿灯补记，记为“未… | [design/tasks/S24.md:217](tasks/S24.md) |
+| D577 | 表 | MCLOSE-01：Backlog 中 SEC-01 的“现在只去掉……”改为历史基线措辞，由设计在收尾 PR 中修改 | [design/tasks/S24.md:218](tasks/S24.md) |
+| D578 | 表 | MCLOSE-01：KGAP-01 的 QA 措辞作为候选（Knowledge Lead，P2）：#365、#368、#… | [design/tasks/S24.md:219](tasks/S24.md) |
