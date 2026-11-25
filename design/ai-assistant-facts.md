@@ -66,5 +66,5 @@
 
 1. **用户指南的发送范围不全**：[docs/user/ledger.md:52](https://github.com/lingshf/ai-native-erp/blob/a6037b0cf587fc862cf43b1a1a7d0d9ebfe5076d/docs/user/ledger.md#L52) 只写“描述、本公司科目、维度和所选期间”，没提讲解另含请求时的财务快照（余额、报表、结账计数）；界面文案 [packages/web/src/ui/ai-labels.ts:42-43](https://github.com/lingshf/ai-native-erp/blob/a6037b0cf587fc862cf43b1a1a7d0d9ebfe5076d/packages/web/src/ui/ai-labels.ts#L42-L43) 写了。两处都没提公司币种、小数位与结账方式（F15）。设计页以 F15–F17 为准。KDOC-05（#368，main `04b576b`）已合并，但这一行未改，建议 Knowledge Lead 在写 AI 助手页的同一个 PR 中一并修正。
 2. **教学模式只在前端限制讲解**（F12）：**已决定（D563）**，服务端不加检查，界面限制保持现状。教学模式是浏览器本地偏好，单用户、同源下服务端检查不增加保护；“关闭时不显示讲解”是展示规则，不是访问控制。出现多用户、教师锁定教学模式或远程访问时重新评估。设计页按此描述。
-3. **交给 SDK 的环境变量**（F22）：链路是“适配器 → SDK 工厂”；适配器只去掉三个键，其余已设置的变量一并交给 SDK 工厂。SDK 子进程是否原样收到这份环境，本仓库未验证。是否改为白名单，已列为安全评审候选 SEC-01（P2，D563，见任务总表“安全候选”一节）；SEC-01 只做评审，评审前不改代码。写页面时按此如实描述，不要写成“子进程收到全部其他变量”。
+3. **交给 SDK 的环境变量**（F22）：链路是“适配器 → SDK 工厂”；适配器只去掉三个键，其余已设置的变量一并交给 SDK 工厂。SDK 子进程是否原样收到这份环境，本仓库未验证。SEC-01 安全评审已完成并由 Product/Design 验收（[#364 评论 7148351359](https://github.com/lingshf/ai-native-erp/issues/364#issuecomment-7148351359)，D568）：结论是改为显式白名单，由 [SEC-02](tasks/SEC-02-copilot-env-allowlist.md) 实施（todo，须在 BUG-02a–d 合并后）。SEC-02 合并前，上述三键黑名单仍是现行行为。写页面时按此如实描述，不要写成“子进程收到全部其他变量”。
 4. **Copilot 服务端如何保存和使用这些数据**，仓库里没有记录，本页不推断；设计页应链接官方说明，不自行描述。
