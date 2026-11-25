@@ -9,7 +9,16 @@
 ### Changed（用户可见，行为变化）
 
 - **AI 助手交给 Copilot SDK 的环境变量改为显式白名单**（SEC-02，D568）：只交出明确设置且非空的 `COPILOT_GITHUB_TOKEN`，未设置时交出空环境；不再交出 `GH_TOKEN`、`GITHUB_TOKEN`、其他凭据、`PATH` 等平台变量、代理与证书变量、ERP 配置等本进程变量（指 ERP 交给 SDK 的环境；Windows 系统仍会为子进程补入 `PATH` 等少量系统变量）；传输方式固定为 stdio，不使用 SDK 的 `gitHubToken` 选项。**影响**：以前靠 `GH_TOKEN`、`GITHUB_TOKEN` 或其他继承变量使 AI 可用的部署，升级后 AI 可能不可用（`AI_UNAVAILABLE`，手工记账不受影响）。**迁移**：可改设 `COPILOT_GITHUB_TOKEN`；不保证恢复以前所有认证方式（原生 CLI 对补入键的依赖、真实认证兼容、存量登录、`gh` 回退、代理与自定义 CA 均未验证）。见 [AI 助手 §5](docs/ai-assistant.md#5-启用与配置)。无迁移脚本，无依赖变化。
+- **总账明细筛选：没有维度代码时“维度值”不可填（BUG-01，[#382](https://github.com/lingshf/ai-native-erp/pull/382)，合并提交 `4b2a7a8`）**：维度代码为空时，“维度值”输入框被禁用；清空维度代码时已输入的值同时清空；点“查询”只在填了维度时才写入维度与值，不再生成孤立的 `value`，因此不再误显示“选择无效”。手工打开只带 `value` 的链接仍显示原有无效提示；维度加值的正常查询不变。
+- **AI 助手：已有回答时清理失败不再覆盖回答；取消先于工厂失败时提示“已取消”（BUG-02a、BUG-02c，[#387](https://github.com/lingshf/ai-native-erp/pull/387)，合并提交 `dc14aca`）**：AI 已给出回答后，即使运行时停止报错、抛错或超时，用户照常拿到回答，清理失败只写服务端日志；若终止仍未确认，AI 照旧禁用到重启，下一次请求返回 `cleanup`。工厂调用尚未返回时用户取消、随后工厂抛普通错误，提示改为“已取消”，不再是“不可用”。
+- **贸易单据只读接口的校验顺序与 ID 校验（BUG-03a、BUG-03b，[#383](https://github.com/lingshf/ai-native-erp/pull/383)，合并提交 `612f46d`）**：仅接口层变化，界面不变（浏览器始终发送合法的小写 UUIDv4）。未配置服务时，`GET /api/v1/trade/reports/open-items`、`…/reports/reconciliation`、`…/reports/open-items/:itemId`、`…/open-items/:itemId/actions` 的非法查询由 400 `INVALID_REQUEST` 改为 503 `UNAVAILABLE`；`documentId` 与 `itemId` 在路由层按小写 UUIDv4 校验，非法值一律返回与 `orderId` 相同的 400，不再交给服务（此前部分形似 UUID 的值会得到 404 或服务层 400）。403 / 405 仍先于其他检查；POST 路由和 `orderId` 路由不变。
 
+### Changed（无用户可见变化）
+
+- **业务事件预览计算内部拆分（REFAC-31，[#362](https://github.com/lingshf/ai-native-erp/pull/362)，合并提交 `1764073`）**：`BusinessEventService.compute` 按事件拆成四个函数，放到三个新文件 `business-event-*.ts`；返回值、仓储调用、错误及先后、指纹都不变。该 PR 另登记了统计事件维度上限的疑似缺陷（只登记，未修）。
+- **AI 适配器内部拆分（REFAC-32，[#364](https://github.com/lingshf/ai-native-erp/pull/364)，合并提交 `25c0855`）**：`CopilotAiAdapter.complete` 按守卫、中断、隔离客户端、会话运行与事件监控、终止与清理拆成多个文件；结果、错误提示与清理失败后的禁用行为不变。
+- **贸易单据路由按资源拆分（REFAC-34，[#376](https://github.com/lingshf/ai-native-erp/pull/376)，合并提交 `250f19a`）**：`registerTradeDocumentRoutes` 拆为按资源划分的文件；状态码、响应头与响应体不变。
+- **AI 适配器取消与清理的内部处理（BUG-02b、BUG-02d，[#387](https://github.com/lingshf/ai-native-erp/pull/387)）**：02b 删除不可达的 `answer === undefined` 分支，行为不变；02d 判为可接受，只补注释与测试，行为不变。
 ## [0.21.0] - 2026-11-23
 
 > **已发布**：tag `v0.21.0`（annotated，tag 对象 `416b3090cb89bf8451f7a77ce09e9082b845c108`）打在 `01b16dbf36dd4feab80aee05f9583cfe9bc1de13`（[#319](https://github.com/lingshf/ai-native-erp/pull/319) 的最终头，位于 `release/v0.21.0`；D484）；main 上的 squash 提交 `0494020` 不是 tag 目标。Release：<https://github.com/lingshf/ai-native-erp/releases/tag/v0.21.0>。tag 对 tag 的版本差异（D483，`git diff --shortstat`，无路径过滤）：[v0.20.0..v0.21.0](https://github.com/lingshf/ai-native-erp/compare/v0.20.0..v0.21.0)（两点）70 个文件，+4519/−550；[v0.20.0...v0.21.0](https://github.com/lingshf/ai-native-erp/compare/v0.20.0...v0.21.0)（三点，合并基 `a1a12448207372d6792b2497da852d08418c552b`）111 个文件，+6957/−548；`git rev-list --count` 两点 18、三点 23。
