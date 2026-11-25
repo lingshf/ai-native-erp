@@ -19,7 +19,7 @@
 | 条件 | 证据 |
 | --- | --- |
 | 用户已确认基线 | D566 第 1 节（用户经 M2 ask_user 确认，TL 转达） |
-| 范围内每一项都已结案 | 见第 3 节“已验收”：14 项以合并结案，SEC-01 以评审结论结案（不实施处置，D568）；状态以 [`design/tasks/README.md`](../tasks/README.md) 中的 done 行为准 |
+| 范围内每一项都已结案 | 见第 3 节“已验收”：20 项正式任务由 15 个合并 PR 结案（KDOC-10 随 KDOC-05 计，D558；BUG-02a–d 一个 PR，BUG-03a/b 一个 PR，KDOC-01/02/11 一个 PR，KDOC-04 两个 PR），SEC-01 以评审结论结案（不实施处置，D568），共 21 项；状态以 [`design/tasks/README.md`](../tasks/README.md) 中的 done 行为准 |
 | main Full 覆盖范围内最后一个合并且为绿 | 范围内最后一个合并是 [#387](https://github.com/lingshf/ai-native-erp/pull/387) 的 `dc14aca97765f9c246f45e143ae023dbd8a61518`（2026-11-24T16:52:25-08:00）；[Full run 45521461722](https://github.com/lingshf/ai-native-erp/actions/runs/45521461722) 在该提交上 `success` |
 
 不是定时触发；由 TL 手动启动。这是**收尾**回顾，不是“阶段性”回顾。
@@ -52,7 +52,7 @@
 | SEC-01（只评审，不实施） | [#364](https://github.com/lingshf/ai-native-erp/pull/364) 中的评论 | — | 非作者安全评审：[#364 评论 7148351359](https://github.com/lingshf/ai-native-erp/issues/364#issuecomment-7148351359)（基线 `25c0855`） | 不适用（评审项）；Product/Design 已接受（D568） |
 
 偏差：
-- **KDOC 页面已合并，但都不是 “covered”**。各页 QA 结论多为“只读核对、未做界面演练”，事实所有者复核也不全。影响：文档可用，但覆盖矩阵仍是 partial。已作为候选登记为 KGAP-01（D567），另见第 4 节 K1/K2。
+- **本批 KDOC 页已合并，但都不是 “covered”**。各 PR 的 QA 范围不同，只按各自精确 head 的证据计：[#374](https://github.com/lingshf/ai-native-erp/pull/374) 用安全数据演练了持锁启动、活动租约、迁移、在线备份与离线恢复；[#370](https://github.com/lingshf/ai-native-erp/pull/370) 在精确 head 上实跑了相应的 CI 命令；[#375](https://github.com/lingshf/ai-native-erp/pull/375) 只按源码、既有 jsdom AI 流程和假 SDK 检查，未调用真实 Copilot；[#368](https://github.com/lingshf/ai-native-erp/pull/368) 只读核对源码、现有断言与 CHANGELOG；[#373](https://github.com/lingshf/ai-native-erp/pull/373) 跑了 24 个核销交互用例（jsdom，非真实浏览器）。事实所有者复核也不全。影响：矩阵中这些页仍是 partial。未覆盖的余项逐页列在 KGAP-01（D567）的“剩余”栏，另见第 4 节 K1/K2。
 - **SEC-01 结案的是评审，不是实施**。依据是非作者评审结论（基线 `25c0855`）加 Product/Design 的接受（D568，记于 [#385](https://github.com/lingshf/ai-native-erp/pull/385)）。白名单由范围外的 SEC-02 实施（见 3.3），SEC-02 不计入 SEC-01 的结案证据。
 - **REFAC-31、REFAC-34 的 R8b 记为“未确认”**（D576）。任务书要求合并后补 R8b，只有 REFAC-32 补了。`1764073` 与 `250f19a` 上的 main Full 都为绿，但绿灯不能代替 R8b。REFAC-31 R8b 列出的业务事件场景是否都在真实 Chrome 中跑过，Reviewer 未核实。影响：两项仍算“已验收”，但 R8b 单独标为未确认，由 MCF-17 补映射。
 
@@ -117,10 +117,10 @@
 
 | # | 发现 | 处理 |
 | --- | --- | --- |
-| V1 | REFAC-31、REFAC-32、REFAC-34 与 BUG-01、BUG-02、BUG-03 的最终 `APPROVED` 都绑定在合并前的 head 上 | 已确认，无发现 |
+| V1 | REFAC-31、REFAC-32、REFAC-34 与 BUG-01、BUG-02、BUG-03 的最终 `APPROVED` 都绑定在合并前的 head 上；KDOC 的 9 个 PR 同样如此，且各自合并前 head 上的 `verify` 检查为 success：[#367](https://github.com/lingshf/ai-native-erp/pull/367) `309b9b3`、[#369](https://github.com/lingshf/ai-native-erp/pull/369) `2d95637`、[#372](https://github.com/lingshf/ai-native-erp/pull/372) `422011f`、[#375](https://github.com/lingshf/ai-native-erp/pull/375) `c77bbd0`、[#368](https://github.com/lingshf/ai-native-erp/pull/368) `66e15b5`、[#373](https://github.com/lingshf/ai-native-erp/pull/373) `61c9c61`、[#374](https://github.com/lingshf/ai-native-erp/pull/374) `503d9f1`、[#370](https://github.com/lingshf/ai-native-erp/pull/370) `f202df1`、[#377](https://github.com/lingshf/ai-native-erp/pull/377) `1e6935c` | 已确认，无发现 |
 | V2 | SEC-01 的结案依据是 `25c0855` 上的非作者结论加 D568 的接受（[#385](https://github.com/lingshf/ai-native-erp/pull/385)），不计入 SEC-02 | 已确认，见 3.1 的偏差 |
 | V3 | Backlog 中 SEC-01 的“现在只去掉……”在 SEC-02 之后已不是现状 | 本 PR 改为历史基线措辞（D577） |
-| V4 | 合并后的 R8b 补证：REFAC-32 有，REFAC-31 与 REFAC-34 没有。`1764073` 和 `250f19a` 上的 main Full 为绿。REFAC-31 R8b 的业务事件场景是否都在真实 Chrome 中跑过，未核实 | 不用绿灯补记，R8b 记为未确认：MCF-17、MCF-18（D576） |
+| V4 | 合并后的 R8b 补证：REFAC-32 有，REFAC-31 与 REFAC-34 没有。`1764073` 和 `250f19a` 上的 main Full 为绿。REFAC-31 R8b 的业务事件场景是否都在真实 Chrome 中跑过，未核实 | 不用绿灯补记，R8b 记为未确认：MCF-17；流程上区分合并前证据与合并后 Full：MCF-18a、MCF-18b（D576） |
 
 ### 4.6 Delivery/Release
 
@@ -128,7 +128,7 @@
 | --- | --- | --- | --- |
 | R1 | P1 | CHANGELOG `[Unreleased]` 没有 BUG-01 [#382](https://github.com/lingshf/ai-native-erp/pull/382)、BUG-02a–d [#387](https://github.com/lingshf/ai-native-erp/pull/387)、BUG-03a/b [#383](https://github.com/lingshf/ai-native-erp/pull/383)、REFAC-31/32/34 的条目（转录人核对：`[Unreleased]` 目前只有 SEC-02 一条） | MCF-01（D572） |
 | R2 | P2 | 冻结在 `3566ddb` 的 DEMO-23 RC 已过时，main 之后有产品改动 | MCF-02（D573） |
-| R3 | P3 | G5 没有总的决定索引 | MCF-03（Release 已确认 R3 只指过时的 G5 条目：删除 G5 矩阵行与列表项，并清理 G8）。转录人核对：索引已由 KDOC-03（[#369](https://github.com/lingshf/ai-native-erp/pull/369)，`577891c`）交付为 [`design/decisions.md`](../decisions.md)，但 `docs/README.md` 的 G5 条仍写“没有决定总索引”，这一条已过时。按过时条目处理 |
+| R3 | P3 | G5 没有总的决定索引 | MCF-03（Release 已确认 R3 只指过时的 G5 条目：矩阵“团队流程与决定记录”行的 G5 格改为指向已有索引、该行其余有效内容保留，删除缺口清单中的 G5 项，并清理 G8）。转录人核对：索引已由 KDOC-03（[#369](https://github.com/lingshf/ai-native-erp/pull/369)，`577891c`）交付为 [`design/decisions.md`](../decisions.md)，但 `docs/README.md` 的 G5 条仍写“没有决定总索引”，这一条已过时。按过时条目处理 |
 
 CI/CD、部署与回滚：本检查点不适用（没有发布或部署）。
 
@@ -136,7 +136,7 @@ CI/CD、部署与回滚：本检查点不适用（没有发布或部署）。
 
 | # | 优先级 | 发现 | 处理 |
 | --- | --- | --- | --- |
-| K1 | P2 | 覆盖矩阵中没有一页是 “covered” | 并入 KGAP-01（D567），不另立项 |
+| K1 | P2 | 本批 KDOC 新增或改动的页，在覆盖矩阵中没有一页是 “covered”（只限本批 KDOC 页，不涉及矩阵其他行中结构性的 covered 格） | 并入 KGAP-01（D567），不另立项 |
 | K2 | P2 | Knowledge Lead 写的 6 页缺完整的事实所有者复核；SEC-02 的改写未经核对 | 页面复核并入 KGAP-01；SEC-02 的改写 → MCF-05 |
 | K3 | P3 | 每次钉版本都要单开一个 PR。建议：在同一 PR 的下一轮钉，或每个里程碑批量钉 | MCF-04（D574） |
 
@@ -144,7 +144,7 @@ CI/CD、部署与回滚：本检查点不适用（没有发布或部署）。
 
 | 方面 | 发现 | 优先级 | 处理 |
 | --- | --- | --- | --- |
-| 系统设计 | `docs/README.md` 矩阵第 53–56 行（架构 / 总账 / 贸易 / 存储）为 unknown；UI-1 为 stale | — | MCF-07 |
+| 系统设计 | `docs/README.md` 矩阵第 53–56 行（架构 / 总账 / 贸易 / 存储）为 unknown。KL 原报告“UI-1 为 stale”；转录人核对：UI-1 规范页的页首状态已由 KDOC-11 更新，过时的是矩阵中 UI-1 的两格（“界面与教学模式”行与目录表 `design/ui/` 行） | P3 | MCF-07 |
 | 实现 | REFAC 拆分后没有代码入口、扩展点、调试的说明页 | P2 | MCF-08 |
 | 取舍 | G2 未解决；SEC-02 / D570 的措辞未经设计核对 | P2 | G2 → MCF-09；SEC-02 / D570 措辞 → MCF-05 |
 | 使用 | 官方数据处理说明缺失 | P3 | 已按 D569 保留为已知缺口，不另立项 |
@@ -152,18 +152,21 @@ CI/CD、部署与回滚：本检查点不适用（没有发布或部署）。
 | 过时 | G8 可以精简 | P3 | 并入 MCF-03 |
 | 冲突 | 未发现 | — | — |
 | 重复 | 根 README 的业务规则段与 `docs/user/` 重叠 | P3 | MCF-12 |
-| 缺 QA | 运维、迁移手册、CI 说明、AI 助手四页没有在安全数据上演练 | P2 | 并入 KGAP-01（逐页“剩余”栏），不另立项 |
+| 缺 QA | KL 原报告：运维、迁移手册、CI 说明、AI 助手四页没有在安全数据上演练。这是 KL 的报告，不是核验结论；QA 核对后收窄：[#374](https://github.com/lingshf/ai-native-erp/pull/374) 已用安全数据覆盖运维与手册的持锁、租约、迁移及备份恢复，[#370](https://github.com/lingshf/ai-native-erp/pull/370) 已实跑 CI 命令，[#375](https://github.com/lingshf/ai-native-erp/pull/375) 限于源码、既有 jsdom 与假 SDK（非真实 Copilot）。只有这些范围之外的余项待补 | P2 | 余项并入 KGAP-01（逐页“剩余”栏），不另立项 |
 
 ## 6. TL 对齐
 
 - 分歧：
   - R3 与 KDOC-03 已交付的决定索引：转录人核对后认定是 `docs/README.md` G5 条目过时（见 4.6）；Release 已确认，无其他缺口，按 MCF-03 处理。
   - REFAC-31/34 的 R8b：TL 决定不用绿灯补记（D576）。
-- 同一版本确认：Delivery/Release 已确认，无异议；其他成员 _待收集。_ 每位成员需在自己的角色内确认读的是本页 head、[D566](../tasks/README.md#里程碑收尾检查与回顾d566) 与截至 D578 的决定。群发消息不算确认。
+- 同一版本确认（每位成员在自己的角色内确认读的是本页 head、[D566](../tasks/README.md#里程碑收尾检查与回顾d566) 与当时的最新决定；群发消息不算确认）：
+  - Delivery/Release 与 Knowledge Lead：[#394 评论 7149899109](https://github.com/lingshf/ai-native-erp/pull/394#issuecomment-7149899109)（针对 `395a8e1`）。同意 4.6、4.7 与第 5 节对这两个角色的转录，无异议；R3 只指过时的 G5，G8 的迁移号一条也已不成立，可并入同一次文档同步。范围：只确认转录与结论，不代表任何页面已通过事实复核或 QA，也不代表对之后改动的确认。
+  - Reviewer 与 QA：[#394 评论 7149917445](https://github.com/lingshf/ai-native-erp/pull/394#issuecomment-7149917445)（针对 `395a8e1`）与 [复审 6050348199](https://github.com/lingshf/ai-native-erp/pull/394#pullrequestreview-6050348199)（针对 `3f55e3f`）。基线 `9b8fa97`、正式范围、不扩大验收与 `dc14aca` 上的 main Full 无异议；其余异议（计数、KDOC verify、R8b 时点、目标里程碑、UI-1 矩阵、QA 范围、covered 口径、MCF-03 范围、本节记录）在本轮修订，待对新 head 再确认。
+  - Team Leader：_待确认。_
 
 ## 7. 发现项
 
-全部写入 Backlog：[任务总表 · 收尾发现项（MCLOSE-01）](../tasks/README.md#收尾发现项mclose-01)，编号 MCF-01..19，各带负责人、优先级、验收标准与目标里程碑。修复走正常的评审与 QA 流程。K1、K2 的页面复核和“缺 QA”并入已有的 KGAP-01；官方数据处理说明按 D569 保留为已知缺口；它们都不重复立项。
+全部写入 Backlog：[任务总表 · 收尾发现项（MCLOSE-01）](../tasks/README.md#收尾发现项mclose-01)，编号 MCF-01..19（MCF-18 分为 18a、18b），各带负责人、优先级、验收标准与目标里程碑。修复走正常的评审与 QA 流程。K1、K2 的页面复核和“缺 QA”并入已有的 KGAP-01；官方数据处理说明按 D569 保留为已知缺口；它们都不重复立项。
 
 本次的决定（记入 [S24 决定表](../tasks/S24.md)）：
 - D572：补 CHANGELOG（R1）。
@@ -173,6 +176,7 @@ CI/CD、部署与回滚：本检查点不适用（没有发布或部署）。
 - D576：R8b 不用绿灯补记，并改为合并前的 DoD 项。
 - D577：SEC-01 改为历史措辞。
 - D578：KGAP-01 的 QA 措辞。
+- D579：目标里程碑。未定里程碑的 P1/P2 项定为 S25；P3 项定为“Backlog（S25 规划时排序）”。执行触发点保留在同一格。
 
 ## 8. 产出
 

@@ -605,3 +605,4 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D576 | 表 | MCLOSE-01 R8b：REFAC-31、REFAC-34 的 R8b 不用 main Full 绿灯补记，记为“未… | [design/tasks/S24.md:217](tasks/S24.md) |
 | D577 | 表 | MCLOSE-01：Backlog 中 SEC-01 的“现在只去掉……”改为历史基线措辞，由设计在收尾 PR 中修改 | [design/tasks/S24.md:218](tasks/S24.md) |
 | D578 | 表 | MCLOSE-01：KGAP-01 的 QA 措辞作为候选（Knowledge Lead，P2）：#365、#368、#… | [design/tasks/S24.md:219](tasks/S24.md) |
+| D579 | 表 | MCLOSE-01 目标里程碑：MCF 中未定里程碑的 P1/P2 项定为 S25，P3 项定为“Backlog（S25… | [design/tasks/S24.md:220](tasks/S24.md) |
