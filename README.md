@@ -61,7 +61,7 @@ Full 在 push main 及每天 03:17 UTC 运行；Bench 每天 03:47 UTC 及手动
 
 ## 当前业务与统一规则
 
-本节是实现契约（API 路径与字段、迁移编号、幂等与 CAS 封套、分配算法、索引与 SQL 口径、基准命令）的权威位置。用户可见的规则以 [docs/user/](docs/user/README.md) 为准，本节只留一句话加链接（MCF-12，D590）；D5/D6/D7 的规则正文待 KGAP-03，暂留此处。
+本节是实现契约（API 路径与字段、迁移编号、幂等与 CAS 封套、分配算法、索引与 SQL 口径、基准命令）的权威位置。用户可见的规则以 [docs/user/](docs/user/README.md) 为准，本次（MCF-12，D590）只把三处（账龄分档、409/400 保存、Ctrl+Enter 预览）改为一句话加链接；同节其余重复规则（如维度 32 键、核销不表示银行支付）暂未迁移；D5/D6/D7 的规则正文待 KGAP-03，暂留此处。
 
 所有写入只针对显式选择的新目标库。预览只读，保存与明确确认是独立命令；AI、教学和偏好都不能自动记账。金额采用公司精度 0–4 位的精确最小单位及安全整数边界。
 
@@ -119,7 +119,7 @@ D6 历史反向逐行精确镜像同公司原已过账行，即使科目/维度�
 
 只读 API：`GET /api/v1/trade/reports/open-items?company=...&month=YYYY-MM&side=AP&party=...&limit=100`（month/side/party 可省略）；`GET /api/v1/trade/reports/open-items/{itemId}?company=...&month=YYYY-MM`；`GET /api/v1/trade/reports/reconciliation?company=...&month=YYYY-MM`。分页回传 UUID `nextCursor` 和 `snapshot`，续页须原样携带两者及同一筛选，事实变化返回 409，显式刷新重读，不混合页。汇总始终涵盖同一只读事务内的全部匹配项，不是本页合计。
 
-余额为保存的原始净/税/总额减截止日内核销与动作差额；核销用已有 `settlements(company_id,item_id,accounting_date)` 索引 SQL 聚合，应用/取消/反向用不可变前后像差额 SQL 聚合，不重放事件、不新增余额缓存。未来核销、退款、取消不隐藏早月记录；当前停用伙伴/科目或新 profile 不改变原科目/日期。账龄分档及贷项/预付单列的用户规则见[往来未结项](docs/user/trade-reports.md)（权威）；API 中单列项的账龄字段为 null。
+余额为保存的原始净/税/总额减截止日内核销与动作差额；核销用已有 `settlements(company_id,item_id,accounting_date)` 索引 SQL 聚合，应用/取消/反向用不可变前后像差额 SQL 聚合，不重放事件、不新增余额缓存。未来核销、退款、取消不隐藏早月记录；当前停用伙伴/科目或新 profile 不改变原科目/日期。账龄分档及贷项/预付单列的用户规则见[往来未结项](docs/user/trade-reports.md)（权威）；API 中贷项/预付以正金额单列，其账龄字段为 null。
 
 GL 核对固定为本公司**全部伙伴及 AP/AR**、从账首至同一截止日的借减贷，伙伴/方向筛选不适用。按原保存控制/预付科目并纳入当前 AP/AR 控制科目，分别返回 `subledgerMinor`、`tradeGlMinor`、`openingGlMinor`（旧账期初未结项原始金额 P，D25）、`otherSourceMinor`（全部 GL − 贸易 GL − P）、`glMinor`、`tradeDifferenceMinor`（贸易 GL + P − 子账）及 `differenceMinor`（全部 GL − 子账）；历史停用/重新分类的已用科目仍纳入。其他来源和真实贸易差异单列，绝不造调整凭证抵平，也不声称独立审计或银行对账。
 
