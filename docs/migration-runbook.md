@@ -142,14 +142,14 @@ npm run storage:admin -- verify --provider sqlite --file <WORK>\target-backup.sq
 | 步骤 | 预算 | 记录位置 |
 | --- | --- | --- |
 | 快照 100 万 GL 行 | ≤ 60s | Windows 每晚工作流 `scripts/bench-legacy-snapshot.mjs` |
-| dry-run | ≤ 120s，峰值 RSS ≤ 512MB | Bench 工作流 `migration-rehearsal` 作业 |
-| 导入（100 万 GL 行 + 10 万期初未结项） | ≤ 10min；峰值 RSS ≤ 512MB（KG 已于 M2-05b 关闭，见下） | 同上；期初验证、期初写入、期初复核、最终提交各自耗时仅记录（D437） |
+| dry-run | ≤ 120s，峰值 RSS ≤ 512 MiB | Bench 工作流 `migration-rehearsal` 作业 |
+| 导入（100 万 GL 行 + 10 万期初未结项） | ≤ 10min；峰值 RSS ≤ 512 MiB（KG 已于 M2-05b 关闭，见下） | 同上；期初验证、期初写入、期初复核、最终提交各自耗时仅记录（D437） |
 | 确认核对 | ≤ 120s | 同上（RSS 仅记录） |
 | 备份 + 校验 | 仅记录 | 同上 |
 
 Bench 作业运行 `node scripts/bench-migration-rehearsal.mjs`，结果写入工件 `artifacts/ci/migration-rehearsal.json`，每项指标标明 `hard`（超出则作业失败）、`record-only` 或 `known-gap`（报告预算与是否超出，但不使作业失败）。备份期间热读 p95 由 M0-R5 自己的 Bench 覆盖。
 
-**已知缺口 KG：已于 M2-05b 关闭（D434）**。M2-05a 时导入峰值 RSS 在 10 万条期初时为 566–721MB，超出 512MB，原因是期初计划（10 万个未结项）在整个导入期间常驻内存。M2-05b 把校验通过的期初项暂存在临时计划库中，在仍为单一写事务的期初阶段内每批读出 1000 项写入目标库。Bench 实测导入峰值 RSS 为 427MB（100 万 GL 行 + 10 万期初，Linux CI）。导入峰值 RSS 已恢复为 `hard` 判定，脚本的 `KNOWN_GAPS` 现为空。
+**已知缺口 KG：已于 M2-05b 关闭（D434）**。M2-05a 时导入峰值 RSS 在 10 万条期初时为 566–721 MiB，超出 512 MiB，原因是期初计划（10 万个未结项）在整个导入期间常驻内存。M2-05b 把校验通过的期初项暂存在临时计划库中，在仍为单一写事务的期初阶段内每批读出 1000 项写入目标库。Bench 实测导入峰值 RSS 为 427 MiB（100 万 GL 行 + 10 万期初，Linux CI）。导入峰值 RSS 已恢复为 `hard` 判定，脚本的 `KNOWN_GAPS` 现为空。
 
 ## 10. 新建或升级目标库（schema 迁移）
 
@@ -168,8 +168,8 @@ npm run storage:admin -- verify --provider sqlite --file <新文件>.sqlite
 | --- | --- |
 | 2 快照（Windows 真实 `legacy-snapshot`） | `legacy-rehearsal.test.ts` J5 用例（Windows 工作流） |
 | 3 dry-run 不带选项 / 带齐选项 / 拒绝部分选项与 `--target` | `storage-admin-cli.test.ts` 末尾 J1 用例；`legacy-rehearsal.test.ts` `rehearse` |
-| 4 导入缺决定 C 选项被拒 | `storage-admin-cli.test.ts` 已有用例（M2-03） |
-| 4 缺可读期初文件被拒 | `storage-admin-cli.test.ts` 已有用例（M2-03b） |
+| 4 导入缺决定 C 选项被拒 | `storage-admin-cli.test.ts` 用例 “legacy-import CLI requires six explicit decisions, imports only a new target…” |
+| 4 缺可读期初文件被拒 | `storage-admin-cli.test.ts` 用例 “legacy-import CLI requires a readable opening-items file when AP/AR controls are in scope” |
 | 4 期初合计不符（口径 2）不建库 | `legacy-rehearsal.test.ts` J4a |
 | 5 确认前 `--check` 只读、非通过 | `legacy-rehearsal.test.ts` J4b |
 | 5 确认、复核通过、贸易子账平衡 | `legacy-rehearsal.test.ts` `rehearse` |
