@@ -30,9 +30,9 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 
 | 编号 | 类型 | 摘要（仅表行） | 位置 |
 | --- | --- | --- | --- |
-| D1 | 表 | 一个总账模型，结账方式作为公司设置 | [design/reviews/M0.md:35](reviews/M0.md)；[design/roadmap.md:199](roadmap.md)；[design/roadmap.md:217](roadmap.md) |
-| D2 | 表 | Dependabot | [design/reviews/M0.md:36](reviews/M0.md)；[design/roadmap.md:200](roadmap.md)；[design/roadmap.md:218](roadmap.md) |
-| D3 | 表 | 4173 原账套不动 | [design/reviews/M0.md:37](reviews/M0.md)；[design/roadmap.md:201](roadmap.md)；[design/roadmap.md:219](roadmap.md) 等 4 处 |
+| D1 | 表 | 一个总账模型，结账方式作为公司设置 | [design/reviews/M0.md:35](reviews/M0.md)；[design/roadmap.md:199](roadmap.md)；[design/roadmap.md:219](roadmap.md) |
+| D2 | 表 | Dependabot | [design/reviews/M0.md:36](reviews/M0.md)；[design/roadmap.md:200](roadmap.md)；[design/roadmap.md:220](roadmap.md) |
+| D3 | 表 | 4173 原账套不动 | [design/reviews/M0.md:37](reviews/M0.md)；[design/roadmap.md:201](roadmap.md)；[design/roadmap.md:221](roadmap.md) 等 4 处 |
 | D4 | 表 | 存储与迁移版本 | [design/reviews/M0.md:38](reviews/M0.md) |
 | D5 | 表 | 维度组合统一采用 subset 口径：组合未列的维度不限制，必填、禁止仍独立校验 | [design/reviews/M0-decisions.md:11](reviews/M0-decisions.md)；[design/reviews/M0.md:39](reviews/M0.md) |
 | D6 | 表 | 历史反向逐行精确镜像同公司原已过账行，不按当前配置重跑默认或派生 | [design/reviews/M0-decisions.md:12](reviews/M0-decisions.md)；[design/reviews/M0.md:40](reviews/M0.md) |
@@ -80,7 +80,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D48 | 无 | | |
 | D49 | 无 | | |
 | D50 | 无 | | |
-| D51 | 表 | M1-R3 带核销/调整历史和并发后，账龄、余额和对账报表超出 D18 预算，是否允许新增迁移 | [design/roadmap.md:207](roadmap.md)；[design/roadmap.md:220](roadmap.md) |
+| D51 | 表 | M1-R3 带核销/调整历史和并发后，账龄、余额和对账报表超出 D18 预算，是否允许新增迁移 | [design/roadmap.md:207](roadmap.md)；[design/roadmap.md:222](roadmap.md) |
 | D52 | 无 | | |
 | D53 | 无 | | |
 | D54 | 无 | | |
