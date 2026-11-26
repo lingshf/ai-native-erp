@@ -106,7 +106,7 @@
   - `ActionEntry`、每个自定义 Hook、每个新组件与命令函数都满足 ②（≤ 80 行、嵌套 ≤ 3 层）；`command()` 的 `switch` 超过 ② 时按动作拆成模块级函数，返回值不变；
   - `TradeAdjustments.tsx` ≤ 300 行，`trade-adjustments/` 下每个新文件 ≤ 400 行；
   - PR 正文列出所有超过 60 行的函数，附计数行数与最深层数。
-- **R7 打包字节**（构建条件、依赖图、D432 字节口径同 [S14 REFAC-06](S14.md#refac-06拆分-tradeinvoicestsx只搬移不改行为)；首屏按 D454，见[任务书模板](TEMPLATE.md)“首屏比对”）：
+- **R7 打包字节**（D432：构建条件、依赖图、字节口径同 [S14 REFAC-06](S14.md#refac-06拆分-tradeinvoicestsx只搬移不改行为)；首屏：D454，见[任务书模板](TEMPLATE.md)“首屏比对”）：
   - PR 正文须有“构建来源”一节（[任务书模板](TEMPLATE.md)“证据要求”）。base 为最终送审 head 的实际合并基；合并基变了就重新测量。
   - 首屏：±0。
   - **调整页块路由**：在 `00d1ed4` 上只有入口块 `index-*.js` 引用 `TradeAdjustments-*.js`（懒加载），即只有 `#/trade-adjustments` 加载它；PR 正文列出 base 上加载该块的路由及判定依据。

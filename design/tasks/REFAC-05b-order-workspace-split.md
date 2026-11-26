@@ -112,13 +112,13 @@
   - `OrderWorkspace`、每个自定义 Hook、每个新组件与命令函数都满足 ②（≤ 80 行、嵌套 ≤ 3 层）；
   - `order-workspace.tsx` ≤ 200 行，`trade-orders/` 下每个新文件 ≤ 400 行；
   - PR 正文列出所有超过 60 行的函数，附计数行数与最深层数。
-- **P7 打包字节**（构建条件、依赖图、D432 字节口径同 [S14 REFAC-06](S14.md#refac-06拆分-tradeinvoicestsx只搬移不改行为)；首屏按 D454，见[任务书模板](TEMPLATE.md)“首屏比对”）：
+- **P7 打包字节**（D432：构建条件、依赖图、字节口径同 [S14 REFAC-06](S14.md#refac-06拆分-tradeinvoicestsx只搬移不改行为)；首屏：D454，见[任务书模板](TEMPLATE.md)“首屏比对”）：
   - PR 正文须有“构建来源”一节（[S15 共同验收](S15.md#共同验收)，[任务书模板](TEMPLATE.md)“证据要求”）。base 为最终送审 head 的实际合并基；合并基变了就重新测量。
   - 首屏：±0。
   - **订单块路由**：在 `bfeccb7` 上只有订单路由（`#/trade/orders`）加载订单页块（`TradeOrders-*.js`）：构建后只有入口块 `index-*.js` 引用它（懒加载）。PR 正文列出 base 上加载该块的路由及判定依据。
   - 订单路由的“路由新增”JS 合计（屏蔽哈希后的 gzip-9）增加不超过 **+900 B**；其他路由 ±0。
   - 各路由 CSS 的集合与字节都不变。
-  - **+900 B 的依据**（设计角色在 `bfeccb7` 上试算，按 D461 包含要搬走的命令与闭包；本机 Windows，Node v26.13.0 / npm 11.20.0，`package-lock.json` blob `07c1aee8b9c3392b88c25f9bb670adbbc8f19201`，`npm ci` 后 `npm run build -w packages/web`，只量订单页块，屏蔽哈希后 gzip-9；试算改动未提交）：
+  - **+900 B 的依据**（设计角色在 `bfeccb7` 上试算，依据：D461，包含要搬走的命令与闭包；本机 Windows，Node v26.13.0 / npm 11.20.0，`package-lock.json` blob `07c1aee8b9c3392b88c25f9bb670adbbc8f19201`，`npm ci` 后 `npm run build -w packages/web`，只量订单页块，屏蔽哈希后 gzip-9；试算改动未提交）：
     - base：`TradeOrders-*.js` 38,755 B / 11,796 B（原始 / gzip-9）；
     - 试算：把 `:70–287` 的全部状态、effect、命令与派生值原样搬进**一个**返回对象的 Hook，再抽出 7 个只收 props 的组件（操作栏、错误条、保存提示、预览结果、常规字段、行字段、三个 datalist）：40,455 B / 12,289 B，即 **+493 B**；入口块 +1 B（哈希名长度噪声）。
     - 试算中的 Hook 仍有 213 行、行字段组件 97 行、常规字段组件 85 行，没有满足 ②。按决定 2、3a 继续拆成 3–4 个 Hook 或模块级命令函数（显式传参），会再增加传参与返回对象的字节。REFAC-06c 的实测（D461：试算 +400 B，实测精简后约 +873 B）说明这部分约占一半，所以上限取 +493 B 的约 1.8 倍，与 D461 相同的 +900 B。

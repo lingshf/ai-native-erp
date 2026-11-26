@@ -104,7 +104,7 @@
   - **R5d 插槽对等**：PR 正文用一张表列出 base 中 `FastTab#tord-list` 的 7 个子表达式以及 `form` / `div.grid-wrap` 内被抽出的子表达式，标出 head 中对应的唯一组件或表达式。
   - **R5e 副作用顺序**：PR 正文逐函数对照 base 与 head 中 `show`、`apply`、`clear`、`refresh` 与行按钮处理器内的 `restartOrderList`、`setState`、`onFilter`、`onOpen` 序列。
 - **R6 尺寸**：除上表 R6a–R6c 外，`trade-orders/` 下每个新文件 ≤ 300 行；每个新函数满足 ②（≤ 80 行、嵌套 ≤ 3 层）；PR 正文列出所有超过 60 行的函数，附计数行数与最深层数。
-- **R7 打包字节**（构建条件、依赖图、D432 字节口径同 [S14 REFAC-06](S14.md#refac-06拆分-tradeinvoicestsx只搬移不改行为)；首屏按 D454，见[任务书模板](TEMPLATE.md)“首屏比对”）：
+- **R7 打包字节**（D432：构建条件、依赖图、字节口径同 [S14 REFAC-06](S14.md#refac-06拆分-tradeinvoicestsx只搬移不改行为)；首屏：D454，见[任务书模板](TEMPLATE.md)“首屏比对”）：
   - PR 正文须有“构建来源”一节（[任务书模板](TEMPLATE.md)“证据要求”，含 S17 回顾行动 3 的干净性证明）。base 为最终送审 head 的实际合并基；合并基变了就重新测量。
   - 首屏：±0。
   - **订单页块路由**：PR 正文列出 base 上加载 `TradeOrders-*.js` 的路由及判定依据。这些路由的“路由新增”JS 合计（屏蔽哈希后的 gzip-9）增加不超过 **+900 B**（沿用 D461 / D476 的上限）；其他路由 ±0。各路由 CSS 的集合与字节都不变。
