@@ -602,7 +602,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D571 | 表 | SEC-02 R6b：Windows 防火墙下的运行不计入验收，只记为流程偏差 | [design/tasks/S24.md:212](tasks/S24.md)；[docs/release/v0.22.0-release-notes.md:21](../docs/release/v0.22.0-release-notes.md) |
 | D572 | 表 | MCLOSE-01 R1：Delivery/Release 用一个只改文档的 PR 补齐 CHANGELOG `[Unr`… | [design/tasks/S24.md:213](tasks/S24.md) |
 | D573 | 表 | MCLOSE-01 R2：v0.22.0 改基于从当前 main 新切的 RC，DEMO-23 RC `3566ddb`… | [design/tasks/S24.md:214](tasks/S24.md) |
-| D574 | 表 | MCLOSE-01 K3：修订 D561，钉版本在同一 PR 的下一轮完成，或每个里程碑批量钉 | [design/tasks/S24.md:215](tasks/S24.md) |
+| D574 | 表 | MCLOSE-01 K3：修订 D561，钉版本在同一 PR 的下一轮完成，或每个里程碑批量钉 | [design/tasks/S24.md:215](tasks/S24.md)；[design/tasks/TEMPLATE.md:130](tasks/TEMPLATE.md) |
 | D575 | 表 | MCLOSE-01：其余 P2/P3 发现转为 Backlog 候选，各带负责人、优先级、验收标准与目标里程碑 | [design/tasks/S24.md:216](tasks/S24.md) |
 | D576 | 表 | MCLOSE-01 R8b：REFAC-31、REFAC-34 的 R8b 不用 main Full 绿灯补记，记为“未… | [design/tasks/S24.md:217](tasks/S24.md) |
 | D577 | 表 | MCLOSE-01：Backlog 中 SEC-01 的“现在只去掉……”改为历史基线措辞，由设计在收尾 PR 中修改 | [design/tasks/S24.md:218](tasks/S24.md) |
@@ -619,4 +619,4 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D588 | 表 | M1 之后的贸易设计（订单 TORD、从订单开票 TINV、TSET-01 等）散在各 Sprint 任务书，没有一页汇… | [design/tasks/S25.md:57](tasks/S25.md) |
 | D589 | 表 | 关闭 C1（ADR-SME-001 等历史页与现行架构冲突）：这些页已有 D560 的“已取代”页首 | [design/tasks/S25.md:58](tasks/S25.md)；[docs/README.md:111](../docs/README.md) |
 | D590 | 表 | 授权 Release + Knowledge Lead（同一会话，以 KL 身份落文）为 MCF-12 修改根 `REA`… | [design/tasks/S25.md:59](tasks/S25.md) |
-| D591 | 表 | 采纳 S25 回顾的三条行动：行动 3（生成器对“提及”只记文件、不记行号）并入 MCF-21 | [design/tasks/S25.md:60](tasks/S25.md) |
+| D591 | 表 | 采纳 S25 回顾的三条行动：行动 3（生成器对“提及”只记文件、不记行号）并入 MCF-21 | [design/tasks/S25.md:60](tasks/S25.md)；[design/tasks/TEMPLATE.md:129](tasks/TEMPLATE.md)；[design/tasks/TEMPLATE.md:130](tasks/TEMPLATE.md) |

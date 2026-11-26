@@ -849,6 +849,10 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 - **Sprint 评审与回顾**：[S25 评审](../reviews/S25-review.md)（accepted：MCF P1/P2 与已排入的 P3 全部 done，RC2 已合并；v0.22.0 tag 与 Release 待授权，不算已发布；打回 22；D580–D590）、[S25 回顾](../reviews/S25-retro.md)（行动 1 送审前“断言 → 来源”对照，行动 2 钉点按引用格找，行动 3 索引的提及不记行号；D591 采纳三条：行动 3 并入 MCF-21，行动 1、2 写入任务书模板；下一 Sprint 候选只给排序建议）。
 
+## S26：知识缺口补齐 + 决定索引生成器可靠性 + REFAC-31 R8b 补证（计划草案）
+
+计划、泳道与决定见 [S26.md](S26.md)。范围：MCF-21（含 D591 第 ③ 项）→ KGAP-01、KGAP-03、KGAP-05、KGAP-02 → MCF-20（唯一需要开发的任务，只加测试）；无迁移；各项状态仍记在 [MCF 表](backlog/MCF.md)与 [KGAP 表](backlog/KGAP.md)。S25 回顾行动 1、2 已按 D591 写入[任务书模板](TEMPLATE.md)。v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 待用户授权，不纳入承诺。
+
 ## 知识与文档待办（KDOC，D556）
 
 已移至 [backlog/KDOC.md](backlog/KDOC.md)（MCF-16，D584）。
