@@ -625,3 +625,4 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D593 | 表 | MCF-21 统一采用严格规则：不设豁免表，不改验收口径 | [design/tasks/S26.md:60](tasks/S26.md) |
 | D594 | 表 | MCF-20 PR 照常评审，不在该 PR 内修统计预览崩溃：验收 3 标为 partial（GUI 只验到预览请求），… | [design/tasks/S26.md:61](tasks/S26.md) |
 | D595 | 表 | 采纳 S26 回顾三项行动：① 需要开发的任务书逐条验收写明 PR 正文证据计划（证据类型 → 命令或产物 → 取证位置… | [design/tasks/S26.md:62](tasks/S26.md)；[design/tasks/TEMPLATE.md:131](tasks/TEMPLATE.md)；[design/tasks/TEMPLATE.md:132](tasks/TEMPLATE.md) |
+| D596 | 表 | 接受 S27 计划：目标、范围（KGAP-06 至 KGAP-09）、A–C 泳道与开发名额按本文件 | [design/tasks/S27.md:89](tasks/S27.md) |
