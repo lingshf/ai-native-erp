@@ -10,9 +10,9 @@ KDOC-01..11 都已合并或并入（见上表）。下面是 Knowledge Lead 报�
 | KGAP-04 | [`docs/ai-assistant.md`](../../../docs/ai-assistant.md) 缺两项：GitHub Copilot 官方数据处理说明的链接；SEC-01 的评审结论 | P3 | Knowledge Lead 补官方链接（Product/Design 核对链接确为官方页面、说法不超出该页）；SEC-01 结论由其评审人提供，Knowledge Lead 转写 | 页面链接官方数据处理说明，不复述其承诺；SEC-01 有结论后写入结论及证据链接，之前保留“待评审”标注 | 后半依赖 [SEC-01](SEC.md) 评审结论 | done（D569：#386 `13a437b` 交付 SEC-01 结论引用与官方负责任使用链接 [responsible-use/agents](https://docs.github.com/en/copilot/responsible-use/agents)；“官方服务端数据处理说明”暂无专门官方页面，作为已知缺口保留在 [`docs/ai-assistant.md`](../../../docs/ai-assistant.md) §7 与 [`docs/README.md`](../../../docs/README.md) G1，不另开任务，出现官方页面时补链接） |
 | KGAP-05 | M1 之后的贸易设计没有一页汇总的现行说明：M1-01..07 任务书只记到 M1；订单（TORD）、从订单开票（TINV）、TSET-01 等的设计散在各 Sprint 任务书（D588，MCF-07 核对时发现） | P3 | Product/Design | 一页现行贸易设计（或在现有设计页中新增一节），按主题链接到各任务书与决定，钉完整 SHA；只汇总已合并的决定，不新定规则；查不到原始依据的写明缺口；`docs/README.md` 矩阵贸易行的设计列改为指向该页 | 无 | done（设计 [#426](https://github.com/lingshf/ai-native-erp/pull/426)，main `a289f50`；KL 矩阵 [#427](https://github.com/lingshf/ai-native-erp/pull/427)，main `3feebca`） |
 | KGAP-06 | 矩阵贸易行设计列仍为 partial：[`design/trade-design.md`](../../trade-design.md)（KGAP-05，[#426](https://github.com/lingshf/ai-native-erp/pull/426)）缺 Developer 对整页逐条事实的事实所有者复核记录（S26 评审 §4） | P3 | Developer 只读复核；Product/Design 修正不符项；Knowledge Lead 改矩阵 | ① 复核记录覆盖第 1–9 节每条断言（断言 → 结论 → 完整 SHA + 文件:行）；② 不符项由 Product/Design 修正，复核人在修正后的合并提交上确认；③ `docs/README.md` 贸易行设计列按记录更新，第 10 节缺口照写；跨文件验收与证据计划见 [S27](../S27.md#跨文件验收d595按文件列验收句) | 无 | todo（S27） |
-| KGAP-07 | 矩阵 AI 行取舍格仍为 partial：[路线图 §6.1](../../roadmap.md#61-取舍补记d564) “AI 只建议，不保存、不过账”行（KGAP-02，[#429](https://github.com/lingshf/ai-native-erp/pull/429)）缺事实所有者复核记录 | P3 | Developer 只读复核代码 / 配置断言；Knowledge Lead 改矩阵 | ① 该行描述现行代码或配置的断言逐条有结论与出处；备选、代价、失效条件标“产品判断，不作事实复核”；② `docs/README.md` AI 行取舍格按记录更新，升格范围只限该行；③ KGAP-04 的服务端数据处理缺口照写 | KGAP-06 之后（同一只读名额） | todo（S27） |
-| KGAP-08 | [`design/trade-design.md` 第 10 节](../../trade-design.md#10-缺口)：TORD-03/04/05、TINV-05 的产品决定无编号；TLIST-02 “待协调者定编号”未登记；订单只插入、不修改、不取消无原始决定记录 | P3 | Product/Design 提出；TL 决定编号 | ① 每项登记决定编号（引用原任务书文件:行 @ 完整 SHA，不改结论）或写明不登记的理由；② 订单只插入一项标为事后补记，不当作原始决定记录；③ 第 10 节改为指向新编号，未处理项不删除；④ 索引重新生成，`--check` 退出 0 | 无 | todo（S27） |
-| KGAP-09 | KGAP-01 收尾后仍为 partial 的页面，[docs/README](../../../docs/README.md) “KGAP-01 泳道 C 收尾”表列有可派发的剩余复核与 QA（见下方“KGAP-09 派发清单”） | P2 | 事实所有者（Developer 只读、Delivery/Release、Product/Design）；QA；Knowledge Lead 汇总 | 同 KGAP-01 的 covered 三条规则；只补派发清单内的项，不重做已有且仍有效的证据；`FAIL` 或阻塞只记录、不升 covered；KGAP-04 的外部限制不作为可派发演练；可按页面逐格交付 | 无 | todo（S27） |
+| KGAP-07 | 矩阵 AI 行取舍格仍为 partial：[路线图 §6.1](../../roadmap.md#61-取舍补记d564) “AI 只建议，不保存、不过账”行（KGAP-02，[#429](https://github.com/lingshf/ai-native-erp/pull/429)）缺事实所有者复核记录 | P3 | Developer 只读复核；Product/Design 确认分类并修正不符项；Knowledge Lead 改矩阵 | ① 该行四列拆成逐条断言，每条标“事实”（描述现行代码或配置，不论在哪一列）或“产品判断”；事实条逐条有结论与出处，产品判断条由 Product/Design 确认分类；② 不符的事实由 Product/Design 修正 `design/roadmap.md` 该行（源自 F 条目的同改 `design/ai-assistant-facts.md`），复核人在修正合并提交上确认；③ `docs/README.md` AI 行取舍格按记录更新，升格范围只限该行；④ KGAP-04 的服务端数据处理缺口照写；跨文件验收与证据计划见 [S27](../S27.md#跨文件验收d595按文件列验收句) | KGAP-06 之后（同一只读名额） | todo（S27） |
+| KGAP-08 | [`design/trade-design.md` 第 10 节](../../trade-design.md#10-缺口)：TORD-03/04/05、TINV-05 的产品决定无编号；TLIST-02 “待协调者定编号”未登记；订单只插入、不修改、不取消无原始决定记录 | P3 | Product/Design 提出；TL 决定编号 | ① 每项登记决定编号（引用原任务书文件:行 @ 完整 SHA，不改结论）或写明不登记的理由；② 订单只插入一项标为事后补记，不当作原始决定记录；③ 第 10 节改为指向新编号，未处理项不删除；④ 索引重新生成，`--check` 退出 0；⑤ `docs/README.md` 贸易行的缺口句由 KL 按结果更新；跨文件验收与证据计划见 [S27](../S27.md#跨文件验收d595按文件列验收句) | 无 | todo（S27） |
+| KGAP-09 | KGAP-01 收尾后仍为 partial 的页面，[docs/README](../../../docs/README.md) “KGAP-01 泳道 C 收尾”表列有可派发的剩余复核与 QA（见下方“KGAP-09 派发清单”） | P2 | 事实所有者（Developer 只读、Delivery/Release、Product/Design）；QA；Knowledge Lead 汇总 | 同 KGAP-01 的 covered 三条规则；只补派发清单内的项，不重做已有且仍有效的证据；`FAIL` 或阻塞只记录、不升 covered；KGAP-04 的外部限制不作为可派发演练；清单外的剩余项按“未列入项去向”处理；可按页面逐格交付 | 无 | todo（S27） |
 
 **KGAP-01 现有证据**（都是各 PR 合并前 head 上的评审；“剩余”是本项要补的部分）：
 
@@ -37,3 +37,17 @@ KDOC-01..11 都已合并或并入（见上表）。下面是 Knowledge Lead 报�
 | `docs/ci.md` | Delivery/Release：本地复现命令实跑 | not_applicable（不触发 workflow，理由写入记录） |
 | `docs/flows/settlement-flow.md` | 不新增 | 浏览器原生离开页面行为 |
 | `docs/user/trade.md`、`teaching-mode.md`、`ui-guide.md` | Product/Design：U12、U29 逐版本细节 | 不新增 |
+| `docs/user/trade-main-path.md` | Product/Design：逐版本路径的文字（如“v0.3.0 之后的版本；v0.3.0 及更早只有 API”），对照 CHANGELOG 与对应 tag 核对 | 不新增：已有 QA 覆盖现行版本的金额主路径，不重跑；旧版本不重演（见下表） |
+| `docs/migration-runbook.md` | Delivery/Release：§6、§10 以外各节（§6、§10 已复核，不重做） | 不新增（见下表） |
+
+**未列入项去向**（docs/README “泳道 C 收尾”表与矩阵 @ `242e2b7` 中，上表未覆盖的剩余项）：
+
+| 剩余项（出处） | 去向 | 理由 |
+| --- | --- | --- |
+| `trade-main-path.md` 逐版本路径的重演（README:93） | 不纳入 S27；README 照写“未重演”，该格保持 partial | 重演须逐个旧版本构建与夹具，不是现行版本的事实；文字是否与 CHANGELOG 一致已由上表的设计复核覆盖 |
+| `migration-runbook.md` 整页 QA（README:70、97） | 不纳入 S27；保持 partial | §6、§10 已有虚构夹具 PASS，不重跑；其余步骤面向真实旧账，演练属 M2-05，未获用户授权 |
+| `legacy-snapshot.md` 事实复核（README:71） | 不纳入 S27；保持 partial，S27 评审 §4 列为遗留，由 TL 在下一 Sprint 规划时决定 | 只读 Developer 名额已排满 KGAP-06 → 07 → 09；页面在 KDOC-07 只把快照命令改为链接 |
+| `user/getting-started.md` 事实复核（README:77） | 同上 | 已有实操 QA PASS 且 G8 有同步规则；名额同上 |
+| `ci.md` 触发 workflow 与失败排查演练（README:94） | 不纳入；QA 记 not_applicable（见上表） | 触发 workflow 不在只读复核与本机 QA 的范围内 |
+| S-1、T-1 非阻塞建议（README:81、82、96） | 不纳入；照写“未采纳” | 非阻塞建议，不影响 covered 判定 |
+| Copilot 服务端数据处理、真实认证、代理与 CA（README:95） | 不纳入；按 KGAP-04 保留为已知缺口 | 外部限制，不可派发演练 |
