@@ -15,7 +15,7 @@
 - 预览：`POST /api/v1/trade/orders/preview` 与创建共用同一计算，不写库、不占订单号；任一字段改动后“预览”标记清除。来源：TORD-04 [任务书](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/design/tasks/TORD-04-trade-order-preview.md)，[#138](https://github.com/lingshf/ai-native-erp/pull/138)（`7aac72f1bc77fc9aa3becaa9907d4d4ca4d2d16e`）。
 - 筛选：`party`、`side`、`from`、`to`（订单日期，闭区间），组合为 AND；排序与游标不变；迁移 017 只加 `trade_orders_party(company_id, party_id, order_id)`；每页只执行一条语句；必测场景 p95 超过 1 s 即停下报告设计角色。来源：TORD-05 [设计决定 1–5](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/design/tasks/TORD-05-trade-order-list-filters.md#L25-L35)，[#161](https://github.com/lingshf/ai-native-erp/pull/161)（`9421906712ca9aa794bd167fbb11a901dc9f8cd8`）。
 - 开票状态：列表与筛选读已保存的状态表 `trade_order_invoicing`（`none` / `partial` / `full`，迁移 019），在发票过账与取消的同一事务内刷新；筛选为单选，排序不做。来源：TORD-06（D371）[S12 节](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/design/tasks/S12.md#L123-L150)，[#209](https://github.com/lingshf/ai-native-erp/pull/209)（`6afaef980660a573aff95019ee115ff419d5ca07`）。
-- 地址栏：订单筛选写入地址，规则与发票页相同（只用 replace；地址是唯一来源；任一键无效时整组忽略并提示）；`order` 与筛选可同时存在；订单详情小数用 `formatDecimal`。来源：TORD-07 [S13 节](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/design/tasks/S13.md#L128)，[#223](https://github.com/lingshf/ai-native-erp/pull/223)（`453b382e3e3d4d019e6b6f80fda57589a50333a3`）。
+- 地址栏：订单筛选写入地址，规则与发票页相同（只用 replace；地址是唯一来源；任一键无效时整组忽略并提示）；`order` 与筛选可同时存在；订单详情小数用 `formatDecimal`。来源：TORD-07 [S13 节决定 1–9](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/design/tasks/S13.md#L142-L152)，[#223](https://github.com/lingshf/ai-native-erp/pull/223)（`453b382e3e3d4d019e6b6f80fda57589a50333a3`）。
 - 订单详情第 8 列“贷项冲回数量”：只读显示；“已开票数量”仍是净数。来源：TORD-08 [S16 节](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/design/tasks/S16.md#L53-L80)，[#262](https://github.com/lingshf/ai-native-erp/pull/262)（`fe371bf2d3bfc1335e99fddc87b011e67820b1b8`）。
 - 订单页“刷新列表”：按地址里已应用的筛选重读第一页，不改地址与历史、不弹离开确认、不清草稿。来源：TLIST-01 [S17 节设计决定](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/design/tasks/S17.md#L144-L152)，[#271](https://github.com/lingshf/ai-native-erp/pull/271)（`0ce9940425f673c757a4a55ba3169342dd6e4ab7`）。
 
@@ -25,7 +25,7 @@
 
 - 已开票数量只有一个谓词：未取消发票上引用该订单行的数量，减去这些发票行上未取消贷项的数量。过账匹配、订单详情、开票状态共用此谓词。
 - 被贷项冲回的数量可以再开票；取消贷项使已开票数量恢复，即使因此超过订单数量也不拒绝（与“超量开票需匹配例外、但不禁止”一致）。贷项过账与取消时在同一事务内刷新开票状态；迁移 020 只重算，不改 schema。
-- 开票入口：`GET /api/v1/trade/orders/:orderId/invoicing` 返回逐行已开票数量；发票页 `?company=&fromOrder=` 只带入未开票的行生成新草稿，随后用 replace 去掉 `fromOrder`。
+- 开票入口：`GET /api/v1/trade/orders/:orderId/invoicing` 返回逐行已开票数量；发票页 `?company=&fromOrder=` 生成新草稿，带入每个剩余未开票数量大于 0 的行（含部分开票的行），数量填剩余量；`fromOrder` 是一次性参数，页面读取时即用 replace 移除，不等草稿生成成功。
 - 订单详情显示已开票 / 未开票数量、“已开完”标记与“开票”入口。
 
 来源：
@@ -57,8 +57,8 @@
 
 ## 5. 主数据
 
-- “刷新列表”= `resetQueries`，只读第一页。来源：TLIST-02 [任务书](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/design/tasks/TLIST-02-trade-master-refresh.md)，[#284](https://github.com/lingshf/ai-native-erp/pull/284)（`34b5ae3f75a40aeb79270ec295ddb5fba04c4e5f`）；无编号（见第 9 节缺口）。
-- 两个账期天数必须是 0–3650 的整数，提示 `trade.issue.wholeDays`；保留文本框；只在前端校验。来源：TMAS-01 [任务书](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/design/tasks/TMAS-01-trade-days-validation.md)（D538、D539），[#342](https://github.com/lingshf/ai-native-erp/pull/342)（`3c9f5fda669151408f170ef21bedd2d5cf54d669`）。
+- “刷新列表”= `resetQueries`，只读第一页。来源：TLIST-02 [任务书](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/design/tasks/TLIST-02-trade-master-refresh.md)，[#284](https://github.com/lingshf/ai-native-erp/pull/284)（`34b5ae3f75a40aeb79270ec295ddb5fba04c4e5f`）；无编号（见第 10 节缺口）。
+- 两个账期天数是 0–3650 的整数：契约与领域层原有的范围校验、折扣天数不大于到期天数的校验不变；TMAS-01 只新增前端校验与提示 `trade.issue.wholeDays`，保留文本框。来源：TMAS-01 [任务书](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/design/tasks/TMAS-01-trade-days-validation.md)（D538、D539），[#342](https://github.com/lingshf/ai-native-erp/pull/342)（`3c9f5fda669151408f170ef21bedd2d5cf54d669`）。
 
 ## 6. 报表与容量
 
@@ -82,12 +82,12 @@
 | 开票状态按页聚合 | TINV-03 [决定 2](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/design/tasks/TINV-03-order-list-invoicing-status.md#L29) | TORD-06 状态表 |
 | 发票筛选不进地址栏 | TINV-05 [决定 5](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/design/tasks/TINV-05-invoice-list-filters.md#L38) | TINV-07 写入地址栏 |
 | 发票详情不改地址栏 | TINV-06 [决定 2](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/design/tasks/TINV-06-invoice-detail-dialog.md#L26) | TINV-07 `?invoice=` 深链接 |
-| 订单开票状态筛选不写地址栏 | TORD-06 [S12 节](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/design/tasks/S12.md##L147) | TORD-07 写入地址栏 |
+| 订单开票状态筛选不写地址栏 | TORD-06 [S12 节](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/design/tasks/S12.md#L147) | TORD-07 写入地址栏 |
 
 ## 10. 缺口
 
 - 订单只插入、不修改、不取消：现行代码与 TORD-06 现状描述（[S12.md:130](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/design/tasks/S12.md#L130)）都这样写，但没有找到原始决定记录。
 - TORD-03、TORD-04、TORD-05、TINV-05 的产品决定只写在各自任务书的“设计决定”里，没有单独的决定编号。
 - TLIST-02 任务书写的是“决定：待协调者定编号”，之后没有登记编号。
-- TINV-07/08/09、TORD-06/07/08、TLIST-01、FIX-TADJ-BUSY 没有独立任务书，设计写在 S12、S13、S15、S16、S17 的 Sprint 文件里。
+- TINV-07/08/09、TORD-06/07/08、TLIST-01 没有独立任务书，设计写在 S12、S13、S15、S16、S17 的 Sprint 文件里（FIX-TADJ-BUSY 有独立任务书，见第 4 节）。
 - 用户文档与流程图的事实核对与钉点归 Knowledge Lead，见 [`docs/README.md`](https://github.com/lingshf/ai-native-erp/blob/5c43f084b7b4f1cd0c91ce2a39e71275369b8ae8/docs/README.md#L105) 的贸易行。
