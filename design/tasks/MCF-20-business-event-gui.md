@@ -31,6 +31,7 @@
    - 已过账现金服务的详情里有“取消现金服务”按钮（`business-events/event-detail.tsx:70-79`），冲销事件详情显示原事件链接（`event-detail.tsx:47-58`），每个凭证有“查看”按钮（`event-detail.tsx:80-90`）；
    - 只记证据、不生成总账行时预览显示 `business.noGl`（`business-events/business-plan.tsx:45`）；
    - 待转队列视图在“待转队列”分段按钮下（`events-view.tsx:12-25`），行操作为查看 / 预览 / 撤回，预览与撤回只在 `pending` / `failed` 时显示（`business-events/queue-view.tsx:74-104`）；
+   - 待转列表按状态筛选：筛选是标签为 `business.queue` 的下拉框，选项为 `pending` / `failed` / `transferred` / `withdrawn`（`queue-view.tsx:10,18-38`），默认 `pending`（`business-events/use-company-events.ts:39`），列表查询带 `&status=` 该值（`use-company-events.ts:49-56`）。确认成功后页面打开结果详情并刷新列表，但不改筛选（`business-events/event-commands.ts:40-49`），所以已转入的行会从 `pending` 列表中消失；
    - 转入待转队列的唯一界面入口是凭证页的 `business.enqueue` 按钮，只对 `journal` 类凭证显示（`packages/web/src/journals/journal-confirm.tsx:144-152`），请求 `POST /api/v1/transfer-queue`（`journals/journal-commands.ts:140-145`）。
    - 中英文文案在 `packages/web/src/ui/business-labels.ts`（如 `business.posted` `:70` / `:163`，`business.pending` `:65` / `:158`，`business.transferred` `:67` / `:160`，`business.recorded` `:69` / `:162`，`business.cancelled` `:71` / `:164`）。
 7. R8b 六行在 [#362 评论 7150062662](https://github.com/lingshf/ai-native-erp/pull/362#issuecomment-7150062662) 中均为“未确认”（Full 的浏览器分片只跑贸易 GUI 与迁移 GUI）。现有非浏览器覆盖（`packages/infra/test/application/business-events.test.ts`）：现金服务收付 `:166`；冲销 `:251`（原事件变为 `cancelled`，`:291`）；统计 `:307`（有符号六位小数，`status: "recorded"`，无总账，`:328`）；清账匹配 `:356`（`:398` 为 `recorded`、`journalIds: []`）；待转转入与确认 `:408`（转入后 `pending`、`journalIds: []`，`:410`）；HTTP 层前置数据写法见 `packages/infra/test/http/business-events.test.ts:47-87`（服务、`cash` / `offset` 两条过账规则）。
@@ -48,7 +49,7 @@
 3. **语言与主题**：用例 A、B 用中文 / 红色主题，用例 C、D 用英文 / 绿色主题，两种语言和两种主题都至少出现一次；视口 1440 × 1000，教学模式关闭（偏好写入 `localStorage` 的 `erp.workspace.preferences.v1`，同 `migration-gui.slow.test.ts:73` 的写法）。不做 390 px：本任务不改布局，窄屏由各页面自身的测试负责。
 4. **隔离**：每个文件一次构建、一次 Chrome 启动（`guiHarness`）、一个数据库与 API（`provisionServer`）；每个用例新开 `BrowserContext` 与页面，用自己的来源单号与数据，不依赖其他用例的结果或执行顺序。
 5. **超时**：每个用例显式超时 60 s，`beforeAll` 沿用 `guiHarness` 的 60 s；不加重试。60 s 是起始上限，不是预算：按模板，单个用例 > 2 s 的逐个在 PR 正文写原因（真实 Chrome 用例预计都会超过）；不得为了通过而提高超时。
-6. **分片**：不改分片数，不改 `scripts/ci.ts`。新文件的权重取本机实测耗时（毫秒，取整），PR 正文附 vitest 汇总行原文；按“现状”第 3 条的方法用该权重重算分配，任何 browser 分片的计划权重合计不得超过当前最大值 30124。超过时把文件拆成两个（文件名都含 `gui`），不提高超时。`full.yml:22-24` 的注释同 PR 改成与实际分配一致的描述（只改注释）。合并后第一次 main Full 的实际耗时由 Team Leader 记在 PR 评论；与权重差距大时，在下一次刷新权重时一起修正，不在本任务内反复改。
+6. **分片**：不改分片数，不改 `scripts/ci.ts`。新文件的权重取本机实测耗时（毫秒，取整，取法与命令见“证据要求”第 3 条），手工加进权重文件；不用 `node scripts/ci.ts weights` 重新生成，因为它会整体重写权重文件（`scripts/ci.ts:375-386`）、改动其他条目。再用“证据要求”第 4 条的命令重算分配，任何 browser 分片的计划权重合计不得超过当前最大值 30124。超过时把文件拆成两个（文件名都含 `gui`，第二个为 `packages/infra/test/http/business-events-gui-2.slow.test.ts`，用例 C、D 移入），两个文件分别实测、分别登记权重后重算，不提高超时。**拆分后仍超过 30124 时停下**：不再拆第三个文件，不扩大冲突域，不改其他文件的权重，不提高超时；在 PR 中写出两个文件的实测值与重算输出，报 Team Leader 决定。`full.yml:22-24` 的注释同 PR 改成与实际分配一致的描述（只改注释）。合并后第一次 main Full 的实际耗时由 Team Leader 记在 PR 评论；与权重差距大时，在下一次刷新权重时一起修正，不在本任务内反复改。
 7. **发现产品缺陷时**：不改 `packages/web/src/` 或其他产品代码，按 [D565](S24.md#s24-期间决定) 另记缺陷候选，并在 PR 正文列出；该行写“已断言到缺陷出现前的最后一步”，由 Team Leader 决定是否先合并。
 8. **用户可见变化**：无。只新增测试与一个权重条目，改一处 CI 注释；产品代码、页面、接口与文案都不变。
 
@@ -86,9 +87,9 @@
 | 3 | 统计：新建统计事件（代码、数量为负的六位小数，如 `-3.125`，单位），预览显示 `business.noGl`，确认后状态为 `business.recorded`，详情没有凭证“查看”按钮；另用 HTTP 读凭证列表，条数不变 | 真实 Chrome 断言 + HTTP 补充断言 | 同上；中文 / 红色 | 新增：用例 B “statistics records evidence without GL” |
 | 4 | 清账匹配：前置为清算用途科目与两张已过账凭证（HTTP 写入）；页面上新建清算匹配，选科目后未清项列出两行，两行都选中，预览后确认，状态为 `business.recorded`；再新建一次清算匹配并选同一科目，未清项为空 | 真实 Chrome 断言 | 同上；英文 / 绿色 | 新增：用例 C “clearing match reserves every selected line” |
 | 5 | 待转转入：在凭证页新建并保存一张 `journal` 凭证，预览后点 `business.enqueue`；到业务事件页“待转队列”，该来源单号一行状态为 `business.pending`；另用 HTTP 读凭证列表，没有新增已过账凭证 | 真实 Chrome 断言 + HTTP 补充断言 | 同上；英文 / 绿色 | 新增：用例 D “transfer queue intake and confirm”，步骤 `queue-intake` |
-| 6 | 待转确认：在第 5 条那一行点“预览”，对话框按钮为 `business.transfer`，确认后该行状态为 `business.transferred`，不再有预览与撤回按钮；打开详情有凭证“查看”按钮 | 真实 Chrome 断言 | 同上；英文 / 绿色 | 新增：用例 D 步骤 `queue-confirm` |
+| 6 | 待转确认：在第 5 条那一行（筛选为默认 `business.pending`）点“预览”，对话框按钮为 `business.transfer`；点确认，先等 POST 返回 2xx，再等页面打开的结果详情出现凭证“查看”按钮。确认不改筛选，原行离开 `pending` 列表是正常过滤，不算缺陷（“现状”第 6 条）。然后把 `business.queue` 筛选切到 `business.transferred`，按原来源单号找到同一行：状态为 `business.transferred`，该行没有预览与撤回按钮 | 真实 Chrome 断言 | 同上；英文 / 绿色 | 新增：用例 D 步骤 `queue-confirm` |
 | 7 | 新文件进 `infra-browser` 项目，只在 Full 运行：`CI_TEST_LAYER=full` 时 `npx vitest list --project=infra-browser --filesOnly` 列出该文件；`CI_TEST_LAYER=pr` 时不列出 | 命令输出 | Windows 本机（Linux 由合并后 Full 体现，见第 9 条） | 新增；PR 正文附两次命令原文（在 `d78b3d4` 上试跑：`full` 列出现有 6 个文件，`pr` 无输出，两次退出码 0） |
-| 8 | 权重与分配：`node scripts/ci.ts weights-check` 通过；用实测权重重算的 browser 分配中，各分片计划合计 ≤ 30124 | 命令输出 | Windows 本机 | 新增；PR 正文附命令与输出 |
+| 8 | 权重与分配：`node scripts/ci.ts weights-check` 通过；新文件（拆分时两个）的权重按“证据要求”第 3 条从各自的 JSON 报告取得；“证据要求”第 4 条的脚本输出 `OK`，即各分片计划合计 ≤ 30124 | 命令输出 | Windows 本机 | 新增；PR 正文附命令与输出 |
 | 9 | 启动阶段计时：新文件的日志里有 `browser` 与 `page` 两种阶段，`node scripts/ci.ts summary` 不报 “Missing browser startup phase timings” | 日志 | Linux main Full（合并后检查） | `scripts/ci.ts:362-368`；合并后由 Team Leader 记录 |
 | 10 | 只改冲突域内的文件：`git diff --name-only <base>...<head>` 只含冲突域所列文件（4 个；拆分时 5 个） | `git diff` | — | PR 正文附原文 |
 
@@ -125,23 +126,66 @@
    - 第 9 项：不适用（不测 390 px，设计决定 3）；
    - 第 10 项：每个等待写目标状态本身（如详情标题出现 `business.posted`），带墙钟上限；属于必发请求的步骤（确认、转入）先等 POST 返回 2xx，再等 DOM。
 2. **只能由真实 Chrome 证明的验收项**：第 1–6 条。几何类验收：无（不测布局）。
-3. **测试在满载下的耗时**：构建与 Chrome 启动每文件一次（`guiHarness`）；PR 正文附 `npx vitest run --project=infra-browser --maxWorkers=1 packages/infra/test/http/business-events-gui.slow.test.ts` 的汇总行原文（`CI_TEST_LAYER=full`，见 `docs/ci.md:57`）；单个用例 > 2 s 的逐个写原因；不加大超时、不加重试。
-4. **分配试算**：PR 正文附用实测权重重算 browser 分配的命令与输出。本任务书写作时用的命令（在仓库根目录，Node 直接运行 TS）：
+3. **测试在满载下的耗时**：构建与 Chrome 启动每文件一次（`guiHarness`）；每个新文件单独运行一次（`CI_TEST_LAYER=full`，见 `docs/ci.md:57`），同时写出 JSON 报告：
 
    ```text
-   import { balanceShards } from "./scripts/ci.ts";
-   const w = JSON.parse(readFileSync("scripts/test-shard-weights.json", "utf8"));
-   const files = Object.keys(w).filter((f) => /packages\/infra\/test\/http\/[^/]*gui[^/]*\.slow\.test\.ts$/.test(f));
-   balanceShards(files, w, 6, { workers: 2, projects: Object.fromEntries(files.map((f) => [f, "infra-browser"])) });
+   npx vitest run --project=infra-browser --maxWorkers=1 packages/infra/test/http/business-events-gui.slow.test.ts --reporter=default --reporter=json --outputFile=artifacts/mcf20-1.json
+   npx vitest run --project=infra-browser --maxWorkers=1 packages/infra/test/http/business-events-gui-2.slow.test.ts --reporter=default --reporter=json --outputFile=artifacts/mcf20-2.json
    ```
 
-   结果见“现状”第 3 条。开发把新条目写进权重文件后用同一方法重算，附完整输出。
+   第二条只在拆分时运行。每个文件的权重用生产的 `fileWeights`（`scripts/ci.ts:74`，与 `weights` 命令同一取法：报告中该文件的 `endTime - startTime`，取整）从各自的报告读出：
+
+   ```text
+   node --input-type=module -e "import { readFileSync } from 'node:fs'; import { fileWeights } from './scripts/ci.ts'; console.log(fileWeights([JSON.parse(readFileSync(process.argv[1], 'utf8'))]))" artifacts/mcf20-1.json
+   ```
+
+   拆分时对 `artifacts/mcf20-2.json` 再运行一次。该命令在 `d78b3d4` 上用一个小测试文件的报告试过，输出形如 `{ 'packages/core/test/contracts/contracts.test.ts': 591 }`，退出码 0。PR 正文附每个文件的 vitest 汇总行原文与 `fileWeights` 输出；单个用例 > 2 s 的逐个写原因；不加大超时、不加重试。`artifacts/` 不提交。
+4. **分配试算**：PR 正文附用实测权重重算 browser 分配的命令与输出。在仓库根目录把下面的脚本存为临时文件 `shard-plan.tmp.ts`（不提交），运行 `node shard-plan.tmp.ts`。脚本调用生产的 `selectShardFiles`（`scripts/ci.ts:224`，与 Full 同一规划模型），从磁盘列出全部 `*gui*.slow.test.ts`，打印 6 个分片各自的文件与权重合计；有文件缺权重或任一分片超过 30124 时打印 `FAIL`，退出码 1：
+
+   ```ts
+   import { readFileSync, readdirSync } from "node:fs";
+   import { selectShardFiles } from "./scripts/ci.ts";
+
+   const limit = 30124;
+   const weights: Record<string, number> = JSON.parse(readFileSync("scripts/test-shard-weights.json", "utf8"));
+   const dir = "packages/infra/test/http";
+   const files = readdirSync(dir)
+     .filter((name) => /gui.*\.slow\.test\.ts$/.test(name))
+     .map((name) => `${dir}/${name}`)
+     .sort();
+   const projects = Object.fromEntries(files.map((file) => [file, "infra-browser"]));
+   const missing = files.filter((file) => !(file in weights));
+   for (const file of missing) console.log(`missing weight: ${file}`);
+   let max = 0;
+   for (let index = 1; index <= 6; index++) {
+     const shard = selectShardFiles(files, weights, { shard: { index, count: 6 } }, projects);
+     const total = shard.reduce((sum, file) => sum + (weights[file] ?? 0), 0);
+     max = Math.max(max, total);
+     console.log(`shard ${index}: ${total} = ${shard.map((file) => file.slice(dir.length + 1)).join(" + ")}`);
+   }
+   console.log(`max ${max} / limit ${limit}: ${missing.length || max > limit ? "FAIL" : "OK"}`);
+   if (missing.length || max > limit) process.exitCode = 1;
+   ```
+
+   在 `d78b3d4` 上的输出（退出码 0）：
+
+   ```text
+   shard 1: 30124 = trade-gui-en-green-2.slow.test.ts
+   shard 2: 25647 = trade-gui-zh-red-2.slow.test.ts
+   shard 3: 9000 = trade-gui-smoke.slow.test.ts
+   shard 4: 7615 = trade-gui-zh-red-1.slow.test.ts
+   shard 5: 7529 = migration-gui.slow.test.ts
+   shard 6: 6920 = trade-gui-en-green-1.slow.test.ts
+   max 30124 / limit 30124: OK
+   ```
+
+   写作时另用两个空的占位文件试过拆分分支：未登记权重时列出两行 `missing weight` 并以 `FAIL`、退出码 1 结束；登记 15000 与 12000 后两文件各占一个分片，最大仍为 30124，`OK`。试完已删除占位文件并还原权重文件。开发把实测权重写进权重文件后运行同一脚本，附完整输出；结果为 `FAIL` 时按设计决定 6 处理（超过上限先拆分，拆分后仍超过则停下报 Team Leader）。
 5. **无法判定**：第 7–9 条的命令出错或日志缺失时按失败处理；第 1–6 条在 Chrome 无法启动时按失败处理，不跳过。
 6. **合并后检查**，按[团队章程 §3 第 8 项](../team-charter.md#3-完成定义dod)与 D585 执行：
    - 场景：本文件四个用例（六行）在合并后第一次覆盖该合并提交的 main Full 中通过，并满足第 9 条；运行环境为真实 Chrome（Full browser lane）；
    - 合并前门槛是证据计划完整：PR 正文写“合并后检查的证据计划”，六行各对应一个用例步骤；
    - 合并后的 main Full 不是合并前门槛；合并后由 Team Leader 在 PR 评论中记 run 链接与结论。#362 评论 7150062662 不改：按 D582，REFAC-31 的 R8b 在该评论中永久记为“未确认”，后续证据只记在本任务的 PR 中（[MCF-17](backlog/MCF.md)）。
-7. **计划批准条件**（团队章程 §3 第 7 项）：开发者在 `plan.md` 开头复述：只改冲突域所列文件；`packages/web/src/` 不改；缺陷按 D565 记候选；不加超时或重试；分片合计 ≤ 30124。PR 正文写“计划批准条件”一节。
+7. **计划批准条件**（团队章程 §3 第 7 项）：开发者在 `plan.md` 开头复述：只改冲突域所列文件；`packages/web/src/` 不改；缺陷按 D565 记候选；不加超时或重试；分片合计 ≤ 30124，拆分后仍超过时停下报 Team Leader。PR 正文写“计划批准条件”一节。
 8. 本机全量 web 测试：不适用（不改 `packages/web`）。
 9. 构建来源、chunk 归属、Web 字节：不适用（不改会进打包产物的文件）。
 10. 断言 → 来源对照（D591）：适用于本任务书所在的设计 PR；开发 PR 的“断言 → `file:line`”表见第 1 条。
