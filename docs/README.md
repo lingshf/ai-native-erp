@@ -70,10 +70,11 @@
 | `migration-runbook.md` §6、§10 | 一致 | — | — | PASS（快照、dry-run） | 未改；只复核 §6、§10，整页未核，保持 partial |
 | `legacy-snapshot.md` | — | — | — | PASS | 未改；无事实复核，保持 partial |
 | `ci.md` | 逐项一致；本地复现命令未跑；workflow 未触发 | — | — | 未在本轮范围 | 未改；保持 partial |
-| `user/backup-and-legacy.md`（改） | 抽查 | 2 处不精确（口径 5 的整账跳过、阻断类别） | 通过；U21 基准数值未核 | PASS | 已修两处；待合并后钉版本 |
+| `user/backup-and-legacy.md`（改） | 抽查 | 2 处不精确（口径 5 的整账跳过、阻断类别） | 通过；U21 基准数值未核 | PASS 仅限：沿用快照、dry-run、仅导入数据，在「迁移核对」看到“已导入，未确认”与教学提示；不覆盖本批新改的期初口径 5 与阻断类别 | 已修两处；待合并后钉版本 |
 | `user/ledger.md`（改） | — | “讲解”仅教学模式出现 | 通过 | PASS（仅新库入口） | 已修；待合并后钉版本 |
 | `user/trade-reports.md`（改） | — | — | — | **FAIL**：教学开关在顶栏右侧，不在侧栏 | 已修；FAIL 记录保留，复验前不升 covered |
-| `user/trade-main-path.md`（改） | — | — | 1 处不符 B-1：发票页无 Ctrl+Enter 预览 | PASS | 已删该句；根 README 的 Ctrl+Enter 指凭证，无需改 |
+| `user/trade-main-path.md`（改） | — | — | 1 处不符 B-1：发票页无 Ctrl+Enter 预览 | PASS 仅限：固定教学日期的核销/折扣/贷项金额主路径（预置贸易科目）；不覆盖本批删除的快捷键句 | 已删该句；根 README 的 Ctrl+Enter 指凭证，无需改 |
+| `user/getting-started.md` | — | — | — | PASS 仅限：新临时库 `migrate` 后启动，health 为 configured，`DEFAULT`、CNY/精度 2/当前财年、八个内置科目，凭证初始为空 | 未改；无事实复核，保持 partial |
 | `user/trade.md`、`teaching-mode.md`、`ui-guide.md`、`user/README.md` | — | — | 通过；U12、U29 逐版本细节未核实 | PASS（README 为 not_applicable） | 未改；有未核实项，保持 partial |
 | `ai-assistant.md`（改） | — | 4 处不精确：§3 日志、§5 先于 503 的拒绝、§6 `cleanup`、§6 `timeout` | 通过 | 本批未做 | 已修；整页 QA 未做，保持 partial，待合并后钉版本 |
 | `flows/settlement-flow.md` | — | — | 通过；建议 S-1（非阻塞） | jsdom 与 trade 浏览器流程 | 未采纳 S-1；保持 partial |
