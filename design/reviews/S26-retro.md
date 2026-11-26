@@ -58,12 +58,12 @@ D565 规定实施中发现的现存缺陷立为候选，但没有规定由谁、
 **发生了什么（观察）**
 
 - KGAP-02 的验收在 backlog 行中有两部分：`design/roadmap.md` §6.1 补记（Product/Design，#429），以及 `docs/tradeoffs.md` §3 “改为链接补记，不再出现‘原记录未写’”（KL，#431）。
-- #431 第 1 轮只发现链接落在页首；改完后先被批准（6079071357），随后第二次评审 [6079077749](https://github.com/lingshf/ai-native-erp/pull/431#pullrequestreview-6079077749) 按 backlog 原文退回：§3 仍有加粗的“原记录未写”。
+- #431 的范围在评审中扩大过：最初只改矩阵（`docs/README.md`）。第 1 轮 [6079059085](https://github.com/lingshf/ai-native-erp/pull/431#pullrequestreview-6079059085) 指出链接落在页首；改完后 6079071357 批准，此时 PR 仍只改矩阵，没有 `docs/tradeoffs.md`。随后协调者明确追加 §3，PR 加入 `tradeoffs.md`（提交 `3485f16`）；在包含该文件的修订上，评审 [6079077749](https://github.com/lingshf/ai-native-erp/pull/431#pullrequestreview-6079077749) 按 backlog 原文退回：§3 仍有加粗的“原记录未写”；`6d9e024` 改掉后 [6079083581](https://github.com/lingshf/ai-native-erp/pull/431#pullrequestreview-6079083581) 批准。
 - S26 计划的范围表把这条写在 KGAP-02 一行的验收要点里，泳道表只写“KGAP-02 `tradeoffs.md` 链接”。
 
 **根因（推断）**
 
-一项验收跨两个泳道、两个文件时，派给后一个泳道的只有“做什么”（改链接），没有带上落在该文件上的验收句（不再出现某句话）；评审也是第二次才回到 backlog 原文核对。
+一项验收跨两个泳道、两个文件时，最初派给 KL 的只有矩阵链接，`tradeoffs.md` §3 是事后追加；追加时也只说了“做什么”（改链接），没有带上落在该文件上的验收句（不再出现某句话）。
 
 **改进**：行动 3。
 
@@ -72,18 +72,18 @@ D565 规定实施中发现的现存缺陷立为候选，但没有规定由谁、
 | 来源 | 行动 | 完成标准 | S26 结论 | 依据 |
 | --- | --- | --- | --- | --- |
 | S25 行动 1 | 送审前“断言 → 来源”对照 | 打回中“事实不准”与“措辞过宽”合计少于 14 次 | 达成 | 合计 7 次（5 + 2），见上方分类 |
-| S25 行动 2 | 钉点按引用格找 | 下一 Sprint 没有“证据钉点位置”类打回 | 未达成 | #422 第 1 轮：现行矩阵未完整换钉，trade-main-path 没有逐页钉点（[6068055765](https://github.com/lingshf/ai-native-erp/pull/422#pullrequestreview-6068055765)）；第 2 轮即通过 |
+| S25 行动 2 | 钉点按引用格找 | 下一 Sprint 没有“证据钉点位置”类打回 | 未达成 | #422 第 1 轮：现行矩阵未完整换钉，trade-main-path 没有逐页钉点（[6068055765](https://github.com/lingshf/ai-native-erp/pull/422#pullrequestreview-6068055765)）；第 2 轮 [6068081474](https://github.com/lingshf/ai-native-erp/pull/422#pullrequestreview-6068081474) 仍退回（同页结论不一致，不属钉点类），修正后 [6068092785](https://github.com/lingshf/ai-native-erp/pull/422#pullrequestreview-6068092785) 批准 |
 | S25 行动 3（并入 MCF-21） | 索引的提及不记行号 | 用 #414 复现无变化；增删提及仍改动索引 | 达成 | #419 验收；此后 5 个 `docs/` PR 均未改动索引 |
 
 ## 行动项汇总
 
 | # | 行动 | 负责人 | 落点 | 完成标准 |
 | --- | --- | --- | --- | --- |
-| 1 | **任务书写明 PR 正文的证据计划**（议题 1）：需要开发的任务书逐条验收列出“证据类型 → 命令或产物 → 取证位置（本机 / CI 成功 run / CI 失败 run）→ 由谁核对”，并核对所引 CI 产物在成功 run 中确实保留（如 `full.yml` 的上传条件）；合并后才有的证据（首个覆盖合并 SHA 的 Full 等）单列，写明由谁在何处记录 | Product/Design 写任务书；Reviewer 核对任务书与 PR 正文 | [任务书模板](../tasks/TEMPLATE.md)（D595 采纳） | 下一 Sprint 的开发任务 PR 没有因证据计划不全或不可执行被打回 |
+| 1 | **任务书写明 PR 正文的证据计划**（议题 1）：需要开发的任务书逐条验收列出“证据类型 → 命令或产物 → 取证位置（本机 / CI 成功 run / CI 失败 run）→ 由谁核对”，用于成功验收的 CI 产物须核对在成功 run 中确实保留，只用于失败诊断的产物按失败 run 的上传条件核对（如 `full.yml` 的上传条件）；合并后才有的证据（首个覆盖合并 SHA 的 Full 等）单列，写明由谁在何处记录 | Product/Design 写任务书；Reviewer 核对任务书与 PR 正文 | [任务书模板](../tasks/TEMPLATE.md)（D595 采纳） | 下一 Sprint 的开发任务 PR 没有因证据计划不全或不可执行被打回 |
 | 2 | **缺陷编号先查 BUG 表再命名**（议题 2）：发现缺陷候选后，先由 Product/Design 在 [BUG 表](../tasks/backlog/BUG.md)登记一行并分配下一个未用编号，决定、派发消息、PR 标题与提交信息都用该编号 | Product/Design 登记；TL 派发时引用 | [BUG 表](../tasks/backlog/BUG.md)命名说明（D595 采纳） | 下一 Sprint 没有缺陷编号别名或同号两义 |
 | 3 | **跨文件验收在派发时列全**（议题 3）：一项验收涉及多个泳道或文件时，计划泳道表与派发消息按文件列出落在该文件上的验收句原文（如“`tradeoffs.md` §3 不再出现‘原记录未写’”），评审按同一清单核对 | Product/Design 写计划；TL 派发；Reviewer 核对 | [任务书模板](../tasks/TEMPLATE.md)；下一 Sprint 计划的泳道表（D595 采纳） | 下一 Sprint 没有因漏掉 backlog 中跨文件验收句而被打回 |
 
-S25 行动 2 未达成，不另立新行动：#422 第 2 轮即通过，且下一次钉版本批次仍按 D591 写入模板的规则执行，在下一 Sprint 回顾中再检查。
+S25 行动 2 未达成，不另立新行动：#422 的钉点问题在第 1 轮后已改正（第 2 轮退回原因是同页结论不一致），且下一次钉版本批次仍按 D591 写入模板的规则执行，在下一 Sprint 回顾中再检查。
 
 ## 下一 Sprint 候选
 
