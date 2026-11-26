@@ -859,6 +859,8 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 计划、泳道与跨文件验收见 [S27.md](S27.md)。范围：KGAP-06（贸易设计页事实复核）→ KGAP-07（路线图 §6.1 AI 行复核）→ KGAP-08（贸易设计缺口编号）→ KGAP-09（KGAP-01 剩余页复核与 QA）；没有写代码的任务；无迁移；各项状态记在 [KGAP 表](backlog/KGAP.md)。每项按 D595 写明跨文件验收与 PR 正文证据计划。v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 未获用户授权，不纳入承诺；本 Sprint 不承诺版本号，不做发布候选（D596）。
 
+- **Sprint 评审与回顾**：[S27 评审](../reviews/S27-review.md)（accepted：四项全部 done，KGAP-09 按 D601 逐格交付、未交付项转出；按 D596 不出版本；打回 9；修正事实不符 8 处；D596–D601；矩阵升 covered 仅 AI 行 §6.1 补记行、贸易设计第 1–9 节、`docs/ci.md` 实跑的本地命令；BUG-05 未修，P12 待用户决策，KGAP-04 仍开放）、[S27 回顾](../reviews/S27-retro.md)（行动 1 派发前核对事实表述；S26 行动 2 达成，行动 3 部分达成，行动 1 不适用）。
+
 ## 知识与文档待办（KDOC，D556）
 
 已移至 [backlog/KDOC.md](backlog/KDOC.md)（MCF-16，D584）。
