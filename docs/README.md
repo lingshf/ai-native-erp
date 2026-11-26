@@ -66,21 +66,32 @@
 
 | 页面 | 发布 | 开发 | 设计 | QA | 本批处理 |
 |---|---|---|---|---|---|
-| `operations.md`（改） | 2 处不精确：缺 `INVALID_INPUT`；恢复清除已死进程租约与 `.users/` 残留 | — | — | PASS（仅导入启动） | 已修；待合并后钉版本 |
+| `operations.md`（改） | 2 处不精确：缺 `INVALID_INPUT`；恢复清除已死进程租约与 `.users/` 残留 | — | — | PASS（仅导入启动） | 已修；已钉 #420 合并提交 `1ca22e9d4f4bb91af5cc5223a762f74370257be0` |
 | `migration-runbook.md` §6、§10 | 一致 | — | — | PASS（快照、dry-run） | 未改；只复核 §6、§10，整页未核，保持 partial |
 | `legacy-snapshot.md` | — | — | — | PASS | 未改；无事实复核，保持 partial |
 | `ci.md` | 逐项一致；本地复现命令未跑；workflow 未触发 | — | — | 未在本轮范围 | 未改；保持 partial |
-| `user/backup-and-legacy.md`（改） | 抽查 | 2 处不精确（口径 5 的整账跳过、阻断类别） | 通过；U21 基准数值未核 | PASS 仅限：沿用快照、dry-run、仅导入数据，在「迁移核对」看到“已导入，未确认”与教学提示；不覆盖本批新改的期初口径 5 与阻断类别 | 已修两处；待合并后钉版本 |
-| `user/ledger.md`（改） | — | “讲解”仅教学模式出现 | 通过 | PASS（仅新库入口） | 已修；待合并后钉版本 |
-| `user/trade-reports.md`（改） | — | — | — | **FAIL**：教学开关在顶栏右侧，不在侧栏 | 已修；FAIL 记录保留，复验前不升 covered |
+| `user/backup-and-legacy.md`（改） | 抽查 | 2 处不精确（口径 5 的整账跳过、阻断类别） | 通过；U21 基准数值未核 | PASS 仅限：沿用快照、dry-run、仅导入数据，在「迁移核对」看到“已导入，未确认”与教学提示；不覆盖本批新改的期初口径 5 与阻断类别 | 已修两处；已钉 #420 合并提交 `1ca22e9d4f4bb91af5cc5223a762f74370257be0` |
+| `user/ledger.md`（改） | — | “讲解”仅教学模式出现 | 通过 | PASS（仅新库入口） | 已修；已钉 #420 合并提交 `1ca22e9d4f4bb91af5cc5223a762f74370257be0` |
+| `user/trade-reports.md`（改） | — | — | — | **FAIL**：教学开关在顶栏右侧，不在侧栏 | 已修；顶栏位置已由评审在精确 head 复验（QA PASS，限教学开关定位）；其余页面内容无事实复核、无整页 QA，不升 covered；已钉 `1ca22e9d4f4bb91af5cc5223a762f74370257be0` |
 | `user/trade-main-path.md`（改） | — | — | 1 处不符 B-1：发票页无 Ctrl+Enter 预览 | PASS 仅限：固定教学日期的核销/折扣/贷项金额主路径（预置贸易科目）；不覆盖本批删除的快捷键句 | 已删该句；根 README 的 Ctrl+Enter 指凭证，无需改 |
 | `user/getting-started.md` | — | — | — | PASS 仅限：新临时库 `migrate` 后启动，health 为 configured，`DEFAULT`、CNY/精度 2/当前财年、八个内置科目，凭证初始为空 | 未改；无事实复核，保持 partial |
 | `user/trade.md`、`teaching-mode.md`、`ui-guide.md`、`user/README.md` | — | — | 通过；U12、U29 逐版本细节未核实 | PASS（README 为 not_applicable） | 未改；有未核实项，保持 partial |
-| `ai-assistant.md`（改） | — | 4 处不精确：§3 日志、§5 先于 503 的拒绝、§6 `cleanup`、§6 `timeout` | 通过 | 本批未做 | 已修；整页 QA 未做，保持 partial，待合并后钉版本 |
+| `ai-assistant.md`（改） | — | 4 处不精确：§3 日志、§5 先于 503 的拒绝、§6 `cleanup`、§6 `timeout` | 通过 | 本批未做 | 已修；整页 QA 未做，保持 partial，已钉 #420 合并提交 `1ca22e9d4f4bb91af5cc5223a762f74370257be0` |
 | `flows/settlement-flow.md` | — | — | 通过；建议 S-1（非阻塞） | jsdom 与 trade 浏览器流程 | 未采纳 S-1；保持 partial |
 | `tradeoffs.md` | — | — | 通过；建议 T-1（非阻塞） | — | 未采纳 T-1；保持 partial |
 
 不在本批：`design/ai-assistant-facts.md` F25（“两条”应为三条）属设计域，由协调者另行转交设计。
+**KGAP-01 泳道 C 收尾（D574）**：上表标“改”的六页（operations、ai-assistant、user/ledger、user/backup-and-legacy、user/trade-reports、user/trade-main-path）自 #420 合并提交 `1ca22e9d4f4bb91af5cc5223a762f74370257be0` 起未再改动，已按它钉版本（该提交即这些文件的最后改动）。逐格按 KGAP-01 的 covered 规则评估（①事实所有者复核通过并有记录；②适用 QA 为 PASS 或 not_applicable；③D559/D561 钉版本）：**没有格升为 covered**，缺口如下：
+
+| 页面 | 缺什么 |
+|---|---|
+| `operations.md` | 发布复核与 QA 均针对 `2150b6e` 改前内容；新增的 `INVALID_INPUT` 行与已死租约清除未经 QA 实操；开发未复核 |
+| `backup-and-legacy.md` | QA 只覆盖导入后核对页与教学提示，未覆盖口径 5 与阻断类别；设计 U21 基准数值未核；发布仅抽查 |
+| `ledger.md` | 只有新库入口 QA；保存、过账、AI 流程未实操 |
+| `trade-reports.md` | 仅教学开关位置复验 PASS；无事实复核；整页 QA 仅为补充观察 |
+| `trade-main-path.md` | QA 为固定教学日期主路径；金额 U5 与逐版本细节未经事实复核 |
+| `ai-assistant.md` | 整页 QA 未做；真实 Copilot 与服务端数据处理（KGAP-04）仍为缺口 |
+| 其余页（getting-started、migration-runbook、legacy-snapshot、ci、trade、teaching-mode、ui-guide、settlement-flow、tradeoffs） | 本批未改；各有未核实项或无事实复核，保持 partial，缺口见上表 |
 事实所有者按角色：产品 = 设计/产品负责人；开发 = 开发；发布 = Delivery/Release；知识 = Knowledge Lead。
 
 | 范围 | 设计 | 实现 | 取舍 | 使用 | 事实所有者 | 证据版本 |
@@ -98,7 +109,7 @@
 | 发布、版本、Demo | [发布流程](release/README.md) covered | [scripts/slot](../scripts/slot/README.md)、[scripts/measure](../scripts/measure/README.md) partial（页面存在；工具行为未核对） | [发布流程](release/README.md) 与各版 retro unknown | [Demo 模板](demo/TEMPLATE.md)、[CHANGELOG](../CHANGELOG.md)、[v0.21.0 发布说明](release/v0.21.0-release-notes.md) covered（仅限该文件在所钉版本，不含 release 目录其他页；v0.21.0 之后的 main 提交未纳入） | 发布 | release/README、demo/TEMPLATE `3ae4848d36c4c06c2e208173e58ed2cac3771564`；CHANGELOG、v0.21.0 发布说明 `91f066e629fa54dba5da3913a126624670ec4351`；scripts/slot/README.md `e4a9fecb6c22036b5243770689f67318d9ea8135`；scripts/measure/README.md `0c95401e30f209dd56fd9e3e55f2aa142a2d8808` |
 | 团队流程与决定记录 | [路线图 §5](../design/roadmap.md) covered | n/a | [决定索引](../design/decisions.md) partial（KDOC-03 新增，表体由脚本生成，D1 起每个编号一行；类型为“表/条目/提及”的有记录或被提及的位置，类型为“无”的（多为未写入仓库的会话决定）仓库内没有任何记录，索引不提供位置；索引不复述决定原文，各决定的备选与理由是否写全另见取舍汇总；[路线图 §6](../design/roadmap.md#6-决定记录)本身不含 D20/D21 等，须经索引进入各记录） | [任务总表](../design/tasks/README.md) covered | 产品 / 协调者 | design/roadmap.md `ade6fba5948440e1d3592737f45dbb4b129b66e6`；design/tasks/README.md `2cad6d801bb6e0a474d514f1f00a09927451f4fb` |
 | 安装与启动 | n/a | n/a | n/a | [README 安装与启动](../README.md#安装与启动)（KDOC-07 把 migrate 命令改为指向手册 §10；已钉合并提交）、[新手入门](user/getting-started.md)（KDOC-07 再改；已钉合并提交）**stale→已在 KDOC-07 之前修正**（G8：schema 019→020；QA 见“QA 范围”表：#365 只读检查启动阅读路径与 schema 020） | 开发 / 发布 | README.md `66f3a47623e3b07f55447b06ac48fe84d153c34a`、docs/user/getting-started.md `66f3a47623e3b07f55447b06ac48fe84d153c34a`；代码依据 `packages/infra/src/storage/migrations.ts` 最新项 020 |
-| 运维与排障（启动失败、锁、恢复） | n/a | n/a | n/a | [运维与故障排查](operations.md) partial（KDOC-07 新增，已钉合并提交；依据 `main.ts`、`index.ts`、`storage-admin-main.mjs` 与临时虚构库试跑；未经开发/发布复核；QA 见“QA 范围”表：#374 安全夹具演练）；迁移错误码见[迁移手册 §7](migration-runbook.md) | 开发 / 发布 | docs/operations.md `66f3a47623e3b07f55447b06ac48fe84d153c34a` |
+| 运维与排障（启动失败、锁、恢复） | n/a | n/a | n/a | [运维与故障排查](operations.md) partial（KDOC-07 新增；#420 改动后钉 `1ca22e9d4f4bb91af5cc5223a762f74370257be0`；依据 `main.ts`、`index.ts`、`storage-admin-main.mjs` 与临时虚构库试跑；未经开发/发布复核；QA 见“QA 范围”表：#374 安全夹具演练）；迁移错误码见[迁移手册 §7](migration-runbook.md) | 开发 / 发布 | docs/operations.md `1ca22e9d4f4bb91af5cc5223a762f74370257be0` |
 
 ## 三、目录覆盖（现有文档的归属）
 
@@ -111,10 +122,10 @@
 | `design/reviews/` | Sprint / 任务评审与回顾 | 现行；与顶层 [`design/reviews.md`](../design/reviews.md)（公开验证记录）同名易混（D3） |
 | `design/ui/`、`design/diagrams/` | UI-1 规范与原型、架构示意图 | UI-1 partial（见矩阵）；diagrams 文件本身没有 D560 页首，视为沿用历史架构 ARCH-SME-01 的已取代状态（C1 已关闭，D589） |
 | [`docs/user/`](user/README.md) | 用户文档 | 页面存在（版本见矩阵）；索引页已于 KDOC-05 去掉版本叙述，指向 CHANGELOG；含[贸易主路径演练](user/trade-main-path.md) |
-| [`docs/ai-assistant.md`](ai-assistant.md) | AI 助手 | partial（钉合并提交 `6f34423e142baa1ae24e134253a84b8295ec4bc0`；KGAP-04、SEC-02、MCF-06 改动） |
+| [`docs/ai-assistant.md`](ai-assistant.md) | AI 助手 | partial（钉 `1ca22e9d4f4bb91af5cc5223a762f74370257be0`；KGAP-04、SEC-02、MCF-06、#420 改动） |
 | [`docs/tradeoffs.md`](tradeoffs.md) | 取舍汇总 | partial（KDOC-09 新增；钉合并提交 `d98347a398e32fe0a2222bd594116440078ae7ce`，含 SEC-02 对 §3 的改动；MCF-09 新增 §8 并改写“已知缺口”；设计/产品核对不覆盖 SEC-02 改动；SEC-02 部分见“QA 范围”表 #391，其余 QA 证据未在此汇总） |
 | [`docs/code-entry.md`](code-entry.md) | 代码入口、扩展点与调试（三处 REFAC 拆分模块） | partial（MCF-08 新增；钉合并提交 `37bb41731fa46f59084e4d5600ec5fc28666e7d6`；Developer 只读事实复核已完成，对照 `664b37c`） |
-| [`docs/operations.md`](operations.md) | 运维与故障排查 | partial（钉合并提交 `66f3a47623e3b07f55447b06ac48fe84d153c34a`；KDOC-07 新增） |
+| [`docs/operations.md`](operations.md) | 运维与故障排查 | partial（钉 `1ca22e9d4f4bb91af5cc5223a762f74370257be0`；KDOC-07 新增，#420 改） |
 | [`docs/ci.md`](ci.md) | CI 说明 | partial（钉版本 `08d9cf34e3623f01803d143caa14bfcb923d2561`；对照 workflow 与 `scripts/ci.ts`，未经复核） |
 | [`docs/flows/`](flows/README.md) | Mermaid 界面流程图 | 索引页；新增付款与收款流程，见 G4（partial；`docs/flows/README.md` 钉 `8ed9d1b0fdfd053acf87f82dcaca3c0efeebb011`） |
 | [`docs/release/`](release/README.md) | 流程、各版发布说明、评审与回顾 | 仅 README.md 与 v0.21.0 发布说明已钉版本（见矩阵），其余未核对 |
