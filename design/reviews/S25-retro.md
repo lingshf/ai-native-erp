@@ -49,11 +49,11 @@
 
 - [#413](https://github.com/lingshf/ai-native-erp/pull/413)：矩阵设计列改为 partial，证据列却没有新增设计证据的完整 SHA 与具体文件。
 - [#415](https://github.com/lingshf/ai-native-erp/pull/415)：`5780f95` 只写在矩阵上方的 MCF-12 说明里，引用根 README 的总账、贸易两行证据列没有这个钉点；D590 原文写明“重新钉矩阵证据列中的 README 版本”。
-- [#406](https://github.com/lingshf/ai-native-erp/pull/406)、[#408](https://github.com/lingshf/ai-native-erp/pull/408) 仍是单独的钉版本 PR；[#415](https://github.com/lingshf/ai-native-erp/pull/415) 是第一次按 D574 在里程碑批量钉版本（MCF-04）。
+- S25 的三次钉版本：[#406](https://github.com/lingshf/ai-native-erp/pull/406)（`7693a7b`）按 D574 在同一 PR 钉 code-entry、AI 用户说明、AI 事实清单三页，是早期多页批次；[#408](https://github.com/lingshf/ai-native-erp/pull/408)（`4e4dd9c`）只钉 `tradeoffs.md` 一页；[#415](https://github.com/lingshf/ai-native-erp/pull/415)（`d937c85`）是 S25 收尾批次，完成 MCF-04。
 
 **根因（推断）**
 
-D559 / D561 / D574 规定了“完整 SHA + 具体文件”和“何时钉”，没有规定“钉在哪一格”。钉版本时按“改了哪个文件”去找位置，而没有按“哪些格引用了这个文件”去找，所以漏掉了引用它的其他行。
+D559 / D561 / D574 规定了“完整 SHA + 具体文件”和“何时钉”，没有规定“钉在哪一格”。钉版本时按“改了哪个文件”去找位置，而没有按“哪些格引用了这个文件”去找，所以漏掉了引用它的其他行；总账、贸易两行通过 `../README.md#…` 锚点引用根 README，按字面路径也不一定能找全。
 
 **改进**：行动 2。
 
@@ -87,7 +87,7 @@ S23、S24 没有单独的回顾；S22 行动项的落点见 [S23 计划](../task
 | # | 行动 | 负责人 | 落点 | 完成标准 |
 | --- | --- | --- | --- | --- |
 | 1 | **送审前“断言 → 来源”对照**（议题 1）：改动事实性语句（代码行为、数字、计数、证据归属、覆盖范围）的文档或设计 PR，在正文附一张表：每条新增或改写的断言 → 来源（文件:行 @ 完整 SHA，或评审 / 评论链接）；含“没有 / 全部 / 逐字 / 每个 / 不”的句子写明找过的反例；压缩或改链接时列出删去的句子，并注明各自在链接目标的位置。描述代码的页面先完成事实所有者复核再请 Reviewer，复核与送审是同一 head。回应评审时附“要求 → 改动位置”对照（把 S22 行动 5 扩到文档 PR） | 作者执行：Release + Knowledge Lead（`docs/`）、Product/Design（`design/`）；Reviewer 核对有无此表 | D591：写成规则，随下一 Sprint 计划 PR 写入[任务书模板](../tasks/TEMPLATE.md)的设计自查 | 下一 Sprint 的打回中“事实不准”与“措辞过宽”两类合计少于 S25 的 14 次，并在其回顾中按本文同一口径分类计数 |
-| 2 | **钉点按“引用格”找**（议题 2）：钉版本前对每个被钉文件运行 `git grep -n "<文件路径>" -- docs/README.md`，在每一行引用它的格中更新证据列，输出原样贴在 PR 正文；只写在说明段落里的钉点不算钉上 | Release + Knowledge Lead；Reviewer 核对 grep 输出 | D591：写成规则（MCF-04 规则的执行细则），随下一 Sprint 计划 PR 写入[任务书模板](../tasks/TEMPLATE.md)；下一次钉版本批次起执行 | 下一 Sprint 没有“证据钉点位置”类打回 |
+| 2 | **钉点按“引用格”找**（议题 2）：钉版本前对每个被钉文件运行 `git grep -n "<文件路径>" -- docs/README.md` 作为起点（不是完整性证明），再按相对路径（如 `../README.md`）、锚点（`#…`）和本次实际改动的小节，逐行核对受影响的格；只在受影响的格中更新证据列，仍适用于其他小节的历史钉点保留不动。PR 正文贴 grep 输出，并列出“受影响行 → 依据（路径 / 锚点 / 小节）→ 新钉点”与保留不动的旧钉点；只写在说明段落里的钉点不算钉上 | Release + Knowledge Lead；Reviewer 核对 grep 输出与受影响行清单 | D591：写成规则（MCF-04 规则的执行细则），随下一 Sprint 计划 PR 写入[任务书模板](../tasks/TEMPLATE.md)；下一次钉版本批次起执行 | 下一 Sprint 没有“证据钉点位置”类打回 |
 | 3 | **索引不再因行号漂移而变**（议题 3）：生成器对“提及”只记文件、不记行号（决定表所在的记录位置保留行号），使不增删决定、也不增删提及的 `docs/` PR 不改动 `design/decisions.md`；与 MCF-21 同改一个脚本 | Product/Design 改脚本；Delivery/Release 评审 | D591：并入 MCF-21（Backlog） | 用 #414 的改动复现（它对索引的改动只有行号漂移）：新规则下重新生成，`design/decisions.md` 无变化；新增或删除提及的 PR 仍照常改动索引 |
 
 ## 下一 Sprint 候选（产品负责人建议）
