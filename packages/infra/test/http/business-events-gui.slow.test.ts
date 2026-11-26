@@ -99,7 +99,7 @@ test("A cash service receive/pay and cancel (zh/red)", async () => {
   });
 }, 60_000);
 
-test("B statistics plans evidence without GL (zh/red; stops before D565 candidate)", async () => {
+test("B statistics records evidence without GL (zh/red)", async () => {
   const before = await postedJournalCount(address);
   await runCase(options("b", "zh", "red"), async (page, t) => {
     await openEvents(page, address, t);
@@ -112,15 +112,18 @@ test("B statistics plans evidence without GL (zh/red; stops before D565 candidat
       await form.getByLabel(t("business.code"), { exact: true }).fill("HEADCOUNT");
       await form.getByLabel(t("business.quantity"), { exact: true }).fill("-3.125");
       await form.getByLabel(t("business.unit"), { exact: true }).fill("person");
-      // D565 defect candidate: rendering a statistics preview calls formatMinor with scale 6
-      // (business-plan.tsx:70), which only accepts 0-4 (reports-data.ts:110) and throws, so
-      // the page unmounts. Asserted up to the last step before it: the preview request itself.
       const planned = await clickAndAwaitPost<StatisticsPreview>(
         button(page, t("journal.preview")),
         /^\/api\/v1\/events\/preview$/,
       );
       expect(planned.plan.journals).toEqual([]);
       expect(planned.statistics).toMatchObject({ quantity: -3_125_000, scale: 6 });
+      const dialog = page.getByRole("dialog", { name: t("journal.previewTitle") });
+      await visible(dialog.getByText(t("business.noGl"), { exact: true }));
+      await visible(dialog.getByRole("heading", { name: "HEADCOUNT: -3.125000 person" }));
+      await confirmEvent(dialog, t);
+      await visible(detailHeading(page, "B-STATS", t("business.recorded")));
+      await count(journalButtons(page, t)).toBe(0);
     });
   });
   expect(await postedJournalCount(address)).toBe(before);

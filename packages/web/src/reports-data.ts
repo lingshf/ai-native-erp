@@ -106,8 +106,16 @@ export function parseLedgerPage(
     return invalid();
   return page;
 }
+// A safe integer has at most 16 digits, so 15 decimals is the most that still leaves one integer
+// digit. Money (company scale ≤ 4) and statistics quantities (scale 6) share this one bound.
+const MAX_MINOR_SCALE = String(Number.MAX_SAFE_INTEGER).length - 1;
 export function formatMinor(value: number, language: Language, scale = 2): string {
-  if (!Number.isSafeInteger(value) || !Number.isInteger(scale) || scale < 0 || scale > 4)
+  if (
+    !Number.isSafeInteger(value) ||
+    !Number.isInteger(scale) ||
+    scale < 0 ||
+    scale > MAX_MINOR_SCALE
+  )
     return invalid();
   const integer = BigInt(value);
   const magnitude = integer < 0n ? -integer : integer;
