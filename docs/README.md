@@ -62,6 +62,25 @@
 
 **KDOC-07 的改动（D561）**：新增 `operations.md`，改动 `backup-and-legacy.md` 与根 `README.md`（“目标存储工具”“历史导入”两节改为链接）。另改动 `migration-runbook.md`（§6、新增 §10）、`user/getting-started.md`、`user/trade-main-path.md`、`legacy-snapshot.md`（快照命令改为链接）。这些页已在 KDOC-04 按 #374 合并提交 `66f3a47623e3b07f55447b06ac48fe84d153c34a` 钉版本，仍为 partial；README 其他小节未重新核对。`ledger.md`、`settlement-flow.md` 已钉到 KDOC-06 合并提交（见各行）。
 
+**KGAP-01 泳道 B/C 复核（S26，基线 `2150b6eb9f7b5e4ba5b2707af2064418bb120ac5`）**：四方复核记录均为各会话 files/ 下的文件，不在仓库内，此处按文件名引用：发布 `kgap01-fact-review-delivery.md`、开发 `KGAP-01-developer-fact-review.md`、设计 `s26-laneb-fact-review.md`、QA `kgap01-2150b6e-qa.md`。本批 PR 改动了下表标“改”的页，复核与 QA 针对改动前的内容；按 D574 改动页须合并后另批钉版本，所以**本批没有任何一格升为 covered**（FAIL、整页未复核或仍有未核实项的格只记录）。
+
+| 页面 | 发布 | 开发 | 设计 | QA | 本批处理 |
+|---|---|---|---|---|---|
+| `operations.md`（改） | 2 处不精确：缺 `INVALID_INPUT`；恢复清除已死进程租约与 `.users/` 残留 | — | — | PASS（仅导入启动） | 已修；待合并后钉版本 |
+| `migration-runbook.md` §6、§10 | 一致 | — | — | PASS（快照、dry-run） | 未改；只复核 §6、§10，整页未核，保持 partial |
+| `legacy-snapshot.md` | — | — | — | PASS | 未改；无事实复核，保持 partial |
+| `ci.md` | 逐项一致；本地复现命令未跑；workflow 未触发 | — | — | 未在本轮范围 | 未改；保持 partial |
+| `user/backup-and-legacy.md`（改） | 抽查 | 2 处不精确（口径 5 的整账跳过、阻断类别） | 通过；U21 基准数值未核 | PASS 仅限：沿用快照、dry-run、仅导入数据，在「迁移核对」看到“已导入，未确认”与教学提示；不覆盖本批新改的期初口径 5 与阻断类别 | 已修两处；待合并后钉版本 |
+| `user/ledger.md`（改） | — | “讲解”仅教学模式出现 | 通过 | PASS（仅新库入口） | 已修；待合并后钉版本 |
+| `user/trade-reports.md`（改） | — | — | — | **FAIL**：教学开关在顶栏右侧，不在侧栏 | 已修；FAIL 记录保留，复验前不升 covered |
+| `user/trade-main-path.md`（改） | — | — | 1 处不符 B-1：发票页无 Ctrl+Enter 预览 | PASS 仅限：固定教学日期的核销/折扣/贷项金额主路径（预置贸易科目）；不覆盖本批删除的快捷键句 | 已删该句；根 README 的 Ctrl+Enter 指凭证，无需改 |
+| `user/getting-started.md` | — | — | — | PASS 仅限：新临时库 `migrate` 后启动，health 为 configured，`DEFAULT`、CNY/精度 2/当前财年、八个内置科目，凭证初始为空 | 未改；无事实复核，保持 partial |
+| `user/trade.md`、`teaching-mode.md`、`ui-guide.md`、`user/README.md` | — | — | 通过；U12、U29 逐版本细节未核实 | PASS（README 为 not_applicable） | 未改；有未核实项，保持 partial |
+| `ai-assistant.md`（改） | — | 4 处不精确：§3 日志、§5 先于 503 的拒绝、§6 `cleanup`、§6 `timeout` | 通过 | 本批未做 | 已修；整页 QA 未做，保持 partial，待合并后钉版本 |
+| `flows/settlement-flow.md` | — | — | 通过；建议 S-1（非阻塞） | jsdom 与 trade 浏览器流程 | 未采纳 S-1；保持 partial |
+| `tradeoffs.md` | — | — | 通过；建议 T-1（非阻塞） | — | 未采纳 T-1；保持 partial |
+
+不在本批：`design/ai-assistant-facts.md` F25（“两条”应为三条）属设计域，由协调者另行转交设计。
 事实所有者按角色：产品 = 设计/产品负责人；开发 = 开发；发布 = Delivery/Release；知识 = Knowledge Lead。
 
 | 范围 | 设计 | 实现 | 取舍 | 使用 | 事实所有者 | 证据版本 |
