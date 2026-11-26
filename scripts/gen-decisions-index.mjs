@@ -8,6 +8,7 @@
 // but does not match the exact format (each offending file:line is printed).
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
 const OUT = "design/decisions.md";
 const SEP = "| --- | --- | --- | --- |\n";
@@ -28,7 +29,15 @@ const POINTER = /^\| D\d{1,3}(?: 起)? \| [^|]*下一个可用编号[^|]* \| —
 const POINTER_WORD = "下一个可用编号";
 const ROW_START = /^\|\s*\*{0,2}D\d/u;
 const ROW = /^\|\s*\*{0,2}D(\d{1,3})(?!\d)((?:\\\||[^|])*)\|((?:\\\||[^|])*)\|/u;
-const LEAD = /^\s*(?:[-*]|\d+\.)\s*\*\*([^*]+)\*\*(（[^）]*）)?\s*[：:]\s*(.*)/u;
+// A list item with a bold lead. It is a decision entry when the bold text or the
+// parenthetical right after it cites a decision and a colon follows (ENTRY_TAIL).
+// Without the colon it is prose and its numbers are mentions, unless it is plainly a
+// broken entry: the bold text starts with a decision number (`**D12 …**`), or the
+// parenthetical citing a decision is never closed.
+const BOLD_ITEM = /^\s*(?:[-*]|\d+\.)\s*\*\*([^*]+)\*\*(.*)$/u;
+const ENTRY_TAIL = /^(?:（([^）]*)）)?\s*[：:]/u;
+const EXPLICIT = /^\s*D\d{1,3}(?!\d)/u;
+const UNCLOSED_PAREN = /^（[^）]*$/u;
 const DN = /(?<![A-Za-z0-9_\-#/.])D(\d{1,3})(?!\d)/gu;
 // In a parenthetical, each decision number must be a whole item: `（SEC-02，D568）`,
 // `（追加：D451）`, a range `D465–D467` or a supersede chain `D131 → D133`.
@@ -89,7 +98,7 @@ function clip(text, n = 60) {
 // or null (plain text, whose decision numbers are mentions). Entries are decision
 // records only under design/; elsewhere (release notes, Demo pages, user docs,
 // CHANGELOG) a bold-lead list item citing a decision is a mention.
-function classify(line, entriesAllowed) {
+export function classify(line, entriesAllowed) {
   if (POINTER.test(line)) return { pointer: true };
   if (ROW_START.test(line)) {
     const m = ROW.exec(line);
@@ -100,22 +109,38 @@ function classify(line, entriesAllowed) {
       };
     return { table: Number(m[1]), summary: clip(stripChars(m[2], " *") || m[3]) };
   }
-  const m = entriesAllowed && LEAD.exec(line);
+  return entriesAllowed ? classifyEntry(line) : null;
+}
+
+// Checks the shape first, so a broken entry is an error instead of silently becoming a
+// mention; then checks every decision number in the parenthetical, whether or not the
+// bold text already names one.
+function classifyEntry(line) {
+  const m = BOLD_ITEM.exec(line);
   if (!m) return null;
-  const [, bold, paren = ""] = m;
-  if (ids(bold).length) return { entries: ids(bold + paren) };
-  if (!ids(paren).length) return null;
+  const [, bold, tail] = m;
+  const shape = ENTRY_TAIL.exec(tail);
+  if (!shape) {
+    if (EXPLICIT.test(bold) || (UNCLOSED_PAREN.test(tail) && ids(tail).length))
+      return {
+        error:
+          "list item looks like a decision entry but is not `**…**（…）：`; add the missing colon or closing parenthesis",
+      };
+    return null;
+  }
+  const paren = shape[1] ?? "";
+  if (!ids(bold).length && !ids(paren).length) return null;
   const items = paren
-    .slice(1, -1)
     .replace(/\[([^\]]*)\]\([^)]*\)/gu, "$1")
     .split(PAREN_SPLIT)
     .map((s) => s.trim())
     .filter((s) => ids(s).length);
-  if (items.every((s) => PAREN_ITEM.test(s))) return { entries: ids(paren) };
-  return {
-    error:
-      "list item with a bold lead and a parenthetical looks like a decision entry, but the decision number is inside prose; make it a whole item (`（…，D12）`, `（追加：D12）`) or move it out of the bold lead",
-  };
+  if (!items.every((s) => PAREN_ITEM.test(s)))
+    return {
+      error:
+        "list item with a bold lead and a parenthetical looks like a decision entry, but the decision number is inside prose; make it a whole item (`（…，D12）`, `（追加：D12）`) or move it out of the parenthetical",
+    };
+  return { entries: [...ids(bold), ...ids(paren)] };
 }
 
 function scan(files) {
@@ -182,37 +207,41 @@ function mentionRow(n, rels) {
   return `| D${n} | 提及 |${summary ? ` ${summary} ` : " "}| ${where} |`;
 }
 
-const { check, maxArg } = parseArgs(process.argv.slice(2));
-const { records, mentions, errors } = scan(sourceFiles());
-if (errors.length)
-  fail(`${errors.join("\n")}\n${errors.length} line(s) could not be parsed; ${OUT} not written.`);
+function main() {
+  const { check, maxArg } = parseArgs(process.argv.slice(2));
+  const { records, mentions, errors } = scan(sourceFiles());
+  if (errors.length)
+    fail(`${errors.join("\n")}\n${errors.length} line(s) could not be parsed; ${OUT} not written.`);
 
-const current = readFileSync(OUT, "utf8");
-const at = current.indexOf(SEP);
-if (at < 0) fail(`${OUT}: table separator not found`);
-const lastRow = Math.max(
-  0,
-  ...[...current.slice(at + SEP.length).matchAll(/^\| D(\d+) \|/gmu)].map((x) => Number(x[1])),
-);
-const maxN = maxArg ? Number(maxArg) : Math.max(...records.keys());
-if (maxN < lastRow)
-  fail(`Refusing to shrink ${OUT}: it ends at D${lastRow}, but this run would stop at D${maxN}.`);
+  const current = readFileSync(OUT, "utf8");
+  const at = current.indexOf(SEP);
+  if (at < 0) fail(`${OUT}: table separator not found`);
+  const lastRow = Math.max(
+    0,
+    ...[...current.slice(at + SEP.length).matchAll(/^\| D(\d+) \|/gmu)].map((x) => Number(x[1])),
+  );
+  const maxN = maxArg ? Number(maxArg) : Math.max(...records.keys());
+  if (maxN < lastRow)
+    fail(`Refusing to shrink ${OUT}: it ends at D${lastRow}, but this run would stop at D${maxN}.`);
 
-const rows = [];
-for (let n = 1; n <= maxN; n++) {
-  if (records.has(n)) rows.push(recordRow(n, records.get(n)));
-  else if (mentions.has(n) && n >= 12) rows.push(mentionRow(n, mentions.get(n)));
-  else rows.push(`| D${n} | 无 | | |`);
-}
-
-const next = current.slice(0, at + SEP.length) + rows.join("\n") + "\n";
-if (check) {
-  if (next !== current) {
-    console.error(`${OUT} is out of date; run: node scripts/gen-decisions-index.mjs`);
-    process.exit(1);
+  const rows = [];
+  for (let n = 1; n <= maxN; n++) {
+    if (records.has(n)) rows.push(recordRow(n, records.get(n)));
+    else if (mentions.has(n) && n >= 12) rows.push(mentionRow(n, mentions.get(n)));
+    else rows.push(`| D${n} | 无 | | |`);
   }
-  console.log(`${OUT} is up to date (D1–D${maxN}).`);
-} else {
-  writeFileSync(OUT, next);
-  console.log(`${OUT}: wrote D1–D${maxN}.`);
+
+  const next = current.slice(0, at + SEP.length) + rows.join("\n") + "\n";
+  if (check) {
+    if (next !== current) {
+      console.error(`${OUT} is out of date; run: node scripts/gen-decisions-index.mjs`);
+      process.exit(1);
+    }
+    console.log(`${OUT} is up to date (D1–D${maxN}).`);
+  } else {
+    writeFileSync(OUT, next);
+    console.log(`${OUT}: wrote D1–D${maxN}.`);
+  }
 }
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) main();

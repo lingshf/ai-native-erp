@@ -159,9 +159,9 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D128 | 无 | | |
 | D129 | 无 | | |
 | D130 | 无 | | |
-| D131 | 表 | 改为 D133；S5 累计 CSS gzip +413 B | [design/reviews/S5.md:50](reviews/S5.md)；[design/roadmap.md:80](roadmap.md) |
+| D131 | 表 | 改为 D133；S5 累计 CSS gzip +413 B | [design/reviews/S5.md:50](reviews/S5.md)；[design/roadmap.md:80](roadmap.md)；[design/tasks/README.md:302](tasks/README.md) |
 | D132 | 无 | | |
-| D133 | 条目 |  | [design/roadmap.md:80](roadmap.md) |
+| D133 | 条目 |  | [design/roadmap.md:80](roadmap.md)；[design/tasks/README.md:302](tasks/README.md) |
 | D134 | 无 | | |
 | D135 | 无 | | |
 | D136 | 提及 | | [docs/release/v0.5.0-release-notes.md](../docs/release/v0.5.0-release-notes.md) |
