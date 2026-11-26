@@ -19,9 +19,9 @@ jobs:
       matrix:
         lane: [unit, browser]
         shard: [1, 2, 3, 4, 5, 6]
-        # Unit and browser use 6 shards each. Browser: the two full keyboard trade GUI combinations
-        # (zh/red, en/green; two parts each), the four-combination page smoke and the migration GUI
-        # each get their own runner so one slow Chrome start cannot stack with another scenario.
+        # Unit and browser use 6 shards each. Browser (planned by measured weight): each part 2 of the
+        # full keyboard trade GUI (zh/red, en/green), the business-event GUI, the page smoke and zh/red
+        # part 1 get their own runner; migration GUI and en/green part 1 share the sixth.
     concurrency:
       group: full-${{ github.ref }}-${{ matrix.lane }}-${{ matrix.shard }}
       cancel-in-progress: true
