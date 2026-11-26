@@ -86,9 +86,9 @@ S23、S24 没有单独的回顾；S22 行动项的落点见 [S23 计划](../task
 
 | # | 行动 | 负责人 | 落点 | 完成标准 |
 | --- | --- | --- | --- | --- |
-| 1 | **送审前“断言 → 来源”对照**（议题 1）：改动事实性语句（代码行为、数字、计数、证据归属、覆盖范围）的文档或设计 PR，在正文附一张表：每条新增或改写的断言 → 来源（文件:行 @ 完整 SHA，或评审 / 评论链接）；含“没有 / 全部 / 逐字 / 每个 / 不”的句子写明找过的反例；压缩或改链接时列出删去的句子，并注明各自在链接目标的位置。描述代码的页面先完成事实所有者复核再请 Reviewer，复核与送审是同一 head。回应评审时附“要求 → 改动位置”对照（把 S22 行动 5 扩到文档 PR） | 作者执行：Release + Knowledge Lead（`docs/`）、Product/Design（`design/`）；Reviewer 核对有无此表 | 下一 Sprint 计划 PR 起；写入[任务书模板](../tasks/TEMPLATE.md)的设计自查（随下一 Sprint 计划 PR） | 下一 Sprint 的打回中“事实不准”与“措辞过宽”两类合计少于 S25 的 14 次，并在其回顾中按本文同一口径分类计数 |
-| 2 | **钉点按“引用格”找**（议题 2）：钉版本前对每个被钉文件运行 `git grep -n "<文件路径>" -- docs/README.md`，在每一行引用它的格中更新证据列，输出原样贴在 PR 正文；只写在说明段落里的钉点不算钉上 | Release + Knowledge Lead；Reviewer 核对 grep 输出 | 下一次钉版本批次起（MCF-04 规则的执行细则） | 下一 Sprint 没有“证据钉点位置”类打回 |
-| 3 | **索引不再因行号漂移而变**（议题 3）：生成器对“提及”只记文件、不记行号（决定表所在的记录位置保留行号），使不增删决定、也不增删提及的 `docs/` PR 不改动 `design/decisions.md`；与 MCF-21 同改一个脚本，建议并入 MCF-21 一并做 | Product/Design 改脚本；Delivery/Release 评审 | MCF-21（Backlog）；是否并入须协调者决定 | 用 #414 的改动复现（它对索引的改动只有行号漂移）：新规则下重新生成，`design/decisions.md` 无变化；新增或删除提及的 PR 仍照常改动索引 |
+| 1 | **送审前“断言 → 来源”对照**（议题 1）：改动事实性语句（代码行为、数字、计数、证据归属、覆盖范围）的文档或设计 PR，在正文附一张表：每条新增或改写的断言 → 来源（文件:行 @ 完整 SHA，或评审 / 评论链接）；含“没有 / 全部 / 逐字 / 每个 / 不”的句子写明找过的反例；压缩或改链接时列出删去的句子，并注明各自在链接目标的位置。描述代码的页面先完成事实所有者复核再请 Reviewer，复核与送审是同一 head。回应评审时附“要求 → 改动位置”对照（把 S22 行动 5 扩到文档 PR） | 作者执行：Release + Knowledge Lead（`docs/`）、Product/Design（`design/`）；Reviewer 核对有无此表 | D591：写成规则，随下一 Sprint 计划 PR 写入[任务书模板](../tasks/TEMPLATE.md)的设计自查 | 下一 Sprint 的打回中“事实不准”与“措辞过宽”两类合计少于 S25 的 14 次，并在其回顾中按本文同一口径分类计数 |
+| 2 | **钉点按“引用格”找**（议题 2）：钉版本前对每个被钉文件运行 `git grep -n "<文件路径>" -- docs/README.md`，在每一行引用它的格中更新证据列，输出原样贴在 PR 正文；只写在说明段落里的钉点不算钉上 | Release + Knowledge Lead；Reviewer 核对 grep 输出 | D591：写成规则（MCF-04 规则的执行细则），随下一 Sprint 计划 PR 写入[任务书模板](../tasks/TEMPLATE.md)；下一次钉版本批次起执行 | 下一 Sprint 没有“证据钉点位置”类打回 |
+| 3 | **索引不再因行号漂移而变**（议题 3）：生成器对“提及”只记文件、不记行号（决定表所在的记录位置保留行号），使不增删决定、也不增删提及的 `docs/` PR 不改动 `design/decisions.md`；与 MCF-21 同改一个脚本 | Product/Design 改脚本；Delivery/Release 评审 | D591：并入 MCF-21（Backlog） | 用 #414 的改动复现（它对索引的改动只有行号漂移）：新规则下重新生成，`design/decisions.md` 无变化；新增或删除提及的 PR 仍照常改动索引 |
 
 ## 下一 Sprint 候选（产品负责人建议）
 
@@ -96,7 +96,7 @@ S23、S24 没有单独的回顾；S22 行动项的落点见 [S23 计划](../task
 
 | 优先 | 候选 | 理由 | 冲突域 |
 | --- | --- | --- | --- |
-| 1 | **MCF-21**（P3，Product/Design；建议并入行动 3） | 生成器误判会静默漏掉决定行；行动 3 先做，可减少后面 KGAP-03、KGAP-05 等 `design/` PR 与 `docs/` PR 之间的串行 rebase | `scripts/gen-decisions-index.mjs`、`design/decisions.md` |
+| 1 | **MCF-21**（P3，Product/Design；按 D591 含行动 3） | 生成器误判会静默漏掉决定行；行动 3 先做，可减少后面 KGAP-03、KGAP-05 等 `design/` PR 与 `docs/` PR 之间的串行 rebase | `scripts/gen-decisions-index.mjs`、`design/decisions.md` |
 | 2 | **KGAP-01**（P2，事实所有者 + QA + KL） | 唯一的 P2；矩阵多页仍为 partial，转 covered 必须靠它；MCF-06/08/09/10 新增的页同样需要 | 只读复核 + `docs/README.md` |
 | 3 | **KGAP-03**（P3，Product/Design） | D5/D6/D7/D8 摘要不全；D590 中根 README 的 D5/D6/D7 规则原文要等它完成 | `design/`，须重新生成索引 |
 | 4 | **KGAP-05**（P3，Product/Design） | 贸易设计没有一页现行汇总（D588）；完成后矩阵贸易行的设计列才能指向一页 | `design/`；与 KGAP-03 串行 |

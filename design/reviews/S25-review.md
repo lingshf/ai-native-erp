@@ -11,7 +11,7 @@
 
 - **用户可见变化 0 项**：S25 不改产品代码。`git diff --shortstat f72950d d937c85 -- packages package.json package-lock.json .github` 输出为空；`scripts/` 只新增 `gen-decisions-index.mjs`（+173 行，MCF-14）。改动集中在 `docs/`（50 个文件）、`design/`（13 个）、`CHANGELOG.md` 与根 `README.md`。
 - **迁移 0 个**。
-- **新增决定 D580–D590**（11 条，都由协调者决定）；下一个可用编号仍为 D591。
+- **新增决定 D580–D590**（11 条，都由协调者决定）；收尾时另增 D591（TL 决定：采纳[回顾](S25-retro.md#行动项汇总)三条行动，行动 3 并入 MCF-21，行动 1、2 写入任务书模板）。
 - **评审打回 22 次**，21 个 PR 中 4 个直接批准、12 个打回 1 轮、5 个打回 2 轮（§2.2）。按主要原因：事实不准 8、措辞范围过宽 6、文档内或与 PR 正文不一致 4、证据钉点位置 2、生成脚本缺陷与 rebase 后重新生成 2。分析见 [S25 回顾](S25-retro.md)。
 - **S25 范围内的 main Full**：21 个合并提交，19 个 success，2 个 cancelled（`4e4dd9c`、`9da0bec`，都被紧接的下一次推送取代，下一提交的 Full 绿），0 个 failure。
 - **冲突域越界 0 次**；已记录的偏差 1 项（D586：#401 Demo 时段未经 slot-run，试运行 1–9 的截图与诊断图片未保留，接受不重跑）。
