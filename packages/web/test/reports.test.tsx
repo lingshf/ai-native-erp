@@ -3,7 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { focusManager, onlineManager } from "@tanstack/react-query";
 import { label, preferenceStorageKey } from "../src/ui/index.ts";
 import { App } from "../src/App.tsx";
-import { formatMinor, parseContext, parseLedgerPage, parseTrial } from "../src/reports-data.ts";
+import {
+  formatMinor,
+  parseContext,
+  parseLedgerPage,
+  parseTrial,
+  ReportFailure,
+} from "../src/reports-data.ts";
 
 const source = {
   sourceKind: "verified-teaching-snapshot",
@@ -198,6 +204,12 @@ describe("TC-AM03-03/10/11 strict report boundaries", () => {
       expect(() => formatMinor(Number.MAX_SAFE_INTEGER + 1, language)).toThrow();
     },
   );
+  it("formats statistics quantities at scale 6 and rejects scales beyond the safe-integer digits", () => {
+    expect(formatMinor(-3_125_000, "en", 6)).toBe("-3.125000");
+    expect(formatMinor(Number.MAX_SAFE_INTEGER, "en", 15)).toBe("9.007199254740991");
+    expect(() => formatMinor(1, "en", 16)).toThrow(ReportFailure);
+    expect(() => formatMinor(1, "en", -1)).toThrow(ReportFailure);
+  });
   it("rejects malformed or unordered periods and strict/incorrect source and month echoes", () => {
     expect(parseContext(context)).toEqual(context);
     expect(() => parseContext({ ...context, periods: [...context.periods].reverse() })).toThrow();

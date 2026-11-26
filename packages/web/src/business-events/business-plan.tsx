@@ -58,7 +58,8 @@ export function BusinessPlan({
       {preview.statistics && (
         <section>
           <h4>
-            {preview.statistics.code}: {formatMinor(preview.statistics.quantity, language, 6)}{" "}
+            {preview.statistics.code}:{" "}
+            {formatMinor(preview.statistics.quantity, language, preview.statistics.scale)}{" "}
             {preview.statistics.unit}
           </h4>
           {Object.entries(preview.statistics.dimensionOrigins).map(([key, origins]) => (
