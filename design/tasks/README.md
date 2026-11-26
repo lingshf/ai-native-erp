@@ -853,6 +853,8 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 计划、泳道与决定见 [S26.md](S26.md)。范围：MCF-21（含 D591 第 ③ 项）→ KGAP-01、KGAP-03、KGAP-05、KGAP-02 → MCF-20（唯一需要开发的任务，只加测试）；无迁移；各项状态仍记在 [MCF 表](backlog/MCF.md)与 [KGAP 表](backlog/KGAP.md)。S25 回顾行动 1、2 已按 D591 写入[任务书模板](TEMPLATE.md)。v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 待用户授权，不纳入承诺；本 Sprint 不承诺版本号（D592）。
 
+- **Sprint 评审与回顾**：[S26 评审](../reviews/S26-review.md)（accepted：六项全部 done，BUG-04 按 D594 修复；按 D592 不出版本；打回 18；D592–D595；矩阵贸易行设计列、AI 行取舍格仍为 partial）、[S26 回顾](../reviews/S26-retro.md)（行动 1 任务书写明 PR 正文证据计划，行动 2 缺陷编号先查 BUG 表，行动 3 跨文件验收派发时列全；三项按 D595 采纳；S25 行动 1、3 达成，行动 2 未达成）。
+
 ## 知识与文档待办（KDOC，D556）
 
 已移至 [backlog/KDOC.md](backlog/KDOC.md)（MCF-16，D584）。
