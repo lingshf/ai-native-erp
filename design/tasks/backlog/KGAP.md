@@ -9,6 +9,10 @@ KDOC-01..11 都已合并或并入（见上表）。下面是 Knowledge Lead 报�
 | KGAP-03 | M0 决定在[决定索引](../../decisions.md)中的摘要不全：D8 已有摘要，但被截断（`design/decisions.md:37`；完整的二元组描述在 [design/reviews/M0.md](../../reviews/M0.md) 第 42 行）；D5（维度规则）、D6（凭证纠错）在 M0.md 第 39–40 行只有标题和代码证据，没有规则正文。规则正文可在根 `README.md` 第 70 行（“D5 统一 subset：……”）与第 80 行（“D6 历史反向逐行精确镜像……”）找到（@ `66f3a47623e3b07f55447b06ac48fe84d153c34a`，该文件最近一次改动）；但 `design/` 中查不到 D5、D6 的原始决定记录（谁定、何时定、比较过哪些备选），这一点是**缺口**。D7（业务事件待转）在 M0.md 第 41 行只有标题与代码证据，同样没有备选，按 D587 并入本项 | P3 | Product/Design | D8：保留现有摘要，并补全被截断的部分，或让索引能直达完整原文。D5、D6：摘要依据 `README.md` 第 70 / 80 行的规则正文，链接到该行并钉完整 SHA；D7（D587）：摘要依据 M0.md 第 41 行的规则与代码证据，备选写“原记录未写”。查不到原始决定记录的，如实写“原始决定记录未找到”，不补写决策过程。摘要不改变原决定；索引由生成脚本重新生成 | 无 | done（[#423](https://github.com/lingshf/ai-native-erp/pull/423)，main `5c43f08`） |
 | KGAP-04 | [`docs/ai-assistant.md`](../../../docs/ai-assistant.md) 缺两项：GitHub Copilot 官方数据处理说明的链接；SEC-01 的评审结论 | P3 | Knowledge Lead 补官方链接（Product/Design 核对链接确为官方页面、说法不超出该页）；SEC-01 结论由其评审人提供，Knowledge Lead 转写 | 页面链接官方数据处理说明，不复述其承诺；SEC-01 有结论后写入结论及证据链接，之前保留“待评审”标注 | 后半依赖 [SEC-01](SEC.md) 评审结论 | done（D569：#386 `13a437b` 交付 SEC-01 结论引用与官方负责任使用链接 [responsible-use/agents](https://docs.github.com/en/copilot/responsible-use/agents)；“官方服务端数据处理说明”暂无专门官方页面，作为已知缺口保留在 [`docs/ai-assistant.md`](../../../docs/ai-assistant.md) §7 与 [`docs/README.md`](../../../docs/README.md) G1，不另开任务，出现官方页面时补链接） |
 | KGAP-05 | M1 之后的贸易设计没有一页汇总的现行说明：M1-01..07 任务书只记到 M1；订单（TORD）、从订单开票（TINV）、TSET-01 等的设计散在各 Sprint 任务书（D588，MCF-07 核对时发现） | P3 | Product/Design | 一页现行贸易设计（或在现有设计页中新增一节），按主题链接到各任务书与决定，钉完整 SHA；只汇总已合并的决定，不新定规则；查不到原始依据的写明缺口；`docs/README.md` 矩阵贸易行的设计列改为指向该页 | 无 | done（设计 [#426](https://github.com/lingshf/ai-native-erp/pull/426)，main `a289f50`；KL 矩阵 [#427](https://github.com/lingshf/ai-native-erp/pull/427)，main `3feebca`） |
+| KGAP-06 | 矩阵贸易行设计列仍为 partial：[`design/trade-design.md`](../../trade-design.md)（KGAP-05，[#426](https://github.com/lingshf/ai-native-erp/pull/426)）缺 Developer 对整页逐条事实的事实所有者复核记录（S26 评审 §4） | P3 | Developer 只读复核；Product/Design 修正不符项；Knowledge Lead 改矩阵 | ① 复核记录覆盖第 1–9 节每条断言（断言 → 结论 → 完整 SHA + 文件:行）；② 不符项由 Product/Design 修正，复核人在修正后的合并提交上确认；③ `docs/README.md` 贸易行设计列按记录更新，第 10 节缺口照写；跨文件验收与证据计划见 [S27](../S27.md#跨文件验收d595按文件列验收句) | 无 | todo（S27） |
+| KGAP-07 | 矩阵 AI 行取舍格仍为 partial：[路线图 §6.1](../../roadmap.md#61-取舍补记d564) “AI 只建议，不保存、不过账”行（KGAP-02，[#429](https://github.com/lingshf/ai-native-erp/pull/429)）缺事实所有者复核记录 | P3 | Developer 只读复核代码 / 配置断言；Knowledge Lead 改矩阵 | ① 该行描述现行代码或配置的断言逐条有结论与出处；备选、代价、失效条件标“产品判断，不作事实复核”；② `docs/README.md` AI 行取舍格按记录更新，升格范围只限该行；③ KGAP-04 的服务端数据处理缺口照写 | KGAP-06 之后（同一只读名额） | todo（S27） |
+| KGAP-08 | [`design/trade-design.md` 第 10 节](../../trade-design.md#10-缺口)：TORD-03/04/05、TINV-05 的产品决定无编号；TLIST-02 “待协调者定编号”未登记；订单只插入、不修改、不取消无原始决定记录 | P3 | Product/Design 提出；TL 决定编号 | ① 每项登记决定编号（引用原任务书文件:行 @ 完整 SHA，不改结论）或写明不登记的理由；② 订单只插入一项标为事后补记，不当作原始决定记录；③ 第 10 节改为指向新编号，未处理项不删除；④ 索引重新生成，`--check` 退出 0 | 无 | todo（S27） |
+| KGAP-09 | KGAP-01 收尾后仍为 partial 的页面，[docs/README](../../../docs/README.md) “KGAP-01 泳道 C 收尾”表列有可派发的剩余复核与 QA（见下方“KGAP-09 派发清单”） | P2 | 事实所有者（Developer 只读、Delivery/Release、Product/Design）；QA；Knowledge Lead 汇总 | 同 KGAP-01 的 covered 三条规则；只补派发清单内的项，不重做已有且仍有效的证据；`FAIL` 或阻塞只记录、不升 covered；KGAP-04 的外部限制不作为可派发演练；可按页面逐格交付 | 无 | todo（S27） |
 
 **KGAP-01 现有证据**（都是各 PR 合并前 head 上的评审；“剩余”是本项要补的部分）：
 
@@ -20,3 +24,16 @@ KDOC-01..11 都已合并或并入（见上表）。下面是 Knowledge Lead 报�
 | `docs/ci.md` | [#370](https://github.com/lingshf/ai-native-erp/pull/370) | 评审 [6047907715](https://github.com/lingshf/ai-native-erp/pull/370#pullrequestreview-6047907715) @ `f202df15abfd5139977998ed07060ca8fa9b5fb4`，`QA: PASS`：在精确 head 上实跑相应的 Vitest 命令 | Delivery/Release 事实复核 |
 | `docs/flows/` 付款 / 收款流程图 | [#373](https://github.com/lingshf/ai-native-erp/pull/373) | 评审 [6048059068](https://github.com/lingshf/ai-native-erp/pull/373#pullrequestreview-6048059068) @ `61c9c6147004b82353fe1738c8eb47b48ce8c99d`，`QA: PASS`：在精确 head 源码上跑过 24 个核销交互用例（jsdom，不是真实浏览器） | Product/Design 流程复核 |
 | `docs/tradeoffs.md` | [#377](https://github.com/lingshf/ai-native-erp/pull/377) | 评审 [6048644791](https://github.com/lingshf/ai-native-erp/pull/377#pullrequestreview-6048644791) @ `1e6935cd356cf690fed5067da581dad1fa8b0678`，`QA: not_applicable`：本页只做归纳和导航，没有可演练的步骤 | Product/Design 在合并提交上复核（此前的产品核对针对的是 `4fbefbd`，不是最终 head） |
+
+**KGAP-09 派发清单**（来源：docs/README “KGAP-01 泳道 C 收尾”表 @ `242e2b7`；“实际剩余”列中写明为外部限制或非阻塞建议的项不列入）：
+
+| 页面 | 事实复核 | QA |
+| --- | --- | --- |
+| `docs/operations.md` | Developer：改后全文（含已死进程租约清除分支 `maintenance.ts:68-83`） | 已死进程租约自动清除的独立演练；改后文字对应步骤 |
+| `docs/user/backup-and-legacy.md` | Product/Design：U21 基准数值；Delivery/Release：全文（此前仅抽查） | 无伙伴标记时仅跳过口径 5 的逐伙伴比较；阻断类别（映射、形状） |
+| `docs/user/ledger.md` | Developer：AI 小节以外的段落 | 保存、过账、AI（假 SDK）、队列分支的真实浏览器演练 |
+| `docs/user/trade-reports.md` | Product/Design：全文 | 不新增（已有月末筛选、三视图、差异 0.00 的 QA） |
+| `docs/ai-assistant.md` | 不新增（开发、设计已复核） | 整页本机 / 假 SDK 演练（不调用真实 Copilot） |
+| `docs/ci.md` | Delivery/Release：本地复现命令实跑 | not_applicable（不触发 workflow，理由写入记录） |
+| `docs/flows/settlement-flow.md` | 不新增 | 浏览器原生离开页面行为 |
+| `docs/user/trade.md`、`teaching-mode.md`、`ui-guide.md` | Product/Design：U12、U29 逐版本细节 | 不新增 |
