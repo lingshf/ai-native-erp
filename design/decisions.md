@@ -626,3 +626,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D594 | 表 | MCF-20 PR 照常评审，不在该 PR 内修统计预览崩溃：验收 3 标为 partial（GUI 只验到预览请求），… | [design/tasks/S26.md:61](tasks/S26.md) |
 | D595 | 表 | 采纳 S26 回顾三项行动：① 需要开发的任务书逐条验收写明 PR 正文证据计划（证据类型 → 命令或产物 → 取证位置… | [design/tasks/S26.md:62](tasks/S26.md)；[design/tasks/TEMPLATE.md:131](tasks/TEMPLATE.md)；[design/tasks/TEMPLATE.md:132](tasks/TEMPLATE.md) |
 | D596 | 表 | 接受 S27 计划：目标、范围（KGAP-06 至 KGAP-09）、A–C 泳道与开发名额按本文件 | [design/tasks/S27.md:103](tasks/S27.md) |
+| D597 | 表 | TORD-05 订单列表筛选（补登编号，规则不变）：`party`、`side`、订单日期 `from` / `to`（… | [design/tasks/S27.md:104](tasks/S27.md) |
+| D598 | 表 | TINV-05 发票列表筛选（补登编号，规则不变）：`party`、`side`、记账日期 `from` / `to`（… | [design/tasks/S27.md:105](tasks/S27.md) |
+| D599 | 表 | TLIST-02 主数据页“刷新列表”（补登编号，规则不变）：对当前查询键 `resetQueries`（`exact:`… | [design/tasks/S27.md:106](tasks/S27.md) |
+| D600 | 表 | **事后补记**（同 D564 方式，补记不改变现行规则）：贸易订单只插入、不修改、不取消 | [design/tasks/S27.md:107](tasks/S27.md) |
