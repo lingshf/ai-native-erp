@@ -399,8 +399,8 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D367 | 条目 |  | [design/reviews/S11.md:70](reviews/S11.md) |
 | D368 | 提及 | | [design/tasks/README.md](tasks/README.md)；[design/tasks/S12.md](tasks/S12.md) |
 | D369 | 条目 |  | [design/tasks/S12.md:7](tasks/S12.md)；[design/tasks/S12.md:8](tasks/S12.md) |
-| D370 | 提及 | | [design/reviews/S11.md](reviews/S11.md)；[design/reviews/S12.md](reviews/S12.md)；[design/tasks/README.md](tasks/README.md) 等 5 处 |
-| D371 | 提及 | | [design/reviews/S11.md](reviews/S11.md)；[design/reviews/S12.md](reviews/S12.md)；[design/tasks/README.md](tasks/README.md) 等 4 处 |
+| D370 | 提及 | | [design/reviews/S11.md](reviews/S11.md)；[design/reviews/S12.md](reviews/S12.md)；[design/tasks/README.md](tasks/README.md) 等 6 处 |
+| D371 | 提及 | | [design/reviews/S11.md](reviews/S11.md)；[design/reviews/S12.md](reviews/S12.md)；[design/tasks/README.md](tasks/README.md) 等 5 处 |
 | D372 | 提及 | | [docs/demo/v0.11.0/run-through.md](../docs/demo/v0.11.0/run-through.md) |
 | D373 | 条目 |  | [design/reviews/S11.md:71](reviews/S11.md) |
 | D374 | 无 | | |
