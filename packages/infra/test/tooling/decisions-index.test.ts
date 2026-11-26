@@ -12,11 +12,16 @@ const script = fileURLToPath(
 );
 const entry = (line: string) => classify(line, true);
 
-test("explicit decision entries missing the colon or closing parenthesis are errors", () => {
+test("an item citing a decision with a missing colon, parenthesis or bold marker is an error", () => {
   for (const line of [
     "- **D594 新决定**（方案 A） 新决定正文",
     "- **D594 新决定**（方案 A：新决定正文",
     "- **新决定**（方案 A：起因见 D571，正文",
+    "- **补充决定**（D594） 新决定正文",
+    "- **补充决定**（D594）新决定正文",
+    "- **补充决定 D594** 新决定正文",
+    "- **D594 新决定（方案 A）：新决定正文",
+    "- **补充决定（D594）：新决定正文",
   ])
     assert.ok(entry(line)?.error, line);
 });
@@ -33,6 +38,9 @@ test("bold prose that cites a decision without the entry shape stays a mention",
     "- **main Full 红时暂停合并**（D456）。",
     "8. **合并后检查分两段**（MCF-18a、MCF-18b，起因见 D576）。时：",
     "- **新增决定 D580–D590**（11 条，都由协调者决定）；收尾时另增 D591。",
+    "- **有 4 条窗口处置**（D496–D499），与 1 条缺口（D500）：步骤 4 前两次调用错误",
+    "- **`*.log` 被忽略**：D333 的日志没有进提交",
+    "- **未闭合的粗体，没有决定编号",
   ])
     assert.equal(entry(line), null, line);
   // Outside design/ a bold lead is never an entry, so it cannot be malformed.
@@ -64,6 +72,8 @@ test("a malformed entry fails both modes with exit 2 and leaves the index untouc
     "- **D2 新决定**（方案 A） 新决定正文",
     "- **D2 新决定**（方案 A：新决定正文",
     "- **D2 新决定**（起因见 D1）：新决定正文",
+    "- **补充决定**（D2） 新决定正文",
+    "- **D2 新决定（方案 A）：新决定正文",
   ]) {
     const { run, index } = repository(t, bad);
     for (const mode of [[], ["--check"]]) {

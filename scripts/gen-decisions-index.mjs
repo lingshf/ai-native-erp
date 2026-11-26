@@ -29,15 +29,18 @@ const POINTER = /^\| D\d{1,3}(?: 起)? \| [^|]*下一个可用编号[^|]* \| —
 const POINTER_WORD = "下一个可用编号";
 const ROW_START = /^\|\s*\*{0,2}D\d/u;
 const ROW = /^\|\s*\*{0,2}D(\d{1,3})(?!\d)((?:\\\||[^|])*)\|((?:\\\||[^|])*)\|/u;
-// A list item with a bold lead. It is a decision entry when the bold text or the
-// parenthetical right after it cites a decision and a colon follows (ENTRY_TAIL).
-// Without the colon it is prose and its numbers are mentions, unless it is plainly a
-// broken entry: the bold text starts with a decision number (`**D12 …**`), or the
-// parenthetical citing a decision is never closed.
-const BOLD_ITEM = /^\s*(?:[-*]|\d+\.)\s*\*\*([^*]+)\*\*(.*)$/u;
+// A list item with a bold lead cites a decision when its bold text, or the
+// parenthetical right after it, contains a decision number. Such an item is either
+// a decision entry, `**…**（…）：` (ENTRY_TAIL), or prose whose numbers are mentions:
+// the bold text, or its closed parenthetical, is followed by punctuation or the end of
+// the line (PROSE_NEXT). Anything else is a broken entry: an unclosed bold or
+// parenthetical, a missing colon, or bold text that starts with a decision number.
+const BOLD_START = /^\s*(?:[-*]|\d+\.)\s*\*\*/u;
+const BOLD_ITEM = /^\s*(?:[-*]|\d+\.)\s*\*\*((?:[^*]|\*(?!\*))+)\*\*(.*)$/u;
 const ENTRY_TAIL = /^(?:（([^）]*)）)?\s*[：:]/u;
+const AFTER_BOLD = /^(?:（([^）]*)）)?\s*(.*)$/u;
+const PROSE_NEXT = /^(?:$|[。，；、！？,.;!?）)])/u;
 const EXPLICIT = /^\s*D\d{1,3}(?!\d)/u;
-const UNCLOSED_PAREN = /^（[^）]*$/u;
 const DN = /(?<![A-Za-z0-9_\-#/.])D(\d{1,3})(?!\d)/gu;
 // In a parenthetical, each decision number must be a whole item: `（SEC-02，D568）`,
 // `（追加：D451）`, a range `D465–D467` or a supersede chain `D131 → D133`.
@@ -112,22 +115,21 @@ export function classify(line, entriesAllowed) {
   return entriesAllowed ? classifyEntry(line) : null;
 }
 
+const MALFORMED = {
+  error:
+    "list item looks like a decision entry but is not `**…**（…）：`; close the bold or the parenthetical, add the missing colon, or end the prose with punctuation",
+};
+
 // Checks the shape first, so a broken entry is an error instead of silently becoming a
 // mention; then checks every decision number in the parenthetical, whether or not the
 // bold text already names one.
 function classifyEntry(line) {
+  if (!BOLD_START.test(line)) return null;
   const m = BOLD_ITEM.exec(line);
-  if (!m) return null;
+  if (!m) return ids(line).length ? MALFORMED : null;
   const [, bold, tail] = m;
   const shape = ENTRY_TAIL.exec(tail);
-  if (!shape) {
-    if (EXPLICIT.test(bold) || (UNCLOSED_PAREN.test(tail) && ids(tail).length))
-      return {
-        error:
-          "list item looks like a decision entry but is not `**…**（…）：`; add the missing colon or closing parenthesis",
-      };
-    return null;
-  }
+  if (!shape) return isProse(bold, tail) ? null : MALFORMED;
   const paren = shape[1] ?? "";
   if (!ids(bold).length && !ids(paren).length) return null;
   const items = paren
@@ -141,6 +143,16 @@ function classifyEntry(line) {
         "list item with a bold lead and a parenthetical looks like a decision entry, but the decision number is inside prose; make it a whole item (`（…，D12）`, `（追加：D12）`) or move it out of the parenthetical",
     };
   return { entries: [...ids(bold), ...ids(paren)] };
+}
+
+// A bold lead without the entry colon is prose when it cites no decision, or when its
+// bold text does not start with a decision number and it is followed by punctuation
+// or the end of the line. A parenthetical that is never closed is never prose.
+function isProse(bold, tail) {
+  const [, paren = "", rest] = AFTER_BOLD.exec(tail);
+  if (rest.startsWith("（")) return !ids(bold + rest).length;
+  if (!ids(bold + paren).length) return true;
+  return !EXPLICIT.test(bold) && PROSE_NEXT.test(rest);
 }
 
 function scan(files) {
