@@ -847,6 +847,8 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 计划、决定与编号指针见 [S25.md](S25.md#s25-期间决定)。范围是[收尾发现项](backlog/MCF.md)中的 P1/P2，顺序与泳道见 [S25 泳道](S25.md#泳道按冲突域)；各项状态仍记在该表中。v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 须用户授权。
 
+- **Sprint 评审与回顾**：[S25 评审](../reviews/S25-review.md)（accepted：MCF P1/P2 与已排入的 P3 全部 done，RC2 已合并；v0.22.0 tag 与 Release 待授权，不算已发布；打回 22；D580–D590）、[S25 回顾](../reviews/S25-retro.md)（行动 1 送审前“断言 → 来源”对照，行动 2 钉点按引用格找，行动 3 索引的提及不记行号、建议并入 MCF-21；下一 Sprint 候选只给排序建议）。
+
 ## 知识与文档待办（KDOC，D556）
 
 已移至 [backlog/KDOC.md](backlog/KDOC.md)（MCF-16，D584）。
