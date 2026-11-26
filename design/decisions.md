@@ -621,5 +621,6 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D589 | 表 | 关闭 C1（ADR-SME-001 等历史页与现行架构冲突）：这些页已有 D560 的“已取代”页首 | [design/tasks/S25.md:58](tasks/S25.md) |
 | D590 | 表 | 授权 Release + Knowledge Lead（同一会话，以 KL 身份落文）为 MCF-12 修改根 `REA`… | [design/tasks/S25.md:59](tasks/S25.md) |
 | D591 | 表 | 采纳 S25 回顾的三条行动：行动 3（生成器对“提及”只记文件、不记行号）并入 MCF-21 | [design/tasks/S25.md:60](tasks/S25.md)；[design/tasks/TEMPLATE.md:129](tasks/TEMPLATE.md)；[design/tasks/TEMPLATE.md:130](tasks/TEMPLATE.md) |
-| D592 | 表 | 接受 S26 计划：目标、范围顺序、A–D 泳道与开发名额按本文件 | [design/tasks/S26.md:57](tasks/S26.md) |
-| D593 | 表 | MCF-21 统一采用严格规则：不设豁免表，不改验收口径 | [design/tasks/S26.md:58](tasks/S26.md) |
+| D592 | 表 | 接受 S26 计划：目标、范围顺序、A–D 泳道与开发名额按本文件 | [design/tasks/S26.md:59](tasks/S26.md) |
+| D593 | 表 | MCF-21 统一采用严格规则：不设豁免表，不改验收口径 | [design/tasks/S26.md:60](tasks/S26.md) |
+| D594 | 表 | MCF-20 PR 照常评审，不在该 PR 内修统计预览崩溃：验收 3 标为 partial（GUI 只验到预览请求），… | [design/tasks/S26.md:61](tasks/S26.md) |
