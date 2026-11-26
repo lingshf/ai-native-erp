@@ -11,7 +11,7 @@
 
 - **用户可见变化 1 项**：BUG-04（[#428](https://github.com/lingshf/ai-native-erp/pull/428)）——业务事件页新建统计事件后点“预览”不再整页崩溃。其余代码改动只有测试与生成脚本：`git diff --stat 2d369c5 bf31631 -- packages scripts` 共 8 个文件，产品源码只有 `packages/web/src/reports-data.ts`（+/-10）与 `business-events/business-plan.tsx`（+/-3），都属 BUG-04；`.github/workflows/full.yml` 只改 3 行注释（#425 的分片说明）。
 - **迁移 0 个**。
-- **新增决定 D592–D594**（3 条，都由 TL 决定）。
+- **新增决定 D592–D595**（4 条，都由 TL 决定；D595 在收尾时采纳回顾行动）。
 - **评审打回 18 次**：14 个 PR 中 3 个直接批准、4 个打回 1 轮、7 个打回 2 轮（§2.2）。按主要原因：事实不准 5、文档内或与 backlog 不一致 4、任务书验收步骤或证据计划 3、措辞范围过宽 2、证据钉点或链接位置 2、生成脚本缺陷 2。分析见 [S26 回顾](S26-retro.md)。
 - **S26 范围内的 main Full**：14 个合并提交，11 个 success，3 个 cancelled（`474ef0c`、`a289f50`、`d829539`，都被紧接的推送取代，下一提交 `5c43f08`、`3feebca` 的 Full 绿），0 个 failure。
 - **偏差 1 项**：D594——#425 合并时验收 3 为 partial（GUI 只验到预览请求），由 BUG-04（[#428](https://github.com/lingshf/ai-native-erp/pull/428)）补齐断言后 MCF-20 才记 done。
@@ -56,7 +56,7 @@
 
 ## 3. 补充裁定与偏差
 
-S26 期间由 TL 决定：D592（接受计划，不承诺版本号，砍项顺序）、D593（MCF-21 严格规则，逐行改写）、D594（#425 照常评审，统计预览缺陷与验收 3 断言由后续缺陷任务补上）。原文见 [S26 决定表](../tasks/S26.md#s26-期间决定)。
+S26 期间由 TL 决定：D592（接受计划，不承诺版本号，砍项顺序）、D593（MCF-21 严格规则，逐行改写）、D594（#425 照常评审，统计预览缺陷与验收 3 断言由后续缺陷任务补上）。收尾时 TL 决定 D595：采纳 [S26 回顾](S26-retro.md#行动项汇总)三项行动，写入任务书模板与 BUG 表命名说明。原文见 [S26 决定表](../tasks/S26.md#s26-期间决定)。
 
 缺陷编号：#428 标题、提交信息与 D594 原话称“BUG-03”，与 [BUG 表](../tasks/backlog/BUG.md)中已完成的 BUG-03a/b（#383）同号；状态同步 [#430](https://github.com/lingshf/ai-native-erp/pull/430) 登记为 BUG-04 并在行内注明别名，评审确认（[6079067234](https://github.com/lingshf/ai-native-erp/pull/430#pullrequestreview-6079067234)）。main 历史中的提交信息无法更改，别名永久保留。
 

@@ -2,6 +2,8 @@
 
 来自重构 PR 中“疑似缺陷”的现存行为，基线与重构后一致（不是重构引入）。排在在途 REFAC 之后；每项实施前补任务书，并按 D557 写设计期质量项。“期望”一栏是产品负责人对目标行为的决定。
 
+命名（[S26 回顾行动 2](../../reviews/S26-retro.md#行动项汇总)，D595）：发现缺陷候选后，先由 Product/Design 在本表登记一行并分配下一个未用编号（查本表已有 ID，含带字母后缀的子项），决定、派发消息、PR 标题与提交信息都用该编号；不得在登记前先在决定或派发中自拟编号。BUG-04 曾在 D594 与 #428 中被称作“BUG-03”，与 BUG-03a/b 同号，即此规则的起因。
+
 | ID | 现象（来源） | 期望 | 优先级 | 质量项 | 依赖 | 冲突域 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | BUG-01 | 总账明细筛选只填“值”、不填“维度”时，提交写出孤立的 `value=N`，页面显示无效 URL 提示（[#371](https://github.com/lingshf/ai-native-erp/pull/371) 疑似缺陷 1，R4 `B7:value-only`） | 未选维度时“值”输入禁用并清空，提交不写 `value`；手工打开含孤立 `value` 的 URL 仍显示现有无效提示（URL 校验不放宽） | P2 | UI：适用（禁用态沿用现有样式，无新文案，键盘 Tab 跳过禁用字段，中英一致）；性能：not_applicable（不改查询） | REFAC-33 已合并（#371） | `packages/web/src/ledger-reports/ledger-filter-form.tsx`、`ledger-grid.tsx` 及其测试 | done（[#382](https://github.com/lingshf/ai-native-erp/pull/382)，main `4b2a7a8`） |
