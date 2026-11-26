@@ -21,6 +21,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 
 - [路线图 §6](roadmap.md#6-决定记录)：D1–D3、D9、D10、D25、D26、D30、D51、D234、D338 共 11 条跨 Sprint 决定。
 - [M0 评审](reviews/M0.md)：D1–D8 的落实情况。
+- [M0 决定补记](reviews/M0-decisions.md)：D5–D8 的摘要、规则原文与最早出处（KGAP-03）。
 - Sprint 计划的决定表：[S13](tasks/S13.md)–[S24](tasks/S24.md)（`design/tasks/S<n>.md`）。
 - Sprint 评审中的决定表：[S5](reviews/S5.md)、[S8](reviews/S8.md)–[S12](reviews/S12.md)、[S15](reviews/S15.md)–[S19](reviews/S19.md)、[S22 评审](reviews/S22-review.md)。
 - 流程规则（DoD、时段、评审计数等）多以“条目”形式写在[路线图 §4、§5](roadmap.md#5-团队流程)，并标注来源决定编号。
@@ -33,10 +34,10 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D2 | 表 | Dependabot | [design/reviews/M0.md:36](reviews/M0.md)；[design/roadmap.md:200](roadmap.md)；[design/roadmap.md:218](roadmap.md) |
 | D3 | 表 | 4173 原账套不动 | [design/reviews/M0.md:37](reviews/M0.md)；[design/roadmap.md:201](roadmap.md)；[design/roadmap.md:219](roadmap.md) 等 4 处 |
 | D4 | 表 | 存储与迁移版本 | [design/reviews/M0.md:38](reviews/M0.md) |
-| D5 | 表 | 维度规则 | [design/reviews/M0.md:39](reviews/M0.md) |
-| D6 | 表 | 凭证纠错 | [design/reviews/M0.md:40](reviews/M0.md) |
-| D7 | 表 | 业务事件待转 | [design/reviews/M0.md:41](reviews/M0.md) |
-| D8 | 表 | 报表水位：二元组 (`watermark`=凭证 `MAX(sequence)`, `accountRevision`=… | [design/reviews/M0.md:42](reviews/M0.md) |
+| D5 | 表 | 维度组合统一采用 subset 口径：组合未列的维度不限制，必填、禁止仍独立校验 | [design/reviews/M0-decisions.md:11](reviews/M0-decisions.md)；[design/reviews/M0.md:39](reviews/M0.md) |
+| D6 | 表 | 历史反向逐行精确镜像同公司原已过账行，不按当前配置重跑默认或派生 | [design/reviews/M0-decisions.md:12](reviews/M0-decisions.md)；[design/reviews/M0.md:40](reviews/M0.md) |
+| D7 | 表 | 业务事件待转：转入时在写事务内按当前配置重算预览并比对指纹，指纹过期返回冲突，Web 只用原命令重试确认 | [design/reviews/M0-decisions.md:13](reviews/M0-decisions.md)；[design/reviews/M0.md:41](reviews/M0.md) |
+| D8 | 表 | 报表水位为二元组：凭证 MAX(sequence) 与同公司科目 SUM(revision)，两者分别比较，不相加 | [design/reviews/M0-decisions.md:14](reviews/M0-decisions.md)；[design/reviews/M0.md:42](reviews/M0.md) |
 | D9 | 表 | M0-R4 的 Windows `INVALID_SNAPSHOT` 无法复现时怎么结案（开发 5 在 main b0d… | [design/roadmap.md:202](roadmap.md) |
 | D10 | 表 | M2 草案评审第三轮的两项分歧 | [design/roadmap.md:203](roadmap.md)；[docs/tradeoffs.md:39](../docs/tradeoffs.md)；[design/tasks/M2-04-legacy-reconciliation.md:18](tasks/M2-04-legacy-reconciliation.md) |
 | D11 | 条目 |  | [design/reviews/S11.md:53](reviews/S11.md)；[design/reviews/S12.md:67](reviews/S12.md)；[design/reviews/S13.md:67](reviews/S13.md) 等 14 处 |
