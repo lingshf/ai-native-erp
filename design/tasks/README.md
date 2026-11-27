@@ -899,7 +899,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 ## S32：② 存量拆分三泳道（D626）
 
-计划、选题依据、排序、泳道与跨文件验收见 [S32.md](S32.md)（计划中，D625–D626 待 TL 确认）。范围：② 存量拆分 REFAC-41（`business-events/editors.tsx`）、REFAC-42（`registerBusinessRoutes`）、REFAC-43（`validateTradeConfig`），都不改行为，任务书由 Product/Design 先写，合并后派发；落实 S31 回顾行动 1（R4 夹具确定性生成，约束冲突时停下上报）；无迁移；开发名额占 3。Backlog 候选 `profit`、`:443` 不排入；多订单合并开票按 D617 暂缓；KGAP-15 按 D620 在 S33 计划时复查。BUG-05 是否打版本、v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 未获用户授权，P12 待用户决策，均不纳入承诺；本 Sprint 不承诺版本号，不做发布候选（D625）。
+计划、选题依据、排序、泳道与跨文件验收见 [S32.md](S32.md)（进行中，TL 已确认 D625–D626）。范围：② 存量拆分 REFAC-41（`business-events/editors.tsx`）、REFAC-42（`registerBusinessRoutes`）、REFAC-43（`validateTradeConfig`），都不改行为，任务书由 Product/Design 先写，合并后派发；落实 S31 回顾行动 1（R4 夹具确定性生成，约束冲突时停下上报）；无迁移；开发名额占 3。Backlog 候选 `profit`、`:443` 不排入；多订单合并开票按 D617 暂缓；KGAP-15 按 D620 在 S33 计划时复查。BUG-05 是否打版本、v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 未获用户授权，P12 待用户决策，均不纳入承诺；本 Sprint 不承诺版本号，不做发布候选（D625）。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
