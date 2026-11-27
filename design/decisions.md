@@ -636,4 +636,4 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D604 | 表 | S28 收尾处置：BUG-05 的代码、测试、QA 与 `design/trade-design.md:51` 已满足验… | [design/tasks/S28.md:209](tasks/S28.md)；[design/reviews/S28-review.md:14](reviews/S28-review.md)；[design/reviews/S28-review.md:28](reviews/S28-review.md) 等 5 处 |
 | D605 | 表 | 接受 S29 计划：目标、范围（KGAP-16、KGAP-15 复查节奏、KDOC-12、KDOC-13、S28 回顾行… | [design/tasks/S29.md:129](tasks/S29.md) |
 | D606 | 表 | KGAP-16 定范围：**改验收，不做输入路径** | [design/tasks/S29.md:130](tasks/S29.md) |
-| D607 | 表 | KGAP-15 复查节奏：S29 不复查 | [design/tasks/S29.md:131](tasks/S29.md) |
+| D607 | 表 | KGAP-15 复查节奏：S29 不排定复查 | [design/tasks/S29.md:131](tasks/S29.md) |
