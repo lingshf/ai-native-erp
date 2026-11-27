@@ -7,10 +7,10 @@
 
 ## 1. 结论
 
-**S28 accepted，有 1 项偏差（D604）。** 计划各项（KGAP-10 至 KGAP-15、BUG-05、任务总表状态同步）都已按[执行状态](../tasks/S28.md#执行状态)记为 done。KGAP-12 场景 03 按 D603 延期，转入 KGAP-16（blocked，范围待定）；KGAP-15 按验收③结束，缺口仍开放。按 D602，本 Sprint 不承诺版本号，不做发布候选；须用户授权的事项都没有执行。
+**S28 accepted，有 1 项偏差（D604）；另有 1 项证据记录遗漏，收尾时已补记（D604）。** 计划各项（KGAP-10 至 KGAP-15、BUG-05、任务总表状态同步）都已按[执行状态](../tasks/S28.md#执行状态)记为 done。KGAP-12 场景 03 按 D603 延期，转入 KGAP-16（blocked，范围待定）；KGAP-15 按验收③结束，缺口仍开放。按 D602，本 Sprint 不承诺版本号，不做发布候选；须用户授权的事项都没有执行。
 
 - **用户可见变化 1 项（BUG-05）**：`git diff --stat aca7e53 fb4775e -- packages scripts .github` 只有 [#448](https://github.com/lingshf/ai-native-erp/pull/448) 的两个文件：`packages/web/src/TradeInvoiceDetail.tsx`（原位改 2 行）与 `packages/web/test/trade-invoice-links.test.tsx`。是否为它打版本，**待用户授权**（§4）。
-- **迁移 0 个**，下一个迁移号仍是 020。
+- **迁移 0 个**：当前最新迁移仍为 020（`packages/infra/migrations/sqlite/020-trade-order-invoicing-credits.sql`），下一个迁移号为 021。
 - **新增决定 D602–D604**（3 条）：
   - D602 接受计划（TL）；
   - D603 KGAP-12 QA 结果处置（PO）；
@@ -25,6 +25,7 @@
 
   分析见 [S28 回顾](S28-retro.md)。
 - **S28 范围内的 main Full**：15 个合并提交中 13 个 success、2 个 cancelled、0 个 failure。两个 cancelled 的下一个合并提交 Full 都为绿（§2.2）。
+- **证据记录遗漏 1 项（D604，已补记）**：BUG-05 合并提交上的 main Full run 链接（[45930106245](https://github.com/lingshf/ai-native-erp/actions/runs/45930106245)，success）没有按 S28 计划证据表（`S28.md:164`）与任务书（`BUG-05-invoice-detail-id-validation.md:118`）记入 #448 评论；收尾时由 Product/Design 补记（[评论 7208995742](https://github.com/lingshf/ai-native-erp/pull/448#issuecomment-7208995742)）。它与下面的偏差分开计，不并入。
 - **偏差 1 项（D604）**：BUG-05 的跨文件验收中，`docs/flows/invoice-detail-flow.md:35`（Knowledge Lead，合并后修改）在 Sprint 内没有改。`design/trade-design.md:51` 由本收尾 PR 修改（§2.1、§4）。
 
 ## 2. 目标与验收逐项核对
@@ -37,7 +38,7 @@
 | 1b. KGAP-10 Product/Design 复核 4 项 | accepted | **复核**：会话 files/ `kgap-10-1-review.md`…`kgap-10-4-review.md`（基线 `519fc22`），共 20 处不符：① 3、② 12、③ 5、④ 0。<br>**修正**：[#447](https://github.com/lingshf/ai-native-erp/pull/447) `33e5e51`（③）、[#449](https://github.com/lingshf/ai-native-erp/pull/449) `bd9dc7b`（①②）、[#451](https://github.com/lingshf/ai-native-erp/pull/451) `bb18960`（① 两张截图）。<br>**合并后复核**：在 main `9290af7` 上 PASS 20/20（`kgap-10-postmerge.md`；评论 [#447](https://github.com/lingshf/ai-native-erp/pull/447#issuecomment-7208774737)、[#449](https://github.com/lingshf/ai-native-erp/pull/449#issuecomment-7208775069)、[#451](https://github.com/lingshf/ai-native-erp/pull/451#issuecomment-7208775415)） |
 | 1c. KGAP-11 Delivery/Release 复核 `user/backup-and-legacy.md` | accepted | **复核**：会话 files/ `kgap-11-review.md`，2 处不精确（P1、P2）。<br>**修正**：[#443](https://github.com/lingshf/ai-native-erp/pull/443) `5a45630`，打回 1 轮后批准 [6082697800](https://github.com/lingshf/ai-native-erp/pull/443#pullrequestreview-6082697800)。<br>**合并后复核**：在 main `9290af7` 上 PASS（d687c768 会话 `kgap-11-postmerge.md`；[评论 7208797915](https://github.com/lingshf/ai-native-erp/pull/443#issuecomment-7208797915)） |
 | 1d. 矩阵（KGAP-10/11/12/13） | accepted | [#454](https://github.com/lingshf/ai-native-erp/pull/454) `4852540`，打回 1 轮后批准 [6082917809](https://github.com/lingshf/ai-native-erp/pull/454#pullrequestreview-6082917809)，QA N/A（矩阵文档）。没有格升 covered。`user/backup-and-legacy.md` 与 `legacy-snapshot.md` 标为“已 QA（限定范围）”，并正面列出已验证的范围，其余部分照写 partial：口径 5 逐伙伴比较（03）、U21 数值只追溯出处、KGAP-11 非 UI 项、快照负例。`operations.md` 不共享这个标签，仍为 partial |
-| 2. BUG-05 | accepted，有偏差（D604） | **任务书**：[#446](https://github.com/lingshf/ai-native-erp/pull/446) `1be05ec`，打回 1 轮后批准 [6082736366](https://github.com/lingshf/ai-native-erp/pull/446#pullrequestreview-6082736366)。<br>**实现**：[#448](https://github.com/lingshf/ai-native-erp/pull/448) `34ec97c`，直接批准 [6082801650](https://github.com/lingshf/ai-native-erp/pull/448#pullrequestreview-6082801650)。独立 QA PASS 6/6：真实 Chrome 158.0.8127.37，1440×900，中文，默认红；五种非法形状都显示「发票不存在或已不在本公司。」，无“重试”，零次详情请求；合法但不存在的 ID 恰好发一次 GET，得 HTTP 404。<br>**合并后**：<br>• QA 在合并提交上复验 PASS 2/2（[评论 7208410108](https://github.com/lingshf/ai-native-erp/pull/448#issuecomment-7208410108)）；<br>• 合并提交的 main Full 为绿（[45930106245](https://github.com/lingshf/ai-native-erp/actions/runs/45930106245)），但这条 run 链接没有按任务书“合并后检查”写进 PR 评论；<br>• `design/trade-design.md:51` 由本收尾 PR 改为前后端同一规则，钉 `34ec97c`；<br>• `docs/flows/invoice-detail-flow.md:35` 仍写“格式不是 36 位 documentId”（该文件最后一次改动是 [#243](https://github.com/lingshf/ai-native-erp/pull/243) `25d1e3c`），未改，见 §4 |
+| 2. BUG-05 | accepted，有偏差（D604） | **任务书**：[#446](https://github.com/lingshf/ai-native-erp/pull/446) `1be05ec`，打回 1 轮后批准 [6082736366](https://github.com/lingshf/ai-native-erp/pull/446#pullrequestreview-6082736366)。<br>**实现**：[#448](https://github.com/lingshf/ai-native-erp/pull/448) `34ec97c`，直接批准 [6082801650](https://github.com/lingshf/ai-native-erp/pull/448#pullrequestreview-6082801650)。独立 QA PASS 6/6：真实 Chrome 158.0.8127.37，1440×900，中文，默认红；五种非法形状都显示「发票不存在或已不在本公司。」，无“重试”，零次详情请求；合法但不存在的 ID 恰好发一次 GET，得 HTTP 404。<br>**合并后**：<br>• QA 在合并提交上复验 PASS 2/2（[评论 7208410108](https://github.com/lingshf/ai-native-erp/pull/448#issuecomment-7208410108)）；<br>• 合并提交的 main Full 为绿（[45930106245](https://github.com/lingshf/ai-native-erp/actions/runs/45930106245)），但这条 run 链接合并后没有按任务书“合并后检查”写进 PR 评论（证据记录遗漏），收尾时补记（[评论 7208995742](https://github.com/lingshf/ai-native-erp/pull/448#issuecomment-7208995742)）；<br>• `design/trade-design.md:51` 由本收尾 PR 改为前后端同一规则，钉 `34ec97c`；<br>• `docs/flows/invoice-detail-flow.md:35` 仍写“格式不是 36 位 documentId”（该文件最后一次改动是 [#243](https://github.com/lingshf/ai-native-erp/pull/243) `25d1e3c`），未改，见 §4 |
 | 3a. KGAP-13 Developer 复核 2 页 | accepted | **修正**：[#444](https://github.com/lingshf/ai-native-erp/pull/444) `96d0f27`（GS-14）、[#445](https://github.com/lingshf/ai-native-erp/pull/445) `4997611`（GS-13）。<br>**合并后复核**：在 main `9290af7` 上 PASS，`legacy-snapshot.md` 自 `519fc22` 起未改动（d3ced14d 会话 `kgap-13-postmerge.md`；评论 [#444](https://github.com/lingshf/ai-native-erp/pull/444#issuecomment-7208797538)、[#445](https://github.com/lingshf/ai-native-erp/pull/445#issuecomment-7208797821)） |
 | 3b. KGAP-14 事实清单钉点刷新 | accepted | [#453](https://github.com/lingshf/ai-native-erp/pull/453) `395d9bd`，改钉到 `cff34ba`，打回 1 轮后批准 [6082907709](https://github.com/lingshf/ai-native-erp/pull/453#pullrequestreview-6082907709)；合并后复核 PASS（d3ced14d 会话 `kgap-14-postmerge.md`，在 main `395d9bd` 上只读） |
 | 3c. KGAP-15 KGAP-04 限时复查 | accepted（按验收③：没有找到） | [#455](https://github.com/lingshf/ai-native-erp/pull/455) `9290af7`，打回 1 轮后批准 [6082924352](https://github.com/lingshf/ai-native-erp/pull/455#pullrequestreview-6082924352)。没有找到 GitHub Docs 中的服务端数据处理专页；查过的地址与结论写在 KGAP-15 行；缺口保持开放，`docs/` 不改，不另立决定 |
@@ -97,8 +98,9 @@ S28 期间的决定：
 
 收尾时 PO 决定 **D604**：
 
-- BUG-05 的代码、测试、QA 与 `trade-design.md:51` 已满足验收；`invoice-detail-flow.md:35` 没有在 Sprint 内修改，按 D595 记为偏差。BUG-05 状态保持 done，加注“流程图 :35 待 KL”，交 Knowledge Lead 作为 [KDOC-13](../tasks/backlog/KDOC.md)。
+- BUG-05 的代码、测试、QA 与 `trade-design.md:51` 已满足验收；`invoice-detail-flow.md:35` 没有在 Sprint 内修改，未满足 D595 跨文件验收中的这一句，记为偏差。BUG-05 状态保持 done 由本决定（D604）授权，加注“流程图 :35 待 KL”，交 Knowledge Lead 作为 [KDOC-13](../tasks/backlog/KDOC.md)。
 - 下一 Sprint 候选的去向见 §4。
+- BUG-05 的 main Full run 链接漏记于 #448 评论，是独立的证据记录遗漏，不计入上述偏差；处置为收尾时补记（[评论 7208995742](https://github.com/lingshf/ai-native-erp/pull/448#issuecomment-7208995742)），run 本身为 success。
 - BUG-05 是否打版本由用户决定，本收尾只写“待用户授权”。
 
 原文见 [S28 决定表](../tasks/S28.md#s28-期间决定)。

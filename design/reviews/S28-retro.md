@@ -10,7 +10,7 @@
   - 四个用例先红后绿，大写用例两侧都绿；
   - 独立 QA 在真实浏览器中 PASS 6/6，合并提交上复验 PASS 2/2。
 - **QA 失败没有拿来迁就预期**（观察，D603）：KGAP-12 的 2 处 FAIL 与 2 处阻塞，都对照已文档化的产品行为和代码认定原因。原始判定照留，修订后的场景重新跑过，复跑 5/5 PASS。不可达的 03 保持阻塞，没有用暂存表注入代替 CLI 证据。
-- **合并后复核覆盖了所有修正**（观察）：KGAP-10、11、13、14 都由事实所有者在合并提交上复核，结论全部 PASS，并在已合并的 PR 下留了评论。
+- **合并后复核覆盖了所有修正**（观察）：KGAP-10、11、13、14 都由事实所有者在合并提交上复核，结论全部 PASS。KGAP-10、11、13 的结论另在对应已合并 PR 下留了评论（#447、#449、#451、#443、#444、#445）；KGAP-14 的复核只有会话记录（d3ced14d 会话 `files/kgap-14-postmerge.md`），#453 下没有合并后评论。
 - **矩阵没有超出证据**（观察）：本 Sprint 没有格升 covered。两页标“已 QA（限定范围）”，并正面列出已验证的范围（#454）。
 - **main 没有变红**：15 个合并提交中 13 个 Full success、2 个 cancelled、0 个 failure。
 
@@ -63,7 +63,7 @@
 - BUG-05 在 #456 中记为 done 时，[跨文件验收](../tasks/S28.md#跨文件验收d595按文件列验收句)中两句合并后的验收句还没有满足：
   - `design/trade-design.md:51`（Product/Design）：收尾时才改，即本收尾 PR；
   - `docs/flows/invoice-detail-flow.md:35`（Knowledge Lead）：到收尾时仍未改。
-- 任务书“合并后检查”要求的 main Full run 链接也没有写进 #448 的 PR 评论；run 本身是绿的。评审 #456 时没有发现这几处。
+- 任务书“合并后检查”要求的 main Full run 链接也没有写进 #448 的 PR 评论；run 本身是绿的（[45930106245](https://github.com/lingshf/ai-native-erp/actions/runs/45930106245)）。评审 #456 时没有发现这几处。收尾时 Product/Design 已在 #448 补记（[评论 7208995742](https://github.com/lingshf/ai-native-erp/pull/448#issuecomment-7208995742)），D604 将它列为独立的证据记录遗漏。
 
 **根因（推断）**
 
