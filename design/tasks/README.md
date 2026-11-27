@@ -887,7 +887,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 ## S31：② 存量拆分三泳道 + KGAP-15 复查（D618）
 
-计划、选题依据、排序、泳道与跨文件验收见 [S31.md](S31.md)（计划草案，待 TL 确认）。范围：KDOC-15（KGAP-15 复查部分找到，补链接 GitHub Docs 模型托管页，不升 covered，D620）、② 存量拆分 REFAC-38（`Dimensions.tsx`）、REFAC-39（`tradeReportingRepository`）、REFAC-40（`buildReports`）（D619，任务书由 Product/Design 先写，合并后派发），并落实 S30 回顾行动 1–3（行动 3：REFAC 的 QA 结论发在开发 PR 评论，未发不合并）；无迁移；开发名额占 3。多订单合并开票按 D617 暂缓（用户授权 TL 代定）。BUG-05 是否打版本、v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 未获用户授权，P12 待用户决策，均不纳入承诺；本 Sprint 不承诺版本号，不做发布候选（D618）。REFAC-38..40 的任务行在任务书合并时登记。
+计划、选题依据、排序、泳道与跨文件验收见 [S31.md](S31.md)（进行中；TL 已确认 D617–D619，D620 选定 KDOC-15 方案）。范围：KDOC-15（KGAP-15 复查部分找到，补链接 GitHub Docs 模型托管页，不升 covered，D620）、② 存量拆分 REFAC-38（`Dimensions.tsx`）、REFAC-39（`tradeReportingRepository`）、REFAC-40（`buildReports`）（D619，任务书由 Product/Design 先写，合并后派发），并落实 S30 回顾行动 1–3（行动 3：REFAC 的 QA 结论发在开发 PR 评论，未发不合并）；无迁移；开发名额占 3。多订单合并开票按 D617 暂缓（用户授权 TL 代定）。BUG-05 是否打版本、v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 未获用户授权，P12 待用户决策，均不纳入承诺；本 Sprint 不承诺版本号，不做发布候选（D618）。REFAC-38..40 的任务行在任务书合并时登记。
 
 ## 知识与文档待办（KDOC，D556）
 
