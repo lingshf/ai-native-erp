@@ -654,8 +654,11 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D622 | 表 | REFAC-39 任务书：`tradeReportingRepository` 只拆不改行为（SQL 文本与参数逐字节不… | [design/tasks/S31.md:170](tasks/S31.md) |
 | D623 | 表 | REFAC-40 任务书：`buildReports` 只拆不改行为（导出与签名、公开推断类型、返回值含键序与 `-0`… | [design/tasks/S31.md:171](tasks/S31.md) |
 | D624 | 表 | REFAC-38 的 R5a 例外：`DimensionEditor` 草稿 `useState` 的类型实参由 `Re`… | [design/tasks/S31.md:172](tasks/S31.md)；[design/reviews/S31-review.md:16](reviews/S31-review.md) |
-| D625 | 表 | 接受 S32 计划：目标、范围（REFAC-41..43、S31 回顾行动 1）、排序、泳道与开发名额（占 3）按本文件… | [design/tasks/S32.md:240](tasks/S32.md) |
-| D626 | 表 | S32 开发泳道排 ② 存量拆分 REFAC-41（`business-events/editors.tsx`）、REF… | [design/tasks/S32.md:241](tasks/S32.md) |
-| D627 | 表 | REFAC-41 任务书：`editors.tsx` 只拆不改行为（DOM、请求、焦点、键盘含 Ctrl / ⌘ + E… | [design/tasks/S32.md:242](tasks/S32.md) |
-| D628 | 表 | REFAC-42 任务书：`registerBusinessRoutes` 只拆不改行为（导出与签名、12 条路由的注册… | [design/tasks/S32.md:243](tasks/S32.md) |
-| D629 | 表 | REFAC-43 任务书：`validateTradeConfig` 只拆不改行为（导出与签名含 `.length`、公… | [design/tasks/S32.md:244](tasks/S32.md) |
+| D625 | 表 | 接受 S32 计划：目标、范围（REFAC-41..43、S31 回顾行动 1）、排序、泳道与开发名额（占 3）按本文件… | [design/tasks/S32.md:242](tasks/S32.md)；[design/reviews/S32-review.md:16](reviews/S32-review.md) |
+| D626 | 表 | S32 开发泳道排 ② 存量拆分 REFAC-41（`business-events/editors.tsx`）、REF… | [design/tasks/S32.md:243](tasks/S32.md) |
+| D627 | 表 | REFAC-41 任务书：`editors.tsx` 只拆不改行为（DOM、请求、焦点、键盘含 Ctrl / ⌘ + E… | [design/tasks/S32.md:244](tasks/S32.md) |
+| D628 | 表 | REFAC-42 任务书：`registerBusinessRoutes` 只拆不改行为（导出与签名、12 条路由的注册… | [design/tasks/S32.md:245](tasks/S32.md) |
+| D629 | 表 | REFAC-43 任务书：`validateTradeConfig` 只拆不改行为（导出与签名含 `.length`、公… | [design/tasks/S32.md:246](tasks/S32.md) |
+| D630 | 表 | Node 响应头 `date` 不受冻结 `Date` 影响：探针侧经 `registerTestRoutes` 的 ``… | [design/tasks/S32.md:247](tasks/S32.md) |
+| D631 | 表 | REFAC-42 的 R4 规则 1（grep 无 `randomUUID`）与规则 2（mock 替换）冲突：驱动拆成… | [design/tasks/S32.md:248](tasks/S32.md) |
+| D632 | 表 | REFAC-41 的 R4 第 1 项 grep 与第 2 项 spyOn 冲突，与 D631 同口径：grep 覆盖驱… | [design/tasks/S32.md:249](tasks/S32.md)；[design/reviews/S32-review.md:16](reviews/S32-review.md) |
