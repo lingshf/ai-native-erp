@@ -654,5 +654,5 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D622 | 表 | REFAC-39 任务书：`tradeReportingRepository` 只拆不改行为（SQL 文本与参数逐字节不… | [design/tasks/S31.md:170](tasks/S31.md) |
 | D623 | 表 | REFAC-40 任务书：`buildReports` 只拆不改行为（导出与签名、公开推断类型、返回值含键序与 `-0`… | [design/tasks/S31.md:171](tasks/S31.md) |
 | D624 | 表 | REFAC-38 的 R5a 例外：`DimensionEditor` 草稿 `useState` 的类型实参由 `Re`… | [design/tasks/S31.md:172](tasks/S31.md)；[design/reviews/S31-review.md:16](reviews/S31-review.md) |
-| D625 | 表 | 接受 S32 计划：目标、范围（REFAC-41..43、S31 回顾行动 1）、排序、泳道与开发名额（占 3）按本文件… | [design/tasks/S32.md:182](tasks/S32.md) |
-| D626 | 表 | S32 开发泳道排 ② 存量拆分 REFAC-41（`business-events/editors.tsx`）、REF… | [design/tasks/S32.md:183](tasks/S32.md) |
+| D625 | 表 | 接受 S32 计划：目标、范围（REFAC-41..43、S31 回顾行动 1）、排序、泳道与开发名额（占 3）按本文件… | [design/tasks/S32.md:214](tasks/S32.md) |
+| D626 | 表 | S32 开发泳道排 ② 存量拆分 REFAC-41（`business-events/editors.tsx`）、REF… | [design/tasks/S32.md:215](tasks/S32.md) |
