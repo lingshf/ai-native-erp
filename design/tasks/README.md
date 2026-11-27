@@ -899,13 +899,15 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 ## S32：② 存量拆分三泳道（D626）
 
-计划、选题依据、排序、泳道与跨文件验收见 [S32.md](S32.md)（进行中，TL 已确认 D625–D626）。范围：② 存量拆分 REFAC-41（`business-events/editors.tsx`）、REFAC-42（`registerBusinessRoutes`）、REFAC-43（`validateTradeConfig`），都不改行为，任务书由 Product/Design 先写，合并后派发；落实 S31 回顾行动 1（R4 夹具确定性生成，约束冲突时停下上报）；无迁移；开发名额占 3。Backlog 候选 `profit`、`:443` 不排入；多订单合并开票按 D617 暂缓；KGAP-15 按 D620 在 S33 计划时复查。BUG-05 是否打版本、v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 未获用户授权，P12 待用户决策，均不纳入承诺；本 Sprint 不承诺版本号，不做发布候选（D625）。
+计划、选题依据、排序、泳道与跨文件验收见 [S32.md](S32.md)（已结束，计划 #480 合并为 `218284a`；TL 已确认 D625–D626，执行中 TL 定 D630–D632）。范围：② 存量拆分 REFAC-41（`business-events/editors.tsx`）、REFAC-42（`registerBusinessRoutes`）、REFAC-43（`validateTradeConfig`），都不改行为，任务书由 Product/Design 先写，合并后派发；落实 S31 回顾行动 1（R4 夹具确定性生成，约束冲突时停下上报）；无迁移；开发名额占 3。Backlog 候选 `profit`、`:443` 不排入；多订单合并开票按 D617 暂缓；KGAP-15 按 D620 在 S33 计划时复查。BUG-05 是否打版本、v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 未获用户授权，P12 待用户决策，均不纳入承诺；本 Sprint 不承诺版本号，不做发布候选（D625）。
+
+- **Sprint 评审与回顾**：[S32 评审](../reviews/S32-review.md)（accepted，无计划偏差；REFAC-41..43 done，合并后复测都 PASS，独立 QA 结论都在合并前发在 PR 上，三个开发 PR 都一次批准；打回 4 次，都在计划与任务书；D625–D632，收尾补记 D630–D632；超过 80 行的函数 41 → 37；无迁移；BUG-05 是否打版本待用户授权）、[S32 回顾](../reviews/S32-retro.md)（行动 1 规则先在 base 上试跑，行动 2 R4 模板吸收 D630–D632；S31 行动 1 达成）。Backlog 候选不变，见 [S32 收尾去向](S32.md#sprint-收尾去向)。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [REFAC-41](REFAC-41-business-event-editor-split.md) | 拆分业务事件编辑器 `business-events/editors.tsx`（不改行为，D627） | 重构（页面） | P2 | 任务书合并后派发 | `packages/web/src/business-events/editors.tsx`、同目录新增 `event-editor-*.tsx`、`clearing-editor*.tsx` | 不加 | 不需要 | todo（任务书已写，合并后派发） | — |
-| [REFAC-42](REFAC-42-business-event-routes-split.md) | 拆分业务事件路由 `registerBusinessRoutes`（不改行为与路由注册顺序，D628） | 重构（基础设施） | P2 | 任务书合并后派发 | `packages/infra/src/http/business-events.ts`、同目录新增 `business-event-*.ts` | 不加 | 不需要 | todo（任务书已写，合并后派发） | — |
-| [REFAC-43](REFAC-43-trade-config-validation-split.md) | 拆分贸易主数据校验 `validateTradeConfig`（不改行为与错误先后，D629） | 重构（core 领域纯函数） | P2 | 任务书合并后派发 | `packages/core/src/domain/trade-master.ts`、同目录新增 `trade-master-*.ts` | 不加 | 不需要 | todo（任务书已写，合并后派发） | — |
+| [REFAC-41](REFAC-41-business-event-editor-split.md) | 拆分业务事件编辑器 `business-events/editors.tsx`（不改行为，D627） | 重构（页面） | P2 | 任务书合并后派发 | `packages/web/src/business-events/editors.tsx`、同目录新增 `event-editor-*.tsx`、`clearing-editor*.tsx` | 不加 | 不需要 | done（D632；合并后复测 PASS，[评论](https://github.com/lingshf/ai-native-erp/pull/483#issuecomment-7213216540)；QA [PASS](https://github.com/lingshf/ai-native-erp/pull/483#issuecomment-7213178951)） | [#483](https://github.com/lingshf/ai-native-erp/pull/483) `a3dab87` |
+| [REFAC-42](REFAC-42-business-event-routes-split.md) | 拆分业务事件路由 `registerBusinessRoutes`（不改行为与路由注册顺序，D628） | 重构（基础设施） | P2 | 任务书合并后派发 | `packages/infra/src/http/business-events.ts`、同目录新增 `business-event-*.ts` | 不加 | 不需要 | done（D630、D631；合并后复测 PASS，[评论](https://github.com/lingshf/ai-native-erp/pull/484#issuecomment-7213541590)；QA [PASS](https://github.com/lingshf/ai-native-erp/pull/484#issuecomment-7213493643)） | [#484](https://github.com/lingshf/ai-native-erp/pull/484) `fdb2c49` |
+| [REFAC-43](REFAC-43-trade-config-validation-split.md) | 拆分贸易主数据校验 `validateTradeConfig`（不改行为与错误先后，D629） | 重构（core 领域纯函数） | P2 | 任务书合并后派发 | `packages/core/src/domain/trade-master.ts`、同目录新增 `trade-master-*.ts` | 不加 | 不需要 | done（合并后复测 PASS，[评论](https://github.com/lingshf/ai-native-erp/pull/482#issuecomment-7213027314)；QA [PASS](https://github.com/lingshf/ai-native-erp/pull/482#issuecomment-7212994827)） | [#482](https://github.com/lingshf/ai-native-erp/pull/482) `ceeebe2` |
 
 ## 知识与文档待办（KDOC，D556）
 
