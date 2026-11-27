@@ -656,3 +656,6 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D624 | 表 | REFAC-38 的 R5a 例外：`DimensionEditor` 草稿 `useState` 的类型实参由 `Re`… | [design/tasks/S31.md:172](tasks/S31.md)；[design/reviews/S31-review.md:16](reviews/S31-review.md) |
 | D625 | 表 | 接受 S32 计划：目标、范围（REFAC-41..43、S31 回顾行动 1）、排序、泳道与开发名额（占 3）按本文件… | [design/tasks/S32.md:240](tasks/S32.md) |
 | D626 | 表 | S32 开发泳道排 ② 存量拆分 REFAC-41（`business-events/editors.tsx`）、REF… | [design/tasks/S32.md:241](tasks/S32.md) |
+| D627 | 表 | REFAC-41 任务书：`editors.tsx` 只拆不改行为（DOM、请求、焦点、键盘含 Ctrl / ⌘ + E… | [design/tasks/S32.md:242](tasks/S32.md) |
+| D628 | 表 | REFAC-42 任务书：`registerBusinessRoutes` 只拆不改行为（导出与签名、12 条路由的注册… | [design/tasks/S32.md:243](tasks/S32.md) |
+| D629 | 表 | REFAC-43 任务书：`validateTradeConfig` 只拆不改行为（导出与签名含 `.length`、公… | [design/tasks/S32.md:244](tasks/S32.md) |

@@ -903,9 +903,9 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| REFAC-41 | 拆分业务事件编辑器 `business-events/editors.tsx`（不改行为） | 重构（页面） | P2 | 任务书合并后派发 | `packages/web/src/business-events/editors.tsx`、同目录新增 `event-editor-*.tsx`、`clearing-editor*.tsx` | 不加 | 以任务书为准 | todo（任务书待写） | — |
-| REFAC-42 | 拆分业务事件路由 `registerBusinessRoutes`（不改行为与路由注册顺序） | 重构（基础设施） | P2 | 任务书合并后派发 | `packages/infra/src/http/business-events.ts`、同目录新增 `business-event-*.ts` | 不加 | 不需要 | todo（任务书待写） | — |
-| REFAC-43 | 拆分贸易主数据校验 `validateTradeConfig`（不改行为与错误先后） | 重构（core 领域纯函数） | P2 | 任务书合并后派发 | `packages/core/src/domain/trade-master.ts`、同目录新增 `trade-master-*.ts` | 不加 | 不需要 | todo（任务书待写） | — |
+| [REFAC-41](REFAC-41-business-event-editor-split.md) | 拆分业务事件编辑器 `business-events/editors.tsx`（不改行为，D627） | 重构（页面） | P2 | 任务书合并后派发 | `packages/web/src/business-events/editors.tsx`、同目录新增 `event-editor-*.tsx`、`clearing-editor*.tsx` | 不加 | 不需要 | todo（任务书已写，合并后派发） | — |
+| [REFAC-42](REFAC-42-business-event-routes-split.md) | 拆分业务事件路由 `registerBusinessRoutes`（不改行为与路由注册顺序，D628） | 重构（基础设施） | P2 | 任务书合并后派发 | `packages/infra/src/http/business-events.ts`、同目录新增 `business-event-*.ts` | 不加 | 不需要 | todo（任务书已写，合并后派发） | — |
+| [REFAC-43](REFAC-43-trade-config-validation-split.md) | 拆分贸易主数据校验 `validateTradeConfig`（不改行为与错误先后，D629） | 重构（core 领域纯函数） | P2 | 任务书合并后派发 | `packages/core/src/domain/trade-master.ts`、同目录新增 `trade-master-*.ts` | 不加 | 不需要 | todo（任务书已写，合并后派发） | — |
 
 ## 知识与文档待办（KDOC，D556）
 
