@@ -27,6 +27,8 @@
 | 9 | KDOC-09 | G2 按主题汇总取舍（每个主题：备选、理由、代价、失效条件），链接到 ADR 与决定记录，不复制原文 | Knowledge Lead；Product/Design 核对 | KDOC-01、KDOC-03、KDOC-04 | `design/` 下新增页面 | done（[#377](https://github.com/lingshf/ai-native-erp/pull/377)，main `6debbdf`） |
 | 10 | KDOC-10 | 已并入 KDOC-05（D558）：目标改为 `docs/user/README.md` 与 `CHANGELOG.md`，不改路线图 | — | — | — | 已并入 KDOC-05 |
 | 11 | KDOC-11 | UI-1 规范页状态仍为“待评审”（`design/ui/README.md:3`）：核对实际评审记录后更新状态 | Product/Design；非作者评审 | 无 | `design/ui/README.md` 开头 | done（[#367](https://github.com/lingshf/ai-native-erp/pull/367)，main `a6037b0`） |
+| 12 | KDOC-12 | `docs/user/trade.md:162` 引号内“订单不过账、不生成凭证”不是界面原文（原文为 `packages/web/src/trade-order-labels.ts:122` 的“订单不过账，也不生成凭证。”）：改为原文或去掉引号（P3，S28 KGAP-10 合并后复核发现，见 [S28 评审 §4](../../reviews/S28-review.md#4-未完成与遗留)） | Knowledge Lead；Product/Design 核对 | 无 | `docs/user/trade.md` | todo |
+| 13 | KDOC-13 | `docs/flows/invoice-detail-flow.md:35` 仍写旧的前端 ID 校验说法：按 BUG-05（[#448](https://github.com/lingshf/ai-native-erp/pull/448) `34ec97c`）改为前端与服务端同一小写 UUIDv4 规则，行号钉 `34ec97c`（BUG-05 跨文件验收项，D604） | Knowledge Lead；Product/Design 核对 | 无 | `docs/flows/invoice-detail-flow.md` | todo |
 
 - **共享文件串行**：KDOC-01 与 KDOC-03 都改 `design/` 根目录下的文档，按顺序做；KDOC-05 与 KDOC-06 按顺序做；KDOC-05 与 KDOC-07 共用 `docs/user/backup-and-legacy.md`，KDOC-07 在 KDOC-05 合并后才开始（D558）；其余各项冲突域不相交。
 - **评审**：每项都由非作者评审。Knowledge Lead 写的文档，事实由对应负责人核对（[团队章程 §2](../../team-charter.md#2-权威路径)）。
