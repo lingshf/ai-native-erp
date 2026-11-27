@@ -38,7 +38,7 @@ flowchart LR
 **未验证或未记录**，如实保留为缺口：
 
 - 交给 SDK 的环境变量（F22）：**SEC-02 起**，适配器交给 SDK 工厂的 `env` 只含白名单：用户明确设置 `COPILOT_GITHUB_TOKEN` 时只含这一项，否则为空对象。子进程实际收到的环境会多出补入项：SDK 1.0.31 自行加入 `COPILOT_HOME`、`COPILOT_DISABLE_KEYTAR`；在 Windows 上，Node/libuv 还会从 ERP 进程补入 11 个系统变量（含 `PATH`、`TEMP`、`USERNAME`、`USERPROFILE` 等；这 11 个键来自 Node v26.13.0 的对照实测，换 Node 版本须重测）。因此子进程环境**不是只含白名单**，也不应描述为“已隔离”。本进程其他变量（`GH_TOKEN`、`GITHUB_TOKEN`、代理与证书变量、`ERP_SQLITE_FILE` 等 ERP 配置、其他凭据）不由 ERP 交给 SDK。传输方式固定为 stdio。Windows 补入项的认定见 D570，运行证据见 SEC-02 的 PR。原生 CLI 离线启动只有 Linux 证据，Windows 未验证（D571）。仍未验证：原生 CLI 对这些补入键的依赖；真实认证是否兼容（令牌、存量登录、`gh` 回退）；代理与自定义 CA；子进程环境的端到端隔离。SEC-02 之前（历史）：适配器只去掉三个键，其余变量一并交给 SDK 工厂。来源：SEC-01 评审（[#364 评论 7148351359](https://github.com/lingshf/ai-native-erp/issues/364#issuecomment-7148351359)）与 D568（见[决定索引](../design/decisions.md)、[SEC-02](../design/tasks/SEC-02-copilot-env-allowlist.md)）。
-- Copilot 服务端如何保存和使用这些数据，仓库无记录，本页不复述也不推断，仅链接 GitHub 官方的 Copilot Agents 负责任使用说明：[Responsible use of GitHub Copilot Agents](https://docs.github.com/en/copilot/responsible-use/agents)。它不是服务端数据处理说明，数据保存与使用仍是缺口。
+- Copilot 服务端如何保存和使用这些数据，仓库无记录，本页不复述也不推断，仅链接 GitHub 官方的 Copilot Agents 负责任使用说明：[Responsible use of GitHub Copilot Agents](https://docs.github.com/en/copilot/responsible-use/agents)。它不是服务端数据处理说明。模型托管与提供方的数据承诺另见官方说明：[Hosting of models for GitHub Copilot](https://docs.github.com/en/copilot/reference/ai-models/model-hosting)，本页不复述其中承诺；GitHub 自身服务端如何保存与使用这些数据仍无专门说明，是缺口。
 
 ## 4. 教学模式
 
@@ -75,5 +75,5 @@ flowchart LR
 - 候选不自动保存：多一步人工，换取过账责任始终在用户。
 - 讲解的教学模式限制只在前端（D563），服务端不加固。
 - 交给 SDK 的环境变量只留 `COPILOT_GITHUB_TOKEN`（SEC-02，第 3、5 节）：牺牲靠 `GH_TOKEN` / `GITHUB_TOKEN` 等继承变量“碰巧可用”的兼容性，换取缺省最小的交出范围。
-- 缺口：原生 CLI 离线启动只有 Linux 证据，Windows 未验证（D571）；原生 CLI 对补入键的依赖、真实认证兼容、代理与自定义 CA、SDK 子进程环境的端到端隔离仍未验证（第 3 节）；Copilot 服务端数据处理仍无记录（只链接 Copilot Agents 负责任使用说明，不能替代）；本页未经 QA 演练。
+- 缺口：原生 CLI 离线启动只有 Linux 证据，Windows 未验证（D571）；原生 CLI 对补入键的依赖、真实认证兼容、代理与自定义 CA、SDK 子进程环境的端到端隔离仍未验证（第 3 节）；Copilot 服务端数据处理部分有官方说明（链接模型托管与负责任使用两页，本页不复述承诺），GitHub 服务端如何保存仍无专门说明；本页未经 QA 演练。
 - 复核记录（范围仅限两项）：设计在 [#386 评论 7148480305](https://github.com/lingshf/ai-native-erp/pull/386#issuecomment-7148480305) 核对了官方链接是否属实，以及第 3、7 节是否符合 SEC-02 任务书 R7 时点 2；核对时的 head 是 7aabc4f，之后的措辞修改未另行复核。不扩大到整页，也不代表做过 QA 演练。第 3、5、7 节已由 SEC-02 按新行为改写，上述核对不覆盖改写后的内容。
