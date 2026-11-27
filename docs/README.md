@@ -87,7 +87,7 @@
 | 页面 | 已有证据 | 实际剩余 |
 |---|---|---|
 | `operations.md` | 发布事实复核；备份输出同名/保留路径返回 `INVALID_INPUT`、恢复后空 `.users/` 目录为实测；QA 有仅导入启动与 #374 锁/备份/恢复演练 | 已死进程租约自动清除分支只有源码核对（`maintenance.ts:68-83`），若要独立 QA 需补；开发未复核；改后文字未经 QA |
-| `backup-and-legacy.md` | 设计 U13–U20 通过；开发复核；QA 覆盖快照、dry-run、仅导入、核对页与教学提示 | 口径 5 的逐伙伴比较记 not_applicable（现行两种来源都不产生带伙伴维度的 AP/AR 控制科目分录，命令行不可达，D606；教学来源的普通科目可带维度，但不在比较范围；其他校验照常）；阻断类别（映射、形状）无 QA；U21 基准数值未核；发布仅抽查 |
+| `backup-and-legacy.md` | 设计 U13–U20 通过；开发复核；QA 覆盖快照、dry-run、仅导入、核对页与教学提示 | 口径 5 的逐伙伴比较记 not_applicable（D606，详见 KGAP-10/11/12/13 一节的 backup-and-legacy 行）；阻断类别（映射、形状）无 QA；U21 基准数值未核；发布仅抽查 |
 | `ledger.md` | 开发仅复核 AI 小节（`ledger.md:54`）并已修；QA 覆盖新库进入、空列表、新建草稿入口 | 整页其余段落无事实复核；保存、过账、AI、队列分支无真实浏览器 QA |
 | `trade-reports.md` | 教学开关在顶栏右侧已在精确 head 复验 PASS；月末筛选、三视图、36.50 与 GL 差异 0.00 有 QA（补充观察） | 无事实复核（设计未覆盖本页） |
 | `trade-main-path.md` | 核销 56.50、现金 55.75、折扣 0.75、22.60 贷项、月末未结 36.50 有虚构夹具 QA；快捷键句已按代码更正 | 已证金额另含：113.00（真实 Edge 两阶段测试，发票预览响应断言 11300，`invoice-entry.ts:67`；订单页渲染 113.00，`orders.ts:56`；第二阶段 `adjustments-reports.ts:29` 调用 AR 发票），区分响应与 DOM，不重新派发已有 QA；仍未重演的是逐版本路径；QA 用预置科目与固定教学日期 |
@@ -119,7 +119,7 @@
 | `operations.md` | 开发复核全文无不符（KGAP-09）；发布 S26 | 未改 | `1ca22e9d4f4bb91af5cc5223a762f74370257be0`（#420） | KGAP-12 ① 01、02 PASS（已死进程租约清除、仍运行进程 `BUSY`；原范围） | partial |
 | `flows/settlement-flow.md` | 沿用设计通过 | 未改 | `8ed9d1b0fdfd053acf87f82dcaca3c0efeebb011` | KGAP-12 ⑤ 18–22 5/5 PASS（原范围：只验证付款页的离开页面与结果未知黄条，不宣称验证整条发请求链路） | partial |
 
-没有产品缺陷，未登记 BUG-06。KGAP-12 的 03 按 D606 记 not_applicable（口径 5 逐伙伴比较在命令行不可达，不记 PASS；KGAP-16 改验收，Developer 复核与改钉待合并后）。KGAP-04 仍是外部限制。除 `trade-main-path.md` 3.28 与 `ui-guide.md`/`trade.md`/`teaching-mode.md` 的 19 条无法判定外，没有新增未决事实项。
+没有产品缺陷，未登记 BUG-06。KGAP-12 的 03 按 D606 记 not_applicable（口径 5 逐伙伴比较在命令行不可达，不记 PASS；KGAP-16 改验收：#461 已合并，Developer 合并后复核 PASS（[评论](https://github.com/lingshf/ai-native-erp/pull/461#issuecomment-7209193875)），改钉见 #462）。KGAP-04 仍是外部限制。除 `trade-main-path.md` 3.28 与 `ui-guide.md`/`trade.md`/`teaching-mode.md` 的 19 条无法判定外，没有新增未决事实项。
 
 事实所有者按角色：产品 = 设计/产品负责人；开发 = 开发；发布 = Delivery/Release；知识 = Knowledge Lead。
 
