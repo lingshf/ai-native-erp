@@ -69,7 +69,7 @@
    - `result`、`origins`、`writes`、`seen`、`required` 仍是每次 `resolve` 调用新建的局部值，不得改为模块级或编译期共享变量（R5b）；
    - 来源顺序、派生的“先查冲突再 `apply`”、不动点循环中 `seen.size > 200` 的判断、必填 → 禁用 → 组合 → 引用的先后都不变。
 4. **`validateDimensionConfig`**：`definitions`、`values` 仍每次调用新建；第 1–4 步（见“现状”）及每步内部的先后不变；`reference`、`map`、`list` 可提为顶层函数，以显式参数传入 Map；`orderedRules` 仍只为检查环而调用，返回值不用。
-5. **`orderedRules`**：本身 24 行，但按 [S30 统一量法](S30.md#s30-统一量法)嵌套为 4（见“可读性”），S30 规定被拆文件内每个函数嵌套 ≤ 3（[S30.md:61](S30.md)、`:97`），故一并降层：可把 `:76–80` 的依赖判断提为具名函数；排序结果与报环条件不变。
+5. **`orderedRules`**：本身 24 行，但按 [S30 统一量法](S30.md#s30-统一量法)嵌套为 4（见“可读性”），S30 规定被拆文件内每个函数嵌套 ≤ 3（[S30.md:61](S30.md)、`:75`），故一并降层：可把 `:76–80` 的依赖判断提为具名函数；排序结果与报环条件不变。
 6. **重复**：`JSON.stringify(ordered(…))` 在本文件出现 3 次（`:184`、`:281`、`:293`），都是“维度映射按键排序后的签名”，按 ④ 抽为一个具名函数；其余重复片段的去向见“可读性 · 重复”。
 7. **文件**：新文件放在 `packages/core/src/domain/`，以 `dimension-` 开头按职责命名（例如 `dimension-config-validation.ts`、`dimension-resolution.ts`、`dimension-rule-order.ts`），`4d296bf` 上该目录无 `dimension-` 开头的文件（`git ls-tree --name-only 4d296bf packages/core/src/domain/`）。新文件不加入 `domain/index.ts`；从 `./dimensions.ts` 只可 `import type`，运行时依赖放在新文件之间或沿用 `./index.ts` 导入（`DomainError` 等）；新文件模块顶层不得在加载时调用导入的函数（R5b）。正则、`32`、`100`、`200`、`64000` 等规则值原文不变，本任务不新增具名常量。
 8. **不改**：`packages/core/src/domain/` 下其他现有文件（含 `index.ts`、`journals.ts`、`journal-plan-*.ts`、`trade-master.ts`、`ai-assistant.ts`）；`packages/core/src/application/**`、`packages/core/src/contracts/**`；`packages/core/test/**`、`packages/infra/**`（含 `bench/`）、`packages/web/**`；`scripts/**`、`package.json` / lock、`vitest.config.ts`。
@@ -80,7 +80,7 @@
 - 取证所需观测点与新增测试文件：无（R4 驱动不提交）。
 - 与 S30 其他泳道逐文件不相交：REFAC-35 改 `packages/web/src/Reports.tsx` 与 `packages/web/src/reports/`；REFAC-36 改 `packages/infra/src/storage/master-data.ts` 与同目录 `master-data-*.ts`（`master-data.ts:19` 导入的是 `infra/src/storage/dimensions.ts`，不是本文件）；KDOC-14 改 `docs/flows/invoice-detail-flow.md`。四者无共享文件。
 - 受影响的 e2e 断言：涉及维度的过账、统计事件、维度配置场景须继续成立，合并前由 R3、R4 保证，合并后由 R8b 复核；须随本任务改：无。
-- 受影响的文档引用：`git grep -n "domain/dimensions.ts" 4d296bf -- docs README.md` 无输出；`design/reviews/M0.md:39` 的 `dimensions.ts:307` 是当时提交上的历史证据，不改（[S30.md:155](S30.md)）。
+- 受影响的文档引用：`git grep -n "domain/dimensions.ts" 4d296bf -- docs README.md` 无输出；`design/reviews/M0.md:39` 的 `dimensions.ts:307` 是当时提交上的历史证据，不改（[S30.md:181](S30.md)）。
 
 ## 验收
 
@@ -94,10 +94,27 @@
 | R6b | 嵌套深度 | `resolve` **5**、`validateDimensionConfig` **4**、`orderedRules` **4**（失败） | 每个函数 ≤ 3 |
 | R6c | 文件行数（`(Get-Content <file>).Count`） | `dimensions.ts` **370** | `dimensions.ts` ≤ 220；新文件各 ≤ 150 |
 
+上表的 head 要求都是**硬上限**。其中 `validateDimensionConfig` ≤ 50、`resolve` ≤ 50、`dimensions.ts` ≤ 220 由设计角色选定，未经试拆实测。实测超出即停下，报设计角色与协调者；不得自行放宽，也不得为凑数字机械拆分（见 [S30 共用](S30.md#三项-refac-共用可读性与嵌套复验)）。是否调整由 TL 决定。
+
 ### 两侧都须成立的不变量
 
 - **R1 范围**：`git diff --name-only <base>...<head>` 只含 `packages/core/src/domain/dimensions.ts` 与同目录新增的 `dimension-*.ts`；决定 8 所列路径 diff 为空。不加迁移。
-- **R2 导出不变**：用 `@babel/parser`（插件 `typescript`）解析，口径同 REFAC-30 R2：`dimensions.ts` 的导出名集合（运行时 6 个、类型 3 个）与 base 相同，签名源文本相同（只归一空白；再导出的函数比定义处）；base 与 head 上各用 node 导入 `@erp/core/domain`，打印排序后的 `Object.keys`，两侧相同；`Object.keys(compileDimensionRules([]))` 两侧都为 `["resolve"]`，`resolve.length` 两侧相同。新文件导出只在本任务文件内使用，PR 正文附 `git grep` 结果。`npm run typecheck`（含 `journals.ts:71`、`journal-plan-context.ts:25` 的类型推导）、`npm run check`、`npm run check:boundaries` 通过。
+- **R2 导出不变**：用 `@babel/parser`（插件 `typescript`）解析，口径同 REFAC-30 R2：`dimensions.ts` 的导出名集合（运行时 6 个、类型 3 个）与 base 相同，签名源文本相同（只归一空白；再导出的函数比定义处）；base 与 head 上各用 node 导入 `@erp/core/domain`，打印排序后的 `Object.keys`，两侧相同；`Object.keys(compileDimensionRules([]))` 两侧都为 `["resolve"]`，`resolve.length` 两侧相同。新文件导出只在本任务文件内使用，PR 正文附 `git grep` 结果。`npm run typecheck`（含 `journals.ts:71`、`journal-plan-context.ts:25` 的类型推导）、`npm run check`、`npm run check:boundaries` 通过。typecheck 只说明现有消费者能编译，不能证明推断出的公开类型不变（例如输入域变宽、必需返回字段变为可选，现有消费者未必察觉），公开类型由 R2b 单独证明。
+- **R2b 公开类型声明对照**（送审证据，产物与临时文件不提交）：
+  - **生成**：base 与 head 用同一份仓库外的临时 tsconfig，各运行一次 `npx tsc -p <该文件>`，退出码须为 0。该 tsconfig 的内容：`extends` 指向仓库根 `tsconfig.base.json`；`files` 只列 `packages/core/src/domain/dimensions.ts`；`compilerOptions` 设 `noEmit: false`、`declaration: true`、`emitDeclarationOnly: true`、`types: []`，`rootDir` 设为仓库 `packages`，`outDir` 设为仓库外的新目录（base、head 各一个）。
+  - **比较**：取两侧 `core/src/domain/dimensions.d.ts`。逐字节相同即通过。
+  - **不同时**（例如 head 改为从 `dimension-*.ts` 以 `export { … } from` 再导出），直接对两侧**源码**做双向严格相等检查，不导入 `.d.ts`：base 的 `dimensions.d.ts` 在 `dimensionBalance` 返回类型中带有计算属性键 `[config.dimension]`，作为输入再编译会报 TS18048。做法如下：
+    1. 在仓库根下建一个未跟踪的临时目录（例如 `.r37tmp/`），用 `git archive <base> packages/core/src | tar -x -C .r37tmp/b` 放入 base 源码。放在仓库内，`zod` 才能从仓库 `node_modules` 解析。
+    2. 在该目录写检查文件，`import type * as B` 从 `./b/packages/core/src/domain/dimensions.ts` 导入，`import type * as H` 从 head 的 `../packages/core/src/domain/dimensions.ts` 导入。
+    3. 用严格相等类型 `type Eq<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;` 逐项断言为 `true`：6 个运行时导出各一次 `Eq<typeof B.x, typeof H.x>`，3 个导出类型各一次 `Eq<B.T, H.T>`，再单独一次 `Eq<ReturnType<typeof B.compileDimensionRules>, ReturnType<typeof H.compileDimensionRules>>`。
+    4. 用 `extends` 仓库 `tsconfig.base.json`、`files` 只列检查文件、`types: []`、`noEmit: true` 的 tsconfig 编译，退出码须为 0。
+    5. 反例：把 base 副本再复制一份作 `H`，将 `resolve` 的一个必需参数字段或返回字段改为可选，同一检查须在对应断言行报 TS2344。
+    6. 送审前删除临时目录，`git status` 中不得残留。
+  - **PR 正文附**：tsconfig 原文、两次生成的命令与退出码、两侧 `dimensions.d.ts` 的 SHA-256 与 diff（相同时写“无差异”）；不同时另附检查文件原文、tsconfig、编译输出与反例输出。
+  - **可行性**：设计角色在 `packages/` 与 `4d296bf` 相同的工作树上（仓库 TypeScript 7.0.2）实测：
+    - 声明生成的退出码为 0；`dimensions.d.ts` 共 87 行，列出 6 个运行时导出与 3 个导出类型，`compileDimensionRules` 的返回类型完整展开。该产物在 Windows 上的 SHA-256 为 `5a97508dc0ba5163df0ae1e0dc2f23ae16d5f784b39c34feec127bdc9b4cdcba`；换行符可能随平台不同，比较时两侧须在同一平台生成。
+    - 源码双向检查：base 对工作树（两侧相同）退出码 0。反例把副本中 `resolve` 参数的 `day: string` 改为 `day?: string`，`compileDimensionRules` 与 `ReturnType` 两条断言报 TS2344；副本函数体另报 TS2345，这是改动副本引起的，与检查无关。
+    - 以上临时文件均已删除。
 - **R3 既有测试原样通过**：`npx vitest run --project core` 全部通过，另跑 `npx vitest run --project infra packages/infra/test/http/dimensions.test.ts`；测试文件 diff 为空。PR 正文附汇总行原文，base 与 head 各一次。
 - **R4 返回值与错误等价**（送审证据，驱动不提交）：
   - **驱动**：临时 vitest 文件（例如 `packages/core/test/zz-r37-probe.test.ts`，送审前删除），在 base 与 head 上从 `../src/domain/index.ts` 导入，同一组虚构输入直接调用；可借用 `dimensions.test.ts:8–29` 的 `base`、`catalog`（`DEPT`、`COST`、`SITE` 各有值 `A`、`B`）、`structure`（`code: "1000"`）。
@@ -209,12 +226,14 @@ node <保存位置>\s30-measure.cjs <head> packages/core/src/domain/dimensions.t
 
 - **不需要浏览器时段**：等价由 R3、R4 证明；涉及维度的 e2e 在 main Full 中运行，作合并后检查（R8b）。本机运行 R4 与构建须服从协调者的时段静默通知（D442 / D480）。
 - **可行性**：设计角色在 `4d296bf` 工作树上实测 R4 直接断言 1–14 成立（node 直接导入 `packages/core/src/domain/index.ts`，脚本经标准输入运行、未落盘）；`dimensions.test.ts` 5 个用例通过；`s30-measure.cjs` 在 `4d296bf` 上的输出即“可读性”所列全文。
-- PR 正文附：R1 原始输出；R2 导出比较；R3 汇总行；R4 驱动、用例清单、比较结果与直接断言结果；R5a–R5d 各表；`s30-measure.cjs` 的两条运行命令与 base、head 两份完整输出（脚本原文不贴，链接 [S30 统一量法](S30.md#s30-统一量法)）；R7 完整输出与退出码；可读性五项。
+- PR 正文附：R1 原始输出；R2 导出比较；R2b 声明对照（见 R2b）；R3 汇总行；R4 驱动、用例清单、比较结果与直接断言结果；R5a–R5d 各表；`s30-measure.cjs` 的两条运行命令与 base、head 两份完整输出（脚本原文不贴，链接 [S30 统一量法](S30.md#s30-统一量法)）；R7 完整输出与退出码；可读性五项。
 - **合并后项**（[S30 执行状态](S30.md#执行状态)）：Product/Design 在合并提交上用 `s30-measure.cjs` 复测 `dimensions.ts` 与新文件的函数长度与嵌套深度，在已合并 PR 下评论命令、输出与合并提交完整 SHA；R8b 结果补到 PR 评论。
 
 ## 设计自查
 
 - 冲突域与 REFAC-35、REFAC-36、KDOC-14 逐文件不相交；不加迁移；不改测试；不碰 `scripts/`。
 - R6a–R6c 的 base 数字、R5c 调用点数与 R4 直接断言期望值都在 `4d296bf` 上实测。
+- 公开推断类型不只靠 typecheck：R2b 比较 base 与 head 的声明产物，不同时对两侧源码做双向严格相等检查并附反例；声明生成、双向检查与反例都已试跑。
+- 估定的长度上限（≤ 50、≤ 220）按硬上限执行，超出即停报。
 - S30 统一量法比 S30 初测严（无花括号的受控语句也计层），因此 `orderedRules` 也须降层（决定 5）；S30 未列 `orderedRules`，但其“被拆文件内每个函数”的要求覆盖它。
 - 只改代码组织；疑似缺陷登记后另排任务。

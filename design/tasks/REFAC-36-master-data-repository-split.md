@@ -55,7 +55,7 @@
 | 文件 | 落在哪个 chunk | 依据 |
 | --- | --- | --- |
 | `master-data.ts`（infra，改）与新文件 | **不进任何 web chunk** | `git grep -n -E "from .(@erp/infra\|[./]*infra/)" 4d296bf -- packages/web/src` 与 `git grep -n "erp/infra" 4d296bf -- packages/web/package.json` 均无输出 |
-| 首屏 | **±0** | 同上；由 R7 确认 |
+| 首屏 | **±0** | 同上；不做打包测量（R7 已删除，评审 6083453880） |
 
 ## 范围与决定
 
@@ -80,7 +80,7 @@
    - 新文件与 `master-data.ts` 同放在 `packages/infra/src/storage/`，以 `master-data-` 开头按职责命名，例如 `master-data-rows.ts`（行解析与分页）、`master-data-companies.ts`、`master-data-accounts.ts`、`master-data-periods.ts`；`history` 可单独放 `master-data-history.ts` 或并入期间文件末尾，由开发定并写入 PR 正文。`git ls-tree --name-only 4d296bf packages/infra/src/storage/` 中现无 `master-data-` 开头的文件；
    - 名称禁用 `step1`、`part2`、`helper`、`utils` 及同类无业务含义的名字；
    - 新文件不导入 `master-data.ts`，只被 `master-data.ts` 或本任务的新文件导入，不加入 `storage/index.ts`；
-   - 新文件各 ≤ 150 行；拆后 `master-data.ts` ≤ 110 行（估算：325 − 私有辅助 55 行 − 自有方法 170 行 − 迁出的契约 / 领域导入约 8 行 + 新导入与组合约 10 行 + 决定 10 净增 1 行 ≈ 103，留少量余量；此上限为设计角色估算，非实测）。
+   - 新文件各 ≤ 150 行；拆后 `master-data.ts` ≤ 110 行。110 由设计角色估算得出，非实测：325 − 私有辅助 55 行 − 自有方法 170 行 − 迁出的契约 / 领域导入约 8 行 + 新导入与组合约 10 行 + 决定 10 净增 1 行 ≈ 103，留少量余量。两项都是**硬上限**：实测超出即停下，报设计角色与协调者；不得自行放宽，也不得为凑数字机械拆分（见 [S30 共用](S30.md#三项-refac-共用可读性与嵌套复验)）；也不得为此改动 `createMasterDataStore`（决定 10 以外）。
 8. **import 不新增依赖**：新文件从 `@erp/core/application`、`@erp/core/domain`、`@erp/core/contracts`、`./types.ts` 导入的名称都是 base 的 `master-data.ts:1-27` 已在用的。
 9. **不改**：
    - `packages/infra/src/storage/` 下其他现有文件，含 8 个被展开的仓储文件（`trade-master.ts`、`trade-documents.ts`、`trade-reporting.ts`、`dimensions.ts`、`journals.ts`、`business-events.ts`、`reports.ts`、`period-close.ts`）及其 `trade-document-*`、`journal-*`、`business-*`、`report-*` 文件、`legacy-import.ts`、`migrations.ts`、`queue.ts`、`sqlite.ts`、`errors.ts`、`types.ts`、`index.ts`；迁移 SQL；
@@ -150,7 +150,7 @@
     2. `close()` 之后 `read` 与 `write` 都以 `StorageError`、`code` 为 `CLOSED` 拒绝，`work` 未被调用。
     3. 同一 `store` 上先后发起写入 A、B（A 的 `work` 挂起）：B 的 `work` 在 A 提交之后才开始。
     4. `work` 抛 `DomainError` 时原样抛出（同一对象）；抛普通 `Error` 时为 `STORAGE_FAILURE`；两者库内状态不变。
-    5. （可选）回滚失败路径：驱动以委托包装替换连接的 `rollback` 使其抛错，断言 `STORAGE_FAILURE` 与 `release(true)`；若须改产品代码才能注入，写明原因并报协调者，不得为此改产品代码。
+    5. （可选；只有本项可选，1–4 必做）回滚失败路径：驱动以委托包装替换连接的 `rollback` 使其抛错，断言 `STORAGE_FAILURE` 与 `release(true)`；若须改产品代码才能注入，写明原因并报协调者，不得为此改产品代码。
 - **R5 结构规则**（静态）：
   - **R5a SQL 原文**：用 `@babel/parser` 抽取 base 与 head 中每个 `*.query(` 调用的第一个实参的源文本（不归一空白，含插值表达式），按“所在方法名 + 方法内先后”排序，两侧逐字比较；base 为 20 个调用。不同即失败。PR 正文附抽取脚本与两侧输出 SHA-256。
   - **R5b 无模块级可变状态**：新文件与 `master-data.ts` 顶层只有 `import` / `export`、类型、函数声明与 `const`；不含 `let` 与可变容器（`createMasterDataStore` 内部的 `let` / `Set` 是函数内状态，不在此列）。
@@ -159,9 +159,9 @@
   - **R5d 单一实现**：在 `packages/infra/src/storage/master-data.ts` 与 `'packages/infra/src/storage/master-data-*.ts'` 范围内用 `git grep -c -F`（各文件之和），两侧相同：`function decode` 1、`function page` 1、`function flag` 1、`const numeric` 1、`INSERT INTO accounts(` 1、`UPDATE accounts SET` 1、`INSERT INTO periods(` 1、`UPDATE periods SET` 1、`INSERT INTO config_history(` 1、`FROM config_history` 2（`account` 与 `periodChange`）。
   - **R5e 依赖方向**：新文件之间单向无环，`master-data.ts` 位于顶端；PR 正文附导入图。
 - **R6 尺寸与嵌套**：见上表 R6a、R6b、R6c 与“可读性”五项。
-- **R7 打包字节**：首屏与全部 chunk ±0；用 `scripts/measure/bundle-measure.mjs --d454`，不传 `--route` / `--chunk`，写明脚本所在提交 SHA；base 为最终送审 head 的实际合并基；任何非 0 差异即停下报告。
+- **R7 打包字节**：已删除（评审 6083453880）。本项不进任何 web chunk（见“chunk 归属与首屏”），不跑 `bundle-measure.mjs`。编号保留，以免其余编号变动。
 - **R8 质量门**：
-  - **R8a 合并前**：`npm run typecheck`、lint、`npm run check:boundaries`、CI-02 预检通过；PR CI（`ci.yml`）绿。
+  - **R8a 合并前**：`npm run typecheck`、`npm run check`（`biome ci`；根 `package.json` 没有 `lint` 脚本）、`npm run check:boundaries`、CI-02 预检通过；PR CI（`ci.yml`）绿。
   - **R8b 合并后（不作合并门）**：第一次覆盖合并提交的 main Full 须绿，含 `infra-browser` 场景；失败时报协调者，按 D456 暂停后续合并。
   - **R8c 合并后项**（[S30 合并后证据](S30.md#pr-正文证据计划d595)）：Product/Design 在合并提交上用 [S30 统一量法](S30.md#s30-统一量法)（`node <保存位置>\s30-measure.cjs <合并提交> packages/infra/src/storage/master-data.ts <全部 master-data-*.ts>`）复测 `master-data.ts` 与全部 `master-data-*.ts` 的**函数长度与嵌套深度**，在已合并 PR 下评论命令、输出与合并提交完整 SHA；S30 执行状态表“合并后项”据此清空。
 
@@ -169,7 +169,7 @@
 
 - **不跑 Bench，不写“Bench 不退化”**（口径同 REFAC-26，[S30 范围与验收](S30.md#范围与验收) 第 3 行）：SQL 文本与参数逐字节相同（R4、R5a）、调用次数与先后相同（R4 直接断言 1–5），SQLite 执行计划相同；剩余差异只是构造组合对象时多几次工厂调用与展开。
 - **出现任何 SQL 差异即本任务不成立**，不以 Bench 结果补救。`bench/trade-order-preview.ts:169` 直接调用 `masterDataRepository`，导入路径与签名不变（决定 6），本任务不改 bench。
-- 不改事务边界（`createMasterDataStore` 只做决定 10 的具名化，语句与先后不变，R4b、R5c、R5f）；不进打包产物（R7）。
+- 不改事务边界（`createMasterDataStore` 只做决定 10 的具名化，语句与先后不变，R4b、R5c、R5f）；不进打包产物（见“chunk 归属与首屏”）。
 
 ## 可读性
 
@@ -252,9 +252,9 @@ node <保存位置>\s30-measure.cjs <head> packages/infra/src/storage/master-dat
 
 ## 证据要求
 
-- **不需要浏览器时段**：本项不进 web chunk；行为等价由 R3、R4 在 node 中证明；`infra-browser` 场景在 main Full 中运行，作合并后检查（R8b）。R4 与构建在本机运行，服从协调者的时段静默通知（D442 / D480）。
+- **不需要浏览器时段**：本项不进 web chunk；行为等价由 R3、R4 在 node 中证明；`infra-browser` 场景在 main Full 中运行，作合并后检查（R8b）。R4 在本机运行，服从协调者的时段静默通知（D442 / D480）。
 - **可行性**：`test/http/master-data.test.ts` 已能在临时 SQLite 上建库并跑迁移；自有方法只依赖 `Connection.query`，REFAC-21 / 25 / 26 已跑通同一记录方法；R2 的 99 个键与“只含 `query` 可构造”由设计角色在 `4d296bf` 上实测。本任务书**没有**试写 R4 驱动；“不合契约的快照”用例依赖 `config_history` 允许插入且 `json_valid` 通过的假设，构造不出时写明原因并报协调者。`account` 中 `typeof snapshot !== "string"`（`:144`）在 `snapshot TEXT … CHECK(json_valid(snapshot))` 下可能无法构造，不列为必需用例；`flag` 的失败分支受 `accounts.manual_allowed` 的 `CHECK`（`002-master-data.sql:28`）约束，同样不列为必需。
-- PR 正文附：R1 的 `git diff --name-only` 原文；R2 输出；R3 汇总行；R4 驱动（base64 或两种 SHA-256）、用例清单、比较结果与直接断言结果；R4b 驱动、事件记录与断言 1–5 结果；R5a–R5f；“可读性”五项（含 `s30-measure.cjs` 两条运行命令与 base、head 两份完整输出；脚本原文不贴，链接 [S30 统一量法](S30.md#s30-统一量法)）；R7 完整输出与退出码。R8b、R8c 在合并后补到 PR 评论。
+- PR 正文附：R1 的 `git diff --name-only` 原文；R2 输出；R3 汇总行；R4 驱动（base64 或两种 SHA-256）、用例清单、比较结果与直接断言结果；R4b 驱动、事件记录与断言 1–4 结果（必交），断言 5 附结果或写明未做的原因；R5a–R5f；“可读性”五项（含 `s30-measure.cjs` 两条运行命令与 base、head 两份完整输出；脚本原文不贴，链接 [S30 统一量法](S30.md#s30-统一量法)）。R8b、R8c 在合并后补到 PR 评论。
 
 ## 设计自查
 

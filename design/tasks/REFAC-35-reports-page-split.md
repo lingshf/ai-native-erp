@@ -157,7 +157,7 @@ base 数字：**设计角色未在 `4d296bf` 上实测**（取证会在共享仓
 - 取证所需的观测点和新增测试文件：无。R4 驱动不提交。
 - 受影响的 e2e 断言（S13 回顾行动 1）：无，枚举命令见“现状·测试”。**须随本任务改**：无。
 - 受影响的文档引用（D460）：
-  - `git grep -n -F "web/src/Reports.tsx" 4d296bf -- docs README.md` 无输出（`S30.md:155`）；
+  - `git grep -n -F "web/src/Reports.tsx" 4d296bf -- docs README.md` 无输出（`S30.md:181`）；
   - `git grep -n -E "(^|[^A-Za-z])Reports\.tsx" 4d296bf -- design docs` 命中 36 行，分布在 `design/decisions.md`、`design/tasks/` 下的历史任务书与计划，以及 `docs/demo/v0.11.0`、`v0.19.0`、`v0.20.0`、`v0.21.0` 的日志中，都是当时提交上的事实记录。文件名不变，不改；
   - `pages/ledger.css:46` 的注释按决定 7 保持成立。
 - 与 S30 其余项不相交（`S30.md:49–52`）：
@@ -165,7 +165,7 @@ base 数字：**设计角色未在 `4d296bf` 上实测**（取证会在共享仓
   - REFAC-36 只改 `packages/infra/src/storage/master-data.ts` 与同目录新增的 `master-data-*.ts`；
   - REFAC-37 只改 `packages/core/src/domain/dimensions.ts` 与同目录新增的 `dimension-*.ts`。
 
-  四者没有共享文件。本任务只跑 `web` 项目，REFAC-36 跑 `infra` / `infra-isolated`，REFAC-37 跑 `core`（`S30.md:188`）。本任务是 S30 中仅有的页面拆分（`S30.md:185`）。
+  四者没有共享文件。本任务只跑 `web` 项目，REFAC-36 跑 `infra` / `infra-isolated`，REFAC-37 跑 `core`（`S30.md:214`）。本任务是 S30 中仅有的页面拆分（`S30.md:211`）。
 
 ## 验收
 
@@ -187,7 +187,7 @@ node -e "const fs=require('node:fs'),path=require('node:path');const fl=[];const
 ### 两侧都须成立的不变量
 
 - **R1 范围**：
-  - `git diff --name-only <base>...<head>` 只含 `packages/web/src/Reports.tsx` 与 `packages/web/src/reports/` 下的**新**文件（`S30.md:163`）；
+  - `git diff --name-only <base>...<head>` 只含 `packages/web/src/Reports.tsx` 与 `packages/web/src/reports/` 下的**新**文件（`S30.md:189`）；
   - 决定 9 所列文件的 diff 为空；
   - 不加迁移。
 - **R2 导出不变**：
@@ -290,15 +290,15 @@ node -e "const fs=require('node:fs'),path=require('node:path');const fl=[];const
   | 项 | manifest 键 | 上限 | 依据 |
   | --- | --- | --- | --- |
   | 首屏 | — | **±0**（D454，`--d454`） | 改动文件都不在首屏闭包中（见“chunk 归属”表） |
-  | 报表页路由 | `src/Reports.tsx` | ≤ **+800 B** | 估定，见下 |
+  | 报表页路由 | `src/Reports.tsx` | ≤ **+800 B**（硬上限） | 估定，见下 |
   | 报表页入口 chunk | `src/Reports.tsx` | ≤ **+800 B** | 同上 |
   | CSS | `assets/ledger.css` 等全部 | ±0 | 不改 CSS |
   | 共用 chunk 与其他路由 | 全部 | ±0 | 只导入、不改 |
 
   命令参数：`--route src/Reports.tsx=+800 --chunk src/Reports.tsx=+800 --d454`。
   - 出现 base 没有的新 chunk 时，即停下报告；
-  - 超出上限时先停下，报设计角色与协调者，不得自行放宽；
-  - 上限没有做试改构建，是估计值：REFAC-28（263 行）实测 +450 B（gzip，`REFAC-33` R7 引用）；REFAC-33（753 行）估为 +900 B。本任务要拆的函数合计 520 行，故估为 +800 B。**该上限请 TL 确认**（见“开放问题”）。
+  - 超出上限时先停下，报设计角色与协调者，不得自行放宽，也不得为压字节改变拆分结构或行为；
+  - 上限没有做试改构建，是估计值：REFAC-28（263 行）实测 +450 B（gzip，`REFAC-33` R7 引用）；REFAC-33（753 行）估为 +900 B。本任务要拆的函数合计 520 行，故估为 +800 B。它按硬上限执行（[S30 共用](S30.md#三项-refac-共用可读性与嵌套复验)）：开发先在 base 上实测字节，再测 head；超出按上两条处理，是否调整由 TL 决定。
 - **R8 质量门**：
   - **R8a 合并前**：`npm run typecheck`（`tsc --noEmit -p tsconfig.json`）、`npm run check`（`biome ci`）、CI-02 预检通过；PR CI（`ci.yml`）绿。
   - **R8b 合并后检查（不作合并门）**：合并后第一次覆盖该合并提交的 main Full 须绿；失败时报协调者，按 D456 暂停后续合并。
@@ -394,18 +394,18 @@ node <保存位置>\s30-measure.cjs <head> packages/web/src/Reports.tsx @(git di
 
 ## 合并后项
 
-- Product/Design 在合并提交上用 [S30 统一量法](S30.md#s30-统一量法) 的 `s30-measure.cjs`（参数为合并提交与 `Reports.tsx`、`reports/` 下各文件） **复测函数长度与嵌套深度**，在已合并 PR 下评论：命令、完整输出、合并提交完整 SHA（`S30.md:66`、`:173`）。无超过 80 行、无超过 3 层的函数后，S30 执行状态表 REFAC-35 行的“合并后项”才清空（`S30.md:142`）。
+- Product/Design 在合并提交上用 [S30 统一量法](S30.md#s30-统一量法) 的 `s30-measure.cjs`（参数为合并提交与 `Reports.tsx`、`reports/` 下各文件） **复测函数长度与嵌套深度**，在已合并 PR 下评论：命令、完整输出、合并提交完整 SHA（`S30.md:66`、`:199`）。无超过 80 行、无超过 3 层的函数后，S30 执行状态表 REFAC-35 行的“合并后项”才清空（`S30.md:168`）。
 
 ## 开放问题（请 TL 确认）
 
-1. R7 的 `+800 B` 是估计值，未做试改构建；base 字节也未在 `4d296bf` 上实测（只有 `3ae4848` 的历史数字）。是否接受该上限，或要求设计角色先补测 base？
+1. （已定，评审 6083453880）R7 的 `+800 B` 由估计确定，未做试改构建，按硬上限执行：超出即停下报告，不自行放宽。base 字节未在 `4d296bf` 上实测（只有 `3ae4848` 的历史数字），由开发先在 base 上测。
 2. 嵌套量法与路线图边界例的出入：抽出 `map` 回调后，按 S30 统一量法的口径外层为 2 层，`roadmap.md:91` 写“外层为 3 层”。本任务按脚本结果判定（两者都 ≤ 3，不影响通过与否）；是否需要由 Knowledge Lead 另行澄清路线图原文？
 3. 阶段判定去重（决定 4）把 `:326` 的 `.find` 改为类型守卫，是 R5c 的显式例外，由 R4 直接断言 2、6 与 R3 证明等价。若 TL 认为这超出“不改行为”的稳妥范围，可改为“只抽取 `:123`、`:211` 两处”，R6b 第 3 项相应改为 2。
 
 ## 设计自查
 
 - [x] 本 Sprint 只有这一项页面拆分；冲突域与 KDOC-14、REFAC-36、REFAC-37 逐文件不相交。
-- [x] R6a、R6b 有 base 实测值；R7 的 base 字节未实测，已列为开放问题 1，并要求开发先测。
+- [x] R6a、R6b 有 base 实测值；R7 的 base 字节未实测，要求开发先测；+800 B 按硬上限执行（开放问题 1，已定）。
 - [x] 默认期间与补参、下钻与阶段切换、切换期间、明细与返回、加载更多与失败、URL 非法与重新加载、未配置、409、空期间与路由缺失、`ReportIndex` 重定向、焦点都有直接断言；预期值的出处逐条注明，未用驱动在 base 上实测（已写明，开发先在 base 上跑）。
 - [x] 可读性五项都有要求、改前数据（量法链接 S30 统一量法并附命令）与改后须列；新文件各 ≤ 150 行，`Reports.tsx` 拆后 ≤ 150 行；无用户可见变化。
 - [x] 合并后项写明由 Product/Design 在合并提交上复测函数长度与嵌套深度。
