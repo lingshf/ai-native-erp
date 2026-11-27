@@ -875,13 +875,15 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 ## S30：KDOC-14 + ② 存量拆分三泳道（D608）
 
-计划、选题依据、排序、泳道与跨文件验收见 [S30.md](S30.md)（进行中，计划 #464 合并为 `4d296bf`）。范围：KDOC-14（引用范围按 D611 改为 `:52–58`）、② 存量拆分 REFAC-35（`Reports.tsx`）、REFAC-36（`masterDataRepository`）、REFAC-37（`core/src/domain/dimensions.ts`）（D609，任务书由 Product/Design 先写，合并后派发），并落实 S29 回顾行动 1–3；无迁移；开发名额占 3。多订单合并开票不进本 Sprint，是否要做须用户决定（D610）。BUG-05 是否打版本、v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 未获用户授权，P12 待用户决策，均不纳入承诺；本 Sprint 不承诺版本号，不做发布候选（D608）。
+计划、选题依据、排序、泳道与跨文件验收见 [S30.md](S30.md)（已结束，计划 #464 合并为 `4d296bf`）。范围：KDOC-14（引用范围按 D611 改为 `:52–58`）、② 存量拆分 REFAC-35（`Reports.tsx`）、REFAC-36（`masterDataRepository`）、REFAC-37（`core/src/domain/dimensions.ts`）（D609，任务书由 Product/Design 先写，合并后派发），并落实 S29 回顾行动 1–3；无迁移；开发名额占 3。多订单合并开票不进本 Sprint，是否要做须用户决定（D610）。BUG-05 是否打版本、v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 未获用户授权，P12 待用户决策，均不纳入承诺；本 Sprint 不承诺版本号，不做发布候选（D608）。
+
+- **Sprint 评审与回顾**：[S30 评审](../reviews/S30-review.md)（accepted，无计划偏差；KDOC-14、REFAC-35..37 全部 done，合并后复测都 PASS；独立 QA 实跑未在 PR 留证，记为证据缺口；打回 6 次，其中 3 次仅待原始证据；D608–D616，收尾补记 D616；超过 80 行的函数 52 → 45；无迁移；BUG-05 是否打版本待用户授权，D610 待用户决定）、[S30 回顾](../reviews/S30-retro.md)（行动 1 原始证据随送审固定，行动 2 等价证据先列分支清单，行动 3 QA 结论留在 PR；S29 行动 1、2 达成，行动 3 不适用）。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [REFAC-35](REFAC-35-reports-page-split.md) | 拆分报表页 `Reports.tsx`（不改行为，D612） | 重构（页面） | P2 | 任务书合并后派发 | `packages/web/src/Reports.tsx`、新目录 `reports/` | 不加 | 不需要 | todo | — |
-| [REFAC-36](REFAC-36-master-data-repository-split.md) | 拆分主数据仓储 `masterDataRepository`（不改行为，SQL 逐字节不变，D613） | 重构（基础设施） | P2 | 任务书合并后派发 | `packages/infra/src/storage/master-data.ts`、同目录新增 `master-data-*.ts` | 不加 | 不需要 | todo | — |
-| [REFAC-37](REFAC-37-dimension-rules-split.md) | 拆分维度规则 `compileDimensionRules` / `validateDimensionConfig`（不改行为与错误先后，D614） | 重构（core 领域纯函数） | P2 | 任务书合并后派发 | `packages/core/src/domain/dimensions.ts`、同目录新增 `dimension-*.ts` | 不加 | 不需要 | todo | — |
+| [REFAC-35](REFAC-35-reports-page-split.md) | 拆分报表页 `Reports.tsx`（不改行为，D612） | 重构（页面） | P2 | 任务书合并后派发 | `packages/web/src/Reports.tsx`、新目录 `reports/` | 不加 | 不需要 | done（合并后复测 PASS，[评论](https://github.com/lingshf/ai-native-erp/pull/469#issuecomment-7210329038)） | [#469](https://github.com/lingshf/ai-native-erp/pull/469) `5ce76d5` |
+| [REFAC-36](REFAC-36-master-data-repository-split.md) | 拆分主数据仓储 `masterDataRepository`（不改行为，SQL 逐字节不变，D613） | 重构（基础设施） | P2 | 任务书合并后派发 | `packages/infra/src/storage/master-data.ts`、同目录新增 `master-data-*.ts` | 不加 | 不需要 | done（合并后复测 PASS，[评论](https://github.com/lingshf/ai-native-erp/pull/467#issuecomment-7210239210)） | [#467](https://github.com/lingshf/ai-native-erp/pull/467) `33809e1` |
+| [REFAC-37](REFAC-37-dimension-rules-split.md) | 拆分维度规则 `compileDimensionRules` / `validateDimensionConfig`（不改行为与错误先后，D614） | 重构（core 领域纯函数） | P2 | 任务书合并后派发 | `packages/core/src/domain/dimensions.ts`、同目录新增 `dimension-*.ts` | 不加 | 不需要 | done（合并后复测 PASS，[评论](https://github.com/lingshf/ai-native-erp/pull/468#issuecomment-7210284405)） | [#468](https://github.com/lingshf/ai-native-erp/pull/468) `2fb0096` |
 
 ## 知识与文档待办（KDOC，D556）
 
