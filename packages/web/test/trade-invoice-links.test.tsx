@@ -165,6 +165,11 @@ describe("TINV-07 invoice link: opening, closing and values that open nothing", 
     ["a g", `${documentId.slice(0, -1)}g`],
     ["with surrounding blanks", `%20${documentId}%20`],
     ["breaking a CSS selector", "x%22%5D%5B"],
+    ["36 dashes", "-".repeat(36)],
+    ["all zero", "00000000-0000-0000-0000-000000000000"],
+    ["version not 4", "00000000-0000-1000-8000-000000000001"],
+    ["variant not 8/9/a/b", "00000000-0000-4000-c000-000000000001"],
+    ["upper case", "0000000A-000B-4000-8000-00000000000C"],
   ])(
     "P6: a malformed invoice (%s) shows not found without a request; Close focuses the list",
     async (_, id) => {

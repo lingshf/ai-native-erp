@@ -26,8 +26,8 @@ export const invoiceDetailKey = (company: string, documentId: string) =>
 
 const focusable =
   "button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled),[tabindex='0']";
-// Same shape check as the server (application/trade-documents.ts): anything else cannot exist.
-const documentIdPattern = /^[0-9a-f-]{36}$/;
+// Same lowercase UUIDv4 rule as packages/infra/src/http/trade-document-http.ts: others cannot exist.
+const documentIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 
 // TINV-06: read-only modal in the same shape as Journals.tsx `Modal` (showModal, focus on open,
 // Esc / cancel closes, Tab cycles inside), written here so the invoice page does not import
