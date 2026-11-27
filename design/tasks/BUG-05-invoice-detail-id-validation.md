@@ -1,6 +1,6 @@
 # BUG-05 发票详情前端编号校验与服务端同为小写 UUIDv4
 
-- Sprint：S28（[计划](S28.md)，D602）　依赖：无（S28 计划合并即可开工）　建议分支：`bug-05-invoice-id-shape`
+- Sprint：S28（[计划](S28.md)，D602）　依赖：本任务书评审通过并合并后才派发开发、开工（见 [S28](S28.md#范围与验收)）　建议分支：`bug-05-invoice-id-shape`
 - 冲突域（逐个列文件）：
   - 前端：`packages/web/src/TradeInvoiceDetail.tsx`（只改 :29 注释与 :30 正则）；
   - 测试：`packages/web/test/trade-invoice-links.test.tsx`（只在 P6 的 `it.each` 表 :162-168 增加五行）；
@@ -71,7 +71,7 @@
 | 4 | P6 原有五行、P7、P8 在 head 上仍通过，用例体不改 | 单元测试 | 同上 | `trade-invoice-links.test.tsx:162-221` |
 | 5 | 服务端文件与其他测试文件零改动 | `git diff --stat` | 不涉及平台 | PR diff |
 | 6 | PR 的 CI 检查在精确 head 上全绿 | CI | Linux CI（PR） | run 链接 |
-| 7 | 真实浏览器中 4 种先红后绿形状与 1 个合法但不存在的编号表现符合“入口参数与异常” | QA 手工取证 | 真实 Chrome，1440 视口，中文，默认主题 | QA 记录（会话 files/） |
+| 7 | 真实浏览器中 5 种非法形状（4 种先红后绿形状与 `upper case`）都显示“不存在”、无“重试”、零次详情请求；1 个合法但不存在的编号仍发一次详情请求，返回 404 并显示“不存在” | QA 手工取证 | 真实 Chrome，1440 视口，中文，默认主题 | QA 记录（会话 files/） |
 
 ## 性能考虑
 
@@ -93,7 +93,7 @@
 
 ## 设计阶段质量项
 
-- **UI**：applicable。沿用现有“不存在”消息条（:121-136），不新增组件、文案或状态；成功反馈不变；QA 在真实 Chrome 1440、中文、默认主题下核对四种形状与一个 404（验收 7）；键盘与焦点沿用 P6 的“关闭后焦点回列表”断言；红绿主题与教学模式不受影响（不改样式与开关）。
+- **UI**：applicable。沿用现有“不存在”消息条（:121-136），不新增组件、文案或状态；成功反馈不变；QA 在真实 Chrome 1440、中文、默认主题下核对 5 种非法形状（含 `upper case`：“不存在”、无“重试”、零次详情请求）与一个合法但不存在的编号（一次详情请求、404）（验收 7）；键盘与焦点沿用 P6 的“关闭后焦点回列表”断言；红绿主题与教学模式不受影响（不改样式与开关）。
 - **功能边界**：applicable。前端只做形状预判，权威校验仍在服务端；两处规则同文、注释互指；失败边界不变（非 404 错误仍显示“重试”）。
 - **性能计划**：not_applicable——只替换一个正则，少一次请求；不在 bundle-measure 预算覆盖的首屏路径上（chunk 归属已在 base 上实测，见“试跑记录”第 3 条）。
 - **类型**：applicable。原生 TS，不新增类型。
@@ -109,7 +109,7 @@ PR 正文证据计划（D595）：
 | 2、3、4 head | 测试输出 | 同一命令在 head 上：全部通过；附 vitest 汇总行与耗时原文 | 本机 | Reviewer、QA |
 | 6 | CI | PR 检查在精确 head 上全绿，附 run 链接与 head SHA；失败 run 只作诊断，不作验收证据 | CI 成功 run | Reviewer |
 | chunk 归属 | 构建产物 | 在 base 上 `npm run build` 后，在 `packages/web/dist/assets/*.js` 中查找 :30 的正则字面量，按上下文确认 :30 那一处只在发票页 chunk（`index` 中另有契约游标 schema 含相同片段，不是 :30），并在 `index-*.js` 中确认该 chunk 由 `import()` 动态加载；贴命令与输出（本仓库构建不生成 `dist/.vite/manifest.json`，见试跑记录） | 本机 | Reviewer |
-| 7 | QA 记录 | 在精确 head 上手工打开四种形状、`upper case` 与一个合法但不存在的编号，记录网络面板与界面；浏览器时段按 D442 | QA 会话 files/；PR 评论 | Reviewer |
+| 7 | QA 记录 | 在精确 head 上手工打开 5 种非法形状（4 种先红后绿形状与 `upper case`）与一个合法但不存在的编号，记录网络面板与界面：非法形状均为“不存在”、无“重试”、零次详情请求；合法但不存在的编号为一次详情请求、404；浏览器时段按 D442 | QA 会话 files/；PR 评论 | Reviewer |
 | 全量 | 测试输出 | `npx vitest run --project web` 汇总行原文；有失败按模板串行重跑 | 本机 | Reviewer |
 
 - 满载耗时：只加 `it.each` 行，用例体沿用；附目标文件在默认超时下的 vitest 汇总行（base 与 head 两侧）；单个用例 > 2 s 写原因；不加大 `timeout`、不加重试。
