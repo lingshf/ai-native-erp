@@ -5,7 +5,7 @@
 
 ## 做得好
 
-- **计划四项一个 Sprint 全部记为 done，没有砍项，无偏差**（观察，[S29 评审 §2.1](S29-review.md#21-d605-目标)）。S28 留下的 BUG-05 跨文件偏差（D604）由 KDOC-13 消除。
+- **计划四项一个 Sprint 全部记为 done，没有砍项，无计划偏差**（观察，[S29 评审 §2.1](S29-review.md#21-d605-目标)）。S28 留下的 BUG-05 跨文件偏差（D604）由 KDOC-13 消除。
 - **不可达的场景没有被写成 PASS**（观察，D606）：KGAP-16 没有为了凑证据去加输入路径或用暂存表注入，而是改验收、按现行行为改写文档；场景 03 在矩阵中记 not_applicable，没有格升 covered。
 - **合并后复核都留在已合并 PR 下**（观察）：KGAP-16 的 Developer 复核（[#461 评论 7209193875](https://github.com/lingshf/ai-native-erp/pull/461#issuecomment-7209193875)）、KDOC-12（[#459 评论 7209186961](https://github.com/lingshf/ai-native-erp/pull/459#issuecomment-7209186961)）、KDOC-13（[#460 评论 7209187226](https://github.com/lingshf/ai-native-erp/pull/460#issuecomment-7209187226)）都带完整 SHA 与结论，结论都是 PASS。S28 中 KGAP-14 只有会话记录的情况本 Sprint 没有再出现。
 - **“合并后项”一列起了作用**（观察）：三项都是在合并后项清空之后才在本收尾 PR 记 done；KDOC-13 合并后核对时发现的引用范围问题登记为 KDOC-14，没有混进 done 判定。

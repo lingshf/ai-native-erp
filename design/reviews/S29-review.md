@@ -7,7 +7,7 @@
 
 ## 1. 结论
 
-**S29 accepted，无偏差。** 计划的四项（KGAP-16、KGAP-15 复查节奏、KDOC-12、KDOC-13）在本收尾 PR 中按[执行状态](../tasks/S29.md#执行状态)记为 done，“合并后项”一列已全部清空（逐项证据见 §2.1）。没有触发 D605 的砍项顺序。按 D605，本 Sprint 不承诺版本号，不做发布候选；须用户授权的事项都没有执行。
+**S29 accepted，无计划偏差；有 1 项已知的非阻塞引用缺口转 KDOC-14。** 计划的四项（KGAP-16、KGAP-15 复查节奏、KDOC-12、KDOC-13）在本收尾 PR 中按[执行状态](../tasks/S29.md#执行状态)记为 done，“合并后项”一列已全部清空（逐项证据见 §2.1）。其中 KDOC-13 的清空依据是 Product/Design 合并后复核把 `:58` 引用缺口判为非阻塞、并经 TL 指派移交 KDOC-14，不是所有行号引用都已准确。KGAP-16 按实际验收核对：比较范围限 AP/AR 控制科目，实际改钉只有 `docs/README.md:115`、`:132`（见 [S29 范围与验收](../tasks/S29.md#范围与验收)）。没有触发 D605 的砍项顺序。按 D605，本 Sprint 不承诺版本号，不做发布候选；须用户授权的事项都没有执行。
 
 - **用户可见变化 0 项**：`git diff --name-only 9631098 a2ba5f6` 列出 9 个文件，都在 `design/` 与 `docs/` 下；`git diff --stat 9631098 a2ba5f6 -- packages` 输出为空。
 - **迁移 0 个**：`packages/` 无改动，最新迁移仍为 020（`packages/infra/src/storage/migrations.ts:106`），下一个迁移号为 021。
@@ -28,7 +28,7 @@
 | 目标 / 项 | 判定 | 证据（PR / SHA / 复核） |
 | --- | --- | --- |
 | 1. KGAP-16 定范围并完成（D606） | accepted | **改写**：[#461](https://github.com/lingshf/ai-native-erp/pull/461) `9a27329`，改 `docs/user/backup-and-legacy.md:82`、`:84` 与 `docs/README.md` 的口径 5 句。打回 1 轮（[6083136274](https://github.com/lingshf/ai-native-erp/pull/461#pullrequestreview-6083136274)）后批准（[6083145753](https://github.com/lingshf/ai-native-erp/pull/461#pullrequestreview-6083145753)），QA N/A（只改文档，未改导入行为）。<br>**Developer 复核**：送审时两轮（[评论 7209177016](https://github.com/lingshf/ai-native-erp/pull/461#issuecomment-7209177016)、[7209182374](https://github.com/lingshf/ai-native-erp/pull/461#issuecomment-7209182374)）；合并后在 `9a27329af44f07fcb2e3d2660b3a19695bf442dc` 上复核 PASS，`:82` 5 条、`:84` 4 条断言逐条一致（[评论 7209193875](https://github.com/lingshf/ai-native-erp/pull/461#issuecomment-7209193875)，Developer 会话 `kgap-16-postmerge.md`）。<br>**矩阵改钉**：[#462](https://github.com/lingshf/ai-native-erp/pull/462) `a2ba5f6`，打回 1 轮（[6083163191](https://github.com/lingshf/ai-native-erp/pull/462#pullrequestreview-6083163191)）后批准（[6083169341](https://github.com/lingshf/ai-native-erp/pull/462#pullrequestreview-6083169341)）。`docs/README.md:115` 与 `:132` 的 backup-and-legacy 现行钉点改为 `9a27329…`，`5a45630`（#443）归为历史；`:73` 保留 #420 当批的历史钉点（评审认可，不重钉）；`:90` 记 not_applicable 并指向 `:115`。<br>**场景 03**：`docs/README.md:122` 记 not_applicable（D606），不计 PASS；没有格升级 |
-| 2. KDOC-13（BUG-05 跨文件项） | accepted | [#460](https://github.com/lingshf/ai-native-erp/pull/460) `e5af3ed`，直接批准（[6083136244](https://github.com/lingshf/ai-native-erp/pull/460#pullrequestreview-6083136244)），QA N/A。`docs/flows/invoice-detail-flow.md:35` 改为前后端同一小写 UUIDv4 规则，引用钉 `34ec97c`。Product/Design 合并后核对 PASS（[评论 7209187226](https://github.com/lingshf/ai-native-erp/pull/460#issuecomment-7209187226)），附一条非阻塞说明，已登记为 KDOC-14（§4）。BUG-05 的跨文件验收（S28 D604 偏差）由此满足 |
+| 2. KDOC-13（BUG-05 跨文件项） | accepted | [#460](https://github.com/lingshf/ai-native-erp/pull/460) `e5af3ed`，直接批准（[6083136244](https://github.com/lingshf/ai-native-erp/pull/460#pullrequestreview-6083136244)），QA N/A。`docs/flows/invoice-detail-flow.md:35` 改为前后端同一小写 UUIDv4 规则，引用钉 `34ec97c`。Product/Design 合并后核对 PASS（[评论 7209187226](https://github.com/lingshf/ai-native-erp/pull/460#issuecomment-7209187226)），规则措辞与 `34ec97c` 钉点满足验收；引用 `:51–57` 漏了实际阻止请求的 `:58`，PO 判为非阻塞，移交 KDOC-14（§4），所以本项 accepted 不包括这处行号引用。BUG-05 的跨文件验收（S28 D604 偏差）中规则说法一句由此满足 |
 | 2. KDOC-12 | accepted | [#459](https://github.com/lingshf/ai-native-erp/pull/459) `af50e47`，直接批准（[6083136396](https://github.com/lingshf/ai-native-erp/pull/459#pullrequestreview-6083136396)），QA N/A。`docs/user/trade.md:162` 的引语与 `packages/web/src/ui/trade-order-labels.ts:122` 首句逐字一致。Product/Design 合并后核对 PASS（[评论 7209186961](https://github.com/lingshf/ai-native-erp/pull/459#issuecomment-7209186961)） |
 | 3. KGAP-15 复查节奏（D607） | accepted | 计划 [#458](https://github.com/lingshf/ai-native-erp/pull/458) `67a707d` 已在 KGAP-15 行登记。S29 内 `docs/ai-assistant.md` 没有改动（`git diff --stat 9631098 a2ba5f6 -- docs/ai-assistant.md` 输出为空），改动触发没有发生，所以本 Sprint 不复查。下次在 S31 计划时复查 |
 | 4. S28 回顾行动 1–3 | 见回顾 | 行动 1 **未达成**：#461 因范围措辞被打回；行动 2 不适用（本 Sprint 没有 QA 场景）；行动 3 **达成**：没有“合并后项”未清空就记 done 的任务。详见 [S29 回顾](S29-retro.md#s28-回顾行动项检查) |
@@ -66,13 +66,13 @@ S29 期间的决定（原文见 [S29 决定表](../tasks/S29.md#s29-期间决定
 - D606：KGAP-16 改验收，不做输入路径。失效条件（任一来源开始支持控制科目分录带伙伴维度）在本 Sprint 内没有出现：`git diff --stat 9631098 a2ba5f6 -- packages` 输出为空。
 - D607：KGAP-15 的复查节奏。S29 内没有触发。
 
-**偏差**：无。S28 记下的 BUG-05 跨文件偏差（D604）已由 KDOC-13 消除；BUG 表 BUG-05 行在本收尾 PR 中去掉“待 KL”的注记。
+**偏差**：计划层面无。“无偏差”不包括已知的 `invoice-detail-flow.md:35` 行号引用缺口（`:51–57` 漏 `:58`）：它不影响 KDOC-13 的规则措辞与钉点验收，PO 判为非阻塞，移交 KDOC-14（§4）。S28 记下的 BUG-05 跨文件偏差（D604）的规则说法已由 KDOC-13 消除；BUG 表 BUG-05 行在本收尾 PR 中去掉“待 KL”的注记。
 
 **缺陷**：本 Sprint 没有发现新的产品缺陷，BUG-06 未使用。
 
 ## 4. 未完成与遗留
 
-- **KDOC-14**（P3，todo，Knowledge Lead，下一 Sprint 候选，TL 指派）：`docs/flows/invoice-detail-flow.md:35` 的引用 `TradeInvoiceDetail.tsx:51–57` 应扩为 `:51–58`。在 `34ec97c` 上，`:58` 的 `enabled: wellFormed` 才是实际不发请求的那一行（`git show 34ec97c:packages/web/src/TradeInvoiceDetail.tsx` 第 58 行）。#460 的批准评审写的是“`:57` 的 `enabled: wellFormed`”，与源码行号差一行，以源码为准。
+- **KDOC-14**（P3，todo，Knowledge Lead，下一 Sprint 候选，TL 指派）：`docs/flows/invoice-detail-flow.md:35` 的引用 `TradeInvoiceDetail.tsx:51–57` 应扩为 `:51–58`。在 `34ec97c` 上，`:58` 的 `enabled: wellFormed` 才是实际不发请求的那一行（`git show 34ec97c:packages/web/src/TradeInvoiceDetail.tsx` 第 58 行）。#460 的批准评审写的是“`:57` 的 `enabled: wellFormed`”，与源码行号差一行，以源码为准。PO 在合并后复核中判为非阻塞，KDOC-13 记 done 的依据是这一移交，而非引用已准确。
 - **KGAP-15 / KGAP-04 缺口**：仍开放。按 D607，下次在 S31 计划时复查，或在 `docs/ai-assistant.md` §3、§7 有改动时提前复查。
 - **BUG-05 是否打版本**：**待用户授权**。没有打 tag，也没有发布任何版本。
 - **v0.22.0 tag 与 Release**：待用户授权。RC2 [#401](https://github.com/lingshf/ai-native-erp/pull/401) 已备好、未发布。
