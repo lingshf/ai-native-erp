@@ -60,7 +60,7 @@ REFAC-37 任务书按 REFAC-30 的方法列了用例类型，没有要求先枚�
 
 **发生了什么（观察）**
 
-S30 证据计划把“不改行为”的核对人写为 Reviewer、QA（`S30.md` 证据计划表）。三项 REFAC 的批准评审都写“QA 未独立执行”或“独立 QA 结论另报”，但截至收尾核对时点，#467–#469 的 PR 评论中没有独立 QA 结论（[S30 评审 §3](S30-review.md#3-补充裁定与偏差)）。
+S30 证据计划把“不改行为”的核对人写为 Reviewer、QA（`S30.md` 证据计划表）。三项 REFAC 的批准评审都写“QA 未独立执行”或“独立 QA 结论另报”，但收尾 PR 首次送审时，#467–#469 的 PR 评论中还没有独立 QA 结论。QA 当时已实跑，TL 裁定补交后，结论事后补发到 PR（[#467](https://github.com/lingshf/ai-native-erp/pull/467#issuecomment-7210430552)、[#468](https://github.com/lingshf/ai-native-erp/pull/468#issuecomment-7210430786)、[#469](https://github.com/lingshf/ai-native-erp/pull/469#issuecomment-7210431049)，都是 PASS；[S30 评审 §3](S30-review.md#3-补充裁定与偏差)）。
 
 **根因（推断）**
 
@@ -94,7 +94,6 @@ S29 行动 1、2 已达成，作为写计划与状态同步的固定做法继续
 
 S31 的排序由单独的计划 PR 提出（本收尾合并后再开），本文不排序。候选与待决事项：
 
-- **REFAC 独立 QA 实跑**：证据缺口，补交或接受由 TL 决定；
 - **② 存量**：`fnlen.cjs` 计超过 80 行的函数仍有 45 个，按价值与冲突域再选；legacy 相邻函数仍受 M2-05 约束；
 - **KGAP-15**：缺口仍开放；按 D607 在 S31 计划时复查。
 

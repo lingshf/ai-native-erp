@@ -7,7 +7,7 @@
 
 ## 1. 结论
 
-**S30 accepted，无计划偏差；有 1 项证据缺口：三项 REFAC 的独立 QA 实跑没有在 PR 上留证（§3）。** 计划的四项（KDOC-14、REFAC-35、REFAC-36、REFAC-37）在本收尾 PR 中按[执行状态](../tasks/S30.md#执行状态)记为 done，“合并后项”一列已全部清空，依据都是 Product/Design 在合并提交上的核对评论，结论都是 PASS（§2.1）。没有触发 D608 的砍项规则。按 D608，本 Sprint 不承诺版本号，不做发布候选；须用户授权的事项都没有执行。
+**S30 accepted，无计划偏差。三项 REFAC 的独立 QA 当时已实跑，结论事后补发到 PR，都是 PASS（§3）。** 计划的四项（KDOC-14、REFAC-35、REFAC-36、REFAC-37）在本收尾 PR 中按[执行状态](../tasks/S30.md#执行状态)记为 done，“合并后项”一列已全部清空，依据都是 Product/Design 在合并提交上的核对评论，结论都是 PASS（§2.1）。没有触发 D608 的砍项规则。按 D608，本 Sprint 不承诺版本号，不做发布候选；须用户授权的事项都没有执行。
 
 - **用户可见变化 0 项**：三项 REFAC 都按任务书证明不改行为（两侧原始记录逐字节相同，§2.2）；KDOC-14 只改文档行号引用。REFAC-35 的路由 chunk 与入口 chunk 各 +385 B（gzip），在 +800 B 硬上限内（评审 [6083628459](https://github.com/lingshf/ai-native-erp/pull/469#pullrequestreview-6083628459)）。
 - **迁移 0 个**：最新迁移仍为 020（`packages/infra/src/storage/migrations.ts:106`），下一个迁移号为 021。
@@ -41,13 +41,13 @@
 
 评审都以 COMMENTED 状态提交，结论按正文的 `VERDICT:` 行计，`CHANGES_REQUESTED` 记为打回。“打回点”一栏只写主要原因，分类口径见[回顾](S30-retro.md#打回分类)。
 
-| PR | 合并 / 轮次 | main Full | QA 行（批准评审原文） | 打回点 |
+| PR | 合并 / 轮次 | main Full | QA 行（批准评审原文；事后补发的结论见 §3） | 打回点 |
 | --- | --- | --- | --- | --- |
 | S30 计划 [#464](https://github.com/lingshf/ai-native-erp/pull/464) | `4d296bf`；1 轮（[6083310668](https://github.com/lingshf/ai-native-erp/pull/464#pullrequestreview-6083310668)），批准 [6083335952](https://github.com/lingshf/ai-native-erp/pull/464#pullrequestreview-6083335952) | [绿](https://github.com/lingshf/ai-native-erp/actions/runs/45937703498) | N/A（仅计划文档） | 验收与证据计划：<br>• 验收没有可读性要求，嵌套 ≤ 3 层没有可复验的证据；<br>• “Bench 不退化（按 REFAC-26）”与 REFAC-26 不跑 Bench 矛盾；<br>• 砍项规则没有区分单项任务书超期与整体容量不足 |
 | KDOC-14 [#465](https://github.com/lingshf/ai-native-erp/pull/465) | `ee90deb`；1 轮（[6083350624](https://github.com/lingshf/ai-native-erp/pull/465#pullrequestreview-6083350624)），批准 [6083356182](https://github.com/lingshf/ai-native-erp/pull/465#pullrequestreview-6083356182) | [绿](https://github.com/lingshf/ai-native-erp/actions/runs/45937917742) | N/A（仅修正文档引用） | 仅待证据：内容核对通过，正文缺证据计划要求的两条 `git grep`（`待\|pending`、矩阵引用）及空结果；同一 head 补正文后批准 |
 | 任务书 [#466](https://github.com/lingshf/ai-native-erp/pull/466) | `2a65710`；1 轮（[6083453880](https://github.com/lingshf/ai-native-erp/pull/466#pullrequestreview-6083453880)），批准 [6083486473](https://github.com/lingshf/ai-native-erp/pull/466#pullrequestreview-6083486473) | [绿](https://github.com/lingshf/ai-native-erp/actions/runs/45940076106) | N/A（仅任务书） | 任务书证据方法：<br>• D615 量法文字与脚本不一致（注释后跟代码的行、具名内层函数的行）；<br>• REFAC-36 的 R7、R4b、R8a 与实际脚本或依赖不符；<br>• REFAC-37 公开推断类型缺独立证据；<br>• 估值未写成硬上限 |
 | REFAC-36 [#467](https://github.com/lingshf/ai-native-erp/pull/467) | `33809e1`；1 轮（[6083614756](https://github.com/lingshf/ai-native-erp/pull/467#pullrequestreview-6083614756)），批准 [6083631631](https://github.com/lingshf/ai-native-erp/pull/467#pullrequestreview-6083631631) | [绿](https://github.com/lingshf/ai-native-erp/actions/runs/45942823141) | “未独立执行 SQLite 行为用例，不计 PASS” | 仅待证据（D456）：正文只有摘要和 SHA，没有 R2、R4 两侧原始输出或固定证据链接；同一 head 补 gist 后批准 |
-| REFAC-37 [#468](https://github.com/lingshf/ai-native-erp/pull/468) | `2fb0096`；1 轮（[6083621330](https://github.com/lingshf/ai-native-erp/pull/468#pullrequestreview-6083621330)），批准 [6083667375](https://github.com/lingshf/ai-native-erp/pull/468#pullrequestreview-6083667375) | [绿](https://github.com/lingshf/ai-native-erp/actions/runs/45943119377) | “独立 QA 实跑结论另报” | 等价证据漏分支：`dimension-structure.ts:24` 的 `seen.size > 200` 没有被 R4 单独命中（`r10a` 只覆盖重复签名）；另缺 R4 逐用例原始记录。同一 head 补驱动用例与原始记录后批准 |
+| REFAC-37 [#468](https://github.com/lingshf/ai-native-erp/pull/468) | `2fb0096`；1 轮（[6083621330](https://github.com/lingshf/ai-native-erp/pull/468#pullrequestreview-6083621330)），批准 [6083667375](https://github.com/lingshf/ai-native-erp/pull/468#pullrequestreview-6083667375) | [绿](https://github.com/lingshf/ai-native-erp/actions/runs/45943119377) | “独立 QA 实跑结论另报” | 等价证据漏分支：`dimension-structure.ts:26` 的 `seen.size > 200` 没有被 R4 单独命中（`r10a` 只覆盖重复签名）；另缺 R4 逐用例原始记录。同一 head 补驱动用例与原始记录后批准 |
 | REFAC-35 [#469](https://github.com/lingshf/ai-native-erp/pull/469) | `5ce76d5`；1 轮（[6083628459](https://github.com/lingshf/ai-native-erp/pull/469#pullrequestreview-6083628459)），批准 [6083684154](https://github.com/lingshf/ai-native-erp/pull/469#pullrequestreview-6083684154) | [绿](https://github.com/lingshf/ai-native-erp/actions/runs/45943474500) | “独立 Web QA 实跑结果另报” | 仅待证据（D456）：R4 只有驱动和摘要，没有两侧未截断的全量记录；同一 head 补固定 gist 后批准 |
 
 三个开发 PR 都在同一 head 上补证据后批准，产品代码没有因评审而改动。
@@ -74,13 +74,13 @@ S30 期间的决定（原文见 [S30 决定表](../tasks/S30.md#s30-期间决定
 
 **偏差**：计划层面无。
 
-**证据缺口（不改变 done 判定，交 TL）**：计划[证据计划](../tasks/S30.md#pr-正文证据计划d595)把“不改行为”的核对人写为 Reviewer、QA。三项 REFAC 的批准评审都写明 QA 未独立执行（原文见 §2.2 QA 行），截至核对时点 #467–#469 的 PR 评论中没有独立 QA 结论（`gh api repos/lingshf/ai-native-erp/issues/<n>/comments`，§5）。本收尾按评审批准、两侧等价原始记录、合并后复测与 main Full 记 done；QA 部分是否补交（贴到对应已合并 PR）或接受现有证据，由 TL 决定。改进见回顾行动 3。
+**独立 QA 结论事后补发（TL 裁定补交）**：计划[证据计划](../tasks/S30.md#pr-正文证据计划d595)把“不改行为”的核对人写为 Reviewer、QA。三项 REFAC 的批准评审都写明 QA 结论另报（原文见 §2.2 QA 行），本 PR 首次送审时 #467–#469 的 PR 评论中还没有 QA 结论。QA 当时已在 base、head 两侧实跑，结论事后补发到 PR：独立 QA PASS：[#467](https://github.com/lingshf/ai-native-erp/pull/467#issuecomment-7210430552)（R4 45 例 + 7 项直接断言、R4b 4 项，infra 43/43）、[#468](https://github.com/lingshf/ai-native-erp/pull/468#issuecomment-7210430786)（core 89/89，78 条 JSONL 逐字节相同）、[#469](https://github.com/lingshf/ai-native-erp/pull/469#issuecomment-7210431049)（web 75/75，57 条全量记录逐字节相同，jsdom）。三份评论的 base 都是 `2a65710`，head 分别是 `4141d91`、`d402d47`、`aaeb5bb`。留证滞后的改进见回顾行动 3。
 
 **缺陷**：本 Sprint 没有发现新的产品缺陷，BUG-06 未使用。#467 评审提到的 `currencyScale` 的 `Number(...)` 是原有行为，评审判为超出范围，不登记缺陷。
 
 ## 4. 未完成与遗留
 
-- **REFAC 独立 QA 实跑**：证据缺口，见 §3，由 TL 处置。
+- **REFAC 独立 QA 实跑**：已补交，见 §3。
 - **② 存量**：`fnlen.cjs` 计超过 80 行的函数仍有 45 个。legacy 相邻函数受 M2-05 约束，`Workspace`、`targetStorage`、`TradeInvoiceDetail.tsx` 等不选的理由见 [S30 选题依据](../tasks/S30.md#选题依据可复现)。S31 计划时再选。
 - **KGAP-15 / KGAP-04 缺口**：仍开放。S30 内 `docs/ai-assistant.md` 没有改动（`git diff --stat bae5d59 5ce76d5 -- docs/ai-assistant.md` 输出为空），按 D607 在 S31 计划时复查。
 - **多订单合并开票（D610）**：待用户决定，经 TL 询问。
@@ -96,7 +96,7 @@ S30 期间的决定（原文见 [S30 决定表](../tasks/S30.md#s30-期间决定
 
 - `gh pr view <n> --json title,mergeCommit,reviews`，取 #464–#469；
 - `gh api repos/lingshf/ai-native-erp/pulls/<n>/reviews`：按 `VERDICT:` 行计打回，取批准评审中的 QA 行；
-- `gh api repos/lingshf/ai-native-erp/issues/<n>/comments`，取 #465–#469：合并后核对评论 4 条；无独立 QA 结论；
+- `gh api repos/lingshf/ai-native-erp/issues/<n>/comments`，取 #465–#469：合并后核对评论 4 条；独立 QA 结论 3 条（#467–#469，事后补发）；
 - `gh api "repos/lingshf/ai-native-erp/actions/runs?head_sha=<sha>&branch=main"`，取 `4d296bf`、`ee90deb`、`2a65710`、`33809e1`、`2fb0096`、`5ce76d5`：6 个 Full run 都 success；
 - `node <保存位置>\s30-measure.cjs <合并提交> <被拆文件与新文件>`（[S30 统一量法](../tasks/S30.md#s30-统一量法)），输出全文见三条合并后复测评论；
 - `git diff --name-only bae5d59 5ce76d5 -- packages`：32 个文件；`git diff --name-only bae5d59 5ce76d5 -- '*test*'`、`git diff --stat bae5d59 5ce76d5 -- docs/ai-assistant.md`：输出为空；
