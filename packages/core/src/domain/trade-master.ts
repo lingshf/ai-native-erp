@@ -1,5 +1,4 @@
 import {
-  DomainError,
   checkedCode,
   checkedName,
   checkedExpectedRevision,
@@ -8,6 +7,16 @@ import {
   type DimensionMap,
 } from "./index.ts";
 import type { DimensionConfig } from "./dimensions.ts";
+import { checkedTradeWindow, tradeError } from "./trade-master-checks.ts";
+import {
+  validateTaxCode,
+  validateTradeParty,
+  validateTradeProduct,
+  validateTradeProfile,
+  validateTradeTerms,
+} from "./trade-master-validation.ts";
+
+export { tradeError, checkedTradePercent, checkedTradeWindow } from "./trade-master-checks.ts";
 
 export const tradeKinds = [
   "tradeParty",
@@ -94,22 +103,6 @@ export interface TradeIssue {
   readonly path: string;
   readonly rule: "shape" | "window" | "reference" | "account" | "missingTax" | "ambiguousTax";
 }
-export function tradeError(path: string, rule: TradeIssue["rule"]): never {
-  throw new DomainError("INVALID_INPUT", { scope: "trade", path, rule });
-}
-export function checkedTradePercent(value: string, path: string): bigint {
-  if (typeof value !== "string" || !/^(?:0|[1-9]\d{0,2})(?:\.\d{1,6})?$/u.test(value))
-    tradeError(path, "shape");
-  const [whole, fraction = ""] = value.split(".");
-  const exact = BigInt(whole) * 1_000_000n + BigInt(fraction.padEnd(6, "0"));
-  if (exact > 100_000_000n) tradeError(path, "shape");
-  return exact;
-}
-export function checkedTradeWindow(range: { from: string; to: string }, path = "data"): void {
-  checkedJournalDay(range.from, `${path}.from`);
-  checkedJournalDay(range.to, `${path}.to`);
-  if (range.from > range.to) tradeError(path, "window");
-}
 /**
  * M1-01 default-dimension check for parties and products: a plain map of at most 32 keys whose
  * dimensions and values are active and valid over the whole configuration window.
@@ -151,87 +144,22 @@ export function validateTradeConfig(config: TradeConfig): void {
     tradeError("kind", "shape");
   checkedName(config.data.name, 160);
   checkedTradeWindow(config.data);
-  const taxes = (codes: readonly string[]) => {
-    if (!Array.isArray(codes) || codes.length > 100 || new Set(codes).size !== codes.length)
-      tradeError("data.allowedTaxCodes", "shape");
-    for (const code of codes) checkedCode(code);
-  };
   switch (config.kind) {
-    case "tradeParty": {
-      const d = config.data;
-      if (
-        !["vendor", "customer", "both"].includes(d.role) ||
-        (d.role !== "customer") !== (d.apProfile !== null) ||
-        (d.role !== "vendor") !== (d.arProfile !== null)
-      )
-        tradeError("data.role", "shape");
-      if (d.apProfile !== null) checkedCode(d.apProfile);
-      if (d.arProfile !== null) checkedCode(d.arProfile);
-      checkedCode(d.terms);
-      taxes(d.allowedTaxCodes);
+    case "tradeParty":
+      validateTradeParty(config.data);
       break;
-    }
-    case "tradeProduct": {
-      const d = config.data;
-      if (
-        !["expense", "service"].includes(d.type) ||
-        (d.type === "expense") !== (d.expenseAccount !== null) ||
-        (d.type === "service") !== (d.revenueAccount !== null)
-      )
-        tradeError("data.type", "shape");
-      taxes(d.allowedTaxCodes);
+    case "tradeProduct":
+      validateTradeProduct(config.data);
       break;
-    }
     case "tradeProfile":
-      if (!["AP", "AR"].includes(config.data.side)) tradeError("data.side", "shape");
+      validateTradeProfile(config.data);
       break;
-    case "tradeTerms": {
-      const d = config.data;
-      if (
-        !Number.isInteger(d.dueDays) ||
-        d.dueDays < 0 ||
-        d.dueDays > 3650 ||
-        !Number.isInteger(d.discountDays) ||
-        d.discountDays < 0 ||
-        d.discountDays > d.dueDays ||
-        typeof d.allowPartialDiscount !== "boolean"
-      )
-        tradeError("data.discountDays", "shape");
-      checkedTradePercent(d.discountPercent, "data.discountPercent");
+    case "tradeTerms":
+      validateTradeTerms(config.data);
       break;
-    }
-    case "taxCode": {
-      const d = config.data;
-      if (!["ordinary", "zero", "exempt"].includes(d.mode)) tradeError("data.mode", "shape");
-      checkedTradePercent(d.deductiblePercent, "data.deductiblePercent");
-      if (!Array.isArray(d.rates) || !d.rates.length || d.rates.length > 100)
-        tradeError("data.rates", "shape");
-      const ids = new Set<string>();
-      const sorted = [...d.rates].sort((a, b) => a.from.localeCompare(b.from));
-      for (const [index, rate] of sorted.entries()) {
-        checkedCode(rate.id);
-        checkedTradeWindow(rate, "data.rates");
-        if (
-          ids.has(rate.id) ||
-          rate.from < d.from ||
-          rate.to > d.to ||
-          (index > 0 && sorted[index - 1].to >= rate.from)
-        )
-          tradeError("data.rates", "window");
-        ids.add(rate.id);
-        if (
-          checkedTradePercent(rate.ratePercent, "data.rates.ratePercent") !== 0n &&
-          d.mode !== "ordinary"
-        )
-          tradeError("data.rates.ratePercent", "shape");
-      }
-      if (
-        (d.inputAccount === null) !== (d.outputAccount === null) ||
-        (d.mode === "ordinary" && d.inputAccount === null)
-      )
-        tradeError("data.inputAccount", "account");
+    case "taxCode":
+      validateTaxCode(config.data);
       break;
-    }
   }
 }
 export type TradeAccountRole =
