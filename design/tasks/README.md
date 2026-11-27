@@ -867,6 +867,10 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 - **Sprint 评审与回顾**：[S28 评审](../reviews/S28-review.md)（accepted，有 1 项偏差：BUG-05 的流程图 `:35` 未在 Sprint 内修改，按 D604 交 KL 作为 KDOC-13；另有 #448 的 main Full run 链接漏记，收尾时已补记；计划各项全部 done；打回 10；修正事实不符 27 处；D602–D604；矩阵无格升 covered；KGAP-16 blocked 待 S29 规划定范围，KGAP-15 缺口仍开放；BUG-05 是否打版本待用户授权）、[S28 回顾](../reviews/S28-retro.md)（行动 1 范围与排他措辞附穷举证据，行动 2 QA 预期先确认入口可达，行动 3 done 以全部验收句为准；S27 行动 1 无法完整判定，S26 行动 1 达成）。
 
+## S29：KGAP-16 定范围 + S28 文档遗留（D605）
+
+计划、排序、泳道与跨文件验收见 [S29.md](S29.md)。范围：KGAP-16（按 D606 改验收：口径 5 逐伙伴比较在 CLI 上不可达，改写 `backup-and-legacy.md`，不做输入路径）、KGAP-15 复查节奏（D607，本 Sprint 不复查）、KDOC-12、KDOC-13，并落实 S28 回顾行动 1–3；不写代码；无迁移；开发名额占 1（只读复核）。BUG-05 是否打版本、v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 未获用户授权，P12 待用户决策，均不纳入承诺；本 Sprint 不承诺版本号，不做发布候选（D605）。
+
 ## 知识与文档待办（KDOC，D556）
 
 已移至 [backlog/KDOC.md](backlog/KDOC.md)（MCF-16，D584）。
