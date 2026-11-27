@@ -861,6 +861,10 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 - **Sprint 评审与回顾**：[S27 评审](../reviews/S27-review.md)（accepted：四项全部 done，KGAP-09 按 D601 逐格交付、未交付项转出；按 D596 不出版本；打回 9；修正事实不符 8 处；D596–D601；矩阵升 covered 仅 AI 行 §6.1 补记行、贸易设计第 1–9 节、`docs/ci.md` 实跑的本地命令；BUG-05 未修，P12 待用户决策，KGAP-04 仍开放）、[S27 回顾](../reviews/S27-retro.md)（行动 1 派发前核对事实表述；S26 行动 2 达成，行动 3 部分达成，行动 1 不适用）。
 
+## S28：KGAP-09 转出项补证 + BUG-05 修复（D602）
+
+计划、排序、泳道与跨文件验收见 [S28.md](S28.md)。范围：KGAP-12（QA 演练 5 项）→ KGAP-10（Product/Design 复核 4 项）→ KGAP-11（Delivery/Release 复核）→ BUG-05（唯一写代码的任务，先写任务书）→ KGAP-13 → KGAP-14 → KGAP-15，另有任务总表状态同步；无迁移；开发名额占 2；各项状态记在 [KGAP 表](backlog/KGAP.md)与 [BUG 表](backlog/BUG.md)。v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 未获用户授权，P12 待用户决策，均不纳入承诺；本 Sprint 不承诺版本号，不做发布候选（D602）。
+
 ## 知识与文档待办（KDOC，D556）
 
 已移至 [backlog/KDOC.md](backlog/KDOC.md)（MCF-16，D584）。

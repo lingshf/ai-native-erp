@@ -631,3 +631,4 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D599 | 表 | TLIST-02 主数据页“刷新列表”（补登编号，规则不变）：对当前查询键 `resetQueries`（`exact:`… | [design/tasks/S27.md:106](tasks/S27.md) |
 | D600 | 表 | **事后补记**（同 D564 方式，补记不改变现行规则）：贸易订单只插入、不修改、不取消 | [design/tasks/S27.md:107](tasks/S27.md) |
 | D601 | 表 | KGAP-09 按已交付的格记为 done（计划允许逐格交付）：发布复核 `ci.md`、`migration-runb`… | [design/tasks/S27.md:109](tasks/S27.md)；[design/reviews/S27-review.md:14](reviews/S27-review.md)；[design/reviews/S27-review.md:27](reviews/S27-review.md) 等 4 处 |
+| D602 | 表 | 接受 S28 计划：目标、范围（KGAP-10 至 KGAP-15、BUG-05、任务总表状态同步）、排序、A–E 泳道… | [design/tasks/S28.md:174](tasks/S28.md) |
