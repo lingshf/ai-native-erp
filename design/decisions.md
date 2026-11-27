@@ -646,10 +646,11 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D614 | 表 | REFAC-37 不改行为与错误先后：只改 `dimensions.ts` 的代码组织（拆出同目录 `dimension`… | [design/tasks/S30.md:255](tasks/S30.md) |
 | D615 | 表 | 三项 REFAC 的函数长度与嵌套深度统一用 S30 统一量法（`@babel/parser` 脚本，不具名函数体与无花… | [design/tasks/S30.md:256](tasks/S30.md)；[design/reviews/S30-retro.md:9](reviews/S30-retro.md) |
 | D616 | 表 | REFAC-35 开放问题 3 采用默认方案：`4d296bf` 上 `Reports.tsx` 的 3 处阶段判定（``… | [design/tasks/S30.md:257](tasks/S30.md)；[design/reviews/S30-review.md:16](reviews/S30-review.md) |
-| D617 | 表 | D610 定为方案 C：多订单合并开票暂缓，留在 Backlog 候选池，不立任务号 | [design/tasks/S31.md:165](tasks/S31.md) |
+| D617 | 表 | D610 定为方案 C：多订单合并开票暂缓，留在 Backlog 候选池，不立任务号 | [design/tasks/S31.md:165](tasks/S31.md)；[design/reviews/S31-review.md:16](reviews/S31-review.md) |
 | D618 | 表 | 接受 S31 计划：目标、范围（KDOC-15、REFAC-38..40、S30 回顾行动 1–3）、排序、泳道与开发名… | [design/tasks/S31.md:166](tasks/S31.md) |
 | D619 | 表 | S31 开发泳道排 ② 存量拆分 REFAC-38（`Dimensions.tsx`）、REFAC-39（`tradeR`… | [design/tasks/S31.md:167](tasks/S31.md) |
 | D620 | 表 | KGAP-15 复查（D607，2026-11-26，限时 30 分钟内）：找到 GitHub Docs Hosting… | [design/tasks/S31.md:168](tasks/S31.md) |
 | D621 | 表 | REFAC-38 任务书：`Dimensions.tsx` 只拆不改行为（DOM、请求、焦点、Hook 序列、组件边界与… | [design/tasks/S31.md:169](tasks/S31.md) |
 | D622 | 表 | REFAC-39 任务书：`tradeReportingRepository` 只拆不改行为（SQL 文本与参数逐字节不… | [design/tasks/S31.md:170](tasks/S31.md) |
 | D623 | 表 | REFAC-40 任务书：`buildReports` 只拆不改行为（导出与签名、公开推断类型、返回值含键序与 `-0`… | [design/tasks/S31.md:171](tasks/S31.md) |
+| D624 | 表 | REFAC-38 的 R5a 例外：`DimensionEditor` 草稿 `useState` 的类型实参由 `Re`… | [design/tasks/S31.md:172](tasks/S31.md)；[design/reviews/S31-review.md:16](reviews/S31-review.md) |
