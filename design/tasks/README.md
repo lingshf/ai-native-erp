@@ -802,9 +802,9 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [REFAC-13](REFAC-13-order-lookup-split.md) | 拆分 `OrderLookup` 函数体（不改行为） | 重构（页面） | P2 | 无 | `packages/web/src/trade-orders/order-lookup.tsx`、`trade-orders/` 下新文件 | 不加 | 不需要 | todo | — |
-| [TSET-01](TSET-01-settlement-missing-selections.md) | 付款与收款页提示并移除已不在未结项中的已选项 | 功能（小步打磨） | P2 | 无 | `trade-settlements/` 下分配页签、`settlement-items.ts`、`settlement-table-parts.tsx`、新提示条文件；`ui/trade-labels.ts`；`trade-settlements.test.tsx` | 不加 | 不需要 | todo | — |
-| [SLOT-06](SLOT-06-slot-run-snapshot.md) | `slot-run.ps1` 在运行期间自动做门禁快照 | 开发工具 | P2 | DEMO-22 窗口已关闭且 run-through 已记录 SLOT-05 的实际使用；设计角色已复核任务书；不在 DEMO 窗口内派发或合并 | `scripts/slot/slot-run.ps1`、`scripts/slot/selftest-slot-snapshot.ps1`（新）、`scripts/slot/README.md` | 不加 | 不需要 | todo | — |
+| [REFAC-13](REFAC-13-order-lookup-split.md) | 拆分 `OrderLookup` 函数体（不改行为） | 重构（页面） | P2 | 无 | `packages/web/src/trade-orders/order-lookup.tsx`、`trade-orders/` 下新文件 | 不加 | 不需要 | done | [#325](https://github.com/lingshf/ai-native-erp/pull/325) `32aaea7` |
+| [TSET-01](TSET-01-settlement-missing-selections.md) | 付款与收款页提示并移除已不在未结项中的已选项 | 功能（小步打磨） | P2 | 无 | `trade-settlements/` 下分配页签、`settlement-items.ts`、`settlement-table-parts.tsx`、新提示条文件；`ui/trade-labels.ts`；`trade-settlements.test.tsx` | 不加 | 不需要 | done | [#320](https://github.com/lingshf/ai-native-erp/pull/320) `2794c3a` |
+| [SLOT-06](SLOT-06-slot-run-snapshot.md) | `slot-run.ps1` 在运行期间自动做门禁快照 | 开发工具 | P2 | DEMO-22 窗口已关闭且 run-through 已记录 SLOT-05 的实际使用；设计角色已复核任务书；不在 DEMO 窗口内派发或合并 | `scripts/slot/slot-run.ps1`、`scripts/slot/selftest-slot-snapshot.ps1`（新）、`scripts/slot/README.md` | 不加 | 不需要 | done | [#322](https://github.com/lingshf/ai-native-erp/pull/322) `e4a9fec` |
 | DEMO-23（无任务书） | `<S23 版本>` RC 与 Demo，验收见 [S23.md](S23.md#demo-23-验收) | 发布 | P1（Sprint 末） | v0.21.0 已发布；每个开发任务已合并或经协调者决定移出；覆盖最后一个合并提交的 main Full 绿 | docs/release、`docs/demo/`、`docs/user/` | 不加 | 需要（截图与键盘取证） | todo | — |
 
 - **并行**：A ∥ B ∥ C，冲突域不相交，没有共享单文件（`ui/trade-labels.ts` 只有 B 改）；没有加迁移的任务；C 在 DEMO-22 窗口关闭并复核任务书后派发，DEMO 窗口期间不改 `scripts/slot/`；都不申请浏览器时段，服从 D442 / D480 时段停用通知；DEMO-23 排在它们结案之后。体积口径见 [S23.md](S23.md#l10--体积口径)。
