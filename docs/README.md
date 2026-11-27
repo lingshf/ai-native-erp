@@ -151,7 +151,7 @@
 | `design/reviews/` | Sprint / 任务评审与回顾 | 现行；与顶层 [`design/reviews.md`](../design/reviews.md)（公开验证记录）同名易混（D3） |
 | `design/ui/`、`design/diagrams/` | UI-1 规范与原型、架构示意图 | UI-1 partial（见矩阵）；diagrams 文件本身没有 D560 页首，视为沿用历史架构 ARCH-SME-01 的已取代状态（C1 已关闭，D589） |
 | [`docs/user/`](user/README.md) | 用户文档 | 导航索引 `docs/user/README.md` **covered**（仅此范围：设计 U6/U7 通过；QA not_applicable，仅导航；钉 `04b576baf9f03c13055daf98be6b0831cf086648`，该文件最后修改），不扩大到整个 `docs/user/`；各用户页版本见矩阵；索引页已于 KDOC-05 去掉版本叙述，指向 CHANGELOG；含[贸易主路径演练](user/trade-main-path.md) |
-| [`docs/ai-assistant.md`](ai-assistant.md) | AI 助手 | partial（钉 `ff196c351318d20895678b46b750c88c59b3863c`；KGAP-04、SEC-02、MCF-06、#420、#452 改动） |
+| [`docs/ai-assistant.md`](ai-assistant.md) | AI 助手 | partial（钉 `28d26cd9ab0ca04686e9dc7656efeb4416d1ae89`；KGAP-04、SEC-02、MCF-06、#420、#452 改动） |
 | [`docs/tradeoffs.md`](tradeoffs.md) | 取舍汇总 | 作为已记录取舍的摘要 **covered**（设计 S26 复核在 `d98347a398e32fe0a2222bd594116440078ae7ce` 通过，含 §3 与 §8；QA not_applicable，无可执行步骤；钉同一提交）。专题取舍缺口不随之提升：AI 备选原记录由 KGAP-02、D5–D8 由 KGAP-03 跟踪；T-1 为非阻塞建议 |
 | [`docs/code-entry.md`](code-entry.md) | 代码入口、扩展点与调试（三处 REFAC 拆分模块） | partial（MCF-08 新增；钉合并提交 `37bb41731fa46f59084e4d5600ec5fc28666e7d6`；Developer 只读事实复核已完成，对照 `664b37c`） |
 | [`docs/operations.md`](operations.md) | 运维与故障排查 | partial（钉 `1ca22e9d4f4bb91af5cc5223a762f74370257be0`；KDOC-07 新增，#420 改） |
