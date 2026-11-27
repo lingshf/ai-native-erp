@@ -637,11 +637,12 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D605 | 表 | 接受 S29 计划：目标、范围（KGAP-16、KGAP-15 复查节奏、KDOC-12、KDOC-13、S28 回顾行… | [design/tasks/S29.md:129](tasks/S29.md)；[design/reviews/S29-review.md:14](reviews/S29-review.md) |
 | D606 | 表 | KGAP-16 定范围：**改验收，不做输入路径** | [design/tasks/S29.md:130](tasks/S29.md)；[design/reviews/S29-retro.md:9](reviews/S29-retro.md) |
 | D607 | 表 | KGAP-15 复查节奏：S29 不排定复查 | [design/tasks/S29.md:131](tasks/S29.md)；[design/reviews/S29-review.md:14](reviews/S29-review.md) |
-| D608 | 表 | 接受 S30 计划：目标、范围（KDOC-14、REFAC-35..37、S29 回顾行动 1–3）、排序、泳道与开发名… | [design/tasks/S30.md:247](tasks/S30.md) |
-| D609 | 表 | S30 开发泳道排 ② 存量拆分 REFAC-35（`Reports.tsx`）、REFAC-36（`masterDat`… | [design/tasks/S30.md:248](tasks/S30.md) |
-| D610 | 表 | 多订单合并开票不进 S30：会加迁移 021、改变发票级 `orderId` 契约（S19.md:27）、须先有功能设计… | [design/tasks/S30.md:249](tasks/S30.md)；[design/tasks/S30.md:239](tasks/S30.md) |
-| D611 | 表 | KDOC-14 的目标范围由 `:51–58` 改为 `:52–58`：按 S29 行动 2 打开 `34ec97c` … | [design/tasks/S30.md:250](tasks/S30.md) |
-| D612 | 表 | REFAC-35 不改行为，只改 `Reports.tsx` 的代码组织（拆到新目录 `packages/web/src`… | [design/tasks/S30.md:251](tasks/S30.md) |
-| D613 | 表 | REFAC-36 不改行为、SQL 文本与参数逐字节不变、调用序列等价，不跑 Bench | [design/tasks/S30.md:252](tasks/S30.md) |
-| D614 | 表 | REFAC-37 不改行为与错误先后：只改 `dimensions.ts` 的代码组织（拆出同目录 `dimension`… | [design/tasks/S30.md:253](tasks/S30.md) |
-| D615 | 表 | 三项 REFAC 的函数长度与嵌套深度统一用 S30 统一量法（`@babel/parser` 脚本，不具名函数体与无花… | [design/tasks/S30.md:254](tasks/S30.md) |
+| D608 | 表 | 接受 S30 计划：目标、范围（KDOC-14、REFAC-35..37、S29 回顾行动 1–3）、排序、泳道与开发名… | [design/tasks/S30.md:249](tasks/S30.md)；[design/reviews/S30-review.md:16](reviews/S30-review.md) |
+| D609 | 表 | S30 开发泳道排 ② 存量拆分 REFAC-35（`Reports.tsx`）、REFAC-36（`masterDat`… | [design/tasks/S30.md:250](tasks/S30.md) |
+| D610 | 表 | 多订单合并开票不进 S30：会加迁移 021、改变发票级 `orderId` 契约（S19.md:27）、须先有功能设计… | [design/tasks/S30.md:251](tasks/S30.md)；[design/reviews/S30-review.md:86](reviews/S30-review.md)；[design/tasks/S30.md:241](tasks/S30.md) |
+| D611 | 表 | KDOC-14 的目标范围由 `:51–58` 改为 `:52–58`：按 S29 行动 2 打开 `34ec97c` … | [design/tasks/S30.md:252](tasks/S30.md) |
+| D612 | 表 | REFAC-35 不改行为，只改 `Reports.tsx` 的代码组织（拆到新目录 `packages/web/src`… | [design/tasks/S30.md:253](tasks/S30.md) |
+| D613 | 表 | REFAC-36 不改行为、SQL 文本与参数逐字节不变、调用序列等价，不跑 Bench | [design/tasks/S30.md:254](tasks/S30.md) |
+| D614 | 表 | REFAC-37 不改行为与错误先后：只改 `dimensions.ts` 的代码组织（拆出同目录 `dimension`… | [design/tasks/S30.md:255](tasks/S30.md) |
+| D615 | 表 | 三项 REFAC 的函数长度与嵌套深度统一用 S30 统一量法（`@babel/parser` 脚本，不具名函数体与无花… | [design/tasks/S30.md:256](tasks/S30.md)；[design/reviews/S30-retro.md:9](reviews/S30-retro.md) |
+| D616 | 表 | REFAC-35 开放问题 3 采用默认方案：`4d296bf` 上 `Reports.tsx` 的 3 处阶段判定（``… | [design/tasks/S30.md:257](tasks/S30.md)；[design/reviews/S30-review.md:16](reviews/S30-review.md) |
