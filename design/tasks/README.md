@@ -897,6 +897,16 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [REFAC-39](REFAC-39-trade-reporting-repository-split.md) | 拆分贸易报表仓储 `tradeReportingRepository`（不改行为，SQL 逐字节不变，D622） | 重构（基础设施） | P2 | 任务书合并后派发 | `packages/infra/src/storage/trade-reporting.ts`、同目录新增 `trade-reporting-*.ts` | 不加 | 不需要 | done（合并后复测 PASS，[评论](https://github.com/lingshf/ai-native-erp/pull/476#issuecomment-7211784949)；QA [PASS](https://github.com/lingshf/ai-native-erp/pull/476#issuecomment-7211752343)） | [#476](https://github.com/lingshf/ai-native-erp/pull/476) `2ee5940` |
 | [REFAC-40](REFAC-40-build-reports-split.md) | 拆分报表构建 `buildReports`（不改行为与公开推断类型，D623） | 重构（core 领域纯函数） | P2 | 任务书合并后派发 | `packages/core/src/domain/reports.ts`、同目录新增 `report-*.ts` | 不加 | 不需要 | done（合并后复测 PASS，[评论](https://github.com/lingshf/ai-native-erp/pull/474#issuecomment-7211246234)；QA [PASS](https://github.com/lingshf/ai-native-erp/pull/474#issuecomment-7211216227)） | [#474](https://github.com/lingshf/ai-native-erp/pull/474) `e988b3f` |
 
+## S32：② 存量拆分三泳道（D626）
+
+计划、选题依据、排序、泳道与跨文件验收见 [S32.md](S32.md)（进行中，TL 已确认 D625–D626）。范围：② 存量拆分 REFAC-41（`business-events/editors.tsx`）、REFAC-42（`registerBusinessRoutes`）、REFAC-43（`validateTradeConfig`），都不改行为，任务书由 Product/Design 先写，合并后派发；落实 S31 回顾行动 1（R4 夹具确定性生成，约束冲突时停下上报）；无迁移；开发名额占 3。Backlog 候选 `profit`、`:443` 不排入；多订单合并开票按 D617 暂缓；KGAP-15 按 D620 在 S33 计划时复查。BUG-05 是否打版本、v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 未获用户授权，P12 待用户决策，均不纳入承诺；本 Sprint 不承诺版本号，不做发布候选（D625）。
+
+| ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| REFAC-41 | 拆分业务事件编辑器 `business-events/editors.tsx`（不改行为） | 重构（页面） | P2 | 任务书合并后派发 | `packages/web/src/business-events/editors.tsx`、同目录新增 `event-editor-*.tsx`、`clearing-editor*.tsx` | 不加 | 以任务书为准 | todo（任务书待写） | — |
+| REFAC-42 | 拆分业务事件路由 `registerBusinessRoutes`（不改行为与路由注册顺序） | 重构（基础设施） | P2 | 任务书合并后派发 | `packages/infra/src/http/business-events.ts`、同目录新增 `business-event-*.ts` | 不加 | 不需要 | todo（任务书待写） | — |
+| REFAC-43 | 拆分贸易主数据校验 `validateTradeConfig`（不改行为与错误先后） | 重构（core 领域纯函数） | P2 | 任务书合并后派发 | `packages/core/src/domain/trade-master.ts`、同目录新增 `trade-master-*.ts` | 不加 | 不需要 | todo（任务书待写） | — |
+
 ## 知识与文档待办（KDOC，D556）
 
 已移至 [backlog/KDOC.md](backlog/KDOC.md)（MCF-16，D584）。
