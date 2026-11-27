@@ -3,7 +3,7 @@
 - Sprint：S32（[计划](S32.md)）
 - 类型：重构（web 页面；业务事件编辑表单与核销选行）
 - 优先级：P2
-- 决定：[D627](S32.md#s32-期间决定)。REFAC-41 不改行为：DOM、请求、焦点、键盘（含 Ctrl / ⌘ + Enter 预览）、Hook 序列、组件边界与 `key`、chunk 归属都不变；新增的只有无 Hook 的展示组件与原样搬移的组件。详见“范围与决定”1–9。
+- 决定：[D627](S32.md#s32-期间决定)。REFAC-41 不改行为：DOM、请求、焦点、键盘（含 Ctrl / ⌘ + Enter 预览）、Hook 序列、组件边界与 `key`、chunk 归属都不变；新增的只有无 Hook 的展示组件；`EventEditor` 与 `ClearingEditor` 都拆到 ≤ 80 行，两者保留各自的 Hook 与组件边界，只把渲染区抽成无 Hook 的展示组件。详见“范围与决定”1–9。
 - 建议分支：`refac-41-split-business-event-editor`
 - 来源：[S32 范围与验收](S32.md#范围与验收)第 1 行、[三项 REFAC 共用：可读性与嵌套复验](S32.md#三项-refac-共用可读性与嵌套复验)、[回顾行动落地](S32.md#回顾行动落地)；本任务书不放宽。
 - 模板：[REFAC-38](REFAC-38-dimensions-page-split.md)（页面拆分、Hook 序列、jsdom 驱动 R4、打包字节 R7）。
@@ -45,10 +45,10 @@
 ## 范围与决定
 
 1. **只拆不改**：不改 DOM（元素、属性及其顺序、`className`、`id`、文本键）、请求、焦点、键盘、文案与样式；不修缺陷。发现疑似缺陷时在 PR 正文记录并报协调者，另开 Backlog。
-2. **Hook 序列不变**：`EventEditor` 与 `ClearingEditor` 各自的 Hook 调用顺序、参数与依赖源文本不变（R5a）。允许把**整个** `ClearingEditor` 原样搬到 `clearing-editor.tsx`（Hook 随之搬移，序列不变）；不允许把 `usePage` 等 Hook 挪进新抽出的字段区组件。
-3. **组件边界不变**：`EventEditor` 的 JSX 中直接渲染 `<ClearingEditor …>`，props 与条件不变；新抽出的展示组件是无 Hook、无状态的函数组件，以 props 接收 `event`、`change`、`t` 与所需的查询结果（例如 `services`、`parties`），不加 `memo`、不加 `key`。
+2. **Hook 序列不变**：`EventEditor` 与 `ClearingEditor` 各自的 Hook 调用顺序、参数与依赖源文本不变（R5a）。`ClearingEditor` 可搬到 `clearing-editor.tsx`，但**仅搬文件不够**：它也须拆到 ≤ 80 行（R6a）。拆法是保留 `ClearingEditor` 组件本身及其全部 Hook（`useState` → `usePage`）、`valid`、科目输入、说明与“未清项”按钮，把未清项表（`:275-314` 中 `PageTable` 元素）与已选行（`:315-342`）抽成无 Hook 的展示组件，由 `ClearingEditor` 直接渲染；`enabled && valid &&` 条件留在 `ClearingEditor`。不允许把 `useState`、`usePage` 等 Hook 挪进任何新抽出的组件，也不允许把 `ClearingEditor` 的 Hook 上移到 `EventEditor`。
+3. **组件边界不变**：`EventEditor` 的 JSX 中直接渲染 `<ClearingEditor …>`，props 与条件不变；`ClearingEditor` 仍是持有 `enabled` 状态与未清项查询的那一个组件。新抽出的展示组件是无 Hook、无状态的函数组件，以 props 接收 `event`、`change`、`t` 与所需的查询结果（例如 `services`、`parties`、`page`），不加 `memo`、不加 `key`；回调中引用的名称（`event`、`change`、`line`、`page` 等）在新组件中保持原名，使 R5c 能逐字比较。
 4. **表单外壳留在 `EventEditor`**：`form` 的 `ref`、`onSubmit`、`onKeyDown`，`fieldset`、`legend` 与各区的出现条件原样留在 `EventEditor`；字段区组件只返回原 `<>…</>` 片段的内容。
-5. **建议拆法**（不强制）：`EventCommonFields`（`:69-95`）、`CashServiceFields`（`:96-161` 片段内容，含两个 `PageControls`）、`StatisticsFields`（`:162-192`）、`EventDimensions`（`:193-203`）、`EventActions`（`:218-225`）→ `event-editor-fields.tsx` / `event-editor-cash.tsx`；`ClearingEditor` 与其 `OpenItemsTable`（`:275-314`）、`SelectedLines`（`:315-342`）→ `clearing-editor.tsx`。props 类型可抽为 `EventEditorProps`。
+5. **建议拆法**（不强制）：`EventCommonFields`（`:69-95`）、`CashServiceFields`（`:96-161` 片段内容，含两个 `PageControls`）、`StatisticsFields`（`:162-192`）、`EventDimensions`（`:193-203`）、`EventActions`（`:218-225`）→ `event-editor-fields.tsx` / `event-editor-cash.tsx`；`ClearingEditor`（拆后约 55 行）与从中抽出的 `OpenItemsTable`（`:276-313` 的 `PageTable` 元素，约 40 行）、`SelectedLines`（`:315-342`，约 30 行）→ `clearing-editor.tsx`。props 类型可抽为 `EventEditorProps`。
 6. **重复抽取**：`label.ui-field > span.label` 外壳 10 处 → 一个展示组件（例如 `EventField({ label, children })`），**输入元素留在调用处**，属性及顺序原样；`:148` 的币种标签以 `label` 传入同样的子节点。`datalist` 与已选行过滤各 2 处，可不抽；若抽取，DOM 与 `change` 的实参须不变（R4 判定）。
 7. **签名不变**：`EventEditor` 的导出名、props 名称与类型不变；`events-view.tsx` 无 diff。
 8. **文件布局**：`editors.tsx` 保留 `EventEditor` 导出；新文件为同目录 `event-editor-*.tsx` 或 `clearing-editor*.tsx`（[S32 泳道](S32.md#泳道按冲突域) B）。新文件不从 `./editors.tsx` 导入运行时值；新文件之间单向无环（R5d）。
@@ -66,7 +66,7 @@
 
 | 编号 | 检查 | base `218284a` | head 要求 |
 | --- | --- | --- | --- |
-| R6a | 函数长度（不计空行与纯注释行，外层含内层） | `EventEditor` **216**、`ClearingEditor` **116**（失败） | `editors.tsx` 与新文件中每个函数 ≤ 80 |
+| R6a | 函数长度（不计空行与纯注释行，外层含内层） | `EventEditor` **216**、`ClearingEditor` **116**（都失败） | `EventEditor` 与 `ClearingEditor` 都 ≤ 80；`editors.tsx` 与新文件中每个函数 ≤ 80 |
 | R6b | 嵌套深度 | `EventEditor` 3、`ClearingEditor` 3（已满足） | 每个函数 ≤ 3（保持） |
 | R6c | 文件行数（`(Get-Content <file>).Count`） | `editors.tsx` **345** | `editors.tsx` ≤ **150**；新文件各 ≤ **150** |
 
@@ -108,7 +108,7 @@
     - `onSubmit`、`onKeyDown` 回调（`:56-65`）与 `useEffect` 回调及依赖（`:50-52`）；
     - 每个输入 / 选择元素的全部属性（含 `onChange` 回调原文）；
     - 各区的出现条件（`:96`、`:162`、`:193`、`:204`、`:209`）；
-    - `ClearingEditor` 的 `valid` 表达式（`:244`）、查询串模板（`:249`）、按钮 `onClick`（`:268-271`）、勾选 `checked` 与 `onChange`（`:294-307`）、移除 `onClick`（`:328-335`）。
+    - `ClearingEditor` 的 `valid` 表达式（`:244`）、查询串模板（`:249`）、按钮 `onClick`（`:268-271`）、显示条件 `enabled && valid`（`:275`）；搬入展示组件的 `PageTable` 全部 props（`:277-312`，含勾选 `checked` 与 `onChange` `:294-307`）与 `VirtualRows` 全部 props（`:316-341`，含移除 `onClick` `:328-335`）。
   - **R5d 依赖方向**：新文件不从 `./editors.tsx` 导入运行时值；新文件之间单向无环；`events-view.tsx` 无 diff；附导入图。
 - **R6 尺寸**：见上表；PR 正文列出超过 60 行的函数，附行数与最深层数（base 与 head 两列）。
 - **R7 打包字节**：用 `scripts/measure/bundle-measure.mjs`（写明脚本所在提交 SHA；`218284a` 上该文件最后一次改动为 `6156759`），base 取最终送审 head 的实际合并基，合并基变了就重测。预算（未列出项为 ±0）：
@@ -147,7 +147,7 @@ node scripts/measure/bundle-measure.mjs --base <合并基全 SHA> --head <head �
 
 | 维度 | 要求 | 改前（`218284a`，设计角色实测） | PR 正文改后须列 |
 | --- | --- | --- | --- |
-| 函数长度（②） | `editors.tsx` 与新文件每个函数 ≤ 80 | `EventEditor` 216、`ClearingEditor` 116 | 量法对 `editors.tsx` 与全部新文件的**完整输出**；超过 60 行的逐个列行数 |
+| 函数长度（②） | `EventEditor`、`ClearingEditor` 及 `editors.tsx` 与新文件每个函数 ≤ 80 | `EventEditor` 216、`ClearingEditor` 116 | 量法对 `editors.tsx` 与全部新文件的**完整输出**；超过 60 行的逐个列行数 |
 | 嵌套深度（②） | 每个函数 ≤ 3 | `EventEditor` 3、`ClearingEditor` 3 | 同一输出第 2 列；超过 2 层的逐个说明 |
 | 文件长度（③） | `editors.tsx` ≤ 150；新文件各 ≤ 150 | `editors.tsx` 345；`event-editor-*.tsx`、`clearing-editor*.tsx` 不存在 | `git diff --numstat <base> <head>` 与拆后行数 |
 | 重复（④） | 第三次出现即抽取 | `label.ui-field > span.label` 外壳 10 处；`datalist` 选项 2 处；已选行过滤 2 处 | 外壳的去向（决定 6）；2 处的两类写明抽或不抽及理由 |
@@ -199,7 +199,7 @@ base 完整输出（`行数 / 层数 / 范围 / 名称`）：
 
 - [x] 冲突域与 REFAC-42、REFAC-43 逐文件不相交；不改 `events-view.tsx`、测试文件、CSS 与 `docs/`。
 - [x] R6a 有 base 实测值（base 失败）；R6b base 已满足，要求保持；`editors.tsx` ≤ 150 与 R7 +700 B 为估定硬上限，未试拆、未实测 base 字节，超出即停下由 TL 决定。
-- [x] Hook 序列 base 一侧逐项列出（4 + 2）；新组件无 Hook；`ClearingEditor` 只能整体搬移。
+- [x] Hook 序列 base 一侧逐项列出（4 + 2）；新组件无 Hook；`EventEditor` 与 `ClearingEditor` 都须 ≤ 80 行，`ClearingEditor` 保留 Hook 与组件边界，只抽出未清项表与已选行两个展示组件（决定 2、3、5 与 R5c 一致）。
 - [x] 键盘：Ctrl / ⌘ + Enter 预览、忙时不提交、只按 Enter 不触发，均有直接断言，注明未实测。
 - [x] R4 一节写明 S31 回顾行动 1（无随机值与当前时间、`randomUUID` 用计数器替换、冻结 `Date`、helper 默认值、夹具 SHA-256、两次独立重建、不满足不送审、冲突停下上报）。
 - [x] 可读性五项都有要求、改前数据（S30 统一量法完整输出）与改后须列；无用户可见变化。

@@ -3,7 +3,7 @@
 - Sprint：S32（[计划](S32.md)）
 - 类型：重构（基础设施 HTTP；业务事件、服务 / 往来单位、记账规则与转入队列的 12 条路由）
 - 优先级：P2
-- 决定：[D628](S32.md#s32-期间决定)。REFAC-42 不改行为：导出名与签名、12 条路由的方法、路径与**注册顺序**、每个请求的检查先后（403 → 405 → 503 → 400 → 415 → schema）、调用服务的方法与实参、响应的状态码、响应头与响应体都不变；只搬移与传参。详见“范围与决定”1–8。
+- 决定：[D628](S32.md#s32-期间决定)。REFAC-42 不改行为：导出名与签名、12 条路由的方法、路径与**注册顺序**、每个请求的检查先后（403 → 405 → 503 → 400 → 415 → schema）、调用服务的方法与实参、响应的状态码、响应头与响应体都不变；只搬移与传参。详见“范围与决定”1–9。
 - 建议分支：`refac-42-split-business-event-routes`
 - 来源：[S32 范围与验收](S32.md#范围与验收)第 2 行、[REFAC-42 路由 × 方法可达矩阵](S32.md#refac-42-路由--方法可达矩阵)、[三项 REFAC 共用：可读性与嵌套复验](S32.md#三项-refac-共用可读性与嵌套复验)、[回顾行动落地](S32.md#回顾行动落地)；本任务书不放宽。
 - 模板：[REFAC-39](REFAC-39-trade-reporting-repository-split.md)（infra、调用序列 R4、不跑 Bench、无 R7）；R4 改为 Fastify `inject` 两侧对照。
@@ -36,14 +36,15 @@
 
 ## 范围与决定
 
-1. **只拆不改**：路径、允许方法、`ready` 与 `parse` 的条件、输入 / 输出 schema 的选择、服务方法与实参写法都不变；不修缺陷。发现疑似缺陷时在 PR 正文记录并报协调者，另开 Backlog。
-2. **注册顺序不变**：12 条路由的注册先后与“现状”相同；两处循环可保留为循环，也可展开，但展开后的顺序与循环顺序相同（R4 直接断言 1）。
+1. **只拆不改**：路径、允许方法、`ready` 与 `parse` 的条件、输入 / 输出 schema 的选择、服务方法与实参写法都不变（唯一例外：分页实参可按决定 5 的唯一形状抽取）；不修缺陷。发现疑似缺陷时在 PR 正文记录并报协调者，另开 Backlog。
+2. **注册顺序不变，循环不展开**：12 条路由的注册先后与“现状”相同（R4 直接断言 1）。两处循环（`:53-69` services / parties，`:130-152` 队列动作）**保持为循环**，数组字面量与循环体整体搬进分组注册函数，不展开为逐条 `server.all`；这样源码中 `server.all` 仍为 9 处，R5a、R5c 可按原文与多重集比较。
 3. **检查先后不变**：每个处理函数内 `boundary.assert` → `ready` → `parse` → 服务调用 → 输出 `.parse` 的顺序不变；`ready` 内 503 → 400 → 415 的顺序不变。
 4. **签名不变**：`registerBusinessRoutes` 的参数名、顺序与类型不变（`.length` 3），不加返回类型注解；`http/index.ts` 无 diff。
-5. **传参代替闭包**：`ready` 可改为模块级函数，以参数接收 `service`（例如 `readyService(service, request)`），或由工厂返回闭包；两者都须保持 `ready` 函数体逐字（只改自由变量名，R5a 列出）。
-6. **建议拆法**（不强制）：主数据与记账规则 3 条 → `business-event-master-routes.ts`；业务事件 5 条 → `business-event-routes.ts`；转入队列 4 条 → `business-event-queue-routes.ts`；`parse` 与 `ready` → `business-event-guards.ts`。`registerBusinessRoutes` 只按原顺序依次调用三个分组注册函数。
-7. **文件与依赖**：新文件为同目录 `business-event-*.ts`；新文件不从 `./business-events.ts` 导入运行时值；新文件之间单向无环（R5d）。`http/index.ts` 不导入新文件。
-8. **不改的路径**：`packages/infra/src/http/index.ts`、`legacy.ts`、`errors.ts`，`packages/infra/src/**` 其余文件，`packages/infra/test/**`、`packages/core/**`、`packages/web/**`、`docs/**`。
+5. **分页实参只允许一种抽取**：分页实参表达式 `{ limit: Number(limit), ...(cursor ? { cursor } : {}) }`（5 个源码位置）可以不抽；若抽，只能抽成**一个**模块级函数，形如 `function pageOptions(limit: string, cursor: string | undefined) { return { limit: Number(limit), ...(cursor ? { cursor } : {}) }; }`（名称可换，参数须为 `(limit, cursor)` 且顺序不变，函数体只有这一条 `return`，表达式逐字相同），5 处调用点都写作 `pageOptions(limit, cursor)`，实参原文就是 `limit`、`cursor`。除此之外不抽取处理函数体内的任何表达式。
+6. **传参代替闭包**：`ready` 可改为模块级函数，以参数接收 `service`（例如 `readyService(service, request)`），或由工厂返回闭包；两者都须保持 `ready` 函数体逐字（只改自由变量名，R5a 列出）。
+7. **建议拆法**（不强制）：主数据与记账规则 3 条 → `business-event-master-routes.ts`；业务事件 5 条 → `business-event-routes.ts`；转入队列 4 条 → `business-event-queue-routes.ts`；`parse` 与 `ready` → `business-event-guards.ts`。`registerBusinessRoutes` 只按原顺序依次调用三个分组注册函数。
+8. **文件与依赖**：新文件为同目录 `business-event-*.ts`；新文件不从 `./business-events.ts` 导入运行时值；新文件之间单向无环（R5d）。`http/index.ts` 不导入新文件。
+9. **不改的路径**：`packages/infra/src/http/index.ts`、`legacy.ts`、`errors.ts`，`packages/infra/src/**` 其余文件，`packages/infra/test/**`、`packages/core/**`、`packages/web/**`、`docs/**`。
 
 ## 冲突域
 
@@ -61,11 +62,11 @@
 | R6b | 嵌套深度 | 最深为 `registerBusinessRoutes` 3、`ready` 2（已满足） | 每个函数 ≤ 3（保持） |
 | R6c | 文件行数（`(Get-Content <file>).Count`） | `business-events.ts` **153** | `business-events.ts` ≤ **100**；新文件各 ≤ **150** |
 
-上表 head 要求都是**硬上限**。`business-events.ts` ≤ 100 由设计角色按决定 6 估定（只保留导入、导出函数与三次分组调用时约 20–40 行；若 `ready` / `parse` 留在本文件，约 60 行），未经试拆实测。实测超出即停下，报设计角色与协调者；不得自行放宽，也不得为凑数字机械拆分。是否调整由 TL 决定，并记入 PR。
+上表 head 要求都是**硬上限**。`business-events.ts` ≤ 100 由设计角色按决定 7 估定（只保留导入、导出函数与三次分组调用时约 20–40 行；若 `ready` / `parse` 留在本文件，约 60 行），未经试拆实测。实测超出即停下，报设计角色与协调者；不得自行放宽，也不得为凑数字机械拆分。是否调整由 TL 决定，并记入 PR。
 
 ### 两侧都须成立的不变量
 
-- **R1 范围**：`git diff --name-only <base>...<head>` 只含 `packages/infra/src/http/business-events.ts` 与同目录新增的 `business-event-*.ts`；决定 8 所列路径 diff 为空。不加迁移。
+- **R1 范围**：`git diff --name-only <base>...<head>` 只含 `packages/infra/src/http/business-events.ts` 与同目录新增的 `business-event-*.ts`；决定 9 所列路径 diff 为空。不加迁移。
 - **R2 导出不变**：用 `@babel/parser`（插件 `typescript`）解析，`business-events.ts` 的导出名集合两侧都为 `["registerBusinessRoutes"]`，签名源文本相同（只归一空白）；`http/index.ts` 无 diff。新文件的导出只在 `business-events.ts` 与新文件之间使用，PR 正文附 `git grep` 结果。`npm run typecheck`、`npm run check`、`npm run check:boundaries` 通过。
 - **R3 既有测试原样通过**：`npx vitest run --project infra` 全部通过（不含 `infra-browser`）；测试文件 diff 为空。PR 正文附汇总行原文，base 与 head 各一次。`business-events-gui.slow.test.ts` 由 R8b 覆盖。
 - **R4 路由、检查先后与响应等价**（送审证据；驱动不提交，不加常驻 CI 用例）：
@@ -99,9 +100,13 @@
   - **PR 正文附**：驱动全文与用例清单（按表 A、表 B、先后、分页、路径参数分组，标明对应矩阵格）；两侧输出的 SHA-256 与比较结果；直接断言 1、2、5 的输出原文。
   - **驱动原件**：PR 正文贴原文件字节的 base64，或同时给原始字节与“UTF-8 解码、换行归一为 LF”两种 SHA-256。
 - **R5 结构规则**（静态）：
-  - **R5a 原文搬移**：12 个处理函数体、`ready` 函数体（`:40-51`）与 `parse` 函数体（`:30-32`）base 与 head 逐字比较（只归一缩进）；为传参改自由变量（`service`、`ready`、`path`、`kind`、`action`）的地方逐处列表（决定 5）。循环若展开，展开后每个处理函数与原循环体逐字比较，循环变量替换为字面量的地方逐处列表。不同且未列明即失败。
+  - **R5a 原文搬移**：比较对象是 base 源码中的 9 个处理函数（9 处 `server.all`，其中 2 个在循环内，共注册 12 条路由）、两处循环的数组字面量（`:53-56`、`:130`）、`ready` 函数体（`:40-51`）与 `parse` 函数体（`:30-32`）。比较前对两侧做且只做以下规范化，然后逐字比较：
+    1. 去掉每行行首空白，删除空行（缩进与换行位置变化不计）；
+    2. 若按决定 5 抽了分页实参：先核对该函数满足决定 5 的形状，再把 head 中每处 `<函数名>(limit, cursor)` 替换为表达式原文 `{ limit: Number(limit), ...(cursor ? { cursor } : {}) }`，并把 base 中 `:107-110` 的多行写法按规则 1 合并后同样比较；替换次数须恰为 5，否则失败；
+    3. 若按决定 6 改了 `ready` 的取得方式：只允许把 `ready(request)` 换成决定 6 所选的调用形式，逐处列表（base 9 处中的 9 处）；`ready` 函数体内只允许自由变量 `service` 改名，逐处列表。
+    规范化后仍不同即失败；PR 正文贴出规范化脚本全文与两侧规范化后的文本。循环按决定 2 不展开，所以没有“展开后比较”的情形；若出现展开，R5a 直接失败。
   - **R5b 无模块级可变状态**：`business-events.ts` 与新文件的模块顶层只有 `import` / `export`、类型、函数声明与不可变 `const`（不在加载时调用导入的函数）；附 Babel AST 检查输出。
-  - **R5c 调用点不变**：`boundary.assert(` 实参原文多重集（base 9 处：`:58`、`:71`、`:83`、`:91`、`:97`、`:103`、`:114`、`:120`、`:134`）、`httpError(` 实参多重集（base 3 处：`:40`、`:47`、`:49`）、`parse(` 调用多重集与 `server.all` 第一个实参多重集两侧相同；Babel AST 抽取，附两侧列表。
+  - **R5c 调用点不变**：`boundary.assert(` 实参原文多重集（base 9 处：`:58`、`:71`、`:83`、`:91`、`:97`、`:103`、`:114`、`:120`、`:134`）、`httpError(` 实参多重集（base 3 处：`:40`、`:47`、`:49`）、`parse(` 调用多重集与 `server.all` 第一个实参原文多重集（base 9 处，含 `:57`、`:132` 两个模板字面量）两侧相同；Babel AST 抽取，附两侧列表。若按决定 5 抽了分页实参，另附该函数的调用点多重集（恰为 5 处 `(limit, cursor)`）。
   - **R5d 依赖方向**：新文件不从 `./business-events.ts` 导入运行时值；新文件之间单向无环；`http/index.ts` 无 diff；附导入图。
 - **R6 尺寸**：见上表；PR 正文列出超过 60 行的函数，附行数与最深层数（base 与 head 两列）。
 - **R7 打包字节**：不适用。infra 不被 web 导入，不进任何 web chunk，不跑 `bundle-measure.mjs`。编号保留。
@@ -119,7 +124,7 @@ npm run typecheck; npm run check; npm run check:boundaries
 ## 性能考虑
 
 - 路由数、注册顺序与每个请求的检查次数不变（R4、R5c）；分组注册只在启动时多几次函数调用，不在请求路径上。
-- 不跑 Bench：请求路径上的语句原样搬移，没有新增分配或查询。
+- 不跑 Bench：请求路径上的语句原样搬移（可选的分页实参函数只把同一对象字面量移入一次函数调用），没有新增查询。
 
 ## 可读性
 
@@ -130,7 +135,7 @@ npm run typecheck; npm run check; npm run check:boundaries
 | 函数长度（②） | `business-events.ts` 与新文件每个函数 ≤ 80 | `registerBusinessRoutes` 120、`ready` 14、`parse` 5 | 量法对 `business-events.ts` 与全部新文件的**完整输出**；超过 60 行的逐个列行数 |
 | 嵌套深度（②） | 每个函数 ≤ 3 | `registerBusinessRoutes` 3、`ready` 2、`parse` 1 | 同一输出第 2 列；超过 2 层的逐个说明 |
 | 文件长度（③） | `business-events.ts` ≤ 100；新文件各 ≤ 150 | `business-events.ts` 153；`http/business-event-*.ts` 不存在 | `git diff --numstat <base> <head>` 与拆后行数 |
-| 重复（④） | 第三次出现即抽取 | 分页实参 `{ limit: Number(limit), ...(cursor ? { cursor } : {}) }` 5 个源码位置（`:63`、`:76`、`:87`、`:107-110`、`:125`）；`boundary.assert` 开头 9 处（`ready` 紧随其后 8 处，`events/confirm` 内联在 `:99`）；`businessResultSchema.parse(` 5 处（`:98`、`:117`、`:128`、`:142`、`:147`） | 分页实参可抽为纯函数（例如 `pageOptions(limit, cursor)`），返回对象的键与键序须不变（R4 直接断言 6）；`assert` / `ready` 开头与输出 `.parse` 是逐路由的检查先后，保留原位以便 R5a 逐字比较，PR 正文写明“不抽取的理由：检查先后须在每条路由内可见”；每处去向 |
+| 重复（④） | 第三次出现即抽取 | 分页实参 `{ limit: Number(limit), ...(cursor ? { cursor } : {}) }` 5 个源码位置（`:63`、`:76`、`:87`、`:107-110`、`:125`）；`boundary.assert` 开头 9 处（`ready` 紧随其后 8 处，`events/confirm` 内联在 `:99`）；`businessResultSchema.parse(` 5 处（`:98`、`:117`、`:128`、`:142`、`:147`） | 分页实参可按决定 5 的唯一形状抽取（或不抽，PR 正文写明理由），R5a 按规范化规则 2 比较，返回对象的键与键序须不变（R4 直接断言 6）；`assert` / `ready` 开头与输出 `.parse` 是逐路由的检查先后，保留原位以便 R5a 逐字比较，PR 正文写明“不抽取的理由：检查先后须在每条路由内可见”；每处去向 |
 | 命名（①） | 新函数、新文件名表达业务含义；不用 `step1`、`part2`、`helper`、`utils` | — | 新增名称清单，每个一句职责；附 `git diff --name-only <base>...<head> \| grep -i -E "step[0-9]\|part[0-9]\|helper\|util"` 输出（预期为空） |
 
 ### 量法
@@ -180,6 +185,7 @@ base 完整输出（`行数 / 层数 / 范围 / 名称`）：
 
 - [x] 冲突域与 REFAC-41、REFAC-43 逐文件不相交；不改 `http/index.ts`、`legacy.ts`、`errors.ts`、测试文件与 `docs/`。
 - [x] R6a 有 base 实测值（base 失败）；R6b base 已满足，要求保持；`business-events.ts` ≤ 100 为估定硬上限，未试拆，超出即停下由 TL 决定。
+- [x] 循环不展开（决定 2）；分页实参只允许决定 5 的一种抽取，R5a 规范化规则与之对应，R5c 多重集仍按 base 9 处 `server.all` 比较；决定、R5 与可读性一节互不冲突。
 - [x] 用例按 S32 矩阵逐格（表 A 16 个组合、表 B 12 个 405），N/A 格不构造；检查先后、注册顺序、分页实参与静态路径优先都有直接断言，均注明未实测。
 - [x] R4 一节写明 S31 回顾行动 1（无随机值与当前时间、`requestId` 用计数器替换、端口不入记录并自检、helper 默认值、夹具 SHA-256、两次独立重建、不满足不送审、冲突停下上报）。
 - [x] 可读性五项都有要求、改前数据（S30 统一量法完整输出）与改后须列；无用户可见变化。
