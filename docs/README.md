@@ -70,7 +70,7 @@
 | `migration-runbook.md` §6、§10 | 一致 | — | — | PASS（快照、dry-run） | 未改；只复核 §6、§10，整页未核，保持 partial |
 | `legacy-snapshot.md` | — | — | — | PASS | 未改；无事实复核，保持 partial |
 | `ci.md` | 逐项一致；本批（基线 `2150b6e`）本地复现命令未跑，KGAP-09 已实跑，见下方 KGAP-09 一节；workflow 未触发 | — | — | 未在本轮范围 | 当时未改；KGAP-09 后见该节 |
-| `user/backup-and-legacy.md`（改） | 抽查 | 2 处不精确（口径 5 的整账跳过、阻断类别） | 通过；U21 基准数值未核 | PASS 仅限：沿用快照、dry-run、仅导入数据，在「迁移核对」看到“已导入，未确认”与教学提示；不覆盖本批新改的期初口径 5 与阻断类别 | 已修两处；已钉 #420 合并提交 `1ca22e9d4f4bb91af5cc5223a762f74370257be0` |
+| `user/backup-and-legacy.md`（改） | 抽查 | 2 处不精确（口径 5 的整账跳过、阻断类别） | 通过；U21 基准数值未核 | PASS 仅限：沿用快照、dry-run、仅导入数据，在「迁移核对」看到“已导入，未确认”与教学提示；不覆盖本批新改的期初口径 5（其逐伙伴比较现记 not_applicable，D606）与阻断类别 | 已修两处；已钉 #420 合并提交 `1ca22e9d4f4bb91af5cc5223a762f74370257be0` |
 | `user/ledger.md`（改） | — | “讲解”仅教学模式出现 | 通过 | PASS（仅新库入口） | 已修；已钉 #420 合并提交 `1ca22e9d4f4bb91af5cc5223a762f74370257be0` |
 | `user/trade-reports.md`（改） | — | — | — | **FAIL**：教学开关在顶栏右侧，不在侧栏 | 已修；顶栏位置已由评审在精确 head 复验（QA PASS，限教学开关定位）；其余页面内容无事实复核、无整页 QA，不升 covered；已钉 `1ca22e9d4f4bb91af5cc5223a762f74370257be0` |
 | `user/trade-main-path.md`（改） | — | — | 1 处不符 B-1：发票页无 Ctrl+Enter 预览 | PASS 仅限：固定教学日期的核销/折扣/贷项金额主路径（预置贸易科目）；不覆盖本批删除的快捷键句 | 已删该句；根 README 的 Ctrl+Enter 指凭证，无需改 |
@@ -87,7 +87,7 @@
 | 页面 | 已有证据 | 实际剩余 |
 |---|---|---|
 | `operations.md` | 发布事实复核；备份输出同名/保留路径返回 `INVALID_INPUT`、恢复后空 `.users/` 目录为实测；QA 有仅导入启动与 #374 锁/备份/恢复演练 | 已死进程租约自动清除分支只有源码核对（`maintenance.ts:68-83`），若要独立 QA 需补；开发未复核；改后文字未经 QA |
-| `backup-and-legacy.md` | 设计 U13–U20 通过；开发复核；QA 覆盖快照、dry-run、仅导入、核对页与教学提示 | 无伙伴标记时仅跳过口径 5 的逐伙伴比较（其他校验照常）、以及阻断类别（映射、形状）无 QA；U21 基准数值未核；发布仅抽查 |
+| `backup-and-legacy.md` | 设计 U13–U20 通过；开发复核；QA 覆盖快照、dry-run、仅导入、核对页与教学提示 | 口径 5 的逐伙伴比较记 not_applicable（现行两种来源都不产生带伙伴维度的控制科目分录，命令行不可达，D606；所有账户一律跳过，其他校验照常）；阻断类别（映射、形状）无 QA；U21 基准数值未核；发布仅抽查 |
 | `ledger.md` | 开发仅复核 AI 小节（`ledger.md:54`）并已修；QA 覆盖新库进入、空列表、新建草稿入口 | 整页其余段落无事实复核；保存、过账、AI、队列分支无真实浏览器 QA |
 | `trade-reports.md` | 教学开关在顶栏右侧已在精确 head 复验 PASS；月末筛选、三视图、36.50 与 GL 差异 0.00 有 QA（补充观察） | 无事实复核（设计未覆盖本页） |
 | `trade-main-path.md` | 核销 56.50、现金 55.75、折扣 0.75、22.60 贷项、月末未结 36.50 有虚构夹具 QA；快捷键句已按代码更正 | 已证金额另含：113.00（真实 Edge 两阶段测试，发票预览响应断言 11300，`invoice-entry.ts:67`；订单页渲染 113.00，`orders.ts:56`；第二阶段 `adjustments-reports.ts:29` 调用 AR 发票），区分响应与 DOM，不重新派发已有 QA；仍未重演的是逐版本路径；QA 用预置科目与固定教学日期 |
@@ -112,14 +112,14 @@
 | `user/trade-reports.md` | KGAP-10 ①：52 条，49 一致、3 不符（三张截图过时）、0 无法判定 | #449 换未结项图；#451 重拍账龄与 GL 核对图（含“期初”列）并去掉“待重拍”注记 | `bb18960a97bb7d3ebb2c9d2f1e888060b796bcd6`（#451） | 本批无新增 QA；沿用 S26 的教学开关定位 PASS 与既有补充观察 | partial |
 | `user/trade.md`、`user/teaching-mode.md`、`user/ui-guide.md` | KGAP-10 ②：279 条，248 一致、12 不符（`trade.md` 10、`teaching-mode.md` 2、`ui-guide.md` 0）、19 无法判定（`ui-guide.md` 14、`trade.md` 4、`teaching-mode.md` 1）；5 条措辞建议未采纳 | #449 修正 12 处不符 | `trade.md`、`teaching-mode.md`：`bd9dc7b4479eb56f93a5209b7bdde4173771bbbb`（#449）；`ui-guide.md`：`04b576baf9f03c13055daf98be6b0831cf086648`（未改） | 本批无新增 QA | partial；19 条无法判定仍开放 |
 | `user/trade-main-path.md` | KGAP-10 ③：32 条，26 一致、5 不符、1 无法判定（3.28“2100 均为 -36.50”，依据 v0.2.0 截图，基线未实测） | #447 改页名、按钮名、:3 的 Demo 表述 | `33e5e51f39a0d8285a515c2c384eff8c80bd4431`（#447） | 沿用 S26：固定教学日期的核销/折扣/贷项金额主路径 PASS | partial；3.28 待开发实跑 |
-| `user/backup-and-legacy.md` | 设计 U13–U20 通过；开发复核 :93、:99-102（`kgap-09-dev-review.md`）；KGAP-11 发布复核全文（2 处不精确 P1、P2，另 :15 的 -journal 与非零退出码已在临时库实测）；KGAP-10 ④：U21 的 7 行出处全部一致（“约 9 小时”是估算；两次内存读数的差异原因未验证） | #443 修正 :29（imported 与 failed 分开写）、:39 | `5a45630716f90dfc7c0dbd013a95b7bbf502d285`（#443） | S26：快照、dry-run、仅导入、核对页与教学提示 PASS；KGAP-12 ②：04、05 PASS，06 原 FAIL（续跑返回 `CONFLICT` 是已记录的保护），D603 复验 06 两路径 PASS；KGAP-11 迁移核对 UI 4/4 PASS（限定范围：中英×红绿，仅 UI 证据，KGAP-11 非 UI 项未复验；[#450 评论](https://github.com/lingshf/ai-native-erp/pull/450#issuecomment-7208547656)，会话记录 `kgap-12-d603-qa.md`） | **已 QA（限定范围）**，仅限：S26 正常路径（快照、dry-run、仅导入、核对页、教学提示）；KGAP-12 的 04、05；D603 的 06（两路径与续跑）；KGAP-11 迁移核对 UI 4/4（中英×红绿）。其余 partial：口径 5 逐伙伴比较（03 阻塞，延期到 KGAP-16）、U21 数值（仅追溯出处）、KGAP-11 非 UI 项（-journal、退出码等为发布角色实测，属事实复核，非 QA）；②不整格升级 |
+| `user/backup-and-legacy.md` | 设计 U13–U20 通过；开发复核 :93、:99-102（`kgap-09-dev-review.md`）；KGAP-11 发布复核全文（2 处不精确 P1、P2，另 :15 的 -journal 与非零退出码已在临时库实测）；KGAP-10 ④：U21 的 7 行出处全部一致（“约 9 小时”是估算；两次内存读数的差异原因未验证） | #443 修正 :29（imported 与 failed 分开写）、:39 | `5a45630716f90dfc7c0dbd013a95b7bbf502d285`（#443） | S26：快照、dry-run、仅导入、核对页与教学提示 PASS；KGAP-12 ②：04、05 PASS，06 原 FAIL（续跑返回 `CONFLICT` 是已记录的保护），D603 复验 06 两路径 PASS；KGAP-11 迁移核对 UI 4/4 PASS（限定范围：中英×红绿，仅 UI 证据，KGAP-11 非 UI 项未复验；[#450 评论](https://github.com/lingshf/ai-native-erp/pull/450#issuecomment-7208547656)，会话记录 `kgap-12-d603-qa.md`） | **已 QA（限定范围）**，仅限：S26 正常路径（快照、dry-run、仅导入、核对页、教学提示）；KGAP-12 的 04、05；D603 的 06（两路径与续跑）；KGAP-11 迁移核对 UI 4/4（中英×红绿）。其余 partial：口径 5 逐伙伴比较（not_applicable：命令行不可达，D606，KGAP-12 03 不记 PASS）、U21 数值（仅追溯出处）、KGAP-11 非 UI 项（-journal、退出码等为发布角色实测，属事实复核，非 QA）；②不整格升级 |
 | `legacy-snapshot.md` | KGAP-13：26 条，26 一致，0 不符（含 -journal、必填路径、输出路径等实测 M3） | 未改 | `66f3a47623e3b07f55447b06ac48fe84d153c34a`（该文件最后修改提交） | S26 QA PASS（`kgap01-2150b6e-qa.md`；快照命令） | **已 QA（限定范围）**，仅限：S26 在真实 Windows 上的正常路径。其余 partial：WAL、`SOURCE_BUSY`、-journal 拒绝、必填路径等负例没有 QA（开发 M3 为事实复核，不是独立 QA）；非 Windows 与真实旧账不在范围 |
 | `user/getting-started.md` | KGAP-13：18 条，16 一致、2 不符（GS-13 截图、GS-14 导航分组） | #444 改导航为六组；#445 重拍运行状态截图 | `4997611e605665cf203d65a2ce09d7ef9b0d48ca`（#445） | 沿用 S26 PASS（新临时库启动、`DEFAULT`、八个内置科目）；修正后的导航与截图无独立 QA | partial |
 | `user/ledger.md`、`ai-assistant.md` | 开发复核（KGAP-09，除 AI 段外；AI 4 处已修）；KGAP-12 带出 3 处文字修正 | #452：按钮名“采纳为新草稿（仅填入）”、先采纳再手工保存、编辑器保留只适用于业务事件视图 | 两页均 `ff196c351318d20895678b46b750c88c59b3863c`（#452） | KGAP-12 ③ 07、08、09 PASS（原 10 阻塞、11 FAIL，D603 复验 10、11 PASS）；④ 12–17 6/6 PASS（原范围，假 SDK，不含真实 Copilot）。③不整格升级 | partial |
 | `operations.md` | 开发复核全文无不符（KGAP-09）；发布 S26 | 未改 | `1ca22e9d4f4bb91af5cc5223a762f74370257be0`（#420） | KGAP-12 ① 01、02 PASS（已死进程租约清除、仍运行进程 `BUSY`；原范围） | partial |
 | `flows/settlement-flow.md` | 沿用设计通过 | 未改 | `8ed9d1b0fdfd053acf87f82dcaca3c0efeebb011` | KGAP-12 ⑤ 18–22 5/5 PASS（原范围：只验证付款页的离开页面与结果未知黄条，不宣称验证整条发请求链路） | partial |
 
-没有产品缺陷，未登记 BUG-06。KGAP-12 的 03 延期到 KGAP-16（阻塞）。KGAP-04 仍是外部限制。除 `trade-main-path.md` 3.28 与 `ui-guide.md`/`trade.md`/`teaching-mode.md` 的 19 条无法判定外，没有新增未决事实项。
+没有产品缺陷，未登记 BUG-06。KGAP-12 的 03 按 D606 记 not_applicable（口径 5 逐伙伴比较在命令行不可达，不记 PASS；KGAP-16 改验收，Developer 复核与改钉待合并后）。KGAP-04 仍是外部限制。除 `trade-main-path.md` 3.28 与 `ui-guide.md`/`trade.md`/`teaching-mode.md` 的 19 条无法判定外，没有新增未决事实项。
 
 事实所有者按角色：产品 = 设计/产品负责人；开发 = 开发；发布 = Delivery/Release；知识 = Knowledge Lead。
 
