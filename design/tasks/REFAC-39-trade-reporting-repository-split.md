@@ -35,7 +35,7 @@
   | `tradeReportStamp` `:114-125` | 1 次，参数 `[company, company, company]`；返回 `journals:actions:settlements`（各经 `integer`） |
   | `tradeReport` `:126-167` | 2 次，依次为分页（明细形态，`where` 为 `AND o.item_id>?`，游标缺省 `""`，末参 `query.limit + 1`）与合计（聚合形态）；`nextCursor`：行数 > `limit` 时为最后一项的 `documentId`，否则 `null`（`:155`）；8 个合计字段经 `integer` |
   | `tradeReportItem` `:168-176` | 1 次（明细形态，`where` 为 `AND o.item_id=?`，范围 `{}`）；无行返回 `null`（`:175`） |
-  | `tradeReconciliation` `:177-253` | 1 次（聚合形态，`ageingDate` = `cutoff`），参数为 `p.values`（5 项）后接 13 项（`:221-234`），共 18 项；逐行映射，`:241` 为 D25 注释，`otherSourceMinor` / `tradeDifferenceMinor` / `differenceMinor` 公式见 `:248-250` |
+  | `tradeReconciliation` `:177-253` | 1 次（聚合形态，`ageingDate` = `cutoff`），参数为 `p.values`（5 项：聚合形态 `:84` 的 `[cutoff, cutoff, ageingDate]` 与范围为 `{}` 时 `:66-72` 的 `[company, cutoff]`）后接 11 项（`:223-233`），共 16 项；逐行映射，`:241` 为 D25 注释，`otherSourceMinor` / `tradeDifferenceMinor` / `differenceMinor` 公式见 `:248-250` |
 
   `git grep -c "db.query(" 3c571b8 -- packages/infra/src/storage/trade-reporting.ts` 为 5。
 - **接口**：`packages/core/src/application/trade-reporting.ts:18-34`。
@@ -95,7 +95,7 @@
     2. `tradeReport`：恰好 2 次调用，第 1 次 SQL 以 `WITH balances AS (` 开头、末参为 `limit + 1`，倒数第 2 参为游标（无游标时 `""`）；第 2 次 SQL 以 `WITH aged AS (` 开头、参数前 3 项为 `[cutoff, cutoff, ageingDate]`。
     3. `tradeReport` 分页：可见行数 ≤ `limit` 时 `nextCursor` 为 `null`；> `limit` 时 `items.length === limit` 且 `nextCursor` 为 `items.at(-1).documentId`。
     4. `tradeReportItem`：恰好 1 次调用，末参为 `id`；不存在时返回 `null`。
-    5. `tradeReconciliation`：恰好 1 次调用，参数共 18 项，前 3 项为 `[cutoff, cutoff, cutoff]`；每行键序为 `account`、`subledgerMinor`、`glMinor`、`tradeGlMinor`、`openingGlMinor`、`otherSourceMinor`、`tradeDifferenceMinor`、`differenceMinor`，且三项派生值满足 `:248-250` 的公式。
+    5. `tradeReconciliation`：恰好 1 次调用，参数共 16 项（5 + 11，见“现状”），前 3 项为 `[cutoff, cutoff, cutoff]`；每行键序为 `account`、`subledgerMinor`、`glMinor`、`tradeGlMinor`、`openingGlMinor`、`otherSourceMinor`、`tradeDifferenceMinor`、`differenceMinor`，且三项派生值满足 `:248-250` 的公式。
     6. 驱动 B：`tradeReportStamp` 的行中某列为 `2 ** 53`（`number`）或 `"1"`（字符串）时抛 `StorageError`、`code` 为 `STORAGE_FAILURE`；为 `1n`（`bigint`）时成功。
     7. 驱动 B：`tradeReconciliation` 的行中 `account` 为数字时抛 `STORAGE_FAILURE`；`gl` 与 `trade`、`opening` 使 `otherSourceMinor` 超出安全整数时抛 `STORAGE_FAILURE`。
     8. 调用记录中的方法名只有 `query`；只含 `query` 的连接构造不抛错。
