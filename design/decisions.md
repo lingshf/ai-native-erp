@@ -653,3 +653,4 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D621 | 表 | REFAC-38 任务书：`Dimensions.tsx` 只拆不改行为（DOM、请求、焦点、Hook 序列、组件边界与… | [design/tasks/S31.md:169](tasks/S31.md) |
 | D622 | 表 | REFAC-39 任务书：`tradeReportingRepository` 只拆不改行为（SQL 文本与参数逐字节不… | [design/tasks/S31.md:170](tasks/S31.md) |
 | D623 | 表 | REFAC-40 任务书：`buildReports` 只拆不改行为（导出与签名、公开推断类型、返回值含键序与 `-0`… | [design/tasks/S31.md:171](tasks/S31.md) |
+| D624 | 表 | REFAC-38 的 R5a 例外：`DimensionEditor` 草稿 `useState` 的类型实参由 `Re`… | [design/tasks/S31.md:172](tasks/S31.md) |
