@@ -75,5 +75,5 @@ flowchart LR
 - 候选不自动保存：多一步人工，换取过账责任始终在用户。
 - 讲解的教学模式限制只在前端（D563），服务端不加固。
 - 交给 SDK 的环境变量只留 `COPILOT_GITHUB_TOKEN`（SEC-02，第 3、5 节）：牺牲靠 `GH_TOKEN` / `GITHUB_TOKEN` 等继承变量“碰巧可用”的兼容性，换取缺省最小的交出范围。
-- 缺口：原生 CLI 离线启动只有 Linux 证据，Windows 未验证（D571）；原生 CLI 对补入键的依赖、真实认证兼容、代理与自定义 CA、SDK 子进程环境的端到端隔离仍未验证（第 3 节）；Copilot 服务端数据处理部分有官方说明（链接模型托管与负责任使用两页，本页不复述承诺），GitHub 服务端如何保存仍无专门说明；本页未经 QA 演练。
+- 缺口：原生 CLI 离线启动只有 Linux 证据，Windows 未验证（D571）；原生 CLI 对补入键的依赖、真实认证兼容、代理与自定义 CA、SDK 子进程环境的端到端隔离仍未验证（第 3 节）；模型托管与提供方的数据承诺见官方说明 [Hosting of models for GitHub Copilot](https://docs.github.com/en/copilot/reference/ai-models/model-hosting)（本页不复述承诺）；GitHub 自身服务端如何保存与使用数据仍无专门说明，是缺口（Copilot Agents 负责任使用说明不是服务端数据处理说明，不作证据）；本页未经 QA 演练。
 - 复核记录（范围仅限两项）：设计在 [#386 评论 7148480305](https://github.com/lingshf/ai-native-erp/pull/386#issuecomment-7148480305) 核对了官方链接是否属实，以及第 3、7 节是否符合 SEC-02 任务书 R7 时点 2；核对时的 head 是 7aabc4f，之后的措辞修改未另行复核。不扩大到整页，也不代表做过 QA 演练。第 3、5、7 节已由 SEC-02 按新行为改写，上述核对不覆盖改写后的内容。
