@@ -637,3 +637,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D605 | 表 | 接受 S29 计划：目标、范围（KGAP-16、KGAP-15 复查节奏、KDOC-12、KDOC-13、S28 回顾行… | [design/tasks/S29.md:129](tasks/S29.md)；[design/reviews/S29-review.md:14](reviews/S29-review.md) |
 | D606 | 表 | KGAP-16 定范围：**改验收，不做输入路径** | [design/tasks/S29.md:130](tasks/S29.md)；[design/reviews/S29-retro.md:9](reviews/S29-retro.md) |
 | D607 | 表 | KGAP-15 复查节奏：S29 不排定复查 | [design/tasks/S29.md:131](tasks/S29.md)；[design/reviews/S29-review.md:14](reviews/S29-review.md) |
+| D608 | 表 | 接受 S30 计划：目标、范围（KDOC-14、REFAC-35..37、S29 回顾行动 1–3）、排序、泳道与开发名… | [design/tasks/S30.md:154](tasks/S30.md) |
+| D609 | 表 | S30 开发泳道排 ② 存量拆分 REFAC-35（`Reports.tsx`）、REFAC-36（`masterDat`… | [design/tasks/S30.md:155](tasks/S30.md) |
+| D610 | 表 | 多订单合并开票不进 S30：会加迁移 021、改变发票级 `orderId` 契约（S19.md:27）、须先有功能设计… | [design/tasks/S30.md:156](tasks/S30.md)；[design/tasks/S30.md:146](tasks/S30.md) |
+| D611 | 表 | KDOC-14 的目标范围由 `:51–58` 改为 `:52–58`：按 S29 行动 2 打开 `34ec97c` … | [design/tasks/S30.md:157](tasks/S30.md) |

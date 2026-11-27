@@ -873,6 +873,10 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 - **Sprint 评审与回顾**：[S29 评审](../reviews/S29-review.md)（accepted，无计划偏差，`:58` 引用缺口非阻塞、转 KDOC-14；计划四项全部 done；打回 3；修正事实不符 4 处；D605–D607，收尾无新增决定；矩阵无格升 covered，场景 03 记 not_applicable；新登记 KDOC-14；KGAP-15 缺口仍开放；BUG-05 是否打版本待用户授权）、[S29 回顾](../reviews/S29-retro.md)（行动 1 全称措辞的穷举检查前移到计划与决定，行动 2 改状态的 PR 逐句核对同文件状态描述，行动 3 延续 QA 预期先确认入口可达；S28 行动 1 未达成，行动 2 不适用，行动 3 达成）。
 
+## S30：KDOC-14 + ② 存量拆分三泳道（D608）
+
+计划、选题依据、排序、泳道与跨文件验收见 [S30.md](S30.md)（计划草案，待 TL 确认）。范围：KDOC-14（引用范围按 D611 改为 `:52–58`）、② 存量拆分 REFAC-35（`Reports.tsx`）、REFAC-36（`masterDataRepository`）、REFAC-37（`core/src/domain/dimensions.ts`）（D609，任务书由 Product/Design 先写，合并后派发），并落实 S29 回顾行动 1–3；无迁移；开发名额占 3。多订单合并开票不进本 Sprint，是否要做须用户决定（D610）。BUG-05 是否打版本、v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 未获用户授权，P12 待用户决策，均不纳入承诺；本 Sprint 不承诺版本号，不做发布候选（D608）。
+
 ## 知识与文档待办（KDOC，D556）
 
 已移至 [backlog/KDOC.md](backlog/KDOC.md)（MCF-16，D584）。
