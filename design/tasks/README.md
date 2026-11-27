@@ -889,7 +889,7 @@ M1-R3（#78）、M1-R4（#81）已完成。
 
 计划、选题依据、排序、泳道与跨文件验收见 [S31.md](S31.md)（已结束，计划 #471 合并为 `3c571b8`；TL 已确认 D617–D619，D620 选定 KDOC-15 方案）。范围：KDOC-15（KGAP-15 复查部分找到，补链接 GitHub Docs 模型托管页，不升 covered，D620）、② 存量拆分 REFAC-38（`Dimensions.tsx`）、REFAC-39（`tradeReportingRepository`）、REFAC-40（`buildReports`）（D619，任务书由 Product/Design 先写，合并后派发），并落实 S30 回顾行动 1–3（行动 3：REFAC 的 QA 结论发在开发 PR 评论，未发不合并）；无迁移；开发名额占 3。多订单合并开票按 D617 暂缓（用户授权 TL 代定）。BUG-05 是否打版本、v0.22.0 的 tag 与 Release、M2-05/06、Dependabot 未获用户授权，P12 待用户决策，均不纳入承诺；本 Sprint 不承诺版本号，不做发布候选（D618）。
 
-- **Sprint 评审与回顾**：[S31 评审](../reviews/S31-review.md)（accepted，无计划偏差；REFAC-38..40 done，合并后复测都 PASS，独立 QA 结论都在合并前发在 PR 上（REFAC-39 首轮 FAIL：R4 夹具不可复现，确定性构建后 PASS）；KDOC-15 已合并、核对 PASS，KL 改钉点转入 S32；打回 5 次；D617–D624，收尾补记 D624；超过 80 行的函数 45 → 41；无迁移；BUG-05 是否打版本待用户授权）、[S31 回顾](../reviews/S31-retro.md)（行动 1 R4 夹具确定性生成；S30 行动 1 部分达成，行动 2、3 达成）。Backlog 候选：`profit` 勾稽不可达分支、`:443` 不可达重抛，见 [S31 收尾去向](S31.md#sprint-收尾去向)。
+- **Sprint 评审与回顾**：[S31 评审](../reviews/S31-review.md)（accepted，无计划偏差；REFAC-38..40 done，合并后复测都 PASS，独立 QA 结论都在合并前发在 PR 上（REFAC-39 首轮 FAIL：R4 夹具不可复现，确定性构建后 PASS）；KDOC-15 done（#472 合并、核对 PASS，KL 钉点 #478 合并为 `85e922a`）；打回 5 次；D617–D624，收尾补记 D624；超过 80 行的函数 45 → 41；无迁移；BUG-05 是否打版本待用户授权）、[S31 回顾](../reviews/S31-retro.md)（行动 1 R4 夹具确定性生成；S30 行动 1 部分达成，行动 2、3 达成）。Backlog 候选：`profit` 勾稽不可达分支、`:443` 不可达重抛，见 [S31 收尾去向](S31.md#sprint-收尾去向)。
 
 | ID | 标题 | 类型 | 优先级 | 依赖 | 冲突域 | 迁移 | 浏览器时段 | 状态 | PR |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

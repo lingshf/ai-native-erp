@@ -7,7 +7,7 @@
 
 ## 1. 结论
 
-**S31 accepted，无计划偏差。** 三项 REFAC 在本收尾 PR 中按[执行状态](../tasks/S31.md#执行状态)记为 done，“合并后项”已清空：Product/Design 在合并提交上复测都是 PASS，独立 QA 结论都在合并前发在 PR 上（§2.2）。KDOC-15 已合并、Product/Design 核对 PASS，但还剩一项合并后项：KL 把 `docs/ai-assistant.md` 的钉点改到合并提交（D561），因此记为 in_progress，转入 S32（§4）。没有触发 D618 的砍项规则。按 D618，本 Sprint 不承诺版本号，不做发布候选；须用户授权的事项都没有执行。
+**S31 accepted，无计划偏差。** 三项 REFAC 在本收尾 PR 中按[执行状态](../tasks/S31.md#执行状态)记为 done，“合并后项”已清空：Product/Design 在合并提交上复测都是 PASS，独立 QA 结论都在合并前发在 PR 上（§2.2）。KDOC-15 记为 done：#472 合并、Product/Design 核对 PASS；按 D561，KL 在 [#478](https://github.com/lingshf/ai-native-erp/pull/478)（合并为 `85e922a`）把 `docs/ai-assistant.md` 的钉点改到合并提交 `28d26cd`（§4）。没有触发 D618 的砍项规则。按 D618，本 Sprint 不承诺版本号，不做发布候选；须用户授权的事项都没有执行。
 
 - **用户可见变化 0 项**：三项 REFAC 都按任务书证明不改行为（两侧原始记录逐字节相同，§2.2）；KDOC-15 只改文档。REFAC-38 的维度路由 chunk 与入口 chunk 各 +332 B，在 +700 B 硬上限内（评审 [6084312008](https://github.com/lingshf/ai-native-erp/pull/475#pullrequestreview-6084312008)）。
 - **迁移 0 个**：最新迁移仍为 020（`packages/infra/src/storage/migrations.ts:106`），下一个迁移号为 021。
@@ -30,7 +30,7 @@
 
 | 目标 / 项 | 判定 | 证据（PR / SHA / 复核） |
 | --- | --- | --- |
-| 1. KGAP-15 复查 → KDOC-15（D620） | accepted（合并后项 1 项转 S32） | [#472](https://github.com/lingshf/ai-native-erp/pull/472) `28d26cd`：`docs/ai-assistant.md:41`、`:78` 链接 GitHub Docs [Hosting of models for GitHub Copilot](https://docs.github.com/en/copilot/reference/ai-models/model-hosting)，不复述承诺，写明 GitHub 自身服务端保存与使用仍是缺口；`docs/README.md:94`、`:134`、`:173` 与 `docs/tradeoffs.md:25` 改为“部分有官方说明”；矩阵不升 covered。打回 1 轮（`:78` 缺链接）后批准，QA N/A。Product/Design 合并后核对 PASS（[评论 7211782076](https://github.com/lingshf/ai-native-erp/pull/472#issuecomment-7211782076)）。`design/ai-assistant-facts.md:70` 由本收尾 PR 同步。KL 改钉点未做（§4） |
+| 1. KGAP-15 复查 → KDOC-15（D620） | accepted | [#472](https://github.com/lingshf/ai-native-erp/pull/472) `28d26cd`：`docs/ai-assistant.md:41`、`:78` 链接 GitHub Docs [Hosting of models for GitHub Copilot](https://docs.github.com/en/copilot/reference/ai-models/model-hosting)，不复述承诺，写明 GitHub 自身服务端保存与使用仍是缺口；`docs/README.md:94`、`:134`、`:173` 与 `docs/tradeoffs.md:25` 改为“部分有官方说明”；矩阵不升 covered。打回 1 轮（`:78` 缺链接）后批准，QA N/A。Product/Design 合并后核对 PASS（[评论 7211782076](https://github.com/lingshf/ai-native-erp/pull/472#issuecomment-7211782076)）。`design/ai-assistant-facts.md:70` 由本收尾 PR 同步。钉点由 KL [#478](https://github.com/lingshf/ai-native-erp/pull/478) 改到 `28d26cd`（§4） |
 | 2. REFAC-38 `Dimensions.tsx`（D621、D624） | accepted | [#475](https://github.com/lingshf/ai-native-erp/pull/475) `9321a6e`。改前 `DimensionEditor` 215 / `DimensionPane` 126 行；改后最长 79 行（`DimensionEditor`）、最深 3 层（`parseDraftFields`），`Dimensions.tsx` 586 → 130 行（上限 200），新文件 12 个、最大 102 行（上限 150）。D624：`Draft` 作为 R5a 例外，评审复核类型等价后批准。独立 QA PASS（[评论 7211438778](https://github.com/lingshf/ai-native-erp/pull/475#issuecomment-7211438778)）。Product/Design 合并后复测 PASS（[评论 7211724275](https://github.com/lingshf/ai-native-erp/pull/475#issuecomment-7211724275)） |
 | 2. REFAC-39 `tradeReportingRepository`（D622） | accepted | [#476](https://github.com/lingshf/ai-native-erp/pull/476) `2ee5940`。改前 143 行（内层 `tradeReconciliation` 76）；改后最长 68 行、最深 1 层，`trade-reporting.ts` 255 → 75 行（上限 100），新文件 3 个、最大 90 行（上限 150）。R5a 两侧 13 项 SQL / 参数源文本逐字节相同；R4 夹具改为确定性构建后，base、head 各 45 例输出逐字节相同（固定 gist 修订 `fc36280`）；按 D622 不跑 Bench。独立 QA 首轮 FAIL（[评论 7211683870](https://github.com/lingshf/ai-native-erp/pull/476#issuecomment-7211683870)，R4 原件不可复现，未发现产品行为差异），第二轮 PASS（[评论 7211752343](https://github.com/lingshf/ai-native-erp/pull/476#issuecomment-7211752343)）。Product/Design 合并后复测 PASS（[评论 7211784949](https://github.com/lingshf/ai-native-erp/pull/476#issuecomment-7211784949)，含 R8b） |
 | 2. REFAC-40 `buildReports`（D623） | accepted | [#474](https://github.com/lingshf/ai-native-erp/pull/474) `e988b3f`。改前 107 行；改后 57 行、最深 2 层，`reports.ts` 190 → 138 行（上限 150），新文件 `report-measures.ts` 23 行、`report-sections.ts` 53 行。R2b 声明对照 13 个 `Eq` 检查通过，`trial.rows` 只有声明打印的属性顺序不同（评审 [6084189491](https://github.com/lingshf/ai-native-erp/pull/474#pullrequestreview-6084189491)）。独立 QA PASS（[评论 7211216227](https://github.com/lingshf/ai-native-erp/pull/474#issuecomment-7211216227)）。Product/Design 合并后复测 PASS（[评论 7211246234](https://github.com/lingshf/ai-native-erp/pull/474#issuecomment-7211246234)） |
@@ -87,7 +87,7 @@ S31 期间的决定（原文见 [S31 决定表](../tasks/S31.md#s31-期间决定
 
 ## 4. 未完成与遗留
 
-- **KDOC-15 钉点**：`docs/README.md:134` 中 `docs/ai-assistant.md` 仍钉 `ff196c3`（#452），按 D561 由 KL 另批改到 `28d26cd`；改完后 KDOC-15 记 done。本 Sprint 内没有派发，转入 S32。
+- **KDOC-15 钉点**：已清。KL [#478](https://github.com/lingshf/ai-native-erp/pull/478) 合并为 `85e922a`，`docs/README.md:134` 中 `docs/ai-assistant.md` 改钉 `28d26cd`（`ff196c3` 等仅作历史），main Full [45954581873](https://github.com/lingshf/ai-native-erp/actions/runs/45954581873) success；KDOC-15 记 done，不转入 S32。
 - **Backlog 候选**：`profit` 勾稽不可达分支、`:443` 不可达重抛，不立任务号，见 §3。
 - **② 存量**：`fnlen.cjs` 计超过 80 行的函数仍有 41 个；S32 计划时再选，`business-events/editors.tsx`（`EventEditor` 216）是下一个页面候选。
 - **KGAP-15 / KGAP-04 缺口**：GitHub 自身服务端保存仍无专门说明，按 D620 的节奏复查。
@@ -95,7 +95,7 @@ S31 期间的决定（原文见 [S31 决定表](../tasks/S31.md#s31-期间决定
 - **v0.22.0 tag 与 Release**：待用户授权。RC2 [#401](https://github.com/lingshf/ai-native-erp/pull/401) 已备好、未发布。
 - **M2-05 真实演练、M2-06 的 A / B / C 选择、Dependabot**：待用户授权。
 - **P12（是否采用本机模型）**：待用户决策，不代定。
-- **Backlog 开放项**：`git grep -n -E "\| (todo|blocked|in_progress)( |\||（)" -- design/tasks/backlog/` 在本收尾分支上只有 KDOC-15 一行（in_progress，待钉点）。
+- **Backlog 开放项**：`git grep -n -E "\| (todo|blocked|in_progress)( |\||（)" -- design/tasks/backlog/` 在本收尾分支上无输出（KDOC-15 已记 done）。
 
 ## 5. 核对命令
 
@@ -104,10 +104,10 @@ S31 期间的决定（原文见 [S31 决定表](../tasks/S31.md#s31-期间决定
 - `gh pr view <n> --json mergeCommit,baseRefOid,mergedAt`，取 #471–#476；
 - `gh api repos/lingshf/ai-native-erp/pulls/<n>/reviews`：按 `VERDICT:` 行计打回，取打回点与批准；
 - `gh api repos/lingshf/ai-native-erp/issues/<n>/comments`，取 #472、#474–#476：合并后核对评论 4 条；独立 QA 结论 4 条（#476 两轮），时间都早于对应 PR 的 `mergedAt`；
-- `gh api "repos/lingshf/ai-native-erp/actions/runs?head_sha=<sha>&branch=main"`，取 `3c571b8`、`28d26cd`、`61def29`、`e988b3f`、`9321a6e`、`2ee5940`：6 个 Full run 都 success；
+- `gh api "repos/lingshf/ai-native-erp/actions/runs?head_sha=<sha>&branch=main"`，取 `3c571b8`、`28d26cd`、`61def29`、`e988b3f`、`9321a6e`、`2ee5940`，以及钉点 #478 的 `85e922a`：7 个 Full run 都 success；
 - `node <保存位置>\<统一量法脚本>.cjs <合并提交> <被拆文件与新文件>`（[S30 统一量法](../tasks/S30.md#s30-统一量法)），输出全文见三条合并后复测评论；
 - `git diff --name-only 67db1e3 2ee5940 -- packages`：20 个文件；`git diff --name-only 67db1e3 2ee5940 -- '*test*'`：输出为空；`git diff --name-only 67db1e3 2ee5940 -- docs README.md`：`docs/README.md`、`docs/ai-assistant.md`、`docs/tradeoffs.md`；
 - `node files/fnlen.cjs packages/web/src packages/core/src packages/infra/src`，分别在 `67db1e3` 与 `2ee5940` 上取第 1 列大于 80 的行：45 与 41，差集正好是 4 个目标函数；
 - `git grep -n -e "服务端数据处理" -e "服务端的数据处理" 28d26cd -- docs`：6 行；
 - `git ls-remote --tags origin`：最新为 `v0.21.0`；`gh pr list --state open`：只有 Dependabot #11、#389、#390；
-- `git grep -n -E "\| (todo|blocked|in_progress)( |\||（)" -- design/tasks/backlog/`：只有 KDOC-15 一行。
+- `git grep -n -E "\| (todo|blocked|in_progress)( |\||（)" -- design/tasks/backlog/`：无输出。
