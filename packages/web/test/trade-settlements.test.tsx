@@ -456,6 +456,8 @@ describe("TLIST-06 refresh the open items", () => {
   );
   it("S3: re-reads both loaded pages in order and keeps them (due stays known), the selection and its amount", async () => {
     // A 480 px viewport lets the virtualizer render the rows around the scroll position.
+    // The viewport is read from clientHeight; row sizes still come from offsetHeight.
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(480);
     const { urls } = mockOpenItemPages();
     mount();
