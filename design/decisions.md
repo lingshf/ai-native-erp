@@ -662,12 +662,12 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D630 | 表 | Node 响应头 `date` 不受冻结 `Date` 影响：探针侧经 `registerTestRoutes` 的 ``… | [design/tasks/S32.md:247](tasks/S32.md) |
 | D631 | 表 | REFAC-42 的 R4 规则 1（grep 无 `randomUUID`）与规则 2（mock 替换）冲突：驱动拆成… | [design/tasks/S32.md:248](tasks/S32.md) |
 | D632 | 表 | REFAC-41 的 R4 第 1 项 grep 与第 2 项 spyOn 冲突，与 D631 同口径：grep 覆盖驱… | [design/tasks/S32.md:249](tasks/S32.md)；[design/reviews/S32-review.md:16](reviews/S32-review.md) |
-| D633 | 表 | 用户授权（“按建议”）：a 授权决定 A，对 4173 私有副本取快照并隔离演练 | [design/tasks/S33.md:146](tasks/S33.md) |
-| D634 | 表 | 接受 S33 计划：目标、排序、泳道（开发名额占 2）、砍项按本文件执行；承诺 v0.22.0 | [design/tasks/S33.md:147](tasks/S33.md) |
-| D635 | 表 | M2-05 真实演练的执行规则：前置输入 P1–P7 由用户提供，缺项即停在对应步骤之前 | [design/tasks/S33.md:148](tasks/S33.md) |
-| D636 | 表 | v0.22.0 改为从**本计划合并后**的 main 新切 RC（取代固定在 `13a4199` 的 RC2） | [design/tasks/S33.md:149](tasks/S33.md) |
-| D637 | 表 | Dependabot 合并顺序与门禁：v0.22.0 打 tag 之后，按 #389（vite、vitest，只影响开发… | [design/tasks/S33.md:150](tasks/S33.md) |
-| D638 | 表 | P12 已决（D633 d）：不采用本机模型。路线图 §6.1 AI 补记行 ④ 改为已决 | [design/tasks/S33.md:151](tasks/S33.md) |
-| D639 | 表 | KGAP-15 复查（D620，2026-11-27，限时 30 分钟内）：GitHub Docs 的 security… | [design/tasks/S33.md:152](tasks/S33.md) |
-| D640 | 表 | S33 不排 ② 存量拆分，第 3 个开发名额空着：演练、发布、依赖升级都要求 main 稳定 | [design/tasks/S33.md:153](tasks/S33.md) |
-| D641 | 表 | 新功能候选按序写入 backlog/FEAT.md：FEAT-01 库存与成本（OQ-01 下一项，S34 先出设计与切… | [design/tasks/S33.md:154](tasks/S33.md) |
+| D633 | 表 | 用户授权（“按建议”）：a 授权决定 A，对 4173 私有副本取快照并隔离演练 | [design/tasks/S33.md:148](tasks/S33.md) |
+| D634 | 表 | 接受 S33 计划：目标、排序、泳道（开发名额占 2）、砍项按本文件执行；承诺 v0.22.0 | [design/tasks/S33.md:149](tasks/S33.md) |
+| D635 | 表 | M2-05 真实演练的执行规则：前置输入 P1–P7 由用户提供，缺项即停在对应步骤之前 | [design/tasks/S33.md:150](tasks/S33.md) |
+| D636 | 表 | v0.22.0 改为从**本计划合并后**的 main 新切 RC（取代固定在 `13a4199` 的 RC2） | [design/tasks/S33.md:151](tasks/S33.md) |
+| D637 | 表 | Dependabot 分两个阶段 | [design/tasks/S33.md:152](tasks/S33.md) |
+| D638 | 表 | P12 已决（D633 d）：不采用本机模型。路线图 §6.1 AI 补记行 ④ 改为已决 | [design/tasks/S33.md:153](tasks/S33.md) |
+| D639 | 表 | KGAP-15 复查（D620，2026-11-27，限时 30 分钟内）：GitHub Docs 的 security… | [design/tasks/S33.md:154](tasks/S33.md) |
+| D640 | 表 | S33 不排 ② 存量拆分，第 3 个开发名额空着：演练、发布、依赖升级都要求 main 稳定 | [design/tasks/S33.md:155](tasks/S33.md) |
+| D641 | 表 | 新功能候选按序写入 backlog/FEAT.md：FEAT-01 库存与成本（OQ-01 下一项，S34 先出设计与切… | [design/tasks/S33.md:156](tasks/S33.md) |
