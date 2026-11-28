@@ -39,6 +39,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 function geometry() {
+  // The virtualizer reads the viewport from client* and row sizes from offset*.
+  vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(440);
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(800);
   vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(440);
   vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(800);
   vi.stubGlobal(
