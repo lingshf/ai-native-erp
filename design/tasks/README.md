@@ -64,17 +64,18 @@ PR 合并条件（无分支保护，靠约定）：CI 绿 + PR 评审角色通�
 | [M2-04b](M2-04-legacy-reconciliation.md#跟进-m2-04bd25d26) | M2-04 跟进：贸易子账按 P 公式核对、期初负例（D25/D26） | M2-04, M2-03b | — | done | [#70](https://github.com/lingshf/ai-native-erp/pull/70) |
 | [M2-05a](S13.md#m2-05a迁移虚构端到端演练与操作手册) | M2-05 中不需授权的部分：`legacy-import --dry-run` 接入 CLI、虚构端到端演练进 Full、迁移链路 Bench、操作手册（S13） | M2-01, M2-04b | admin-cli（只改 `storage-admin-main.mjs` 参数解析与分派）, bench/CI, docs/runbook | done | [#227](https://github.com/lingshf/ai-native-erp/pull/227)（`69cd9ce`） |
 | [M2-05b](M2-05b-opening-batched-write.md) | 期初未结项分批写入：明细落临时库暂存表、按批读写，期初阶段仍为单事务（M2-03b 原子性不变）；J6 导入峰值 RSS ≤ 512 MiB，关闭 KG（D434） | M2-05a | legacy-import（`opening-items.ts`、`legacy-import.ts`、可选新 `opening-staging.ts` 及两份现有测试）、bench 开关（只删 KG 一项）、docs/runbook（只改 KG 两处） | done | [#232](https://github.com/lingshf/ai-native-erp/pull/232)（`1c88243`） |
-| [M2-05](M2-05-migration-rehearsal.md) | 隔离试迁移演练与操作手册（M2-05a 之后只剩真实演练，待决定 A / C） | M2-05a；决定 A / C | bench/CI, docs/runbook | todo | |
+| [M2-05](M2-05-migration-rehearsal.md) | 隔离试迁移演练与操作手册（M2-05a 之后只剩真实演练；A、C 已决 D633，排入 [S33](S33.md#m2-05-真实演练前置)） | M2-05a；决定 A / C（D633）；前置输入 P1–P7 | bench/CI, docs/runbook | todo（S33；前置输入 P1–P7 待用户提供，D635） | |
 | [M2-06](M2-06-controlled-cutover.md) | 受控切换与回退 | M2-05 | admin-cli, docs/runbook | todo | |
 | [M2-R](M2-R-milestone-review.md) | M2 里程碑评审 + 测试审计（设计角色） | M2-06 | — | todo | |
 
-**待用户决定**（已报告协调者）。三项都**没有真实操作的默认值**：未决定时，任务的工具开发和虚构验收照常进行，只有对应的真实操作不能执行。
+**待用户决定**（已报告协调者）。A、C 已由用户在 D633 中决定（见下面“已决”）；只剩 B。未决定时，任务的工具开发和虚构验收照常进行，只有对应的真实操作不能执行。
 
-- A：是否授权对真实旧账的私有副本取快照并做隔离演练（M2-05）。未授权前不读取真实旧账。
-- B：是否授权真实停写与切换（M2-06），以及切换后新运行时的端口（当前新运行时拒绝 4173）。未授权前不停 4173、不切换。
-- C：导入范围——草稿（含 ID3）导入为草稿还是跳过；回执、来源事件、转账队列、封印、审计分别导入还是只做只读归档。未确认前，对真实数据只允许 dry-run 列出选项和数量，不做真实导入。虚构夹具测试中显式传入的选项只是测试数据，不代表这项决定。
+- A（**已决，D633 a**）：授权对 4173 旧账的私有副本取快照并做隔离演练（M2-05）。只对用户提供的私有副本操作，不读取、不复制运行中的 4173 目录；前置输入见 [S33](S33.md#m2-05-真实演练前置)。
+- B（**仍待决定**，D633 c 未授权）：是否授权真实停写与切换（M2-06），以及切换后新运行时的端口（当前新运行时拒绝 4173）。未授权前不停 4173、不切换。
+- C（**已决，D633 b**）：草稿（含 ID3）导入为草稿（`--drafts import-as-draft`）；回执、来源事件、转账队列、封印、审计一律只读归档（其余五项都是 `archive-only`）。虚构夹具测试中显式传入的选项仍只是测试数据。
 
 **已决**：
+- D633（用户决定，TL 转达）：a 授权 A；b 定 C（见上）；c B 未授权，不停 4173、不切换；d P12 不采用本机模型（D638）；e 授权发布 v0.22.0（含 BUG-05 及其后的重构，D636）；f Dependabot #11、#389、#390 评审与 QA 通过后合并（D637）。
 - D25（协调者代定，M1-R 提出）：旧账 AP/AR 控制科目余额在切换时导入为期初未结项，使贸易子账与 GL 一致；不采用“其他来源差异另行清理”。由 M2-03b 实现，M2-04b 核对，M2-05 之前必须完成。
 - D26（协调者代定）：M2-04 先按原边界交付首批，复用现行 `tradeReconciliation`。没有期初完成证据（M2-03b 的 `opening=done` 标记）时 fail-closed，判 `阻断`、标注“待 M2-03b 消除”，不因净额为 0 放行。M2-03b 不是首批的硬前置；P 公式和期初负例在 M2-03b 合并后由 M2-04b 验收。M2-05 要等 D25 全部完成（M2-03b 与 M2-04b）。
 - D30（协调者代定）：M2-03b 在不新增迁移的前提下补足六处冲突/空白——期初来源记入 `legacy_refs`，来源凭证按唯一规则选取；主数据由明细文件提供；期初项科目角色放宽（同方向、同伙伴、同币种）；期初项只参与付款核销和 apply，贷项和取消以 `reference` 拒绝；切换日取旧账最后记账日；口径 5 用文件 `partnerDimension`。详见 [M2-03b](M2-03b-legacy-opening-open-items.md)。
@@ -909,6 +910,10 @@ M1-R3（#78）、M1-R4（#81）已完成。
 | [REFAC-42](REFAC-42-business-event-routes-split.md) | 拆分业务事件路由 `registerBusinessRoutes`（不改行为与路由注册顺序，D628） | 重构（基础设施） | P2 | 任务书合并后派发 | `packages/infra/src/http/business-events.ts`、同目录新增 `business-event-*.ts` | 不加 | 不需要 | done（D630、D631；合并后复测 PASS，[评论](https://github.com/lingshf/ai-native-erp/pull/484#issuecomment-7213541590)；QA [PASS](https://github.com/lingshf/ai-native-erp/pull/484#issuecomment-7213493643)） | [#484](https://github.com/lingshf/ai-native-erp/pull/484) `fdb2c49` |
 | [REFAC-43](REFAC-43-trade-config-validation-split.md) | 拆分贸易主数据校验 `validateTradeConfig`（不改行为与错误先后，D629） | 重构（core 领域纯函数） | P2 | 任务书合并后派发 | `packages/core/src/domain/trade-master.ts`、同目录新增 `trade-master-*.ts` | 不加 | 不需要 | done（合并后复测 PASS，[评论](https://github.com/lingshf/ai-native-erp/pull/482#issuecomment-7213027314)；QA [PASS](https://github.com/lingshf/ai-native-erp/pull/482#issuecomment-7212994827)） | [#482](https://github.com/lingshf/ai-native-erp/pull/482) `ceeebe2` |
 
+## S33：M2-05 真实演练、发布 v0.22.0、Dependabot（D634）
+
+计划、演练前置、泳道与决定见 [S33.md](S33.md)（计划，待 TL 确认 D634–D641）。依据用户授权 D633：M2-05 真实演练（只在私有临时目标库上执行，不切换，不停 4173，不改旧源；前置输入 P1–P7 待用户提供，D635）；v0.22.0 从本计划合并后的 main 新切 RC，含 BUG-05（D636）；Dependabot 在 v0.22.0 tag 之后按 #389 → #390 → #11 逐个评审、QA 后合并（D637）。P12 已决为不采用本机模型（D638）；KGAP-15 复查仍未找到专页（D639）；不排 ② 存量拆分，开发名额占 2（D640）；新功能候选写入 [backlog/FEAT.md](backlog/FEAT.md) 供 S34（D641）。无迁移。决定 B（M2-06）仍未授权，不纳入承诺。
+
 ## 知识与文档待办（KDOC，D556）
 
 已移至 [backlog/KDOC.md](backlog/KDOC.md)（MCF-16，D584）。
@@ -924,6 +929,10 @@ M1-R3（#78）、M1-R4（#81）已完成。
 ## 缺陷候选（D565）
 
 已移至 [backlog/BUG.md](backlog/BUG.md)（MCF-16，D584）。
+
+## 新功能候选（D641）
+
+见 [backlog/FEAT.md](backlog/FEAT.md)（S33 写入，供 S34 选题）。
 
 ## 里程碑收尾检查与回顾（D566）
 

@@ -160,9 +160,9 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D128 | 无 | | |
 | D129 | 无 | | |
 | D130 | 无 | | |
-| D131 | 表 | 改为 D133；S5 累计 CSS gzip +413 B | [design/reviews/S5.md:50](reviews/S5.md)；[design/roadmap.md:80](roadmap.md)；[design/tasks/README.md:302](tasks/README.md) |
+| D131 | 表 | 改为 D133；S5 累计 CSS gzip +413 B | [design/reviews/S5.md:50](reviews/S5.md)；[design/roadmap.md:80](roadmap.md)；[design/tasks/README.md:303](tasks/README.md) |
 | D132 | 无 | | |
-| D133 | 条目 |  | [design/roadmap.md:80](roadmap.md)；[design/tasks/README.md:302](tasks/README.md) |
+| D133 | 条目 |  | [design/roadmap.md:80](roadmap.md)；[design/tasks/README.md:303](tasks/README.md) |
 | D134 | 无 | | |
 | D135 | 无 | | |
 | D136 | 提及 | | [docs/release/v0.5.0-release-notes.md](../docs/release/v0.5.0-release-notes.md) |
@@ -292,7 +292,7 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D260 | 无 | | |
 | D261 | 无 | | |
 | D262 | 无 | | |
-| D263 | 条目 |  | [design/tasks/README.md:537](tasks/README.md)；[design/tasks/S10.md:17](tasks/S10.md)；[design/tasks/S11.md:19](tasks/S11.md) |
+| D263 | 条目 |  | [design/tasks/README.md:538](tasks/README.md)；[design/tasks/S10.md:17](tasks/S10.md)；[design/tasks/S11.md:19](tasks/S11.md) |
 | D264 | 条目 |  | [design/tasks/TINV-04-invoice-list-source-order.md:36](tasks/TINV-04-invoice-list-source-order.md) |
 | D265 | 无 | | |
 | D266 | 条目 |  | [design/reviews/S9.md:59](reviews/S9.md) |
@@ -463,18 +463,18 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D431 | 提及 | | [design/reviews/S13.md](reviews/S13.md)；[design/tasks/README.md](tasks/README.md)；[design/tasks/S13.md](tasks/S13.md) |
 | D432 | 条目 |  | [design/reviews/S13.md:79](reviews/S13.md)；[design/tasks/REFAC-03b-company-journals-split.md:161](tasks/REFAC-03b-company-journals-split.md)；[design/tasks/REFAC-05b-order-workspace-split.md:115](tasks/REFAC-05b-order-workspace-split.md) 等 12 处 |
 | D433 | 条目 |  | [design/reviews/S13.md:79](reviews/S13.md)；[design/tasks/S13.md:316](tasks/S13.md) |
-| D434 | 条目 |  | [design/reviews/S13.md:83](reviews/S13.md)；[design/tasks/README.md:642](tasks/README.md)；[design/tasks/S13.md:41](tasks/S13.md) |
+| D434 | 条目 |  | [design/reviews/S13.md:83](reviews/S13.md)；[design/tasks/README.md:643](tasks/README.md)；[design/tasks/S13.md:41](tasks/S13.md) |
 | D435 | 条目 |  | [design/reviews/S13.md:79](reviews/S13.md) |
 | D436 | 条目 |  | [design/reviews/S13.md:87](reviews/S13.md) |
 | D437 | 条目 |  | [design/reviews/S12-retro.md:60](reviews/S12-retro.md)；[design/reviews/S13.md:83](reviews/S13.md) |
-| D438 | 条目 |  | [design/reviews/S13.md:88](reviews/S13.md)；[design/tasks/README.md:641](tasks/README.md)；[design/tasks/S13.md:40](tasks/S13.md) |
+| D438 | 条目 |  | [design/reviews/S13.md:88](reviews/S13.md)；[design/tasks/README.md:642](tasks/README.md)；[design/tasks/S13.md:40](tasks/S13.md) |
 | D439 | 表 | REFAC-03b 的 P7 路由预算放宽：五个路由（凭证、业务事件、总账报表、期末结账、贸易报表）按同一口径（屏蔽哈希… | [design/tasks/S13.md:384](tasks/S13.md)；[design/reviews/S12-retro.md:61](reviews/S12-retro.md)；[design/reviews/S13.md:88](reviews/S13.md) 等 4 处 |
 | D440 | 表 | DEMO-12 再给一次时段，不降级。“卡片标题与筛选栏间距 16 px”断言改为只记录实测值 | [design/tasks/S13.md:385](tasks/S13.md)；[design/reviews/S12.md:81](reviews/S12.md) |
 | D441 | 表 | 上一次失败（准入徽标的正则把可访问名称中的 “trade” 当成原始键）按脚本问题处理，再给一次时段，排在 REFAC-… | [design/tasks/S13.md:386](tasks/S13.md)；[design/reviews/S12.md:81](reviews/S12.md) |
 | D442 | 表 | 浏览器时段独占：本地 node / npm / vitest 只能在自己的修订轮次内运行 | [design/tasks/S13.md:387](tasks/S13.md)；[design/roadmap.md:141](roadmap.md)；[design/tasks/S14.md:43](tasks/S14.md) 等 13 处 |
 | D443 | 表 | M2-05b 例外（方案 A）：允许新增 `packages/infra/test/legacy-opening-bat`… | [design/tasks/S13.md:388](tasks/S13.md)；[design/reviews/S12-retro.md:62](reviews/S12-retro.md)；[design/reviews/S13.md:89](reviews/S13.md) |
 | D444 | 条目 |  | [design/reviews/S12.md:81](reviews/S12.md)；[design/roadmap.md:144](roadmap.md)；[design/tasks/S15.md:48](tasks/S15.md) 等 12 处 |
-| D445 | 条目 |  | [design/tasks/README.md:622](tasks/README.md) |
+| D445 | 条目 |  | [design/tasks/README.md:623](tasks/README.md) |
 | D446 | 条目 |  | [design/reviews/S12.md:81](reviews/S12.md)；[design/reviews/S13.md:90](reviews/S13.md) |
 | D447 | 提及 | | [design/tasks/README.md](tasks/README.md)；[design/tasks/S14.md](tasks/S14.md) |
 | D448 | 条目 |  | [design/reviews/S13.md:90](reviews/S13.md) |
@@ -655,10 +655,19 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D623 | 表 | REFAC-40 任务书：`buildReports` 只拆不改行为（导出与签名、公开推断类型、返回值含键序与 `-0`… | [design/tasks/S31.md:171](tasks/S31.md) |
 | D624 | 表 | REFAC-38 的 R5a 例外：`DimensionEditor` 草稿 `useState` 的类型实参由 `Re`… | [design/tasks/S31.md:172](tasks/S31.md)；[design/reviews/S31-review.md:16](reviews/S31-review.md) |
 | D625 | 表 | 接受 S32 计划：目标、范围（REFAC-41..43、S31 回顾行动 1）、排序、泳道与开发名额（占 3）按本文件… | [design/tasks/S32.md:242](tasks/S32.md)；[design/reviews/S32-review.md:16](reviews/S32-review.md) |
-| D626 | 表 | S32 开发泳道排 ② 存量拆分 REFAC-41（`business-events/editors.tsx`）、REF… | [design/tasks/S32.md:243](tasks/S32.md) |
+| D626 | 表 | S32 开发泳道排 ② 存量拆分 REFAC-41（`business-events/editors.tsx`）、REF… | [design/tasks/S32.md:243](tasks/S32.md)；[design/tasks/S33.md:35](tasks/S33.md) |
 | D627 | 表 | REFAC-41 任务书：`editors.tsx` 只拆不改行为（DOM、请求、焦点、键盘含 Ctrl / ⌘ + E… | [design/tasks/S32.md:244](tasks/S32.md) |
 | D628 | 表 | REFAC-42 任务书：`registerBusinessRoutes` 只拆不改行为（导出与签名、12 条路由的注册… | [design/tasks/S32.md:245](tasks/S32.md) |
 | D629 | 表 | REFAC-43 任务书：`validateTradeConfig` 只拆不改行为（导出与签名含 `.length`、公… | [design/tasks/S32.md:246](tasks/S32.md) |
 | D630 | 表 | Node 响应头 `date` 不受冻结 `Date` 影响：探针侧经 `registerTestRoutes` 的 ``… | [design/tasks/S32.md:247](tasks/S32.md) |
 | D631 | 表 | REFAC-42 的 R4 规则 1（grep 无 `randomUUID`）与规则 2（mock 替换）冲突：驱动拆成… | [design/tasks/S32.md:248](tasks/S32.md) |
 | D632 | 表 | REFAC-41 的 R4 第 1 项 grep 与第 2 项 spyOn 冲突，与 D631 同口径：grep 覆盖驱… | [design/tasks/S32.md:249](tasks/S32.md)；[design/reviews/S32-review.md:16](reviews/S32-review.md) |
+| D633 | 表 | 用户授权（“按建议”）：a 授权决定 A，对 4173 私有副本取快照并隔离演练 | [design/tasks/S33.md:146](tasks/S33.md) |
+| D634 | 表 | 接受 S33 计划：目标、排序、泳道（开发名额占 2）、砍项按本文件执行；承诺 v0.22.0 | [design/tasks/S33.md:147](tasks/S33.md) |
+| D635 | 表 | M2-05 真实演练的执行规则：前置输入 P1–P7 由用户提供，缺项即停在对应步骤之前 | [design/tasks/S33.md:148](tasks/S33.md) |
+| D636 | 表 | v0.22.0 改为从**本计划合并后**的 main 新切 RC（取代固定在 `13a4199` 的 RC2） | [design/tasks/S33.md:149](tasks/S33.md) |
+| D637 | 表 | Dependabot 合并顺序与门禁：v0.22.0 打 tag 之后，按 #389（vite、vitest，只影响开发… | [design/tasks/S33.md:150](tasks/S33.md) |
+| D638 | 表 | P12 已决（D633 d）：不采用本机模型。路线图 §6.1 AI 补记行 ④ 改为已决 | [design/tasks/S33.md:151](tasks/S33.md) |
+| D639 | 表 | KGAP-15 复查（D620，2026-11-27，限时 30 分钟内）：GitHub Docs 的 security… | [design/tasks/S33.md:152](tasks/S33.md) |
+| D640 | 表 | S33 不排 ② 存量拆分，第 3 个开发名额空着：演练、发布、依赖升级都要求 main 稳定 | [design/tasks/S33.md:153](tasks/S33.md) |
+| D641 | 表 | 新功能候选按序写入 backlog/FEAT.md：FEAT-01 库存与成本（OQ-01 下一项，S34 先出设计与切… | [design/tasks/S33.md:154](tasks/S33.md) |
