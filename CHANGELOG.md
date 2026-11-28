@@ -6,9 +6,9 @@
 
 ## [Unreleased]
 
-## [0.22.0] - 待定
+## [0.22.0] - 2026-11-27
 
-> **草稿（RC4，D633e、D636）**：尚未发布，没有 tag。取代已合并的 RC2 草稿（[#401](https://github.com/lingshf/ai-native-erp/pull/401)，范围终点 `13a4199`）；旧 `release/v0.22.0` 固定在 `3566ddb` 已过时、不再使用，RC4 分支是 `release/v0.22.0-rc4`（取代基于 d83a006 的 [#486](https://github.com/lingshf/ai-native-erp/pull/486)，已关闭）。tag 与 Release 按 [`docs/release/README.md`](docs/release/README.md) 第 4 步：RC PR 合并、该合并（squash）提交上的 main Full 为绿之后，经授权在**该 squash 提交**上打 annotated tag（D21；D633 授权发布，未另定 tag 目标）；发布日期在发布后另开 PR 填写。
+> **已发布**：tag `v0.22.0`（annotated，tag 对象 `8582d9ec2e8d63629c2ba853974c1344891edd7e`）打在 `c53a1e08780cc6b2abbac83eca0615c512e60be3`（[#488](https://github.com/lingshf/ai-native-erp/pull/488) 的 squash 提交，位于 main；该提交的 main Full 为绿，run [46118556458](https://github.com/lingshf/ai-native-erp/actions/runs/46118556458)）；发布日 2026-11-27（本地日期，GitHub 记录为 2026-11-28T06:53:54Z，与此前各版本同一口径）。RC 范围终点 `1957bd587e20a2b2955d06eaddbb614dac7f8dee`（[#487](https://github.com/lingshf/ai-native-erp/pull/487)）；其后只有 #488 这一个提交，只改文档与发布文件，`git diff --stat 1957bd5 v0.22.0 -- packages package.json package-lock.json .github` 无输出。Release：<https://github.com/lingshf/ai-native-erp/releases/tag/v0.22.0>。tag 对 tag 的版本差异（D483，`git diff --shortstat`，无路径过滤）：[v0.21.0..v0.22.0](https://github.com/lingshf/ai-native-erp/compare/v0.21.0..v0.22.0)（两点）448 个文件，+34168/−10517；[v0.21.0...v0.22.0](https://github.com/lingshf/ai-native-erp/compare/v0.21.0...v0.22.0)（三点，合并基 `3ae4848d36c4c06c2e208173e58ed2cac3771564`）486 个文件，+36927/−10514；`git rev-list --count` 两点 168、三点 178。RC 的历史（取代 RC2 [#401](https://github.com/lingshf/ai-native-erp/pull/401)；基于 d83a006 的 [#486](https://github.com/lingshf/ai-native-erp/pull/486) 已关闭，D636）见 [#488](https://github.com/lingshf/ai-native-erp/pull/488)。
 >
 > **版本号**：minor（0.21.0 → 0.22.0）：有用户可见的功能与行为变化（TSET-01、TMAS-01、BUG-01、BUG-02、BUG-03、BUG-04、BUG-05、SEC-02）。
 >
@@ -781,7 +781,8 @@ M1 贸易里程碑完成（M1-01..07，M1-R 评审通过，无阻塞项）。产
 - 旧快照未配置提示、凭证空列表文案和根 README 迁移版本说明已在 v0.2.0 修复（见 `[0.2.0]`）；v0.1.0 原发布基线不包含这些修复。
 - 偏好（语言、主题、教学开关）保存在浏览器 localStorage，不随账套保存。
 
-[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.20.0...HEAD
+[Unreleased]: https://github.com/lingshf/ai-native-erp/compare/v0.22.0...HEAD
+[0.22.0]: https://github.com/lingshf/ai-native-erp/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/lingshf/ai-native-erp/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/lingshf/ai-native-erp/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/lingshf/ai-native-erp/compare/v0.18.0...v0.19.0
