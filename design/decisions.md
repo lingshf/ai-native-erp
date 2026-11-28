@@ -671,3 +671,4 @@ D1 起的全部决定编号各占一行，列出它记录在仓库哪里（D562�
 | D639 | 表 | KGAP-15 复查（D620，2026-11-27，限时 30 分钟内）：GitHub Docs 的 security… | [design/tasks/S33.md:154](tasks/S33.md) |
 | D640 | 表 | S33 不排 ② 存量拆分，第 3 个开发名额空着：演练、发布、依赖升级都要求 main 稳定 | [design/tasks/S33.md:155](tasks/S33.md) |
 | D641 | 表 | 新功能候选按序写入 backlog/FEAT.md：FEAT-01 库存与成本（OQ-01 下一项，S34 先出设计与切… | [design/tasks/S33.md:156](tasks/S33.md) |
+| D642 | 表 | #390 的替代 PR 沿用 D633 f 的合并授权：用户授权的是这组依赖升级在评审与 QA 通过后合并 | [design/tasks/S33.md:157](tasks/S33.md) |
